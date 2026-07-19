@@ -14,6 +14,7 @@ import Groups from './pages/Groups.jsx'
 import GroupDetail from './pages/GroupDetail.jsx'
 import JoinGroup from './pages/JoinGroup.jsx'
 import Profile from './pages/Profile.jsx'
+import PasskeyPrompt from './components/PasskeyPrompt.jsx'
 
 const PENDING_INVITE = 'budge:invite'
 
@@ -47,20 +48,23 @@ function AuthedRoutes() {
   }, [navigate])
 
   return (
-    <Routes>
-      <Route path="/join/:token" element={<JoinGroup />} />
-      <Route element={<AppShell />}>
-        <Route index element={<Dashboard />} />
-        <Route path="expenses" element={<Expenses />} />
-        <Route path="budgets" element={<Budgets />} />
-        <Route path="income" element={<Income />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="groups" element={<Groups />} />
-        <Route path="groups/:id" element={<GroupDetail />} />
-        <Route path="profile" element={<Profile />} />
-      </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/join/:token" element={<JoinGroup />} />
+        <Route element={<AppShell />}>
+          <Route index element={<Dashboard />} />
+          <Route path="expenses" element={<Expenses />} />
+          <Route path="budgets" element={<Budgets />} />
+          <Route path="income" element={<Income />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="groups" element={<Groups />} />
+          <Route path="groups/:id" element={<GroupDetail />} />
+          <Route path="profile" element={<Profile />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <PasskeyPrompt />
+    </>
   )
 }
 

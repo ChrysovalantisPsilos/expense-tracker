@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Button, Card, CardBody, Center, FormControl, FormLabel, FormHelperText,
-  Input, Stack, Text, useToast, VStack,
+  Button, Card, CardBody, Center, Divider, FormControl, FormLabel, FormHelperText,
+  Input, Stack, Text, useToast, VStack, HStack,
 } from '@chakra-ui/react'
+import { KeyRound } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
-import { isSupabaseConfigured } from '../lib/supabase.js'
+import { isSupabaseConfigured, passkeysSupported } from '../lib/supabase.js'
 import Logo from '../components/Logo.jsx'
 
 // A few of the most common weak passwords to reject outright, client-side.
@@ -27,14 +28,26 @@ function validatePassword(pw) {
 }
 
 export default function Login() {
-  const { signInWithPassword, signUp } = useAuth()
+  const { signInWithPassword, signUp, signInWithPasskey } = useAuth()
   const [searchParams] = useSearchParams()
   const [mode, setMode] = useState(searchParams.get('signup') ? 'signup' : 'signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const [passkeyBusy, setPasskeyBusy] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
+
+  async function handlePasskey() {
+    setPasskeyBusy(true)
+    const { error } = await signInWithPasskey()
+    setPasskeyBusy(false)
+    if (error) {
+      toast({ title: 'Passkey sign-in failed', description: error.message, status: 'error' })
+      return
+    }
+    navigate('/', { replace: true })
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -96,6 +109,21 @@ export default function Login() {
                 </Button>
               </Stack>
             </form>
+
+            {mode === 'signin' && passkeysSupported && (
+              <>
+                <HStack>
+                  <Divider />
+                  <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">or</Text>
+                  <Divider />
+                </HStack>
+                <Button variant="outline" colorScheme="gray" w="full"
+                  leftIcon={<KeyRound size={18} />} isLoading={passkeyBusy}
+                  onClick={handlePasskey}>
+                  Sign in with a passkey
+                </Button>
+              </>
+            )}
 
             <Text fontSize="sm" textAlign="center" color="text.muted">
               {mode === 'signin' ? "Don't have an account? " : 'Already have one? '}

@@ -17,7 +17,16 @@ export const supabase = createClient(url ?? '', anonKey ?? '', {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    // Passkeys (WebAuthn) are experimental in supabase-js and must be opted in.
+    experimental: { passkey: true },
   },
 })
+
+// Whether the running supabase-js build exposes the passkey API + the browser
+// supports WebAuthn. Used to hide passkey UI where it can't work.
+export const passkeysSupported =
+  typeof window !== 'undefined' &&
+  !!window.PublicKeyCredential &&
+  typeof supabase.auth.signInWithPasskey === 'function'
 
 export const isSupabaseConfigured = Boolean(url && anonKey)
