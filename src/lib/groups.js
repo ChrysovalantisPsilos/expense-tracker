@@ -50,6 +50,12 @@ export async function createGroup(name, currency = 'EUR') {
   return data // group id
 }
 
+// Rename a group (owner only — enforced by RLS).
+export async function renameGroup(groupId, name) {
+  const { error } = await supabase.from('groups').update({ name }).eq('id', groupId)
+  if (error) throw new Error(error.message)
+}
+
 export async function addMember(groupId, displayName) {
   const { data, error } = await supabase
     .from('group_members')
