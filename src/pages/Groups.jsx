@@ -1,0 +1,120 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Spinner,
+  Flex, Icon, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader,
+  ModalBody, ModalFooter, FormControl, FormLabel, Input, Select, useToast,
+} from '@chakra-ui/react'
+import { Users, Plus, ChevronRight } from 'lucide-react'
+import { listGroups, createGroup } from '../lib/groups.js'
+import { useProfile } from '../lib/useProfile.js'
+
+export default function Groups() {
+  const navigate = useNavigate()
+  const { baseCurrency } = useProfile()
+  const [groups, setGroups] = useState([])
+  const [loading, setLoading] = useState(true)
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [name, setName] = useState('')
+  const [currency, setCurrency] = useState(baseCurrency)
+  const [busy, setBusy] = useState(false)
+  const toast = useToast()
+
+  async function load() {
+    setLoading(true)
+    try { setGroups(await listGroups()) }
+    catch (e) { toast({ title: e.message, status: 'error' }) }
+    finally { setLoading(false) }
+  }
+  useEffect(() => { load() /* eslint-disable-next-line */ }, [])
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setBusy(true)
+    try {
+      const id = await createGroup(name.trim(), currency || 'USD')
+      onClose(); setName('')
+      navigate(`/groups/${id}`)
+    } catch (e) {
+      toast({ title: e.message, status: 'error' })
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <Stack spacing={5}>
+      <HStack>
+        <Heading size="lg">Groups</Heading>
+        <Spacer />
+        <Button leftIcon={<Plus size={18} />} onClick={onOpen}>New group</Button>
+      </HStack>
+
+      {loading ? (
+        <Center py={16}><Spinner color="brand.500" /></Center>
+      ) : groups.length === 0 ? (
+        <Card><CardBody>
+          <Center flexDir="column" py={10} gap={3} textAlign="center">
+            <Flex boxSize="56px" align="center" justify="center" borderRadius="2xl"
+              bg="bg.subtle" color="accent.fg"><Users size={28} /></Flex>
+            <Text fontWeight="600">No groups yet</Text>
+            <Text color="text.muted" fontSize="sm" maxW="sm">
+              Create a group for a trip or household, add the people in it, and
+              start splitting shared expenses.
+            </Text>
+            <Button leftIcon={<Plus size={18} />} onClick={onOpen} mt={2}>Create your first group</Button>
+          </Center>
+        </CardBody></Card>
+      ) : (
+        <Stack spacing={3}>
+          {groups.map((g) => (
+            <Card key={g.id} cursor="pointer" _hover={{ boxShadow: 'lifted' }}
+              transition="box-shadow 0.15s" onClick={() => navigate(`/groups/${g.id}`)}>
+              <CardBody>
+                <HStack spacing={3}>
+                  <Flex boxSize="40px" align="center" justify="center" borderRadius="lg"
+                    bg="bg.subtle" color="accent.fg"><Users size={20} /></Flex>
+                  <Stack spacing={0}>
+                    <Text fontWeight="600">{g.name}</Text>
+                    <Text fontSize="xs" color="text.muted">
+                      {g.group_members?.[0]?.count ?? 0} members · {g.currency}
+                    </Text>
+                  </Stack>
+                  <Spacer />
+                  <Icon as={ChevronRight} color="text.muted" />
+                </HStack>
+              </CardBody>
+            </Card>
+          ))}
+        </Stack>
+      )}
+
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent as="form" onSubmit={submit} mx={4}>
+          <ModalHeader>New group</ModalHeader>
+          <ModalBody>
+            <Stack spacing={4}>
+              <FormControl isRequired>
+                <FormLabel>Name</FormLabel>
+                <Input autoFocus value={name} onChange={(e) => setName(e.target.value)}
+                  placeholder="Italy 2026, Flat 3B…" />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Currency</FormLabel>
+                <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                  {['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD'].map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+          </ModalBody>
+          <ModalFooter gap={2}>
+            <Button variant="ghost" onClick={onClose}>Cancel</Button>
+            <Button type="submit" isLoading={busy}>Create</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Stack>
+  )
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import {
   Box, Button, Card, CardBody, Center, Divider, FormControl, FormLabel,
   Input, Stack, Text, useToast, HStack, VStack, Icon,
@@ -16,6 +16,8 @@ export default function Login() {
   const [busy, setBusy] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = location.state?.from?.pathname || '/'
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -30,7 +32,7 @@ export default function Login() {
     if (mode === 'signup') {
       toast({ title: 'Check your email to confirm your account.', status: 'info' })
     } else {
-      navigate('/')
+      navigate(from, { replace: true })
     }
   }
 
