@@ -10,6 +10,7 @@ import { toMinor, fromMinor } from '../lib/currency.js'
 import { addSharedExpense, updateSharedExpense, deleteSharedExpense } from '../lib/groups.js'
 import { uploadReceipt } from '../lib/receipts.js'
 import ReceiptScanner from './ReceiptScanner.jsx'
+import MoneyInput from './MoneyInput.jsx'
 
 export default function GroupExpenseForm({ group, members, defaultPayer, expense, isOpen, onClose, onSaved }) {
   const { user } = useAuth()
@@ -99,8 +100,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
             <HStack>
               <FormControl isRequired>
                 <FormLabel>Amount ({group.currency})</FormLabel>
-                <Input type="number" step="0.01" inputMode="decimal" value={amount}
-                  onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+                <MoneyInput value={amount} onChange={setAmount} />
               </FormControl>
               <FormControl maxW="160px">
                 <FormLabel>Date</FormLabel>

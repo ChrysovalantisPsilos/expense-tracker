@@ -12,6 +12,7 @@ import { useAuth } from '../auth/AuthProvider.jsx'
 import { useProfile } from '../lib/useProfile.js'
 import { initSync, pendingCount, flushQueue } from '../lib/offlineQueue.js'
 import Logo from './Logo.jsx'
+import NotificationBell from './NotificationBell.jsx'
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -147,6 +148,7 @@ export default function AppShell() {
           <Logo size={26} />
           <Spacer />
           <SyncBadges />
+          <NotificationBell />
           <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
             icon={<ThemeIcon size={18} />} onClick={toggleColorMode} />
           <RouterNavLink to="/profile">
@@ -155,10 +157,11 @@ export default function AppShell() {
           </RouterNavLink>
         </Flex>
 
-        {/* Desktop header strip (sync badges) */}
-        <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end"
-          px={6} pt={4}>
+        {/* Desktop header strip (sync badges + notifications) */}
+        <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end" align="center"
+          gap={2} px={6} pt={4}>
           <SyncBadges />
+          <NotificationBell />
         </Flex>
 
         <Box as="main" flex="1" px={{ base: 4, md: 6 }} py={{ base: 4, md: 4 }}

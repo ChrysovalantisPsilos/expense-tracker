@@ -1,0 +1,98 @@
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Box, Popover, PopoverTrigger, PopoverContent, PopoverBody, PopoverHeader,
+  IconButton, Badge, Stack, HStack, Text, Flex, Divider, useDisclosure, Button,
+} from '@chakra-ui/react'
+import { Bell, UserPlus, ReceiptText, HandCoins } from 'lucide-react'
+import { listNotifications, markAllRead } from '../lib/notifications.js'
+
+const ICON = { invite: UserPlus, expense: ReceiptText, settlement: HandCoins }
+const POLL_MS = 45000
+
+export default function NotificationBell() {
+  const navigate = useNavigate()
+  const { isOpen, onOpen, onClose } = useDisclosure()
+  const [items, setItems] = useState([])
+  const timer = useRef(null)
+
+  async function load() {
+    try { setItems(await listNotifications()) } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    load()
+    timer.current = setInterval(load, POLL_MS)
+    return () => clearInterval(timer.current)
+  }, [])
+
+  const unread = items.filter((n) => !n.read_at).length
+
+  async function handleOpen() {
+    onOpen()
+    if (unread > 0) {
+      // optimistic: mark read locally, then persist
+      setItems((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() })))
+      try { await markAllRead() } catch { /* ignore */ }
+    }
+  }
+
+  function go(n) {
+    onClose()
+    if (n.type === 'invite') navigate('/groups')
+    else if (n.group_id) navigate(`/groups/${n.group_id}`)
+  }
+
+  return (
+    <Popover isOpen={isOpen} onOpen={handleOpen} onClose={onClose} placement="bottom-end">
+      <PopoverTrigger>
+        <Box position="relative" display="inline-flex">
+          <IconButton aria-label="Notifications" variant="ghost" size="sm" icon={<Bell size={18} />} />
+          {unread > 0 && (
+            <Badge position="absolute" top="-2px" right="-2px" borderRadius="full"
+              bg="brand.500" color="white" fontSize="0.6rem" minW="16px" textAlign="center" px={1}>
+              {unread > 9 ? '9+' : unread}
+            </Badge>
+          )}
+        </Box>
+      </PopoverTrigger>
+      <PopoverContent w="320px" _dark={{ bg: 'bg.surface' }}>
+        <PopoverHeader fontWeight="700">Notifications</PopoverHeader>
+        <PopoverBody px={0} maxH="380px" overflowY="auto">
+          {items.length === 0 ? (
+            <Text px={4} py={6} color="text.muted" fontSize="sm" textAlign="center">
+              You’re all caught up.
+            </Text>
+          ) : (
+            <Stack spacing={0}>
+              {items.map((n, i) => {
+                const Icon = ICON[n.type] ?? Bell
+                return (
+                  <Box key={n.id}>
+                    {i > 0 && <Divider />}
+                    <HStack px={4} py={3} spacing={3} align="start" cursor="pointer"
+                      _hover={{ bg: 'bg.subtle' }} onClick={() => go(n)}>
+                      <Flex boxSize="32px" flexShrink={0} align="center" justify="center"
+                        borderRadius="lg" bg="bg.subtle" color="accent.fg"><Icon size={16} /></Flex>
+                      <Stack spacing={0}>
+                        <Text fontSize="sm" fontWeight={n.read_at ? '500' : '700'}>{n.title}</Text>
+                        {n.body && <Text fontSize="xs" color="text.muted">{n.body}</Text>}
+                      </Stack>
+                    </HStack>
+                  </Box>
+                )
+              })}
+            </Stack>
+          )}
+        </PopoverBody>
+        {items.some((n) => n.type === 'invite') && (
+          <Box px={4} py={2} borderTopWidth="1px">
+            <Button size="sm" variant="ghost" w="full" onClick={() => go({ type: 'invite' })}>
+              View invites
+            </Button>
+          </Box>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
