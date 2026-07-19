@@ -1,19 +1,22 @@
 // Currency helpers. Money is stored as integer minor units (cents).
 
-export function toMinor(amount, currency = 'USD') {
+// Supported currencies (EUR first — it's the app default).
+export const CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD']
+
+export function toMinor(amount, currency = 'EUR') {
   // Most currencies have 2 decimal places; a few (JPY, KRW) have 0.
   const zeroDecimal = ['JPY', 'KRW', 'VND', 'CLP']
   const factor = zeroDecimal.includes(currency) ? 1 : 100
   return Math.round(Number(amount) * factor)
 }
 
-export function fromMinor(minor, currency = 'USD') {
+export function fromMinor(minor, currency = 'EUR') {
   const zeroDecimal = ['JPY', 'KRW', 'VND', 'CLP']
   const factor = zeroDecimal.includes(currency) ? 1 : 100
   return Number(minor) / factor
 }
 
-export function formatMoney(minor, currency = 'USD', locale = undefined) {
+export function formatMoney(minor, currency = 'EUR', locale = undefined) {
   return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(
     fromMinor(minor, currency),
   )

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Box, Button, Card, CardBody, Center, Divider, FormControl, FormLabel,
   Input, Stack, Text, useToast, HStack, VStack, Icon,
@@ -10,14 +10,13 @@ import Logo from '../components/Logo.jsx'
 
 export default function Login() {
   const { signInWithPassword, signUp, signInWithProvider } = useAuth()
-  const [mode, setMode] = useState('signin') // 'signin' | 'signup'
+  const [searchParams] = useSearchParams()
+  const [mode, setMode] = useState(searchParams.get('signup') ? 'signup' : 'signin') // 'signin' | 'signup'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
-  const location = useLocation()
-  const from = location.state?.from?.pathname || '/'
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -32,7 +31,7 @@ export default function Login() {
     if (mode === 'signup') {
       toast({ title: 'Check your email to confirm your account.', status: 'info' })
     } else {
-      navigate(from, { replace: true })
+      navigate('/', { replace: true })
     }
   }
 
