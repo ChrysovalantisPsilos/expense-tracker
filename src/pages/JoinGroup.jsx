@@ -5,7 +5,7 @@ import {
   CardBody, Avatar, Divider, List, ListItem, Spacer, useToast,
 } from '@chakra-ui/react'
 import { Users, Check, X } from 'lucide-react'
-import { claimLinkInvite, respondToInvite } from '../lib/groups.js'
+import { previewLinkInvite, joinViaLink } from '../lib/groups.js'
 
 export default function JoinGroup() {
   const { token } = useParams()
@@ -16,7 +16,7 @@ export default function JoinGroup() {
 
   useEffect(() => {
     let active = true
-    claimLinkInvite(token)
+    previewLinkInvite(token)
       .then((res) => {
         if (!active) return
         // Already in the group — nothing to decide, go straight there.
@@ -30,20 +30,19 @@ export default function JoinGroup() {
     return () => { active = false }
   }, [token, navigate])
 
-  async function respond(accept) {
-    setBusy(accept ? 'accept' : 'decline')
+  async function accept() {
+    setBusy('accept')
     try {
-      const gid = await respondToInvite(state.invite_id, accept)
-      if (accept) {
-        navigate(`/groups/${gid}`, { replace: true })
-      } else {
-        toast({ title: 'Invite declined', status: 'info', duration: 2500 })
-        navigate('/groups', { replace: true })
-      }
+      const gid = await joinViaLink(token)
+      navigate(`/groups/${gid}`, { replace: true })
     } catch (e) {
-      toast({ title: 'Something went wrong', description: e.message, status: 'error' })
+      toast({ title: 'Couldn’t join', description: e.message, status: 'error' })
       setBusy(null)
     }
+  }
+
+  function decline() {
+    navigate('/groups', { replace: true })
   }
 
   if (state.status === 'loading') {
@@ -71,27 +70,10 @@ export default function JoinGroup() {
     )
   }
 
-  if (state.status === 'claimed_by_other') {
-    return (
-      <Center h="100dvh" px={4}>
-        <Stack spacing={4} textAlign="center" maxW="sm">
-          <Heading size="md">Invite already used</Heading>
-          <Text color="text.muted">
-            This invite link has already been claimed by another account. Ask for a new link if you still need to join.
-          </Text>
-          <Button onClick={() => navigate('/groups')}>Go to groups</Button>
-        </Stack>
-      </Center>
-    )
-  }
-
-  // status === 'pending'
+  // status === 'joinable'
   const preview = state.preview ?? {}
   const group = preview.group ?? {}
   const members = preview.members ?? []
-  const slot = state.preview?.member_id
-    ? members.find((m) => m.id === state.preview.member_id)
-    : null
 
   return (
     <Center minH="100dvh" px={4} py={8} bg="bg.canvas">
@@ -101,10 +83,7 @@ export default function JoinGroup() {
             <Flex boxSize="56px" mx="auto" mb={3} align="center" justify="center"
               borderRadius="2xl" bg="bg.subtle" color="accent.fg"><Users size={28} /></Flex>
             <Heading size="lg">{group.name || 'Group invite'}</Heading>
-            <Text color="text.muted" mt={1}>
-              You’ve been invited to join
-              {slot ? <> as <Text as="span" fontWeight="600" color="text.primary">{slot.display_name}</Text></> : null}
-            </Text>
+            <Text color="text.muted" mt={1}>You’ve been invited to join</Text>
           </Box>
 
           {members.length > 0 && (
@@ -118,9 +97,6 @@ export default function JoinGroup() {
                       <Avatar size="sm" name={m.display_name} src={m.avatar_url} />
                       <Text fontWeight="500">{m.display_name}</Text>
                       <Spacer />
-                      {slot && m.id === slot.id && (
-                        <Text fontSize="xs" color="accent.fg" fontWeight="600">that’s you</Text>
-                      )}
                     </HStack>
                   </ListItem>
                 ))}
@@ -129,12 +105,12 @@ export default function JoinGroup() {
           )}
 
           <Stack spacing={2}>
-            <Button leftIcon={<Check size={18} />} onClick={() => respond(true)}
+            <Button leftIcon={<Check size={18} />} onClick={accept}
               isLoading={busy === 'accept'} isDisabled={busy != null}>
               Accept &amp; join
             </Button>
-            <Button variant="ghost" leftIcon={<X size={18} />} onClick={() => respond(false)}
-              isLoading={busy === 'decline'} isDisabled={busy != null}>
+            <Button variant="ghost" leftIcon={<X size={18} />} onClick={decline}
+              isDisabled={busy != null}>
               Decline
             </Button>
           </Stack>
