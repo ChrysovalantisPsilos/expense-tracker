@@ -2,7 +2,7 @@ import { useState } from 'react'
 import {
   Heading, Stack, Card, CardBody, Button, useDisclosure, Collapse,
   List, ListItem, HStack, Text, Spacer, Badge, Center, Spinner, Divider,
-  IconButton, useToast,
+  IconButton, useToast, Tag,
 } from '@chakra-ui/react'
 import { Paperclip } from 'lucide-react'
 import TransactionForm from '../components/TransactionForm.jsx'
@@ -58,7 +58,10 @@ export default function Expenses() {
                 <HStack py={3} spacing={3}>
                   <CategoryBadge category={r.categories} />
                   <Stack spacing={0}>
-                    <Text fontWeight="600">{r.description || r.categories?.name || 'Expense'}</Text>
+                    <HStack spacing={2}>
+                      <Text fontWeight="600">{r.description || r.categories?.name || 'Expense'}</Text>
+                      {r.group_expense_id && <Tag size="sm" colorScheme="brand">Group</Tag>}
+                    </HStack>
                     <Text fontSize="xs" color="text.muted">{r.spent_at}</Text>
                   </Stack>
                   <Spacer />

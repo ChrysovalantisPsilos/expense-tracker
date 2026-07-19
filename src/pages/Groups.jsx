@@ -7,6 +7,7 @@ import {
 } from '@chakra-ui/react'
 import { Users, Plus, ChevronRight } from 'lucide-react'
 import { listGroups, createGroup } from '../lib/groups.js'
+import { CURRENCIES } from '../lib/currency.js'
 import { useProfile } from '../lib/useProfile.js'
 
 export default function Groups() {
@@ -33,7 +34,7 @@ export default function Groups() {
     if (!name.trim()) return
     setBusy(true)
     try {
-      const id = await createGroup(name.trim(), currency || 'USD')
+      const id = await createGroup(name.trim(), currency || 'EUR')
       onClose(); setName('')
       navigate(`/groups/${id}`)
     } catch (e) {
@@ -102,7 +103,7 @@ export default function Groups() {
               <FormControl>
                 <FormLabel>Currency</FormLabel>
                 <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                  {['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD'].map((c) => (
+                  {CURRENCIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </Select>

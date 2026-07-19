@@ -7,11 +7,12 @@ import {
   ModalFooter, FormControl, FormLabel, Select, Input, Tag,
 } from '@chakra-ui/react'
 import {
-  ArrowLeft, Plus, UserPlus, Link2, Users, HandCoins, Paperclip,
+  ArrowLeft, Plus, UserPlus, Link2, Users, HandCoins, Paperclip, Mail,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import {
-  getGroup, addMember, addSettlement, createInviteLink, computeBalances,
+  getGroup, addMember, addSettlement, createInviteLink, createInvite,
+  emailInvite, computeBalances,
 } from '../lib/groups.js'
 import { formatMoney, toMinor } from '../lib/currency.js'
 import { receiptUrl } from '../lib/receipts.js'
@@ -27,6 +28,7 @@ export default function GroupDetail() {
   const [newMember, setNewMember] = useState('')
   const expenseModal = useDisclosure()
   const settleModal = useDisclosure()
+  const inviteModal = useDisclosure()
 
   async function load() {
     try { setData(await getGroup(id)) }
@@ -109,8 +111,10 @@ export default function GroupDetail() {
           <Users size={18} />
           <Heading size="sm">Members</Heading>
           <Spacer />
+          <Button size="xs" variant="ghost" leftIcon={<Mail size={14} />}
+            onClick={inviteModal.onOpen}>Email</Button>
           <Button size="xs" variant="ghost" leftIcon={<Link2 size={14} />}
-            onClick={() => copyInvite(null)}>Invite link</Button>
+            onClick={() => copyInvite(null)}>Link</Button>
         </HStack>
         <List spacing={0}>
           {members.map((m, i) => {
@@ -202,7 +206,59 @@ export default function GroupDetail() {
 
       <SettleUpModal group={group} members={members} defaultFrom={myMember?.id}
         isOpen={settleModal.isOpen} onClose={settleModal.onClose} onSaved={load} />
+
+      <InviteEmailModal group={group} inviterName={myMember?.display_name}
+        isOpen={inviteModal.isOpen} onClose={inviteModal.onClose} />
     </Stack>
+  )
+}
+
+function InviteEmailModal({ group, inviterName, isOpen, onClose }) {
+  const toast = useToast()
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!email.trim()) return
+    setBusy(true)
+    try {
+      const { url } = await createInvite(group.id, { email: email.trim() })
+      try {
+        await emailInvite({ to: email.trim(), url, groupName: group.name, inviterName })
+        toast({ title: `Invite emailed to ${email.trim()}`, status: 'success' })
+      } catch (mailErr) {
+        // Email not configured (or failed): fall back to the share link.
+        await navigator.clipboard.writeText(url)
+        toast({
+          title: 'Couldn’t send the email — link copied instead',
+          description: mailErr.message, status: 'warning', duration: 8000,
+        })
+      }
+      onClose(); setEmail('')
+    } catch (e) {
+      toast({ title: e.message, status: 'error' })
+    } finally { setBusy(false) }
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+      <ModalOverlay />
+      <ModalContent as="form" onSubmit={submit} mx={4}>
+        <ModalHeader>Invite by email</ModalHeader>
+        <ModalBody>
+          <FormControl isRequired>
+            <FormLabel>Email address</FormLabel>
+            <Input type="email" autoFocus value={email}
+              onChange={(e) => setEmail(e.target.value)} placeholder="friend@example.com" />
+          </FormControl>
+        </ModalBody>
+        <ModalFooter gap={2}>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button type="submit" isLoading={busy}>Send invite</Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }
 

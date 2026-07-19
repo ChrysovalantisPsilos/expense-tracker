@@ -32,7 +32,7 @@ export async function getGroup(groupId) {
 
 // ---- Mutations -----------------------------------------------------------
 
-export async function createGroup(name, currency = 'USD') {
+export async function createGroup(name, currency = 'EUR') {
   const { data, error } = await supabase.rpc('create_group', { p_name: name, p_currency: currency })
   if (error) throw error
   return data // group id
@@ -88,16 +88,36 @@ export async function addSettlement({ groupId, fromMember, toMember, amountMinor
   if (error) throw error
 }
 
-export async function createInviteLink(groupId, memberId = null) {
+export async function createInvite(groupId, { memberId = null, email = null } = {}) {
   const { data, error } = await supabase
     .from('group_invites')
     .insert({
-      group_id: groupId, member_id: memberId,
+      group_id: groupId, member_id: memberId, invited_email: email,
       created_by: (await supabase.auth.getUser()).data.user?.id,
     })
     .select('token').single()
   if (error) throw error
-  return `${window.location.origin}/join/${data.token}`
+  return { token: data.token, url: `${window.location.origin}/join/${data.token}` }
+}
+
+// Back-compat helper for the copy-link buttons.
+export async function createInviteLink(groupId, memberId = null) {
+  return (await createInvite(groupId, { memberId })).url
+}
+
+// Email an invite link via the send-invite edge function. Surfaces a clear
+// message when email is not configured (RESEND_API_KEY missing) so the caller
+// can fall back to the share link.
+export async function emailInvite({ to, url, groupName, inviterName }) {
+  const { data, error } = await supabase.functions.invoke('send-invite', {
+    body: { to, url, groupName, inviterName },
+  })
+  if (error) {
+    let msg = error.message
+    try { const j = await error.context?.json?.(); if (j?.error) msg = j.error } catch { /* ignore */ }
+    throw new Error(msg)
+  }
+  return data
 }
 
 export async function acceptInvite(token) {

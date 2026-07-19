@@ -62,8 +62,17 @@ supabase/
   (phantom → linked via shareable invite link), equal-split shared expenses,
   pairwise balances, and settle-up. Track-only. Membership-based RLS with
   `SECURITY DEFINER` helpers; `create_group` / `accept_group_invite` RPCs.
-  See `migrations/0005`–`0006`. Next: exact/%/itemized splits, email invites,
-  debt simplification.
+  See `migrations/0005`–`0006`. Next: exact/%/itemized splits and debt
+  simplification.
+  - **Email invites** via the `send-invite` Resend edge function (dormant until
+    `RESEND_API_KEY` is set; the UI falls back to copying the share link).
+  - **Group share auto-mirrors** into your personal tracker: when a group
+    expense includes you, a linked personal expense for your split is created
+    and kept in sync by DB triggers (`migrations/0008`), so group spending
+    flows into your dashboard/budgets/reports. Marked with a “Group” tag.
+  - **Profile** (name, nickname, avatar in a public `avatars` bucket, default
+    currency) and a **landing splash** for logged-out visitors. Default
+    currency is **EUR**.
 - **v1 (this scaffold):** personal expenses, income, categories, budgets,
   recurring rules, multi-currency, dashboard, Excel/PDF reports, offline sync.
   Recurring rules are materialized daily by a `pg_cron` job (see

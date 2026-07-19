@@ -4,14 +4,14 @@ import {
 } from '@chakra-ui/react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { useCategories } from '../lib/useData.js'
-import { toMinor, getRate } from '../lib/currency.js'
+import { toMinor, getRate, CURRENCIES } from '../lib/currency.js'
 import { queueTransaction } from '../lib/offlineQueue.js'
 import { uploadReceipt } from '../lib/receipts.js'
 import ReceiptScanner from './ReceiptScanner.jsx'
 
 // Fast-path entry for a single expense or income. Writes go through the
 // offline queue so logging works with no connection.
-export default function TransactionForm({ kind = 'expense', baseCurrency = 'USD', onSaved }) {
+export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR', onSaved }) {
   const { user } = useAuth()
   const { categories } = useCategories(kind)
   const toast = useToast()
@@ -89,7 +89,7 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'USD'
           <FormControl maxW="110px">
             <FormLabel>Currency</FormLabel>
             <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD'].map((c) => (
+              {CURRENCIES.map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </Select>

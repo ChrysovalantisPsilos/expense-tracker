@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink as RouterNavLink, useLocation } from 'react-router-dom'
 import {
-  Box, Flex, HStack, VStack, IconButton, Text, Badge, Spacer, Tooltip,
+  Box, Flex, HStack, VStack, IconButton, Text, Badge, Spacer, Tooltip, Avatar,
   useColorMode,
 } from '@chakra-ui/react'
 import {
@@ -9,6 +9,7 @@ import {
   Sun, Moon, LogOut, WifiOff, RefreshCw,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
+import { useProfile } from '../lib/useProfile.js'
 import { initSync, pendingCount, flushQueue } from '../lib/offlineQueue.js'
 import Logo from './Logo.jsx'
 
@@ -92,6 +93,7 @@ function SyncBadges() {
 export default function AppShell() {
   const { colorMode, toggleColorMode } = useColorMode()
   const { signOut } = useAuth()
+  const { profile } = useProfile()
   const location = useLocation()
   const [, setTick] = useState(0)
   useEffect(() => { setTick((n) => n + 1) }, [location])
@@ -109,6 +111,18 @@ export default function AppShell() {
         <Box px={2} py={2} mb={2}><Logo size={30} /></Box>
         {NAV.map((n) => <SideItem key={n.to} {...n} />)}
         <Spacer />
+        <RouterNavLink to="/profile" style={{ width: '100%' }}>
+          {({ isActive }) => (
+            <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
+              bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
+              <Avatar size="xs" name={profile?.nickname || profile?.display_name}
+                src={profile?.avatar_url} />
+              <Text fontSize="sm" fontWeight="500" noOfLines={1}>
+                {profile?.nickname || profile?.display_name || 'Profile'}
+              </Text>
+            </HStack>
+          )}
+        </RouterNavLink>
         <HStack px={1} justify="space-between">
           <Tooltip label="Toggle theme">
             <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
@@ -135,8 +149,10 @@ export default function AppShell() {
           <SyncBadges />
           <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
             icon={<ThemeIcon size={18} />} onClick={toggleColorMode} />
-          <IconButton aria-label="Sign out" variant="ghost" size="sm"
-            icon={<LogOut size={18} />} onClick={signOut} />
+          <RouterNavLink to="/profile">
+            <Avatar size="sm" name={profile?.nickname || profile?.display_name}
+              src={profile?.avatar_url} />
+          </RouterNavLink>
         </Flex>
 
         {/* Desktop header strip (sync badges) */}

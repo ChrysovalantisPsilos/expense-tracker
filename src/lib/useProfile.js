@@ -24,5 +24,5 @@ export function useProfile() {
     return () => { active = false }
   }, [user])
 
-  return { profile, baseCurrency: profile?.base_currency ?? 'USD', loading }
+  return { profile, baseCurrency: profile?.base_currency ?? 'EUR', loading }
 }
