@@ -27,6 +27,11 @@ export default defineConfig({
         // App shell + navigation fallback so the installed PWA opens offline.
         navigateFallback: 'index.html',
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Take control on the next load so new deploys don't stay stuck behind
+        // a cached service worker.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             // Supabase REST reads: serve cached data while offline, refresh when online.
