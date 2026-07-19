@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import {
-  Button, FormControl, FormLabel, HStack, Input, Select, Stack, Textarea, useToast,
+  Button, Divider, FormControl, FormLabel, HStack, Input, Select, Stack, Textarea, useToast,
 } from '@chakra-ui/react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { useCategories } from '../lib/useData.js'
 import { toMinor, getRate } from '../lib/currency.js'
 import { queueTransaction } from '../lib/offlineQueue.js'
+import { uploadReceipt } from '../lib/receipts.js'
+import ReceiptScanner from './ReceiptScanner.jsx'
 
 // Fast-path entry for a single expense or income. Writes go through the
 // offline queue so logging works with no connection.
@@ -19,7 +21,14 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'USD'
   const [description, setDescription] = useState('')
   const [spentAt, setSpentAt] = useState(() => new Date().toISOString().slice(0, 10))
   const [notes, setNotes] = useState('')
+  const [receiptFile, setReceiptFile] = useState(null)
   const [busy, setBusy] = useState(false)
+
+  function handleScan({ file, total, date }) {
+    setReceiptFile(file)
+    if (total != null) setAmount(String(total))
+    if (date) setSpentAt(date)
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -28,6 +37,20 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'USD'
       return
     }
     setBusy(true)
+
+    // Upload the receipt image first (only possible online). If it fails or
+    // we're offline, save the transaction anyway without the attachment.
+    let receipt_path = null
+    if (receiptFile && navigator.onLine) {
+      try {
+        receipt_path = await uploadReceipt(user.id, receiptFile)
+      } catch {
+        toast({ title: 'Saved, but the receipt image could not be uploaded.', status: 'warning' })
+      }
+    } else if (receiptFile) {
+      toast({ title: 'Offline — saved without the receipt image.', status: 'info' })
+    }
+
     // Capture the FX rate at entry time so historical balances never shift.
     const exchange_rate = await getRate(currency, baseCurrency)
     await queueTransaction({
@@ -40,9 +63,10 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'USD'
       description: description || null,
       notes: notes || null,
       spent_at: spentAt,
+      receipt_path,
     })
     setBusy(false)
-    setAmount(''); setDescription(''); setNotes('')
+    setAmount(''); setDescription(''); setNotes(''); setReceiptFile(null)
     toast({ title: `${kind === 'income' ? 'Income' : 'Expense'} saved`, status: 'success' })
     onSaved?.()
   }
@@ -50,6 +74,12 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'USD'
   return (
     <form onSubmit={submit}>
       <Stack spacing={3}>
+        {kind === 'expense' && (
+          <>
+            <ReceiptScanner onScan={handleScan} />
+            <Divider />
+          </>
+        )}
         <HStack>
           <FormControl isRequired>
             <FormLabel>Amount</FormLabel>
