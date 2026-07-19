@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Center, Card, CardBody, Stack, VStack, Flex, Heading, Text, Button, useToast,
 } from '@chakra-ui/react'
-import { MailCheck, RefreshCw } from 'lucide-react'
+import { MailCheck, LogIn } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import Logo from '../components/Logo.jsx'
 
@@ -61,15 +61,16 @@ export default function VerifyEmail() {
                 <Text fontWeight="700">{email}</Text>
               </VStack>
               <Text fontSize="sm" color="text.muted" textAlign="center">
-                Open it to confirm your account — this page will continue
-                automatically once you do. Check spam if it’s not there.
+                Open it to confirm your account. If you open it on <b>this</b>{' '}
+                device you’ll continue automatically. Confirmed on a different
+                device? Just sign in below. Check spam if it’s not there.
               </Text>
             </VStack>
 
             <Stack spacing={3}>
               <Button variant="outline" colorScheme="gray"
-                leftIcon={<RefreshCw size={16} />} onClick={() => window.location.reload()}>
-                I’ve confirmed — refresh
+                leftIcon={<LogIn size={16} />} onClick={() => navigate('/login')}>
+                I’ve confirmed — sign in
               </Button>
               <Button variant="ghost" isDisabled={cooldown > 0} onClick={resend}>
                 {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend email'}
