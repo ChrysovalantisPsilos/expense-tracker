@@ -116,10 +116,10 @@ export default function AppShell() {
           {({ isActive }) => (
             <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
               bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
-              <Avatar size="xs" name={profile?.nickname || profile?.display_name}
+              <Avatar size="xs" name={profile?.display_name}
                 src={profile?.avatar_url} />
               <Text fontSize="sm" fontWeight="500" noOfLines={1}>
-                {profile?.nickname || profile?.display_name || 'Profile'}
+                {profile?.display_name || 'Profile'}
               </Text>
             </HStack>
           )}
@@ -152,7 +152,7 @@ export default function AppShell() {
           <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
             icon={<ThemeIcon size={18} />} onClick={toggleColorMode} />
           <RouterNavLink to="/profile">
-            <Avatar size="sm" name={profile?.nickname || profile?.display_name}
+            <Avatar size="sm" name={profile?.display_name}
               src={profile?.avatar_url} />
           </RouterNavLink>
         </Flex>
