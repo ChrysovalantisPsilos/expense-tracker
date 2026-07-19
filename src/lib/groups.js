@@ -126,6 +126,24 @@ export async function acceptInvite(token) {
   return data // group id
 }
 
+// Leave a group, or (as owner) remove another member. Server enforces the
+// settled-up rule and owner auto-transfer. Returns the group id.
+export async function removeMember(memberId) {
+  const { data, error } = await supabase.rpc('remove_group_member', { p_member: memberId })
+  if (error) throw new Error(friendlyRpcError(error))
+  return data
+}
+
+export async function deleteGroup(groupId) {
+  const { error } = await supabase.rpc('delete_group', { p_group: groupId })
+  if (error) throw new Error(friendlyRpcError(error))
+}
+
+// Postgres RAISE messages come back on error.message; surface them directly.
+function friendlyRpcError(error) {
+  return error.message || 'Something went wrong'
+}
+
 // ---- Balances ------------------------------------------------------------
 
 // Net balance per member: positive = the group owes them; negative = they owe.

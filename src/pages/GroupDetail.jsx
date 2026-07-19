@@ -5,14 +5,16 @@ import {
   Spinner, Flex, Badge, IconButton, Divider, List, ListItem, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
   ModalFooter, FormControl, FormLabel, Select, Input, Tag,
+  Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
 import {
   ArrowLeft, Plus, UserPlus, Link2, Users, HandCoins, Paperclip, Mail,
+  MoreVertical, LogOut, Trash2, UserMinus,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import {
   getGroup, addMember, addSettlement, createInviteLink, createInvite,
-  emailInvite, computeBalances,
+  emailInvite, computeBalances, removeMember, deleteGroup,
 } from '../lib/groups.js'
 import { formatMoney, toMinor } from '../lib/currency.js'
 import { receiptUrl } from '../lib/receipts.js'
@@ -29,6 +31,10 @@ export default function GroupDetail() {
   const expenseModal = useDisclosure()
   const settleModal = useDisclosure()
   const inviteModal = useDisclosure()
+  const leaveModal = useDisclosure()
+  const deleteModal = useDisclosure()
+  const [removeTarget, setRemoveTarget] = useState(null)
+  const [actionBusy, setActionBusy] = useState(false)
 
   async function load() {
     try { setData(await getGroup(id)) }
@@ -67,11 +73,44 @@ export default function GroupDetail() {
     if (url) window.open(url, '_blank', 'noopener')
   }
 
+  async function doLeave() {
+    setActionBusy(true)
+    try {
+      await removeMember(myMember.id)
+      toast({ title: 'You left the group', status: 'success' })
+      navigate('/groups')
+    } catch (e) { toast({ title: 'Couldn’t leave', description: e.message, status: 'error' }) }
+    finally { setActionBusy(false); leaveModal.onClose() }
+  }
+
+  async function doDelete() {
+    setActionBusy(true)
+    try {
+      await deleteGroup(id)
+      toast({ title: 'Group deleted', status: 'success' })
+      navigate('/groups')
+    } catch (e) { toast({ title: 'Couldn’t delete', description: e.message, status: 'error' }) }
+    finally { setActionBusy(false); deleteModal.onClose() }
+  }
+
+  async function doRemove() {
+    if (!removeTarget) return
+    setActionBusy(true)
+    try {
+      await removeMember(removeTarget.id)
+      toast({ title: `Removed ${removeTarget.display_name}`, status: 'success' })
+      setRemoveTarget(null)
+      load()
+    } catch (e) { toast({ title: 'Couldn’t remove', description: e.message, status: 'error' }) }
+    finally { setActionBusy(false) }
+  }
+
   if (loading) return <Center py={20}><Spinner color="brand.500" /></Center>
   if (!data) return <Text color="text.muted">Group not found.</Text>
 
   const { group, members, expenses, settlements } = data
   const cur = group.currency
+  const isOwner = group.owner_id === user.id
 
   return (
     <Stack spacing={5}>
@@ -81,6 +120,22 @@ export default function GroupDetail() {
         <Heading size="lg">{group.name}</Heading>
         <Spacer />
         <Button size="sm" leftIcon={<Plus size={16} />} onClick={expenseModal.onOpen}>Add expense</Button>
+        <Menu>
+          <MenuButton as={IconButton} aria-label="Group options" size="sm"
+            variant="ghost" icon={<MoreVertical size={18} />} />
+          <MenuList>
+            {myMember && (
+              <MenuItem icon={<LogOut size={16} />} onClick={leaveModal.onOpen}>
+                Leave group
+              </MenuItem>
+            )}
+            {isOwner && (
+              <MenuItem icon={<Trash2 size={16} />} color="red.500" onClick={deleteModal.onOpen}>
+                Delete group
+              </MenuItem>
+            )}
+          </MenuList>
+        </Menu>
       </HStack>
 
       {/* Your balance summary */}
@@ -138,6 +193,11 @@ export default function GroupDetail() {
                   {!m.user_id && (
                     <IconButton aria-label="Invite this person" size="xs" variant="ghost"
                       icon={<UserPlus size={14} />} onClick={() => copyInvite(m.id)} />
+                  )}
+                  {isOwner && !isMe && (
+                    <IconButton aria-label={`Remove ${m.display_name}`} size="xs" variant="ghost"
+                      color="red.400" icon={<UserMinus size={14} />}
+                      onClick={() => setRemoveTarget(m)} />
                   )}
                 </HStack>
               </ListItem>
@@ -209,7 +269,81 @@ export default function GroupDetail() {
 
       <InviteEmailModal group={group} inviterName={myMember?.display_name}
         isOpen={inviteModal.isOpen} onClose={inviteModal.onClose} />
+
+      {/* Leave confirm */}
+      <Modal isOpen={leaveModal.isOpen} onClose={leaveModal.onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent mx={4}>
+          <ModalHeader>Leave “{group.name}”?</ModalHeader>
+          <ModalBody>
+            <Text color="text.muted">
+              You can only leave once your balance is settled. Your past expenses
+              stay in the group for everyone else.
+              {isOwner && ' As the owner, ownership passes to another member.'}
+            </Text>
+          </ModalBody>
+          <ModalFooter gap={2}>
+            <Button variant="ghost" onClick={leaveModal.onClose}>Cancel</Button>
+            <Button colorScheme="red" isLoading={actionBusy} onClick={doLeave}>Leave</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Delete confirm (type-to-confirm) */}
+      <DeleteGroupModal group={group} isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}
+        busy={actionBusy} onConfirm={doDelete} />
+
+      {/* Remove member confirm */}
+      <Modal isOpen={!!removeTarget} onClose={() => setRemoveTarget(null)} isCentered>
+        <ModalOverlay />
+        <ModalContent mx={4}>
+          <ModalHeader>Remove {removeTarget?.display_name}?</ModalHeader>
+          <ModalBody>
+            <Text color="text.muted">
+              They can only be removed if settled up. If they’ve been part of any
+              expenses, their history is kept.
+            </Text>
+          </ModalBody>
+          <ModalFooter gap={2}>
+            <Button variant="ghost" onClick={() => setRemoveTarget(null)}>Cancel</Button>
+            <Button colorScheme="red" isLoading={actionBusy} onClick={doRemove}>Remove</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Stack>
+  )
+}
+
+function DeleteGroupModal({ group, isOpen, onClose, busy, onConfirm }) {
+  const [text, setText] = useState('')
+  const match = text.trim() === group.name
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+      <ModalOverlay />
+      <ModalContent mx={4}>
+        <ModalHeader>Delete “{group.name}”?</ModalHeader>
+        <ModalBody>
+          <Stack spacing={3}>
+            <Text color="text.muted">
+              This permanently deletes the group and all its expenses, balances,
+              and settlements for <b>everyone</b> — and removes the shared
+              expenses mirrored into members’ personal trackers. Only possible
+              when everyone is settled up. This can’t be undone.
+            </Text>
+            <FormControl>
+              <FormLabel fontSize="sm">Type the group name to confirm</FormLabel>
+              <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={group.name} />
+            </FormControl>
+          </Stack>
+        </ModalBody>
+        <ModalFooter gap={2}>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button colorScheme="red" isDisabled={!match} isLoading={busy} onClick={onConfirm}>
+            Delete group
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }
 
