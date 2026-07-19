@@ -18,7 +18,7 @@ reports (Excel + PDF). Built to grow into a friend-to-friend bill splitter.
 | Auth | Email/password + Google (+ Apple, once a dev account is configured) |
 | Reports | Supabase Edge Function → SheetJS (xlsx) + pdf-lib (pdf) |
 | Offline | IndexedDB write queue, idempotent sync on reconnect |
-| Hosting | Cloudflare Pages (frontend); Supabase (backend) |
+| Hosting | Vercel (frontend, `budge.psilosc.com`); Supabase (backend) |
 
 ## Getting started
 
