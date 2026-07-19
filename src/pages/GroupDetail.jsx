@@ -4,7 +4,7 @@ import {
   Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center,
   Spinner, Flex, Badge, IconButton, Divider, List, ListItem, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
-  ModalFooter, FormControl, FormLabel, Select, Input, Tag,
+  ModalFooter, FormControl, FormLabel, Select, Input, Tag, Avatar,
   Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
 import {
@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../auth/AuthProvider.jsx'
 import {
   getGroup, addMember, addSettlement, createInviteLink, createInvite,
-  emailInvite, computeBalances, removeMember, deleteGroup,
+  emailInvite, computeBalances, removeMember, deleteGroup, inviteExistingUser,
 } from '../lib/groups.js'
 import { formatMoney, toMinor } from '../lib/currency.js'
 import { receiptUrl } from '../lib/receipts.js'
@@ -35,6 +35,11 @@ export default function GroupDetail() {
   const deleteModal = useDisclosure()
   const [removeTarget, setRemoveTarget] = useState(null)
   const [actionBusy, setActionBusy] = useState(false)
+  const [editingExpense, setEditingExpense] = useState(null)
+
+  function openAdd() { setEditingExpense(null); expenseModal.onOpen() }
+  function openEdit(exp) { setEditingExpense(exp); expenseModal.onOpen() }
+  function closeExpense() { expenseModal.onClose(); setEditingExpense(null) }
 
   async function load() {
     try { setData(await getGroup(id)) }
@@ -119,7 +124,7 @@ export default function GroupDetail() {
           icon={<ArrowLeft size={18} />} onClick={() => navigate('/groups')} />
         <Heading size="lg">{group.name}</Heading>
         <Spacer />
-        <Button size="sm" leftIcon={<Plus size={16} />} onClick={expenseModal.onOpen}>Add expense</Button>
+        <Button size="sm" leftIcon={<Plus size={16} />} onClick={openAdd}>Add expense</Button>
         <Menu>
           <MenuButton as={IconButton} aria-label="Group options" size="sm"
             variant="ghost" icon={<MoreVertical size={18} />} />
@@ -179,6 +184,7 @@ export default function GroupDetail() {
               <ListItem key={m.id}>
                 {i > 0 && <Divider />}
                 <HStack py={2.5}>
+                  <Avatar size="xs" name={m.display_name} src={m.avatar_url} />
                   <Text fontWeight={isMe ? '700' : '500'}>
                     {m.display_name}{isMe ? ' (you)' : ''}
                   </Text>
@@ -223,7 +229,8 @@ export default function GroupDetail() {
             {expenses.map((e, i) => (
               <ListItem key={e.id}>
                 {i > 0 && <Divider />}
-                <HStack py={3} spacing={3} align="start">
+                <HStack py={3} spacing={3} align="start" cursor="pointer"
+                  onClick={() => openEdit(e)} _hover={{ opacity: 0.75 }} transition="opacity 0.1s">
                   <Stack spacing={0} flex="1">
                     <Text fontWeight="600">{e.description || 'Expense'}</Text>
                     <Text fontSize="xs" color="text.muted">
@@ -232,7 +239,8 @@ export default function GroupDetail() {
                   </Stack>
                   {e.receipt_path && (
                     <IconButton aria-label="Receipt" size="xs" variant="ghost"
-                      icon={<Paperclip size={14} />} onClick={() => openReceipt(e.receipt_path)} />
+                      icon={<Paperclip size={14} />}
+                      onClick={(ev) => { ev.stopPropagation(); openReceipt(e.receipt_path) }} />
                   )}
                   <Text fontWeight="600">{formatMoney(e.amount_minor, e.currency)}</Text>
                 </HStack>
@@ -261,8 +269,9 @@ export default function GroupDetail() {
         </CardBody></Card>
       )}
 
-      <GroupExpenseForm group={group} members={members} defaultPayer={myMember?.id}
-        isOpen={expenseModal.isOpen} onClose={expenseModal.onClose} onSaved={load} />
+      <GroupExpenseForm key={editingExpense?.id || 'new'} group={group} members={members}
+        defaultPayer={myMember?.id} expense={editingExpense}
+        isOpen={expenseModal.isOpen} onClose={closeExpense} onSaved={load} />
 
       <SettleUpModal group={group} members={members} defaultFrom={myMember?.id}
         isOpen={settleModal.isOpen} onClose={settleModal.onClose} onSaved={load} />
@@ -354,24 +363,34 @@ function InviteEmailModal({ group, inviterName, isOpen, onClose }) {
 
   async function submit(e) {
     e.preventDefault()
-    if (!email.trim()) return
+    const addr = email.trim()
+    if (!addr) return
     setBusy(true)
     try {
-      const { url } = await createInvite(group.id, { email: email.trim() })
-      try {
-        await emailInvite({ to: email.trim(), url, groupName: group.name, inviterName })
-        toast({ title: `Invite emailed to ${email.trim()}`, status: 'success' })
-      } catch (mailErr) {
-        // Email not configured (or failed): fall back to the share link.
-        await navigator.clipboard.writeText(url)
-        toast({
-          title: 'Couldn’t send the email — link copied instead',
-          description: mailErr.message, status: 'warning', duration: 8000,
-        })
-      }
+      // First try to invite an existing Budge user (in-app request).
+      await inviteExistingUser(group.id, addr)
+      toast({ title: `Request sent to ${addr}`, description: 'They’ll see it in Budge.', status: 'success' })
       onClose(); setEmail('')
-    } catch (e) {
-      toast({ title: e.message, status: 'error' })
+    } catch (err) {
+      if (err.message === 'no_account') {
+        // No account yet — send an emailable join link (phantom flow).
+        try {
+          const { url } = await createInvite(group.id, { email: addr })
+          try {
+            await emailInvite({ to: addr, url, groupName: group.name, inviterName })
+            toast({ title: `Invite emailed to ${addr}`, status: 'success' })
+          } catch (mailErr) {
+            await navigator.clipboard.writeText(url)
+            toast({ title: 'Couldn’t send the email — link copied instead',
+              description: mailErr.message, status: 'warning', duration: 8000 })
+          }
+          onClose(); setEmail('')
+        } catch (e2) {
+          toast({ title: e2.message, status: 'error' })
+        }
+      } else {
+        toast({ title: err.message, status: 'error' })
+      }
     } finally { setBusy(false) }
   }
 

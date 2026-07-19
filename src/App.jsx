@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Routes, Route, Navigate, useParams, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from './auth/AuthProvider.jsx'
 import { Center, Spinner } from '@chakra-ui/react'
 import AppShell from './components/AppShell.jsx'
@@ -13,25 +13,20 @@ import Reports from './pages/Reports.jsx'
 import Groups from './pages/Groups.jsx'
 import GroupDetail from './pages/GroupDetail.jsx'
 import JoinGroup from './pages/JoinGroup.jsx'
+import GroupPreview from './pages/GroupPreview.jsx'
 import Profile from './pages/Profile.jsx'
 import PasskeyPrompt from './components/PasskeyPrompt.jsx'
 
 const PENDING_INVITE = 'budge:invite'
 
-// A logged-out visitor who opens an invite link: remember the token, then send
-// them to sign in. After auth, AuthedRoutes redeems it. localStorage survives
-// the email-confirmation round-trip (same browser), so new signups work too.
-function StashInvite() {
-  const { token } = useParams()
-  useEffect(() => { localStorage.setItem(PENDING_INVITE, token) }, [token])
-  return <Navigate to="/login" replace />
-}
-
+// Logged-out invite link -> read-only group preview. Its CTAs stash the token
+// (localStorage survives the email-confirmation round-trip in the same browser)
+// and send the visitor to sign up; AuthedRoutes then redeems it.
 function PublicRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/join/:token" element={<StashInvite />} />
+      <Route path="/join/:token" element={<GroupPreview />} />
       <Route path="*" element={<Landing />} />
     </Routes>
   )

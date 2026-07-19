@@ -5,8 +5,8 @@ import {
   Flex, Icon, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader,
   ModalBody, ModalFooter, FormControl, FormLabel, Input, Select, useToast,
 } from '@chakra-ui/react'
-import { Users, Plus, ChevronRight } from 'lucide-react'
-import { listGroups, createGroup } from '../lib/groups.js'
+import { Users, Plus, ChevronRight, Check, X } from 'lucide-react'
+import { listGroups, createGroup, listMyInvites, respondToInvite } from '../lib/groups.js'
 import { CURRENCIES } from '../lib/currency.js'
 import { useProfile } from '../lib/useProfile.js'
 
@@ -14,6 +14,7 @@ export default function Groups() {
   const navigate = useNavigate()
   const { baseCurrency } = useProfile()
   const [groups, setGroups] = useState([])
+  const [invites, setInvites] = useState([])
   const [loading, setLoading] = useState(true)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [name, setName] = useState('')
@@ -23,11 +24,24 @@ export default function Groups() {
 
   async function load() {
     setLoading(true)
-    try { setGroups(await listGroups()) }
+    try {
+      const [gs, inv] = await Promise.all([listGroups(), listMyInvites()])
+      setGroups(gs)
+      setInvites(inv)
+    }
     catch (e) { toast({ title: e.message, status: 'error' }) }
     finally { setLoading(false) }
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [])
+
+  async function respond(inviteId, accept) {
+    try {
+      const gid = await respondToInvite(inviteId, accept)
+      setInvites((prev) => prev.filter((i) => i.invite_id !== inviteId))
+      if (accept && gid) navigate(`/groups/${gid}`)
+      else load()
+    } catch (e) { toast({ title: e.message, status: 'error' }) }
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -49,6 +63,31 @@ export default function Groups() {
         <Spacer />
         <Button leftIcon={<Plus size={18} />} onClick={onOpen}>New group</Button>
       </HStack>
+
+      {invites.length > 0 && (
+        <Stack spacing={2}>
+          {invites.map((inv) => (
+            <Card key={inv.invite_id} borderColor="brand.200" _dark={{ borderColor: 'brand.700' }}>
+              <CardBody>
+                <HStack>
+                  <Stack spacing={0}>
+                    <Text fontWeight="600">{inv.group_name}</Text>
+                    <Text fontSize="xs" color="text.muted">{inv.invited_by} invited you</Text>
+                  </Stack>
+                  <Spacer />
+                  <Button size="sm" leftIcon={<Check size={16} />} onClick={() => respond(inv.invite_id, true)}>
+                    Accept
+                  </Button>
+                  <Button size="sm" variant="ghost" leftIcon={<X size={16} />}
+                    onClick={() => respond(inv.invite_id, false)}>
+                    Decline
+                  </Button>
+                </HStack>
+              </CardBody>
+            </Card>
+          ))}
+        </Stack>
+      )}
 
       {loading ? (
         <Center py={16}><Spinner color="brand.500" /></Center>

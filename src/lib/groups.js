@@ -11,7 +11,7 @@ export async function listGroups() {
   return data ?? []
 }
 
-// Full detail for one group: members, expenses (+splits), settlements.
+// Full detail for one group: members (+avatars), expenses (+splits), settlements.
 export async function getGroup(groupId) {
   const [g, members, expenses, settlements] = await Promise.all([
     supabase.from('groups').select('*').eq('id', groupId).single(),
@@ -22,9 +22,21 @@ export async function getGroup(groupId) {
     supabase.from('settlements').select('*').eq('group_id', groupId).order('settled_at', { ascending: false }),
   ])
   if (g.error) throw g.error
+
+  // Merge co-members' avatars (profiles are readable for group co-members).
+  const memberRows = members.data ?? []
+  const userIds = memberRows.map((m) => m.user_id).filter(Boolean)
+  let avatarByUser = {}
+  if (userIds.length) {
+    const { data: profs } = await supabase
+      .from('profiles').select('id, avatar_url').in('id', userIds)
+    avatarByUser = Object.fromEntries((profs ?? []).map((p) => [p.id, p.avatar_url]))
+  }
+  const withAvatars = memberRows.map((m) => ({ ...m, avatar_url: m.user_id ? avatarByUser[m.user_id] : null }))
+
   return {
     group: g.data,
-    members: members.data ?? [],
+    members: withAvatars,
     expenses: expenses.data ?? [],
     settlements: settlements.data ?? [],
   }
@@ -124,6 +136,49 @@ export async function acceptInvite(token) {
   const { data, error } = await supabase.rpc('accept_group_invite', { p_token: token })
   if (error) throw error
   return data // group id
+}
+
+// Read-only snapshot of a group from a share token — works logged-out (anon).
+export async function previewGroup(token) {
+  const { data, error } = await supabase.rpc('group_preview', { p_token: token })
+  if (error) throw error
+  return data // null if token invalid/expired
+}
+
+// Invite an EXISTING user by exact email (creates an in-app request). Throws
+// with message 'no_account' when no user has that email (caller falls back to
+// a phantom).
+export async function inviteExistingUser(groupId, email) {
+  const { error } = await supabase.rpc('invite_user_to_group', { p_group: groupId, p_email: email })
+  if (error) throw new Error(error.message)
+}
+
+export async function listMyInvites() {
+  const { data, error } = await supabase.rpc('list_my_group_invites')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function respondToInvite(inviteId, accept) {
+  const { data, error } = await supabase.rpc('respond_to_invite', { p_invite: inviteId, p_accept: accept })
+  if (error) throw new Error(error.message)
+  return data // group id when accepted
+}
+
+// Edit an existing shared expense (fields + equal re-split among memberIds).
+export async function updateSharedExpense({
+  expenseId, description, amountMinor, currency, paidBy, spentAt, memberIds,
+}) {
+  const { error } = await supabase.rpc('update_group_expense', {
+    p_expense: expenseId, p_description: description || null, p_amount: amountMinor,
+    p_currency: currency, p_paid_by: paidBy, p_spent_at: spentAt, p_member_ids: memberIds,
+  })
+  if (error) throw new Error(error.message)
+}
+
+export async function deleteSharedExpense(expenseId) {
+  const { error } = await supabase.from('group_expenses').delete().eq('id', expenseId)
+  if (error) throw new Error(error.message)
 }
 
 // Leave a group, or (as owner) remove another member. Server enforces the
