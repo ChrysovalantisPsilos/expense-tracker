@@ -181,7 +181,8 @@ export default function GroupDetail() {
               <ListItem key={m.id}>
                 {i > 0 && <Divider />}
                 <HStack py={2.5}>
-                  <Avatar size="xs" name={m.display_name} src={m.avatar_url} />
+                  <Avatar size="xs" name={m.display_name} src={m.avatar_url}
+                    {...(isMe ? { bg: 'brand.500', color: 'white' } : {})} />
                   <Text fontWeight={isMe ? '700' : '500'}>
                     {m.display_name}{isMe ? ' (you)' : ''}
                   </Text>
