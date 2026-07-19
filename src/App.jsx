@@ -5,6 +5,7 @@ import { Center, Spinner } from '@chakra-ui/react'
 import AppShell from './components/AppShell.jsx'
 import Landing from './pages/Landing.jsx'
 import Login from './pages/Login.jsx'
+import VerifyEmail from './pages/VerifyEmail.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Expenses from './pages/Expenses.jsx'
 import Budgets from './pages/Budgets.jsx'
@@ -26,6 +27,7 @@ function PublicRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/join/:token" element={<GroupPreview />} />
       <Route path="*" element={<Landing />} />
     </Routes>

@@ -49,6 +49,16 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(() => supabase.auth.signOut(), [])
 
+  const resendConfirmation = useCallback(
+    (email) =>
+      supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: window.location.origin },
+      }),
+    [],
+  )
+
   // Passkeys (WebAuthn). These no-op-guard so callers can rely on them even if
   // the API is missing on an older client build.
   const signInWithPasskey = useCallback(() => supabase.auth.signInWithPasskey(), [])
@@ -67,6 +77,7 @@ export function AuthProvider({ children }) {
     signUp,
     signInWithProvider,
     signOut,
+    resendConfirmation,
     signInWithPasskey,
     registerPasskey,
     listPasskeys,
