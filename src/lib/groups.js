@@ -97,11 +97,12 @@ export async function addSettlement({ groupId, fromMember, toMember, amountMinor
   if (error) throw error
 }
 
-export async function createInvite(groupId, { memberId = null, email = null } = {}) {
+// Create an invite for a group. Links self-expire (24h default set in the DB).
+export async function createInvite(groupId, { email = null } = {}) {
   const { data, error } = await supabase
     .from('group_invites')
     .insert({
-      group_id: groupId, member_id: memberId, invited_email: email,
+      group_id: groupId, invited_email: email,
       created_by: (await supabase.auth.getUser()).data.user?.id,
     })
     .select('token').single()
@@ -109,9 +110,9 @@ export async function createInvite(groupId, { memberId = null, email = null } = 
   return { token: data.token, url: `${window.location.origin}/join/${data.token}` }
 }
 
-// Back-compat helper for the copy-link buttons.
-export async function createInviteLink(groupId, memberId = null) {
-  return (await createInvite(groupId, { memberId })).url
+// Helper for the copy-link button.
+export async function createInviteLink(groupId) {
+  return (await createInvite(groupId)).url
 }
 
 // Email an invite link via the send-invite edge function. Surfaces a clear
@@ -127,12 +128,6 @@ export async function emailInvite({ to, url, groupName, inviterName }) {
     throw new Error(msg)
   }
   return data
-}
-
-export async function acceptInvite(token) {
-  const { data, error } = await supabase.rpc('accept_group_invite', { p_token: token })
-  if (error) throw error
-  return data // group id
 }
 
 // Read-only look at a share link — never writes, so any number of people can
