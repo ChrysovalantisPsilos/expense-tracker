@@ -3,6 +3,7 @@ import {
   Heading, Stack, Card, CardBody, HStack, Button, FormControl, FormLabel,
   Input, Text, useToast, SimpleGrid,
 } from '@chakra-ui/react'
+import { FileSpreadsheet, FileText } from 'lucide-react'
 import { supabase } from '../lib/supabase.js'
 import { monthRange } from '../lib/useData.js'
 
@@ -46,7 +47,7 @@ export default function Reports() {
       <Heading size="lg">Reports</Heading>
 
       <Card><CardBody>
-        <Text color="gray.500" mb={4}>
+        <Text color="text.muted" mb={4}>
           Generate a full financial statement — summary, transactions, income vs.
           expense, budget performance, and category breakdown — for a date range.
         </Text>
@@ -61,12 +62,13 @@ export default function Reports() {
           </FormControl>
         </HStack>
         <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3}>
-          <Button onClick={() => generate('xlsx')} isLoading={busy === 'xlsx'} loadingText="Building…">
-            📊 Export Excel (.xlsx)
+          <Button leftIcon={<FileSpreadsheet size={18} />} onClick={() => generate('xlsx')}
+            isLoading={busy === 'xlsx'} loadingText="Building…">
+            Export Excel
           </Button>
-          <Button onClick={() => generate('pdf')} isLoading={busy === 'pdf'} loadingText="Building…"
-            colorScheme="gray" variant="outline">
-            📄 Export PDF
+          <Button leftIcon={<FileText size={18} />} onClick={() => generate('pdf')}
+            isLoading={busy === 'pdf'} loadingText="Building…" variant="outline">
+            Export PDF
           </Button>
         </SimpleGrid>
       </CardBody></Card>

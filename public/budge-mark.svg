@@ -5,12 +5,16 @@
       <stop offset="1" stop-color="#f95d38"/>
     </linearGradient>
   </defs>
+  <!-- nudge / motion lines pushing the coin to the right -->
   <g stroke="#fbb324" stroke-width="3" stroke-linecap="round">
     <line x1="4"  y1="18" x2="11" y2="18"/>
     <line x1="3"  y1="24" x2="12" y2="24"/>
     <line x1="4"  y1="30" x2="11" y2="30"/>
   </g>
+  <!-- coin -->
   <circle cx="30" cy="24" r="13" fill="url(#coin)"/>
+  <!-- coin inner ring + subtle 'b' slot -->
+  <circle cx="30" cy="24" r="13" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="2"/>
   <path d="M27.2 17.5v13.2M27.2 21.2h4.1a3.4 3.4 0 0 1 0 6.8h-4.1"
         fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

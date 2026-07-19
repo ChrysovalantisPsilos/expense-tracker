@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box, Button, Card, CardBody, Center, Divider, FormControl, FormLabel,
-  Heading, Input, Stack, Text, useToast, HStack, Icon,
+  Input, Stack, Text, useToast, HStack, VStack, Icon,
 } from '@chakra-ui/react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { isSupabaseConfigured } from '../lib/supabase.js'
+import Logo from '../components/Logo.jsx'
 
 export default function Login() {
   const { signInWithPassword, signUp, signInWithProvider } = useAuth()
@@ -38,12 +39,12 @@ export default function Login() {
       <Card maxW="sm" w="full">
         <CardBody>
           <Stack spacing={6}>
-            <Box textAlign="center">
-              <Heading size="lg">Expense Tracker</Heading>
-              <Text color="gray.500" mt={1}>
+            <VStack spacing={3}>
+              <Logo size={40} />
+              <Text color="text.muted">
                 {mode === 'signin' ? 'Welcome back' : 'Create your account'}
               </Text>
-            </Box>
+            </VStack>
 
             {!isSupabaseConfigured && (
               <Text fontSize="sm" color="orange.400" textAlign="center">
@@ -70,7 +71,7 @@ export default function Login() {
 
             <HStack>
               <Divider />
-              <Text fontSize="xs" color="gray.500" whiteSpace="nowrap">or continue with</Text>
+              <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">or continue with</Text>
               <Divider />
             </HStack>
 
@@ -88,7 +89,7 @@ export default function Login() {
               </Button>
             </Stack>
 
-            <Text fontSize="sm" textAlign="center" color="gray.500">
+            <Text fontSize="sm" textAlign="center" color="text.muted">
               {mode === 'signin' ? "Don't have an account? " : 'Already have one? '}
               <Button variant="link" colorScheme="brand" size="sm"
                 onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>

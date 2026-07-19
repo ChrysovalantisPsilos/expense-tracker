@@ -10,17 +10,17 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Expense Tracker',
-        short_name: 'Expenses',
-        description: 'Track personal expenses, budgets, and income. Split with friends.',
-        theme_color: '#111827',
-        background_color: '#ffffff',
+        name: 'Budge',
+        short_name: 'Budge',
+        description: 'Track spending, budgets, and income — and split with friends.',
+        theme_color: '#f95d38',
+        background_color: '#faf8f4',
         display: 'standalone',
         start_url: '/',
         icons: [
-          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          // SVG icon scales to any size; used by Chromium/Android installs.
+          { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
       },
       workbox: {
