@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Button, Card, CardBody, Center, Divider, FormControl, FormLabel, FormHelperText,
-  Input, Stack, Text, useToast, VStack, HStack,
+  Input, Stack, Text, useToast, VStack, HStack, Icon,
 } from '@chakra-ui/react'
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
@@ -28,7 +28,7 @@ function validatePassword(pw) {
 }
 
 export default function Login() {
-  const { signInWithPassword, signUp, signInWithPasskey } = useAuth()
+  const { signInWithPassword, signUp, signInWithPasskey, signInWithProvider } = useAuth()
   const [searchParams] = useSearchParams()
   const [mode, setMode] = useState(searchParams.get('signup') ? 'signup' : 'signin')
   const [email, setEmail] = useState('')
@@ -110,20 +110,27 @@ export default function Login() {
               </Stack>
             </form>
 
-            {mode === 'signin' && passkeysSupported && (
-              <>
-                <HStack>
-                  <Divider />
-                  <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">or</Text>
-                  <Divider />
-                </HStack>
+            <HStack>
+              <Divider />
+              <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">or continue with</Text>
+              <Divider />
+            </HStack>
+            <Stack spacing={3}>
+              <Button variant="outline" colorScheme="gray" w="full"
+                onClick={() => signInWithProvider('google')}>
+                <Icon viewBox="0 0 24 24" mr={2} boxSize={4}>
+                  <path fill="currentColor" d="M21.35 11.1H12v2.98h5.35c-.23 1.4-1.6 4.1-5.35 4.1a5.19 5.19 0 1 1 0-10.38c1.48 0 2.47.63 3.04 1.17l2.07-2A8 8 0 1 0 12 20c4.62 0 7.67-3.25 7.67-7.82 0-.53-.06-.93-.14-1.08Z" />
+                </Icon>
+                Google
+              </Button>
+              {mode === 'signin' && passkeysSupported && (
                 <Button variant="outline" colorScheme="gray" w="full"
                   leftIcon={<KeyRound size={18} />} isLoading={passkeyBusy}
                   onClick={handlePasskey}>
                   Sign in with a passkey
                 </Button>
-              </>
-            )}
+              )}
+            </Stack>
 
             <Text fontSize="sm" textAlign="center" color="text.muted">
               {mode === 'signin' ? "Don't have an account? " : 'Already have one? '}
