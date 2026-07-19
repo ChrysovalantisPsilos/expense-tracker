@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Budge',
@@ -27,10 +27,9 @@ export default defineConfig({
         // App shell + navigation fallback so the installed PWA opens offline.
         navigateFallback: 'index.html',
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        // Take control on the next load so new deploys don't stay stuck behind
-        // a cached service worker.
-        skipWaiting: true,
-        clientsClaim: true,
+        // Prompt mode: a new deploy installs a waiting worker and the app shows
+        // an "Update" toast (ReloadPrompt) instead of silently swapping. Don't
+        // skipWaiting here — the user's click drives the activation + reload.
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {

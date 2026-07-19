@@ -12,6 +12,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import theme from './theme.js'
 import { AuthProvider } from './auth/AuthProvider.jsx'
+import ReloadPrompt from './components/ReloadPrompt.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -22,6 +23,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <App />
         </AuthProvider>
       </BrowserRouter>
+      <ReloadPrompt />
     </ChakraProvider>
   </React.StrictMode>,
 )
