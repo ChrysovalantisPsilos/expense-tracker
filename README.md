@@ -60,6 +60,8 @@ supabase/
 
 - **v1 (this scaffold):** personal expenses, income, categories, budgets,
   recurring rules, multi-currency, dashboard, Excel/PDF reports, offline sync.
+  Recurring rules are materialized daily by a `pg_cron` job (see
+  `migrations/0003`) that turns due rules into transactions.
 - **v2 (schema-ready):** groups (trips/households), shared & itemized splits,
   hybrid identity (phantom contacts that upgrade to accounts), balances +
   manual settle-up. The `transactions` table already carries `group_id` /
