@@ -16,6 +16,9 @@ set a subject:
 | Magic Link | `magic-link.html` | `Your Budge sign-in link` |
 
 Notes:
+- These are HTML **fragments** (no `<!doctype>`/`<html>`/`<body>` wrapper) —
+  Supabase's template editor preview hangs on a full HTML document, so paste
+  the fragment as-is.
 - Each uses Supabase's `{{ .ConfirmationURL }}` variable for the action link —
   don't change it.
 - Design matches the app: coral (`#f95d38`) wordmark + button on warm neutrals,
