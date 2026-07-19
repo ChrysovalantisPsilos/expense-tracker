@@ -20,6 +20,7 @@ import {
 import { formatMoney, toMinor } from '../lib/currency.js'
 import { receiptUrl } from '../lib/receipts.js'
 import GroupExpenseForm from '../components/GroupExpenseForm.jsx'
+import MoneyInput from '../components/MoneyInput.jsx'
 
 export default function GroupDetail() {
   const { id } = useParams()
@@ -509,8 +510,7 @@ function SettleUpModal({ group, members, myMember, balances, isOpen, onClose, on
               <HStack>
                 <FormControl isRequired>
                   <FormLabel>Amount ({group.currency})</FormLabel>
-                  <Input type="number" step="0.01" inputMode="decimal" value={amount}
-                    onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+                  <MoneyInput value={amount} onChange={setAmount} />
                 </FormControl>
                 <FormControl maxW="160px">
                   <FormLabel>Date</FormLabel>

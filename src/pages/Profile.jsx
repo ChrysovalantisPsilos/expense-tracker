@@ -2,17 +2,19 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Heading, Stack, Card, CardBody, HStack, Avatar, Button, FormControl,
   FormLabel, Input, Select, useToast, Center, Spinner, Text, IconButton, Box,
-  Divider, Spacer, Flex,
+  Divider, Spacer, Flex, useDisclosure, Modal, ModalOverlay, ModalContent,
+  ModalHeader, ModalBody, ModalFooter,
 } from '@chakra-ui/react'
-import { Camera, KeyRound, Trash2, Plus } from 'lucide-react'
+import { Camera, KeyRound, Trash2, Plus, AlertTriangle } from 'lucide-react'
 import { supabase, passkeysSupported } from '../lib/supabase.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { updateProfile, uploadAvatar } from '../lib/profile.js'
 import { CURRENCIES } from '../lib/currency.js'
 
 export default function Profile() {
-  const { user, signOut, listPasskeys, registerPasskey, deletePasskey } = useAuth()
+  const { user, signOut, signInWithPassword, listPasskeys, registerPasskey, deletePasskey } = useAuth()
   const toast = useToast()
+  const deleteModal = useDisclosure()
   const fileRef = useRef(null)
   const [loading, setLoading] = useState(true)
   const [displayName, setDisplayName] = useState('')
@@ -179,6 +181,91 @@ export default function Profile() {
       <Button variant="ghost" colorScheme="gray" onClick={signOut} alignSelf="start">
         Sign out
       </Button>
+
+      <Card borderColor="red.200" _dark={{ borderColor: 'red.800' }}><CardBody>
+        <HStack mb={2}>
+          <Flex boxSize="32px" align="center" justify="center" borderRadius="lg"
+            bg="red.50" color="red.500" _dark={{ bg: 'whiteAlpha.100' }}>
+            <AlertTriangle size={18} />
+          </Flex>
+          <Heading size="sm">Delete account</Heading>
+        </HStack>
+        <Text fontSize="sm" color="text.muted" mb={3}>
+          Permanently deletes your account and personal data. Groups you own pass
+          to another member; your expense history stays for them. This can’t be undone.
+        </Text>
+        <Button colorScheme="red" variant="outline" leftIcon={<Trash2 size={16} />}
+          onClick={deleteModal.onOpen}>Delete my account</Button>
+      </CardBody></Card>
+
+      <DeleteAccountModal user={user} isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}
+        signInWithPassword={signInWithPassword} signOut={signOut} />
     </Stack>
+  )
+}
+
+function DeleteAccountModal({ user, isOpen, onClose, signInWithPassword, signOut }) {
+  const toast = useToast()
+  const providers = user.app_metadata?.providers
+    || (user.app_metadata?.provider ? [user.app_metadata.provider] : [])
+  // Require a password if the user has an email/password identity (default to
+  // requiring it when we can't tell); otherwise ask for a typed phrase.
+  const isPasswordUser = providers.includes('email') || providers.length === 0
+  const [value, setValue] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const canSubmit = isPasswordUser ? value.length > 0 : value.trim().toUpperCase() === 'DELETE'
+
+  async function confirm() {
+    setBusy(true)
+    try {
+      if (isPasswordUser) {
+        const { error } = await signInWithPassword(user.email, value)
+        if (error) { toast({ title: 'Incorrect password', status: 'error' }); setBusy(false); return }
+      }
+      const { error } = await supabase.functions.invoke('delete-account')
+      if (error) {
+        let msg = error.message
+        try { const j = await error.context?.json?.(); if (j?.error) msg = j.error } catch { /* ignore */ }
+        throw new Error(msg)
+      }
+      toast({ title: 'Your account has been deleted', status: 'success' })
+      await signOut() // App flips to the logged-out landing
+    } catch (e) {
+      toast({ title: 'Could not delete account', description: e.message, status: 'error' })
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+      <ModalOverlay />
+      <ModalContent as="form" mx={4}
+        onSubmit={(e) => { e.preventDefault(); if (canSubmit) confirm() }}>
+        <ModalHeader>Delete your account?</ModalHeader>
+        <ModalBody>
+          <Stack spacing={4}>
+            <Text color="text.muted" fontSize="sm">
+              This permanently deletes your account and personal data. Groups you
+              own are handed to another member; your expense history stays for
+              them. This can’t be undone.
+            </Text>
+            <FormControl isRequired>
+              <FormLabel>{isPasswordUser ? 'Enter your password to confirm'
+                : 'Type DELETE to confirm'}</FormLabel>
+              <Input type={isPasswordUser ? 'password' : 'text'} autoFocus value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder={isPasswordUser ? 'Your password' : 'DELETE'} />
+            </FormControl>
+          </Stack>
+        </ModalBody>
+        <ModalFooter gap={2}>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button colorScheme="red" type="submit" isLoading={busy} isDisabled={!canSubmit}>
+            Delete account
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   )
 }

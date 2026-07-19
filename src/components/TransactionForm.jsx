@@ -8,6 +8,7 @@ import { toMinor, getRate, CURRENCIES } from '../lib/currency.js'
 import { queueTransaction } from '../lib/offlineQueue.js'
 import { uploadReceipt } from '../lib/receipts.js'
 import ReceiptScanner from './ReceiptScanner.jsx'
+import MoneyInput from './MoneyInput.jsx'
 
 // Fast-path entry for a single expense or income. Writes go through the
 // offline queue so logging works with no connection.
@@ -83,8 +84,7 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
         <HStack>
           <FormControl isRequired>
             <FormLabel>Amount</FormLabel>
-            <Input type="number" step="0.01" inputMode="decimal" value={amount}
-              onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+            <MoneyInput value={amount} onChange={setAmount} />
           </FormControl>
           <FormControl maxW="110px">
             <FormLabel>Currency</FormLabel>

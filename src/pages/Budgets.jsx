@@ -9,6 +9,7 @@ import { useAuth } from '../auth/AuthProvider.jsx'
 import { useCategories, useTransactions, monthRange } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
 import { formatMoney, toMinor, toBaseMinor } from '../lib/currency.js'
+import MoneyInput from '../components/MoneyInput.jsx'
 
 function periodStart(d = new Date()) {
   return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
@@ -77,7 +78,7 @@ export default function Budgets() {
             </FormControl>
             <FormControl maxW="160px">
               <FormLabel>Monthly cap</FormLabel>
-              <Input type="number" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <MoneyInput value={amount} onChange={setAmount} />
             </FormControl>
             <Button type="submit">Set</Button>
           </HStack>
