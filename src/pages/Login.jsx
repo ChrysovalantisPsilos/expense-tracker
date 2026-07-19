@@ -1,17 +1,35 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Box, Button, Card, CardBody, Center, Divider, FormControl, FormLabel,
-  Input, Stack, Text, useToast, HStack, VStack, Icon,
+  Button, Card, CardBody, Center, FormControl, FormLabel, FormHelperText,
+  Input, Stack, Text, useToast, VStack,
 } from '@chakra-ui/react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { isSupabaseConfigured } from '../lib/supabase.js'
 import Logo from '../components/Logo.jsx'
 
+// A few of the most common weak passwords to reject outright, client-side.
+// (Supabase's leaked-password protection is the authoritative server-side
+// check — see the dashboard note in the README.)
+const COMMON = new Set([
+  '12345', '123456', '1234567', '12345678', '123456789', '1234567890',
+  'password', 'password1', 'qwerty', 'abc123', '111111', '000000', 'iloveyou',
+  'admin', 'letmein', 'welcome', 'monkey', 'dragon',
+])
+
+// Returns an error string, or null if the password is acceptable.
+function validatePassword(pw) {
+  if (pw.length < 8) return 'Use at least 8 characters.'
+  if (!/[a-zA-Z]/.test(pw)) return 'Include at least one letter.'
+  if (!/[0-9]/.test(pw)) return 'Include at least one number.'
+  if (COMMON.has(pw.toLowerCase())) return 'That password is too common — pick something less guessable.'
+  return null
+}
+
 export default function Login() {
-  const { signInWithPassword, signUp, signInWithProvider } = useAuth()
+  const { signInWithPassword, signUp } = useAuth()
   const [searchParams] = useSearchParams()
-  const [mode, setMode] = useState(searchParams.get('signup') ? 'signup' : 'signin') // 'signin' | 'signup'
+  const [mode, setMode] = useState(searchParams.get('signup') ? 'signup' : 'signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -20,6 +38,10 @@ export default function Login() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (mode === 'signup') {
+      const err = validatePassword(password)
+      if (err) { toast({ title: err, status: 'warning' }); return }
+    }
     setBusy(true)
     const fn = mode === 'signin' ? signInWithPassword : signUp
     const { error } = await fn(email, password)
@@ -62,33 +84,18 @@ export default function Login() {
                 </FormControl>
                 <FormControl isRequired>
                   <FormLabel>Password</FormLabel>
-                  <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                  <Input type="password" value={password}
+                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                    onChange={(e) => setPassword(e.target.value)} />
+                  {mode === 'signup' && (
+                    <FormHelperText>At least 8 characters, with a letter and a number.</FormHelperText>
+                  )}
                 </FormControl>
                 <Button type="submit" isLoading={busy} w="full">
                   {mode === 'signin' ? 'Sign in' : 'Sign up'}
                 </Button>
               </Stack>
             </form>
-
-            <HStack>
-              <Divider />
-              <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">or continue with</Text>
-              <Divider />
-            </HStack>
-
-            <Stack spacing={3}>
-              <Button variant="outline" colorScheme="gray" onClick={() => signInWithProvider('google')}>
-                <Icon viewBox="0 0 24 24" mr={2} boxSize={4}>
-                  <path fill="currentColor" d="M21.35 11.1H12v2.98h5.35c-.23 1.4-1.6 4.1-5.35 4.1a5.19 5.19 0 1 1 0-10.38c1.48 0 2.47.63 3.04 1.17l2.07-2A8 8 0 1 0 12 20c4.62 0 7.67-3.25 7.67-7.82 0-.53-.06-.93-.14-1.08Z" />
-                </Icon>
-                Google
-              </Button>
-              {/* Apple sign-in requires a paid Apple Developer account + provider
-                  setup in Supabase Auth. Enable once configured. */}
-              <Button variant="outline" colorScheme="gray" isDisabled onClick={() => signInWithProvider('apple')}>
-                Apple (setup required)
-              </Button>
-            </Stack>
 
             <Text fontSize="sm" textAlign="center" color="text.muted">
               {mode === 'signin' ? "Don't have an account? " : 'Already have one? '}
