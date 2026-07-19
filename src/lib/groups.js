@@ -56,15 +56,6 @@ export async function renameGroup(groupId, name) {
   if (error) throw new Error(error.message)
 }
 
-export async function addMember(groupId, displayName) {
-  const { data, error } = await supabase
-    .from('group_members')
-    .insert({ group_id: groupId, display_name: displayName })
-    .select().single()
-  if (error) throw error
-  return data
-}
-
 // Equal split of amountMinor across memberIds, distributing the rounding
 // remainder one cent at a time so shares sum EXACTLY to the total.
 export function equalShares(amountMinor, memberIds) {

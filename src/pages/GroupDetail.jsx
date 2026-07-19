@@ -4,16 +4,16 @@ import {
   Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center,
   Spinner, Flex, Badge, IconButton, Divider, List, ListItem, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
-  ModalFooter, FormControl, FormLabel, Select, Input, Tag, Avatar,
+  ModalFooter, FormControl, FormLabel, Select, Input, Avatar,
   Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
 import {
-  ArrowLeft, Plus, UserPlus, Link2, Users, HandCoins, Paperclip, Mail,
+  ArrowLeft, Plus, Link2, Users, HandCoins, Paperclip, Mail,
   MoreVertical, LogOut, Trash2, UserMinus, Pencil, ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import {
-  getGroup, addMember, addSettlement, createInviteLink, createInvite,
+  getGroup, addSettlement, createInviteLink, createInvite,
   emailInvite, computeBalances, removeMember, deleteGroup, inviteExistingUser,
   renameGroup,
 } from '../lib/groups.js'
@@ -29,7 +29,6 @@ export default function GroupDetail() {
   const toast = useToast()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [newMember, setNewMember] = useState('')
   const expenseModal = useDisclosure()
   const settleModal = useDisclosure()
   const inviteModal = useDisclosure()
@@ -56,19 +55,9 @@ export default function GroupDetail() {
   const myMember = data?.members.find((m) => m.user_id === user.id)
   const myNet = myMember ? (balances.get(myMember.id) ?? 0) : 0
 
-  async function addPerson(e) {
-    e.preventDefault()
-    if (!newMember.trim()) return
+  async function copyInvite() {
     try {
-      await addMember(id, newMember.trim())
-      setNewMember('')
-      load()
-    } catch (e) { toast({ title: e.message, status: 'error' }) }
-  }
-
-  async function copyInvite(memberId = null) {
-    try {
-      const url = await createInviteLink(id, memberId)
+      const url = await createInviteLink(id)
       await navigator.clipboard.writeText(url)
       toast({ title: 'Invite link copied', description: url, status: 'success' })
     } catch (e) {
@@ -182,7 +171,7 @@ export default function GroupDetail() {
           <Button size="xs" variant="ghost" leftIcon={<Mail size={14} />}
             onClick={inviteModal.onOpen}>Email</Button>
           <Button size="xs" variant="ghost" leftIcon={<Link2 size={14} />}
-            onClick={() => copyInvite(null)}>Link</Button>
+            onClick={copyInvite}>Link</Button>
         </HStack>
         <List spacing={0}>
           {members.map((m, i) => {
@@ -197,16 +186,11 @@ export default function GroupDetail() {
                     {m.display_name}{isMe ? ' (you)' : ''}
                   </Text>
                   {m.role === 'owner' && <Badge colorScheme="brand">owner</Badge>}
-                  {!m.user_id && <Tag size="sm" colorScheme="gray">pending</Tag>}
                   <Spacer />
                   {net !== 0 && (
                     <Text fontSize="sm" color={net > 0 ? 'green.500' : 'red.500'}>
                       {net > 0 ? `owed ${formatMoney(net, cur)}` : `owes ${formatMoney(-net, cur)}`}
                     </Text>
-                  )}
-                  {!m.user_id && (
-                    <IconButton aria-label="Invite this person" size="xs" variant="ghost"
-                      icon={<UserPlus size={14} />} onClick={() => copyInvite(m.id)} />
                   )}
                   {isOwner && !isMe && (
                     <IconButton aria-label={`Remove ${m.display_name}`} size="xs" variant="ghost"
@@ -218,13 +202,9 @@ export default function GroupDetail() {
             )
           })}
         </List>
-        <form onSubmit={addPerson}>
-          <HStack mt={3}>
-            <Input size="sm" placeholder="Add a person by name" value={newMember}
-              onChange={(e) => setNewMember(e.target.value)} />
-            <Button size="sm" type="submit" leftIcon={<Plus size={14} />}>Add</Button>
-          </HStack>
-        </form>
+        <Text fontSize="xs" color="text.muted" mt={3}>
+          Invite people by email or a share link — they join once they accept.
+        </Text>
       </CardBody></Card>
 
       {/* Expenses */}
