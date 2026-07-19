@@ -144,6 +144,16 @@ export async function acceptInvite(token) {
   return data // group id
 }
 
+// Open a share-link invite as the signed-in user WITHOUT joining. Points the
+// invite at us (dropping an in-app notification) and returns an accept/decline
+// prompt. Shape: { status, group_id?, invite_id?, preview? } where status is
+// 'pending' | 'already_member' | 'claimed_by_other' | 'invalid'.
+export async function claimLinkInvite(token) {
+  const { data, error } = await supabase.rpc('claim_link_invite', { p_token: token })
+  if (error) throw new Error(error.message)
+  return data
+}
+
 // Read-only snapshot of a group from a share token — works logged-out (anon).
 export async function previewGroup(token) {
   const { data, error } = await supabase.rpc('group_preview', { p_token: token })
