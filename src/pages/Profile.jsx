@@ -48,6 +48,8 @@ export default function Profile() {
         nickname: nickname || null,
         base_currency: currency,
       })
+      // Nudge live consumers (nav bar) to refetch the new name/avatar at once.
+      window.dispatchEvent(new Event('budge:profile-updated'))
       toast({ title: 'Profile saved', status: 'success' })
     } catch (e) { toast({ title: e.message, status: 'error' }) }
     finally { setBusy(false) }
