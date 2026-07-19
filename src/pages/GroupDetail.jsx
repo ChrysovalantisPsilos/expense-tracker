@@ -9,12 +9,13 @@ import {
 } from '@chakra-ui/react'
 import {
   ArrowLeft, Plus, UserPlus, Link2, Users, HandCoins, Paperclip, Mail,
-  MoreVertical, LogOut, Trash2, UserMinus,
+  MoreVertical, LogOut, Trash2, UserMinus, Pencil, ArrowRight,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import {
   getGroup, addMember, addSettlement, createInviteLink, createInvite,
   emailInvite, computeBalances, removeMember, deleteGroup, inviteExistingUser,
+  renameGroup,
 } from '../lib/groups.js'
 import { formatMoney, toMinor } from '../lib/currency.js'
 import { receiptUrl } from '../lib/receipts.js'
@@ -33,6 +34,7 @@ export default function GroupDetail() {
   const inviteModal = useDisclosure()
   const leaveModal = useDisclosure()
   const deleteModal = useDisclosure()
+  const renameModal = useDisclosure()
   const [removeTarget, setRemoveTarget] = useState(null)
   const [actionBusy, setActionBusy] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
@@ -129,6 +131,11 @@ export default function GroupDetail() {
           <MenuButton as={IconButton} aria-label="Group options" size="sm"
             variant="ghost" icon={<MoreVertical size={18} />} />
           <MenuList>
+            {isOwner && (
+              <MenuItem icon={<Pencil size={16} />} onClick={renameModal.onOpen}>
+                Rename group
+              </MenuItem>
+            )}
             {myMember && (
               <MenuItem icon={<LogOut size={16} />} onClick={leaveModal.onOpen}>
                 Leave group
@@ -226,11 +233,15 @@ export default function GroupDetail() {
           <Text color="text.muted" fontSize="sm">No shared expenses yet.</Text>
         ) : (
           <List spacing={0}>
-            {expenses.map((e, i) => (
+            {expenses.map((e, i) => {
+              const canEdit = e.created_by === user.id || isOwner
+              return (
               <ListItem key={e.id}>
                 {i > 0 && <Divider />}
-                <HStack py={3} spacing={3} align="start" cursor="pointer"
-                  onClick={() => openEdit(e)} _hover={{ opacity: 0.75 }} transition="opacity 0.1s">
+                <HStack py={3} spacing={3} align="start"
+                  cursor={canEdit ? 'pointer' : 'default'}
+                  onClick={canEdit ? () => openEdit(e) : undefined}
+                  _hover={canEdit ? { opacity: 0.75 } : undefined} transition="opacity 0.1s">
                   <Stack spacing={0} flex="1">
                     <Text fontWeight="600">{e.description || 'Expense'}</Text>
                     <Text fontSize="xs" color="text.muted">
@@ -245,7 +256,8 @@ export default function GroupDetail() {
                   <Text fontWeight="600">{formatMoney(e.amount_minor, e.currency)}</Text>
                 </HStack>
               </ListItem>
-            ))}
+              )
+            })}
           </List>
         )}
       </CardBody></Card>
@@ -273,8 +285,11 @@ export default function GroupDetail() {
         defaultPayer={myMember?.id} expense={editingExpense}
         isOpen={expenseModal.isOpen} onClose={closeExpense} onSaved={load} />
 
-      <SettleUpModal group={group} members={members} defaultFrom={myMember?.id}
+      <SettleUpModal group={group} members={members} myMember={myMember} balances={balances}
         isOpen={settleModal.isOpen} onClose={settleModal.onClose} onSaved={load} />
+
+      <RenameGroupModal group={group} isOpen={renameModal.isOpen}
+        onClose={renameModal.onClose} onSaved={load} />
 
       <InviteEmailModal group={group} inviterName={myMember?.display_name}
         isOpen={inviteModal.isOpen} onClose={inviteModal.onClose} />
@@ -415,18 +430,27 @@ function InviteEmailModal({ group, inviterName, isOpen, onClose }) {
   )
 }
 
-function SettleUpModal({ group, members, defaultFrom, isOpen, onClose, onSaved }) {
+// Settle-up is always framed from the current user: they are one side of every
+// settlement (payer or receiver), and pick the other member. Prevents
+// arbitrary member-to-member entries.
+function SettleUpModal({ group, members, myMember, balances, isOpen, onClose, onSaved }) {
   const toast = useToast()
-  const [from, setFrom] = useState(defaultFrom ?? members[0]?.id ?? '')
-  const [to, setTo] = useState(members.find((m) => m.id !== defaultFrom)?.id ?? '')
+  const others = members.filter((m) => m.id !== myMember?.id)
+  const [direction, setDirection] = useState('out') // 'out' = I paid, 'in' = they paid me
+  const [otherId, setOtherId] = useState(others[0]?.id ?? '')
   const [amount, setAmount] = useState('')
   const [settledAt, setSettledAt] = useState(() => new Date().toISOString().slice(0, 10))
   const [busy, setBusy] = useState(false)
 
+  const otherNet = balances?.get(otherId) ?? 0
+  const otherName = others.find((m) => m.id === otherId)?.display_name ?? ''
+
   async function submit(e) {
     e.preventDefault()
-    if (from === to) return toast({ title: 'Pick two different people', status: 'warning' })
+    if (!otherId) return toast({ title: 'Pick a person', status: 'warning' })
     if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
+    const from = direction === 'out' ? myMember.id : otherId
+    const to = direction === 'out' ? otherId : myMember.id
     setBusy(true)
     try {
       await addSettlement({
@@ -443,37 +467,100 @@ function SettleUpModal({ group, members, defaultFrom, isOpen, onClose, onSaved }
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent as="form" onSubmit={submit} mx={4}>
-        <ModalHeader>Record a settlement</ModalHeader>
+        <ModalHeader>Settle up</ModalHeader>
         <ModalBody>
-          <Stack spacing={4}>
-            <FormControl isRequired>
-              <FormLabel>Who paid</FormLabel>
-              <Select value={from} onChange={(e) => setFrom(e.target.value)}>
-                {members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
-              </Select>
-            </FormControl>
-            <FormControl isRequired>
-              <FormLabel>Who received</FormLabel>
-              <Select value={to} onChange={(e) => setTo(e.target.value)}>
-                {members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
-              </Select>
-            </FormControl>
-            <HStack>
+          {others.length === 0 ? (
+            <Text color="text.muted">Add another member first.</Text>
+          ) : (
+            <Stack spacing={4}>
+              <HStack spacing={2}>
+                <Button flex="1" variant={direction === 'out' ? 'solid' : 'outline'}
+                  colorScheme={direction === 'out' ? 'brand' : 'gray'}
+                  onClick={() => setDirection('out')}>I paid</Button>
+                <Button flex="1" variant={direction === 'in' ? 'solid' : 'outline'}
+                  colorScheme={direction === 'in' ? 'brand' : 'gray'}
+                  onClick={() => setDirection('in')}>I received</Button>
+              </HStack>
+
               <FormControl isRequired>
-                <FormLabel>Amount ({group.currency})</FormLabel>
-                <Input type="number" step="0.01" inputMode="decimal" value={amount}
-                  onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+                <FormLabel>{direction === 'out' ? 'Paid to' : 'Received from'}</FormLabel>
+                <Select value={otherId} onChange={(e) => setOtherId(e.target.value)}>
+                  {others.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
+                </Select>
+                {otherId && (
+                  <Text fontSize="xs" color="text.muted" mt={1}>
+                    {otherNet === 0 ? `${otherName} is settled up`
+                      : otherNet > 0 ? `${otherName} is owed ${formatMoney(otherNet, group.currency)} overall`
+                      : `${otherName} owes ${formatMoney(-otherNet, group.currency)} overall`}
+                  </Text>
+                )}
               </FormControl>
-              <FormControl maxW="160px">
-                <FormLabel>Date</FormLabel>
-                <Input type="date" value={settledAt} onChange={(e) => setSettledAt(e.target.value)} />
-              </FormControl>
-            </HStack>
-          </Stack>
+
+              <HStack align="end" justify="center" color="text.muted" fontSize="sm">
+                <Text fontWeight="600" color="text.primary">
+                  {direction === 'out' ? 'You' : otherName || '—'}
+                </Text>
+                <ArrowRight size={16} />
+                <Text fontWeight="600" color="text.primary">
+                  {direction === 'out' ? otherName || '—' : 'You'}
+                </Text>
+              </HStack>
+
+              <HStack>
+                <FormControl isRequired>
+                  <FormLabel>Amount ({group.currency})</FormLabel>
+                  <Input type="number" step="0.01" inputMode="decimal" value={amount}
+                    onChange={(e) => setAmount(e.target.value)} placeholder="0.00" />
+                </FormControl>
+                <FormControl maxW="160px">
+                  <FormLabel>Date</FormLabel>
+                  <Input type="date" value={settledAt} onChange={(e) => setSettledAt(e.target.value)} />
+                </FormControl>
+              </HStack>
+            </Stack>
+          )}
         </ModalBody>
         <ModalFooter gap={2}>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={busy}>Record</Button>
+          <Button type="submit" isLoading={busy} isDisabled={others.length === 0}>Record</Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  )
+}
+
+function RenameGroupModal({ group, isOpen, onClose, onSaved }) {
+  const toast = useToast()
+  const [name, setName] = useState(group.name)
+  const [busy, setBusy] = useState(false)
+  useEffect(() => { if (isOpen) setName(group.name) }, [isOpen, group.name])
+
+  async function submit(e) {
+    e.preventDefault()
+    if (!name.trim()) return
+    setBusy(true)
+    try {
+      await renameGroup(group.id, name.trim())
+      toast({ title: 'Group renamed', status: 'success' })
+      onSaved?.(); onClose()
+    } catch (e) { toast({ title: e.message, status: 'error' }) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+      <ModalOverlay />
+      <ModalContent as="form" onSubmit={submit} mx={4}>
+        <ModalHeader>Rename group</ModalHeader>
+        <ModalBody>
+          <FormControl isRequired>
+            <FormLabel>Group name</FormLabel>
+            <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+          </FormControl>
+        </ModalBody>
+        <ModalFooter gap={2}>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button type="submit" isLoading={busy}>Save</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
