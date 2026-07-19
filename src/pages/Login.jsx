@@ -64,7 +64,8 @@ export default function Login() {
       return
     }
     if (mode === 'signup') {
-      toast({ title: 'Check your email to confirm your account.', status: 'info' })
+      sessionStorage.setItem('budge:pendingEmail', email)
+      navigate('/verify-email', { replace: true })
     } else {
       navigate('/', { replace: true })
     }
