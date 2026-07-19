@@ -98,7 +98,7 @@ export default function Profile() {
         <Stack spacing={5} as="form" onSubmit={save}>
           <HStack spacing={4}>
             <Box position="relative">
-              <Avatar size="xl" name={displayName} src={avatarUrl} />
+              <Avatar size="xl" name={displayName} src={avatarUrl} bg="brand.500" color="white" />
               <IconButton aria-label="Change photo" icon={<Camera size={16} />}
                 size="sm" borderRadius="full" position="absolute" bottom="-4px" right="-4px"
                 isLoading={uploading} onClick={() => fileRef.current?.click()} />
@@ -172,10 +172,6 @@ export default function Profile() {
         </CardBody></Card>
       )}
 
-      <Button variant="ghost" colorScheme="gray" onClick={signOut} alignSelf="start">
-        Sign out
-      </Button>
-
       <Card borderColor="red.200" _dark={{ borderColor: 'red.800' }}><CardBody>
         <HStack mb={2}>
           <Flex boxSize="32px" align="center" justify="center" borderRadius="lg"
@@ -191,6 +187,10 @@ export default function Profile() {
         <Button colorScheme="red" variant="outline" leftIcon={<Trash2 size={16} />}
           onClick={deleteModal.onOpen}>Delete my account</Button>
       </CardBody></Card>
+
+      <Button variant="ghost" colorScheme="gray" onClick={signOut} alignSelf="start">
+        Sign out
+      </Button>
 
       <DeleteAccountModal user={user} isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}
         signInWithPassword={signInWithPassword} signOut={signOut} />
