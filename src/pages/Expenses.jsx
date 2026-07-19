@@ -2,12 +2,15 @@ import { useState } from 'react'
 import {
   Heading, Stack, Card, CardBody, Button, useDisclosure, Collapse,
   List, ListItem, HStack, Text, Spacer, Badge, Center, Spinner, Divider,
+  IconButton, useToast,
 } from '@chakra-ui/react'
+import { Paperclip } from 'lucide-react'
 import TransactionForm from '../components/TransactionForm.jsx'
 import CategoryBadge from '../components/CategoryBadge.jsx'
 import { useTransactions, monthRange } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
 import { formatMoney } from '../lib/currency.js'
+import { receiptUrl } from '../lib/receipts.js'
 
 export default function Expenses() {
   const { baseCurrency } = useProfile()
@@ -15,6 +18,13 @@ export default function Expenses() {
   const { rows, loading, reload } = useTransactions({ kind: 'expense', from, to })
   const { isOpen, onToggle, onClose } = useDisclosure({ defaultIsOpen: true })
   const [, forceReload] = useState(0)
+  const toast = useToast()
+
+  async function openReceipt(path) {
+    const url = await receiptUrl(path)
+    if (url) window.open(url, '_blank', 'noopener')
+    else toast({ title: 'Could not open receipt', status: 'error' })
+  }
 
   return (
     <Stack spacing={5}>
@@ -52,6 +62,10 @@ export default function Expenses() {
                     <Text fontSize="xs" color="text.muted">{r.spent_at}</Text>
                   </Stack>
                   <Spacer />
+                  {r.receipt_path && (
+                    <IconButton aria-label="View receipt" size="sm" variant="ghost"
+                      icon={<Paperclip size={16} />} onClick={() => openReceipt(r.receipt_path)} />
+                  )}
                   <Stack spacing={0} align="end">
                     <Text fontWeight="semibold">{formatMoney(r.amount_minor, r.currency)}</Text>
                     {r.currency !== baseCurrency && (

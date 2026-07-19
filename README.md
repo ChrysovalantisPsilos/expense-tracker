@@ -62,6 +62,12 @@ supabase/
   recurring rules, multi-currency, dashboard, Excel/PDF reports, offline sync.
   Recurring rules are materialized daily by a `pg_cron` job (see
   `migrations/0003`) that turns due rules into transactions.
+- **Receipt scanner:** photograph a receipt (native camera) → on-device OCR
+  (Tesseract.js, lazy-loaded) extracts total + date → prefills the expense
+  form. The image is stored in a private `receipts` Storage bucket (RLS-scoped)
+  and linked to the transaction.
+- **Brand/design:** "Budge" — warm coral/amber design system, Lucide icons,
+  Poppins/Nunito, desktop sidebar + mobile bottom nav, light/dark.
 - **v2 (schema-ready):** groups (trips/households), shared & itemized splits,
   hybrid identity (phantom contacts that upgrade to accounts), balances +
   manual settle-up. The `transactions` table already carries `group_id` /
