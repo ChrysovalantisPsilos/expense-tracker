@@ -1,0 +1,35 @@
+{
+  "name": "expense-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A responsive PWA for personal expense tracking (and, later, splitting costs with friends) with Excel/PDF reports.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "db:push": "supabase db push",
+    "functions:serve": "supabase functions serve"
+  },
+  "dependencies": {
+    "@chakra-ui/react": "^2.8.2",
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "@supabase/supabase-js": "^2.45.0",
+    "framer-motion": "^11.3.0",
+    "idb": "^8.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.0",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "eslint": "^8.57.0",
+    "vite": "^5.4.0",
+    "vite-plugin-pwa": "^0.20.1"
+  }
+}
