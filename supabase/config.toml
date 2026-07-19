@@ -1,0 +1,9 @@
+# Minimal Supabase CLI config. Set project_id to your project ref after you
+# create the project, or run `supabase link --project-ref <ref>`.
+project_id = "expense-tracker"
+
+[db]
+major_version = 17
+
+[functions.generate-report]
+verify_jwt = true
