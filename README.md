@@ -58,6 +58,12 @@ supabase/
 
 ## Roadmap
 
+- **v2 (shipped, first slice):** groups (trips/households), hybrid members
+  (phantom → linked via shareable invite link), equal-split shared expenses,
+  pairwise balances, and settle-up. Track-only. Membership-based RLS with
+  `SECURITY DEFINER` helpers; `create_group` / `accept_group_invite` RPCs.
+  See `migrations/0005`–`0006`. Next: exact/%/itemized splits, email invites,
+  debt simplification.
 - **v1 (this scaffold):** personal expenses, income, categories, budgets,
   recurring rules, multi-currency, dashboard, Excel/PDF reports, offline sync.
   Recurring rules are materialized daily by a `pg_cron` job (see

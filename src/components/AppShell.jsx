@@ -5,7 +5,7 @@ import {
   useColorMode,
 } from '@chakra-ui/react'
 import {
-  LayoutDashboard, ReceiptText, Target, Wallet, FileDown,
+  LayoutDashboard, ReceiptText, Target, Wallet, FileDown, Users,
   Sun, Moon, LogOut, WifiOff, RefreshCw,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
@@ -15,6 +15,7 @@ import Logo from './Logo.jsx'
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/expenses', label: 'Expenses', icon: ReceiptText },
+  { to: '/groups', label: 'Groups', icon: Users },
   { to: '/budgets', label: 'Budgets', icon: Target },
   { to: '/income', label: 'Income', icon: Wallet },
   { to: '/reports', label: 'Reports', icon: FileDown },
