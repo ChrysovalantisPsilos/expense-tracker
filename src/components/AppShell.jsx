@@ -117,7 +117,7 @@ export default function AppShell() {
             <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
               bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
               <Avatar size="xs" name={profile?.display_name}
-                src={profile?.avatar_url} />
+                src={profile?.avatar_url} bg="brand.500" color="white" />
               <Text fontSize="sm" fontWeight="500" noOfLines={1}>
                 {profile?.display_name || 'Profile'}
               </Text>
@@ -153,7 +153,7 @@ export default function AppShell() {
             icon={<ThemeIcon size={18} />} onClick={toggleColorMode} />
           <RouterNavLink to="/profile">
             <Avatar size="sm" name={profile?.display_name}
-              src={profile?.avatar_url} />
+              src={profile?.avatar_url} bg="brand.500" color="white" />
           </RouterNavLink>
         </Flex>
 
