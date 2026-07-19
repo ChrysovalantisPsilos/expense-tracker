@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Heading, Stack, Card, CardBody, HStack, Avatar, Button, FormControl,
   FormLabel, Input, Select, useToast, Center, Spinner, Text, IconButton, Box,
+  Divider, Spacer, Flex,
 } from '@chakra-ui/react'
-import { Camera } from 'lucide-react'
-import { supabase } from '../lib/supabase.js'
+import { Camera, KeyRound, Trash2, Plus } from 'lucide-react'
+import { supabase, passkeysSupported } from '../lib/supabase.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { updateProfile, uploadAvatar } from '../lib/profile.js'
 import { CURRENCIES } from '../lib/currency.js'
 
 export default function Profile() {
-  const { user, signOut } = useAuth()
+  const { user, signOut, listPasskeys, registerPasskey, deletePasskey } = useAuth()
   const toast = useToast()
   const fileRef = useRef(null)
   const [loading, setLoading] = useState(true)
@@ -20,6 +21,8 @@ export default function Profile() {
   const [avatarUrl, setAvatarUrl] = useState('')
   const [busy, setBusy] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [passkeys, setPasskeys] = useState(null) // null = not loaded / unsupported
+  const [pkBusy, setPkBusy] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -46,6 +49,29 @@ export default function Profile() {
       toast({ title: 'Profile saved', status: 'success' })
     } catch (e) { toast({ title: e.message, status: 'error' }) }
     finally { setBusy(false) }
+  }
+
+  async function loadPasskeys() {
+    if (!passkeysSupported) return
+    const { data, error } = await listPasskeys()
+    if (error) { setPasskeys(null); return } // not enabled server-side
+    setPasskeys(Array.isArray(data) ? data : (data?.passkeys ?? []))
+  }
+  useEffect(() => { loadPasskeys() /* eslint-disable-next-line */ }, [])
+
+  async function addPasskey() {
+    setPkBusy(true)
+    const { error } = await registerPasskey()
+    setPkBusy(false)
+    if (error) { toast({ title: 'Couldn’t add passkey', description: error.message, status: 'error' }); return }
+    toast({ title: 'Passkey added', status: 'success' })
+    loadPasskeys()
+  }
+
+  async function removePasskey(id) {
+    const { error } = await deletePasskey(id)
+    if (error) { toast({ title: error.message, status: 'error' }); return }
+    loadPasskeys()
   }
 
   async function onAvatar(e) {
@@ -103,6 +129,52 @@ export default function Profile() {
           <Button type="submit" isLoading={busy}>Save changes</Button>
         </Stack>
       </CardBody></Card>
+
+      {passkeysSupported && (
+        <Card><CardBody>
+          <HStack mb={3}>
+            <Flex boxSize="32px" align="center" justify="center" borderRadius="lg"
+              bg="bg.subtle" color="accent.fg"><KeyRound size={18} /></Flex>
+            <Heading size="sm">Passkeys</Heading>
+            <Spacer />
+            <Button size="sm" leftIcon={<Plus size={14} />} isLoading={pkBusy}
+              onClick={addPasskey}>Add</Button>
+          </HStack>
+          {passkeys === null ? (
+            <Text fontSize="sm" color="text.muted">
+              Passkeys aren’t enabled for this project yet. Turn them on in
+              Supabase → Authentication → Passkeys.
+            </Text>
+          ) : passkeys.length === 0 ? (
+            <Text fontSize="sm" color="text.muted">
+              No passkeys yet. Add one to sign in with Face ID, Touch ID, or your
+              device PIN — no password needed.
+            </Text>
+          ) : (
+            <Stack spacing={0}>
+              {passkeys.map((pk, i) => (
+                <Box key={pk.id}>
+                  {i > 0 && <Divider />}
+                  <HStack py={2}>
+                    <KeyRound size={16} />
+                    <Stack spacing={0}>
+                      <Text fontSize="sm" fontWeight="600">{pk.friendly_name || 'Passkey'}</Text>
+                      {pk.created_at && (
+                        <Text fontSize="xs" color="text.muted">
+                          added {String(pk.created_at).slice(0, 10)}
+                        </Text>
+                      )}
+                    </Stack>
+                    <Spacer />
+                    <IconButton aria-label="Remove passkey" size="sm" variant="ghost"
+                      icon={<Trash2 size={16} />} onClick={() => removePasskey(pk.id)} />
+                  </HStack>
+                </Box>
+              ))}
+            </Stack>
+          )}
+        </CardBody></Card>
+      )}
 
       <Button variant="ghost" colorScheme="gray" onClick={signOut} alignSelf="start">
         Sign out

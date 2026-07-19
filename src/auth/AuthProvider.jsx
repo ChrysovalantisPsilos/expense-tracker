@@ -49,6 +49,16 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(() => supabase.auth.signOut(), [])
 
+  // Passkeys (WebAuthn). These no-op-guard so callers can rely on them even if
+  // the API is missing on an older client build.
+  const signInWithPasskey = useCallback(() => supabase.auth.signInWithPasskey(), [])
+  const registerPasskey = useCallback(() => supabase.auth.registerPasskey(), [])
+  const listPasskeys = useCallback(() => supabase.auth.passkey.list(), [])
+  const deletePasskey = useCallback(
+    (passkeyId) => supabase.auth.passkey.delete({ passkeyId }),
+    [],
+  )
+
   const value = {
     session,
     user: session?.user ?? null,
@@ -57,6 +67,10 @@ export function AuthProvider({ children }) {
     signUp,
     signInWithProvider,
     signOut,
+    signInWithPasskey,
+    registerPasskey,
+    listPasskeys,
+    deletePasskey,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
