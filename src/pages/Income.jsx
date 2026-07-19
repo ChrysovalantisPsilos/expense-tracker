@@ -3,6 +3,7 @@ import {
   Center, Spinner, Divider,
 } from '@chakra-ui/react'
 import TransactionForm from '../components/TransactionForm.jsx'
+import CategoryBadge from '../components/CategoryBadge.jsx'
 import { useTransactions, monthRange } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
 import { formatMoney } from '../lib/currency.js'
@@ -25,17 +26,17 @@ export default function Income() {
         {loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : rows.length === 0 ? (
-          <Text color="gray.500">No income logged yet.</Text>
+          <Text color="text.muted">No income logged yet.</Text>
         ) : (
           <List spacing={0}>
             {rows.map((r, i) => (
               <ListItem key={r.id}>
                 {i > 0 && <Divider />}
-                <HStack py={3}>
-                  <Text fontSize="xl">{r.categories?.icon ?? '💰'}</Text>
+                <HStack py={3} spacing={3}>
+                  <CategoryBadge category={r.categories} kind="income" />
                   <Stack spacing={0}>
-                    <Text fontWeight="medium">{r.description || r.categories?.name || 'Income'}</Text>
-                    <Text fontSize="xs" color="gray.500">{r.spent_at}</Text>
+                    <Text fontWeight="600">{r.description || r.categories?.name || 'Income'}</Text>
+                    <Text fontSize="xs" color="text.muted">{r.spent_at}</Text>
                   </Stack>
                   <Spacer />
                   <Text fontWeight="semibold" color="green.500">

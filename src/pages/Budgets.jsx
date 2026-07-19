@@ -4,6 +4,7 @@ import {
   FormControl, FormLabel, Select, Input, useToast, Center, Spinner, Box,
 } from '@chakra-ui/react'
 import { supabase } from '../lib/supabase.js'
+import CategoryBadge from '../components/CategoryBadge.jsx'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { useCategories, useTransactions, monthRange } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
@@ -71,7 +72,7 @@ export default function Budgets() {
             <FormControl>
               <FormLabel>Category</FormLabel>
               <Select placeholder="Select" value={catId} onChange={(e) => setCatId(e.target.value)}>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select>
             </FormControl>
             <FormControl maxW="160px">
@@ -86,7 +87,7 @@ export default function Budgets() {
       {loading ? (
         <Center py={8}><Spinner color="brand.500" /></Center>
       ) : budgets.length === 0 ? (
-        <Text color="gray.500">No budgets set for this month yet.</Text>
+        <Text color="text.muted">No budgets set for this month yet.</Text>
       ) : (
         <Stack spacing={3}>
           {budgets.map((b) => {
@@ -95,10 +96,11 @@ export default function Budgets() {
             const over = actual > b.amount_minor
             return (
               <Card key={b.id}><CardBody>
-                <HStack mb={2}>
-                  <Text fontWeight="medium">{b.categories?.icon} {b.categories?.name}</Text>
+                <HStack mb={3} spacing={3}>
+                  <CategoryBadge category={b.categories} size={32} />
+                  <Text fontWeight="600">{b.categories?.name}</Text>
                   <Spacer />
-                  <Text fontSize="sm" color={over ? 'red.500' : 'gray.500'}>
+                  <Text fontSize="sm" color={over ? 'red.500' : 'text.muted'}>
                     {formatMoney(actual, baseCurrency)} / {formatMoney(b.amount_minor, baseCurrency)}
                   </Text>
                 </HStack>

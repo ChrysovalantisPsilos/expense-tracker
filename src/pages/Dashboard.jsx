@@ -8,7 +8,8 @@ import { useTransactions, monthRange } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
 import { formatMoney, toBaseMinor } from '../lib/currency.js'
 
-const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#a855f7', '#ec4899', '#84cc16']
+// Warm-led categorical palette (coral/amber first, then complementary hues).
+const COLORS = ['#f95d38', '#fbb324', '#ef8a5a', '#e2431f', '#f6c453', '#c2703d', '#7c6f59', '#d6ccba']
 
 export default function Dashboard() {
   const { baseCurrency } = useProfile()
@@ -67,7 +68,7 @@ export default function Dashboard() {
       <Card><CardBody>
         <Heading size="sm" mb={4}>Spending by category</Heading>
         {byCategory.length === 0 ? (
-          <Text color="gray.500">No expenses yet this month.</Text>
+          <Text color="text.muted">No expenses yet this month.</Text>
         ) : (
           <Box h="280px">
             <ResponsiveContainer width="100%" height="100%">

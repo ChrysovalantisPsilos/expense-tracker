@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="coin" x1="180" y1="150" x2="380" y2="380" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ff7a5a"/>
+      <stop offset="1" stop-color="#f95d38"/>
+    </linearGradient>
+  </defs>
+  <!-- maskable-safe background (full bleed, warm cream) -->
+  <rect width="512" height="512" fill="#faf8f4"/>
+  <!-- nudge / motion lines -->
+  <g stroke="#fbb324" stroke-width="30" stroke-linecap="round">
+    <line x1="96"  y1="205" x2="176" y2="205"/>
+    <line x1="84"  y1="256" x2="188" y2="256"/>
+    <line x1="96"  y1="307" x2="176" y2="307"/>
+  </g>
+  <!-- coin -->
+  <circle cx="312" cy="256" r="132" fill="url(#coin)"/>
+  <circle cx="312" cy="256" r="132" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="20"/>
+  <!-- lowercase b -->
+  <path d="M283 190v132M283 227h41a34 34 0 0 1 0 68h-41"
+        fill="none" stroke="#ffffff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

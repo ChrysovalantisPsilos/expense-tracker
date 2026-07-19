@@ -71,7 +71,7 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'USD'
           <Select placeholder="Uncategorized" value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}>
             {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </Select>
         </FormControl>
