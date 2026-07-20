@@ -48,25 +48,16 @@ Deno.serve(async (req) => {
     if (!group) return json({ error: 'not allowed for this group' }, 403)
     const cur = group.currency
 
-    const [{ data: members }, { data: expenses }, { data: settlements }, { data: log }] = await Promise.all([
+    const [{ data: members }, { data: settlements }, { data: log }, { data: bal }] = await Promise.all([
       supabase.from('group_members').select('id, display_name').eq('group_id', group_id).order('created_at'),
-      supabase.from('group_expenses').select('paid_by, amount_minor, expense_splits(member_id, share_minor)').eq('group_id', group_id),
       supabase.from('settlements').select('from_member, to_member, amount_minor, settled_at').eq('group_id', group_id).order('settled_at', { ascending: false }),
       supabase.from('group_audit_log').select('created_at, summary, amount_minor, currency, action').eq('group_id', group_id).order('created_at', { ascending: false }),
+      supabase.rpc('group_balances', { p_group: group_id }),
     ])
 
     const nameOf = (id: string) => (members ?? []).find((m: any) => m.id === id)?.display_name ?? '—'
-
-    // Net per member: paid − owed_shares + settled_out − settled_in.
-    const net = new Map<string, number>((members ?? []).map((m: any) => [m.id, 0]))
-    for (const e of expenses ?? []) {
-      net.set(e.paid_by, (net.get(e.paid_by) ?? 0) + e.amount_minor)
-      for (const s of e.expense_splits ?? []) net.set(s.member_id, (net.get(s.member_id) ?? 0) - s.share_minor)
-    }
-    for (const s of settlements ?? []) {
-      net.set(s.from_member, (net.get(s.from_member) ?? 0) + s.amount_minor)
-      net.set(s.to_member, (net.get(s.to_member) ?? 0) - s.amount_minor)
-    }
+    // Net balances come from the single server-side source (group_balances).
+    const net = new Map<string, number>((bal ?? []).map((b: any) => [b.member_id, Number(b.net_minor)]))
 
     const bytes = await buildPdf({ group, cur, members: members ?? [], settlements: settlements ?? [], log: log ?? [], net, nameOf, fmt })
     return new Response(bytes, {
