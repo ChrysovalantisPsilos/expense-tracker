@@ -30,3 +30,11 @@ export const passkeysSupported =
   typeof supabase.auth.signInWithPasskey === 'function'
 
 export const isSupabaseConfigured = Boolean(url && anonKey)
+
+// Edge Functions return their error detail as JSON in error.context; unwrap it
+// to a readable message (falling back to error.message).
+export async function edgeFunctionError(error) {
+  let msg = error?.message || 'Something went wrong'
+  try { const j = await error?.context?.json?.(); if (j?.error) msg = j.error } catch { /* ignore */ }
+  return msg
+}

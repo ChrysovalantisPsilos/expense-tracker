@@ -6,8 +6,9 @@ import {
 import { MailCheck, LogIn } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import Logo from '../components/Logo.jsx'
+import { STORAGE_KEYS } from '../lib/keys.js'
 
-const PENDING_EMAIL = 'budge:pendingEmail'
+const PENDING_EMAIL = STORAGE_KEYS.pendingEmail
 const RESEND_COOLDOWN = 60 // seconds
 
 export default function VerifyEmail() {

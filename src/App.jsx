@@ -18,8 +18,9 @@ import JoinGroup from './pages/JoinGroup.jsx'
 import GroupPreview from './pages/GroupPreview.jsx'
 import Profile from './pages/Profile.jsx'
 import PasskeyPrompt from './components/PasskeyPrompt.jsx'
+import { STORAGE_KEYS } from './lib/keys.js'
 
-const PENDING_INVITE = 'budge:invite'
+const PENDING_INVITE = STORAGE_KEYS.pendingInvite
 
 // Logged-out invite link -> read-only group preview. Its CTAs stash the token
 // (localStorage survives the email-confirmation round-trip in the same browser)

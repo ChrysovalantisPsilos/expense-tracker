@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabase.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { ensureSeeded } from './useData.js'
+import { EVENTS } from './keys.js'
 
 // Loads the current user's profile (base_currency, display_name) and seeds
 // default categories on first login.
@@ -24,8 +25,8 @@ export function useProfile() {
     // Refetch when the profile is saved elsewhere (e.g. the Profile page), so
     // the nav name/avatar update immediately without a reload.
     const onUpdated = () => run()
-    window.addEventListener('budge:profile-updated', onUpdated)
-    return () => { active = false; window.removeEventListener('budge:profile-updated', onUpdated) }
+    window.addEventListener(EVENTS.profileUpdated, onUpdated)
+    return () => { active = false; window.removeEventListener(EVENTS.profileUpdated, onUpdated) }
   }, [user])
 
   return { profile, baseCurrency: profile?.base_currency ?? 'EUR', loading }

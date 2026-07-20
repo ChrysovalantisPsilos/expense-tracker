@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Heading, Stack, Card, CardBody, HStack, Avatar, Button, FormControl,
+  Heading, Stack, Card, CardBody, HStack, Button, FormControl,
   FormLabel, Input, Select, useToast, Center, Spinner, Text, IconButton, Box,
   Divider, Spacer, Flex, useDisclosure, Modal, ModalOverlay, ModalContent,
   ModalHeader, ModalBody, ModalFooter,
 } from '@chakra-ui/react'
 import { Camera, KeyRound, Trash2, Plus, AlertTriangle } from 'lucide-react'
-import { supabase, passkeysSupported } from '../lib/supabase.js'
+import { supabase, passkeysSupported, edgeFunctionError } from '../lib/supabase.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { updateProfile, uploadAvatar } from '../lib/profile.js'
 import { CURRENCIES } from '../lib/currency.js'
+import { EVENTS } from '../lib/keys.js'
+import UserAvatar from '../components/UserAvatar.jsx'
 
 export default function Profile() {
   const { user, signOut, listPasskeys, registerPasskey, deletePasskey } = useAuth()
@@ -46,7 +48,7 @@ export default function Profile() {
         base_currency: currency,
       })
       // Nudge live consumers (nav bar) to refetch the new name/avatar at once.
-      window.dispatchEvent(new Event('budge:profile-updated'))
+      window.dispatchEvent(new Event(EVENTS.profileUpdated))
       toast({ title: 'Profile saved', status: 'success' })
     } catch (e) { toast({ title: e.message, status: 'error' }) }
     finally { setBusy(false) }
@@ -98,7 +100,7 @@ export default function Profile() {
         <Stack spacing={5} as="form" onSubmit={save}>
           <HStack spacing={4}>
             <Box position="relative">
-              <Avatar size="xl" name={displayName} src={avatarUrl} bg="brand.500" color="white" />
+              <UserAvatar size="xl" name={displayName} src={avatarUrl} highlight />
               <IconButton aria-label="Change photo" icon={<Camera size={16} />}
                 size="sm" borderRadius="full" position="absolute" bottom="-4px" right="-4px"
                 isLoading={uploading} onClick={() => fileRef.current?.click()} />
@@ -216,11 +218,7 @@ function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
       // The server re-verifies the password for password users, so pass it along.
       const body = isPasswordUser ? { password: value } : {}
       const { error } = await supabase.functions.invoke('delete-account', { body })
-      if (error) {
-        let msg = error.message
-        try { const j = await error.context?.json?.(); if (j?.error) msg = j.error } catch { /* ignore */ }
-        throw new Error(msg)
-      }
+      if (error) throw new Error(await edgeFunctionError(error))
       toast({ title: 'Your account has been deleted', status: 'success' })
       await signOut() // App flips to the logged-out landing
     } catch (e) {

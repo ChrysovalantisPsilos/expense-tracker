@@ -9,8 +9,9 @@ import { PieChart as PieIcon, Table as TableIcon } from 'lucide-react'
 import { useTransactions, monthRange } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
 import { formatMoney, toBaseMinor } from '../lib/currency.js'
+import { STORAGE_KEYS } from '../lib/keys.js'
 
-const VIEW_KEY = 'budge:overviewView'
+const VIEW_KEY = STORAGE_KEYS.overviewView
 
 // Warm-led categorical palette (coral/amber first, then complementary hues).
 const COLORS = ['#f95d38', '#fbb324', '#ef8a5a', '#e2431f', '#f6c453', '#c2703d', '#7c6f59', '#d6ccba']
