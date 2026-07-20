@@ -13,6 +13,7 @@ import Budgets from './pages/Budgets.jsx'
 import Income from './pages/Income.jsx'
 import Reports from './pages/Reports.jsx'
 import SearchTransactions from './pages/SearchTransactions.jsx'
+import Recurring from './pages/Recurring.jsx'
 import Groups from './pages/Groups.jsx'
 import GroupDetail from './pages/GroupDetail.jsx'
 import JoinGroup from './pages/JoinGroup.jsx'
@@ -54,6 +55,7 @@ function AuthedRoutes() {
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
           <Route path="search" element={<SearchTransactions />} />
+          <Route path="recurring" element={<Recurring />} />
           <Route path="expenses" element={<Expenses />} />
           <Route path="import" element={<ImportExpenses />} />
           <Route path="budgets" element={<Budgets />} />
