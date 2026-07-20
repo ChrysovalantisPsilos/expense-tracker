@@ -46,6 +46,7 @@ export default function GroupDetail() {
   const [reportBusy, setReportBusy] = useState(false)
   const [counts, setCounts] = useState(new Map())
   const [thread, setThread] = useState(null) // { type, id, label }
+  const [tab, setTab] = useState('expenses') // expenses | settlements | activity
   const imgRef = useRef(null)
 
   function openAdd() { setEditingExpense(null); expenseModal.onOpen() }
@@ -261,10 +262,24 @@ export default function GroupDetail() {
         </Text>
       </CardBody></Card>
 
-      {/* Expenses */}
+      {/* History — tabbed (Expenses / Settlements / Activity) */}
       <Card><CardBody>
-        <Heading size="sm" mb={3}>Expenses</Heading>
-        {expenses.length === 0 ? (
+        <HStack mb={4}>
+          <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
+            {[['expenses', 'Expenses'], ['settlements', 'Settlements'], ['activity', 'Activity']].map(([t, label]) => (
+              <Button key={t} size="xs" borderRadius="md"
+                variant={tab === t ? 'solid' : 'ghost'} colorScheme={tab === t ? 'brand' : 'gray'}
+                onClick={() => setTab(t)}>{label}</Button>
+            ))}
+          </HStack>
+          <Spacer />
+          {tab === 'activity' && (
+            <Button size="xs" variant="ghost" leftIcon={<FileDown size={14} />}
+              isLoading={reportBusy} onClick={downloadReport}>PDF</Button>
+          )}
+        </HStack>
+
+        {tab === 'expenses' && (expenses.length === 0 ? (
           <Text color="text.muted" fontSize="sm">No shared expenses yet.</Text>
         ) : (
           <List spacing={0}>
@@ -303,43 +318,34 @@ export default function GroupDetail() {
               )
             })}
           </List>
-        )}
-      </CardBody></Card>
+        ))}
 
-      {/* Settlement history */}
-      {settlements.length > 0 && (
-        <Card><CardBody>
-          <Heading size="sm" mb={3}>Settlements</Heading>
-          <List spacing={2}>
-            {settlements.map((s) => (
+        {tab === 'settlements' && (settlements.length === 0 ? (
+          <Text color="text.muted" fontSize="sm">No settlements yet.</Text>
+        ) : (
+          <List spacing={0}>
+            {settlements.map((s, i) => (
               <ListItem key={s.id}>
-                <HStack fontSize="sm">
-                  <Text>{nameOf(s.from_member)} → {nameOf(s.to_member)}</Text>
-                  <Spacer />
-                  <Text color="text.muted">{s.settled_at}</Text>
-                  <Text fontWeight="600">{formatMoney(s.amount_minor, s.currency)}</Text>
+                {i > 0 && <Divider />}
+                <HStack py={2.5} fontSize="sm" spacing={3}>
+                  <Stack spacing={0} flex="1" minW={0}>
+                    <Text noOfLines={1}>{nameOf(s.from_member)} → {nameOf(s.to_member)}</Text>
+                    <Text fontSize="xs" color="text.muted">{s.settled_at}</Text>
+                  </Stack>
                   <HStack spacing={0.5}>
                     <IconButton aria-label="Comments" size="xs" variant="ghost" color="text.muted"
                       icon={<MessageSquare size={15} />}
                       onClick={() => setThread({ type: 'settlement', id: s.id, label: `${nameOf(s.from_member)} → ${nameOf(s.to_member)}` })} />
                     {counts.get(s.id) > 0 && <Text fontSize="xs" color="text.muted">{counts.get(s.id)}</Text>}
                   </HStack>
+                  <Text fontWeight="600">{formatMoney(s.amount_minor, s.currency)}</Text>
                 </HStack>
               </ListItem>
             ))}
           </List>
-        </CardBody></Card>
-      )}
+        ))}
 
-      {/* Activity / audit trail */}
-      <Card><CardBody>
-        <HStack mb={3}>
-          <Heading size="sm">Activity</Heading>
-          <Spacer />
-          <Button size="xs" variant="ghost" leftIcon={<FileDown size={14} />}
-            isLoading={reportBusy} onClick={downloadReport}>PDF</Button>
-        </HStack>
-        {auditLog.length === 0 ? (
+        {tab === 'activity' && (auditLog.length === 0 ? (
           <Text fontSize="sm" color="text.muted">No activity yet.</Text>
         ) : (
           <List spacing={0}>
@@ -350,7 +356,7 @@ export default function GroupDetail() {
                   <Stack spacing={0} flex="1">
                     <Text fontSize="sm">{a.summary}</Text>
                     <Text fontSize="xs" color="text.muted">
-                      {new Date(a.created_at).toLocaleString()}
+                      {new Date(a.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </Stack>
                   {a.amount_minor != null && (
@@ -362,7 +368,7 @@ export default function GroupDetail() {
               </ListItem>
             ))}
           </List>
-        )}
+        ))}
       </CardBody></Card>
 
       <GroupExpenseForm key={editingExpense?.id || 'new'} group={group} members={members}
