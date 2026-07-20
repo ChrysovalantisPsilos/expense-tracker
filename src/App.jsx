@@ -11,7 +11,6 @@ import Expenses from './pages/Expenses.jsx'
 import ImportExpenses from './pages/ImportExpenses.jsx'
 import Budgets from './pages/Budgets.jsx'
 import Income from './pages/Income.jsx'
-import Reports from './pages/Reports.jsx'
 import SearchTransactions from './pages/SearchTransactions.jsx'
 import Recurring from './pages/Recurring.jsx'
 import Insights from './pages/Insights.jsx'
@@ -64,7 +63,6 @@ function AuthedRoutes() {
           <Route path="import" element={<ImportExpenses />} />
           <Route path="budgets" element={<Budgets />} />
           <Route path="income" element={<Income />} />
-          <Route path="reports" element={<Reports />} />
           <Route path="groups" element={<Groups />} />
           <Route path="groups/:id" element={<GroupDetail />} />
           <Route path="profile" element={<Profile />} />

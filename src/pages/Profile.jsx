@@ -12,6 +12,7 @@ import { updateProfile, uploadAvatar } from '../lib/profile.js'
 import { CURRENCIES } from '../lib/currency.js'
 import { EVENTS } from '../lib/keys.js'
 import UserAvatar from '../components/UserAvatar.jsx'
+import ReportsCard from '../components/ReportsCard.jsx'
 
 export default function Profile() {
   const { user, signOut, listPasskeys, registerPasskey, deletePasskey } = useAuth()
@@ -127,6 +128,8 @@ export default function Profile() {
           <Button type="submit" isLoading={busy}>Save changes</Button>
         </Stack>
       </CardBody></Card>
+
+      <ReportsCard />
 
       {passkeysSupported && (
         <Card><CardBody>
