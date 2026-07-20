@@ -1,11 +1,12 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Button, Divider, FormControl, FormLabel, HStack, Input, Select, Stack, Textarea, useToast,
 } from '@chakra-ui/react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useCategories } from './useData.js'
 import { toMinor, fromMinor, getRate, CURRENCIES } from '../../shared/lib/currency.js'
-import { queueTransaction, queueTransactionUpdate } from './offlineQueue.js'
+import { insertTransaction, updateTransaction } from './writes.js'
+import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { uploadReceipt } from './receipts.js'
 import ReceiptScanner from './ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
@@ -28,6 +29,9 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
   const [notes, setNotes] = useState(transaction?.notes ?? '')
   const [receiptFile, setReceiptFile] = useState(null)
   const [busy, setBusy] = useState(false)
+  // Stable across retries of one submit so a lost-response retry can't
+  // duplicate; rotated after a successful insert for the next entry.
+  const clientUuid = useRef(crypto.randomUUID())
 
   function handleScan({ file, total, date }) {
     setReceiptFile(file)
@@ -50,7 +54,7 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
       : await getRate(currency, baseCurrency)
 
     if (isEdit) {
-      await queueTransactionUpdate(transaction.id, {
+      const fields = {
         kind: kindEff,
         category_id: categoryId || null,
         amount_minor: toMinor(amount, currency),
@@ -59,19 +63,22 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
         description: description || null,
         notes: notes || null,
         spent_at: spentAt,
-      })
+      }
+      try {
+        await updateTransaction(transaction.id, fields)
+      } catch (e) {
+        setBusy(false)
+        toast(saveErrorToast(e))
+        return
+      }
       setBusy(false)
       toast({ title: 'Saved', status: 'success' })
-      onSaved?.({
-        id: transaction.id, kind: kindEff, category_id: categoryId || null,
-        amount_minor: toMinor(amount, currency), currency, exchange_rate,
-        description: description || null, notes: notes || null, spent_at: spentAt,
-      })
+      onSaved?.({ id: transaction.id, ...fields })
       return
     }
 
-    // Upload the receipt image first (only possible online). If it fails or
-    // we're offline, save the transaction anyway without the attachment.
+    // Upload the receipt image first (only possible online). If it fails, save
+    // the transaction anyway without the attachment.
     let receipt_path = null
     if (receiptFile && navigator.onLine) {
       try {
@@ -79,23 +86,29 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
       } catch {
         toast({ title: 'Saved, but the receipt image could not be uploaded.', status: 'warning' })
       }
-    } else if (receiptFile) {
-      toast({ title: 'Offline — saved without the receipt image.', status: 'info' })
     }
 
     // Capture the FX rate at entry time so historical balances never shift.
-    await queueTransaction({
-      user_id: user.id,
-      kind: kindEff,
-      category_id: categoryId || null,
-      amount_minor: toMinor(amount, currency),
-      currency,
-      exchange_rate,
-      description: description || null,
-      notes: notes || null,
-      spent_at: spentAt,
-      receipt_path,
-    })
+    try {
+      await insertTransaction({
+        client_uuid: clientUuid.current,
+        user_id: user.id,
+        kind: kindEff,
+        category_id: categoryId || null,
+        amount_minor: toMinor(amount, currency),
+        currency,
+        exchange_rate,
+        description: description || null,
+        notes: notes || null,
+        spent_at: spentAt,
+        receipt_path,
+      })
+    } catch (e) {
+      setBusy(false)
+      toast(saveErrorToast(e))
+      return
+    }
+    clientUuid.current = crypto.randomUUID() // fresh id for the next entry
     setBusy(false)
     setAmount(''); setDescription(''); setNotes(''); setReceiptFile(null)
     toast({ title: `${kindEff === 'income' ? 'Income' : 'Expense'} saved`, status: 'success' })

@@ -9,9 +9,10 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import TransactionForm from './TransactionForm.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { receiptUrl } from './receipts.js'
-import { queueTransactionDelete } from './offlineQueue.js'
+import { deleteTransaction } from './writes.js'
+import { saveErrorToast } from '../../shared/lib/saveError.js'
 
-// Shared list of personal transactions with edit + delete (full offline).
+// Shared list of personal transactions with edit + delete.
 // Group-mirrored rows (group_expense_id set) are read-only here — they're
 // edited in the group — and show a "Group" tag instead of the row actions.
 // Each row's income/expense styling follows its own `kind`, so the same
@@ -33,9 +34,9 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
   function onEdited(updated) {
     editModal.onClose()
     setEditing(null)
-    // Optimistic local update; reload for the authoritative category join online.
+    // Optimistic local update; reload for the authoritative category join.
     mutate((rs) => rs.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)))
-    if (navigator.onLine) reload()
+    reload()
   }
 
   async function confirmRemove() {
@@ -44,12 +45,12 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
     const prev = rows
     mutate((rs) => rs.filter((r) => r.id !== row.id)) // optimistic
     try {
-      await queueTransactionDelete(row.id)
+      await deleteTransaction(row.id)
       toast({ title: `${kindOf(row, kind) === 'income' ? 'Income' : 'Expense'} deleted`, status: 'success' })
-      if (navigator.onLine) reload()
+      reload()
     } catch (e) {
       mutate(() => prev)
-      toast({ title: 'Couldn’t delete', description: e.message, status: 'error' })
+      toast(saveErrorToast(e, 'Couldn’t delete'))
     } finally {
       setBusy(false); setRemoving(null)
     }
