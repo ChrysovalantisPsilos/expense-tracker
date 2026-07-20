@@ -12,6 +12,7 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './app/App.jsx'
 import theme from './app/theme.js'
 import { AuthProvider } from './shared/auth/AuthProvider.jsx'
+import { AppearanceProvider } from './shared/lib/appearance.jsx'
 import ReloadPrompt from './app/ReloadPrompt.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -19,9 +20,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ColorModeScript initialColorMode={theme.config.initialColorMode} />
     <ChakraProvider theme={theme}>
       <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <AppearanceProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </AppearanceProvider>
       </BrowserRouter>
       <ReloadPrompt />
     </ChakraProvider>
