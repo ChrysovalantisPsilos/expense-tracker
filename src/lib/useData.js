@@ -44,7 +44,9 @@ export function useTransactions({ kind, from, to } = {}) {
   }, [user, kind, from, to])
 
   useEffect(() => { load() }, [load])
-  return { rows, loading, reload: load }
+  // `mutate` lets callers optimistically update the list (edit/delete) so it
+  // reflects immediately, even offline where a reload would show stale cache.
+  return { rows, loading, reload: load, mutate: setRows }
 }
 
 // Month boundaries as YYYY-MM-DD strings (no Date.now dependency in callers).

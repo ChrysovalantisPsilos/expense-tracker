@@ -46,6 +46,26 @@ export async function queueTransaction(row) {
   return record.client_uuid
 }
 
+// Enqueue an edit of an existing transaction (by id). Idempotent on re-send.
+export async function queueTransactionUpdate(id, fields) {
+  const d = await db()
+  await d.put(STORE, {
+    client_uuid: uuid(), table: 'transactions', op: 'update',
+    targetId: id, payload: { ...fields }, queued_at: Date.now(),
+  })
+  flushQueue().catch(() => {})
+}
+
+// Enqueue a delete of an existing transaction (by id). Idempotent on re-send.
+export async function queueTransactionDelete(id) {
+  const d = await db()
+  await d.put(STORE, {
+    client_uuid: uuid(), table: 'transactions', op: 'delete',
+    targetId: id, queued_at: Date.now(),
+  })
+  flushQueue().catch(() => {})
+}
+
 export async function pendingCount() {
   const d = await db()
   return d.count(STORE)
@@ -60,11 +80,17 @@ export async function flushQueue() {
   let flushed = 0
   try {
     const d = await db()
-    const all = await d.getAll(STORE)
+    const all = (await d.getAll(STORE)).sort((a, b) => (a.queued_at ?? 0) - (b.queued_at ?? 0))
     for (const record of all) {
-      const { error } = await supabase
-        .from(record.table)
-        .upsert(record.payload, { onConflict: 'user_id,client_uuid' })
+      let error
+      if (record.op === 'delete') {
+        ({ error } = await supabase.from(record.table).delete().eq('id', record.targetId))
+      } else if (record.op === 'update') {
+        ({ error } = await supabase.from(record.table).update(record.payload).eq('id', record.targetId))
+      } else {
+        ({ error } = await supabase.from(record.table)
+          .upsert(record.payload, { onConflict: 'user_id,client_uuid' }))
+      }
       if (error) {
         // Stop on first error (likely offline / auth); keep the rest queued.
         break
