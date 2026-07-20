@@ -5,9 +5,10 @@ import {
   Divider, Spacer, Flex, useDisclosure, Modal, ModalOverlay, ModalContent,
   ModalHeader, ModalBody, ModalFooter,
 } from '@chakra-ui/react'
-import { Camera, KeyRound, Trash2, Plus, AlertTriangle } from 'lucide-react'
+import { Camera, KeyRound, Trash2, Plus, AlertTriangle, Sun, Moon, Monitor } from 'lucide-react'
 import { supabase, passkeysSupported, edgeFunctionError } from '../../shared/lib/supabase.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
+import { useAppearance } from '../../shared/lib/appearance.jsx'
 import { updateProfile, uploadAvatar } from './profile.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
@@ -131,6 +132,7 @@ export default function Profile() {
       </CardBody></Card>
 
         <Stack spacing={5}>
+          <AppearanceCard />
           <ReportsCard />
           {passkeysSupported && (
         <Card><CardBody>
@@ -199,6 +201,45 @@ export default function Profile() {
       <DeleteAccountModal user={user} isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}
         signOut={signOut} />
     </Stack>
+  )
+}
+
+const APPEARANCE_OPTIONS = [
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'system', label: 'System', icon: Monitor },
+]
+
+function AppearanceCard() {
+  const { pref, setPref } = useAppearance()
+  return (
+    <Card><CardBody>
+      <HStack mb={3}>
+        <Flex boxSize="32px" align="center" justify="center" borderRadius="lg"
+          bg="bg.subtle" color="accent.fg"><Moon size={18} /></Flex>
+        <Heading size="sm">Appearance</Heading>
+      </HStack>
+      <Text fontSize="sm" color="text.muted" mb={3}>
+        Choose your theme. “System” follows your device and switches automatically.
+      </Text>
+      <SimpleGrid columns={3} spacing={2}>
+        {APPEARANCE_OPTIONS.map(({ value, label, icon: Icon }) => {
+          const active = pref === value
+          return (
+            <Button key={value} onClick={() => setPref(value)} variant="outline"
+              flexDirection="column" h="auto" py={3} gap={1.5}
+              borderWidth="2px"
+              borderColor={active ? 'brand.500' : 'border.default'}
+              color={active ? 'accent.fg' : 'text.muted'}
+              bg={active ? 'bg.subtle' : 'transparent'}
+              _hover={{ bg: 'bg.subtle' }}>
+              <Icon size={20} />
+              <Text fontSize="xs" fontWeight="600">{label}</Text>
+            </Button>
+          )
+        })}
+      </SimpleGrid>
+    </CardBody></Card>
   )
 }
 

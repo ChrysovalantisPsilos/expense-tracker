@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/useProfile.js'
+import { useAppearance } from '../shared/lib/appearance.jsx'
 import { initSync, pendingCount, flushQueue } from '../features/transactions/offlineQueue.js'
 import Logo from '../shared/ui/Logo.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
@@ -103,7 +104,11 @@ function SyncBadges() {
 }
 
 export default function AppShell() {
-  const { colorMode, toggleColorMode } = useColorMode()
+  const { colorMode } = useColorMode()
+  const { setPref } = useAppearance()
+  // Quick flip: pin to the opposite of what's showing. Writes through the
+  // appearance pref so Profile's Light/Dark/System control stays in sync.
+  const flipTheme = () => setPref(colorMode === 'dark' ? 'light' : 'dark')
   const { signOut } = useAuth()
   const { profile } = useProfile()
   const location = useLocation()
@@ -141,7 +146,7 @@ export default function AppShell() {
         <HStack px={1} justify="space-between">
           <Tooltip label="Toggle theme">
             <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
-              icon={<ThemeIcon size={18} />} onClick={toggleColorMode} />
+              icon={<ThemeIcon size={18} />} onClick={flipTheme} />
           </Tooltip>
           <Tooltip label="Sign out">
             <IconButton aria-label="Sign out" variant="ghost" size="sm"
@@ -166,7 +171,7 @@ export default function AppShell() {
             icon={<Search size={18} />} onClick={() => navigate('/search')} />
           <NotificationBell />
           <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
-            icon={<ThemeIcon size={18} />} onClick={toggleColorMode} />
+            icon={<ThemeIcon size={18} />} onClick={flipTheme} />
           <IconButton aria-label="Sign out" variant="ghost" size="sm"
             icon={<LogOut size={18} />} onClick={signOut} />
           <RouterNavLink to="/profile">

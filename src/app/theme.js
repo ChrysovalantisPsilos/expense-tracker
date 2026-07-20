@@ -3,9 +3,13 @@ import { extendTheme } from '@chakra-ui/react'
 // Budge — warm & playful. Coral accent + amber, warm sand neutrals (never
 // cool grays), rounded cards, soft shadows. Light + dark.
 
+// AppearanceProvider (shared/lib/appearance.jsx) is the single source of truth
+// for colour mode — it reads the saved Light/Dark/System preference and drives
+// setColorMode, following the OS live when 'system'. So Chakra must not also
+// track the system on its own (useSystemColorMode:false) or the two fight.
 const config = {
   initialColorMode: 'system',
-  useSystemColorMode: true,
+  useSystemColorMode: false,
 }
 
 const colors = {
