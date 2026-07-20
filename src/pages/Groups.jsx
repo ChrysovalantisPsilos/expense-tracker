@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Spinner,
-  Flex, Icon, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader,
+  Flex, Icon, Avatar, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader,
   ModalBody, ModalFooter, FormControl, FormLabel, Input, Select, useToast,
 } from '@chakra-ui/react'
 import { Users, Plus, ChevronRight, Check, X } from 'lucide-react'
@@ -111,8 +111,8 @@ export default function Groups() {
               transition="box-shadow 0.15s" onClick={() => navigate(`/groups/${g.id}`)}>
               <CardBody>
                 <HStack spacing={3}>
-                  <Flex boxSize="40px" align="center" justify="center" borderRadius="lg"
-                    bg="bg.subtle" color="accent.fg"><Users size={20} /></Flex>
+                  <Avatar boxSize="40px" borderRadius="lg" src={g.image_url}
+                    icon={<Users size={20} />} bg="bg.subtle" color="accent.fg" />
                   <Stack spacing={0}>
                     <Text fontWeight="600">{g.name}</Text>
                     <Text fontSize="xs" color="text.muted">

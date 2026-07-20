@@ -56,6 +56,22 @@ export async function renameGroup(groupId, name) {
   if (error) throw new Error(error.message)
 }
 
+// Upload/replace a group's cover image (owner only — enforced by storage RLS
+// and the groups update policy). Returns the public URL.
+export async function uploadGroupImage(groupId, file) {
+  const ext = (file.name?.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const path = `${groupId}/cover.${ext}`
+  const { error } = await supabase.storage.from('group-images').upload(path, file, {
+    contentType: file.type || 'image/jpeg', upsert: true,
+  })
+  if (error) throw new Error(error.message)
+  const { data } = supabase.storage.from('group-images').getPublicUrl(path)
+  const url = `${data.publicUrl}?t=${Date.now()}`
+  const { error: uErr } = await supabase.from('groups').update({ image_url: url }).eq('id', groupId)
+  if (uErr) throw new Error(uErr.message)
+  return url
+}
+
 // Equal split of amountMinor across memberIds, distributing the rounding
 // remainder one cent at a time so shares sum EXACTLY to the total.
 export function equalShares(amountMinor, memberIds) {

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center,
+  Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Box,
   Spinner, Flex, Badge, IconButton, Divider, List, ListItem, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
   ModalFooter, FormControl, FormLabel, Select, Input, Avatar,
@@ -9,13 +9,13 @@ import {
 } from '@chakra-ui/react'
 import {
   ArrowLeft, Plus, Link2, Users, HandCoins, Paperclip, Mail,
-  MoreVertical, LogOut, Trash2, UserMinus, Pencil, ArrowRight,
+  MoreVertical, LogOut, Trash2, UserMinus, Pencil, ArrowRight, Camera,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import {
   getGroup, addSettlement, createInviteLink, createInvite,
   emailInvite, computeBalances, removeMember, deleteGroup, inviteExistingUser,
-  renameGroup,
+  renameGroup, uploadGroupImage,
 } from '../lib/groups.js'
 import { formatMoney, toMinor } from '../lib/currency.js'
 import { receiptUrl } from '../lib/receipts.js'
@@ -38,6 +38,8 @@ export default function GroupDetail() {
   const [removeTarget, setRemoveTarget] = useState(null)
   const [actionBusy, setActionBusy] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
+  const [uploadingImg, setUploadingImg] = useState(false)
+  const imgRef = useRef(null)
 
   function openAdd() { setEditingExpense(null); expenseModal.onOpen() }
   function openEdit(exp) { setEditingExpense(exp); expenseModal.onOpen() }
@@ -54,6 +56,19 @@ export default function GroupDetail() {
   const nameOf = (mid) => data?.members.find((m) => m.id === mid)?.display_name ?? '—'
   const myMember = data?.members.find((m) => m.user_id === user.id)
   const myNet = myMember ? (balances.get(myMember.id) ?? 0) : 0
+
+  async function onGroupImage(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadingImg(true)
+    try {
+      await uploadGroupImage(id, file)
+      await load()
+      toast({ title: 'Group photo updated', status: 'success' })
+    } catch (e) { toast({ title: 'Couldn’t update photo', description: e.message, status: 'error' }) }
+    finally { setUploadingImg(false) }
+  }
 
   async function copyInvite() {
     try {
@@ -114,7 +129,18 @@ export default function GroupDetail() {
       <HStack>
         <IconButton aria-label="Back" variant="ghost" size="sm"
           icon={<ArrowLeft size={18} />} onClick={() => navigate('/groups')} />
-        <Heading size="lg">{group.name}</Heading>
+        <Box position="relative" flexShrink={0}>
+          <Avatar borderRadius="lg" size="md" name={group.name} src={group.image_url} />
+          {isOwner && (
+            <>
+              <IconButton aria-label="Change group photo" icon={<Camera size={12} />}
+                size="xs" borderRadius="full" position="absolute" bottom="-6px" right="-6px"
+                isLoading={uploadingImg} onClick={() => imgRef.current?.click()} />
+              <input ref={imgRef} type="file" accept="image/*" hidden onChange={onGroupImage} />
+            </>
+          )}
+        </Box>
+        <Heading size="lg" noOfLines={1}>{group.name}</Heading>
         <Spacer />
         <Button size="sm" leftIcon={<Plus size={16} />} onClick={openAdd}>Add expense</Button>
         <Menu>
