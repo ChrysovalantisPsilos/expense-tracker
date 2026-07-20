@@ -4,10 +4,10 @@ import {
   Box, Popover, PopoverTrigger, PopoverContent, PopoverBody, PopoverHeader,
   IconButton, Badge, Stack, HStack, Text, Flex, Divider, useDisclosure, Button,
 } from '@chakra-ui/react'
-import { Bell, UserPlus, ReceiptText, HandCoins } from 'lucide-react'
+import { Bell, UserPlus, ReceiptText, HandCoins, MessageSquare } from 'lucide-react'
 import { listNotifications, markAllRead } from './notifications.js'
 
-const ICON = { invite: UserPlus, expense: ReceiptText, settlement: HandCoins }
+const ICON = { invite: UserPlus, expense: ReceiptText, settlement: HandCoins, comment: MessageSquare }
 const POLL_MS = 45000
 
 export default function NotificationBell() {

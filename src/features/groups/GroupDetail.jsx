@@ -9,16 +9,18 @@ import {
 } from '@chakra-ui/react'
 import {
   ArrowLeft, Plus, Link2, Users, HandCoins, Paperclip, Mail,
-  MoreVertical, LogOut, Trash2, UserMinus, Pencil, Camera, FileDown,
+  MoreVertical, LogOut, Trash2, UserMinus, Pencil, Camera, FileDown, MessageSquare,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import {
   getGroup, createInviteLink, removeMember, deleteGroup,
   uploadGroupImage, listAuditLog, downloadGroupReport,
 } from './groups.js'
+import { commentCounts } from './comments.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { receiptUrl } from '../transactions/receipts.js'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
+import CommentThread from './CommentThread.jsx'
 import {
   DeleteGroupModal, InviteEmailModal, SettleUpModal, RenameGroupModal,
 } from './GroupModals.jsx'
@@ -42,6 +44,8 @@ export default function GroupDetail() {
   const [uploadingImg, setUploadingImg] = useState(false)
   const [auditLog, setAuditLog] = useState([])
   const [reportBusy, setReportBusy] = useState(false)
+  const [counts, setCounts] = useState(new Map())
+  const [thread, setThread] = useState(null) // { type, id, label }
   const imgRef = useRef(null)
 
   function openAdd() { setEditingExpense(null); expenseModal.onOpen() }
@@ -50,12 +54,17 @@ export default function GroupDetail() {
 
   async function load() {
     try {
-      const [g, al] = await Promise.all([getGroup(id), listAuditLog(id)])
+      const [g, al, cc] = await Promise.all([getGroup(id), listAuditLog(id), commentCounts(id)])
       setData(g)
       setAuditLog(al)
+      setCounts(cc)
     }
     catch (e) { toast({ title: e.message, status: 'error' }) }
     finally { setLoading(false) }
+  }
+
+  async function refreshCounts() {
+    try { setCounts(await commentCounts(id)) } catch { /* ignore */ }
   }
 
   async function downloadReport() {
@@ -282,6 +291,12 @@ export default function GroupDetail() {
                       icon={<Paperclip size={14} />}
                       onClick={(ev) => { ev.stopPropagation(); openReceipt(e.receipt_path) }} />
                   )}
+                  <HStack spacing={0.5}>
+                    <IconButton aria-label="Comments" size="xs" variant="ghost" color="text.muted"
+                      icon={<MessageSquare size={15} />}
+                      onClick={(ev) => { ev.stopPropagation(); setThread({ type: 'expense', id: e.id, label: e.description || 'Expense' }) }} />
+                    {counts.get(e.id) > 0 && <Text fontSize="xs" color="text.muted">{counts.get(e.id)}</Text>}
+                  </HStack>
                   <Text fontWeight="600">{formatMoney(e.amount_minor, e.currency)}</Text>
                 </HStack>
               </ListItem>
@@ -303,6 +318,12 @@ export default function GroupDetail() {
                   <Spacer />
                   <Text color="text.muted">{s.settled_at}</Text>
                   <Text fontWeight="600">{formatMoney(s.amount_minor, s.currency)}</Text>
+                  <HStack spacing={0.5}>
+                    <IconButton aria-label="Comments" size="xs" variant="ghost" color="text.muted"
+                      icon={<MessageSquare size={15} />}
+                      onClick={() => setThread({ type: 'settlement', id: s.id, label: `${nameOf(s.from_member)} → ${nameOf(s.to_member)}` })} />
+                    {counts.get(s.id) > 0 && <Text fontSize="xs" color="text.muted">{counts.get(s.id)}</Text>}
+                  </HStack>
                 </HStack>
               </ListItem>
             ))}
@@ -350,6 +371,9 @@ export default function GroupDetail() {
 
       <SettleUpModal group={group} members={members} myMember={myMember} balances={balances}
         isOpen={settleModal.isOpen} onClose={settleModal.onClose} onSaved={load} />
+
+      <CommentThread group={group} target={thread} myMember={myMember}
+        isOpen={!!thread} onClose={() => setThread(null)} onChanged={refreshCounts} />
 
       <RenameGroupModal group={group} isOpen={renameModal.isOpen}
         onClose={renameModal.onClose} onSaved={load} />
