@@ -13,7 +13,7 @@ export default function Expenses() {
   const navigate = useNavigate()
   const { baseCurrency } = useProfile()
   const { from, to } = monthRange()
-  const { rows, loading, reload, mutate } = useTransactions({ kind: 'expense', from, to })
+  const { rows, loading, reload, mutate } = useTransactions({ kind: 'expense', from, to, withGroup: true })
   const { isOpen, onToggle, onClose } = useDisclosure({ defaultIsOpen: true })
 
   return (

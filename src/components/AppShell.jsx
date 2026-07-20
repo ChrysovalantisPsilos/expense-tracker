@@ -167,6 +167,8 @@ export default function AppShell() {
           <NotificationBell />
           <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
             icon={<ThemeIcon size={18} />} onClick={toggleColorMode} />
+          <IconButton aria-label="Sign out" variant="ghost" size="sm"
+            icon={<LogOut size={18} />} onClick={signOut} />
           <RouterNavLink to="/profile">
             <UserAvatar size="sm" name={profile?.display_name}
               src={profile?.avatar_url} highlight />

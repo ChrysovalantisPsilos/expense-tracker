@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Heading, Stack, Card, CardBody, HStack, Button, FormControl,
+  Heading, Stack, Card, CardBody, HStack, Button, FormControl, SimpleGrid,
   FormLabel, Input, Select, useToast, Center, Spinner, Text, IconButton, Box,
   Divider, Spacer, Flex, useDisclosure, Modal, ModalOverlay, ModalContent,
   ModalHeader, ModalBody, ModalFooter,
@@ -94,10 +94,11 @@ export default function Profile() {
   if (loading) return <Center py={20}><Spinner color="brand.500" /></Center>
 
   return (
-    <Stack spacing={5} maxW="480px">
+    <Stack spacing={5}>
       <Heading size="lg">Profile</Heading>
 
-      <Card><CardBody>
+      <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={5} alignItems="start">
+        <Card><CardBody>
         <Stack spacing={5} as="form" onSubmit={save}>
           <HStack spacing={4}>
             <Box position="relative">
@@ -129,9 +130,9 @@ export default function Profile() {
         </Stack>
       </CardBody></Card>
 
-      <ReportsCard />
-
-      {passkeysSupported && (
+        <Stack spacing={5}>
+          <ReportsCard />
+          {passkeysSupported && (
         <Card><CardBody>
           <HStack mb={3}>
             <Flex boxSize="32px" align="center" justify="center" borderRadius="lg"
@@ -175,7 +176,9 @@ export default function Profile() {
             </Stack>
           )}
         </CardBody></Card>
-      )}
+          )}
+        </Stack>
+      </SimpleGrid>
 
       <Card borderColor="red.200" _dark={{ borderColor: 'red.800' }}><CardBody>
         <HStack mb={2}>
@@ -192,10 +195,6 @@ export default function Profile() {
         <Button colorScheme="red" variant="outline" leftIcon={<Trash2 size={16} />}
           onClick={deleteModal.onOpen}>Delete my account</Button>
       </CardBody></Card>
-
-      <Button variant="ghost" colorScheme="gray" onClick={signOut} alignSelf="start">
-        Sign out
-      </Button>
 
       <DeleteAccountModal user={user} isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}
         signOut={signOut} />
