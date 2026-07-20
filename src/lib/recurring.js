@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
-import { supabase } from './supabase.js'
-import { useAuth } from '../auth/AuthProvider.jsx'
+import { useOwnedQuery, upsertOwned, removeRow, patchRow } from './db.js'
 
 export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly']
 
@@ -58,48 +56,15 @@ export function expectedInWindow(rules, fromISO, toISO) {
   return { expense, income }
 }
 
-// The user's recurring rules (newest next-charge first), live.
+// The user's recurring rules — active first, then by next charge date.
 export function useRecurring() {
-  const { user } = useAuth()
-  const [rules, setRules] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(async () => {
-    if (!user) return
-    setLoading(true)
-    const { data } = await supabase
-      .from('recurring_rules')
-      .select('*, categories(name, icon)')
-      .order('is_active', { ascending: false })
-      .order('next_run', { ascending: true })
-    setRules(data ?? [])
-    setLoading(false)
-  }, [user])
-
-  useEffect(() => { load() }, [load])
-  return { rules, loading, reload: load }
+  const { rows: rules, loading, reload } = useOwnedQuery('recurring_rules', {
+    select: '*, categories(name, icon)',
+    build: (q) => q.order('is_active', { ascending: false }).order('next_run', { ascending: true }),
+  })
+  return { rules, loading, reload }
 }
 
-export async function saveRecurring(rule) {
-  const { id, ...fields } = rule
-  let q
-  if (id) {
-    q = supabase.from('recurring_rules').update(fields).eq('id', id)
-  } else {
-    // user_id is NOT NULL and the RLS check requires it to match the caller.
-    const { data: { user } } = await supabase.auth.getUser()
-    q = supabase.from('recurring_rules').insert({ ...fields, user_id: user?.id })
-  }
-  const { error } = await q
-  if (error) throw new Error(error.message)
-}
-
-export async function setRecurringActive(id, isActive) {
-  const { error } = await supabase.from('recurring_rules').update({ is_active: isActive }).eq('id', id)
-  if (error) throw new Error(error.message)
-}
-
-export async function deleteRecurring(id) {
-  const { error } = await supabase.from('recurring_rules').delete().eq('id', id)
-  if (error) throw new Error(error.message)
-}
+export const saveRecurring = (rule) => upsertOwned('recurring_rules', rule)
+export const setRecurringActive = (id, isActive) => patchRow('recurring_rules', id, { is_active: isActive })
+export const deleteRecurring = (id) => removeRow('recurring_rules', id)

@@ -1,61 +1,40 @@
-import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase.js'
-import { useAuth } from '../auth/AuthProvider.jsx'
 import { isoDate } from './dates.js'
+import { useOwnedQuery } from './db.js'
 
 // Categories for the current user (optionally filtered by kind).
 export function useCategories(kind) {
-  const { user } = useAuth()
-  const [categories, setCategories] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(async () => {
-    if (!user) return
-    setLoading(true)
-    let q = supabase.from('categories').select('*').eq('is_archived', false).order('name')
-    if (kind) q = q.eq('kind', kind)
-    const { data } = await q
-    setCategories(data ?? [])
-    setLoading(false)
-  }, [user, kind])
-
-  useEffect(() => { load() }, [load])
-  return { categories, loading, reload: load }
+  const { rows: categories, loading, reload } = useOwnedQuery('categories', {
+    build: (q) => {
+      q = q.eq('is_archived', false).order('name')
+      return kind ? q.eq('kind', kind) : q
+    },
+    deps: [kind],
+  })
+  return { categories, loading, reload }
 }
 
 // Transactions in a date range (defaults to current month). Optional
 // `categoryId` and `limit` narrow the query server-side (used by search).
 // `withGroup` also embeds the owning group's name for mirrored group expenses,
 // so the dashboard can bucket them under the group instead of Uncategorized.
+// `mutate` lets callers optimistically update the list (edit/delete).
 export function useTransactions({ kind, from, to, categoryId, limit, withGroup } = {}) {
-  const { user } = useAuth()
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  const load = useCallback(async () => {
-    if (!user) return
-    setLoading(true)
-    const select = withGroup
+  return useOwnedQuery('transactions', {
+    select: withGroup
       ? '*, categories(name, icon), group_expenses(groups(name))'
-      : '*, categories(name, icon)'
-    let q = supabase
-      .from('transactions')
-      .select(select)
-      .order('spent_at', { ascending: false })
-    if (kind) q = q.eq('kind', kind)
-    if (from) q = q.gte('spent_at', from)
-    if (to) q = q.lte('spent_at', to)
-    if (categoryId) q = q.eq('category_id', categoryId)
-    if (limit) q = q.limit(limit)
-    const { data } = await q
-    setRows(data ?? [])
-    setLoading(false)
-  }, [user, kind, from, to, categoryId, limit, withGroup])
-
-  useEffect(() => { load() }, [load])
-  // `mutate` lets callers optimistically update the list (edit/delete) so it
-  // reflects immediately, even offline where a reload would show stale cache.
-  return { rows, loading, reload: load, mutate: setRows }
+      : '*, categories(name, icon)',
+    build: (q) => {
+      q = q.order('spent_at', { ascending: false })
+      if (kind) q = q.eq('kind', kind)
+      if (from) q = q.gte('spent_at', from)
+      if (to) q = q.lte('spent_at', to)
+      if (categoryId) q = q.eq('category_id', categoryId)
+      if (limit) q = q.limit(limit)
+      return q
+    },
+    deps: [kind, from, to, categoryId, limit, withGroup],
+  })
 }
 
 // Re-exported for existing callers; the implementation lives in lib/dates.js.
