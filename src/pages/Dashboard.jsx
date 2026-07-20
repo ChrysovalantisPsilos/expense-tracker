@@ -11,7 +11,7 @@ import { PieChart as PieIcon, Table as TableIcon, Repeat } from 'lucide-react'
 import TransactionList from '../components/TransactionList.jsx'
 import { useTransactions, buildPeriods, oldestTransactionDate } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
-import { useRecurring, monthlyMinor, frequencyLabel } from '../lib/recurring.js'
+import { useRecurring, monthlyMinor, frequencyLabel, expectedInWindow } from '../lib/recurring.js'
 import { formatMoney, toBaseMinor } from '../lib/currency.js'
 import { STORAGE_KEYS } from '../lib/keys.js'
 
@@ -73,6 +73,18 @@ export default function Dashboard() {
     return { spent, earned, byCategory, expenses }
   }, [rows, baseCurrency])
 
+  // Fold not-yet-charged recurring into the period's spend/income projection,
+  // but only for periods that are still ongoing (end today or later). Past
+  // periods and "all time" stay purely actual.
+  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const proj = useMemo(() => {
+    if (!period.to || period.to < todayISO) return { expense: 0, income: 0 }
+    return expectedInWindow(rules, todayISO, period.to)
+  }, [rules, period.to, todayISO])
+  const spentTotal = spent + proj.expense
+  const earnedTotal = earned + proj.income
+  const netTotal = earnedTotal - spentTotal
+
   return (
     <Stack spacing={5}>
       <HStack align="center">
@@ -88,22 +100,30 @@ export default function Dashboard() {
         <Card><CardBody>
           <Stat>
             <StatLabel>Spent</StatLabel>
-            <StatNumber>{formatMoney(spent, baseCurrency)}</StatNumber>
+            <StatNumber>{formatMoney(spentTotal, baseCurrency)}</StatNumber>
+            {proj.expense > 0 && (
+              <StatHelpText>incl. {formatMoney(proj.expense, baseCurrency)} upcoming</StatHelpText>
+            )}
           </Stat>
         </CardBody></Card>
         <Card><CardBody>
           <Stat>
             <StatLabel>Income</StatLabel>
-            <StatNumber>{formatMoney(earned, baseCurrency)}</StatNumber>
+            <StatNumber>{formatMoney(earnedTotal, baseCurrency)}</StatNumber>
+            {proj.income > 0 && (
+              <StatHelpText>incl. {formatMoney(proj.income, baseCurrency)} upcoming</StatHelpText>
+            )}
           </Stat>
         </CardBody></Card>
         <Card><CardBody>
           <Stat>
             <StatLabel>Net</StatLabel>
-            <StatNumber color={earned - spent >= 0 ? 'green.500' : 'red.500'}>
-              {formatMoney(earned - spent, baseCurrency)}
+            <StatNumber color={netTotal >= 0 ? 'green.500' : 'red.500'}>
+              {formatMoney(netTotal, baseCurrency)}
             </StatNumber>
-            <StatHelpText>income − expenses</StatHelpText>
+            <StatHelpText>
+              {proj.expense > 0 || proj.income > 0 ? 'incl. upcoming recurring' : 'income − expenses'}
+            </StatHelpText>
           </Stat>
         </CardBody></Card>
       </SimpleGrid>
