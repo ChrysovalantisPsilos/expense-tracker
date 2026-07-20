@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   SimpleGrid, Card, CardBody, Stat, StatLabel, StatNumber, StatHelpText,
   Heading, Box, Text, Stack, Center, Spinner, Spacer, HStack, IconButton,
-  Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select,
+  Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Button,
+  List, ListItem, Divider,
 } from '@chakra-ui/react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import { PieChart as PieIcon, Table as TableIcon } from 'lucide-react'
+import { PieChart as PieIcon, Table as TableIcon, Repeat } from 'lucide-react'
 import TransactionList from '../components/TransactionList.jsx'
 import { useTransactions, buildPeriods, oldestTransactionDate } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
+import { useRecurring, monthlyMinor, frequencyLabel } from '../lib/recurring.js'
 import { formatMoney, toBaseMinor } from '../lib/currency.js'
 import { STORAGE_KEYS } from '../lib/keys.js'
 
@@ -24,7 +27,9 @@ const bucketOf = (r) =>
     : (r.categories?.name ?? 'Uncategorized')
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const { baseCurrency } = useProfile()
+  const { rules } = useRecurring()
   const [oldest, setOldest] = useState(null)
   useEffect(() => { oldestTransactionDate().then(setOldest) }, [])
   const periods = useMemo(() => buildPeriods(oldest), [oldest])
@@ -37,6 +42,15 @@ export default function Dashboard() {
   })
   const [view, setView] = useState(() => localStorage.getItem(VIEW_KEY) || 'pie')
   function chooseView(v) { setView(v); localStorage.setItem(VIEW_KEY, v) }
+
+  // Recurring is forward-looking, so it ignores the historical period filter:
+  // it always shows what's coming up next plus the monthly subscriptions total.
+  const { subsMonthly, upcoming } = useMemo(() => {
+    const active = rules.filter((r) => r.is_active)
+    const subsMonthly = active.reduce((s, r) => s + (r.kind !== 'income' ? monthlyMinor(r) : 0), 0)
+    const upcoming = [...active].sort((a, b) => (a.next_run < b.next_run ? -1 : 1)).slice(0, 5)
+    return { subsMonthly, upcoming }
+  }, [rules])
 
   const { spent, earned, byCategory, expenses } = useMemo(() => {
     let spent = 0, earned = 0
@@ -165,6 +179,44 @@ export default function Dashboard() {
         ) : (
           <TransactionList rows={expenses} kind="expense" baseCurrency={baseCurrency}
             mutate={mutate} reload={reload} />
+        )}
+      </CardBody></Card>
+
+      <Card><CardBody>
+        <HStack mb={upcoming.length ? 3 : 0}>
+          <Box color="accent.fg"><Repeat size={18} /></Box>
+          <Heading size="sm">Recurring</Heading>
+          <Spacer />
+          {subsMonthly > 0 && (
+            <Text fontSize="sm" color="text.muted">{formatMoney(subsMonthly, baseCurrency)}/mo</Text>
+          )}
+          <Button size="xs" variant="ghost" onClick={() => navigate('/recurring')}>Manage</Button>
+        </HStack>
+        {upcoming.length === 0 ? (
+          <Text color="text.muted" fontSize="sm">
+            No recurring entries yet. Add subscriptions and bills to see them here.
+          </Text>
+        ) : (
+          <List spacing={0}>
+            {upcoming.map((r, i) => (
+              <ListItem key={r.id}>
+                {i > 0 && <Divider />}
+                <HStack py={2.5} spacing={3}>
+                  <Stack spacing={0} flex="1" minW={0}>
+                    <Text fontWeight="600" noOfLines={1}>
+                      {r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
+                    </Text>
+                    <Text fontSize="xs" color="text.muted">
+                      {frequencyLabel(r)} · next {r.next_run}
+                    </Text>
+                  </Stack>
+                  <Text fontWeight="600" color={r.kind === 'income' ? 'green.500' : 'text.primary'}>
+                    {formatMoney(r.amount_minor, r.currency)}
+                  </Text>
+                </HStack>
+              </ListItem>
+            ))}
+          </List>
         )}
       </CardBody></Card>
     </Stack>
