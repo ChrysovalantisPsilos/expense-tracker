@@ -6,7 +6,7 @@ import {
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip,
 } from '@chakra-ui/react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import { PieChart as PieIcon, Table as TableIcon, Repeat, ChevronRight } from 'lucide-react'
+import { PieChart as PieIcon, Table as TableIcon, Repeat, ChevronRight, TrendingUp as TrendingUpIcon } from 'lucide-react'
 import { useTransactions, monthRange } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
 import { useRecurring, monthlyMinor } from '../lib/recurring.js'
@@ -139,23 +139,38 @@ export default function Dashboard() {
         )}
       </CardBody></Card>
 
-      <Card as="button" textAlign="left" onClick={() => navigate('/recurring')}
-        _hover={{ borderColor: 'brand.300' }} transition="border-color 0.15s">
-        <CardBody>
-          <HStack spacing={3}>
-            <Box color="accent.fg"><Repeat size={20} /></Box>
-            <Box flex="1">
-              <Text fontWeight="600">Recurring & subscriptions</Text>
-              <Text fontSize="sm" color="text.muted">
-                {subsMonthly > 0
-                  ? `${formatMoney(subsMonthly, baseCurrency)} / month`
-                  : 'Track subscriptions and recurring bills'}
-              </Text>
-            </Box>
-            <Box color="text.muted"><ChevronRight size={18} /></Box>
-          </HStack>
-        </CardBody>
-      </Card>
+      <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={4}>
+        <Card as="button" textAlign="left" onClick={() => navigate('/insights')}
+          _hover={{ borderColor: 'brand.300' }} transition="border-color 0.15s">
+          <CardBody>
+            <HStack spacing={3}>
+              <Box color="accent.fg"><TrendingUpIcon size={20} /></Box>
+              <Box flex="1">
+                <Text fontWeight="600">Insights</Text>
+                <Text fontSize="sm" color="text.muted">Trends, net worth & goals</Text>
+              </Box>
+              <Box color="text.muted"><ChevronRight size={18} /></Box>
+            </HStack>
+          </CardBody>
+        </Card>
+        <Card as="button" textAlign="left" onClick={() => navigate('/recurring')}
+          _hover={{ borderColor: 'brand.300' }} transition="border-color 0.15s">
+          <CardBody>
+            <HStack spacing={3}>
+              <Box color="accent.fg"><Repeat size={20} /></Box>
+              <Box flex="1">
+                <Text fontWeight="600">Recurring</Text>
+                <Text fontSize="sm" color="text.muted">
+                  {subsMonthly > 0
+                    ? `${formatMoney(subsMonthly, baseCurrency)} / month`
+                    : 'Subscriptions & bills'}
+                </Text>
+              </Box>
+              <Box color="text.muted"><ChevronRight size={18} /></Box>
+            </HStack>
+          </CardBody>
+        </Card>
+      </SimpleGrid>
     </Stack>
   )
 }
