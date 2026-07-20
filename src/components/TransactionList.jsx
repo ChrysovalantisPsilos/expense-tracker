@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  List, ListItem, HStack, Stack, Text, Spacer, Divider, IconButton, Tag, useToast,
+  List, ListItem, HStack, Stack, Text, Spacer, Divider, IconButton, Tag, TagLabel, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
   ModalFooter, Button,
 } from '@chakra-ui/react'
@@ -72,7 +72,11 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                   </Text>
                   <Text fontSize="xs" color="text.muted">{r.spent_at}</Text>
                 </Stack>
-                {shared && <Tag size="sm" colorScheme="brand">Group</Tag>}
+                {shared && (
+                  <Tag size="sm" colorScheme="brand" maxW="120px">
+                    <TagLabel noOfLines={1}>{r.group_expenses?.groups?.name ?? 'Group'}</TagLabel>
+                  </Tag>
+                )}
                 {r.receipt_path && (
                   <IconButton aria-label="Receipt" size="xs" variant="ghost"
                     icon={<Paperclip size={14} />} onClick={() => openReceipt(r.receipt_path)} />
