@@ -8,6 +8,37 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1'
+import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
+
+// DejaVu Sans covers Latin/Greek/Cyrillic + punctuation (arrows, dashes) so
+// member names and audit summaries render for real. Bytes are cached per warm
+// isolate. If the fetch ever fails we fall back to Helvetica (+ the safe() fold).
+const FONT = {
+  regular: 'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf',
+  bold: 'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans-Bold.ttf',
+}
+let fontCache: { regular: ArrayBuffer; bold: ArrayBuffer } | null = null
+async function loadFonts(pdf: PDFDocument) {
+  try {
+    if (!fontCache) {
+      const [r, b] = await Promise.all([
+        fetch(FONT.regular).then((x) => { if (!x.ok) throw new Error('font'); return x.arrayBuffer() }),
+        fetch(FONT.bold).then((x) => { if (!x.ok) throw new Error('font'); return x.arrayBuffer() }),
+      ])
+      fontCache = { regular: r, bold: b }
+    }
+    pdf.registerFontkit(fontkit)
+    return {
+      font: await pdf.embedFont(fontCache.regular, { subset: true }),
+      bold: await pdf.embedFont(fontCache.bold, { subset: true }),
+    }
+  } catch (_e) {
+    return {
+      font: await pdf.embedFont(StandardFonts.Helvetica),
+      bold: await pdf.embedFont(StandardFonts.HelveticaBold),
+    }
+  }
+}
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -16,6 +47,21 @@ const cors = {
 }
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
+}
+
+// pdf-lib's standard fonts use WinAnsi (CP1252) and THROW on anything they
+// can't encode (e.g. the "→" in settlement audit summaries, emoji, non-Latin
+// names). Fold common punctuation to ASCII and replace the rest so a report
+// never crashes on a stray character.
+function safe(s: string): string {
+  return String(s)
+    .replace(/[‘’‚]/g, "'")
+    .replace(/[“”„]/g, '"')
+    .replace(/[→➡➔]/g, '->')
+    .replace(/←/g, '<-')
+    .replace(/[–—]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, '?')
 }
 
 const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP'])
@@ -76,8 +122,7 @@ Deno.serve(async (req) => {
 // deno-lint-ignore no-explicit-any
 async function buildPdf({ group, cur, members, settlements, log, net, nameOf, fmt }: any): Promise<Uint8Array> {
   const pdf = await PDFDocument.create()
-  const font = await pdf.embedFont(StandardFonts.Helvetica)
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
+  const { font, bold } = await loadFonts(pdf)
   let page = pdf.addPage([595, 842])
   const { height } = page.getSize()
   let y = height - 60
@@ -85,7 +130,11 @@ async function buildPdf({ group, cur, members, settlements, log, net, nameOf, fm
   const coral = rgb(0.976, 0.365, 0.22)
 
   const line = (text: string, size = 11, f = font, dy = 16, color = ink) => {
-    page.drawText(String(text), { x: 50, y, size, font: f, color })
+    const str = String(text)
+    // The embedded font renders Greek/Cyrillic/arrows; anything it lacks
+    // (emoji/CJK) would throw — fall back to the ASCII fold for that line.
+    try { page.drawText(str, { x: 50, y, size, font: f, color }) }
+    catch { page.drawText(safe(str), { x: 50, y, size, font: f, color }) }
     y -= dy
     if (y < 60) { page = pdf.addPage([595, 842]); y = height - 60 }
   }

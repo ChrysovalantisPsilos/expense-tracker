@@ -17,6 +17,43 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
 import { PDFDocument, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1'
+import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
+
+// Embed a Unicode font (Latin/Greek/Cyrillic + punctuation) so non-Latin
+// descriptions/categories render instead of crashing pdf-lib's WinAnsi fonts.
+// Bytes cached per warm isolate; falls back to Helvetica if the fetch fails.
+const FONT = {
+  regular: 'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf',
+  bold: 'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans-Bold.ttf',
+}
+let fontCache: { regular: ArrayBuffer; bold: ArrayBuffer } | null = null
+async function loadFonts(pdf: PDFDocument) {
+  try {
+    if (!fontCache) {
+      const [r, b] = await Promise.all([
+        fetch(FONT.regular).then((x) => { if (!x.ok) throw new Error('font'); return x.arrayBuffer() }),
+        fetch(FONT.bold).then((x) => { if (!x.ok) throw new Error('font'); return x.arrayBuffer() }),
+      ])
+      fontCache = { regular: r, bold: b }
+    }
+    pdf.registerFontkit(fontkit)
+    return {
+      font: await pdf.embedFont(fontCache.regular, { subset: true }),
+      bold: await pdf.embedFont(fontCache.bold, { subset: true }),
+    }
+  } catch (_e) {
+    return {
+      font: await pdf.embedFont(StandardFonts.Helvetica),
+      bold: await pdf.embedFont(StandardFonts.HelveticaBold),
+    }
+  }
+}
+function pdfSafe(s: string): string {
+  return String(s)
+    .replace(/[‘’‚]/g, "'").replace(/[“”„]/g, '"')
+    .replace(/[→➡➔]/g, '->').replace(/[–—]/g, '-').replace(/…/g, '...')
+    .replace(/[^\x20-\x7E\xA0-\xFF]/g, '?')
+}
 
 interface Body {
   from: string
@@ -155,15 +192,16 @@ function buildXlsx({ base, rows, totalSpent, totalIncome, byCategory }: any): Ui
 
 async function buildPdf({ from, to, base, rows, totalSpent, totalIncome, byCategory, name }: any): Promise<Uint8Array> {
   const pdf = await PDFDocument.create()
-  const font = await pdf.embedFont(StandardFonts.Helvetica)
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
+  const { font, bold } = await loadFonts(pdf)
   let page = pdf.addPage([595, 842]) // A4
   const { height } = page.getSize()
   let y = height - 60
   const ink = rgb(0.1, 0.1, 0.12)
 
   const line = (text: string, size = 11, f = font, dy = 18) => {
-    page.drawText(String(text), { x: 50, y, size, font: f, color: ink })
+    const str = String(text)
+    try { page.drawText(str, { x: 50, y, size, font: f, color: ink }) }
+    catch { page.drawText(pdfSafe(str), { x: 50, y, size, font: f, color: ink }) }
     y -= dy
     if (y < 60) { page = pdf.addPage([595, 842]); y = height - 60 }
   }
