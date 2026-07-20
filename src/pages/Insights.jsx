@@ -184,7 +184,7 @@ function NetWorthCard({ baseCurrency }) {
         <AccountModal account={editing} baseCurrency={baseCurrency}
           onClose={modal.onClose} onSaved={() => { modal.onClose(); reload() }} />
       )}
-    </Card>
+    </CardBody></Card>
   )
 }
 
@@ -319,7 +319,7 @@ function GoalsCard({ baseCurrency }) {
         <GoalModal goal={editing} baseCurrency={baseCurrency}
           onClose={modal.onClose} onSaved={() => { modal.onClose(); reload() }} />
       )}
-    </Card>
+    </CardBody></Card>
   )
 }
 
