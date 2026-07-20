@@ -2,12 +2,12 @@
 // Permanently deletes the caller's account. Owned groups are auto-transferred
 // to the earliest other linked member first (so they survive for everyone
 // else); groups where the caller is the only linked member cascade-delete.
-// The caller's group memberships become phantom rows (user_id -> null), so
-// their expense history is preserved.
+// The caller's group memberships become unlinked rows (user_id -> null), so
+// their expense history is preserved for co-members.
 //
-// verify_jwt = true: identity comes from the caller's JWT. The client is
-// expected to re-verify the user (password re-entry / typed phrase) before
-// calling this.
+// verify_jwt = true. In addition, a user WITH a password identity must re-prove
+// it here (server-side) — the client's password prompt alone can't gate a
+// destructive action, since a stolen session could call this directly.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -16,7 +16,6 @@ const cors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
-
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
 }
@@ -29,17 +28,29 @@ Deno.serve(async (req) => {
   const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
   try {
-    // Identify the caller from their JWT.
+    const body = await req.json().catch(() => ({}))
+    const password = typeof body?.password === 'string' ? body.password : ''
+
     const authHeader = req.headers.get('Authorization') ?? ''
     const asUser = createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: authHeader } } })
     const { data: { user } } = await asUser.auth.getUser()
     if (!user) return json({ error: 'not authenticated' }, 401)
     const uid = user.id
 
+    // Server-side re-auth for password users.
+    const providers: string[] = (user.app_metadata?.providers as string[] | undefined)
+      ?? (user.app_metadata?.provider ? [user.app_metadata.provider as string] : [])
+    if (providers.includes('email')) {
+      if (!password) return json({ error: 'Password is required to delete your account.' }, 400)
+      const verifier = createClient(SUPABASE_URL, ANON)
+      const { error: pwErr } = await verifier.auth.signInWithPassword({ email: user.email!, password })
+      if (pwErr) return json({ error: 'Incorrect password.' }, 401)
+    }
+
     const admin = createClient(SUPABASE_URL, SERVICE)
 
-    // Transfer ownership of groups the caller owns to the earliest other
-    // linked member, so those groups survive.
+    // Transfer ownership of groups the caller owns to the earliest other linked
+    // member so those groups survive.
     const { data: owned } = await admin.from('groups').select('id').eq('owner_id', uid)
     for (const g of owned ?? []) {
       const { data: others } = await admin
@@ -58,12 +69,14 @@ Deno.serve(async (req) => {
       // If no other linked member, the group cascade-deletes with the user.
     }
 
-    // Delete the auth user (cascades personal data; memberships -> phantom).
     const { error } = await admin.auth.admin.deleteUser(uid)
-    if (error) return json({ error: error.message }, 500)
-
+    if (error) {
+      console.error('delete-account admin error', error)
+      return json({ error: 'Could not delete the account.' }, 500)
+    }
     return json({ ok: true })
   } catch (e) {
-    return json({ error: String((e as Error)?.message ?? e) }, 500)
+    console.error('delete-account error', e)
+    return json({ error: 'Something went wrong.' }, 500)
   }
 })

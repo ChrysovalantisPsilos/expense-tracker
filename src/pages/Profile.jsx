@@ -12,7 +12,7 @@ import { updateProfile, uploadAvatar } from '../lib/profile.js'
 import { CURRENCIES } from '../lib/currency.js'
 
 export default function Profile() {
-  const { user, signOut, signInWithPassword, listPasskeys, registerPasskey, deletePasskey } = useAuth()
+  const { user, signOut, listPasskeys, registerPasskey, deletePasskey } = useAuth()
   const toast = useToast()
   const deleteModal = useDisclosure()
   const fileRef = useRef(null)
@@ -193,12 +193,12 @@ export default function Profile() {
       </Button>
 
       <DeleteAccountModal user={user} isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}
-        signInWithPassword={signInWithPassword} signOut={signOut} />
+        signOut={signOut} />
     </Stack>
   )
 }
 
-function DeleteAccountModal({ user, isOpen, onClose, signInWithPassword, signOut }) {
+function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
   const toast = useToast()
   const providers = user.app_metadata?.providers
     || (user.app_metadata?.provider ? [user.app_metadata.provider] : [])
@@ -213,11 +213,9 @@ function DeleteAccountModal({ user, isOpen, onClose, signInWithPassword, signOut
   async function confirm() {
     setBusy(true)
     try {
-      if (isPasswordUser) {
-        const { error } = await signInWithPassword(user.email, value)
-        if (error) { toast({ title: 'Incorrect password', status: 'error' }); setBusy(false); return }
-      }
-      const { error } = await supabase.functions.invoke('delete-account')
+      // The server re-verifies the password for password users, so pass it along.
+      const body = isPasswordUser ? { password: value } : {}
+      const { error } = await supabase.functions.invoke('delete-account', { body })
       if (error) {
         let msg = error.message
         try { const j = await error.context?.json?.(); if (j?.error) msg = j.error } catch { /* ignore */ }
