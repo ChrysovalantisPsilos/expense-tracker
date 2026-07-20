@@ -6,7 +6,7 @@ import {
 } from '@chakra-ui/react'
 import { Search, X } from 'lucide-react'
 import TransactionList from '../components/TransactionList.jsx'
-import ClearableDate from '../components/ClearableDate.jsx'
+import OptionalDate from '../components/OptionalDate.jsx'
 import { useTransactions, useCategories } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
 import { toBaseMinor, toMinor, formatMoney } from '../lib/currency.js'
@@ -86,12 +86,10 @@ export default function SearchTransactions() {
               </Select>
             </FormControl>
             <FormControl>
-              <FormLabel fontSize="xs" color="text.muted">From</FormLabel>
-              <ClearableDate value={f.from} onChange={set('from')} />
+              <OptionalDate label="From" value={f.from} onChange={set('from')} />
             </FormControl>
             <FormControl>
-              <FormLabel fontSize="xs" color="text.muted">To</FormLabel>
-              <ClearableDate value={f.to} onChange={set('to')} />
+              <OptionalDate label="To" value={f.to} onChange={set('to')} />
             </FormControl>
             <FormControl>
               <FormLabel fontSize="xs" color="text.muted">Min ({baseCurrency})</FormLabel>
