@@ -66,7 +66,7 @@ Deno.serve(async (req) => {
 
     const { data: txns, error } = await supabase
       .from('transactions')
-      .select('spent_at, kind, amount_minor, currency, exchange_rate, description, categories(name)')
+      .select('spent_at, kind, amount_minor, currency, exchange_rate, description, group_expense_id, categories(name), group_expenses(groups(name))')
       .gte('spent_at', from)
       .lte('spent_at', to)
       .order('spent_at', { ascending: true })
@@ -74,10 +74,15 @@ Deno.serve(async (req) => {
 
     const rows = (txns ?? []).map((t) => {
       const sf = minorFactor(t.currency) // source decimal factor (JPY=1, else 100)
+      // Mirrored group expenses bucket under their group's name; everything else
+      // uses its category (matching the in-app breakdown).
+      const category = t.group_expense_id
+        ? (t.group_expenses?.groups?.name ?? 'Group')
+        : (t.categories?.name ?? 'Uncategorized')
       return {
         date: t.spent_at,
         kind: t.kind,
-        category: t.categories?.name ?? 'Uncategorized',
+        category,
         description: t.description ?? '',
         currency: t.currency,
         amount: t.amount_minor / sf,
