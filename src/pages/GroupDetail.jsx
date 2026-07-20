@@ -271,7 +271,10 @@ export default function GroupDetail() {
                   <Stack spacing={0} flex="1">
                     <Text fontWeight="600">{e.description || 'Expense'}</Text>
                     <Text fontSize="xs" color="text.muted">
-                      {nameOf(e.paid_by)} paid · {e.spent_at} · split {e.expense_splits?.length ?? 0} ways
+                      {nameOf(e.paid_by)} paid · {e.spent_at} ·{' '}
+                      {e.split_type && e.split_type !== 'equal'
+                        ? `custom split · ${e.expense_splits?.length ?? 0} people`
+                        : `split ${e.expense_splits?.length ?? 0} ways`}
                     </Text>
                   </Stack>
                   {e.receipt_path && (

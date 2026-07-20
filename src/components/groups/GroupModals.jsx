@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Stack, HStack, Text, FormControl, FormLabel, Input, Select, Button, useToast,
+  Box, Divider,
 } from '@chakra-ui/react'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Wand2 } from 'lucide-react'
 import {
   inviteExistingUser, createInvite, emailInvite, addSettlement, renameGroup,
 } from '../../lib/groups.js'
-import { toMinor, formatMoney } from '../../lib/currency.js'
+import { toMinor, fromMinor, formatMoney } from '../../lib/currency.js'
+import { simplifyDebts } from '../../lib/splitMath.js'
 import MoneyInput from '../MoneyInput.jsx'
 
 export function DeleteGroupModal({ group, isOpen, onClose, busy, onConfirm }) {
@@ -116,6 +118,21 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
 
   const otherNet = balances?.get(otherId) ?? 0
   const otherName = others.find((m) => m.id === otherId)?.display_name ?? ''
+  const nameOf = (id) => members.find((m) => m.id === id)?.display_name ?? '—'
+
+  // Minimal set of transfers that settles the whole group; surface only the
+  // ones the current user is part of, one tap to pre-fill the form.
+  const myPlan = useMemo(() => {
+    if (!myMember) return []
+    return simplifyDebts(balances ?? new Map())
+      .filter((t) => t.from === myMember.id || t.to === myMember.id)
+  }, [balances, myMember])
+
+  function useSuggestion(t) {
+    if (t.from === myMember.id) { setDirection('out'); setOtherId(t.to) }
+    else { setDirection('in'); setOtherId(t.from) }
+    setAmount(String(fromMinor(t.amount, group.currency)))
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -145,6 +162,29 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
             <Text color="text.muted">Add another member first.</Text>
           ) : (
             <Stack spacing={4}>
+              {myPlan.length > 0 && (
+                <Box borderWidth="1px" borderColor="border.default" borderRadius="lg" p={3}>
+                  <HStack mb={2} color="accent.fg">
+                    <Wand2 size={15} />
+                    <Text fontSize="sm" fontWeight="600">Suggested to settle up</Text>
+                  </HStack>
+                  <Stack spacing={1.5}>
+                    {myPlan.map((t, i) => {
+                      const iPay = t.from === myMember.id
+                      return (
+                        <HStack key={i} fontSize="sm">
+                          <Text noOfLines={1} flex="1">
+                            {iPay
+                              ? <>Pay <b>{nameOf(t.to)}</b> {formatMoney(t.amount, group.currency)}</>
+                              : <><b>{nameOf(t.from)}</b> pays you {formatMoney(t.amount, group.currency)}</>}
+                          </Text>
+                          <Button size="xs" variant="ghost" onClick={() => useSuggestion(t)}>Use</Button>
+                        </HStack>
+                      )
+                    })}
+                  </Stack>
+                </Box>
+              )}
               <HStack spacing={2}>
                 <Button flex="1" variant={direction === 'out' ? 'solid' : 'outline'}
                   colorScheme={direction === 'out' ? 'brand' : 'gray'}
