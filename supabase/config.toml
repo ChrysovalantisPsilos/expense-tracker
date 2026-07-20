@@ -11,5 +11,8 @@ verify_jwt = true
 [functions.send-invite]
 verify_jwt = true
 
+[functions.group-report]
+verify_jwt = true
+
 [functions.delete-account]
 verify_jwt = true
