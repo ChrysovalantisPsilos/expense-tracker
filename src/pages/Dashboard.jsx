@@ -10,6 +10,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { PieChart as PieIcon, Table as TableIcon, Repeat } from 'lucide-react'
 import TransactionList from '../components/TransactionList.jsx'
 import { useTransactions, buildPeriods, oldestTransactionDate } from '../lib/useData.js'
+import { today } from '../lib/dates.js'
 import { useProfile } from '../lib/useProfile.js'
 import { useRecurring, monthlyMinor, frequencyLabel, expectedInWindow } from '../lib/recurring.js'
 import { formatMoney, toBaseMinor } from '../lib/currency.js'
@@ -76,7 +77,7 @@ export default function Dashboard() {
   // Fold not-yet-charged recurring into the period's spend/income projection,
   // but only for periods that are still ongoing (end today or later). Past
   // periods and "all time" stay purely actual.
-  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), [])
+  const todayISO = useMemo(() => today(), [])
   const proj = useMemo(() => {
     if (!period.to || period.to < todayISO) return { expense: 0, income: 0 }
     return expectedInWindow(rules, todayISO, period.to)

@@ -12,29 +12,13 @@ import {
 import { Plus, Pencil, Trash2, Target, TrendingUp, Wallet } from 'lucide-react'
 import OptionalDate from '../components/OptionalDate.jsx'
 import { useTransactions } from '../lib/useData.js'
+import { lastMonths } from '../lib/dates.js'
 import { useProfile } from '../lib/useProfile.js'
 import { formatMoney, toBaseMinor, toMinor, fromMinor, minorFactor } from '../lib/currency.js'
 import {
   useAccounts, saveAccount, deleteAccount,
   useGoals, saveGoal, deleteGoal,
 } from '../lib/insights.js'
-
-// Last `n` month buckets as { key: 'YYYY-MM', label: 'Jan', from, to }.
-function lastMonths(n) {
-  const now = new Date()
-  const out = []
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-    const iso = (x) => x.toISOString().slice(0, 10)
-    out.push({
-      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-      label: d.toLocaleDateString('en-US', { month: 'short' }),
-      from: iso(d), to: iso(end),
-    })
-  }
-  return out
-}
 
 export default function Insights() {
   const { baseCurrency = 'EUR' } = useProfile()
