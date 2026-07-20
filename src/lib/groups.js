@@ -118,9 +118,11 @@ export async function createInviteLink(groupId) {
 // Email an invite link via the send-invite edge function. Surfaces a clear
 // message when email is not configured (RESEND_API_KEY missing) so the caller
 // can fall back to the share link.
-export async function emailInvite({ to, url, groupName, inviterName }) {
+// The edge function derives the group name, inviter, and URL server-side from
+// the token + caller identity — we pass only the recipient and the token.
+export async function emailInvite({ to, token }) {
   const { data, error } = await supabase.functions.invoke('send-invite', {
-    body: { to, url, groupName, inviterName },
+    body: { to, token },
   })
   if (error) {
     let msg = error.message

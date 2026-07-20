@@ -370,11 +370,11 @@ function InviteEmailModal({ group, inviterName, isOpen, onClose }) {
       onClose(); setEmail('')
     } catch (err) {
       if (err.message === 'no_account') {
-        // No account yet — send an emailable join link (phantom flow).
+        // No account yet — send an emailable join link.
         try {
-          const { url } = await createInvite(group.id, { email: addr })
+          const { token, url } = await createInvite(group.id, { email: addr })
           try {
-            await emailInvite({ to: addr, url, groupName: group.name, inviterName })
+            await emailInvite({ to: addr, token })
             toast({ title: `Invite emailed to ${addr}`, status: 'success' })
           } catch (mailErr) {
             await navigator.clipboard.writeText(url)
