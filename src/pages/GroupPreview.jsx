@@ -7,8 +7,9 @@ import {
 import { Users, Sun, Moon, Lock } from 'lucide-react'
 import { previewGroup } from '../lib/groups.js'
 import { formatMoney } from '../lib/currency.js'
+import { STORAGE_KEYS } from '../lib/keys.js'
 
-const PENDING_INVITE = 'budge:invite'
+const PENDING_INVITE = STORAGE_KEYS.pendingInvite
 
 export default function GroupPreview() {
   const { token } = useParams()

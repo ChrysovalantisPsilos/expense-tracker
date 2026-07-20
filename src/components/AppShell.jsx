@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink as RouterNavLink, useLocation } from 'react-router-dom'
 import {
-  Box, Flex, HStack, VStack, IconButton, Text, Badge, Spacer, Tooltip, Avatar,
+  Box, Flex, HStack, VStack, IconButton, Text, Badge, Spacer, Tooltip,
   useColorMode,
 } from '@chakra-ui/react'
+import UserAvatar from './UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Wallet, FileDown, Users,
   Sun, Moon, LogOut, WifiOff, RefreshCw,
@@ -116,8 +117,8 @@ export default function AppShell() {
           {({ isActive }) => (
             <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
               bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
-              <Avatar size="xs" name={profile?.display_name}
-                src={profile?.avatar_url} bg="brand.500" color="white" />
+              <UserAvatar size="xs" name={profile?.display_name}
+                src={profile?.avatar_url} highlight />
               <Text fontSize="sm" fontWeight="500" noOfLines={1}>
                 {profile?.display_name || 'Profile'}
               </Text>
@@ -152,8 +153,8 @@ export default function AppShell() {
           <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
             icon={<ThemeIcon size={18} />} onClick={toggleColorMode} />
           <RouterNavLink to="/profile">
-            <Avatar size="sm" name={profile?.display_name}
-              src={profile?.avatar_url} bg="brand.500" color="white" />
+            <UserAvatar size="sm" name={profile?.display_name}
+              src={profile?.avatar_url} highlight />
           </RouterNavLink>
         </Flex>
 

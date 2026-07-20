@@ -7,6 +7,7 @@ import {
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { isSupabaseConfigured, passkeysSupported } from '../lib/supabase.js'
+import { STORAGE_KEYS } from '../lib/keys.js'
 import Logo from '../components/Logo.jsx'
 
 // A few of the most common weak passwords to reject outright, client-side.
@@ -64,7 +65,7 @@ export default function Login() {
       return
     }
     if (mode === 'signup') {
-      sessionStorage.setItem('budge:pendingEmail', email)
+      sessionStorage.setItem(STORAGE_KEYS.pendingEmail, email)
       navigate('/verify-email', { replace: true })
     } else {
       navigate('/', { replace: true })

@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js'
+import { supabase, edgeFunctionError } from './supabase.js'
 
 // ---- Queries -------------------------------------------------------------
 
@@ -121,11 +121,7 @@ export async function emailInvite({ to, token }) {
   const { data, error } = await supabase.functions.invoke('send-invite', {
     body: { to, token },
   })
-  if (error) {
-    let msg = error.message
-    try { const j = await error.context?.json?.(); if (j?.error) msg = j.error } catch { /* ignore */ }
-    throw new Error(msg)
-  }
+  if (error) throw new Error(await edgeFunctionError(error))
   return data
 }
 
@@ -192,19 +188,15 @@ export async function deleteSharedExpense(expenseId) {
 // Leave a group, or (as owner) remove another member. Server enforces the
 // settled-up rule and owner auto-transfer. Returns the group id.
 export async function removeMember(memberId) {
+  // Postgres RAISE messages surface on error.message directly.
   const { data, error } = await supabase.rpc('remove_group_member', { p_member: memberId })
-  if (error) throw new Error(friendlyRpcError(error))
+  if (error) throw new Error(error.message || 'Something went wrong')
   return data
 }
 
 export async function deleteGroup(groupId) {
   const { error } = await supabase.rpc('delete_group', { p_group: groupId })
-  if (error) throw new Error(friendlyRpcError(error))
-}
-
-// Postgres RAISE messages come back on error.message; surface them directly.
-function friendlyRpcError(error) {
-  return error.message || 'Something went wrong'
+  if (error) throw new Error(error.message || 'Something went wrong')
 }
 
 // Immutable audit trail for a group (members can read; append-only server-side).
@@ -225,11 +217,7 @@ export async function downloadGroupReport(groupId, groupName = 'group') {
   const { data, error } = await supabase.functions.invoke('group-report', {
     body: { group_id: groupId },
   })
-  if (error) {
-    let msg = error.message
-    try { const j = await error.context?.json?.(); if (j?.error) msg = j.error } catch { /* ignore */ }
-    throw new Error(msg)
-  }
+  if (error) throw new Error(await edgeFunctionError(error))
   // data is a Blob (pdf). Trigger a download.
   const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/pdf' })
   const url = URL.createObjectURL(blob)

@@ -54,5 +54,3 @@ export function categoryIcon(catOrName) {
   for (const [re, Icon] of NAME_HINTS) if (re.test(name)) return Icon
   return Tag
 }
-
-export { Wallet, Receipt, CircleDollarSign }

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Heading, Stack, Card, CardBody, Button, useDisclosure, Collapse,
@@ -19,7 +18,6 @@ export default function Expenses() {
   const { from, to } = monthRange()
   const { rows, loading, reload } = useTransactions({ kind: 'expense', from, to })
   const { isOpen, onToggle, onClose } = useDisclosure({ defaultIsOpen: true })
-  const [, forceReload] = useState(0)
   const toast = useToast()
 
   async function openReceipt(path) {
@@ -43,7 +41,7 @@ export default function Expenses() {
           <TransactionForm
             kind="expense"
             baseCurrency={baseCurrency}
-            onSaved={() => { reload(); forceReload((n) => n + 1); onClose() }}
+            onSaved={() => { reload(); onClose() }}
           />
         </CardBody></Card>
       </Collapse>
