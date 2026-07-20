@@ -7,7 +7,7 @@ import {
 import UserAvatar from './UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Wallet, FileDown, Users,
-  Sun, Moon, LogOut, WifiOff, RefreshCw, Search, Repeat,
+  Sun, Moon, LogOut, WifiOff, RefreshCw, Search, Repeat, TrendingUp,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { useProfile } from '../lib/useProfile.js'
@@ -27,6 +27,7 @@ const NAV = [
 // Extra destinations shown only in the roomier desktop sidebar. On mobile
 // they're reached from the header (search) or in-page cards (recurring).
 const SIDEBAR_EXTRA = [
+  { to: '/insights', label: 'Insights', icon: TrendingUp },
   { to: '/recurring', label: 'Recurring', icon: Repeat },
 ]
 
