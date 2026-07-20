@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   SimpleGrid, Card, CardBody, Stat, StatLabel, StatNumber, StatHelpText,
   Heading, Box, Text, Stack, Center, Spinner, Spacer, HStack, IconButton,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip,
 } from '@chakra-ui/react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import { PieChart as PieIcon, Table as TableIcon } from 'lucide-react'
+import { PieChart as PieIcon, Table as TableIcon, Repeat, ChevronRight } from 'lucide-react'
 import { useTransactions, monthRange } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
+import { useRecurring, monthlyMinor } from '../lib/recurring.js'
 import { formatMoney, toBaseMinor } from '../lib/currency.js'
 import { STORAGE_KEYS } from '../lib/keys.js'
 
@@ -17,11 +19,16 @@ const VIEW_KEY = STORAGE_KEYS.overviewView
 const COLORS = ['#f95d38', '#fbb324', '#ef8a5a', '#e2431f', '#f6c453', '#c2703d', '#7c6f59', '#d6ccba']
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const { baseCurrency } = useProfile()
   const { from, to } = useMemo(() => monthRange(), [])
   const { rows, loading } = useTransactions({ from, to })
+  const { rules } = useRecurring()
   const [view, setView] = useState(() => localStorage.getItem(VIEW_KEY) || 'pie')
   function chooseView(v) { setView(v); localStorage.setItem(VIEW_KEY, v) }
+
+  const subsMonthly = useMemo(() => rules.reduce(
+    (s, r) => s + (r.is_active && r.kind !== 'income' ? monthlyMinor(r) : 0), 0), [rules])
 
   const { spent, earned, byCategory } = useMemo(() => {
     let spent = 0, earned = 0
@@ -131,6 +138,24 @@ export default function Dashboard() {
           </Table>
         )}
       </CardBody></Card>
+
+      <Card as="button" textAlign="left" onClick={() => navigate('/recurring')}
+        _hover={{ borderColor: 'brand.300' }} transition="border-color 0.15s">
+        <CardBody>
+          <HStack spacing={3}>
+            <Box color="accent.fg"><Repeat size={20} /></Box>
+            <Box flex="1">
+              <Text fontWeight="600">Recurring & subscriptions</Text>
+              <Text fontSize="sm" color="text.muted">
+                {subsMonthly > 0
+                  ? `${formatMoney(subsMonthly, baseCurrency)} / month`
+                  : 'Track subscriptions and recurring bills'}
+              </Text>
+            </Box>
+            <Box color="text.muted"><ChevronRight size={18} /></Box>
+          </HStack>
+        </CardBody>
+      </Card>
     </Stack>
   )
 }

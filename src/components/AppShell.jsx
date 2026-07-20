@@ -7,7 +7,7 @@ import {
 import UserAvatar from './UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Wallet, FileDown, Users,
-  Sun, Moon, LogOut, WifiOff, RefreshCw, Search,
+  Sun, Moon, LogOut, WifiOff, RefreshCw, Search, Repeat,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { useProfile } from '../lib/useProfile.js'
@@ -15,6 +15,7 @@ import { initSync, pendingCount, flushQueue } from '../lib/offlineQueue.js'
 import Logo from './Logo.jsx'
 import NotificationBell from './NotificationBell.jsx'
 
+// Mobile bottom-nav set (kept to 6 for touch targets).
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/expenses', label: 'Expenses', icon: ReceiptText },
@@ -22,6 +23,11 @@ const NAV = [
   { to: '/budgets', label: 'Budgets', icon: Target },
   { to: '/income', label: 'Income', icon: Wallet },
   { to: '/reports', label: 'Reports', icon: FileDown },
+]
+// Extra destinations shown only in the roomier desktop sidebar. On mobile
+// they're reached from the header (search) or in-page cards (recurring).
+const SIDEBAR_EXTRA = [
+  { to: '/recurring', label: 'Recurring', icon: Repeat },
 ]
 
 function SideItem({ to, label, icon: Icon, end }) {
@@ -113,6 +119,7 @@ export default function AppShell() {
       >
         <Box px={2} py={2} mb={2}><Logo size={30} /></Box>
         {NAV.map((n) => <SideItem key={n.to} {...n} />)}
+        {SIDEBAR_EXTRA.map((n) => <SideItem key={n.to} {...n} />)}
         <Spacer />
         <RouterNavLink to="/profile" style={{ width: '100%' }}>
           {({ isActive }) => (
