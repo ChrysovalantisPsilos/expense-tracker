@@ -30,6 +30,9 @@ const cors = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
+const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP'])
+const minorFactor = (c: string) => (ZERO_DECIMAL.has(c) ? 1 : 100)
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
@@ -67,15 +70,19 @@ Deno.serve(async (req) => {
       .order('spent_at', { ascending: true })
     if (error) throw error
 
-    const rows = (txns ?? []).map((t) => ({
-      date: t.spent_at,
-      kind: t.kind,
-      category: t.categories?.name ?? 'Uncategorized',
-      description: t.description ?? '',
-      currency: t.currency,
-      amount: t.amount_minor / 100,
-      base_amount: Math.round(t.amount_minor * Number(t.exchange_rate)) / 100,
-    }))
+    const rows = (txns ?? []).map((t) => {
+      const sf = minorFactor(t.currency) // source decimal factor (JPY=1, else 100)
+      return {
+        date: t.spent_at,
+        kind: t.kind,
+        category: t.categories?.name ?? 'Uncategorized',
+        description: t.description ?? '',
+        currency: t.currency,
+        amount: t.amount_minor / sf,
+        // rate is major-per-major, so divide source minor by its own factor first.
+        base_amount: (t.amount_minor / sf) * Number(t.exchange_rate),
+      }
+    })
 
     const totalSpent = rows.filter((r) => r.kind === 'expense').reduce((s, r) => s + r.base_amount, 0)
     const totalIncome = rows.filter((r) => r.kind === 'income').reduce((s, r) => s + r.base_amount, 0)

@@ -3,17 +3,18 @@
 // Supported currencies (EUR first — it's the app default).
 export const CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD']
 
+// Most currencies have 2 decimal places; a few (JPY, KRW…) have 0.
+const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP'])
+export function minorFactor(currency = 'EUR') {
+  return ZERO_DECIMAL.has(currency) ? 1 : 100
+}
+
 export function toMinor(amount, currency = 'EUR') {
-  // Most currencies have 2 decimal places; a few (JPY, KRW) have 0.
-  const zeroDecimal = ['JPY', 'KRW', 'VND', 'CLP']
-  const factor = zeroDecimal.includes(currency) ? 1 : 100
-  return Math.round(Number(amount) * factor)
+  return Math.round(Number(amount) * minorFactor(currency))
 }
 
 export function fromMinor(minor, currency = 'EUR') {
-  const zeroDecimal = ['JPY', 'KRW', 'VND', 'CLP']
-  const factor = zeroDecimal.includes(currency) ? 1 : 100
-  return Number(minor) / factor
+  return Number(minor) / minorFactor(currency)
 }
 
 export function formatMoney(minor, currency = 'EUR', locale = undefined) {
@@ -23,9 +24,13 @@ export function formatMoney(minor, currency = 'EUR', locale = undefined) {
 }
 
 // Convert a minor amount to the user's base currency using the rate captured
-// at entry time (never today's rate — that would rewrite history).
-export function toBaseMinor(minor, exchangeRate) {
-  return Math.round(minor * Number(exchangeRate))
+// at entry time (never today's rate — that would rewrite history). The rate is
+// major-per-major, so we scale by the decimal-factor ratio to stay correct when
+// the source and base currencies have different decimal places (e.g. JPY↔EUR).
+export function toBaseMinor(minor, exchangeRate, fromCurrency = 'EUR', baseCurrency = 'EUR') {
+  return Math.round(
+    Number(minor) * Number(exchangeRate) * minorFactor(baseCurrency) / minorFactor(fromCurrency),
+  )
 }
 
 // Fetch a daily FX rate from base->quote. Cached in localStorage per day so we

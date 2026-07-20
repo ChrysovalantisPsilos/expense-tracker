@@ -68,36 +68,19 @@ export async function uploadGroupImage(groupId, file) {
   return url
 }
 
-// Equal split of amountMinor across memberIds, distributing the rounding
-// remainder one cent at a time so shares sum EXACTLY to the total.
-export function equalShares(amountMinor, memberIds) {
-  const n = memberIds.length
-  if (n === 0) return []
-  const base = Math.floor(amountMinor / n)
-  let remainder = amountMinor - base * n
-  return memberIds.map((id) => {
-    const extra = remainder > 0 ? 1 : 0
-    remainder -= extra
-    return { member_id: id, share_minor: base + extra }
-  })
-}
-
+// Add a shared expense + its equal split in ONE transaction (RPC), so a failure
+// can never leave an expense without splits. Equal-split rounding lives in SQL
+// (create_group_expense), matching the edit path (update_group_expense).
 export async function addSharedExpense({
   groupId, description, amountMinor, currency, paidBy, spentAt, memberIds, receiptPath = null,
 }) {
-  const { data: exp, error } = await supabase
-    .from('group_expenses')
-    .insert({
-      group_id: groupId, description: description || null, amount_minor: amountMinor,
-      currency, paid_by: paidBy, spent_at: spentAt, receipt_path: receiptPath,
-      created_by: (await supabase.auth.getUser()).data.user?.id,
-    })
-    .select().single()
-  if (error) throw error
-  const shares = equalShares(amountMinor, memberIds).map((s) => ({ ...s, expense_id: exp.id }))
-  const { error: sErr } = await supabase.from('expense_splits').insert(shares)
-  if (sErr) throw sErr
-  return exp
+  const { data, error } = await supabase.rpc('create_group_expense', {
+    p_group: groupId, p_description: description || null, p_amount: amountMinor,
+    p_currency: currency, p_paid_by: paidBy, p_spent_at: spentAt,
+    p_member_ids: memberIds, p_receipt_path: receiptPath,
+  })
+  if (error) throw new Error(error.message)
+  return data // expense id
 }
 
 export async function addSettlement({ groupId, fromMember, toMember, amountMinor, currency, settledAt }) {
