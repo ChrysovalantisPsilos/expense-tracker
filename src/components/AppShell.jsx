@@ -7,7 +7,7 @@ import {
 import UserAvatar from './UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Wallet, FileDown, Users,
-  Sun, Moon, LogOut, WifiOff, RefreshCw, Search, Repeat, TrendingUp,
+  Sun, Moon, LogOut, WifiOff, RefreshCw, Search, Repeat, TrendingUp, MoreHorizontal,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { useProfile } from '../lib/useProfile.js'
@@ -15,21 +15,25 @@ import { initSync, pendingCount, flushQueue } from '../lib/offlineQueue.js'
 import Logo from './Logo.jsx'
 import NotificationBell from './NotificationBell.jsx'
 
-// Mobile bottom-nav set (kept to 6 for touch targets).
-const NAV = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+// Primary destinations — shown in the mobile bottom bar and at the top of the
+// desktop sidebar.
+const PRIMARY = [
+  { to: '/', label: 'Home', icon: LayoutDashboard, end: true },
   { to: '/expenses', label: 'Expenses', icon: ReceiptText },
+  { to: '/income', label: 'Income', icon: Wallet },
   { to: '/groups', label: 'Groups', icon: Users },
   { to: '/budgets', label: 'Budgets', icon: Target },
-  { to: '/income', label: 'Income', icon: Wallet },
-  { to: '/reports', label: 'Reports', icon: FileDown },
 ]
-// Extra destinations shown only in the roomier desktop sidebar. On mobile
-// they're reached from the header (search) or in-page cards (recurring).
-const SIDEBAR_EXTRA = [
+// Secondary destinations — listed directly in the desktop sidebar, and gathered
+// under the "More" tab on mobile.
+const SECONDARY = [
   { to: '/insights', label: 'Insights', icon: TrendingUp },
   { to: '/recurring', label: 'Recurring', icon: Repeat },
+  { to: '/reports', label: 'Reports', icon: FileDown },
+  { to: '/search', label: 'Search', icon: Search },
 ]
+// Mobile bottom bar: the five primary tabs plus a "More" entry.
+const MOBILE_NAV = [...PRIMARY, { to: '/more', label: 'More', icon: MoreHorizontal }]
 
 function SideItem({ to, label, icon: Icon, end }) {
   return (
@@ -119,8 +123,9 @@ export default function AppShell() {
         display={{ base: 'none', md: 'flex' }}
       >
         <Box px={2} py={2} mb={2}><Logo size={30} /></Box>
-        {NAV.map((n) => <SideItem key={n.to} {...n} />)}
-        {SIDEBAR_EXTRA.map((n) => <SideItem key={n.to} {...n} />)}
+        {PRIMARY.map((n) => <SideItem key={n.to} {...n} />)}
+        <Box h="1px" bg="border.default" my={2} mx={2} />
+        {SECONDARY.map((n) => <SideItem key={n.to} {...n} />)}
         <Spacer />
         <RouterNavLink to="/profile" style={{ width: '100%' }}>
           {({ isActive }) => (
@@ -193,7 +198,7 @@ export default function AppShell() {
         position="fixed" bottom={0} left={0} right={0} zIndex={10}
         display={{ base: 'flex', md: 'none' }}
       >
-        {NAV.map((n) => <TabItem key={n.to} {...n} />)}
+        {MOBILE_NAV.map((n) => <TabItem key={n.to} {...n} />)}
       </HStack>
     </Flex>
   )

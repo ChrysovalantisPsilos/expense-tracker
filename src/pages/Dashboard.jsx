@@ -1,15 +1,14 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   SimpleGrid, Card, CardBody, Stat, StatLabel, StatNumber, StatHelpText,
   Heading, Box, Text, Stack, Center, Spinner, Spacer, HStack, IconButton,
-  Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip,
+  Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select,
 } from '@chakra-ui/react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import { PieChart as PieIcon, Table as TableIcon, Repeat, ChevronRight, TrendingUp as TrendingUpIcon } from 'lucide-react'
-import { useTransactions, monthRange } from '../lib/useData.js'
+import { PieChart as PieIcon, Table as TableIcon } from 'lucide-react'
+import TransactionList from '../components/TransactionList.jsx'
+import { useTransactions, buildPeriods } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
-import { useRecurring, monthlyMinor } from '../lib/recurring.js'
 import { formatMoney, toBaseMinor } from '../lib/currency.js'
 import { STORAGE_KEYS } from '../lib/keys.js'
 
@@ -18,42 +17,55 @@ const VIEW_KEY = STORAGE_KEYS.overviewView
 // Warm-led categorical palette (coral/amber first, then complementary hues).
 const COLORS = ['#f95d38', '#fbb324', '#ef8a5a', '#e2431f', '#f6c453', '#c2703d', '#7c6f59', '#d6ccba']
 
+// Bucket label for the category breakdown: mirrored group expenses roll up
+// under their group's name; everything else uses its category (or Uncategorized).
+const bucketOf = (r) =>
+  r.group_expense_id ? (r.group_expenses?.groups?.name ?? 'Group')
+    : (r.categories?.name ?? 'Uncategorized')
+
 export default function Dashboard() {
-  const navigate = useNavigate()
   const { baseCurrency } = useProfile()
-  const { from, to } = useMemo(() => monthRange(), [])
-  const { rows, loading } = useTransactions({ from, to })
-  const { rules } = useRecurring()
+  const periods = useMemo(() => buildPeriods(), [])
+  const [periodValue, setPeriodValue] = useState(periods[0].value)
+  const period = periods.find((p) => p.value === periodValue) ?? periods[0]
+
+  const { rows, loading, reload, mutate } = useTransactions({
+    from: period.from ?? undefined, to: period.to ?? undefined, withGroup: true,
+  })
   const [view, setView] = useState(() => localStorage.getItem(VIEW_KEY) || 'pie')
   function chooseView(v) { setView(v); localStorage.setItem(VIEW_KEY, v) }
 
-  const subsMonthly = useMemo(() => rules.reduce(
-    (s, r) => s + (r.is_active && r.kind !== 'income' ? monthlyMinor(r) : 0), 0), [rules])
-
-  const { spent, earned, byCategory } = useMemo(() => {
+  const { spent, earned, byCategory, expenses } = useMemo(() => {
     let spent = 0, earned = 0
     const cat = new Map()
+    const expenses = []
     for (const r of rows) {
       const base = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
       if (r.kind === 'income') {
         earned += base
       } else {
         spent += base
-        const name = r.categories?.name ?? 'Uncategorized'
+        expenses.push(r)
+        const name = bucketOf(r)
         cat.set(name, (cat.get(name) ?? 0) + base)
       }
     }
     const byCategory = [...cat.entries()]
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-    return { spent, earned, byCategory }
+    return { spent, earned, byCategory, expenses }
   }, [rows, baseCurrency])
-
-  if (loading) return <Center py={20}><Spinner color="brand.500" /></Center>
 
   return (
     <Stack spacing={5}>
-      <Heading size="lg">This month</Heading>
+      <HStack align="center">
+        <Heading size="lg">Overview</Heading>
+        <Spacer />
+        <Select maxW="200px" size="sm" borderRadius="lg" value={periodValue}
+          onChange={(e) => setPeriodValue(e.target.value)}>
+          {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </Select>
+      </HStack>
 
       <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4}>
         <Card><CardBody>
@@ -98,8 +110,10 @@ export default function Dashboard() {
             </CkTooltip>
           </HStack>
         </HStack>
-        {byCategory.length === 0 ? (
-          <Text color="text.muted">No expenses yet this month.</Text>
+        {loading ? (
+          <Center py={8}><Spinner color="brand.500" /></Center>
+        ) : byCategory.length === 0 ? (
+          <Text color="text.muted">No expenses in this period.</Text>
         ) : view === 'pie' ? (
           <Box h="280px">
             <ResponsiveContainer width="100%" height="100%">
@@ -139,38 +153,17 @@ export default function Dashboard() {
         )}
       </CardBody></Card>
 
-      <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={4}>
-        <Card as="button" textAlign="left" onClick={() => navigate('/insights')}
-          _hover={{ borderColor: 'brand.300' }} transition="border-color 0.15s">
-          <CardBody>
-            <HStack spacing={3}>
-              <Box color="accent.fg"><TrendingUpIcon size={20} /></Box>
-              <Box flex="1">
-                <Text fontWeight="600">Insights</Text>
-                <Text fontSize="sm" color="text.muted">Trends, net worth & goals</Text>
-              </Box>
-              <Box color="text.muted"><ChevronRight size={18} /></Box>
-            </HStack>
-          </CardBody>
-        </Card>
-        <Card as="button" textAlign="left" onClick={() => navigate('/recurring')}
-          _hover={{ borderColor: 'brand.300' }} transition="border-color 0.15s">
-          <CardBody>
-            <HStack spacing={3}>
-              <Box color="accent.fg"><Repeat size={20} /></Box>
-              <Box flex="1">
-                <Text fontWeight="600">Recurring</Text>
-                <Text fontSize="sm" color="text.muted">
-                  {subsMonthly > 0
-                    ? `${formatMoney(subsMonthly, baseCurrency)} / month`
-                    : 'Subscriptions & bills'}
-                </Text>
-              </Box>
-              <Box color="text.muted"><ChevronRight size={18} /></Box>
-            </HStack>
-          </CardBody>
-        </Card>
-      </SimpleGrid>
+      <Card><CardBody>
+        <Heading size="sm" mb={3}>Expenses</Heading>
+        {loading ? (
+          <Center py={8}><Spinner color="brand.500" /></Center>
+        ) : expenses.length === 0 ? (
+          <Text color="text.muted">No expenses in this period.</Text>
+        ) : (
+          <TransactionList rows={expenses} kind="expense" baseCurrency={baseCurrency}
+            mutate={mutate} reload={reload} />
+        )}
+      </CardBody></Card>
     </Stack>
   )
 }

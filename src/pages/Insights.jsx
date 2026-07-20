@@ -10,6 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, CartesianGrid,
 } from 'recharts'
 import { Plus, Pencil, Trash2, Target, TrendingUp, Wallet } from 'lucide-react'
+import ClearableDate from '../components/ClearableDate.jsx'
 import { useTransactions } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
 import { formatMoney, toBaseMinor, toMinor, fromMinor, minorFactor } from '../lib/currency.js'
@@ -374,7 +375,7 @@ function GoalModal({ goal, baseCurrency, onClose, onSaved }) {
             </HStack>
             <FormControl>
               <FormLabel>Target date (optional)</FormLabel>
-              <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+              <ClearableDate value={targetDate} onChange={setTargetDate} />
             </FormControl>
           </Stack>
         </ModalBody>
