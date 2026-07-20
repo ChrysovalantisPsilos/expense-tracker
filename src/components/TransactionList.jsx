@@ -14,6 +14,9 @@ import { queueTransactionDelete } from '../lib/offlineQueue.js'
 // Shared list of personal transactions with edit + delete (full offline).
 // Group-mirrored rows (group_expense_id set) are read-only here — they're
 // edited in the group — and show a "Group" tag instead of the row actions.
+// Each row's income/expense styling follows its own `kind`, so the same
+// list renders single-kind pages (Income/Expenses) and mixed search results.
+const kindOf = (r, fallback) => r.kind ?? fallback
 export default function TransactionList({ rows, kind, baseCurrency, mutate, reload }) {
   const toast = useToast()
   const editModal = useDisclosure()
@@ -42,7 +45,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
     mutate((rs) => rs.filter((r) => r.id !== row.id)) // optimistic
     try {
       await queueTransactionDelete(row.id)
-      toast({ title: `${kind === 'income' ? 'Income' : 'Expense'} deleted`, status: 'success' })
+      toast({ title: `${kindOf(row, kind) === 'income' ? 'Income' : 'Expense'} deleted`, status: 'success' })
       if (navigator.onLine) reload()
     } catch (e) {
       mutate(() => prev)
@@ -57,14 +60,15 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
       <List spacing={0}>
         {rows.map((r, i) => {
           const shared = !!r.group_expense_id
+          const rk = kindOf(r, kind)
           return (
             <ListItem key={r.id}>
               {i > 0 && <Divider />}
               <HStack py={3} spacing={3} align="start">
-                <CategoryBadge category={r.categories} kind={kind} />
+                <CategoryBadge category={r.categories} kind={rk} />
                 <Stack spacing={0} flex="1" minW={0}>
                   <Text fontWeight="600" noOfLines={1}>
-                    {r.description || r.categories?.name || (kind === 'income' ? 'Income' : 'Expense')}
+                    {r.description || r.categories?.name || (rk === 'income' ? 'Income' : 'Expense')}
                   </Text>
                   <Text fontSize="xs" color="text.muted">{r.spent_at}</Text>
                 </Stack>
@@ -73,8 +77,8 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                   <IconButton aria-label="Receipt" size="xs" variant="ghost"
                     icon={<Paperclip size={14} />} onClick={() => openReceipt(r.receipt_path)} />
                 )}
-                <Text fontWeight="semibold" color={kind === 'income' ? 'green.500' : 'text.primary'}>
-                  {formatMoney(r.amount_minor, r.currency)}
+                <Text fontWeight="semibold" color={rk === 'income' ? 'green.500' : 'text.primary'}>
+                  {rk === 'income' ? '+' : ''}{formatMoney(r.amount_minor, r.currency)}
                 </Text>
                 {!shared && (
                   <>
@@ -95,7 +99,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
       <Modal isOpen={editModal.isOpen} onClose={() => { editModal.onClose(); setEditing(null) }} isCentered>
         <ModalOverlay />
         <ModalContent mx={4}>
-          <ModalHeader>Edit {kind === 'income' ? 'income' : 'expense'}</ModalHeader>
+          <ModalHeader>Edit {kindOf(editing ?? {}, kind) === 'income' ? 'income' : 'expense'}</ModalHeader>
           <ModalBody pb={5}>
             {editing && (
               <TransactionForm baseCurrency={baseCurrency} transaction={editing} onSaved={onEdited} />
@@ -108,7 +112,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
       <Modal isOpen={!!removing} onClose={() => setRemoving(null)} isCentered>
         <ModalOverlay />
         <ModalContent mx={4}>
-          <ModalHeader>Delete this {kind === 'income' ? 'income' : 'expense'}?</ModalHeader>
+          <ModalHeader>Delete this {kindOf(removing ?? {}, kind) === 'income' ? 'income' : 'expense'}?</ModalHeader>
           <ModalBody>
             <Text color="text.muted">
               {removing?.description || removing?.categories?.name || 'This entry'} ·{' '}
