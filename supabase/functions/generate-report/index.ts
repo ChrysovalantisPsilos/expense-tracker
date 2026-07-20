@@ -35,8 +35,12 @@ Deno.serve(async (req) => {
 
   try {
     const { from, to, format = 'xlsx' } = (await req.json()) as Body
-    if (!from || !to) {
-      return json({ error: 'from and to are required' }, 400)
+    const DATE = /^\d{4}-\d{2}-\d{2}$/
+    if (!DATE.test(from ?? '') || !DATE.test(to ?? '')) {
+      return json({ error: 'from and to must be dates (YYYY-MM-DD)' }, 400)
+    }
+    if (format !== 'xlsx' && format !== 'pdf') {
+      return json({ error: 'format must be xlsx or pdf' }, 400)
     }
 
     // Scope the client to the caller's JWT so RLS restricts rows to this user.
@@ -46,6 +50,11 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } },
     )
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return json({ error: 'not authenticated' }, 401)
+    const { data: allowed } = await supabase.rpc('rate_limit', { p_key: `report:${user.id}`, p_max: 30, p_seconds: 3600 })
+    if (allowed === false) return json({ error: 'Too many report requests. Please try again later.' }, 429)
 
     const { data: profile } = await supabase.from('profiles').select('base_currency, display_name').single()
     const base = profile?.base_currency ?? 'USD'
@@ -88,9 +97,17 @@ Deno.serve(async (req) => {
       headers: { ...cors, 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     })
   } catch (e) {
-    return json({ error: String(e?.message ?? e) }, 500)
+    console.error('generate-report error', e)
+    return json({ error: 'Could not generate the report.' }, 500)
   }
 })
+
+// Neutralise spreadsheet formula injection: cells starting with a formula
+// trigger are prefixed with an apostrophe so Excel/Sheets treat them as text.
+function safeCell(v: unknown) {
+  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) return `'${v}`
+  return v
+}
 
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -112,14 +129,15 @@ function buildXlsx({ base, rows, totalSpent, totalIncome, byCategory }: any): Ui
     ['Net', totalIncome - totalSpent],
     [],
     ['Spending by category'],
-    ...Object.entries(byCategory).sort((a: any, b: any) => b[1] - a[1]),
+    ...Object.entries(byCategory).sort((a: any, b: any) => b[1] - a[1])
+      .map(([k, v]) => [safeCell(k), v]),
   ]
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Summary')
 
   // Transactions sheet
   const txnSheet = XLSX.utils.json_to_sheet(
     rows.map((r: any) => ({
-      Date: r.date, Type: r.kind, Category: r.category, Description: r.description,
+      Date: r.date, Type: r.kind, Category: safeCell(r.category), Description: safeCell(r.description),
       Currency: r.currency, Amount: r.amount, [`Amount (${base})`]: r.base_amount,
     })),
   )

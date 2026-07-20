@@ -23,15 +23,11 @@ export async function getGroup(groupId) {
   ])
   if (g.error) throw g.error
 
-  // Merge co-members' avatars (profiles are readable for group co-members).
+  // Merge co-members' avatars via a column-limited RPC (co-members can't read
+  // each other's full profile row — only their avatar, for members of a shared group).
   const memberRows = members.data ?? []
-  const userIds = memberRows.map((m) => m.user_id).filter(Boolean)
-  let avatarByUser = {}
-  if (userIds.length) {
-    const { data: profs } = await supabase
-      .from('profiles').select('id, avatar_url').in('id', userIds)
-    avatarByUser = Object.fromEntries((profs ?? []).map((p) => [p.id, p.avatar_url]))
-  }
+  const { data: avs } = await supabase.rpc('group_member_avatars', { p_group: groupId })
+  const avatarByUser = Object.fromEntries((avs ?? []).map((a) => [a.user_id, a.avatar_url]))
   const withAvatars = memberRows.map((m) => ({ ...m, avatar_url: m.user_id ? avatarByUser[m.user_id] : null }))
 
   return {

@@ -76,7 +76,13 @@ export function AuthProvider({ children }) {
     [],
   )
 
-  const signOut = useCallback(() => supabase.auth.signOut(), [])
+  const signOut = useCallback(async () => {
+    const res = await supabase.auth.signOut()
+    // Clear the cached financial data (supabase REST responses) so it isn't
+    // left behind on a shared device after logout.
+    try { if ('caches' in window) await caches.delete('supabase-rest') } catch { /* ignore */ }
+    return res
+  }, [])
 
   const resendConfirmation = useCallback(
     (email) =>

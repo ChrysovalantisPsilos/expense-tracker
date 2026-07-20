@@ -81,6 +81,9 @@ Deno.serve(async (req) => {
     const { data: { user } } = await asUser.auth.getUser()
     if (!user) return json({ error: 'not authenticated' }, 401)
 
+    const { data: allowed } = await asUser.rpc('rate_limit', { p_key: `send-invite:${user.id}`, p_max: 20, p_seconds: 3600 })
+    if (allowed === false) return json({ error: 'Too many invites sent. Please try again later.' }, 429)
+
     const { data: invite } = await asUser
       .from('group_invites')
       .select('group_id, groups(name)')

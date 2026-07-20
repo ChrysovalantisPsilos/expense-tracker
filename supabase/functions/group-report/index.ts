@@ -38,6 +38,11 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } },
     )
 
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return json({ error: 'not authenticated' }, 401)
+    const { data: allowed } = await supabase.rpc('rate_limit', { p_key: `group-report:${user.id}`, p_max: 30, p_seconds: 3600 })
+    if (allowed === false) return json({ error: 'Too many report requests. Please try again later.' }, 429)
+
     const { data: group } = await supabase
       .from('groups').select('id, name, currency').eq('id', group_id).maybeSingle()
     if (!group) return json({ error: 'not allowed for this group' }, 403)
