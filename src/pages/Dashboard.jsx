@@ -26,7 +26,7 @@ export default function Dashboard() {
     let spent = 0, earned = 0
     const cat = new Map()
     for (const r of rows) {
-      const base = toBaseMinor(r.amount_minor, r.exchange_rate)
+      const base = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
       if (r.kind === 'income') {
         earned += base
       } else {
@@ -39,7 +39,7 @@ export default function Dashboard() {
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
     return { spent, earned, byCategory }
-  }, [rows])
+  }, [rows, baseCurrency])
 
   if (loading) return <Center py={20}><Spinner color="brand.500" /></Center>
 

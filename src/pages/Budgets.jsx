@@ -42,10 +42,10 @@ export default function Budgets() {
     const m = new Map()
     for (const r of rows) {
       if (!r.category_id) continue
-      m.set(r.category_id, (m.get(r.category_id) ?? 0) + toBaseMinor(r.amount_minor, r.exchange_rate))
+      m.set(r.category_id, (m.get(r.category_id) ?? 0) + toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency))
     }
     return m
-  }, [rows])
+  }, [rows, baseCurrency])
 
   async function addBudget(e) {
     e.preventDefault()
