@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Outlet, NavLink as RouterNavLink, useLocation } from 'react-router-dom'
+import { Outlet, NavLink as RouterNavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Box, Flex, HStack, VStack, IconButton, Text, Badge, Spacer, Tooltip,
   useColorMode,
@@ -7,7 +7,7 @@ import {
 import UserAvatar from './UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Wallet, FileDown, Users,
-  Sun, Moon, LogOut, WifiOff, RefreshCw,
+  Sun, Moon, LogOut, WifiOff, RefreshCw, Search,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { useProfile } from '../lib/useProfile.js'
@@ -97,6 +97,7 @@ export default function AppShell() {
   const { signOut } = useAuth()
   const { profile } = useProfile()
   const location = useLocation()
+  const navigate = useNavigate()
   const [, setTick] = useState(0)
   useEffect(() => { setTick((n) => n + 1) }, [location])
   const ThemeIcon = colorMode === 'dark' ? Sun : Moon
@@ -149,6 +150,8 @@ export default function AppShell() {
           <Logo size={26} />
           <Spacer />
           <SyncBadges />
+          <IconButton aria-label="Search" variant="ghost" size="sm"
+            icon={<Search size={18} />} onClick={() => navigate('/search')} />
           <NotificationBell />
           <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
             icon={<ThemeIcon size={18} />} onClick={toggleColorMode} />
@@ -162,6 +165,10 @@ export default function AppShell() {
         <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end" align="center"
           gap={2} px={6} pt={4}>
           <SyncBadges />
+          <Tooltip label="Search transactions">
+            <IconButton aria-label="Search" variant="ghost" size="sm"
+              icon={<Search size={18} />} onClick={() => navigate('/search')} />
+          </Tooltip>
           <NotificationBell />
         </Flex>
 

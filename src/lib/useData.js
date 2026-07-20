@@ -22,8 +22,9 @@ export function useCategories(kind) {
   return { categories, loading, reload: load }
 }
 
-// Transactions in a date range (defaults to current month).
-export function useTransactions({ kind, from, to } = {}) {
+// Transactions in a date range (defaults to current month). Optional
+// `categoryId` and `limit` narrow the query server-side (used by search).
+export function useTransactions({ kind, from, to, categoryId, limit } = {}) {
   const { user } = useAuth()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -38,10 +39,12 @@ export function useTransactions({ kind, from, to } = {}) {
     if (kind) q = q.eq('kind', kind)
     if (from) q = q.gte('spent_at', from)
     if (to) q = q.lte('spent_at', to)
+    if (categoryId) q = q.eq('category_id', categoryId)
+    if (limit) q = q.limit(limit)
     const { data } = await q
     setRows(data ?? [])
     setLoading(false)
-  }, [user, kind, from, to])
+  }, [user, kind, from, to, categoryId, limit])
 
   useEffect(() => { load() }, [load])
   // `mutate` lets callers optimistically update the list (edit/delete) so it
