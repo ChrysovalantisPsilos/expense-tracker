@@ -14,6 +14,7 @@ import { useProfile } from '../lib/useProfile.js'
 import { useCategories } from '../lib/useData.js'
 import { toMinor, fromMinor, formatMoney } from '../lib/currency.js'
 import { today } from '../lib/dates.js'
+import { useAsyncSubmit } from '../lib/useAsyncSubmit.js'
 import {
   useRecurring, monthlyMinor, frequencyLabel, FREQUENCIES,
   saveRecurring, setRecurringActive, deleteRecurring,
@@ -162,13 +163,12 @@ function RecurringForm({ rule, baseCurrency, onClose, onSaved }) {
   const [intervalN, setIntervalN] = useState(String(rule?.interval_n ?? 1))
   const [nextRun, setNextRun] = useState(rule?.next_run ?? today())
   const [endDate, setEndDate] = useState(rule?.end_date ?? '')
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
 
   async function submit(e) {
     e.preventDefault()
     if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
-    setBusy(true)
-    try {
+    await run(async () => {
       await saveRecurring({
         id: rule?.id,
         kind,
@@ -184,9 +184,7 @@ function RecurringForm({ rule, baseCurrency, onClose, onSaved }) {
       })
       toast({ title: isEdit ? 'Recurring entry updated' : 'Recurring entry added', status: 'success' })
       onSaved()
-    } catch (err) {
-      toast({ title: err.message, status: 'error' })
-    } finally { setBusy(false) }
+    })
   }
 
   return (

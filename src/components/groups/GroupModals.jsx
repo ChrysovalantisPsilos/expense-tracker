@@ -9,6 +9,8 @@ import {
   inviteExistingUser, createInvite, emailInvite, addSettlement, renameGroup,
 } from '../../lib/groups.js'
 import { toMinor, fromMinor, formatMoney } from '../../lib/currency.js'
+import { today } from '../../lib/dates.js'
+import { useAsyncSubmit } from '../../lib/useAsyncSubmit.js'
 import { simplifyDebts } from '../../lib/splitMath.js'
 import MoneyInput from '../MoneyInput.jsx'
 
@@ -113,8 +115,8 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
   const [direction, setDirection] = useState('out') // 'out' = I paid, 'in' = they paid me
   const [otherId, setOtherId] = useState(others[0]?.id ?? '')
   const [amount, setAmount] = useState('')
-  const [settledAt, setSettledAt] = useState(() => new Date().toISOString().slice(0, 10))
-  const [busy, setBusy] = useState(false)
+  const [settledAt, setSettledAt] = useState(() => today())
+  const { busy, run } = useAsyncSubmit()
 
   const otherNet = balances?.get(otherId) ?? 0
   const otherName = others.find((m) => m.id === otherId)?.display_name ?? ''
@@ -140,16 +142,14 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
     if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
     const from = direction === 'out' ? myMember.id : otherId
     const to = direction === 'out' ? otherId : myMember.id
-    setBusy(true)
-    try {
+    await run(async () => {
       await addSettlement({
         groupId: group.id, fromMember: from, toMember: to,
         amountMinor: toMinor(amount, group.currency), currency: group.currency, settledAt,
       })
       toast({ title: 'Settlement recorded', status: 'success' })
       onSaved?.(); onClose(); setAmount('')
-    } catch (e) { toast({ title: e.message, status: 'error' }) }
-    finally { setBusy(false) }
+    })
   }
 
   return (
@@ -243,19 +243,17 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
 export function RenameGroupModal({ group, isOpen, onClose, onSaved }) {
   const toast = useToast()
   const [name, setName] = useState(group.name)
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
   useEffect(() => { if (isOpen) setName(group.name) }, [isOpen, group.name])
 
   async function submit(e) {
     e.preventDefault()
     if (!name.trim()) return
-    setBusy(true)
-    try {
+    await run(async () => {
       await renameGroup(group.id, name.trim())
       toast({ title: 'Group renamed', status: 'success' })
       onSaved?.(); onClose()
-    } catch (e) { toast({ title: e.message, status: 'error' }) }
-    finally { setBusy(false) }
+    })
   }
 
   return (

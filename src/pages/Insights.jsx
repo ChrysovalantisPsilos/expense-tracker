@@ -13,6 +13,7 @@ import { Plus, Pencil, Trash2, Target, TrendingUp, Wallet } from 'lucide-react'
 import OptionalDate from '../components/OptionalDate.jsx'
 import { useTransactions } from '../lib/useData.js'
 import { lastMonths } from '../lib/dates.js'
+import { useAsyncSubmit } from '../lib/useAsyncSubmit.js'
 import { useProfile } from '../lib/useProfile.js'
 import { formatMoney, toBaseMinor, toMinor, fromMinor, minorFactor } from '../lib/currency.js'
 import {
@@ -180,20 +181,18 @@ function AccountModal({ account, baseCurrency, onClose, onSaved }) {
   const [type, setType] = useState(account?.type ?? 'asset')
   const [balance, setBalance] = useState(account ? String(fromMinor(account.balance_minor, account.currency)) : '')
   const [currency] = useState(account?.currency ?? baseCurrency)
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
 
   async function submit(e) {
     e.preventDefault()
     if (!name.trim()) return toast({ title: 'Name it', status: 'warning' })
-    setBusy(true)
-    try {
+    await run(async () => {
       await saveAccount({
         id: account?.id, name: name.trim(), type,
         balance_minor: toMinor(balance || '0', currency), currency,
       })
       onSaved()
-    } catch (err) { toast({ title: err.message, status: 'error' }) }
-    finally { setBusy(false) }
+    })
   }
 
   return (
@@ -316,22 +315,20 @@ function GoalModal({ goal, baseCurrency, onClose, onSaved }) {
   const [saved, setSaved] = useState(goal ? String(fromMinor(goal.saved_minor, goal.currency)) : '0')
   const [currency] = useState(goal?.currency ?? baseCurrency)
   const [targetDate, setTargetDate] = useState(goal?.target_date ?? '')
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
 
   async function submit(e) {
     e.preventDefault()
     if (!name.trim()) return toast({ title: 'Name it', status: 'warning' })
     if (!target || Number(target) <= 0) return toast({ title: 'Set a target', status: 'warning' })
-    setBusy(true)
-    try {
+    await run(async () => {
       await saveGoal({
         id: goal?.id, name: name.trim(),
         target_minor: toMinor(target, currency), saved_minor: toMinor(saved || '0', currency),
         currency, target_date: targetDate || null,
       })
       onSaved()
-    } catch (err) { toast({ title: err.message, status: 'error' }) }
-    finally { setBusy(false) }
+    })
   }
 
   return (
