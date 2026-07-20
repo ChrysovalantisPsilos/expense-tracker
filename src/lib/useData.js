@@ -65,28 +65,53 @@ export function monthRange(d = new Date()) {
   return { from: iso(start), to: iso(end) }
 }
 
-// Dashboard period options: this month, the prior 11 months, recent years, and
-// all-time. Each entry carries the {from, to} range (null = unbounded).
-export function buildPeriods(d = new Date()) {
+// Dashboard period options, clamped so the user never sees months/years from
+// before they have any data. The range spans from `oldestISO` (their oldest
+// transaction, YYYY-MM-DD) up to now — importing older data extends it for
+// free. With no transactions, only "This month" is offered.
+export function buildPeriods(oldestISO, d = new Date()) {
   const iso = (x) => x.toISOString().slice(0, 10)
   const y = d.getFullYear()
   const m = d.getMonth()
+
+  const thisMonth = {
+    value: `m:${y}-${m + 1}`, label: 'This month',
+    from: iso(new Date(y, m, 1)), to: iso(new Date(y, m + 1, 0)),
+  }
+  if (!oldestISO) return [thisMonth]
+
+  const oldest = new Date(oldestISO)
+  const oldestY = oldest.getFullYear()
+  const oldestMonthIdx = oldestY * 12 + oldest.getMonth()
+  const nowMonthIdx = y * 12 + m
+
   const out = []
-  for (let i = 0; i < 12; i++) {
-    const start = new Date(y, m - i, 1)
-    const end = new Date(y, m - i + 1, 0)
+  for (let idx = nowMonthIdx; idx >= oldestMonthIdx; idx--) {
+    const start = new Date(Math.floor(idx / 12), idx % 12, 1)
+    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0)
     out.push({
       value: `m:${start.getFullYear()}-${start.getMonth() + 1}`,
-      label: i === 0 ? 'This month' : start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      label: idx === nowMonthIdx ? 'This month' : start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
       from: iso(start), to: iso(end),
     })
   }
-  for (let i = 0; i < 4; i++) {
-    const yr = y - i
-    out.push({ value: `y:${yr}`, label: i === 0 ? 'This year' : String(yr), from: `${yr}-01-01`, to: `${yr}-12-31` })
+  for (let yr = y; yr >= oldestY; yr--) {
+    out.push({ value: `y:${yr}`, label: yr === y ? 'This year' : String(yr), from: `${yr}-01-01`, to: `${yr}-12-31` })
   }
-  out.push({ value: 'all', label: 'All time', from: null, to: null })
+  // "All time" only adds value once there's data spanning more than this month.
+  if (oldestMonthIdx < nowMonthIdx) out.push({ value: 'all', label: 'All time', from: null, to: null })
   return out
+}
+
+// The user's oldest transaction date (YYYY-MM-DD), or null if none.
+export async function oldestTransactionDate() {
+  const { data } = await supabase
+    .from('transactions')
+    .select('spent_at')
+    .order('spent_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  return data?.spent_at ?? null
 }
 
 // One-time default-category seed after first login.

@@ -6,7 +6,7 @@ import {
 } from '@chakra-ui/react'
 import UserAvatar from './UserAvatar.jsx'
 import {
-  LayoutDashboard, ReceiptText, Target, Wallet, FileDown, Users,
+  LayoutDashboard, ReceiptText, Target, Wallet, Users,
   Sun, Moon, LogOut, WifiOff, RefreshCw, Search, Repeat, TrendingUp, MoreHorizontal,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
@@ -29,7 +29,6 @@ const PRIMARY = [
 const SECONDARY = [
   { to: '/insights', label: 'Insights', icon: TrendingUp },
   { to: '/recurring', label: 'Recurring', icon: Repeat },
-  { to: '/reports', label: 'Reports', icon: FileDown },
   { to: '/search', label: 'Search', icon: Search },
 ]
 // Mobile bottom bar: the five primary tabs plus a "More" entry.

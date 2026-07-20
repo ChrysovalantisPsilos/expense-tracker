@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   SimpleGrid, Card, CardBody, Stat, StatLabel, StatNumber, StatHelpText,
   Heading, Box, Text, Stack, Center, Spinner, Spacer, HStack, IconButton,
@@ -7,7 +7,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { PieChart as PieIcon, Table as TableIcon } from 'lucide-react'
 import TransactionList from '../components/TransactionList.jsx'
-import { useTransactions, buildPeriods } from '../lib/useData.js'
+import { useTransactions, buildPeriods, oldestTransactionDate } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
 import { formatMoney, toBaseMinor } from '../lib/currency.js'
 import { STORAGE_KEYS } from '../lib/keys.js'
@@ -25,8 +25,11 @@ const bucketOf = (r) =>
 
 export default function Dashboard() {
   const { baseCurrency } = useProfile()
-  const periods = useMemo(() => buildPeriods(), [])
-  const [periodValue, setPeriodValue] = useState(periods[0].value)
+  const [oldest, setOldest] = useState(null)
+  useEffect(() => { oldestTransactionDate().then(setOldest) }, [])
+  const periods = useMemo(() => buildPeriods(oldest), [oldest])
+  // Default to this month; its token is stable and always present in the list.
+  const [periodValue, setPeriodValue] = useState(() => buildPeriods(null)[0].value)
   const period = periods.find((p) => p.value === periodValue) ?? periods[0]
 
   const { rows, loading, reload, mutate } = useTransactions({

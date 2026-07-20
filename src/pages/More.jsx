@@ -3,15 +3,14 @@ import {
   Heading, Stack, Card, CardBody, HStack, Text, Box, Divider,
 } from '@chakra-ui/react'
 import {
-  TrendingUp, Repeat, FileDown, Search, User, ChevronRight,
+  TrendingUp, Repeat, Search, User, ChevronRight,
 } from 'lucide-react'
 
 const LINKS = [
   { to: '/insights', label: 'Insights', desc: 'Trends, net worth & goals', icon: TrendingUp },
   { to: '/recurring', label: 'Recurring', desc: 'Subscriptions & recurring bills', icon: Repeat },
-  { to: '/reports', label: 'Reports', desc: 'Export a PDF or Excel statement', icon: FileDown },
   { to: '/search', label: 'Search', desc: 'Find any transaction', icon: Search },
-  { to: '/profile', label: 'Profile', desc: 'Account, currency & settings', icon: User },
+  { to: '/profile', label: 'Profile', desc: 'Statement export, account & settings', icon: User },
 ]
 
 export default function More() {
