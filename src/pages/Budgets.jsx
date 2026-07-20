@@ -11,10 +11,6 @@ import { useProfile } from '../lib/useProfile.js'
 import { formatMoney, toMinor, toBaseMinor } from '../lib/currency.js'
 import MoneyInput from '../components/MoneyInput.jsx'
 
-function periodStart(d = new Date()) {
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
-}
-
 export default function Budgets() {
   const { user } = useAuth()
   const { baseCurrency } = useProfile()
@@ -27,7 +23,7 @@ export default function Budgets() {
   const [amount, setAmount] = useState('')
   const toast = useToast()
 
-  const start = periodStart()
+  const start = from // budget period key = first day of the month
 
   async function load() {
     setLoading(true)

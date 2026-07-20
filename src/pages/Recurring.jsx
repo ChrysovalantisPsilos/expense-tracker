@@ -13,12 +13,11 @@ import OptionalDate from '../components/OptionalDate.jsx'
 import { useProfile } from '../lib/useProfile.js'
 import { useCategories } from '../lib/useData.js'
 import { toMinor, fromMinor, formatMoney } from '../lib/currency.js'
+import { today } from '../lib/dates.js'
 import {
   useRecurring, monthlyMinor, frequencyLabel, FREQUENCIES,
   saveRecurring, setRecurringActive, deleteRecurring,
 } from '../lib/recurring.js'
-
-const today = () => new Date().toISOString().slice(0, 10)
 
 export default function Recurring() {
   const { baseCurrency = 'EUR' } = useProfile()

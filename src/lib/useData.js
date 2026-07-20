@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from './supabase.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
+import { isoDate } from './dates.js'
 
 // Categories for the current user (optionally filtered by kind).
 export function useCategories(kind) {
@@ -57,20 +58,15 @@ export function useTransactions({ kind, from, to, categoryId, limit, withGroup }
   return { rows, loading, reload: load, mutate: setRows }
 }
 
-// Month boundaries as YYYY-MM-DD strings (no Date.now dependency in callers).
-export function monthRange(d = new Date()) {
-  const start = new Date(d.getFullYear(), d.getMonth(), 1)
-  const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
-  const iso = (x) => x.toISOString().slice(0, 10)
-  return { from: iso(start), to: iso(end) }
-}
+// Re-exported for existing callers; the implementation lives in lib/dates.js.
+export { monthRange } from './dates.js'
 
 // Dashboard period options, clamped so the user never sees months/years from
 // before they have any data. The range spans from `oldestISO` (their oldest
 // transaction, YYYY-MM-DD) up to now — importing older data extends it for
 // free. With no transactions, only "This month" is offered.
 export function buildPeriods(oldestISO, d = new Date()) {
-  const iso = (x) => x.toISOString().slice(0, 10)
+  const iso = isoDate
   const y = d.getFullYear()
   const m = d.getMonth()
 
