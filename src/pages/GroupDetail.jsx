@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Box,
@@ -14,7 +14,7 @@ import {
 import { useAuth } from '../auth/AuthProvider.jsx'
 import {
   getGroup, addSettlement, createInviteLink, createInvite,
-  emailInvite, computeBalances, removeMember, deleteGroup, inviteExistingUser,
+  emailInvite, removeMember, deleteGroup, inviteExistingUser,
   renameGroup, uploadGroupImage, listAuditLog, downloadGroupReport,
 } from '../lib/groups.js'
 import { formatMoney, toMinor } from '../lib/currency.js'
@@ -66,7 +66,7 @@ export default function GroupDetail() {
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [id])
 
-  const balances = useMemo(() => data ? computeBalances(data) : new Map(), [data])
+  const balances = data?.balances ?? new Map()
   const nameOf = (mid) => data?.members.find((m) => m.id === mid)?.display_name ?? '—'
   const myMember = data?.members.find((m) => m.user_id === user.id)
   const myNet = myMember ? (balances.get(myMember.id) ?? 0) : 0

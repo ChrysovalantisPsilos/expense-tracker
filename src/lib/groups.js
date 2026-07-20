@@ -13,28 +13,30 @@ export async function listGroups() {
 
 // Full detail for one group: members (+avatars), expenses (+splits), settlements.
 export async function getGroup(groupId) {
-  const [g, members, expenses, settlements] = await Promise.all([
+  const [g, members, expenses, settlements, avs, bal] = await Promise.all([
     supabase.from('groups').select('*').eq('id', groupId).single(),
     supabase.from('group_members').select('*').eq('group_id', groupId).order('created_at'),
     supabase.from('group_expenses')
       .select('*, expense_splits(*)')
       .eq('group_id', groupId).order('spent_at', { ascending: false }),
     supabase.from('settlements').select('*').eq('group_id', groupId).order('settled_at', { ascending: false }),
+    // Co-members' avatars (column-limited RPC) + server-computed balances.
+    supabase.rpc('group_member_avatars', { p_group: groupId }),
+    supabase.rpc('group_balances', { p_group: groupId }),
   ])
   if (g.error) throw g.error
 
-  // Merge co-members' avatars via a column-limited RPC (co-members can't read
-  // each other's full profile row — only their avatar, for members of a shared group).
   const memberRows = members.data ?? []
-  const { data: avs } = await supabase.rpc('group_member_avatars', { p_group: groupId })
-  const avatarByUser = Object.fromEntries((avs ?? []).map((a) => [a.user_id, a.avatar_url]))
+  const avatarByUser = Object.fromEntries((avs.data ?? []).map((a) => [a.user_id, a.avatar_url]))
   const withAvatars = memberRows.map((m) => ({ ...m, avatar_url: m.user_id ? avatarByUser[m.user_id] : null }))
+  const balances = new Map((bal.data ?? []).map((b) => [b.member_id, Number(b.net_minor)]))
 
   return {
     group: g.data,
     members: withAvatars,
     expenses: expenses.data ?? [],
     settlements: settlements.data ?? [],
+    balances,
   }
 }
 
@@ -238,23 +240,4 @@ export async function downloadGroupReport(groupId, groupName = 'group') {
   a.click()
   a.remove()
   URL.revokeObjectURL(url)
-}
-
-// ---- Balances ------------------------------------------------------------
-
-// Net balance per member: positive = the group owes them; negative = they owe.
-//   net = paid − owed_shares + settled_out − settled_in
-export function computeBalances({ members, expenses, settlements }) {
-  const net = new Map(members.map((m) => [m.id, 0]))
-  for (const e of expenses) {
-    net.set(e.paid_by, (net.get(e.paid_by) ?? 0) + e.amount_minor)
-    for (const s of e.expense_splits ?? []) {
-      net.set(s.member_id, (net.get(s.member_id) ?? 0) - s.share_minor)
-    }
-  }
-  for (const s of settlements) {
-    net.set(s.from_member, (net.get(s.from_member) ?? 0) + s.amount_minor)
-    net.set(s.to_member, (net.get(s.to_member) ?? 0) - s.amount_minor)
-  }
-  return net
 }

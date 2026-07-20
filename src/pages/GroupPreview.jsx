@@ -5,7 +5,7 @@ import {
   CardBody, Avatar, Divider, List, ListItem, Spacer, Image, useColorMode, IconButton,
 } from '@chakra-ui/react'
 import { Users, Sun, Moon, Lock } from 'lucide-react'
-import { previewGroup, computeBalances } from '../lib/groups.js'
+import { previewGroup } from '../lib/groups.js'
 import { formatMoney } from '../lib/currency.js'
 
 const PENDING_INVITE = 'budge:invite'
@@ -21,14 +21,11 @@ export default function GroupPreview() {
     previewGroup(token).then(setData).catch(() => setData(null))
   }, [token])
 
-  const balances = useMemo(() => {
-    if (!data) return new Map()
-    return computeBalances({
-      members: data.members ?? [],
-      expenses: data.expenses ?? [],
-      settlements: data.settlements ?? [],
-    })
-  }, [data])
+  // Net per member is computed server-side and embedded in the preview.
+  const balances = useMemo(
+    () => new Map((data?.members ?? []).map((m) => [m.id, Number(m.net_minor ?? 0)])),
+    [data],
+  )
 
   function goSignup() {
     localStorage.setItem(PENDING_INVITE, token)
