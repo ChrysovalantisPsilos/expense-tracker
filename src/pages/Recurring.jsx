@@ -9,6 +9,7 @@ import {
 import { Plus, Pencil, Trash2, Repeat } from 'lucide-react'
 import CategoryBadge from '../components/CategoryBadge.jsx'
 import MoneyInput from '../components/MoneyInput.jsx'
+import ClearableDate from '../components/ClearableDate.jsx'
 import { useProfile } from '../lib/useProfile.js'
 import { useCategories } from '../lib/useData.js'
 import { toMinor, fromMinor, formatMoney } from '../lib/currency.js'
@@ -248,7 +249,7 @@ function RecurringForm({ rule, baseCurrency, onClose, onSaved }) {
               </FormControl>
               <FormControl>
                 <FormLabel>Ends (optional)</FormLabel>
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+                <ClearableDate value={endDate} onChange={setEndDate} />
               </FormControl>
             </HStack>
           </Stack>

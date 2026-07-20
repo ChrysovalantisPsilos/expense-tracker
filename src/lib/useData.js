@@ -24,7 +24,9 @@ export function useCategories(kind) {
 
 // Transactions in a date range (defaults to current month). Optional
 // `categoryId` and `limit` narrow the query server-side (used by search).
-export function useTransactions({ kind, from, to, categoryId, limit } = {}) {
+// `withGroup` also embeds the owning group's name for mirrored group expenses,
+// so the dashboard can bucket them under the group instead of Uncategorized.
+export function useTransactions({ kind, from, to, categoryId, limit, withGroup } = {}) {
   const { user } = useAuth()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,9 +34,12 @@ export function useTransactions({ kind, from, to, categoryId, limit } = {}) {
   const load = useCallback(async () => {
     if (!user) return
     setLoading(true)
+    const select = withGroup
+      ? '*, categories(name, icon), group_expenses(groups(name))'
+      : '*, categories(name, icon)'
     let q = supabase
       .from('transactions')
-      .select('*, categories(name, icon)')
+      .select(select)
       .order('spent_at', { ascending: false })
     if (kind) q = q.eq('kind', kind)
     if (from) q = q.gte('spent_at', from)
@@ -44,7 +49,7 @@ export function useTransactions({ kind, from, to, categoryId, limit } = {}) {
     const { data } = await q
     setRows(data ?? [])
     setLoading(false)
-  }, [user, kind, from, to, categoryId, limit])
+  }, [user, kind, from, to, categoryId, limit, withGroup])
 
   useEffect(() => { load() }, [load])
   // `mutate` lets callers optimistically update the list (edit/delete) so it
@@ -58,6 +63,30 @@ export function monthRange(d = new Date()) {
   const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
   const iso = (x) => x.toISOString().slice(0, 10)
   return { from: iso(start), to: iso(end) }
+}
+
+// Dashboard period options: this month, the prior 11 months, recent years, and
+// all-time. Each entry carries the {from, to} range (null = unbounded).
+export function buildPeriods(d = new Date()) {
+  const iso = (x) => x.toISOString().slice(0, 10)
+  const y = d.getFullYear()
+  const m = d.getMonth()
+  const out = []
+  for (let i = 0; i < 12; i++) {
+    const start = new Date(y, m - i, 1)
+    const end = new Date(y, m - i + 1, 0)
+    out.push({
+      value: `m:${start.getFullYear()}-${start.getMonth() + 1}`,
+      label: i === 0 ? 'This month' : start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      from: iso(start), to: iso(end),
+    })
+  }
+  for (let i = 0; i < 4; i++) {
+    const yr = y - i
+    out.push({ value: `y:${yr}`, label: i === 0 ? 'This year' : String(yr), from: `${yr}-01-01`, to: `${yr}-12-31` })
+  }
+  out.push({ value: 'all', label: 'All time', from: null, to: null })
+  return out
 }
 
 // One-time default-category seed after first login.
