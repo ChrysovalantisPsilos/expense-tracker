@@ -172,22 +172,16 @@ const PIE = [
   c(253, 223, 138), c(214, 204, 186),
 ]
 
-const CDN = 'https://cdn.jsdelivr.net/gh/google/fonts'
+// Static TTFs bundled in the @expo-google-fonts npm packages (verified to
+// resolve from the edge runtime; the google/fonts gh repo only keeps variable
+// fonts for these families). DejaVu Sans is the Unicode fallback face.
+const EXPO = 'https://cdn.jsdelivr.net/npm/@expo-google-fonts'
 const DEJAVU = 'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf'
-// Each face lists candidate URLs tried in order — Google Fonts renamed some
-// static instances over time, so we probe a couple of paths before falling
-// back. The first that fetches wins.
 const FONT_URLS = {
-  head: [`${CDN}/ofl/poppins/Poppins-SemiBold.ttf`],
-  headBold: [`${CDN}/ofl/poppins/Poppins-Bold.ttf`],
-  body: [
-    `${CDN}/ofl/nunitosans/static/NunitoSans_10pt-Regular.ttf`,
-    `${CDN}/ofl/nunitosans/static/NunitoSans-Regular.ttf`,
-  ],
-  bodyBold: [
-    `${CDN}/ofl/nunitosans/static/NunitoSans_10pt-Bold.ttf`,
-    `${CDN}/ofl/nunitosans/static/NunitoSans-Bold.ttf`,
-  ],
+  head: [`${EXPO}/poppins/Poppins_600SemiBold.ttf`],
+  headBold: [`${EXPO}/poppins/Poppins_700Bold.ttf`],
+  body: [`${EXPO}/nunito-sans/NunitoSans_400Regular.ttf`],
+  bodyBold: [`${EXPO}/nunito-sans/NunitoSans_700Bold.ttf`],
   uni: [`${DEJAVU}/DejaVuSans.ttf`],
 }
 const fontBytes: Record<string, ArrayBuffer | null> = {}
