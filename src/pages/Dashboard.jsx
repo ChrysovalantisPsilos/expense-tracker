@@ -1,12 +1,16 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   SimpleGrid, Card, CardBody, Stat, StatLabel, StatNumber, StatHelpText,
-  Heading, Box, Text, Stack, Center, Spinner,
+  Heading, Box, Text, Stack, Center, Spinner, Spacer, HStack, IconButton,
+  Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip,
 } from '@chakra-ui/react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import { PieChart as PieIcon, Table as TableIcon } from 'lucide-react'
 import { useTransactions, monthRange } from '../lib/useData.js'
 import { useProfile } from '../lib/useProfile.js'
 import { formatMoney, toBaseMinor } from '../lib/currency.js'
+
+const VIEW_KEY = 'budge:overviewView'
 
 // Warm-led categorical palette (coral/amber first, then complementary hues).
 const COLORS = ['#f95d38', '#fbb324', '#ef8a5a', '#e2431f', '#f6c453', '#c2703d', '#7c6f59', '#d6ccba']
@@ -15,6 +19,8 @@ export default function Dashboard() {
   const { baseCurrency } = useProfile()
   const { from, to } = useMemo(() => monthRange(), [])
   const { rows, loading } = useTransactions({ from, to })
+  const [view, setView] = useState(() => localStorage.getItem(VIEW_KEY) || 'pie')
+  function chooseView(v) { setView(v); localStorage.setItem(VIEW_KEY, v) }
 
   const { spent, earned, byCategory } = useMemo(() => {
     let spent = 0, earned = 0
@@ -66,10 +72,27 @@ export default function Dashboard() {
       </SimpleGrid>
 
       <Card><CardBody>
-        <Heading size="sm" mb={4}>Spending by category</Heading>
+        <HStack mb={4}>
+          <Heading size="sm">Spending by category</Heading>
+          <Spacer />
+          <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
+            <CkTooltip label="Chart">
+              <IconButton aria-label="Chart view" size="xs" icon={<PieIcon size={15} />}
+                variant={view === 'pie' ? 'solid' : 'ghost'}
+                colorScheme={view === 'pie' ? 'brand' : 'gray'}
+                onClick={() => chooseView('pie')} />
+            </CkTooltip>
+            <CkTooltip label="Table">
+              <IconButton aria-label="Table view" size="xs" icon={<TableIcon size={15} />}
+                variant={view === 'table' ? 'solid' : 'ghost'}
+                colorScheme={view === 'table' ? 'brand' : 'gray'}
+                onClick={() => chooseView('table')} />
+            </CkTooltip>
+          </HStack>
+        </HStack>
         {byCategory.length === 0 ? (
           <Text color="text.muted">No expenses yet this month.</Text>
-        ) : (
+        ) : view === 'pie' ? (
           <Box h="280px">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -81,6 +104,30 @@ export default function Dashboard() {
               </PieChart>
             </ResponsiveContainer>
           </Box>
+        ) : (
+          <Table size="sm" variant="simple">
+            <Thead>
+              <Tr>
+                <Th>Category</Th>
+                <Th isNumeric>Amount</Th>
+                <Th isNumeric>Share</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {byCategory.map((c, i) => (
+                <Tr key={c.name}>
+                  <Td>
+                    <HStack spacing={2}>
+                      <Box boxSize="10px" borderRadius="sm" bg={COLORS[i % COLORS.length]} />
+                      <Text>{c.name}</Text>
+                    </HStack>
+                  </Td>
+                  <Td isNumeric fontWeight="600">{formatMoney(c.value, baseCurrency)}</Td>
+                  <Td isNumeric color="text.muted">{spent ? Math.round((c.value / spent) * 100) : 0}%</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
         )}
       </CardBody></Card>
     </Stack>
