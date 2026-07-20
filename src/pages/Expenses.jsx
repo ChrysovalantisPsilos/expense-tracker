@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Heading, Stack, Card, CardBody, Button, useDisclosure, Collapse,
   List, ListItem, HStack, Text, Spacer, Badge, Center, Spinner, Divider,
   IconButton, useToast, Tag,
 } from '@chakra-ui/react'
-import { Paperclip } from 'lucide-react'
+import { Paperclip, FileSpreadsheet } from 'lucide-react'
 import TransactionForm from '../components/TransactionForm.jsx'
 import CategoryBadge from '../components/CategoryBadge.jsx'
 import { useTransactions, monthRange } from '../lib/useData.js'
@@ -13,6 +14,7 @@ import { formatMoney } from '../lib/currency.js'
 import { receiptUrl } from '../lib/receipts.js'
 
 export default function Expenses() {
+  const navigate = useNavigate()
   const { baseCurrency } = useProfile()
   const { from, to } = monthRange()
   const { rows, loading, reload } = useTransactions({ kind: 'expense', from, to })
@@ -31,6 +33,8 @@ export default function Expenses() {
       <HStack>
         <Heading size="lg">Expenses</Heading>
         <Spacer />
+        <Button size="sm" variant="ghost" leftIcon={<FileSpreadsheet size={16} />}
+          onClick={() => navigate('/import')}>Import</Button>
         <Button size="sm" onClick={onToggle}>{isOpen ? 'Hide form' : 'Add expense'}</Button>
       </HStack>
 

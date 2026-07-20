@@ -8,6 +8,7 @@ import Login from './pages/Login.jsx'
 import VerifyEmail from './pages/VerifyEmail.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Expenses from './pages/Expenses.jsx'
+import ImportExpenses from './pages/ImportExpenses.jsx'
 import Budgets from './pages/Budgets.jsx'
 import Income from './pages/Income.jsx'
 import Reports from './pages/Reports.jsx'
@@ -51,6 +52,7 @@ function AuthedRoutes() {
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
           <Route path="expenses" element={<Expenses />} />
+          <Route path="import" element={<ImportExpenses />} />
           <Route path="budgets" element={<Budgets />} />
           <Route path="income" element={<Income />} />
           <Route path="reports" element={<Reports />} />
