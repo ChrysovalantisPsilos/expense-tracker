@@ -9,13 +9,13 @@ import {
 } from '@chakra-ui/react'
 import {
   ArrowLeft, Plus, Link2, Users, HandCoins, Paperclip, Mail,
-  MoreVertical, LogOut, Trash2, UserMinus, Pencil, ArrowRight, Camera,
+  MoreVertical, LogOut, Trash2, UserMinus, Pencil, ArrowRight, Camera, FileDown,
 } from 'lucide-react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import {
   getGroup, addSettlement, createInviteLink, createInvite,
   emailInvite, computeBalances, removeMember, deleteGroup, inviteExistingUser,
-  renameGroup, uploadGroupImage,
+  renameGroup, uploadGroupImage, listAuditLog, downloadGroupReport,
 } from '../lib/groups.js'
 import { formatMoney, toMinor } from '../lib/currency.js'
 import { receiptUrl } from '../lib/receipts.js'
@@ -39,6 +39,8 @@ export default function GroupDetail() {
   const [actionBusy, setActionBusy] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
   const [uploadingImg, setUploadingImg] = useState(false)
+  const [auditLog, setAuditLog] = useState([])
+  const [reportBusy, setReportBusy] = useState(false)
   const imgRef = useRef(null)
 
   function openAdd() { setEditingExpense(null); expenseModal.onOpen() }
@@ -46,9 +48,21 @@ export default function GroupDetail() {
   function closeExpense() { expenseModal.onClose(); setEditingExpense(null) }
 
   async function load() {
-    try { setData(await getGroup(id)) }
+    try {
+      const [g, al] = await Promise.all([getGroup(id), listAuditLog(id)])
+      setData(g)
+      setAuditLog(al)
+    }
     catch (e) { toast({ title: e.message, status: 'error' }) }
     finally { setLoading(false) }
+  }
+
+  async function downloadReport() {
+    setReportBusy(true)
+    try {
+      await downloadGroupReport(id, data?.group?.name || 'group')
+    } catch (e) { toast({ title: 'Couldn’t generate the report', description: e.message, status: 'error' }) }
+    finally { setReportBusy(false) }
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [id])
 
@@ -147,6 +161,9 @@ export default function GroupDetail() {
           <MenuButton as={IconButton} aria-label="Group options" size="sm"
             variant="ghost" icon={<MoreVertical size={18} />} />
           <MenuList>
+            <MenuItem icon={<FileDown size={16} />} onClick={downloadReport}>
+              Download statement (PDF)
+            </MenuItem>
             {isOwner && (
               <MenuItem icon={<Pencil size={16} />} onClick={renameModal.onOpen}>
                 Rename group
@@ -288,6 +305,40 @@ export default function GroupDetail() {
           </List>
         </CardBody></Card>
       )}
+
+      {/* Activity / audit trail */}
+      <Card><CardBody>
+        <HStack mb={3}>
+          <Heading size="sm">Activity</Heading>
+          <Spacer />
+          <Button size="xs" variant="ghost" leftIcon={<FileDown size={14} />}
+            isLoading={reportBusy} onClick={downloadReport}>PDF</Button>
+        </HStack>
+        {auditLog.length === 0 ? (
+          <Text fontSize="sm" color="text.muted">No activity yet.</Text>
+        ) : (
+          <List spacing={0}>
+            {auditLog.slice(0, 25).map((a, i) => (
+              <ListItem key={a.id}>
+                {i > 0 && <Divider />}
+                <HStack py={2} align="start">
+                  <Stack spacing={0} flex="1">
+                    <Text fontSize="sm">{a.summary}</Text>
+                    <Text fontSize="xs" color="text.muted">
+                      {new Date(a.created_at).toLocaleString()}
+                    </Text>
+                  </Stack>
+                  {a.amount_minor != null && (
+                    <Text fontSize="sm" fontWeight="600">
+                      {formatMoney(a.amount_minor, a.currency || cur)}
+                    </Text>
+                  )}
+                </HStack>
+              </ListItem>
+            ))}
+          </List>
+        )}
+      </CardBody></Card>
 
       <GroupExpenseForm key={editingExpense?.id || 'new'} group={group} members={members}
         defaultPayer={myMember?.id} expense={editingExpense}

@@ -226,6 +226,41 @@ function friendlyRpcError(error) {
   return error.message || 'Something went wrong'
 }
 
+// Immutable audit trail for a group (members can read; append-only server-side).
+export async function listAuditLog(groupId, limit = 200) {
+  const { data, error } = await supabase
+    .from('group_audit_log')
+    .select('id, actor_name, action, summary, amount_minor, currency, created_at')
+    .eq('group_id', groupId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
+// Generate the group PDF statement (balances + settlements + audit trail) and
+// trigger a download. Returns nothing; throws on failure.
+export async function downloadGroupReport(groupId, groupName = 'group') {
+  const { data, error } = await supabase.functions.invoke('group-report', {
+    body: { group_id: groupId },
+  })
+  if (error) {
+    let msg = error.message
+    try { const j = await error.context?.json?.(); if (j?.error) msg = j.error } catch { /* ignore */ }
+    throw new Error(msg)
+  }
+  // data is a Blob (pdf). Trigger a download.
+  const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/pdf' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${groupName.replace(/[^a-z0-9]+/gi, '-')}-statement.pdf`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
 // ---- Balances ------------------------------------------------------------
 
 // Net balance per member: positive = the group owes them; negative = they owe.
