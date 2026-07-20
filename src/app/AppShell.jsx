@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Outlet, NavLink as RouterNavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
-  Box, Flex, HStack, VStack, IconButton, Text, Badge, Spacer, Tooltip,
+  Box, Flex, HStack, VStack, IconButton, Text, Spacer, Tooltip,
   useColorMode,
 } from '@chakra-ui/react'
 import UserAvatar from '../shared/ui/UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Wallet, Users,
-  Sun, Moon, LogOut, WifiOff, RefreshCw, Search, Repeat, TrendingUp, MoreHorizontal,
+  Sun, Moon, LogOut, Search, Repeat, TrendingUp, MoreHorizontal,
 } from 'lucide-react'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/useProfile.js'
 import { useAppearance } from '../shared/lib/appearance.jsx'
-import { initSync, pendingCount, flushQueue } from '../features/transactions/offlineQueue.js'
 import Logo from '../shared/ui/Logo.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
 
@@ -66,40 +65,6 @@ function TabItem({ to, label, icon: Icon, end }) {
         </VStack>
       )}
     </RouterNavLink>
-  )
-}
-
-function SyncBadges() {
-  const [pending, setPending] = useState(0)
-  const [online, setOnline] = useState(navigator.onLine)
-  useEffect(() => {
-    initSync()
-    const refresh = () => pendingCount().then(setPending)
-    refresh()
-    const on = () => { setOnline(true); flushQueue().then(refresh) }
-    const off = () => setOnline(false)
-    window.addEventListener('online', on)
-    window.addEventListener('offline', off)
-    const t = setInterval(refresh, 5000)
-    return () => {
-      window.removeEventListener('online', on)
-      window.removeEventListener('offline', off)
-      clearInterval(t)
-    }
-  }, [])
-  return (
-    <HStack spacing={2}>
-      {!online && (
-        <Badge colorScheme="orange" display="flex" alignItems="center" gap={1}>
-          <WifiOff size={12} /> Offline
-        </Badge>
-      )}
-      {pending > 0 && (
-        <Badge colorScheme="purple" display="flex" alignItems="center" gap={1}>
-          <RefreshCw size={12} /> {pending}
-        </Badge>
-      )}
-    </HStack>
   )
 }
 
@@ -166,7 +131,6 @@ export default function AppShell() {
         >
           <Logo size={26} />
           <Spacer />
-          <SyncBadges />
           <IconButton aria-label="Search" variant="ghost" size="sm"
             icon={<Search size={18} />} onClick={() => navigate('/search')} />
           <NotificationBell />
@@ -183,7 +147,6 @@ export default function AppShell() {
         {/* Desktop header strip (sync badges + notifications) */}
         <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end" align="center"
           gap={2} px={6} pt={4}>
-          <SyncBadges />
           <Tooltip label="Search transactions">
             <IconButton aria-label="Search" variant="ghost" size="sm"
               icon={<Search size={18} />} onClick={() => navigate('/search')} />
