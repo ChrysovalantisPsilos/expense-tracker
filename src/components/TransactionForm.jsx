@@ -4,24 +4,28 @@ import {
 } from '@chakra-ui/react'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { useCategories } from '../lib/useData.js'
-import { toMinor, getRate, CURRENCIES } from '../lib/currency.js'
-import { queueTransaction } from '../lib/offlineQueue.js'
+import { toMinor, fromMinor, getRate, CURRENCIES } from '../lib/currency.js'
+import { queueTransaction, queueTransactionUpdate } from '../lib/offlineQueue.js'
 import { uploadReceipt } from '../lib/receipts.js'
 import ReceiptScanner from './ReceiptScanner.jsx'
 import MoneyInput from './MoneyInput.jsx'
 
 // Fast-path entry for a single expense or income. Writes go through the
-// offline queue so logging works with no connection.
-export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR', onSaved }) {
+// offline queue so logging works with no connection. Pass `transaction` to
+// edit an existing one instead of creating a new one.
+export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR', transaction = null, onSaved }) {
   const { user } = useAuth()
-  const { categories } = useCategories(kind)
+  const isEdit = !!transaction
+  const kindEff = transaction?.kind ?? kind
+  const { categories } = useCategories(kindEff)
   const toast = useToast()
-  const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState(baseCurrency)
-  const [categoryId, setCategoryId] = useState('')
-  const [description, setDescription] = useState('')
-  const [spentAt, setSpentAt] = useState(() => new Date().toISOString().slice(0, 10))
-  const [notes, setNotes] = useState('')
+  const [amount, setAmount] = useState(
+    transaction ? String(fromMinor(transaction.amount_minor, transaction.currency)) : '')
+  const [currency, setCurrency] = useState(transaction?.currency ?? baseCurrency)
+  const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
+  const [description, setDescription] = useState(transaction?.description ?? '')
+  const [spentAt, setSpentAt] = useState(transaction?.spent_at ?? (() => new Date().toISOString().slice(0, 10)))
+  const [notes, setNotes] = useState(transaction?.notes ?? '')
   const [receiptFile, setReceiptFile] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -39,6 +43,33 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
     }
     setBusy(true)
 
+    // Keep the original FX rate unless the currency changed (editing shouldn't
+    // silently rewrite history); capture a fresh rate otherwise.
+    const exchange_rate = isEdit && currency === transaction.currency
+      ? transaction.exchange_rate
+      : await getRate(currency, baseCurrency)
+
+    if (isEdit) {
+      await queueTransactionUpdate(transaction.id, {
+        kind: kindEff,
+        category_id: categoryId || null,
+        amount_minor: toMinor(amount, currency),
+        currency,
+        exchange_rate,
+        description: description || null,
+        notes: notes || null,
+        spent_at: spentAt,
+      })
+      setBusy(false)
+      toast({ title: 'Saved', status: 'success' })
+      onSaved?.({
+        id: transaction.id, kind: kindEff, category_id: categoryId || null,
+        amount_minor: toMinor(amount, currency), currency, exchange_rate,
+        description: description || null, notes: notes || null, spent_at: spentAt,
+      })
+      return
+    }
+
     // Upload the receipt image first (only possible online). If it fails or
     // we're offline, save the transaction anyway without the attachment.
     let receipt_path = null
@@ -53,10 +84,9 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
     }
 
     // Capture the FX rate at entry time so historical balances never shift.
-    const exchange_rate = await getRate(currency, baseCurrency)
     await queueTransaction({
       user_id: user.id,
-      kind,
+      kind: kindEff,
       category_id: categoryId || null,
       amount_minor: toMinor(amount, currency),
       currency,
@@ -68,14 +98,14 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
     })
     setBusy(false)
     setAmount(''); setDescription(''); setNotes(''); setReceiptFile(null)
-    toast({ title: `${kind === 'income' ? 'Income' : 'Expense'} saved`, status: 'success' })
+    toast({ title: `${kindEff === 'income' ? 'Income' : 'Expense'} saved`, status: 'success' })
     onSaved?.()
   }
 
   return (
     <form onSubmit={submit}>
       <Stack spacing={3}>
-        {kind === 'expense' && (
+        {kindEff === 'expense' && !isEdit && (
           <>
             <ReceiptScanner onScan={handleScan} />
             <Divider />
@@ -110,7 +140,7 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
           <FormControl>
             <FormLabel>Description</FormLabel>
             <Input value={description} onChange={(e) => setDescription(e.target.value)}
-              placeholder={kind === 'income' ? 'Paycheck' : 'Coffee'} />
+              placeholder={kindEff === 'income' ? 'Paycheck' : 'Coffee'} />
           </FormControl>
           <FormControl maxW="170px">
             <FormLabel>Date</FormLabel>
@@ -124,7 +154,7 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
         </FormControl>
 
         <Button type="submit" isLoading={busy}>
-          Add {kind === 'income' ? 'income' : 'expense'}
+          {isEdit ? 'Save changes' : `Add ${kindEff === 'income' ? 'income' : 'expense'}`}
         </Button>
       </Stack>
     </form>
