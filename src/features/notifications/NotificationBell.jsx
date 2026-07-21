@@ -6,7 +6,7 @@ import {
 } from '@chakra-ui/react'
 import {
   Bell, UserPlus, ReceiptText, HandCoins, MessageSquare, CalendarClock,
-  UserCheck, UserMinus,
+  UserCheck, UserMinus, PiggyBank, BarChart3, BellRing,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useLiveRefetch } from '../../shared/lib/realtime.js'
@@ -16,6 +16,7 @@ const ICON = {
   invite: UserPlus, expense: ReceiptText, settlement: HandCoins,
   comment: MessageSquare, reminder: CalendarClock,
   member_joined: UserCheck, member_left: UserMinus,
+  budget: PiggyBank, digest: BarChart3, nudge: BellRing,
 }
 
 export default function NotificationBell() {
@@ -49,6 +50,8 @@ export default function NotificationBell() {
     onClose()
     if (n.type === 'invite') navigate('/groups')
     else if (n.type === 'reminder') navigate('/recurring')
+    else if (n.type === 'budget') navigate('/budgets')
+    else if (n.type === 'digest') navigate('/')
     else if (n.group_id) navigate(`/groups/${n.group_id}`)
   }
 

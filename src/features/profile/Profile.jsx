@@ -7,6 +7,7 @@ import {
 } from '@chakra-ui/react'
 import {
   Camera, KeyRound, Trash2, Plus, AlertTriangle, Sun, Moon, Monitor, BellRing,
+  Landmark,
 } from 'lucide-react'
 import { supabase, passkeysSupported, edgeFunctionError } from '../../shared/lib/supabase.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
@@ -136,6 +137,7 @@ export default function Profile() {
 
         <Stack spacing={5}>
           <NotificationsCard user={user} />
+          <PaymentCard user={user} />
           <AppearanceCard />
           <ReportsCard />
           {passkeysSupported && (
@@ -274,6 +276,70 @@ function NotificationsCard({ user }) {
             <Switch colorScheme="brand" isChecked={prefs.notify_email}
               onChange={(e) => setPref('notify_email', e.target.checked)} />
           </HStack>
+        </Stack>
+      )}
+    </CardBody></Card>
+  )
+}
+
+function PaymentCard({ user }) {
+  const toast = useToast()
+  const [iban, setIban] = useState('')
+  const [revolut, setRevolut] = useState('')
+  const [loaded, setLoaded] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    supabase.from('profiles').select('payment_iban, payment_revolut')
+      .eq('id', user.id).single().then(({ data }) => {
+        if (!active || !data) return
+        setIban(data.payment_iban ?? '')
+        setRevolut(data.payment_revolut ?? '')
+        setLoaded(true)
+      })
+    return () => { active = false }
+  }, [user.id])
+
+  async function save(e) {
+    e.preventDefault()
+    setBusy(true)
+    try {
+      await updateProfile(user.id, {
+        payment_iban: iban.replace(/\s+/g, '').toUpperCase() || null,
+        payment_revolut: revolut.replace(/^@/, '').trim() || null,
+      })
+      toast({ title: 'Payment details saved', status: 'success' })
+    } catch (e) { toast({ title: e.message, status: 'error' }) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <Card><CardBody>
+      <HStack mb={3}>
+        <Flex boxSize="32px" align="center" justify="center" borderRadius="lg"
+          bg="bg.subtle" color="accent.fg"><Landmark size={18} /></Flex>
+        <Heading size="sm">Getting paid</Heading>
+      </HStack>
+      <Text fontSize="sm" color="text.muted" mb={3}>
+        Friends settling up with you see these as one-tap payment options —
+        a bank QR for your IBAN and a Revolut link.
+      </Text>
+      {!loaded ? (
+        <Center py={3}><Spinner size="sm" color="brand.500" /></Center>
+      ) : (
+        <Stack spacing={3} as="form" onSubmit={save}>
+          <FormControl>
+            <FormLabel>IBAN</FormLabel>
+            <Input value={iban} onChange={(e) => setIban(e.target.value)}
+              placeholder="CY17 0020 0128 ..." autoComplete="off" />
+          </FormControl>
+          <FormControl>
+            <FormLabel>Revolut tag</FormLabel>
+            <Input value={revolut} onChange={(e) => setRevolut(e.target.value)}
+              placeholder="@yourtag" autoComplete="off" />
+          </FormControl>
+          <Button type="submit" size="sm" alignSelf="start" isLoading={busy}>Save</Button>
         </Stack>
       )}
     </CardBody></Card>

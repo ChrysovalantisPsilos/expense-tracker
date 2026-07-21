@@ -8,6 +8,7 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useCategories, useTransactions, monthRange } from '../transactions/useData.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
+import { useLiveRefetch } from '../../shared/lib/realtime.js'
 import { formatMoney, toMinor, toBaseMinor } from '../../shared/lib/currency.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 
@@ -26,12 +27,17 @@ export default function Budgets() {
   const start = from // budget period key = first day of the month
 
   async function load() {
-    setLoading(true)
+    // Quiet reloads: live updates swap in place; initial `loading` covers first paint.
     const { data } = await supabase.from('budgets').select('*, categories(name, icon)').eq('period_start', start)
     setBudgets(data ?? [])
     setLoading(false)
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [])
+  // Budget edits from another tab/device appear live (spend side is already
+  // live via useTransactions).
+  useLiveRefetch('budgets-page', [
+    { table: 'budgets', filter: `user_id=eq.${user.id}` },
+  ], load)
 
   // Actual spend per category (in base currency) for the current month.
   const spentByCat = useMemo(() => {

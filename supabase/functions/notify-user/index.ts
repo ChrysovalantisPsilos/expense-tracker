@@ -23,6 +23,8 @@ const EMAIL_TYPES = new Set(['invite', 'member_joined', 'member_left'])
 function urlFor(n: { type: string; group_id: string | null }): string {
   if (n.type === 'reminder') return '/recurring'
   if (n.type === 'invite') return '/groups'
+  if (n.type === 'budget') return '/budgets'
+  if (n.type === 'digest') return '/'
   return n.group_id ? `/groups/${n.group_id}` : '/groups'
 }
 
