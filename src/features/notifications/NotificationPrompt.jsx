@@ -1,20 +1,25 @@
 import { useEffect, useState } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Button, Text, HStack, Flex, useToast,
+  Button, Text, HStack, Stack, Flex, useToast, Checkbox,
 } from '@chakra-ui/react'
 import { BellRing } from 'lucide-react'
+import { useAuth } from '../../shared/auth/AuthProvider.jsx'
+import { patchRow } from '../../shared/lib/db.js'
 import { enablePush, pushSupported } from '../../shared/lib/push.js'
 import { claimPromptSlot, releasePromptSlot, whenPromptSlotFree } from '../../shared/lib/promptGate.js'
 
 const SEEN = 'budge:notifPrompted'
 
-// One-time ask, shortly after login: enable push notifications? "Not now"
-// never auto-asks again — the Profile push switch stays the way to opt in
-// later. Waits for the prompt slot so it never stacks on the passkey prompt.
+// One-time ask, shortly after login: enable push notifications (and confirm
+// the email preference for big events)? "Not now" never auto-asks again —
+// the Profile switches stay the way to change either choice later. Waits for
+// the prompt slot so it never stacks on the passkey prompt.
 export default function NotificationPrompt() {
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [emailToo, setEmailToo] = useState(true)
   const toast = useToast()
 
   useEffect(() => {
@@ -50,6 +55,10 @@ export default function NotificationPrompt() {
 
   async function enable() {
     setBusy(true)
+    // Email choice: the checkbox decides (defaults on, matching the account
+    // default — unticking here is an explicit opt-out of big-event emails).
+    try { await patchRow('profiles', user.id, { notify_email: emailToo }) }
+    catch { /* non-fatal; the Profile switch can still change it */ }
     try {
       const status = await enablePush()
       if (status === 'subscribed') {
@@ -81,11 +90,19 @@ export default function NotificationPrompt() {
           </HStack>
         </ModalHeader>
         <ModalBody>
-          <Text color="text.muted">
-            Get a heads-up when friends add expenses or invite you to a group,
-            and reminders before your bills are due. You can change this
-            anytime in Profile → Notifications.
-          </Text>
+          <Stack spacing={4}>
+            <Text color="text.muted">
+              Get a heads-up when friends add expenses or invite you to a group,
+              and reminders before your bills are due. You can change this
+              anytime in Profile → Notifications.
+            </Text>
+            <Checkbox colorScheme="brand" isChecked={emailToo}
+              onChange={(e) => setEmailToo(e.target.checked)}>
+              <Text fontSize="sm">
+                Also email me about big events — invites, members joining or leaving
+              </Text>
+            </Checkbox>
+          </Stack>
         </ModalBody>
         <ModalFooter gap={2}>
           <Button variant="ghost" onClick={close}>Not now</Button>
