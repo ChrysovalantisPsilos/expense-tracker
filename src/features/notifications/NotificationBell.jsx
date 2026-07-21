@@ -4,10 +4,13 @@ import {
   Box, Popover, PopoverTrigger, PopoverContent, PopoverBody, PopoverHeader,
   IconButton, Badge, Stack, HStack, Text, Flex, Divider, useDisclosure, Button,
 } from '@chakra-ui/react'
-import { Bell, UserPlus, ReceiptText, HandCoins, MessageSquare } from 'lucide-react'
+import { Bell, UserPlus, ReceiptText, HandCoins, MessageSquare, CalendarClock } from 'lucide-react'
 import { listNotifications, markAllRead } from './notifications.js'
 
-const ICON = { invite: UserPlus, expense: ReceiptText, settlement: HandCoins, comment: MessageSquare }
+const ICON = {
+  invite: UserPlus, expense: ReceiptText, settlement: HandCoins,
+  comment: MessageSquare, reminder: CalendarClock,
+}
 const POLL_MS = 45000
 
 export default function NotificationBell() {
@@ -40,6 +43,7 @@ export default function NotificationBell() {
   function go(n) {
     onClose()
     if (n.type === 'invite') navigate('/groups')
+    else if (n.type === 'reminder') navigate('/recurring')
     else if (n.group_id) navigate(`/groups/${n.group_id}`)
   }
 
