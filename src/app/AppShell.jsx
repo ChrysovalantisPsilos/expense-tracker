@@ -13,6 +13,7 @@ import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/useProfile.js'
 import { useAppearance } from '../shared/lib/appearance.jsx'
 import Logo from '../shared/ui/Logo.jsx'
+import OfflineIndicator from '../shared/ui/OfflineIndicator.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
@@ -131,6 +132,7 @@ export default function AppShell() {
         >
           <Logo size={26} />
           <Spacer />
+          <OfflineIndicator />
           <IconButton aria-label="Search" variant="ghost" size="sm"
             icon={<Search size={18} />} onClick={() => navigate('/search')} />
           <NotificationBell />
@@ -147,6 +149,7 @@ export default function AppShell() {
         {/* Desktop header strip (sync badges + notifications) */}
         <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end" align="center"
           gap={2} px={6} pt={4}>
+          <OfflineIndicator />
           <Tooltip label="Search transactions">
             <IconButton aria-label="Search" variant="ghost" size="sm"
               icon={<Search size={18} />} onClick={() => navigate('/search')} />
