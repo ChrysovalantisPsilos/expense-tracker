@@ -75,6 +75,9 @@ export function buildPeriods(oldestISO, d = new Date()) {
   }
   // "All time" only adds value once there's data spanning more than this month.
   if (oldestMonthIdx < nowMonthIdx) out.push({ value: 'all', label: 'All time', from: null, to: null })
+  // Guard: if every transaction is future-dated, both loops above produce
+  // nothing — never return an empty list (callers index into it).
+  if (out.length === 0) out.push(thisMonth)
   return out
 }
 
