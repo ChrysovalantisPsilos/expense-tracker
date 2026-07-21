@@ -2,17 +2,19 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Stack, HStack, Text, FormControl, FormLabel, Input, Select, Button, useToast,
-  Box, Divider,
+  Box, Divider, IconButton, Tooltip,
 } from '@chakra-ui/react'
-import { ArrowRight, Wand2 } from 'lucide-react'
+import { ArrowRight, Wand2, BellRing } from 'lucide-react'
 import {
   inviteExistingUser, createInvite, emailInvite, addSettlement, renameGroup,
+  nudgeMember,
 } from './groups.js'
 import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { simplifyDebts } from './splitMath.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
+import PayShortcuts from './PayShortcuts.jsx'
 
 export function DeleteGroupModal({ group, isOpen, onClose, busy, onConfirm }) {
   const [text, setText] = useState('')
@@ -136,6 +138,13 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
     setAmount(String(fromMinor(t.amount, group.currency)))
   }
 
+  async function nudge(memberId) {
+    try {
+      await nudgeMember(group.id, memberId)
+      toast({ title: 'Reminder sent', status: 'success' })
+    } catch (e) { toast({ title: e.message, status: 'info' }) }
+  }
+
   async function submit(e) {
     e.preventDefault()
     if (!otherId) return toast({ title: 'Pick a person', status: 'warning' })
@@ -178,6 +187,12 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
                               ? <>Pay <b>{nameOf(t.to)}</b> {formatMoney(t.amount, group.currency)}</>
                               : <><b>{nameOf(t.from)}</b> pays you {formatMoney(t.amount, group.currency)}</>}
                           </Text>
+                          {!iPay && members.find((m) => m.id === t.from)?.user_id && (
+                            <Tooltip label="Send them a reminder">
+                              <IconButton aria-label="Nudge to settle" size="xs" variant="ghost"
+                                icon={<BellRing size={13} />} onClick={() => nudge(t.from)} />
+                            </Tooltip>
+                          )}
                           <Button size="xs" variant="ghost" onClick={() => useSuggestion(t)}>Use</Button>
                         </HStack>
                       )
@@ -228,6 +243,15 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
                   <Input type="date" value={settledAt} onChange={(e) => setSettledAt(e.target.value)} />
                 </FormControl>
               </HStack>
+
+              {direction === 'out' && otherId && Number(amount) > 0 && (
+                <PayShortcuts
+                  member={others.find((m) => m.id === otherId)}
+                  amountMinor={toMinor(amount, group.currency)}
+                  currency={group.currency}
+                  groupName={group.name}
+                />
+              )}
             </Stack>
           )}
         </ModalBody>

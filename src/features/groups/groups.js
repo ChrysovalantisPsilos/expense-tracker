@@ -208,6 +208,12 @@ export async function removeMember(memberId, silent = false) {
   return data
 }
 
+// Rate-limited "please settle up" reminder to a co-member (server: 2/day/pair).
+export async function nudgeMember(groupId, memberId) {
+  const { error } = await supabase.rpc('nudge_member', { p_group: groupId, p_member: memberId })
+  if (error) throw new Error(error.message || 'Something went wrong')
+}
+
 export async function deleteGroup(groupId) {
   const { error } = await supabase.rpc('delete_group', { p_group: groupId })
   if (error) throw new Error(error.message || 'Something went wrong')

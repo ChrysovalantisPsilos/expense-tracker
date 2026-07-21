@@ -32,7 +32,6 @@ export default function Dashboard() {
   const { baseCurrency } = useProfile()
   const { rules } = useRecurring()
   const [oldest, setOldest] = useState(null)
-  useEffect(() => { oldestTransactionDate().then(setOldest) }, [])
   const periods = useMemo(() => buildPeriods(oldest), [oldest])
   // Default to this month; its token is stable and always present in the list.
   const [periodValue, setPeriodValue] = useState(() => buildPeriods(null)[0].value)
@@ -41,6 +40,9 @@ export default function Dashboard() {
   const { rows, loading, reload, mutate } = useTransactions({
     from: period.from ?? undefined, to: period.to ?? undefined, withGroup: true,
   })
+  // Recheck whenever the (live) transaction rows change, so importing older
+  // data extends the period dropdown without a reload. Cheap: 1-row query.
+  useEffect(() => { oldestTransactionDate().then(setOldest) }, [rows])
   const [view, setView] = useState(() => localStorage.getItem(VIEW_KEY) || 'pie')
   function chooseView(v) { setView(v); localStorage.setItem(VIEW_KEY, v) }
 
