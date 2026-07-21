@@ -10,6 +10,7 @@ import '@fontsource/nunito-sans/700.css'
 import { ChakraProvider, ColorModeScript } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
 import App from './app/App.jsx'
+import ErrorBoundary from './app/ErrorBoundary.jsx'
 import theme from './app/theme.js'
 import { AuthProvider } from './shared/auth/AuthProvider.jsx'
 import { AppearanceProvider } from './shared/lib/appearance.jsx'
@@ -22,7 +23,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <BrowserRouter>
         <AppearanceProvider>
           <AuthProvider>
-            <App />
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
           </AuthProvider>
         </AppearanceProvider>
       </BrowserRouter>

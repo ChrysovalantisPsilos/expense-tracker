@@ -33,18 +33,27 @@ export function useLiveRefetch(channelKey, specs, refetch, { debounceMs = 300 } 
       timer = setTimeout(() => cb.current(), debounceMs)
     }
 
-    const ch = supabase.channel(`${channelKey}#${uid.current}`)
-    for (const spec of JSON.parse(specsJson)) {
-      ch.on('postgres_changes', { event: '*', schema: 'public', ...spec }, bump)
-    }
-    ch.subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        // First subscribe races the caller's initial load — skip. Every later
-        // one is a reconnect, where events may have been missed.
-        if (subscribedOnce) bump()
-        subscribedOnce = true
+    // Realtime is an enhancement — it must NEVER take the app down. A throw
+    // out of a mount effect (e.g. the realtime client rejecting a subscribe)
+    // unmounts the entire React root: the user sees a blank page. Degrade to
+    // no-live-updates instead.
+    let ch = null
+    try {
+      ch = supabase.channel(`${channelKey}#${uid.current}`)
+      for (const spec of JSON.parse(specsJson)) {
+        ch.on('postgres_changes', { event: '*', schema: 'public', ...spec }, bump)
       }
-    })
+      ch.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // First subscribe races the caller's initial load — skip. Every
+          // later one is a reconnect, where events may have been missed.
+          if (subscribedOnce) bump()
+          subscribedOnce = true
+        }
+      })
+    } catch (e) {
+      console.error('[realtime] subscription failed; continuing without live updates', e)
+    }
 
     const onVisible = () => {
       if (document.visibilityState === 'visible') bump()
@@ -54,7 +63,7 @@ export function useLiveRefetch(channelKey, specs, refetch, { debounceMs = 300 } 
     return () => {
       clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisible)
-      supabase.removeChannel(ch)
+      if (ch) supabase.removeChannel(ch)
     }
   }, [channelKey, specsJson, debounceMs])
 }
