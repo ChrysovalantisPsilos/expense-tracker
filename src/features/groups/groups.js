@@ -193,9 +193,11 @@ export async function deleteSharedExpense(expenseId) {
 
 // Leave a group, or (as owner) remove another member. Server enforces the
 // settled-up rule and owner auto-transfer. Returns the group id.
-export async function removeMember(memberId) {
+// `silent` (self-leave only) skips the "X left the group" notification.
+export async function removeMember(memberId, silent = false) {
   // Postgres RAISE messages surface on error.message directly.
-  const { data, error } = await supabase.rpc('remove_group_member', { p_member: memberId })
+  const { data, error } = await supabase.rpc('remove_group_member',
+    { p_member: memberId, p_silent: silent })
   if (error) throw new Error(error.message || 'Something went wrong')
   return data
 }

@@ -4,7 +4,7 @@ import {
   Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Box,
   Spinner, Flex, Badge, IconButton, Divider, List, ListItem, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
-  ModalFooter, Avatar,
+  ModalFooter, Avatar, Checkbox,
   Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
 import {
@@ -12,6 +12,7 @@ import {
   MoreVertical, LogOut, Trash2, UserMinus, Pencil, Camera, FileDown, MessageSquare,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
+import { supabase } from '../../shared/lib/supabase.js'
 import {
   getGroup, createInviteLink, removeMember, deleteGroup,
   uploadGroupImage, listAuditLog, downloadGroupReport,
@@ -47,6 +48,7 @@ export default function GroupDetail() {
   const [counts, setCounts] = useState(new Map())
   const [thread, setThread] = useState(null) // { type, id, label }
   const [tab, setTab] = useState('expenses') // expenses | settlements | activity
+  const [leaveSilently, setLeaveSilently] = useState(false)
   const imgRef = useRef(null)
 
   function openAdd() { setEditingExpense(null); expenseModal.onOpen() }
@@ -76,6 +78,28 @@ export default function GroupDetail() {
     finally { setReportBusy(false) }
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [id])
+
+  // Live updates: when anyone in the group adds/edits expenses, settles up, or
+  // joins/leaves, refetch — no manual refresh. One debounced reload absorbs
+  // bursts (e.g. an expense insert plus its splits). Delete events pass the
+  // group_id filter because these tables use replica identity full.
+  useEffect(() => {
+    let t = null
+    const bump = () => {
+      clearTimeout(t)
+      t = setTimeout(() => { load(); refreshCounts() }, 300)
+    }
+    const opts = (table) => ({
+      event: '*', schema: 'public', table, filter: `group_id=eq.${id}`,
+    })
+    const ch = supabase.channel(`group-${id}`)
+      .on('postgres_changes', opts('group_expenses'), bump)
+      .on('postgres_changes', opts('settlements'), bump)
+      .on('postgres_changes', opts('group_members'), bump)
+      .subscribe()
+    return () => { clearTimeout(t); supabase.removeChannel(ch) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
 
   const balances = data?.balances ?? new Map()
   const nameOf = (mid) => data?.members.find((m) => m.id === mid)?.display_name ?? '—'
@@ -113,7 +137,7 @@ export default function GroupDetail() {
   async function doLeave() {
     setActionBusy(true)
     try {
-      await removeMember(myMember.id)
+      await removeMember(myMember.id, leaveSilently)
       toast({ title: 'You left the group', status: 'success' })
       navigate('/groups')
     } catch (e) { toast({ title: 'Couldn’t leave', description: e.message, status: 'error' }) }
@@ -393,11 +417,17 @@ export default function GroupDetail() {
         <ModalContent mx={4}>
           <ModalHeader>Leave “{group.name}”?</ModalHeader>
           <ModalBody>
-            <Text color="text.muted">
-              You can only leave once your balance is settled. Your past expenses
-              stay in the group for everyone else.
-              {isOwner && ' As the owner, ownership passes to another member.'}
-            </Text>
+            <Stack spacing={4}>
+              <Text color="text.muted">
+                You can only leave once your balance is settled. Your past expenses
+                stay in the group for everyone else.
+                {isOwner && ' As the owner, ownership passes to another member.'}
+              </Text>
+              <Checkbox colorScheme="brand" isChecked={leaveSilently}
+                onChange={(e) => setLeaveSilently(e.target.checked)}>
+                <Text fontSize="sm">Leave silently — don’t notify the group</Text>
+              </Checkbox>
+            </Stack>
           </ModalBody>
           <ModalFooter gap={2}>
             <Button variant="ghost" onClick={leaveModal.onClose}>Cancel</Button>
