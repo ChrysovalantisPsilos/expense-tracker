@@ -6,7 +6,7 @@ import {
   ModalBody, ModalFooter, FormControl, FormLabel, Input, Select, useToast,
   useDisclosure, NumberInput, NumberInputField,
 } from '@chakra-ui/react'
-import { Plus, Pencil, Trash2, Repeat } from 'lucide-react'
+import { Plus, Pencil, Trash2, Repeat, Bell } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
@@ -15,6 +15,7 @@ import { useCategories } from '../transactions/useData.js'
 import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
+import { enablePush } from '../../shared/lib/push.js'
 import {
   useRecurring, monthlyMinor, frequencyLabel, FREQUENCIES,
   saveRecurring, setRecurringActive, deleteRecurring,
@@ -101,9 +102,16 @@ export default function Recurring() {
                       </Text>
                       {!r.is_active && <Tag size="sm">Paused</Tag>}
                     </HStack>
-                    <Text fontSize="xs" color="text.muted">
-                      {frequencyLabel(r)} · next {r.next_run}
-                    </Text>
+                    <HStack spacing={1.5}>
+                      <Text fontSize="xs" color="text.muted">
+                        {frequencyLabel(r)} · next {r.next_run}
+                      </Text>
+                      {r.remind_days_before != null && (
+                        <Tag size="sm" colorScheme="brand" px={1.5}>
+                          <Bell size={10} style={{ marginRight: 3 }} /> {r.remind_days_before}d
+                        </Tag>
+                      )}
+                    </HStack>
                   </Stack>
                   <Stack spacing={0} align="end">
                     <Text fontWeight="600" color={r.kind === 'income' ? 'green.500' : 'text.primary'}>
@@ -163,7 +171,31 @@ function RecurringForm({ rule, baseCurrency, onClose, onSaved }) {
   const [intervalN, setIntervalN] = useState(String(rule?.interval_n ?? 1))
   const [nextRun, setNextRun] = useState(rule?.next_run ?? today())
   const [endDate, setEndDate] = useState(rule?.end_date ?? '')
+  const [remind, setRemind] = useState(rule?.remind_days_before != null)
+  const [remindDays, setRemindDays] = useState(String(rule?.remind_days_before ?? 3))
   const { busy, run } = useAsyncSubmit()
+
+  // Enrol this device for push the moment reminders are switched on — the
+  // flip is the user gesture iOS needs for the permission prompt. A refusal
+  // isn't fatal: reminders still land in the app's notification bell.
+  async function toggleRemind(e) {
+    const on = e.target.checked
+    setRemind(on)
+    if (!on) return
+    try {
+      const status = await enablePush()
+      if (status === 'denied') {
+        toast({ title: 'Push blocked', status: 'info',
+          description: 'Reminders will show in the app’s notification bell instead.' })
+      } else if (status === 'unsupported') {
+        toast({ title: 'Push isn’t available in this browser', status: 'info',
+          description: 'On iPhone, install Budge to your home screen first. Reminders will still show in the bell.' })
+      }
+    } catch {
+      toast({ title: 'Couldn’t enable push on this device', status: 'warning',
+        description: 'Reminders will show in the app’s notification bell.' })
+    }
+  }
 
   async function submit(e) {
     e.preventDefault()
@@ -181,6 +213,9 @@ function RecurringForm({ rule, baseCurrency, onClose, onSaved }) {
         next_run: nextRun,
         end_date: endDate || null,
         is_active: rule?.is_active ?? true,
+        remind_days_before: remind
+          ? Math.min(60, Math.max(1, parseInt(remindDays, 10) || 3))
+          : null,
       })
       toast({ title: isEdit ? 'Recurring entry updated' : 'Recurring entry added', status: 'success' })
       onSaved()
@@ -245,6 +280,28 @@ function RecurringForm({ rule, baseCurrency, onClose, onSaved }) {
             </FormControl>
             <FormControl>
               <OptionalDate label="Set an end date" value={endDate} onChange={setEndDate} />
+            </FormControl>
+
+            <FormControl>
+              <HStack justify="space-between">
+                <FormLabel mb={0} htmlFor="remind-switch">
+                  <HStack spacing={2}>
+                    <Bell size={15} />
+                    <Text>Remind me before each charge</Text>
+                  </HStack>
+                </FormLabel>
+                <Switch id="remind-switch" colorScheme="brand"
+                  isChecked={remind} onChange={toggleRemind} />
+              </HStack>
+              {remind && (
+                <HStack mt={3} spacing={2}>
+                  <NumberInput min={1} max={60} maxW="90px" value={remindDays}
+                    onChange={setRemindDays}>
+                    <NumberInputField />
+                  </NumberInput>
+                  <Text fontSize="sm" color="text.muted">days before, via notification</Text>
+                </HStack>
+              )}
             </FormControl>
           </Stack>
         </ModalBody>

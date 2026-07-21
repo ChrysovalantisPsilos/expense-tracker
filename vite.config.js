@@ -7,6 +7,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // Custom worker (src/sw.js): generateSW can't add push handlers, so the
+      // precache/fallback/runtime-caching setup lives there alongside the
+      // payment-reminder push + notificationclick listeners.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.js',
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
@@ -23,25 +29,8 @@ export default defineConfig({
           { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
       },
-      workbox: {
-        // App shell + navigation fallback so the installed PWA opens offline.
-        navigateFallback: 'index.html',
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        // Prompt mode: a new deploy installs a waiting worker and the app shows
-        // an "Update" toast (ReloadPrompt) instead of silently swapping. Don't
-        // skipWaiting here — the user's click drives the activation + reload.
-        cleanupOutdatedCaches: true,
-        runtimeCaching: [
-          {
-            // Supabase REST reads: serve cached data while offline, refresh when online.
-            urlPattern: ({ url }) => url.pathname.startsWith('/rest/v1'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-rest',
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
-            },
-          },
-        ],
       },
     }),
   ],
