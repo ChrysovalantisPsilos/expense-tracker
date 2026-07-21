@@ -3,12 +3,15 @@ import {
   Heading, Stack, Card, CardBody, HStack, Button, FormControl, SimpleGrid,
   FormLabel, Input, Select, useToast, Center, Spinner, Text, IconButton, Box,
   Divider, Spacer, Flex, useDisclosure, Modal, ModalOverlay, ModalContent,
-  ModalHeader, ModalBody, ModalFooter,
+  ModalHeader, ModalBody, ModalFooter, Switch,
 } from '@chakra-ui/react'
-import { Camera, KeyRound, Trash2, Plus, AlertTriangle, Sun, Moon, Monitor } from 'lucide-react'
+import {
+  Camera, KeyRound, Trash2, Plus, AlertTriangle, Sun, Moon, Monitor, BellRing,
+} from 'lucide-react'
 import { supabase, passkeysSupported, edgeFunctionError } from '../../shared/lib/supabase.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useAppearance } from '../../shared/lib/appearance.jsx'
+import { enablePush } from '../../shared/lib/push.js'
 import { updateProfile, uploadAvatar } from './profile.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
@@ -132,6 +135,7 @@ export default function Profile() {
       </CardBody></Card>
 
         <Stack spacing={5}>
+          <NotificationsCard user={user} />
           <AppearanceCard />
           <ReportsCard />
           {passkeysSupported && (
@@ -201,6 +205,78 @@ export default function Profile() {
       <DeleteAccountModal user={user} isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}
         signOut={signOut} />
     </Stack>
+  )
+}
+
+function NotificationsCard({ user }) {
+  const toast = useToast()
+  const [prefs, setPrefs] = useState(null) // { notify_email, notify_push }
+
+  useEffect(() => {
+    let active = true
+    supabase.from('profiles').select('notify_email, notify_push')
+      .eq('id', user.id).single().then(({ data }) => {
+        if (active && data) setPrefs(data)
+      })
+    return () => { active = false }
+  }, [user.id])
+
+  async function setPref(field, value) {
+    const prev = prefs
+    setPrefs({ ...prefs, [field]: value }) // optimistic
+    try {
+      await updateProfile(user.id, { [field]: value })
+      // Turning push on is the moment to enrol this device (user gesture).
+      if (field === 'notify_push' && value) {
+        const status = await enablePush()
+        if (status === 'denied') {
+          toast({ title: 'This browser blocks notifications', status: 'info',
+            description: 'Allow them in your browser settings to get push here. Other devices are unaffected.' })
+        } else if (status === 'unsupported') {
+          toast({ title: 'Push isn’t available in this browser', status: 'info',
+            description: 'On iPhone, install Budge to your home screen first.' })
+        }
+      }
+    } catch (e) {
+      setPrefs(prev)
+      toast({ title: 'Couldn’t save', description: e.message, status: 'error' })
+    }
+  }
+
+  return (
+    <Card><CardBody>
+      <HStack mb={3}>
+        <Flex boxSize="32px" align="center" justify="center" borderRadius="lg"
+          bg="bg.subtle" color="accent.fg"><BellRing size={18} /></Flex>
+        <Heading size="sm">Notifications</Heading>
+      </HStack>
+      {prefs === null ? (
+        <Center py={4}><Spinner size="sm" color="brand.500" /></Center>
+      ) : (
+        <Stack spacing={4}>
+          <HStack justify="space-between" align="start">
+            <Stack spacing={0}>
+              <Text fontSize="sm" fontWeight="600">Push notifications</Text>
+              <Text fontSize="xs" color="text.muted">
+                Group activity and payment reminders, on every device you’ve allowed.
+              </Text>
+            </Stack>
+            <Switch colorScheme="brand" isChecked={prefs.notify_push}
+              onChange={(e) => setPref('notify_push', e.target.checked)} />
+          </HStack>
+          <HStack justify="space-between" align="start">
+            <Stack spacing={0}>
+              <Text fontSize="sm" fontWeight="600">Email me</Text>
+              <Text fontSize="xs" color="text.muted">
+                Big events only: group invites, members joining or leaving.
+              </Text>
+            </Stack>
+            <Switch colorScheme="brand" isChecked={prefs.notify_email}
+              onChange={(e) => setPref('notify_email', e.target.checked)} />
+          </HStack>
+        </Stack>
+      )}
+    </CardBody></Card>
   )
 }
 

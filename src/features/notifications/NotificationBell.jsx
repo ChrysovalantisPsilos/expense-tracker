@@ -4,17 +4,26 @@ import {
   Box, Popover, PopoverTrigger, PopoverContent, PopoverBody, PopoverHeader,
   IconButton, Badge, Stack, HStack, Text, Flex, Divider, useDisclosure, Button,
 } from '@chakra-ui/react'
-import { Bell, UserPlus, ReceiptText, HandCoins, MessageSquare, CalendarClock } from 'lucide-react'
+import {
+  Bell, UserPlus, ReceiptText, HandCoins, MessageSquare, CalendarClock,
+  UserCheck, UserMinus,
+} from 'lucide-react'
+import { useAuth } from '../../shared/auth/AuthProvider.jsx'
+import { supabase } from '../../shared/lib/supabase.js'
 import { listNotifications, markAllRead } from './notifications.js'
 
 const ICON = {
   invite: UserPlus, expense: ReceiptText, settlement: HandCoins,
   comment: MessageSquare, reminder: CalendarClock,
+  member_joined: UserCheck, member_left: UserMinus,
 }
-const POLL_MS = 45000
+// Realtime is the primary signal; a slow poll is the safety net for dropped
+// websockets.
+const FALLBACK_POLL_MS = 5 * 60 * 1000
 
 export default function NotificationBell() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [items, setItems] = useState([])
   const timer = useRef(null)
@@ -25,9 +34,16 @@ export default function NotificationBell() {
 
   useEffect(() => {
     load()
-    timer.current = setInterval(load, POLL_MS)
-    return () => clearInterval(timer.current)
-  }, [])
+    timer.current = setInterval(load, FALLBACK_POLL_MS)
+    const ch = supabase.channel('notif-bell')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notifications',
+        filter: `user_id=eq.${user.id}`,
+      }, load)
+      .subscribe()
+    return () => { clearInterval(timer.current); supabase.removeChannel(ch) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user.id])
 
   const unread = items.filter((n) => !n.read_at).length
 

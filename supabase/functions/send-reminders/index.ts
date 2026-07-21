@@ -5,12 +5,12 @@
 //
 // For every active recurring rule whose reminder window has opened
 // (today >= next_run − remind_days_before, and next_run still in the future),
-// it inserts an in-app bell notification and web-pushes the user's subscribed
-// devices, then stamps last_reminded_for = next_run so each occurrence
-// reminds exactly once.
+// it inserts a bell notification and stamps last_reminded_for = next_run so
+// each occurrence reminds exactly once. Delivery (web push, gated by the
+// user's switches) happens downstream: the notify_fanout trigger forwards
+// every notifications insert to the notify-user function.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -46,15 +46,6 @@ Deno.serve(async (req) => {
     return new Response('forbidden', { status: 403 })
   }
 
-  const canPush = !!(secrets.vapid_public_key && secrets.vapid_private_key)
-  if (canPush) {
-    webpush.setVapidDetails(
-      secrets.vapid_subject ?? 'mailto:admin@example.com',
-      secrets.vapid_public_key,
-      secrets.vapid_private_key,
-    )
-  }
-
   const today = isoToday()
   const { data: rules, error } = await admin
     .from('recurring_rules')
@@ -69,19 +60,7 @@ Deno.serve(async (req) => {
     r.last_reminded_for !== r.next_run,
   )
 
-  // One subscription fetch per user, shared across their due rules.
-  const subsByUser = new Map<string, { id: string; endpoint: string; p256dh: string; auth: string }[]>()
-  async function subsFor(userId: string) {
-    if (!subsByUser.has(userId)) {
-      const { data } = await admin.from('push_subscriptions')
-        .select('id, endpoint, p256dh, auth').eq('user_id', userId)
-      subsByUser.set(userId, data ?? [])
-    }
-    return subsByUser.get(userId)!
-  }
-
   let notified = 0
-  let pushed = 0
   for (const r of due) {
     const days = daysUntil(r.next_run, today)
     const name = r.description || (r.kind === 'income' ? 'Recurring income' : 'Recurring payment')
@@ -94,31 +73,12 @@ Deno.serve(async (req) => {
     })
     if (nErr) continue // don't stamp — retry tomorrow
 
-    if (canPush) {
-      const payload = JSON.stringify({ title, body, url: '/recurring' })
-      for (const s of await subsFor(r.user_id)) {
-        try {
-          await webpush.sendNotification(
-            { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-            payload,
-          )
-          pushed += 1
-        } catch (e) {
-          const code = (e as { statusCode?: number }).statusCode
-          if (code === 404 || code === 410) {
-            // Subscription expired/revoked — drop it.
-            await admin.from('push_subscriptions').delete().eq('id', s.id)
-          }
-        }
-      }
-    }
-
     await admin.from('recurring_rules')
       .update({ last_reminded_for: r.next_run }).eq('id', r.id)
     notified += 1
   }
 
-  return new Response(JSON.stringify({ checked: due.length, notified, pushed }), {
+  return new Response(JSON.stringify({ checked: due.length, notified }), {
     headers: { 'Content-Type': 'application/json' },
   })
 })
