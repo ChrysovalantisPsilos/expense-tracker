@@ -21,6 +21,7 @@ import JoinGroup from '../features/groups/JoinGroup.jsx'
 import GroupPreview from '../features/groups/GroupPreview.jsx'
 import Profile from '../features/profile/Profile.jsx'
 import PasskeyPrompt from '../features/profile/PasskeyPrompt.jsx'
+import NotificationPrompt from '../features/notifications/NotificationPrompt.jsx'
 import { STORAGE_KEYS } from '../shared/lib/keys.js'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
@@ -70,6 +71,7 @@ function AuthedRoutes() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <PasskeyPrompt />
+      <NotificationPrompt />
     </>
   )
 }

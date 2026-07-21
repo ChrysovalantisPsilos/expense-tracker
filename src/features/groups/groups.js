@@ -16,10 +16,16 @@ export async function getGroup(groupId) {
   const [g, members, expenses, settlements, avs, bal] = await Promise.all([
     supabase.from('groups').select('*').eq('id', groupId).single(),
     supabase.from('group_members').select('*').eq('group_id', groupId).order('created_at'),
+    // Newest first; spent_at is a bare date, so same-day rows tie-break by
+    // when they were added (newest addition on top).
     supabase.from('group_expenses')
       .select('*, expense_splits(*)')
-      .eq('group_id', groupId).order('spent_at', { ascending: false }),
-    supabase.from('settlements').select('*').eq('group_id', groupId).order('settled_at', { ascending: false }),
+      .eq('group_id', groupId)
+      .order('spent_at', { ascending: false })
+      .order('created_at', { ascending: false }),
+    supabase.from('settlements').select('*').eq('group_id', groupId)
+      .order('settled_at', { ascending: false })
+      .order('created_at', { ascending: false }),
     // Co-members' avatars (column-limited RPC) + server-computed balances.
     supabase.rpc('group_member_avatars', { p_group: groupId }),
     supabase.rpc('group_balances', { p_group: groupId }),

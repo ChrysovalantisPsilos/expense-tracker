@@ -25,7 +25,9 @@ export function useTransactions({ kind, from, to, categoryId, limit, withGroup }
       ? '*, categories(name, icon), group_expenses(groups(name))'
       : '*, categories(name, icon)',
     build: (q) => {
-      q = q.order('spent_at', { ascending: false })
+      // spent_at is a bare date — tie-break same-day rows by insertion time
+      // so the newest-added entry is always on top.
+      q = q.order('spent_at', { ascending: false }).order('created_at', { ascending: false })
       if (kind) q = q.eq('kind', kind)
       if (from) q = q.gte('spent_at', from)
       if (to) q = q.lte('spent_at', to)
