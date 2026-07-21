@@ -9,6 +9,7 @@ import { Users, Plus, ChevronRight, Check, X } from 'lucide-react'
 import { listGroups, createGroup, listMyInvites, respondToInvite } from './groups.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
+import { useLiveRefetch } from '../../shared/lib/realtime.js'
 
 export default function Groups() {
   const navigate = useNavigate()
@@ -23,7 +24,8 @@ export default function Groups() {
   const toast = useToast()
 
   async function load() {
-    setLoading(true)
+    // Quiet reloads: live updates swap data in place; the initial `loading`
+    // state covers first paint.
     try {
       const [gs, inv] = await Promise.all([listGroups(), listMyInvites()])
       setGroups(gs)
@@ -33,6 +35,17 @@ export default function Groups() {
     finally { setLoading(false) }
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [])
+
+  // Live overview: balances, memberships, and the invite inbox update as they
+  // change. No filters — RLS already scopes events to groups you belong to
+  // (and invites addressed to you).
+  useLiveRefetch('groups-list', [
+    { table: 'groups' },
+    { table: 'group_members' },
+    { table: 'group_invites' },
+    { table: 'group_expenses' },
+    { table: 'settlements' },
+  ], load)
 
   async function respond(inviteId, accept) {
     try {

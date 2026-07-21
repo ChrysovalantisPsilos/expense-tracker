@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box, Popover, PopoverTrigger, PopoverContent, PopoverBody, PopoverHeader,
@@ -9,7 +9,7 @@ import {
   UserCheck, UserMinus,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { supabase } from '../../shared/lib/supabase.js'
+import { useLiveRefetch } from '../../shared/lib/realtime.js'
 import { listNotifications, markAllRead } from './notifications.js'
 
 const ICON = {
@@ -17,33 +17,22 @@ const ICON = {
   comment: MessageSquare, reminder: CalendarClock,
   member_joined: UserCheck, member_left: UserMinus,
 }
-// Realtime is the primary signal; a slow poll is the safety net for dropped
-// websockets.
-const FALLBACK_POLL_MS = 5 * 60 * 1000
 
 export default function NotificationBell() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [items, setItems] = useState([])
-  const timer = useRef(null)
 
   async function load() {
     try { setItems(await listNotifications()) } catch { /* ignore */ }
   }
 
-  useEffect(() => {
-    load()
-    timer.current = setInterval(load, FALLBACK_POLL_MS)
-    const ch = supabase.channel('notif-bell')
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'notifications',
-        filter: `user_id=eq.${user.id}`,
-      }, load)
-      .subscribe()
-    return () => { clearInterval(timer.current); supabase.removeChannel(ch) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.id])
+  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Live: new notifications appear instantly; reconnect/visibility catch up.
+  useLiveRefetch('bell', [
+    { table: 'notifications', filter: `user_id=eq.${user.id}` },
+  ], load)
 
   const unread = items.filter((n) => !n.read_at).length
 

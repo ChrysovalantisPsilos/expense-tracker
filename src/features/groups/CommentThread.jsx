@@ -6,11 +6,12 @@ import {
 import { Trash2, Send } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
+import { useLiveRefetch } from '../../shared/lib/realtime.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { listComments, addComment, deleteComment } from './comments.js'
 
-// Thread of comments on one group item. Loads on open; the caller's own sends
-// append immediately (others' arrive via the notification bell / next open).
+// Thread of comments on one group item. Loads on open and stays live while
+// open — new comments from other members appear as they're posted.
 export default function CommentThread({ group, target, myMember, isOpen, onClose, onChanged }) {
   const { user } = useAuth()
   const [comments, setComments] = useState([])
@@ -18,16 +19,22 @@ export default function CommentThread({ group, target, myMember, isOpen, onClose
   const [body, setBody] = useState('')
   const { busy, run } = useAsyncSubmit()
 
-  async function load() {
-    setLoading(true)
+  async function load(initial = false) {
+    if (initial) setLoading(true) // live refetches swap in place, no spinner
     try { setComments(await listComments(group.id, target.id)) }
     catch { /* surfaced on send */ }
     finally { setLoading(false) }
   }
   useEffect(() => {
-    if (isOpen && target) load()
+    if (isOpen && target) load(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, target?.id])
+
+  useLiveRefetch(
+    isOpen && target ? `thread:${target.id}` : null,
+    [{ table: 'group_comments', filter: `target_id=eq.${target?.id}` }],
+    () => { load(); onChanged?.() },
+  )
 
   async function send(e) {
     e.preventDefault()
