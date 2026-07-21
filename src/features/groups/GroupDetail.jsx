@@ -12,7 +12,7 @@ import {
   MoreVertical, LogOut, Trash2, UserMinus, Pencil, Camera, FileDown, MessageSquare,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { supabase } from '../../shared/lib/supabase.js'
+import { useLiveRefetch } from '../../shared/lib/realtime.js'
 import {
   getGroup, createInviteLink, removeMember, deleteGroup,
   uploadGroupImage, listAuditLog, downloadGroupReport,
@@ -79,27 +79,15 @@ export default function GroupDetail() {
   }
   useEffect(() => { load() /* eslint-disable-next-line */ }, [id])
 
-  // Live updates: when anyone in the group adds/edits expenses, settles up, or
-  // joins/leaves, refetch — no manual refresh. One debounced reload absorbs
-  // bursts (e.g. an expense insert plus its splits). Delete events pass the
-  // group_id filter because these tables use replica identity full.
-  useEffect(() => {
-    let t = null
-    const bump = () => {
-      clearTimeout(t)
-      t = setTimeout(() => { load(); refreshCounts() }, 300)
-    }
-    const opts = (table) => ({
-      event: '*', schema: 'public', table, filter: `group_id=eq.${id}`,
-    })
-    const ch = supabase.channel(`group-${id}`)
-      .on('postgres_changes', opts('group_expenses'), bump)
-      .on('postgres_changes', opts('settlements'), bump)
-      .on('postgres_changes', opts('group_members'), bump)
-      .subscribe()
-    return () => { clearTimeout(t); supabase.removeChannel(ch) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id])
+  // Live updates: when anyone in the group adds/edits expenses, settles up,
+  // joins/leaves, or comments, refetch — no manual refresh. The hook also
+  // catches up after reconnects and when the tab becomes visible again.
+  useLiveRefetch(`group:${id}`, [
+    { table: 'group_expenses', filter: `group_id=eq.${id}` },
+    { table: 'settlements', filter: `group_id=eq.${id}` },
+    { table: 'group_members', filter: `group_id=eq.${id}` },
+    { table: 'group_comments', filter: `group_id=eq.${id}` },
+  ], () => { load(); refreshCounts() })
 
   const balances = data?.balances ?? new Map()
   const nameOf = (mid) => data?.members.find((m) => m.id === mid)?.display_name ?? '—'
