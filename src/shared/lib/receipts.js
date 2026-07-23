@@ -1,4 +1,4 @@
-import { supabase } from '../../shared/lib/supabase.js'
+import { supabase } from './supabase.js'
 
 // Upload a receipt image to the private `receipts` bucket under the user's
 // own folder ("<user_id>/<timestamp>-<rand>.<ext>"), returning the stored path

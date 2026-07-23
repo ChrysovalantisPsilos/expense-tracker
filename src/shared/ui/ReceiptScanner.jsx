@@ -3,7 +3,7 @@ import {
   Button, HStack, Image, Text, Progress, Box, IconButton, useToast, VStack,
 } from '@chakra-ui/react'
 import { Camera, X } from 'lucide-react'
-import { scanReceipt } from './receiptScan.js'
+import { scanReceipt } from '../lib/receiptScan.js'
 
 // Opens the phone's native camera, OCRs the photo on-device, and reports the
 // extracted total + date (and the file) up to the parent to prefill the form.

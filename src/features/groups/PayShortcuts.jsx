@@ -4,7 +4,7 @@ import {
 } from '@chakra-ui/react'
 import QRCode from 'qrcode'
 import { ExternalLink, QrCode, Copy } from 'lucide-react'
-import { supabase } from '../../shared/lib/supabase.js'
+import { memberPaymentInfo } from './groups.js'
 
 // One-tap ways to actually pay a co-member the settle-up amount, driven by
 // the payment details they saved in Profile → Getting paid (readable to
@@ -21,10 +21,9 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
     setInfo(null); setQr(null); setShowQr(false)
     if (!member?.user_id) return
     let active = true
-    // profiles is own-row RLS — payment fields come via a definer RPC that
-    // only answers for co-members of this member's group.
-    supabase.rpc('member_payment_info', { p_member: member.id })
-      .then(({ data }) => { if (active) setInfo(data ?? {}) })
+    memberPaymentInfo(member.id)
+      .then((data) => { if (active) setInfo(data) })
+      .catch(() => { if (active) setInfo({}) })
     return () => { active = false }
   }, [member?.id, member?.user_id])
 

@@ -24,6 +24,7 @@ import PasskeyPrompt from '../features/profile/PasskeyPrompt.jsx'
 import NotificationPrompt from '../features/notifications/NotificationPrompt.jsx'
 import OnboardingWizard from '../features/onboarding/OnboardingWizard.jsx'
 import { useProfile } from '../shared/lib/useProfile.js'
+import { ensureSeeded } from '../features/transactions/useData.js'
 import { STORAGE_KEYS } from '../shared/lib/keys.js'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
@@ -49,6 +50,10 @@ function AuthedRoutes() {
   // folds in the passkey + notification asks — so the standalone prompts wait
   // until onboarding is done to avoid stacking.
   const needsOnboarding = !profileLoading && profile && !profile.onboarded_at
+
+  // First-login default-category seed. Lives here (app bootstrap) rather than
+  // in useProfile so the shared hook never has to reach into a feature.
+  useEffect(() => { ensureSeeded().catch(() => {}) }, [])
 
   useEffect(() => {
     const token = localStorage.getItem(PENDING_INVITE)

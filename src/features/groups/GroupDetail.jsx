@@ -19,7 +19,7 @@ import {
 } from './groups.js'
 import { commentCounts } from './comments.js'
 import { formatMoney } from '../../shared/lib/currency.js'
-import { receiptUrl } from '../transactions/receipts.js'
+import { receiptUrl } from '../../shared/lib/receipts.js'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
 import CommentThread from './CommentThread.jsx'
 import {

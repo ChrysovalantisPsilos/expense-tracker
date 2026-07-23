@@ -1,5 +1,12 @@
 import { supabase } from '../../shared/lib/supabase.js'
 
+// Read a profile row for a user. `columns` narrows the select to just the
+// fields a caller needs (defaults to the whole row). Returns null if missing.
+export async function getProfile(userId, columns = '*') {
+  const { data } = await supabase.from('profiles').select(columns).eq('id', userId).single()
+  return data ?? null
+}
+
 // Update editable profile fields for the current user.
 export async function updateProfile(userId, fields) {
   const { data, error } = await supabase

@@ -1,22 +1,18 @@
 import { useMemo } from 'react'
-import { useOwnedQuery } from '../../shared/lib/db.js'
+import { useMonthBudgets } from './budgets.js'
 import { useTransactions } from '../transactions/useData.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
 import { toBaseMinor } from '../../shared/lib/currency.js'
 
-// This month's budgets with their actual spend, for the dashboard card.
-// Budgets are stored in the base currency; spend is converted to base too, so
-// they're directly comparable. Both queries are live (realtime).
+// This month's budgets with their actual spend — shared by the dashboard card
+// and the Budgets page. Budgets are stored in the base currency; spend is
+// converted to base too, so they're directly comparable. Both queries are live.
 export function useBudgetProgress() {
   const { baseCurrency } = useProfile()
   const { from, to } = monthRange()
 
-  const { rows: budgets, loading: bLoading } = useOwnedQuery('budgets', {
-    select: '*, categories(name, icon)',
-    build: (q) => q.eq('period_start', from),
-    deps: [from],
-  })
+  const { rows: budgets, loading: bLoading } = useMonthBudgets()
   const { rows: txns, loading: tLoading } = useTransactions({ kind: 'expense', from, to })
 
   const items = useMemo(() => {
@@ -29,6 +25,8 @@ export function useBudgetProgress() {
     return budgets
       .map((b) => ({
         id: b.id,
+        categoryId: b.category_id,
+        category: b.categories ?? null,
         name: b.categories?.name ?? 'Category',
         limit: b.amount_minor,
         spent: spentByCat.get(b.category_id) ?? 0,

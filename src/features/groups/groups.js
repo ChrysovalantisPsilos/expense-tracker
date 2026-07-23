@@ -95,12 +95,22 @@ export async function addSharedExpense({
 }
 
 export async function addSettlement({ groupId, fromMember, toMember, amountMinor, currency, settledAt }) {
+  // created_by is set server-side by the settlement_guard BEFORE INSERT trigger
+  // (authoritative, not client-trusted), so we don't send it.
   const { error } = await supabase.from('settlements').insert({
     group_id: groupId, from_member: fromMember, to_member: toMember,
     amount_minor: amountMinor, currency, settled_at: settledAt,
-    created_by: (await supabase.auth.getUser()).data.user?.id,
   })
   if (error) throw error
+}
+
+// A co-member's saved payment details (IBAN/Revolut) for the settle-up
+// shortcuts. profiles is own-row RLS, so this goes through a definer RPC that
+// only answers for co-members of the given member's group. Returns {} if none.
+export async function memberPaymentInfo(memberId) {
+  const { data, error } = await supabase.rpc('member_payment_info', { p_member: memberId })
+  if (error) throw new Error(error.message)
+  return data ?? {}
 }
 
 // Create an invite for a group. Links self-expire (24h default set in the DB).

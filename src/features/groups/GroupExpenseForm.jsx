@@ -10,8 +10,8 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
 import { distributeByWeights, splitEqually } from './splitMath.js'
 import { addSharedExpense, updateSharedExpense, deleteSharedExpense } from './groups.js'
-import { uploadReceipt } from '../transactions/receipts.js'
-import ReceiptScanner from '../transactions/ReceiptScanner.jsx'
+import { uploadReceipt } from '../../shared/lib/receipts.js'
+import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 
 const MODES = [

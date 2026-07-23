@@ -7,8 +7,8 @@ import { useCategories } from './useData.js'
 import { toMinor, fromMinor, getRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { insertTransaction, updateTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
-import { uploadReceipt } from './receipts.js'
-import ReceiptScanner from './ReceiptScanner.jsx'
+import { uploadReceipt } from '../../shared/lib/receipts.js'
+import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 
 // Fast-path entry for a single expense or income. Writes go through the

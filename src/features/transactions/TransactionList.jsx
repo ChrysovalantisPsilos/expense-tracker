@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  List, ListItem, HStack, Stack, Text, Spacer, Divider, IconButton, Tag, TagLabel, useToast,
+  List, ListItem, HStack, Stack, Text, Divider, IconButton, Tag, TagLabel, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
   ModalFooter, Button,
 } from '@chakra-ui/react'
@@ -8,7 +8,7 @@ import { Pencil, Trash2, Paperclip } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import TransactionForm from './TransactionForm.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
-import { receiptUrl } from './receipts.js'
+import { receiptUrl } from '../../shared/lib/receipts.js'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 

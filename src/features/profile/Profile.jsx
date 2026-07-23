@@ -13,7 +13,7 @@ import { supabase, passkeysSupported, edgeFunctionError } from '../../shared/lib
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useAppearance } from '../../shared/lib/appearance.jsx'
 import { enablePush } from '../../shared/lib/push.js'
-import { updateProfile, uploadAvatar } from './profile.js'
+import { getProfile, updateProfile, uploadAvatar } from './profile.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
@@ -35,7 +35,7 @@ export default function Profile() {
 
   useEffect(() => {
     let active = true
-    supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
+    getProfile(user.id).then((data) => {
       if (!active || !data) return
       setDisplayName(data.display_name ?? '')
       setCurrency(data.base_currency ?? 'EUR')
@@ -216,10 +216,9 @@ function NotificationsCard({ user }) {
 
   useEffect(() => {
     let active = true
-    supabase.from('profiles').select('notify_email, notify_push')
-      .eq('id', user.id).single().then(({ data }) => {
-        if (active && data) setPrefs(data)
-      })
+    getProfile(user.id, 'notify_email, notify_push').then((data) => {
+      if (active && data) setPrefs(data)
+    })
     return () => { active = false }
   }, [user.id])
 
@@ -291,13 +290,12 @@ function PaymentCard({ user }) {
 
   useEffect(() => {
     let active = true
-    supabase.from('profiles').select('payment_iban, payment_revolut')
-      .eq('id', user.id).single().then(({ data }) => {
-        if (!active || !data) return
-        setIban(data.payment_iban ?? '')
-        setRevolut(data.payment_revolut ?? '')
-        setLoaded(true)
-      })
+    getProfile(user.id, 'payment_iban, payment_revolut').then((data) => {
+      if (!active || !data) return
+      setIban(data.payment_iban ?? '')
+      setRevolut(data.payment_revolut ?? '')
+      setLoaded(true)
+    })
     return () => { active = false }
   }, [user.id])
 
