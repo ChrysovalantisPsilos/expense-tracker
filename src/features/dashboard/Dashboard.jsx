@@ -15,6 +15,9 @@ import { useProfile } from '../../shared/lib/useProfile.js'
 import { useRecurring, monthlyMinor, frequencyLabel, expectedInWindow } from '../recurring/recurring.js'
 import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { usePaged } from '../../shared/ui/usePaged.js'
+import Paginator from '../../shared/ui/Paginator.jsx'
+import BudgetsCard from '../budgets/BudgetsCard.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
 
@@ -48,11 +51,11 @@ export default function Dashboard() {
 
   // Recurring is forward-looking, so it ignores the historical period filter:
   // it always shows what's coming up next plus the monthly subscriptions total.
-  const { subsMonthly, upcoming } = useMemo(() => {
+  const { subsMonthly, activeRecurring } = useMemo(() => {
     const active = rules.filter((r) => r.is_active)
     const subsMonthly = active.reduce((s, r) => s + (r.kind !== 'income' ? monthlyMinor(r) : 0), 0)
-    const upcoming = [...active].sort((a, b) => (a.next_run < b.next_run ? -1 : 1)).slice(0, 5)
-    return { subsMonthly, upcoming }
+    const activeRecurring = [...active].sort((a, b) => (a.next_run < b.next_run ? -1 : 1))
+    return { subsMonthly, activeRecurring }
   }, [rules])
 
   const { spent, earned, byCategory, expenses } = useMemo(() => {
@@ -87,6 +90,11 @@ export default function Dashboard() {
   const spentTotal = spent + proj.expense
   const earnedTotal = earned + proj.income
   const netTotal = earnedTotal - spentTotal
+
+  // Paginate the two lists (10/page). Expenses reset to page 1 when the period
+  // changes; recurring clamps if a rule is removed.
+  const expPage = usePaged(expenses, 10, periodValue)
+  const recPage = usePaged(activeRecurring, 10)
 
   return (
     <Stack spacing={5}>
@@ -193,6 +201,8 @@ export default function Dashboard() {
         )}
       </CardBody></Card>
 
+      <BudgetsCard />
+
       <Card><CardBody>
         <Heading size="sm" mb={3}>Expenses</Heading>
         {loading ? (
@@ -200,13 +210,16 @@ export default function Dashboard() {
         ) : expenses.length === 0 ? (
           <Text color="text.muted">No expenses in this period.</Text>
         ) : (
-          <TransactionList rows={expenses} kind="expense" baseCurrency={baseCurrency}
-            mutate={mutate} reload={reload} />
+          <>
+            <TransactionList rows={expPage.pageItems} kind="expense" baseCurrency={baseCurrency}
+              mutate={mutate} reload={reload} />
+            <Paginator page={expPage.page} count={expPage.count} onPage={expPage.setPage} />
+          </>
         )}
       </CardBody></Card>
 
       <Card><CardBody>
-        <HStack mb={upcoming.length ? 3 : 0}>
+        <HStack mb={activeRecurring.length ? 3 : 0}>
           <Box color="accent.fg"><Repeat size={18} /></Box>
           <Heading size="sm">Recurring</Heading>
           <Spacer />
@@ -215,31 +228,34 @@ export default function Dashboard() {
           )}
           <Button size="xs" variant="ghost" onClick={() => navigate('/recurring')}>Manage</Button>
         </HStack>
-        {upcoming.length === 0 ? (
+        {activeRecurring.length === 0 ? (
           <Text color="text.muted" fontSize="sm">
             No recurring entries yet. Add subscriptions and bills to see them here.
           </Text>
         ) : (
-          <List spacing={0}>
-            {upcoming.map((r, i) => (
-              <ListItem key={r.id}>
-                {i > 0 && <Divider />}
-                <HStack py={2.5} spacing={3}>
-                  <Stack spacing={0} flex="1" minW={0}>
-                    <Text fontWeight="600" noOfLines={1}>
-                      {r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
+          <>
+            <List spacing={0}>
+              {recPage.pageItems.map((r, i) => (
+                <ListItem key={r.id}>
+                  {i > 0 && <Divider />}
+                  <HStack py={2.5} spacing={3}>
+                    <Stack spacing={0} flex="1" minW={0}>
+                      <Text fontWeight="600" noOfLines={1}>
+                        {r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
+                      </Text>
+                      <Text fontSize="xs" color="text.muted">
+                        {frequencyLabel(r)} · next {r.next_run}
+                      </Text>
+                    </Stack>
+                    <Text fontWeight="600" color={r.kind === 'income' ? 'green.500' : 'text.primary'}>
+                      {formatMoney(r.amount_minor, r.currency)}
                     </Text>
-                    <Text fontSize="xs" color="text.muted">
-                      {frequencyLabel(r)} · next {r.next_run}
-                    </Text>
-                  </Stack>
-                  <Text fontWeight="600" color={r.kind === 'income' ? 'green.500' : 'text.primary'}>
-                    {formatMoney(r.amount_minor, r.currency)}
-                  </Text>
-                </HStack>
-              </ListItem>
-            ))}
-          </List>
+                  </HStack>
+                </ListItem>
+              ))}
+            </List>
+            <Paginator page={recPage.page} count={recPage.count} onPage={recPage.setPage} />
+          </>
         )}
       </CardBody></Card>
     </Stack>
