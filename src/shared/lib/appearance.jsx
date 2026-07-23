@@ -6,7 +6,7 @@ import { useColorMode } from '@chakra-ui/react'
 // when the OS flips). This is the single source of truth for colour mode, so
 // the theme sets useSystemColorMode:false and lets this drive setColorMode.
 
-export const APPEARANCE_KEY = 'budge-appearance'
+const APPEARANCE_KEY = 'budge-appearance'
 const Ctx = createContext({ pref: 'system', setPref: () => {} })
 
 export function AppearanceProvider({ children }) {

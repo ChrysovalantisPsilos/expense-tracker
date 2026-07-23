@@ -18,7 +18,8 @@ export function frequencyLabel({ frequency, interval_n = 1 }) {
 }
 
 // Advance a date by one recurrence step (mirrors the SQL materializer).
-export function stepDate(d, freq, n) {
+// Internal helper of this module (the public API is the higher-level functions).
+function stepDate(d, freq, n) {
   const x = new Date(d)
   if (freq === 'daily') x.setDate(x.getDate() + n)
   else if (freq === 'weekly') x.setDate(x.getDate() + n * 7)

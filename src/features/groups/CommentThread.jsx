@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Stack, HStack, Text, Textarea, Button, IconButton, Center, Spinner, Box,
+  Stack, HStack, Text, Textarea, IconButton, Center, Spinner, Box,
 } from '@chakra-ui/react'
 import { Trash2, Send } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'

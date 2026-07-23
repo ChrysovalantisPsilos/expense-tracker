@@ -6,10 +6,10 @@
 import {
   Utensils, ShoppingCart, Car, Home, Lightbulb, ShoppingBag, HeartPulse,
   Clapperboard, Briefcase, Tag, Plane, Coffee, Dumbbell, GraduationCap,
-  Gift, PiggyBank, Wallet, Receipt, CircleDollarSign,
+  Gift, PiggyBank,
 } from 'lucide-react'
 
-export const CATEGORY_ICONS = {
+const CATEGORY_ICONS = {
   utensils: Utensils,
   groceries: ShoppingCart,
   transport: Car,

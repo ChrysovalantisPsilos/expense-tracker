@@ -3,7 +3,7 @@ import { supabase } from './supabase.js'
 // Web-push enrolment for payment reminders. The VAPID public key is not a
 // secret (it ships in every push subscription); its private half lives in
 // Supabase Vault and is only used by the send-reminders edge function.
-export const VAPID_PUBLIC_KEY =
+const VAPID_PUBLIC_KEY =
   'BIYQfVeDa_M912mSOmd_6bK3OzRpP7UyvYa3fdJsC2LSGJ7I3HZe1-Yyiz81Y8I084Z8y7WelwyYWU0XI4l7qGE'
 
 function urlBase64ToUint8Array(base64) {

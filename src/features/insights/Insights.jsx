@@ -15,11 +15,12 @@ import { useTransactions } from '../transactions/useData.js'
 import { lastMonths } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
-import { formatMoney, toBaseMinor, toMinor, fromMinor, minorFactor } from '../../shared/lib/currency.js'
+import { formatMoney, toMinor, fromMinor, minorFactor } from '../../shared/lib/currency.js'
 import {
   useAccounts, saveAccount, deleteAccount,
   useGoals, saveGoal, deleteGoal,
 } from './insights.js'
+import { buildTrend, spendDelta, netWorth } from './insightsMath.js'
 
 export default function Insights() {
   const { baseCurrency = 'EUR' } = useProfile()
@@ -27,25 +28,9 @@ export default function Insights() {
   const { rows, loading } = useTransactions({ from: months[0].from, to: months[months.length - 1].to })
 
   const factor = minorFactor(baseCurrency)
-  const trend = useMemo(() => {
-    const by = new Map(months.map((m) => [m.key, { label: m.label, income: 0, expense: 0 }]))
-    for (const r of rows) {
-      const key = String(r.spent_at).slice(0, 7)
-      const bucket = by.get(key)
-      if (!bucket) continue
-      // Major units for the chart axis; converted back to minor for formatting.
-      const base = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency) / factor
-      if (r.kind === 'income') bucket.income += base
-      else bucket.expense += base
-    }
-    return [...by.values()]
-  }, [rows, months, baseCurrency, factor])
-
-  const thisM = trend[trend.length - 1]
-  const lastM = trend[trend.length - 2]
-  const spendDelta = thisM && lastM && lastM.expense > 0
-    ? Math.round(((thisM.expense - lastM.expense) / lastM.expense) * 100)
-    : null
+  // Trend values are major units (chart axis); formatting converts back to minor.
+  const trend = useMemo(() => buildTrend(rows, months, baseCurrency), [rows, months, baseCurrency])
+  const delta = spendDelta(trend)
 
   return (
     <Stack spacing={5}>
@@ -56,11 +41,11 @@ export default function Insights() {
           <Box color="accent.fg"><TrendingUp size={18} /></Box>
           <Heading size="sm">6-month trend</Heading>
           <Spacer />
-          {spendDelta != null && (
+          {delta != null && (
             <Stat textAlign="right" size="sm">
               <StatHelpText mb={0}>
-                <StatArrow type={spendDelta > 0 ? 'increase' : 'decrease'} />
-                {Math.abs(spendDelta)}% vs last month
+                <StatArrow type={delta > 0 ? 'increase' : 'decrease'} />
+                {Math.abs(delta)}% vs last month
               </StatHelpText>
             </Stat>
           )}
@@ -98,15 +83,7 @@ function NetWorthCard({ baseCurrency }) {
   const modal = useDisclosure()
   const [editing, setEditing] = useState(null)
 
-  const { assets, liabilities } = useMemo(() => {
-    let a = 0, l = 0
-    for (const acc of accounts) {
-      if (acc.type === 'liability') l += acc.balance_minor
-      else a += acc.balance_minor
-    }
-    return { assets: a, liabilities: l }
-  }, [accounts])
-  const net = assets - liabilities
+  const { assets, liabilities, net } = useMemo(() => netWorth(accounts), [accounts])
 
   async function remove(acc) {
     try { await deleteAccount(acc.id); reload() }

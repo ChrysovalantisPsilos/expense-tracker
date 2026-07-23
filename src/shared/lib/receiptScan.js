@@ -9,8 +9,10 @@
 
 // Run OCR. onProgress receives 0..1. Returns the raw recognized text.
 // Tesseract is imported dynamically so its ~hundreds of KB only load when the
-// user actually scans (keeps the initial bundle small).
-export async function ocrImage(file, onProgress) {
+// user actually scans (keeps the initial bundle small). Internal to this module;
+// scanReceipt is the public entry point. extractTotal/extractDate stay exported
+// because they're pure and unit-tested.
+async function ocrImage(file, onProgress) {
   const { default: Tesseract } = await import('tesseract.js')
   const { data } = await Tesseract.recognize(file, 'eng', {
     logger: (m) => {

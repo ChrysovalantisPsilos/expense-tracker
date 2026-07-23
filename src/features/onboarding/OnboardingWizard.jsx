@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Stack, HStack, Text, Heading, FormControl, FormLabel, Input, Select, Button,
-  IconButton, Flex, Progress, Box, useToast,
+  IconButton, Progress, Box, useToast,
 } from '@chakra-ui/react'
 import { X, ArrowRight, ArrowLeft, Sparkles, Landmark, Users, BellRing, KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
