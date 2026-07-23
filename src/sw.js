@@ -1,4 +1,4 @@
-// Budge service worker (vite-plugin-pwa injectManifest mode).
+// Budgeer service worker (vite-plugin-pwa injectManifest mode).
 //
 // Replicates what generateSW gave us before — precached app shell, SPA
 // navigation fallback, NetworkFirst for Supabase reads — and adds what it
@@ -35,7 +35,7 @@ self.addEventListener('message', (event) => {
 self.addEventListener('push', (event) => {
   let data = {}
   try { data = event.data?.json() ?? {} } catch { /* non-JSON push */ }
-  event.waitUntil(self.registration.showNotification(data.title ?? 'Budge', {
+  event.waitUntil(self.registration.showNotification(data.title ?? 'Budgeer', {
     body: data.body ?? '',
     icon: '/pwa-icon.svg',
     badge: '/pwa-icon.svg',

@@ -16,8 +16,8 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Budge',
-        short_name: 'Budge',
+        name: 'Budgeer',
+        short_name: 'Budgeer',
         description: 'Track spending, budgets, and income — and split with friends.',
         theme_color: '#f95d38',
         background_color: '#faf8f4',

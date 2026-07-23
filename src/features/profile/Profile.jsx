@@ -236,7 +236,7 @@ function NotificationsCard({ user }) {
             description: 'Allow them in your browser settings to get push here. Other devices are unaffected.' })
         } else if (status === 'unsupported') {
           toast({ title: 'Push isn’t available in this browser', status: 'info',
-            description: 'On iPhone, install Budge to your home screen first.' })
+            description: 'On iPhone, install Budgeer to your home screen first.' })
         }
       }
     } catch (e) {

@@ -3,12 +3,11 @@ dist
 dist-ssr
 *.local
 
-# Env
+# Env — keys are injected by the host (Vercel) at build time, never committed.
+# Only the .env.example template is tracked.
 .env
 .env.*
 !.env.example
-# Committed on purpose: only public VITE_ build-time values (publishable key).
-!.env.production
 
 # Editor
 .vscode/*

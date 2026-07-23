@@ -60,9 +60,9 @@ export function InviteEmailModal({ group, isOpen, onClose }) {
     if (!addr) return
     setBusy(true)
     try {
-      // First try to invite an existing Budge user (in-app request).
+      // First try to invite an existing Budgeer user (in-app request).
       await inviteExistingUser(group.id, addr)
-      toast({ title: `Request sent to ${addr}`, description: 'They’ll see it in Budge.', status: 'success' })
+      toast({ title: `Request sent to ${addr}`, description: 'They’ll see it in Budgeer.', status: 'success' })
       onClose(); setEmail('')
     } catch (err) {
       if (err.message === 'no_account') {

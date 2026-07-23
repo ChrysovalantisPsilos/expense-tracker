@@ -69,7 +69,7 @@ export default function NotificationPrompt() {
           description: 'You can allow them in your browser settings anytime.' })
       } else {
         toast({ title: 'Push isn’t available in this browser', status: 'info',
-          description: 'On iPhone, install Budge to your home screen first.' })
+          description: 'On iPhone, install Budgeer to your home screen first.' })
       }
     } catch {
       toast({ title: 'Couldn’t enable notifications on this device', status: 'warning' })

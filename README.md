@@ -18,7 +18,7 @@ reports (Excel + PDF). Built to grow into a friend-to-friend bill splitter.
 | Auth | Email/password + Google (+ Apple, once a dev account is configured) |
 | Reports | Supabase Edge Function → SheetJS (xlsx) + pdf-lib (pdf) |
 | Offline | IndexedDB write queue, idempotent sync on reconnect |
-| Hosting | Vercel (frontend, `budge.psilosc.com`); Supabase (backend) |
+| Hosting | Vercel (frontend, `budgeer.com` (prod) / `dev.budgeer.com` (test)); Supabase (backend) |
 
 ## Getting started
 
@@ -81,7 +81,7 @@ supabase/
   (Tesseract.js, lazy-loaded) extracts total + date → prefills the expense
   form. The image is stored in a private `receipts` Storage bucket (RLS-scoped)
   and linked to the transaction.
-- **Brand/design:** "Budge" — warm coral/amber design system, Lucide icons,
+- **Brand/design:** "Budgeer" — warm coral/amber design system, Lucide icons,
   Poppins/Nunito, desktop sidebar + mobile bottom nav, light/dark.
 - **v2 (schema-ready):** groups (trips/households), shared & itemized splits,
   hybrid identity (phantom contacts that upgrade to accounts), balances +
