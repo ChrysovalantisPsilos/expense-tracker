@@ -1,0 +1,21 @@
+# Dependabot keeps npm dependencies current.
+#
+# - Checks monthly; all updatable npm packages (patch, minor, and major) are
+#   bundled into ONE grouped PR per run, so it's a single build + single merge.
+# - Security-advisory PRs are separate and open immediately, regardless of the
+#   monthly schedule — those never wait.
+# - Auto-merge on a green build is handled by .github/workflows/dependabot-auto-merge.yml;
+#   the gate is the `build` workflow (npm ci + vite build).
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "deps"
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"

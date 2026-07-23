@@ -1,0 +1,26 @@
+# Turn on auto-merge for Dependabot PRs. `gh pr merge --auto` doesn't merge
+# immediately — GitHub holds the PR until every REQUIRED status check is green,
+# so this only merges once the `build` gate passes. All update types are
+# auto-merged (per the chosen policy); nothing here filters by patch/minor/major.
+#
+# Requires, in repo Settings, two one-time toggles (see the repo notes):
+#   - General -> "Allow auto-merge"
+#   - Branches -> a protection rule on the default branch that requires the
+#     `build` check (otherwise --auto merges the moment the PR is mergeable).
+name: Dependabot auto-merge
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]'
+    steps:
+      - name: Enable auto-merge
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

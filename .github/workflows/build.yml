@@ -1,0 +1,24 @@
+# Full build gate: install exactly from the lockfile and run the production
+# build, so a dependency update that breaks the app fails HERE. The fast
+# test.yml suite runs pure modules and never imports the deps, so it can't catch
+# a broken dependency — this is the check to mark "required" in branch
+# protection so Dependabot auto-merge waits for it.
+#
+# No secrets needed: the client falls back to placeholder Supabase config when
+# env vars are absent, so `vite build` succeeds without real keys.
+name: build
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
