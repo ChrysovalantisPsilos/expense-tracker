@@ -102,8 +102,8 @@ export default function Profile() {
     <Stack spacing={5}>
       <Heading size="lg">Profile</Heading>
 
-      <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={5} alignItems="start">
-        <Card><CardBody>
+      {/* Identity banner — full width, fields side-by-side on desktop */}
+      <Card><CardBody>
         <Stack spacing={5} as="form" onSubmit={save}>
           <HStack spacing={4}>
             <Box position="relative">
@@ -119,73 +119,75 @@ export default function Profile() {
             </Stack>
           </HStack>
 
-          <FormControl>
-            <FormLabel>Name</FormLabel>
-            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your name" />
-          </FormControl>
-          <FormControl>
-            <FormLabel>Default currency</FormLabel>
-            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </Select>
-          </FormControl>
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+            <FormControl>
+              <FormLabel>Name</FormLabel>
+              <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Your name" />
+            </FormControl>
+            <FormControl>
+              <FormLabel>Default currency</FormLabel>
+              <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </FormControl>
+          </SimpleGrid>
 
-          <Button type="submit" isLoading={busy}>Save changes</Button>
+          <Button type="submit" alignSelf="start" isLoading={busy}>Save changes</Button>
         </Stack>
       </CardBody></Card>
 
-        <Stack spacing={5}>
-          <NotificationsCard user={user} />
-          <PaymentCard user={user} />
-          <AppearanceCard />
-          <ReportsCard />
-          {passkeysSupported && (
-        <Card><CardBody>
-          <HStack mb={3}>
-            <Flex boxSize="32px" align="center" justify="center" borderRadius="lg"
-              bg="bg.subtle" color="accent.fg"><KeyRound size={18} /></Flex>
-            <Heading size="sm">Passkeys</Heading>
-            <Spacer />
-            <Button size="sm" leftIcon={<Plus size={14} />} isLoading={pkBusy}
-              onClick={addPasskey}>Add</Button>
-          </HStack>
-          {passkeys === null ? (
-            <Text fontSize="sm" color="text.muted">
-              Passkeys aren’t enabled for this project yet. Turn them on in
-              Supabase → Authentication → Passkeys.
-            </Text>
-          ) : passkeys.length === 0 ? (
-            <Text fontSize="sm" color="text.muted">
-              No passkeys yet. Add one to sign in with Face ID, Touch ID, or your
-              device PIN — no password needed.
-            </Text>
-          ) : (
-            <Stack spacing={0}>
-              {passkeys.map((pk, i) => (
-                <Box key={pk.id}>
-                  {i > 0 && <Divider />}
-                  <HStack py={2}>
-                    <KeyRound size={16} />
-                    <Stack spacing={0}>
-                      <Text fontSize="sm" fontWeight="600">{pk.friendly_name || 'Passkey'}</Text>
-                      {pk.created_at && (
-                        <Text fontSize="xs" color="text.muted">
-                          added {String(pk.created_at).slice(0, 10)}
-                        </Text>
-                      )}
-                    </Stack>
-                    <Spacer />
-                    <IconButton aria-label="Remove passkey" size="sm" variant="ghost"
-                      icon={<Trash2 size={16} />} onClick={() => removePasskey(pk.id)} />
-                  </HStack>
-                </Box>
-              ))}
-            </Stack>
-          )}
-        </CardBody></Card>
-          )}
-        </Stack>
+      {/* Settings cards — responsive grid, natural heights (no stretch) */}
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5} alignItems="start">
+        <NotificationsCard user={user} />
+        <PaymentCard user={user} />
+        <AppearanceCard />
+        <ReportsCard />
+        {passkeysSupported && (
+          <Card><CardBody>
+            <HStack mb={3}>
+              <Flex boxSize="32px" align="center" justify="center" borderRadius="lg"
+                bg="bg.subtle" color="accent.fg"><KeyRound size={18} /></Flex>
+              <Heading size="sm">Passkeys</Heading>
+              <Spacer />
+              <Button size="sm" leftIcon={<Plus size={14} />} isLoading={pkBusy}
+                onClick={addPasskey}>Add</Button>
+            </HStack>
+            {passkeys === null ? (
+              <Text fontSize="sm" color="text.muted">
+                Passkeys aren’t enabled for this project yet. Turn them on in
+                Supabase → Authentication → Passkeys.
+              </Text>
+            ) : passkeys.length === 0 ? (
+              <Text fontSize="sm" color="text.muted">
+                No passkeys yet. Add one to sign in with Face ID, Touch ID, or your
+                device PIN — no password needed.
+              </Text>
+            ) : (
+              <Stack spacing={0}>
+                {passkeys.map((pk, i) => (
+                  <Box key={pk.id}>
+                    {i > 0 && <Divider />}
+                    <HStack py={2}>
+                      <KeyRound size={16} />
+                      <Stack spacing={0}>
+                        <Text fontSize="sm" fontWeight="600">{pk.friendly_name || 'Passkey'}</Text>
+                        {pk.created_at && (
+                          <Text fontSize="xs" color="text.muted">
+                            added {String(pk.created_at).slice(0, 10)}
+                          </Text>
+                        )}
+                      </Stack>
+                      <Spacer />
+                      <IconButton aria-label="Remove passkey" size="sm" variant="ghost"
+                        icon={<Trash2 size={16} />} onClick={() => removePasskey(pk.id)} />
+                    </HStack>
+                  </Box>
+                ))}
+              </Stack>
+            )}
+          </CardBody></Card>
+        )}
       </SimpleGrid>
 
       <Card borderColor="red.200" _dark={{ borderColor: 'red.800' }}><CardBody>
