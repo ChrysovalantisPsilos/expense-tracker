@@ -45,7 +45,8 @@ export default function ImportExpenses() {
       setMapping(guessMapping(headers))
       setStep('map')
     } catch (err) {
-      toast({ title: 'Couldn’t read that file', description: err.message, status: 'error' })
+      toast({ title: 'Couldn’t read that file', description: err.message,
+        status: 'error', duration: 9000, isClosable: true })
     }
   }
 
