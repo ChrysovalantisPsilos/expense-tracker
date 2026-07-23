@@ -18,6 +18,7 @@ import {
   uploadGroupImage, listAuditLog, downloadGroupReport,
 } from './groups.js'
 import { commentCounts } from './comments.js'
+import { memberName, describeBalance } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { receiptUrl } from '../../shared/lib/receipts.js'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
@@ -90,7 +91,7 @@ export default function GroupDetail() {
   ], () => { load(); refreshCounts() })
 
   const balances = data?.balances ?? new Map()
-  const nameOf = (mid) => data?.members.find((m) => m.id === mid)?.display_name ?? '—'
+  const nameOf = (mid) => memberName(data?.members, mid)
   const myMember = data?.members.find((m) => m.user_id === user.id)
   const myNet = myMember ? (balances.get(myMember.id) ?? 0) : 0
 
@@ -256,7 +257,7 @@ export default function GroupDetail() {
                   <Spacer />
                   {net !== 0 && (
                     <Text fontSize="sm" color={net > 0 ? 'green.500' : 'red.500'}>
-                      {net > 0 ? `owed ${formatMoney(net, cur)}` : `owes ${formatMoney(-net, cur)}`}
+                      {describeBalance(net, cur)}
                     </Text>
                   )}
                   {isOwner && !isMe && (

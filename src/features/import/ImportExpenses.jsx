@@ -9,11 +9,12 @@ import { ArrowLeft, UploadCloud, FileSpreadsheet, Check } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
-import { formatMoney, toMinor, CURRENCIES } from '../../shared/lib/currency.js'
+import { formatMoney } from '../../shared/lib/currency.js'
 import {
   IMPORT_FIELDS, parseWorkbook, guessMapping, buildTransactions, importTransactions,
   listRules, saveRule, merchantKey,
 } from './importExpenses.js'
+import { rowToDraft } from './importMath.js'
 
 export default function ImportExpenses() {
   const navigate = useNavigate()
@@ -50,7 +51,7 @@ export default function ImportExpenses() {
     }
   }
 
-  const previewTx = useMemoPreview(rows, mapping, user?.id, baseCurrency, categories)
+  const previewTx = useMemoPreview(rows, mapping, baseCurrency)
 
   // Build rows (saved rules pre-categorize known merchants), then either go
   // straight to import or stop at the review step for unknown merchants.
@@ -267,44 +268,20 @@ export default function ImportExpenses() {
 }
 
 // Lightweight synchronous preview of the first few rows (no FX lookup — uses the
-// row's own currency for display; exchange_rate is resolved at import time).
-function useMemoPreview(rows, mapping, userId, baseCurrency, categories) {
+// row's own currency for display; exchange_rate is resolved at import time). Uses
+// the same rowToDraft the real import does, so the preview can't misrepresent it.
+function useMemoPreview(rows, mapping, baseCurrency) {
   return useMemo(() => {
     if (!mapping.date || !mapping.amount) return []
     const out = []
     for (const r of rows.slice(0, 6)) {
-      const amt = parseNum(r[mapping.amount])
-      const date = parseDay(r[mapping.date])
-      if (!date || !isFinite(amt) || amt === 0) continue
-      let currency = mapping.currency ? String(r[mapping.currency] ?? '').toUpperCase().trim() : baseCurrency
-      if (!CURRENCIES.includes(currency)) currency = baseCurrency
-      let kind = 'expense'
-      if (mapping.type) {
-        const t = String(r[mapping.type] ?? '').toLowerCase()
-        if (t.startsWith('income') || t === 'credit' || t === 'cr' || t === 'in') kind = 'income'
-      }
+      const draft = rowToDraft(r, mapping, baseCurrency)
+      if (draft.error) continue
       out.push({
-        spent_at: date, kind, currency,
-        amount_minor: toMinor(Math.abs(amt), currency),
-        description: mapping.description && r[mapping.description] != null ? String(r[mapping.description]) : null,
+        spent_at: draft.spent_at, kind: draft.kind, currency: draft.currency,
+        amount_minor: draft.amount_minor, description: draft.description,
       })
     }
     return out
   }, [rows, mapping, baseCurrency])
-}
-function parseNum(v) {
-  if (v == null || v === '') return NaN
-  if (typeof v === 'number') return v
-  let s = String(v).trim().replace(/[^\d.,-]/g, '')
-  if (s.includes(',') && s.includes('.')) s = s.replace(/,/g, '')
-  else if (s.includes(',') && !s.includes('.')) s = s.replace(',', '.')
-  return Number(s)
-}
-function parseDay(v) {
-  if (v instanceof Date && !isNaN(v)) {
-    return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`
-  }
-  if (v == null || v === '') return null
-  const d = new Date(v)
-  return isNaN(d) ? null : d.toISOString().slice(0, 10)
 }

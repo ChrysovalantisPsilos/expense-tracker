@@ -8,6 +8,7 @@ import { Pencil, Trash2, Paperclip } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import TransactionForm from './TransactionForm.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
+import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { receiptUrl } from '../../shared/lib/receipts.js'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
@@ -75,7 +76,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                 </Stack>
                 {shared && (
                   <Tag size="sm" colorScheme="brand" maxW="120px">
-                    <TagLabel noOfLines={1}>{r.group_expenses?.groups?.name ?? 'Group'}</TagLabel>
+                    <TagLabel noOfLines={1}>{groupLabel(r)}</TagLabel>
                   </Tag>
                 )}
                 {r.receipt_path && (

@@ -1,4 +1,6 @@
-// Pure statement-import helpers (no xlsx/supabase imports — unit-testable).
+// Pure statement-import helpers (no xlsx/supabase — unit-testable). Only depends
+// on the pure money helpers in currency.js.
+import { toMinor, CURRENCIES } from '../../shared/lib/currency.js'
 
 // A merchant key for rules: strip numbers/dates/punctuation and generic bank
 // prefixes, keep the first meaningful word — so "POS LIDL 1234 NICOSIA" and
@@ -48,4 +50,36 @@ export async function deterministicUuid(parts) {
   hash[8] = (hash[8] & 0x3f) | 0x80 // variant 10
   const hex = [...hash.slice(0, 16)].map((b) => b.toString(16).padStart(2, '0')).join('')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
+}
+
+// Derive a normalized transaction draft from one raw statement row + the column
+// mapping. Returns { error } when the row lacks a valid date or a nonzero
+// amount, otherwise the parsed fields. `signed` (buildTransactions only) treats
+// a positive amount as income when the file has no Type column but mixes signs.
+// Shared by the import preview and the authoritative buildTransactions so the
+// two can never derive a row differently.
+export function rowToDraft(row, mapping, baseCurrency, { signed = false } = {}) {
+  const amountRaw = parseAmount(row[mapping.amount])
+  const spent_at = parseDate(row[mapping.date])
+  if (!spent_at) return { error: 'missing/invalid date' }
+  if (!isFinite(amountRaw) || amountRaw === 0) return { error: 'missing/invalid amount' }
+
+  let currency = mapping.currency ? String(row[mapping.currency] ?? '').toUpperCase().trim() : baseCurrency
+  if (!CURRENCIES.includes(currency)) currency = baseCurrency
+
+  let kind = 'expense'
+  if (mapping.type) {
+    const t = String(row[mapping.type] ?? '').toLowerCase()
+    if (t.startsWith('income') || t === 'credit' || t === 'cr' || t === 'in') kind = 'income'
+  } else if (signed && amountRaw > 0) {
+    kind = 'income'
+  }
+
+  const description = mapping.description && row[mapping.description] != null
+    ? String(row[mapping.description]).slice(0, 500) : null
+
+  return {
+    spent_at, kind, currency, amountRaw,
+    amount_minor: toMinor(Math.abs(amountRaw), currency), description,
+  }
 }

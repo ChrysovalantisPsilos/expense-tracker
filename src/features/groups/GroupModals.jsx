@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Stack, HStack, Text, FormControl, FormLabel, Input, Select, Button, useToast,
-  Box, Divider, IconButton, Tooltip,
+  Box, IconButton, Tooltip,
 } from '@chakra-ui/react'
 import { ArrowRight, Wand2, BellRing } from 'lucide-react'
 import {
@@ -13,6 +13,7 @@ import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { simplifyDebts } from './splitMath.js'
+import { memberName } from './groupFormat.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import PayShortcuts from './PayShortcuts.jsx'
 
@@ -122,7 +123,7 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
 
   const otherNet = balances?.get(otherId) ?? 0
   const otherName = others.find((m) => m.id === otherId)?.display_name ?? ''
-  const nameOf = (id) => members.find((m) => m.id === id)?.display_name ?? '—'
+  const nameOf = (id) => memberName(members, id)
 
   // Minimal set of transfers that settles the whole group; surface only the
   // ones the current user is part of, one tap to pre-fill the form.

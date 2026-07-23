@@ -3,7 +3,7 @@
 // user confirms/overrides the mapping before importing.
 import * as XLSX from 'xlsx'
 import { supabase } from '../../shared/lib/supabase.js'
-import { toMinor, getRate, CURRENCIES } from '../../shared/lib/currency.js'
+import { getRate } from '../../shared/lib/currency.js'
 
 export const IMPORT_FIELDS = [
   { key: 'date', label: 'Date', required: true },
@@ -81,7 +81,7 @@ export function guessMapping(headers) {
 // Pure helpers (merchant keys, parsing, deterministic identity) live in
 // importMath.js so they're unit-testable; merchantKey is re-exported for the
 // wizard page.
-import { merchantKey, deterministicUuid, parseAmount, parseDate } from './importMath.js'
+import { merchantKey, deterministicUuid, parseAmount, rowToDraft } from './importMath.js'
 export { merchantKey }
 
 // The user's saved auto-categorization rules.
@@ -129,28 +129,13 @@ export async function buildTransactions({ rows, mapping, userId, baseCurrency, c
   const seen = new Map() // identity key -> occurrence count
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i]
-    const amountRaw = parseAmount(r[mapping.amount])
-    const spent_at = parseDate(r[mapping.date])
-    if (!spent_at) { errors.push({ row: i + 2, reason: 'missing/invalid date' }); continue }
-    if (!isFinite(amountRaw) || amountRaw === 0) { errors.push({ row: i + 2, reason: 'missing/invalid amount' }); continue }
+    const draft = rowToDraft(r, mapping, baseCurrency, { signed })
+    if (draft.error) { errors.push({ row: i + 2, reason: draft.error }); continue }
+    const { spent_at, kind, currency, amount_minor, description } = draft
 
-    let currency = mapping.currency ? String(r[mapping.currency] ?? '').toUpperCase().trim() : baseCurrency
-    if (!CURRENCIES.includes(currency)) currency = baseCurrency
-
-    let kind = 'expense'
-    if (mapping.type) {
-      const t = String(r[mapping.type] ?? '').toLowerCase()
-      if (t.startsWith('income') || t === 'credit' || t === 'cr' || t === 'in') kind = 'income'
-    } else if (signed && amountRaw > 0) {
-      kind = 'income'
-    }
-
-    const description = mapping.description && r[mapping.description] != null
-      ? String(r[mapping.description]).slice(0, 500) : null
     const catName = mapping.category ? String(r[mapping.category] ?? '').toLowerCase().trim() : ''
     const category_id = (catName ? (catByName.get(catName) ?? null) : null) ?? ruleFor(description)
 
-    const amount_minor = toMinor(Math.abs(amountRaw), currency)
     const key = `${spent_at}|${amount_minor}|${currency}|${kind}|${description ?? ''}`
     const occurrence = seen.get(key) ?? 0
     seen.set(key, occurrence + 1)

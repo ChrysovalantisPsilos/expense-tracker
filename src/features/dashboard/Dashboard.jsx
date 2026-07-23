@@ -14,6 +14,7 @@ import { today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
 import { useRecurring, monthlyMinor, frequencyLabel, expectedInWindow } from '../recurring/recurring.js'
 import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
+import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
@@ -23,12 +24,6 @@ const VIEW_KEY = STORAGE_KEYS.overviewView
 
 // Warm-led categorical palette (coral/amber first, then complementary hues).
 const COLORS = ['#f95d38', '#fbb324', '#ef8a5a', '#e2431f', '#f6c453', '#c2703d', '#7c6f59', '#d6ccba']
-
-// Bucket label for the category breakdown: mirrored group expenses roll up
-// under their group's name; everything else uses its category (or Uncategorized).
-const bucketOf = (r) =>
-  r.group_expense_id ? (r.group_expenses?.groups?.name ?? 'Group')
-    : (r.categories?.name ?? 'Uncategorized')
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -60,20 +55,13 @@ export default function Dashboard() {
 
   const { spent, earned, byCategory, expenses } = useMemo(() => {
     let spent = 0, earned = 0
-    const cat = new Map()
     const expenses = []
     for (const r of rows) {
       const base = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
-      if (r.kind === 'income') {
-        earned += base
-      } else {
-        spent += base
-        expenses.push(r)
-        const name = bucketOf(r)
-        cat.set(name, (cat.get(name) ?? 0) + base)
-      }
+      if (r.kind === 'income') earned += base
+      else { spent += base; expenses.push(r) }
     }
-    const byCategory = [...cat.entries()]
+    const byCategory = [...sumToBaseByKey(expenses, baseCurrency, bucketOf).entries()]
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
     return { spent, earned, byCategory, expenses }

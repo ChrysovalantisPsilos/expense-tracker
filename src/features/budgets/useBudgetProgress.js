@@ -3,7 +3,7 @@ import { useMonthBudgets } from './budgets.js'
 import { useTransactions } from '../transactions/useData.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
-import { toBaseMinor } from '../../shared/lib/currency.js'
+import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 
 // This month's budgets with their actual spend — shared by the dashboard card
 // and the Budgets page. Budgets are stored in the base currency; spend is
@@ -16,12 +16,7 @@ export function useBudgetProgress() {
   const { rows: txns, loading: tLoading } = useTransactions({ kind: 'expense', from, to })
 
   const items = useMemo(() => {
-    const spentByCat = new Map()
-    for (const r of txns) {
-      if (!r.category_id) continue
-      const base = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
-      spentByCat.set(r.category_id, (spentByCat.get(r.category_id) ?? 0) + base)
-    }
+    const spentByCat = sumToBaseByKey(txns, baseCurrency, (r) => r.category_id ?? null)
     return budgets
       .map((b) => ({
         id: b.id,

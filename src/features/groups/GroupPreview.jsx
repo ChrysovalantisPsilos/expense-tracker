@@ -6,6 +6,7 @@ import {
 } from '@chakra-ui/react'
 import { Users, Sun, Moon, Lock } from 'lucide-react'
 import { previewGroup } from './groups.js'
+import { memberName, describeBalance } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 
@@ -51,7 +52,7 @@ export default function GroupPreview() {
   }
 
   const cur = data.group?.currency ?? 'EUR'
-  const nameOf = (mid) => data.members.find((m) => m.id === mid)?.display_name ?? '—'
+  const nameOf = (mid) => memberName(data.members, mid)
 
   return (
     <Flex direction="column" minH="100dvh" bg="bg.canvas">
@@ -88,7 +89,7 @@ export default function GroupPreview() {
                       <Spacer />
                       {net !== 0 && (
                         <Text fontSize="sm" color={net > 0 ? 'green.500' : 'red.500'}>
-                          {net > 0 ? `owed ${formatMoney(net, cur)}` : `owes ${formatMoney(-net, cur)}`}
+                          {describeBalance(net, cur)}
                         </Text>
                       )}
                     </HStack>
