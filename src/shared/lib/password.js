@@ -1,0 +1,20 @@
+// Client-side new-password rules, shared by sign-up, password reset, and the
+// Profile change-password form. Supabase's leaked-password protection is the
+// authoritative server-side check (see the README dashboard note) — this is the
+// fast, friendly first pass.
+
+// A few of the most common weak passwords to reject outright.
+const COMMON = new Set([
+  '12345', '123456', '1234567', '12345678', '123456789', '1234567890',
+  'password', 'password1', 'qwerty', 'abc123', '111111', '000000', 'iloveyou',
+  'admin', 'letmein', 'welcome', 'monkey', 'dragon',
+])
+
+// Returns an error string, or null if the password is acceptable.
+export function validatePassword(pw) {
+  if (pw.length < 8) return 'Use at least 8 characters.'
+  if (!/[a-zA-Z]/.test(pw)) return 'Include at least one letter.'
+  if (!/[0-9]/.test(pw)) return 'Include at least one number.'
+  if (COMMON.has(pw.toLowerCase())) return 'That password is too common — pick something less guessable.'
+  return null
+}
