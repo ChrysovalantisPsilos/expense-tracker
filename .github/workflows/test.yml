@@ -1,0 +1,17 @@
+# Unit tests on every push/PR. The suite is zero-dependency (node:test over
+# pure modules), so there is no install step — a red X lands in seconds,
+# before Vercel ships the commit.
+name: test
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test

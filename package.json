@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint .",
+    "test": "node --test test/*.test.js",
     "db:push": "supabase db push",
     "functions:serve": "supabase functions serve"
   },
