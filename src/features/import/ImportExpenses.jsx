@@ -12,6 +12,7 @@ import { useProfile } from '../../shared/lib/useProfile.js'
 import { formatMoney, toMinor, CURRENCIES } from '../../shared/lib/currency.js'
 import {
   IMPORT_FIELDS, parseWorkbook, guessMapping, buildTransactions, importTransactions,
+  listRules, saveRule, merchantKey,
 } from './importExpenses.js'
 
 export default function ImportExpenses() {
@@ -19,15 +20,17 @@ export default function ImportExpenses() {
   const toast = useToast()
   const { user } = useAuth()
   const { baseCurrency } = useProfile()
-  const { categories } = useCategories('expense')
+  const { categories } = useCategories() // all kinds — rules can target either
 
-  const [step, setStep] = useState('upload') // upload | map | done
+  const [step, setStep] = useState('upload') // upload | map | review | done
   const [fileName, setFileName] = useState('')
   const [headers, setHeaders] = useState([])
   const [rows, setRows] = useState([])
   const [mapping, setMapping] = useState({})
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
+  const [pending, setPending] = useState(null)   // { valid, errors, groups }
+  const [assign, setAssign] = useState({})       // merchant pattern -> category id
 
   async function onFile(e) {
     const file = e.target.files?.[0]
@@ -48,22 +51,63 @@ export default function ImportExpenses() {
 
   const previewTx = useMemoPreview(rows, mapping, user?.id, baseCurrency, categories)
 
-  async function doImport() {
+  // Build rows (saved rules pre-categorize known merchants), then either go
+  // straight to import or stop at the review step for unknown merchants.
+  async function prepare() {
     if (!mapping.date || !mapping.amount) {
       toast({ title: 'Map both Date and Amount first', status: 'warning' }); return
     }
     setBusy(true)
     try {
+      const rules = await listRules().catch(() => [])
       const { valid, errors } = await buildTransactions({
-        rows, mapping, userId: user.id, baseCurrency, categories,
+        rows, mapping, userId: user.id, baseCurrency, categories, rules,
       })
       if (!valid.length) {
         toast({ title: 'Nothing to import', description: 'No rows had a valid date + amount.', status: 'warning' })
         setBusy(false); return
       }
-      const inserted = await importTransactions(valid)
-      setResult({ inserted, skipped: errors.length, errors: errors.slice(0, 10) })
+      // Unknown merchants: uncategorized rows grouped by merchant key.
+      const byMerchant = new Map()
+      for (const t of valid) {
+        if (t.category_id || !t.description) continue
+        const key = merchantKey(t.description)
+        if (!key) continue
+        byMerchant.set(key, (byMerchant.get(key) ?? 0) + 1)
+      }
+      const groups = [...byMerchant.entries()]
+        .map(([pattern, count]) => ({ pattern, count }))
+        .sort((a, b) => b.count - a.count)
+      if (groups.length === 0) {
+        await finishImport(valid, errors, {})
+      } else {
+        setPending({ valid, errors, groups })
+        setAssign({})
+        setStep('review')
+      }
+    } catch (err) {
+      toast({ title: 'Import failed', description: err.message, status: 'error' })
+    } finally { setBusy(false) }
+  }
+
+  // Apply review choices (as both this-import categories and saved rules),
+  // then insert. Duplicate-proof: re-imports are skipped server-side.
+  async function finishImport(valid, errors, assignments) {
+    setBusy(true)
+    try {
+      const chosen = Object.entries(assignments).filter(([, catId]) => catId)
+      for (const [pattern, catId] of chosen) {
+        await saveRule(user.id, pattern, catId).catch(() => {}) // rule is a bonus, not a blocker
+      }
+      const withCats = valid.map((t) => {
+        if (t.category_id || !t.description) return t
+        const hit = chosen.find(([pattern]) => merchantKey(t.description) === pattern)
+        return hit ? { ...t, category_id: hit[1] } : t
+      })
+      const { inserted, duplicates } = await importTransactions(withCats)
+      setResult({ inserted, duplicates, skipped: errors.length, errors: errors.slice(0, 10) })
       setStep('done')
+      setPending(null)
     } catch (err) {
       toast({ title: 'Import failed', description: err.message, status: 'error' })
     } finally { setBusy(false) }
@@ -151,7 +195,7 @@ export default function ImportExpenses() {
             <HStack mt={4}>
               <Spacer />
               <Button leftIcon={<Check size={16} />} isLoading={busy}
-                isDisabled={!mapping.date || !mapping.amount} onClick={doImport}>
+                isDisabled={!mapping.date || !mapping.amount} onClick={prepare}>
                 Import {rows.length} rows
               </Button>
             </HStack>
@@ -159,11 +203,51 @@ export default function ImportExpenses() {
         </>
       )}
 
+      {step === 'review' && pending && (
+        <Card><CardBody>
+          <Text fontWeight="600" mb={1}>New merchants</Text>
+          <Text fontSize="sm" color="text.muted" mb={4}>
+            Pick categories for merchants Budge hasn’t seen before — each choice
+            is remembered as a rule and applied automatically on every future
+            import. Leave any blank to import those rows uncategorized.
+          </Text>
+          <Stack spacing={2}>
+            {pending.groups.map((g) => (
+              <HStack key={g.pattern} spacing={3}>
+                <Text fontSize="sm" fontWeight="600" flex="1" noOfLines={1}>
+                  {g.pattern}
+                  <Text as="span" color="text.muted" fontWeight="400"> · {g.count} row{g.count === 1 ? '' : 's'}</Text>
+                </Text>
+                <Select size="sm" maxW="200px" placeholder="Uncategorized"
+                  value={assign[g.pattern] || ''}
+                  onChange={(e) => setAssign((a) => ({ ...a, [g.pattern]: e.target.value }))}>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </Select>
+              </HStack>
+            ))}
+          </Stack>
+          <HStack mt={5}>
+            <Button variant="ghost" onClick={() => { setPending(null); setStep('map') }}>Back</Button>
+            <Spacer />
+            <Button leftIcon={<Check size={16} />} isLoading={busy}
+              onClick={() => finishImport(pending.valid, pending.errors, assign)}>
+              Import {pending.valid.length} rows
+            </Button>
+          </HStack>
+        </CardBody></Card>
+      )}
+
       {step === 'done' && result && (
         <Card><CardBody>
           <Stack spacing={3} align="center" py={6} textAlign="center">
             <Box color="green.500"><Check size={40} /></Box>
             <Heading size="md">Imported {result.inserted} transactions</Heading>
+            {result.duplicates > 0 && (
+              <Text fontSize="sm" color="text.muted">
+                {result.duplicates} row{result.duplicates === 1 ? ' was' : 's were'} already
+                imported before and got skipped — re-importing never duplicates.
+              </Text>
+            )}
             {result.skipped > 0 && (
               <Text fontSize="sm" color="text.muted">
                 Skipped {result.skipped} row{result.skipped === 1 ? '' : 's'} with a missing/invalid
