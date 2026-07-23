@@ -287,6 +287,95 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 9. Settlements (M1/L1): created_by is forced to the caller, and a member
+--    cannot delete a settlement they didn't create (owner-or-creator only).
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; sid uuid; cb uuid; still int;
+begin
+  begin
+    select id into u1 from auth.users order by created_at limit 1;
+    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
+    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+
+    insert into public.groups (name, owner_id, currency) values ('ZZT settle', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role)
+      values (gid, u1, 'Owner', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name)
+      values (gid, u2, 'Member') returning id into m2;
+
+    -- (a) A member inserts a settlement spoofing created_by = owner; the
+    -- BEFORE INSERT guard must overwrite it with the real caller (u2).
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    insert into public.settlements (group_id, from_member, to_member, amount_minor, currency, created_by)
+      values (gid, m2, m1, 500, 'EUR', u1)
+      returning id, created_by into sid, cb;
+    execute 'reset role';
+    if cb is distinct from u2 then raise exception 'created_by not forced to caller: %', cb; end if;
+
+    -- (b) Owner creates a settlement; member u2 must not be able to delete it.
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    insert into public.settlements (group_id, from_member, to_member, amount_minor, currency)
+      values (gid, m1, m2, 300, 'EUR') returning id into sid;
+    execute 'reset role';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    delete from public.settlements where id = sid;  -- RLS filters the row out silently
+    execute 'reset role';
+    select count(*) into still from public.settlements where id = sid;
+    if still <> 1 then raise exception 'member deleted an owner-created settlement'; end if;
+
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: settlement created_by forced + delete restricted';
+    else update _t set fails = fails + 1; raise notice 'FAIL: settlement guard — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 10. expense_splits (M2): a member cannot inject a split row onto an expense
+--     they didn't create (would inflate a co-member's owed share).
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; eid uuid; injected int;
+begin
+  begin
+    select id into u1 from auth.users order by created_at limit 1;
+    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
+    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+
+    insert into public.groups (name, owner_id, currency) values ('ZZT split', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role)
+      values (gid, u1, 'Owner', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name)
+      values (gid, u2, 'Member') returning id into m2;
+    -- Owner owns this expense (created_by = u1).
+    insert into public.group_expenses (group_id, paid_by, amount_minor, currency, description, spent_at, created_by)
+      values (gid, m1, 1000, 'EUR', 'zz owner expense', current_date, u1) returning id into eid;
+
+    -- Member u2 attempts to add a split onto the owner's expense.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      insert into public.expense_splits (expense_id, member_id, share_minor) values (eid, m2, 1000);
+    exception when others then null;  -- RLS WITH CHECK violation expected
+    end;
+    execute 'reset role';
+
+    select count(*) into injected from public.expense_splits where expense_id = eid and member_id = m2;
+    if injected <> 0 then raise exception 'member injected a split onto an owner expense'; end if;
+
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: expense_splits insert restricted to creator/owner';
+    else update _t set fails = fails + 1; raise notice 'FAIL: expense_splits insert guard — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed (so CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$

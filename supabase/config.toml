@@ -16,3 +16,12 @@ verify_jwt = true
 
 [functions.delete-account]
 verify_jwt = true
+
+# Cron/webhook-driven functions authenticate via an x-cron-secret header in
+# code (checked against Vault), not a caller JWT, so JWT verification is off.
+# They fail closed without the config too, but the repo is the source of truth.
+[functions.notify-user]
+verify_jwt = false
+
+[functions.send-reminders]
+verify_jwt = false
