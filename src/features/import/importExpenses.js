@@ -23,23 +23,56 @@ const GUESS = {
   type: ['type', 'kind', 'direction'],
 }
 
+const EXPORT_HINT =
+  'Re-export it as CSV (in Numbers/Excel: File → Export To → CSV) and upload that.'
+
 // Parse the first sheet into { headers, rows } (rows keyed by header).
+// Hardened against files SheetJS chokes on — notably Apple Numbers exports,
+// which can embed metadata (e.g. hyperlink cells) that crashes the default
+// reader with a cryptic internal error. We retry with the extra parsing
+// switched off, and on real failure throw a clear, actionable message instead.
 export async function parseWorkbook(file) {
+  const name = (file.name || '').toLowerCase()
+  // .numbers is an Apple package format SheetJS cannot read at all.
+  if (name.endsWith('.numbers')) {
+    throw new Error(`Numbers documents can’t be imported directly. ${EXPORT_HINT}`)
+  }
+
   const buf = await file.arrayBuffer()
-  const wb = XLSX.read(buf, { cellDates: true })
+
+  let wb
+  try {
+    wb = XLSX.read(buf, { cellDates: true })
+  } catch {
+    try {
+      // Drop styles/HTML/number-format/VBA parsing — smaller surface, avoids
+      // several export-quirk crashes.
+      wb = XLSX.read(buf, {
+        cellDates: true, cellStyles: false, cellHTML: false, cellNF: false, bookVBA: false,
+      })
+    } catch {
+      throw new Error(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
+    }
+  }
+
   const ws = wb.Sheets[wb.SheetNames[0]]
   if (!ws) return { headers: [], rows: [] }
-  const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false })
-  const headers = (aoa[0] || []).map((h) => String(h))
-  const rows = XLSX.utils.sheet_to_json(ws, { defval: null })
-  return { headers, rows }
+
+  try {
+    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false })
+    const headers = (aoa[0] || []).map((h) => String(h ?? '').trim())
+    const rows = XLSX.utils.sheet_to_json(ws, { defval: null })
+    return { headers, rows }
+  } catch {
+    throw new Error(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
+  }
 }
 
 export function guessMapping(headers) {
   const m = {}
-  const lower = headers.map((h) => ({ h, l: String(h).toLowerCase().trim() }))
+  const lower = (headers || []).map((h) => ({ h, l: String(h ?? '').toLowerCase().trim() }))
   for (const field of Object.keys(GUESS)) {
-    const hit = lower.find(({ l }) => GUESS[field].some((g) => l === g || l.includes(g)))
+    const hit = lower.find(({ l }) => l && GUESS[field].some((g) => l === g || l.includes(g)))
     m[field] = hit ? hit.h : ''
   }
   return m
