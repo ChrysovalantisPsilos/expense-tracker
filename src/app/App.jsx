@@ -6,6 +6,8 @@ import AppShell from './AppShell.jsx'
 import Landing from '../features/auth/Landing.jsx'
 import Login from '../features/auth/Login.jsx'
 import VerifyEmail from '../features/auth/VerifyEmail.jsx'
+import ForgotPassword from '../features/auth/ForgotPassword.jsx'
+import ResetPassword from '../features/auth/ResetPassword.jsx'
 import Dashboard from '../features/dashboard/Dashboard.jsx'
 import Expenses from '../features/transactions/Expenses.jsx'
 import ImportExpenses from '../features/import/ImportExpenses.jsx'
@@ -37,6 +39,8 @@ function PublicRoutes() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/join/:token" element={<GroupPreview />} />
       <Route path="*" element={<Landing />} />
     </Routes>
@@ -96,9 +100,12 @@ function AuthedRoutes() {
 }
 
 export default function App() {
-  const { session, loading } = useAuth()
+  const { session, loading, recovering } = useAuth()
   if (loading) {
     return <Center h="100dvh"><Spinner size="lg" color="brand.500" /></Center>
   }
+  // A password-recovery link signs the user in, but they must set a new password
+  // before doing anything else — so this screen preempts the normal routing.
+  if (recovering) return <ResetPassword />
   return session ? <AuthedRoutes /> : <PublicRoutes />
 }

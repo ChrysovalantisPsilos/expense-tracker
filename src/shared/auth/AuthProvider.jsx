@@ -21,6 +21,10 @@ function hasStoredSession() {
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  // True from when a password-recovery link is opened until the new password is
+  // saved. The link establishes a real session, so without this flag the app
+  // would drop the user straight into the dashboard with their password unset.
+  const [recovering, setRecovering] = useState(false)
 
   useEffect(() => {
     let mounted = true
@@ -36,8 +40,9 @@ export function AuthProvider({ children }) {
       if (data.session || !stored) setLoading(false)
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       if (!mounted) return
+      if (event === 'PASSWORD_RECOVERY') setRecovering(true)
       setSession(s)
       setLoading(false)
     })
@@ -94,6 +99,25 @@ export function AuthProvider({ children }) {
     [],
   )
 
+  // Email a password-reset link. The link lands on /reset-password, where the
+  // recovery session lets the user set a new password. Supabase returns success
+  // whether or not the address exists, so we never reveal which emails are known.
+  const sendPasswordReset = useCallback(
+    (email) =>
+      supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      }),
+    [],
+  )
+
+  // Set a new password on the current (recovery or signed-in) session.
+  const updatePassword = useCallback(
+    (password) => supabase.auth.updateUser({ password }),
+    [],
+  )
+
+  const clearRecovery = useCallback(() => setRecovering(false), [])
+
   // Passkeys (WebAuthn). These no-op-guard so callers can rely on them even if
   // the API is missing on an older client build.
   const signInWithPasskey = useCallback(() => supabase.auth.signInWithPasskey(), [])
@@ -108,11 +132,15 @@ export function AuthProvider({ children }) {
     session,
     user: session?.user ?? null,
     loading,
+    recovering,
     signInWithPassword,
     signUp,
     signInWithProvider,
     signOut,
     resendConfirmation,
+    sendPasswordReset,
+    updatePassword,
+    clearRecovery,
     signInWithPasskey,
     registerPasskey,
     listPasskeys,

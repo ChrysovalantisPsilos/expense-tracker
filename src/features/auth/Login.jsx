@@ -7,26 +7,9 @@ import {
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { isSupabaseConfigured, passkeysSupported } from '../../shared/lib/supabase.js'
+import { validatePassword } from '../../shared/lib/password.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import Logo from '../../shared/ui/Logo.jsx'
-
-// A few of the most common weak passwords to reject outright, client-side.
-// (Supabase's leaked-password protection is the authoritative server-side
-// check — see the dashboard note in the README.)
-const COMMON = new Set([
-  '12345', '123456', '1234567', '12345678', '123456789', '1234567890',
-  'password', 'password1', 'qwerty', 'abc123', '111111', '000000', 'iloveyou',
-  'admin', 'letmein', 'welcome', 'monkey', 'dragon',
-])
-
-// Returns an error string, or null if the password is acceptable.
-function validatePassword(pw) {
-  if (pw.length < 8) return 'Use at least 8 characters.'
-  if (!/[a-zA-Z]/.test(pw)) return 'Include at least one letter.'
-  if (!/[0-9]/.test(pw)) return 'Include at least one number.'
-  if (COMMON.has(pw.toLowerCase())) return 'That password is too common — pick something less guessable.'
-  return null
-}
 
 export default function Login() {
   const { signInWithPassword, signUp, signInWithPasskey, signInWithProvider } = useAuth()
@@ -58,13 +41,22 @@ export default function Login() {
     }
     setBusy(true)
     const fn = mode === 'signin' ? signInWithPassword : signUp
-    const { error } = await fn(email, password)
+    const { data, error } = await fn(email, password)
     setBusy(false)
     if (error) {
-      toast({ title: error.message, status: 'error' })
+      // Some backend failures (e.g. a 500 when the confirmation email can't be
+      // sent) come back with no readable body, which would otherwise render as
+      // an empty "{}". Fall back to a human message so the user isn't stranded.
+      const raw = (error.message || '').trim()
+      const msg = raw && raw !== '{}'
+        ? raw
+        : 'Something went wrong on our side — please try again in a moment.'
+      toast({ title: msg, status: 'error' })
       return
     }
-    if (mode === 'signup') {
+    // Sign-up with email confirmation ON returns no session (go check your
+    // inbox); with confirmation OFF it returns a session (you're already in).
+    if (mode === 'signup' && !data?.session) {
       sessionStorage.setItem(STORAGE_KEYS.pendingEmail, email)
       navigate('/verify-email', { replace: true })
     } else {
@@ -106,6 +98,12 @@ export default function Login() {
                     <FormHelperText>At least 8 characters, with a letter and a number.</FormHelperText>
                   )}
                 </FormControl>
+                {mode === 'signin' && (
+                  <Button variant="link" colorScheme="brand" size="sm" alignSelf="flex-end"
+                    onClick={() => navigate('/forgot-password')}>
+                    Forgot password?
+                  </Button>
+                )}
                 <Button type="submit" isLoading={busy} w="full">
                   {mode === 'signin' ? 'Sign in' : 'Sign up'}
                 </Button>
@@ -118,12 +116,15 @@ export default function Login() {
               <Divider />
             </HStack>
             <Stack spacing={3}>
-              <Button variant="outline" colorScheme="gray" w="full"
+              {/* Google's guidelines: white button, the four-color G, and
+                  "Sign in/up with Google". Kept white in both themes (the mark
+                  is designed for a light surface). */}
+              <Button w="full" bg="white" color="gray.700" fontWeight="500"
+                borderWidth="1px" borderColor="gray.300"
+                _hover={{ bg: 'gray.50' }} _active={{ bg: 'gray.100' }}
+                leftIcon={<GoogleIcon boxSize={5} />}
                 onClick={() => signInWithProvider('google')}>
-                <Icon viewBox="0 0 24 24" mr={2} boxSize={4}>
-                  <path fill="currentColor" d="M21.35 11.1H12v2.98h5.35c-.23 1.4-1.6 4.1-5.35 4.1a5.19 5.19 0 1 1 0-10.38c1.48 0 2.47.63 3.04 1.17l2.07-2A8 8 0 1 0 12 20c4.62 0 7.67-3.25 7.67-7.82 0-.53-.06-.93-.14-1.08Z" />
-                </Icon>
-                Google
+                {mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
               </Button>
               {mode === 'signin' && passkeysSupported && (
                 <Button variant="outline" colorScheme="gray" w="full"
@@ -145,5 +146,19 @@ export default function Login() {
         </CardBody>
       </Card>
     </Center>
+  )
+}
+
+// The official four-color Google "G". Each path carries its own brand color, so
+// it renders in full color regardless of the button's text color — and per
+// Google's guidelines the mark must not be recolored.
+function GoogleIcon(props) {
+  return (
+    <Icon viewBox="0 0 48 48" {...props}>
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+    </Icon>
   )
 }
