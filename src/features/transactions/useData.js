@@ -1,5 +1,4 @@
 import { supabase } from '../../shared/lib/supabase.js'
-import { isoDate } from '../../shared/lib/dates.js'
 import { useOwnedQuery } from '../../shared/lib/db.js'
 
 // Categories for the current user (optionally filtered by kind).
@@ -42,46 +41,8 @@ export function useTransactions({ kind, from, to, categoryId, limit, withGroup }
 // Re-exported for existing callers; the implementation lives in lib/dates.js.
 export { monthRange } from '../../shared/lib/dates.js'
 
-// Dashboard period options, clamped so the user never sees months/years from
-// before they have any data. The range spans from `oldestISO` (their oldest
-// transaction, YYYY-MM-DD) up to now — importing older data extends it for
-// free. With no transactions, only "This month" is offered.
-export function buildPeriods(oldestISO, d = new Date()) {
-  const iso = isoDate
-  const y = d.getFullYear()
-  const m = d.getMonth()
-
-  const thisMonth = {
-    value: `m:${y}-${m + 1}`, label: 'This month',
-    from: iso(new Date(y, m, 1)), to: iso(new Date(y, m + 1, 0)),
-  }
-  if (!oldestISO) return [thisMonth]
-
-  const oldest = new Date(oldestISO)
-  const oldestY = oldest.getFullYear()
-  const oldestMonthIdx = oldestY * 12 + oldest.getMonth()
-  const nowMonthIdx = y * 12 + m
-
-  const out = []
-  for (let idx = nowMonthIdx; idx >= oldestMonthIdx; idx--) {
-    const start = new Date(Math.floor(idx / 12), idx % 12, 1)
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0)
-    out.push({
-      value: `m:${start.getFullYear()}-${start.getMonth() + 1}`,
-      label: idx === nowMonthIdx ? 'This month' : start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-      from: iso(start), to: iso(end),
-    })
-  }
-  for (let yr = y; yr >= oldestY; yr--) {
-    out.push({ value: `y:${yr}`, label: yr === y ? 'This year' : String(yr), from: `${yr}-01-01`, to: `${yr}-12-31` })
-  }
-  // "All time" only adds value once there's data spanning more than this month.
-  if (oldestMonthIdx < nowMonthIdx) out.push({ value: 'all', label: 'All time', from: null, to: null })
-  // Guard: if every transaction is future-dated, both loops above produce
-  // nothing — never return an empty list (callers index into it).
-  if (out.length === 0) out.push(thisMonth)
-  return out
-}
+// Period math lives in periods.js (unit-tested); re-exported for callers.
+export { buildPeriods } from './periods.js'
 
 // The user's oldest transaction date (YYYY-MM-DD), or null if none.
 export async function oldestTransactionDate() {

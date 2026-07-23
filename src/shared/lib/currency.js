@@ -35,7 +35,9 @@ export function toBaseMinor(minor, exchangeRate, fromCurrency = 'EUR', baseCurre
 
 // Fetch a daily FX rate from base->quote. Cached in localStorage per day so we
 // don't hammer the API. Returns 1 on failure (caller can flag as unconverted).
-const FX_BASE = import.meta.env.VITE_FX_API_URL || 'https://api.exchangerate.host'
+// Optional chaining: import.meta.env only exists under Vite — this module is
+// also imported by the plain-node unit tests.
+const FX_BASE = import.meta.env?.VITE_FX_API_URL || 'https://api.exchangerate.host'
 
 export async function getRate(from, to) {
   if (from === to) return 1
