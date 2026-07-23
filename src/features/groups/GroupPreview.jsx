@@ -44,7 +44,7 @@ export default function GroupPreview() {
         <Stack spacing={4} textAlign="center" maxW="sm">
           <Heading size="md">Invite not found</Heading>
           <Text color="text.muted">This invite link is invalid or has expired.</Text>
-          <Button onClick={goLogin}>Go to Budge</Button>
+          <Button onClick={goLogin}>Go to Budgeer</Button>
         </Stack>
       </Center>
     )
@@ -57,8 +57,8 @@ export default function GroupPreview() {
     <Flex direction="column" minH="100dvh" bg="bg.canvas">
       <Flex px={5} py={4} align="center">
         <HStack spacing={2.5}>
-          <Image src="/budge-mark.svg" alt="Budge" boxSize="28px" />
-          <Text fontFamily="heading" fontWeight="700" fontSize="lg">budge</Text>
+          <Image src="/budge-mark.svg" alt="Budgeer" boxSize="28px" />
+          <Text fontFamily="heading" fontWeight="700" fontSize="lg">budgeer</Text>
         </HStack>
         <Spacer />
         <IconButton aria-label="Toggle theme" variant="ghost" size="sm"

@@ -27,7 +27,7 @@ export default class ErrorBoundary extends Component {
         <Stack spacing={4} maxW="420px" textAlign="center" align="center">
           <Heading size="md">Something went wrong</Heading>
           <Text color="text.muted" fontSize="sm">
-            Budge hit an unexpected error. Reloading usually fixes it — your
+            Budgeer hit an unexpected error. Reloading usually fixes it — your
             data is safe on the server.
           </Text>
           {this.state.error?.message && (

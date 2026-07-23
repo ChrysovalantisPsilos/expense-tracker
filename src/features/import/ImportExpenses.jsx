@@ -149,7 +149,7 @@ export default function ImportExpenses() {
               <Button size="sm" variant="ghost" onClick={() => setStep('upload')}>Change file</Button>
             </HStack>
             <Text fontSize="sm" color="text.muted" mb={3}>
-              Match your columns to Budge fields. Date and Amount are required.
+              Match your columns to Budgeer fields. Date and Amount are required.
             </Text>
             <Stack spacing={3}>
               {IMPORT_FIELDS.map((f) => (
@@ -207,7 +207,7 @@ export default function ImportExpenses() {
         <Card><CardBody>
           <Text fontWeight="600" mb={1}>New merchants</Text>
           <Text fontSize="sm" color="text.muted" mb={4}>
-            Pick categories for merchants Budge hasn’t seen before — each choice
+            Pick categories for merchants Budgeer hasn’t seen before — each choice
             is remembered as a rule and applied automatically on every future
             import. Leave any blank to import those rows uncategorized.
           </Text>

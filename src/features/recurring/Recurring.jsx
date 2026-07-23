@@ -189,7 +189,7 @@ function RecurringForm({ rule, baseCurrency, onClose, onSaved }) {
           description: 'Reminders will show in the app’s notification bell instead.' })
       } else if (status === 'unsupported') {
         toast({ title: 'Push isn’t available in this browser', status: 'info',
-          description: 'On iPhone, install Budge to your home screen first. Reminders will still show in the bell.' })
+          description: 'On iPhone, install Budgeer to your home screen first. Reminders will still show in the bell.' })
       }
     } catch {
       toast({ title: 'Couldn’t enable push on this device', status: 'warning',

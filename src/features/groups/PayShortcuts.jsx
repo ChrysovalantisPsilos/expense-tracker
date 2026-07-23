@@ -45,7 +45,7 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
           iban,
           `EUR${amountStr}`,
           '', '',
-          `Budge settle-up · ${groupName ?? ''}`.slice(0, 140),
+          `Budgeer settle-up · ${groupName ?? ''}`.slice(0, 140),
         ].join('\n')
         setQr(await QRCode.toDataURL(payload, { margin: 1, width: 220 }))
       }

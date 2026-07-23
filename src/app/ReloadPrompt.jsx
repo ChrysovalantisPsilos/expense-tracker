@@ -36,7 +36,7 @@ export default function ReloadPrompt() {
           borderColor="border.default" borderRadius="xl" boxShadow="lg"
           px={4} py={3} spacing={3}
         >
-          <Text fontSize="sm" flex="1">A new version of Budge is available.</Text>
+          <Text fontSize="sm" flex="1">A new version of Budgeer is available.</Text>
           <Button size="sm" variant="ghost" onClick={() => setNeedRefresh(false)}>Later</Button>
           <Button size="sm" onClick={() => updateServiceWorker(true)}>Update</Button>
         </HStack>

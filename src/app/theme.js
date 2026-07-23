@@ -1,6 +1,6 @@
 import { extendTheme } from '@chakra-ui/react'
 
-// Budge — warm & playful. Coral accent + amber, warm sand neutrals (never
+// Budgeer — warm & playful. Coral accent + amber, warm sand neutrals (never
 // cool grays), rounded cards, soft shadows. Light + dark.
 
 // AppearanceProvider (shared/lib/appearance.jsx) is the single source of truth

@@ -23,9 +23,9 @@ export default function Landing() {
     <Flex direction="column" minH="100dvh" bg="bg.canvas">
       <Flex px={5} py={4} align="center">
         <HStack spacing={2.5}>
-          <Image src="/budge-mark.svg" alt="Budge" boxSize="30px" />
+          <Image src="/budge-mark.svg" alt="Budgeer" boxSize="30px" />
           <Text fontFamily="heading" fontWeight="700" fontSize="xl" letterSpacing="-0.02em">
-            budge
+            budgeer
           </Text>
         </HStack>
         <Box flex="1" />
@@ -62,7 +62,7 @@ export default function Landing() {
       </Center>
 
       <Center pb={6}>
-        <Text fontSize="xs" color="text.muted">Budge · your money, your friends, sorted</Text>
+        <Text fontSize="xs" color="text.muted">Budgeer · your money, your friends, sorted</Text>
       </Center>
     </Flex>
   )
