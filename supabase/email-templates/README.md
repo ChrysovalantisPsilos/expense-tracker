@@ -11,9 +11,9 @@ set a subject:
 
 | Template | File | Suggested subject |
 | --- | --- | --- |
-| Confirm signup | `confirm-signup.html` | `Confirm your email · Budge` |
-| Reset password | `reset-password.html` | `Reset your Budge password` |
-| Magic Link | `magic-link.html` | `Your Budge sign-in link` |
+| Confirm signup | `confirm-signup.html` | `Confirm your email · Budgeer` |
+| Reset password | `reset-password.html` | `Reset your Budgeer password` |
+| Magic Link | `magic-link.html` | `Your Budgeer sign-in link` |
 
 Notes:
 - These are HTML **fragments** (no `<!doctype>`/`<html>`/`<body>` wrapper) —
