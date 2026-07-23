@@ -22,6 +22,8 @@ import GroupPreview from '../features/groups/GroupPreview.jsx'
 import Profile from '../features/profile/Profile.jsx'
 import PasskeyPrompt from '../features/profile/PasskeyPrompt.jsx'
 import NotificationPrompt from '../features/notifications/NotificationPrompt.jsx'
+import OnboardingWizard from '../features/onboarding/OnboardingWizard.jsx'
+import { useProfile } from '../shared/lib/useProfile.js'
 import { STORAGE_KEYS } from '../shared/lib/keys.js'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
@@ -42,6 +44,12 @@ function PublicRoutes() {
 
 function AuthedRoutes() {
   const navigate = useNavigate()
+  const { profile, loading: profileLoading } = useProfile()
+  // A brand-new account (no onboarded_at) gets the setup wizard, which also
+  // folds in the passkey + notification asks — so the standalone prompts wait
+  // until onboarding is done to avoid stacking.
+  const needsOnboarding = !profileLoading && profile && !profile.onboarded_at
+
   useEffect(() => {
     const token = localStorage.getItem(PENDING_INVITE)
     if (token) {
@@ -70,8 +78,14 @@ function AuthedRoutes() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <PasskeyPrompt />
-      <NotificationPrompt />
+      {needsOnboarding ? (
+        <OnboardingWizard profile={profile} />
+      ) : (
+        <>
+          <PasskeyPrompt />
+          <NotificationPrompt />
+        </>
+      )}
     </>
   )
 }
