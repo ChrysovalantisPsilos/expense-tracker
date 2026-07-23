@@ -99,10 +99,10 @@ export default function Profile() {
   if (loading) return <Center py={20}><Spinner color="brand.500" /></Center>
 
   return (
-    <Stack spacing={5}>
+    <Stack spacing={5} maxW="640px" mx="auto" w="full">
       <Heading size="lg">Profile</Heading>
 
-      {/* Identity banner — full width, fields side-by-side on desktop */}
+      {/* Identity — fields side-by-side within the column */}
       <Card><CardBody>
         <Stack spacing={5} as="form" onSubmit={save}>
           <HStack spacing={4}>
@@ -137,14 +137,13 @@ export default function Profile() {
         </Stack>
       </CardBody></Card>
 
-      {/* Settings cards — responsive grid, natural heights (no stretch) */}
-      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={5} alignItems="start">
-        <NotificationsCard user={user} />
-        <PaymentCard user={user} />
-        <AppearanceCard />
-        <ReportsCard />
-        {passkeysSupported && (
-          <Card><CardBody>
+      {/* Settings — single centered column, no ragged gaps */}
+      <NotificationsCard user={user} />
+      <PaymentCard user={user} />
+      <AppearanceCard />
+      <ReportsCard />
+      {passkeysSupported && (
+        <Card><CardBody>
             <HStack mb={3}>
               <Flex boxSize="32px" align="center" justify="center" borderRadius="lg"
                 bg="bg.subtle" color="accent.fg"><KeyRound size={18} /></Flex>
@@ -187,8 +186,7 @@ export default function Profile() {
               </Stack>
             )}
           </CardBody></Card>
-        )}
-      </SimpleGrid>
+      )}
 
       <Card borderColor="red.200" _dark={{ borderColor: 'red.800' }}><CardBody>
         <HStack mb={2}>
