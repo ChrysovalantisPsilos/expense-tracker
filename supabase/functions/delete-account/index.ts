@@ -10,15 +10,7 @@
 // destructive action, since a stolen session could call this directly.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-function json(obj: unknown, status = 200) {
-  return new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
-}
+import { cors, json } from '../_shared/http.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })

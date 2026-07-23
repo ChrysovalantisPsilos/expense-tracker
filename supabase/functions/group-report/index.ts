@@ -6,25 +6,10 @@
 // restricts everything to groups the caller is a member of. A non-member gets
 // an empty group lookup → 403. No service-role key is used.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { BRAND, loadBrandFonts, Statement } from '../_shared/pdf.ts'
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-function json(obj: unknown, status = 200) {
-  return new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
-}
-
-const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP'])
-function fmt(minor: number, cur: string): string {
-  const factor = ZERO_DECIMAL.has(cur) ? 1 : 100
-  const v = (minor / factor).toFixed(factor === 1 ? 0 : 2)
-  return `${v} ${cur}`
-}
+import { cors, json, callerClient } from '../_shared/http.ts'
+import { fmtMinor as fmt } from '../_shared/money.ts'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -32,12 +17,7 @@ Deno.serve(async (req) => {
     const { group_id } = await req.json()
     if (!group_id || typeof group_id !== 'string') return json({ error: 'group_id is required' }, 400)
 
-    const authHeader = req.headers.get('Authorization') ?? ''
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    )
+    const supabase = callerClient(req)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return json({ error: 'not authenticated' }, 401)

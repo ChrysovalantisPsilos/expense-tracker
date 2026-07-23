@@ -10,56 +10,25 @@
 // group they're not in. Authorization piggybacks on the caller's RLS: they can
 // only read the invite row (and thus send for it) if they're a member.
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-
-function json(obj: unknown, status = 200) {
-  return new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json' } })
-}
-
-// Escape for HTML text/attribute context (defense in depth — these values are
-// server-derived, but never interpolate unescaped).
-function esc(s: string): string {
-  return String(s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
-}
+import { cors, json, callerClient } from '../_shared/http.ts'
+import { esc, brandEmail } from '../_shared/email.ts'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function inviteEmail(opts: { heading: string; url: string }): string {
   const heading = esc(opts.heading)
   const url = esc(opts.url)
-  return `<!doctype html><html><body style="margin:0;background:#faf8f4;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f4;padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
-        <tr><td style="padding:8px 8px 18px;">
-          <span style="font-size:24px;font-weight:800;color:#f95d38;letter-spacing:-0.02em;">budgeer</span>
-        </td></tr>
-        <tr><td style="background:#ffffff;border:1px solid #ece7df;border-radius:16px;padding:32px;">
-          <h1 style="margin:0 0 10px;font-size:20px;color:#242019;">${heading}</h1>
+  return brandEmail({
+    inner: `<h1 style="margin:0 0 10px;font-size:20px;color:#242019;">${heading}</h1>
           <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5f5545;">Budgeer helps you split shared expenses and see who owes whom. Tap below to join the group.</p>
           <a href="${url}" style="display:inline-block;background:#f95d38;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 26px;border-radius:10px;">Join the group</a>
-          <p style="margin:26px 0 0;font-size:13px;line-height:1.5;color:#9a8b72;">Or paste this link into your browser:<br><a href="${url}" style="color:#c2703d;word-break:break-all;">${url}</a></p>
-        </td></tr>
-        <tr><td style="padding:20px 8px;text-align:center;color:#9a8b72;font-size:12px;">Budgeer · your money, your friends, sorted</td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body></html>`
+          <p style="margin:26px 0 0;font-size:13px;line-height:1.5;color:#9a8b72;">Or paste this link into your browser:<br><a href="${url}" style="color:#c2703d;word-break:break-all;">${url}</a></p>`,
+  })
 }
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
 
-  const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-  const ANON = Deno.env.get('SUPABASE_ANON_KEY')!
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
   const FROM = Deno.env.get('INVITE_FROM') || 'Budgeer <onboarding@resend.dev>'
   // Fallback = production origin; the TEST project sets APP_ORIGIN to
@@ -78,8 +47,7 @@ Deno.serve(async (req) => {
 
     // Authorize via the caller's own session + RLS: they can only read the
     // invite (and its group) if they're a member of that group.
-    const authHeader = req.headers.get('Authorization') ?? ''
-    const asUser = createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: authHeader } } })
+    const asUser = callerClient(req)
     const { data: { user } } = await asUser.auth.getUser()
     if (!user) return json({ error: 'not authenticated' }, 401)
 

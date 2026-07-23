@@ -11,25 +11,17 @@
 //
 // Excel is SheetJS; the PDF uses the shared brand toolkit (_shared/pdf.ts).
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { BRAND, loadBrandFonts, money, Statement } from '../_shared/pdf.ts'
+import { cors, json, callerClient } from '../_shared/http.ts'
+import { minorFactor } from '../_shared/money.ts'
 
 interface Body {
   from: string
   to: string
   format: 'xlsx' | 'pdf'
 }
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-}
-
-const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP'])
-const minorFactor = (cc: string) => (ZERO_DECIMAL.has(cc) ? 1 : 100)
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
@@ -44,12 +36,7 @@ Deno.serve(async (req) => {
       return json({ error: 'format must be xlsx or pdf' }, 400)
     }
 
-    const authHeader = req.headers.get('Authorization') ?? ''
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    )
+    const supabase = callerClient(req)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return json({ error: 'not authenticated' }, 401)
@@ -116,13 +103,6 @@ Deno.serve(async (req) => {
 function safeCell(v: unknown) {
   if (typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) return `'${v}`
   return v
-}
-
-function json(obj: unknown, status = 200) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { ...cors, 'Content-Type': 'application/json' },
-  })
 }
 
 function buildXlsx({ base, rows, totalSpent, totalIncome, byCategory }: any): Uint8Array {

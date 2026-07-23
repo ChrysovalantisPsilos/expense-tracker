@@ -11,23 +11,12 @@
 // every notifications insert to the notify-user function.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { moneySymbol as money } from '../_shared/money.ts'
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
-
-// Zero-decimal currencies (kept in sync with the frontend's currency.js).
-const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP'])
-function money(minor: number, currency: string): string {
-  const factor = ZERO_DECIMAL.has(currency) ? 1 : 100
-  const amount = (minor / factor).toLocaleString('en-US', {
-    minimumFractionDigits: factor === 1 ? 0 : 2,
-    maximumFractionDigits: factor === 1 ? 0 : 2,
-  })
-  const symbol = { EUR: '€', USD: '$', GBP: '£', JPY: '¥' }[currency]
-  return symbol ? `${symbol}${amount}` : `${amount} ${currency}`
-}
 
 function isoToday(): string {
   return new Date().toISOString().slice(0, 10)
