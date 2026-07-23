@@ -58,13 +58,22 @@ export default function Login() {
     }
     setBusy(true)
     const fn = mode === 'signin' ? signInWithPassword : signUp
-    const { error } = await fn(email, password)
+    const { data, error } = await fn(email, password)
     setBusy(false)
     if (error) {
-      toast({ title: error.message, status: 'error' })
+      // Some backend failures (e.g. a 500 when the confirmation email can't be
+      // sent) come back with no readable body, which would otherwise render as
+      // an empty "{}". Fall back to a human message so the user isn't stranded.
+      const raw = (error.message || '').trim()
+      const msg = raw && raw !== '{}'
+        ? raw
+        : 'Something went wrong on our side — please try again in a moment.'
+      toast({ title: msg, status: 'error' })
       return
     }
-    if (mode === 'signup') {
+    // Sign-up with email confirmation ON returns no session (go check your
+    // inbox); with confirmation OFF it returns a session (you're already in).
+    if (mode === 'signup' && !data?.session) {
       sessionStorage.setItem(STORAGE_KEYS.pendingEmail, email)
       navigate('/verify-email', { replace: true })
     } else {
