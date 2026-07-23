@@ -246,6 +246,47 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 8. Settle-up payment info: co-members can read it, outsiders cannot
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; m2 uuid; res jsonb;
+begin
+  begin
+    select id into u1 from auth.users order by created_at limit 1;
+    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
+
+    insert into public.groups (name, owner_id, currency) values ('ZZT pay', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Me', 'owner');
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Payee') returning id into m2;
+    update public.profiles set payment_iban = 'ZZ00TESTIBAN' where id = u2;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select public.member_payment_info(m2) into res;
+    execute 'reset role';
+    if res->>'payment_iban' is distinct from 'ZZ00TESTIBAN' then
+      raise exception 'co-member cannot read payment info: %', res;
+    end if;
+
+    -- An account outside the group is rejected.
+    perform set_config('request.jwt.claims', json_build_object('sub', gen_random_uuid(), 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      select public.member_payment_info(m2) into res;
+      raise exception 'GUARD_MISSED';
+    exception when others then
+      if sqlerrm like '%not allowed%' then null; else raise; end if;
+    end;
+    execute 'reset role';
+
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: payment info co-member access + outsider guard';
+    else update _t set fails = fails + 1; raise notice 'FAIL: payment info co-member access + outsider guard — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed (so CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$

@@ -21,12 +21,12 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
     setInfo(null); setQr(null); setShowQr(false)
     if (!member?.user_id) return
     let active = true
-    supabase.from('profiles')
-      .select('payment_iban, payment_revolut')
-      .eq('id', member.user_id).maybeSingle()
+    // profiles is own-row RLS — payment fields come via a definer RPC that
+    // only answers for co-members of this member's group.
+    supabase.rpc('member_payment_info', { p_member: member.id })
       .then(({ data }) => { if (active) setInfo(data ?? {}) })
     return () => { active = false }
-  }, [member?.user_id])
+  }, [member?.id, member?.user_id])
 
   const iban = info?.payment_iban
   const revolut = info?.payment_revolut
