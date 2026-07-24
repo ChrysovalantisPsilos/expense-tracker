@@ -246,10 +246,11 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 8. Settle-up payment info: co-members can read it, outsiders cannot
+-- 8. Settle-up payment info: encrypted at rest; co-members can read (decrypt),
+--    outsiders cannot.
 -- ---------------------------------------------------------------------------
 do $$
-declare u1 uuid; u2 uuid; gid uuid; m2 uuid; res jsonb;
+declare u1 uuid; u2 uuid; gid uuid; m2 uuid; res jsonb; raw bytea;
 begin
   begin
     select id into u1 from auth.users order by created_at limit 1;
@@ -258,7 +259,20 @@ begin
     insert into public.groups (name, owner_id, currency) values ('ZZT pay', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Me', 'owner');
     insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Payee') returning id into m2;
-    update public.profiles set payment_iban = 'ZZ00TESTIBAN' where id = u2;
+
+    -- Store via the write RPC as u2, then confirm the column holds CIPHERTEXT.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.set_payment_info('ZZ00TESTIBAN', 'zzpayee');
+    select public.my_payment_info() into res;   -- owner decrypts their own
+    execute 'reset role';
+    if res->>'payment_iban' is distinct from 'ZZ00TESTIBAN' then
+      raise exception 'owner cannot read their own payment info: %', res;
+    end if;
+    select payment_iban_enc into raw from public.profiles where id = u2;
+    if raw is null or position('ZZ00TESTIBAN' in encode(raw, 'escape')) > 0 then
+      raise exception 'payment IBAN not encrypted at rest';
+    end if;
 
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
@@ -281,7 +295,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: payment info co-member access + outsider guard';
+    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: payment info encrypted at rest + co-member access + outsider guard';
     else update _t set fails = fails + 1; raise notice 'FAIL: payment info co-member access + outsider guard — %', sqlerrm; end if;
   end;
 end $$;

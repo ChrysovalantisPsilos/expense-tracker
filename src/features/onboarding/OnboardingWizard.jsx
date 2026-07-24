@@ -12,7 +12,7 @@ import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
 import { enablePush, pushSupported } from '../../shared/lib/push.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { updateProfile } from '../profile/profile.js'
+import { updateProfile, savePaymentInfo } from '../profile/profile.js'
 import { createGroup } from '../groups/groups.js'
 import Logo from '../../shared/ui/Logo.jsx'
 
@@ -28,8 +28,10 @@ export default function OnboardingWizard({ profile, onDone }) {
 
   const [name, setName] = useState(profile?.display_name ?? '')
   const [currency, setCurrency] = useState(profile?.base_currency ?? 'EUR')
-  const [iban, setIban] = useState(profile?.payment_iban ?? '')
-  const [revolut, setRevolut] = useState(profile?.payment_revolut ?? '')
+  // Payment details are write-only from here (encrypted at rest); onboarding is
+  // first-run, so there's nothing to prefill.
+  const [iban, setIban] = useState('')
+  const [revolut, setRevolut] = useState('')
   const [groupName, setGroupName] = useState('')
   const [pushDone, setPushDone] = useState(false)
   const [passkeyDone, setPasskeyDone] = useState(false)
@@ -64,9 +66,9 @@ export default function OnboardingWizard({ profile, onDone }) {
 
   async function savePaymentAndGroup() {
     await run(async () => {
-      await updateProfile(user.id, {
-        payment_iban: iban.replace(/\s+/g, '').toUpperCase() || null,
-        payment_revolut: revolut.replace(/^@/, '').trim() || null,
+      await savePaymentInfo({
+        iban: iban.replace(/\s+/g, '').toUpperCase() || null,
+        revolut: revolut.replace(/^@/, '').trim() || null,
       })
       if (groupName.trim()) {
         const gid = await createGroup(groupName.trim(), currency)
