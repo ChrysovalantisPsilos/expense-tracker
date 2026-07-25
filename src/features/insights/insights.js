@@ -1,23 +1,48 @@
-import { useOwnedQuery, upsertOwned, removeRow } from '../../shared/lib/db.js'
+import { useOwnedQuery, removeRow } from '../../shared/lib/db.js'
+import { supabase } from '../../shared/lib/supabase.js'
+
+// Balances and goal amounts are encrypted at rest (pgcrypto + Vault key), so
+// there are no plaintext columns to select — reads go through decrypting RPCs
+// and writes through encrypting RPCs. Realtime still subscribes to the base
+// table (via useOwnedQuery), so edits from another device refresh live.
+
+async function rpcRows(name, args) {
+  const { data, error } = await supabase.rpc(name, args)
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
 
 // ── Net-worth accounts (manually maintained balances) ───────────────────────
 export function useAccounts() {
   const { rows: accounts, loading, reload } = useOwnedQuery('accounts', {
-    build: (q) => q.eq('is_archived', false).order('created_at'),
+    fetch: () => rpcRows('my_accounts'),
   })
   return { accounts, loading, reload }
 }
 
-export const saveAccount = (acc) => upsertOwned('accounts', acc)
+export async function saveAccount(acc) {
+  const { error } = await supabase.rpc('save_account', {
+    p_id: acc.id ?? null, p_name: acc.name, p_type: acc.type,
+    p_balance: acc.balance_minor, p_currency: acc.currency,
+  })
+  if (error) throw new Error(error.message)
+}
 export const deleteAccount = (id) => removeRow('accounts', id)
 
 // ── Savings goals ───────────────────────────────────────────────────────────
 export function useGoals() {
   const { rows: goals, loading, reload } = useOwnedQuery('savings_goals', {
-    build: (q) => q.order('created_at'),
+    fetch: () => rpcRows('my_goals'),
   })
   return { goals, loading, reload }
 }
 
-export const saveGoal = (goal) => upsertOwned('savings_goals', goal)
+export async function saveGoal(goal) {
+  const { error } = await supabase.rpc('save_goal', {
+    p_id: goal.id ?? null, p_name: goal.name,
+    p_target: goal.target_minor, p_saved: goal.saved_minor,
+    p_currency: goal.currency, p_target_date: goal.target_date ?? null,
+  })
+  if (error) throw new Error(error.message)
+}
 export const deleteGoal = (id) => removeRow('savings_goals', id)

@@ -12,7 +12,7 @@ import { useLiveRefetch } from './realtime.js'
 // `table` change — from another tab or device, or server-side (a friend's
 // group expense mirroring a share into your transactions, the nightly
 // recurring materializer, …). No page needs its own subscription or polling.
-export function useOwnedQuery(table, { select = '*', build, deps = [] } = {}) {
+export function useOwnedQuery(table, { select = '*', build, deps = [], fetch } = {}) {
   const { user } = useAuth()
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -22,12 +22,21 @@ export function useOwnedQuery(table, { select = '*', build, deps = [] } = {}) {
     // No setLoading(true) here: live refetches (realtime, reconnect, tab
     // focus) swap data in place without flashing the page's spinner. The
     // initial `true` covers first paint.
-    let q = supabase.from(table).select(select)
-    if (build) q = build(q)
-    const { data } = await q
+    //
+    // `fetch` override: encrypted tables read through a decrypting RPC instead
+    // of a direct select. Realtime still subscribes to `table` below (a real
+    // table), so live updates trigger a refetch through the RPC just the same.
+    let data
+    if (fetch) {
+      data = await fetch()
+    } else {
+      let q = supabase.from(table).select(select)
+      if (build) q = build(q)
+      ;({ data } = await q)
+    }
     setRows(data ?? [])
     setLoading(false)
-    // build is recreated each render but only closes over values listed in deps.
+    // build/fetch are recreated each render but only close over values in deps.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, table, select, ...deps])
 
