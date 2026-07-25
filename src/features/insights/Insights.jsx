@@ -219,7 +219,8 @@ function GoalsCard({ baseCurrency }) {
   }
   async function addTo(g, deltaMinor) {
     try {
-      await saveGoal({ id: g.id, saved_minor: Math.max(0, g.saved_minor + deltaMinor) })
+      // Send the full goal — the encrypting save RPC rewrites every field.
+      await saveGoal({ ...g, saved_minor: Math.max(0, g.saved_minor + deltaMinor) })
       reload()
     } catch (e) { toast({ title: e.message, status: 'error' }) }
   }

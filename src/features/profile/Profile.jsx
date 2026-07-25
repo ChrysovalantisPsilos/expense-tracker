@@ -13,7 +13,7 @@ import { supabase, passkeysSupported, edgeFunctionError } from '../../shared/lib
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useAppearance } from '../../shared/lib/appearance.jsx'
 import { enablePush } from '../../shared/lib/push.js'
-import { getProfile, updateProfile, uploadAvatar } from './profile.js'
+import { getProfile, updateProfile, uploadAvatar, getMyPaymentInfo, savePaymentInfo } from './profile.js'
 import { validatePassword } from '../../shared/lib/password.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
@@ -369,12 +369,12 @@ function PaymentCard({ user }) {
 
   useEffect(() => {
     let active = true
-    getProfile(user.id, 'payment_iban, payment_revolut').then((data) => {
-      if (!active || !data) return
+    getMyPaymentInfo().then((data) => {
+      if (!active) return
       setIban(data.payment_iban ?? '')
       setRevolut(data.payment_revolut ?? '')
       setLoaded(true)
-    })
+    }).catch(() => { if (active) setLoaded(true) })
     return () => { active = false }
   }, [user.id])
 
@@ -382,9 +382,9 @@ function PaymentCard({ user }) {
     e.preventDefault()
     setBusy(true)
     try {
-      await updateProfile(user.id, {
-        payment_iban: iban.replace(/\s+/g, '').toUpperCase() || null,
-        payment_revolut: revolut.replace(/^@/, '').trim() || null,
+      await savePaymentInfo({
+        iban: iban.replace(/\s+/g, '').toUpperCase() || null,
+        revolut: revolut.replace(/^@/, '').trim() || null,
       })
       toast({ title: 'Payment details saved', status: 'success' })
     } catch (e) { toast({ title: e.message, status: 'error' }) }

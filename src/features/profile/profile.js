@@ -7,6 +7,24 @@ export async function getProfile(userId, columns = '*') {
   return data ?? null
 }
 
+// Payment details (IBAN/Revolut) are stored ENCRYPTED at rest (pgcrypto + a key
+// in Supabase Vault) — there are no plaintext columns to select, so read/write
+// goes through these definer RPCs, which decrypt/encrypt for the owner only.
+export async function getMyPaymentInfo() {
+  const { data, error } = await supabase.rpc('my_payment_info')
+  if (error) throw new Error(error.message)
+  return data ?? {}
+}
+
+// Persist payment details (pass already-normalized strings, or null to clear).
+export async function savePaymentInfo({ iban, revolut }) {
+  const { error } = await supabase.rpc('set_payment_info', {
+    p_iban: iban || null,
+    p_revolut: revolut || null,
+  })
+  if (error) throw new Error(error.message)
+}
+
 // Update editable profile fields for the current user.
 export async function updateProfile(userId, fields) {
   const { data, error } = await supabase

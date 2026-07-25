@@ -246,10 +246,11 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 8. Settle-up payment info: co-members can read it, outsiders cannot
+-- 8. Settle-up payment info: encrypted at rest; co-members can read (decrypt),
+--    outsiders cannot.
 -- ---------------------------------------------------------------------------
 do $$
-declare u1 uuid; u2 uuid; gid uuid; m2 uuid; res jsonb;
+declare u1 uuid; u2 uuid; gid uuid; m2 uuid; res jsonb; raw bytea;
 begin
   begin
     select id into u1 from auth.users order by created_at limit 1;
@@ -258,7 +259,20 @@ begin
     insert into public.groups (name, owner_id, currency) values ('ZZT pay', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Me', 'owner');
     insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Payee') returning id into m2;
-    update public.profiles set payment_iban = 'ZZ00TESTIBAN' where id = u2;
+
+    -- Store via the write RPC as u2, then confirm the column holds CIPHERTEXT.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.set_payment_info('ZZ00TESTIBAN', 'zzpayee');
+    select public.my_payment_info() into res;   -- owner decrypts their own
+    execute 'reset role';
+    if res->>'payment_iban' is distinct from 'ZZ00TESTIBAN' then
+      raise exception 'owner cannot read their own payment info: %', res;
+    end if;
+    select payment_iban_enc into raw from public.profiles where id = u2;
+    if raw is null or position('ZZ00TESTIBAN' in encode(raw, 'escape')) > 0 then
+      raise exception 'payment IBAN not encrypted at rest';
+    end if;
 
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
@@ -281,7 +295,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: payment info co-member access + outsider guard';
+    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: payment info encrypted at rest + co-member access + outsider guard';
     else update _t set fails = fails + 1; raise notice 'FAIL: payment info co-member access + outsider guard — %', sqlerrm; end if;
   end;
 end $$;
@@ -372,6 +386,46 @@ begin
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: expense_splits insert restricted to creator/owner';
     else update _t set fails = fails + 1; raise notice 'FAIL: expense_splits insert guard — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 11. Personal money fields (balances/budgets/goals) are encrypted at rest and
+--     round-trip through the definer RPCs for the owner.
+-- ---------------------------------------------------------------------------
+do $$
+declare u2 uuid; aid uuid; gid uuid; bal bigint; budcap bigint; gtar bigint;
+        raw_a bytea; raw_b bytea; raw_g bytea; per date := date_trunc('month', current_date)::date;
+begin
+  begin
+    select id into u2 from auth.users order by created_at limit 1;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    aid := public.save_account(null, 'ZZ acct', 'liability', 150000, 'EUR');
+    perform public.save_budget(null, 50000, 'EUR', per);
+    gid := public.save_goal(null, 'ZZ goal', 200000, 30000, 'EUR', null);
+    bal    := (select balance_minor from public.my_accounts() where id = aid);
+    budcap := (select amount_minor from public.my_budgets(per) where category_id is null order by period_start desc limit 1);
+    gtar   := (select target_minor from public.my_goals() where id = gid);
+    execute 'reset role';
+
+    if bal <> 150000 then raise exception 'account balance decrypt = %', bal; end if;
+    if budcap <> 50000 then raise exception 'budget cap decrypt = %', budcap; end if;
+    if gtar <> 200000 then raise exception 'goal target decrypt = %', gtar; end if;
+
+    -- Confirm the stored bytes are ciphertext, not plaintext.
+    select balance_enc into raw_a from public.accounts where id = aid;
+    select amount_enc  into raw_b from public.budgets where user_id = u2 and category_id is null and period_start = per order by created_at desc limit 1;
+    select target_enc  into raw_g from public.savings_goals where id = gid;
+    if raw_a is null or position('150000' in encode(raw_a, 'escape')) > 0 then raise exception 'balance stored plaintext'; end if;
+    if raw_b is null or position('50000'  in encode(raw_b, 'escape')) > 0 then raise exception 'budget stored plaintext'; end if;
+    if raw_g is null or position('200000' in encode(raw_g, 'escape')) > 0 then raise exception 'goal stored plaintext'; end if;
+
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: balances/budgets/goals encrypted at rest + owner round-trip';
+    else update _t set fails = fails + 1; raise notice 'FAIL: balances/budgets/goals encryption — %', sqlerrm; end if;
   end;
 end $$;
 
