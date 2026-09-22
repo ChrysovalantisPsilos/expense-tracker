@@ -103,8 +103,10 @@ begin
   begin
     select id into u from auth.users order by created_at limit 1;
     insert into public.categories (user_id, name, kind) values (u, 'ZZT cat', 'expense') returning id into cat;
-    insert into public.budgets (user_id, category_id, amount_minor, currency, period_start)
-    values (u, cat, 10000, 'EUR', date_trunc('month', current_date)::date);
+    -- Budget caps are encrypted at rest (0047); store the cap the way save_budget does.
+    insert into public.budgets (user_id, category_id, amount_enc, currency, period_start)
+    values (u, cat, extensions.pgp_sym_encrypt('10000', public.app_enc_key()), 'EUR',
+            date_trunc('month', current_date)::date);
 
     insert into public.transactions (user_id, kind, category_id, amount_minor, currency, spent_at)
     values (u, 'expense', cat, 7900, 'EUR', current_date);
