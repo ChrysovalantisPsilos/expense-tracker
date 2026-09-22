@@ -4,13 +4,13 @@ import {
   SimpleGrid, Card, CardBody, Stat, StatLabel, StatNumber, StatHelpText,
   Box, Text, Stack, Center, Spinner, HStack, IconButton,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Button,
-  List, ListItem, Divider,
+  List, ListItem, Divider, Wrap, WrapItem,
 } from '@chakra-ui/react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { PieChart as PieIcon, Table as TableIcon, Repeat, ReceiptText } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
 import { useTransactions, buildPeriods, oldestTransactionDate } from '../transactions/useData.js'
-import { today } from '../../shared/lib/dates.js'
+import { today, shortDate } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
 import { useRecurring, monthlyMinor, frequencyLabel, expectedInWindow } from '../recurring/recurring.js'
 import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
@@ -20,10 +20,14 @@ import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import CardHeader from '../../shared/ui/CardHeader.jsx'
+import RowAmount from '../../shared/ui/RowAmount.jsx'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
+
+// A category's colour key, shared by the pie legend and the table view.
+const Swatch = ({ color }) => <Box boxSize="10px" borderRadius="sm" bg={color} flexShrink={0} />
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -38,7 +42,7 @@ export default function Dashboard() {
   const period = periods.find((p) => p.value === periodValue) ?? periods[0]
 
   const { rows, loading, reload, mutate } = useTransactions({
-    from: period.from ?? undefined, to: period.to ?? undefined, withGroup: true,
+    from: period.from ?? undefined, to: period.to ?? undefined,
   })
   // Recheck whenever the (live) transaction rows change, so importing older
   // data extends the period dropdown without a reload. Cheap: 1-row query.
@@ -88,7 +92,7 @@ export default function Dashboard() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader eyebrow="Home" title="Overview" action={
+      <PageHeader title="Overview" action={
         <Select w={{ base: '140px', sm: '200px' }} size="sm" borderRadius="lg" value={periodValue}
           aria-label="Period" onChange={(e) => setPeriodValue(e.target.value)}>
           {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
@@ -149,18 +153,30 @@ export default function Dashboard() {
         ) : byCategory.length === 0 ? (
           <Text color="text.muted">No expenses in this period.</Text>
         ) : view === 'pie' ? (
-          <Box h="280px">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100}
-                  paddingAngle={2} stroke={chart.surface}>
-                  {byCategory.map((_, i) => <Cell key={i} fill={seriesColor(i)} />)}
-                </Pie>
-                <Tooltip formatter={(v) => formatMoney(v, baseCurrency)} {...chart.tooltip} />
-                <Legend formatter={chart.legendFormatter} />
-              </PieChart>
-            </ResponsiveContainer>
-          </Box>
+          <>
+            <Box h="220px">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={58} outerRadius={96}
+                    paddingAngle={2} stroke={chart.surface}>
+                    {byCategory.map((_, i) => <Cell key={i} fill={seriesColor(i)} />)}
+                  </Pie>
+                  <Tooltip formatter={(v) => formatMoney(v, baseCurrency)} {...chart.tooltip} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Box>
+            {/* Our own legend below the chart rather than Recharts' <Legend>, which
+                sits inside the fixed-height box and overlaps the donut once it
+                wraps on a phone. */}
+            <Wrap spacingX={4} spacingY={1.5} justify="center" mt={3}>
+              {byCategory.map((c, i) => (
+                <WrapItem key={c.name} alignItems="center" gap={1.5}>
+                  <Swatch color={seriesColor(i)} />
+                  <Text fontSize="xs" color="text.muted">{c.name}</Text>
+                </WrapItem>
+              ))}
+            </Wrap>
+          </>
         ) : (
           <Table size="sm" variant="simple">
             <Thead>
@@ -175,7 +191,7 @@ export default function Dashboard() {
                 <Tr key={c.name}>
                   <Td>
                     <HStack spacing={2}>
-                      <Box boxSize="10px" borderRadius="sm" bg={seriesColor(i)} />
+                      <Swatch color={seriesColor(i)} />
                       <Text>{c.name}</Text>
                     </HStack>
                   </Td>
@@ -225,12 +241,12 @@ export default function Dashboard() {
                         {r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
                       </Text>
                       <Text fontSize="xs" color="text.muted">
-                        {frequencyLabel(r)} · next {r.next_run}
+                        {frequencyLabel(r)} · next {shortDate(r.next_run)}
                       </Text>
                     </Stack>
-                    <Text fontWeight="600" color={r.kind === 'income' ? 'status.positive' : 'text.primary'}>
+                    <RowAmount color={r.kind === 'income' ? 'status.positive' : 'text.primary'}>
                       {formatMoney(r.amount_minor, r.currency)}
-                    </Text>
+                    </RowAmount>
                   </HStack>
                 </ListItem>
               ))}

@@ -52,6 +52,22 @@ const colors = {
     800: '#3d372d',
     900: '#242019',
   },
+  // Warm brick red — replaces Chakra's saturated red, so everything that
+  // uses colorScheme="red" (destructive buttons, tags, form errors, error
+  // toasts) reads as clearly red, never coral. 500 and 200 are the
+  // status.negative values for light and dark mode.
+  red: {
+    50: '#fdf1ee',
+    100: '#fbdcd5',
+    200: '#f2917f',
+    300: '#e9705d',
+    400: '#d9503f',
+    500: '#c2372b',
+    600: '#a52d23',
+    700: '#87251d',
+    800: '#6b1e18',
+    900: '#541914',
+  },
 }
 
 const semanticTokens = {
@@ -69,7 +85,10 @@ const semanticTokens = {
     // and bg.canvas in its mode, so the same token works for figures, icons
     // and progress fills.
     'status.positive': { default: '#2f7a45', _dark: '#86c98a' },
-    'status.negative': { default: '#c2372b', _dark: '#f2917f' },
+    'status.negative': { default: 'red.500', _dark: 'red.200' },
+    // Tint + hairline for a danger zone (icon tile, card border).
+    'status.negativeSubtle': { default: 'red.50', _dark: 'rgba(242, 145, 127, 0.14)' },
+    'status.negativeBorder': { default: 'red.100', _dark: 'rgba(242, 145, 127, 0.32)' },
     'status.warning': { default: 'amber.700', _dark: 'amber.400' },
 
     // Categorical chart series, coral/amber first. The two sand tones swap in
@@ -110,6 +129,13 @@ const bothModes = (vars) => ({ ...vars, _dark: vars })
 const surfaceVar = (name) => bothModes({ [`--${name}`]: 'colors.bg.surface' })
 const subtleMenuItem = bothModes({ '--menu-bg': 'colors.bg.subtle' })
 const popupTitle = { fontFamily: 'heading', fontWeight: '700', letterSpacing: '-0.01em' }
+
+// Toasts are Chakra's solid Alert, whose colorScheme comes from the status
+// (success → green, error → red, warning → orange, info/loading → blue).
+// Fill each with the matching warm status token instead; info/loading get an
+// inverted neutral. Text is bg.surface — white in light mode, near-black in
+// dark, where the status tokens are light tints — so it clears 4.5:1 in both.
+const TOAST_FILL = { green: 'status.positive', red: 'status.negative', orange: 'status.warning' }
 
 const theme = extendTheme({
   config,
@@ -156,17 +182,22 @@ const theme = extendTheme({
       baseStyle: { borderRadius: 'lg', fontWeight: '600' },
       defaultProps: { colorScheme: 'brand' },
       variants: {
-        solid: {
-          bg: 'brand.500',
+        // The colorScheme's 500 shade in both modes (Chakra switches to a
+        // pale 200 in dark mode). Brand is the default scheme; red is for
+        // destructive actions. Gray keeps Chakra's neutral fill.
+        solid: ({ colorScheme: c }) => (c === 'gray' ? {} : {
+          bg: `${c}.500`,
           color: 'white',
-          _hover: { bg: 'brand.600', _disabled: { bg: 'brand.500' } },
-          _active: { bg: 'brand.700' },
-        },
-        ghost: {
+          _hover: { bg: `${c}.600`, _disabled: { bg: `${c}.500` } },
+          _active: { bg: `${c}.700` },
+        }),
+        // Quiet muted ghost for the default/neutral schemes; any other scheme
+        // (e.g. a red delete icon) keeps Chakra's coloured ghost.
+        ghost: ({ colorScheme: c }) => (c === 'brand' || c === 'gray' ? {
           color: 'text.muted',
           _hover: { bg: 'bg.subtle', color: 'text.primary' },
           _active: { bg: 'bg.subtle' },
-        },
+        } : {}),
         // Neutral outline buttons (the unselected half of segmented toggles)
         // get sand borders instead of Chakra's gray.
         outline: ({ colorScheme }) => (colorScheme === 'gray' ? {
@@ -258,6 +289,16 @@ const theme = extendTheme({
         positive: { filledTrack: { bgColor: 'status.positive' } },
         warning: { filledTrack: { bgColor: 'status.warning' } },
         negative: { filledTrack: { bgColor: 'status.negative' } },
+      },
+    },
+    Alert: {
+      variants: {
+        solid: ({ colorScheme: c }) => ({
+          container: bothModes({
+            '--alert-bg': `colors.${TOAST_FILL[c] ?? 'text.primary'}`,
+            '--alert-fg': 'colors.bg.surface',
+          }),
+        }),
       },
     },
     Modal: {

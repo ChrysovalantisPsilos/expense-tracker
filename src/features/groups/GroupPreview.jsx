@@ -1,14 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  Box, Flex, Center, Stack, HStack, Heading, Text, Button, Spinner, Card,
-  CardBody, Avatar, Divider, List, ListItem, Spacer,
+  Box, Flex, Center, Stack, HStack, Heading, Text, Button, Spinner, Image,
 } from '@chakra-ui/react'
 import { Users, Lock } from 'lucide-react'
 import { previewGroup } from './groups.js'
-import { memberName, describeBalance } from './groupFormat.js'
-import { formatMoney } from '../../shared/lib/currency.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { shortDateTime } from '../../shared/lib/dates.js'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
 
@@ -22,12 +20,6 @@ export default function GroupPreview() {
   useEffect(() => {
     previewGroup(token).then(setData).catch(() => setData(null))
   }, [token])
-
-  // Net per member is computed server-side and embedded in the preview.
-  const balances = useMemo(
-    () => new Map((data?.members ?? []).map((m) => [m.id, Number(m.net_minor ?? 0)])),
-    [data],
-  )
 
   function goSignup() {
     localStorage.setItem(PENDING_INVITE, token)
@@ -51,8 +43,7 @@ export default function GroupPreview() {
     )
   }
 
-  const cur = data.group?.currency ?? 'EUR'
-  const nameOf = (mid) => memberName(data.members, mid)
+  const count = Number(data.member_count ?? 0)
 
   return (
     <Flex direction="column" minH="100dvh" bg="bg.canvas" overflowX="clip">
@@ -63,60 +54,25 @@ export default function GroupPreview() {
           w={{ base: '160%', md: '900px' }} h="480px" />
         <Stack spacing={5} position="relative">
           <Box textAlign="center" pt={2}>
-            <Flex boxSize="56px" mx="auto" mb={3} align="center" justify="center"
-              borderRadius="2xl" bg="bg.subtle" color="accent.fg"><Users size={28} /></Flex>
-            <Heading size="lg">{data.group?.name}</Heading>
-            <Text color="text.muted">You’ve been invited to this group</Text>
-          </Box>
-
-          <Card><CardBody>
-            <Heading size="sm" mb={3}>Members</Heading>
-            <List spacing={0}>
-              {data.members.map((m, i) => {
-                const net = balances.get(m.id) ?? 0
-                return (
-                  <ListItem key={m.id}>
-                    {i > 0 && <Divider />}
-                    <HStack py={2.5}>
-                      <Avatar size="sm" name={m.display_name} src={m.avatar_url} />
-                      <Text fontWeight="500">{m.display_name}</Text>
-                      <Spacer />
-                      {net !== 0 && (
-                        <Text fontSize="sm" color={net > 0 ? 'status.positive' : 'status.negative'}>
-                          {describeBalance(net, cur)}
-                        </Text>
-                      )}
-                    </HStack>
-                  </ListItem>
-                )
-              })}
-            </List>
-          </CardBody></Card>
-
-          <Card><CardBody>
-            <Heading size="sm" mb={3}>Expenses</Heading>
-            {data.expenses.length === 0 ? (
-              <Text fontSize="sm" color="text.muted">No expenses yet.</Text>
+            {data.group?.image_url ? (
+              <Image src={data.group.image_url} alt="" boxSize="56px" mx="auto" mb={3}
+                borderRadius="2xl" objectFit="cover" />
             ) : (
-              <List spacing={0}>
-                {data.expenses.map((e, i) => (
-                  <ListItem key={e.id}>
-                    {i > 0 && <Divider />}
-                    <HStack py={3}>
-                      <Stack spacing={0}>
-                        <Text fontWeight="600">{e.description || 'Expense'}</Text>
-                        <Text fontSize="xs" color="text.muted">
-                          {nameOf(e.paid_by)} paid · {e.spent_at}
-                        </Text>
-                      </Stack>
-                      <Spacer />
-                      <Text fontWeight="600">{formatMoney(e.amount_minor, e.currency)}</Text>
-                    </HStack>
-                  </ListItem>
-                ))}
-              </List>
+              <Flex boxSize="56px" mx="auto" mb={3} align="center" justify="center"
+                borderRadius="2xl" bg="bg.subtle" color="accent.fg"><Users size={28} /></Flex>
             )}
-          </CardBody></Card>
+            <Heading size="lg">{data.group?.name}</Heading>
+            <Text color="text.muted">{data.invited_by} invited you to this group</Text>
+            <HStack justify="center" spacing={1} mt={2} color="text.muted" fontSize="sm">
+              <Users size={14} />
+              <Text>{count} {count === 1 ? 'member' : 'members'}</Text>
+            </HStack>
+            {data.expires_at && (
+              <Text fontSize="xs" color="text.muted" mt={1}>
+                Invite expires {shortDateTime(data.expires_at)}
+              </Text>
+            )}
+          </Box>
         </Stack>
       </Box>
 

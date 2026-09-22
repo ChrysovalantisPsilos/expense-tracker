@@ -15,7 +15,7 @@ import PageHeader from '../../shared/ui/PageHeader.jsx'
 import CardHeader from '../../shared/ui/CardHeader.jsx'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { useTransactions } from '../transactions/useData.js'
-import { lastMonths } from '../../shared/lib/dates.js'
+import { lastMonths, shortDate } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
 import { formatMoney, toMinor, fromMinor, minorFactor } from '../../shared/lib/currency.js'
@@ -23,7 +23,8 @@ import {
   useAccounts, saveAccount, deleteAccount,
   useGoals, saveGoal, deleteGoal,
 } from './insights.js'
-import { buildTrend, spendDelta, netWorth } from './insightsMath.js'
+import { buildTrend, spendDelta, netWorth, axisTick } from './insightsMath.js'
+import ReportsCard from './ReportsCard.jsx'
 
 export default function Insights() {
   const { baseCurrency = 'EUR' } = useProfile()
@@ -47,7 +48,9 @@ export default function Insights() {
               {/* Spending: up is the bad direction, so it takes the negative tone. */}
               <StatArrow type={delta > 0 ? 'increase' : 'decrease'}
                 color={delta > 0 ? 'status.negative' : 'status.positive'} />
-              {Math.abs(delta)}% vs last month
+              {Math.abs(delta)}%
+              {/* The comparison words drop on phones so the title keeps its room. */}
+              <Box as="span" display={{ base: 'none', sm: 'inline' }}> vs last month</Box>
             </StatHelpText>
           </Stat>
         )} />
@@ -60,7 +63,7 @@ export default function Insights() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chart.grid} />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} tick={chart.tick} />
                 <YAxis tickLine={false} axisLine={false} fontSize={11} tick={chart.tick}
-                  tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : v)} />
+                  tickFormatter={axisTick} width={44} />
                 <Tooltip formatter={(v) => formatMoney(Math.round(v * factor), baseCurrency)} {...chart.tooltip} />
                 <Legend formatter={chart.legendFormatter} />
                 <Bar dataKey="income" name="Income" fill={chart.positive} radius={[4, 4, 0, 0]} />
@@ -73,6 +76,7 @@ export default function Insights() {
 
       <NetWorthCard baseCurrency={baseCurrency} />
       <GoalsCard baseCurrency={baseCurrency} />
+      <ReportsCard />
     </Stack>
   )
 }
@@ -255,7 +259,7 @@ function GoalsCard({ baseCurrency }) {
                 <HStack fontSize="sm" color="text.muted">
                   <Text>{formatMoney(g.saved_minor, g.currency)} of {formatMoney(g.target_minor, g.currency)}</Text>
                   <Spacer />
-                  <Text>{pct}%{g.target_date ? ` · by ${g.target_date}` : ''}</Text>
+                  <Text>{pct}%{g.target_date ? ` · by ${shortDate(g.target_date)}` : ''}</Text>
                 </HStack>
                 {!done && (
                   <HStack mt={2} spacing={2}>

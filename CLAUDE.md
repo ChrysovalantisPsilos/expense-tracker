@@ -45,7 +45,7 @@ aspirations — if a change would break one, fix the cause, don't paper over it.
 | Cross-feature utilities | `src/shared/lib/` (data: `db.js`, `supabase.js`; pure: `currency.js`, `dates.js`, `moneyParse.js`, `paginate.js`) |
 | Cross-feature UI | `src/shared/ui/` |
 | Auth context | `src/shared/auth/` |
-| Features | `src/features/{auth,budgets,dashboard,groups,import,insights,notifications,onboarding,profile,recurring,transactions}/` |
+| Features | `src/features/{auth,budgets,dashboard,groups,import,insights,landing,notifications,onboarding,privacy,profile,recurring,settings,transactions}/` |
 | DB schema & policies | `supabase/migrations/NNNN_*.sql` (append-only, ordered) |
 | Server logic | `supabase/functions/*` (+ shared code in `functions/_shared/`) |
 | DB config (JWT verify per function) | `supabase/config.toml` |

@@ -7,7 +7,7 @@ import { ExternalLink, QrCode, Copy } from 'lucide-react'
 import { memberPaymentInfo } from './groups.js'
 
 // One-tap ways to actually pay a co-member the settle-up amount, driven by
-// the payment details they saved in Profile → Getting paid (readable to
+// the payment details they saved in Settings → Account → Getting paid (readable to
 // co-members). The SEPA "Bank QR" encodes an EPC069-12 payload — scanning it
 // in any EU banking app pre-fills payee, IBAN, and the exact amount (EPC
 // transfers are EUR-only, so it hides for other group currencies).

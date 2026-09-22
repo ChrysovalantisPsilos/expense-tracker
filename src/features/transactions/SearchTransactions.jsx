@@ -28,7 +28,6 @@ export default function SearchTransactions() {
     to: f.to || undefined,
     categoryId: f.categoryId || undefined,
     limit: 1000,
-    withGroup: true,
   })
 
   const { categories } = useCategories(f.kind === 'all' ? undefined : f.kind)

@@ -7,7 +7,9 @@
 //   body: { from: "2026-01-01", to: "2026-01-31", format: "xlsx" | "pdf" }
 //
 // Auth: verify_jwt = true. We read the caller's JWT, create a Supabase client
-// scoped to that user so RLS applies, and pull only their transactions.
+// scoped to that user, and pull only their transactions through the
+// decrypting my_transactions RPC (own rows only; amounts/descriptions are
+// encrypted at rest). No service-role key is used.
 //
 // Excel is SheetJS; the PDF uses the shared brand toolkit (_shared/pdf.ts).
 
@@ -40,21 +42,20 @@ Deno.serve(async (req) => {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return json({ error: 'not authenticated' }, 401)
-    const { data: allowed } = await supabase.rpc('rate_limit', { p_key: `report:${user.id}`, p_max: 30, p_seconds: 3600 })
-    if (allowed === false) return json({ error: 'Too many report requests. Please try again later.' }, 429)
+    // Per-caller quota (keyed on the caller's own uid server-side). Fails closed.
+    const { data: allowed, error: quotaErr } = await supabase.rpc('consume_quota', { p_scope: 'report' })
+    if (quotaErr) throw quotaErr
+    if (allowed !== true) return json({ error: 'Too many report requests. Please try again later.' }, 429)
 
     const { data: profile } = await supabase.from('profiles').select('base_currency, display_name').single()
     const base = profile?.base_currency ?? 'USD'
 
     const { data: txns, error } = await supabase
-      .from('transactions')
-      .select('spent_at, kind, amount_minor, currency, exchange_rate, description, group_expense_id, categories(name), group_expenses(groups(name))')
-      .gte('spent_at', from)
-      .lte('spent_at', to)
-      .order('spent_at', { ascending: true })
+      .rpc('my_transactions', { p_from: from, p_to: to })
     if (error) throw error
 
-    const rows = (txns ?? []).map((t) => {
+    // The RPC returns newest first; the statement reads oldest first.
+    const rows = (txns ?? []).slice().reverse().map((t) => {
       const sf = minorFactor(t.currency)
       // Mirrored group expenses bucket under their group's name; everything else
       // uses its category (matching the in-app breakdown).

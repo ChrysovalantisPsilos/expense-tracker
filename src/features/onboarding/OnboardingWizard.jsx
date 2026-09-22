@@ -84,7 +84,7 @@ export default function OnboardingWizard({ profile, onDone }) {
   async function turnOnPush() {
     const status = await enablePush().catch(() => 'error')
     setPushDone(true)
-    if (status === 'denied') toast({ title: 'Notifications blocked — you can enable them later in Profile', status: 'info' })
+    if (status === 'denied') toast({ title: 'Notifications blocked — you can enable them later in Settings', status: 'info' })
     else if (status === 'unsupported') toast({ title: 'On iPhone, install Budgeer to your home screen for push', status: 'info' })
     else if (status === 'subscribed') toast({ title: 'Notifications on', status: 'success' })
   }
@@ -161,17 +161,17 @@ export default function OnboardingWizard({ profile, onDone }) {
               <Text fontSize="sm" color="text.muted">
                 Get a nudge when friends add expenses or bills are due, and sign in faster next time.
               </Text>
-              <Button variant={pushDone ? 'outline' : 'solid'} leftIcon={<BellRing size={16} />}
+              <Button variant="outline" leftIcon={<BellRing size={16} />}
                 onClick={turnOnPush} isDisabled={pushDone || !pushSupported()}>
                 {pushDone ? 'Notifications set' : 'Enable notifications'}
               </Button>
               {passkeysSupported && (
-                <Button variant={passkeyDone ? 'outline' : 'solid'} leftIcon={<KeyRound size={16} />}
+                <Button variant="outline" leftIcon={<KeyRound size={16} />}
                   onClick={addPasskey} isDisabled={passkeyDone}>
                   {passkeyDone ? 'Passkey added' : 'Add a passkey'}
                 </Button>
               )}
-              <Text fontSize="xs" color="text.muted">You can change both anytime in Profile.</Text>
+              <Text fontSize="xs" color="text.muted">You can change both anytime in Settings.</Text>
             </Stack>
           )}
         </ModalBody>

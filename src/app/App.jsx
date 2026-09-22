@@ -21,8 +21,13 @@ import Groups from '../features/groups/Groups.jsx'
 import GroupDetail from '../features/groups/GroupDetail.jsx'
 import JoinGroup from '../features/groups/JoinGroup.jsx'
 import GroupPreview from '../features/groups/GroupPreview.jsx'
-import Profile from '../features/profile/Profile.jsx'
-import PasskeyPrompt from '../features/profile/PasskeyPrompt.jsx'
+import Settings from '../features/settings/Settings.jsx'
+import AccountSettings from '../features/settings/AccountSettings.jsx'
+import NotificationSettings from '../features/settings/NotificationSettings.jsx'
+import AppearanceSettings from '../features/settings/AppearanceSettings.jsx'
+import SecuritySettings from '../features/settings/SecuritySettings.jsx'
+import PasskeyPrompt from '../features/settings/PasskeyPrompt.jsx'
+import Privacy from '../features/privacy/Privacy.jsx'
 import NotificationPrompt from '../features/notifications/NotificationPrompt.jsx'
 import OnboardingWizard from '../features/onboarding/OnboardingWizard.jsx'
 import { useProfile } from '../shared/lib/useProfile.js'
@@ -42,6 +47,7 @@ function PublicRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/join/:token" element={<GroupPreview />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route path="*" element={<Landing />} />
     </Routes>
   )
@@ -71,6 +77,7 @@ function AuthedRoutes() {
     <>
       <Routes>
         <Route path="/join/:token" element={<JoinGroup />} />
+        <Route path="/privacy" element={<Privacy />} />
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
           <Route path="search" element={<SearchTransactions />} />
@@ -83,7 +90,13 @@ function AuthedRoutes() {
           <Route path="income" element={<Income />} />
           <Route path="groups" element={<Groups />} />
           <Route path="groups/:id" element={<GroupDetail />} />
-          <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="settings/account" element={<AccountSettings />} />
+          <Route path="settings/notifications" element={<NotificationSettings />} />
+          <Route path="settings/appearance" element={<AppearanceSettings />} />
+          <Route path="settings/security" element={<SecuritySettings />} />
+          {/* Old name for Settings — keeps bookmarks and old links working. */}
+          <Route path="profile" element={<Navigate to="/settings" replace />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

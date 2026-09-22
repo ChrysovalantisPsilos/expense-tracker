@@ -35,3 +35,9 @@ export function netWorth(accounts) {
   }
   return { assets, liabilities, net: assets - liabilities }
 }
+
+// Y-axis tick label for the trend chart (major units): "800", "1.6k", "2.4k",
+// "120k", "1.5M". One decimal keeps neighbouring ticks distinct, where whole
+// thousands would print 1.6k and 2.4k both as "2k".
+const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
+export const axisTick = (v) => compact.format(v).replace(/K$/, 'k')

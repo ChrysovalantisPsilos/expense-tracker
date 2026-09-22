@@ -1,15 +1,13 @@
 import { useState } from 'react'
 import {
-  Card, CardBody, Heading, HStack, Button, FormControl, FormLabel,
-  Input, Text, useToast, SimpleGrid,
+  Card, CardBody, Button, FormControl, FormLabel, Input, Text, useToast, SimpleGrid,
 } from '@chakra-ui/react'
-import { FileSpreadsheet, FileText } from 'lucide-react'
-import { supabase } from '../../shared/lib/supabase.js'
-import { monthRange } from '../transactions/useData.js'
+import { FileDown, FileSpreadsheet, FileText } from 'lucide-react'
+import CardHeader from '../../shared/ui/CardHeader.jsx'
+import { monthRange } from '../../shared/lib/dates.js'
+import { downloadStatement } from './reports.js'
 
-// Financial-statement export (PDF/Excel) — lives on the Profile page. Calls the
-// `generate-report` edge function, which builds the statement server-side and
-// returns a file blob.
+// Financial-statement export (PDF/Excel) for a date range, on the Insights page.
 export default function ReportsCard() {
   const { from: mFrom, to: mTo } = monthRange()
   const [from, setFrom] = useState(mFrom)
@@ -20,17 +18,7 @@ export default function ReportsCard() {
   async function generate(format) {
     setBusy(format)
     try {
-      const { data, error } = await supabase.functions.invoke('generate-report', {
-        body: { from, to, format },
-      })
-      if (error) throw error
-      const blob = data instanceof Blob ? data : new Blob([JSON.stringify(data)])
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `financial-statement_${from}_${to}.${format}`
-      a.click()
-      URL.revokeObjectURL(url)
+      await downloadStatement({ from, to, format })
     } catch (e) {
       toast({ title: 'Could not generate report', description: e.message, status: 'error' })
     } finally {
@@ -40,12 +28,12 @@ export default function ReportsCard() {
 
   return (
     <Card><CardBody>
-      <Heading size="sm" mb={1}>Export statement</Heading>
+      <CardHeader icon={FileDown} title="Export statement" mb={3} />
       <Text color="text.muted" fontSize="sm" mb={4}>
         A full financial statement — summary, transactions, income vs. expenses
         and category breakdown — for a date range.
       </Text>
-      <HStack align="end" spacing={3} mb={4}>
+      <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3} mb={4}>
         <FormControl>
           <FormLabel fontSize="sm">From</FormLabel>
           <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
@@ -54,7 +42,7 @@ export default function ReportsCard() {
           <FormLabel fontSize="sm">To</FormLabel>
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </FormControl>
-      </HStack>
+      </SimpleGrid>
       <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3}>
         <Button leftIcon={<FileText size={18} />} onClick={() => generate('pdf')}
           isLoading={busy === 'pdf'} loadingText="Building…">

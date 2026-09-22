@@ -8,7 +8,7 @@ import {
   Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
 import {
-  ArrowLeft, Plus, Link2, Users, HandCoins, Paperclip, Mail,
+  ArrowLeft, Plus, Link2, Users, HandCoins, Mail,
   MoreVertical, LogOut, Trash2, UserMinus, Pencil, Camera, FileDown, MessageSquare,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
@@ -18,11 +18,12 @@ import {
   uploadGroupImage, listAuditLog, downloadGroupReport,
 } from './groups.js'
 import { commentCounts } from './comments.js'
-import { memberName, describeBalance } from './groupFormat.js'
+import { memberName, describeBalance, splitLabel } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
-import { receiptUrl } from '../../shared/lib/receipts.js'
+import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import CardHeader from '../../shared/ui/CardHeader.jsx'
+import RowAmount from '../../shared/ui/RowAmount.jsx'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
 import CommentThread from './CommentThread.jsx'
 import {
@@ -118,11 +119,6 @@ export default function GroupDetail() {
     } catch (e) {
       toast({ title: 'Could not create invite', description: e.message, status: 'error' })
     }
-  }
-
-  async function openReceipt(path) {
-    const url = await receiptUrl(path)
-    if (url) window.open(url, '_blank', 'noopener')
   }
 
   async function doLeave() {
@@ -300,31 +296,25 @@ export default function GroupDetail() {
               return (
               <ListItem key={e.id}>
                 {i > 0 && <Divider />}
-                <HStack py={3} spacing={3} align="start"
+                <HStack py={3} spacing={2} align="center"
                   cursor={canEdit ? 'pointer' : 'default'}
                   onClick={canEdit ? () => openEdit(e) : undefined}
                   _hover={canEdit ? { opacity: 0.75 } : undefined} transition="opacity 0.1s">
-                  <Stack spacing={0} flex="1">
-                    <Text fontWeight="600">{e.description || 'Expense'}</Text>
-                    <Text fontSize="xs" color="text.muted">
-                      {nameOf(e.paid_by)} paid · {e.spent_at} ·{' '}
-                      {e.split_type && e.split_type !== 'equal'
-                        ? `custom split · ${e.expense_splits?.length ?? 0} people`
-                        : `split ${e.expense_splits?.length ?? 0} ways`}
-                    </Text>
+                  <Stack spacing={0.5} flex="1" minW={0}>
+                    <Text fontWeight="600" noOfLines={1}>{e.description || 'Expense'}</Text>
+                    <Flex wrap="wrap" columnGap={1.5} fontSize="xs" color="text.muted">
+                      <Text noOfLines={1} maxW="100%">{nameOf(e.paid_by)} paid</Text>
+                      <Text whiteSpace="nowrap">· {shortDate(e.spent_at)}</Text>
+                      <Text whiteSpace="nowrap">· {splitLabel(e)}</Text>
+                    </Flex>
                   </Stack>
-                  {e.receipt_path && (
-                    <IconButton aria-label="Receipt" size="xs" variant="ghost"
-                      icon={<Paperclip size={14} />}
-                      onClick={(ev) => { ev.stopPropagation(); openReceipt(e.receipt_path) }} />
-                  )}
-                  <HStack spacing={0.5}>
+                  <HStack spacing={0.5} flexShrink={0}>
                     <IconButton aria-label="Comments" size="xs" variant="ghost" color="text.muted"
                       icon={<MessageSquare size={15} />}
                       onClick={(ev) => { ev.stopPropagation(); setThread({ type: 'expense', id: e.id, label: e.description || 'Expense' }) }} />
                     {counts.get(e.id) > 0 && <Text fontSize="xs" color="text.muted">{counts.get(e.id)}</Text>}
                   </HStack>
-                  <Text fontWeight="600">{formatMoney(e.amount_minor, e.currency)}</Text>
+                  <RowAmount>{formatMoney(e.amount_minor, e.currency)}</RowAmount>
                 </HStack>
               </ListItem>
               )
@@ -342,7 +332,7 @@ export default function GroupDetail() {
                 <HStack py={2.5} fontSize="sm" spacing={3}>
                   <Stack spacing={0} flex="1" minW={0}>
                     <Text noOfLines={1}>{nameOf(s.from_member)} → {nameOf(s.to_member)}</Text>
-                    <Text fontSize="xs" color="text.muted">{s.settled_at}</Text>
+                    <Text fontSize="xs" color="text.muted">{shortDate(s.settled_at)}</Text>
                   </Stack>
                   <HStack spacing={0.5}>
                     <IconButton aria-label="Comments" size="xs" variant="ghost" color="text.muted"
@@ -350,7 +340,7 @@ export default function GroupDetail() {
                       onClick={() => setThread({ type: 'settlement', id: s.id, label: `${nameOf(s.from_member)} → ${nameOf(s.to_member)}` })} />
                     {counts.get(s.id) > 0 && <Text fontSize="xs" color="text.muted">{counts.get(s.id)}</Text>}
                   </HStack>
-                  <Text fontWeight="600">{formatMoney(s.amount_minor, s.currency)}</Text>
+                  <RowAmount>{formatMoney(s.amount_minor, s.currency)}</RowAmount>
                 </HStack>
               </ListItem>
             ))}
@@ -368,7 +358,7 @@ export default function GroupDetail() {
                   <Stack spacing={0} flex="1">
                     <Text fontSize="sm">{a.summary}</Text>
                     <Text fontSize="xs" color="text.muted">
-                      {new Date(a.created_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {shortDateTime(a.created_at)}
                     </Text>
                   </Stack>
                   {a.amount_minor != null && (

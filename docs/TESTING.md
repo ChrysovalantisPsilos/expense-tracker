@@ -19,7 +19,7 @@ Three layers:
 ## Feature inventory
 
 **Personal finance**
-- Expenses & income with categories, notes, receipts (photo scan pre-fills amount/date)
+- Expenses & income with categories and notes; scanning a receipt pre-fills amount/date on-device (the photo is never uploaded or stored)
 - Multi-currency with the FX rate captured at entry (history never shifts)
 - Budgets per category/month, with 80% / 100% push alerts
 - Recurring rules (subscriptions, salary) auto-logged nightly, with per-rule payment reminders
@@ -54,7 +54,8 @@ Three layers:
    added sits on top.
 3. **Edit** an expense's amount → list updates in place. **Delete** it →
    gone; check the dashboard totals moved.
-4. **Receipt**: add expense → scan/attach a photo → paperclip icon opens it.
+4. **Receipt scan**: add expense → scan a photo → amount/date pre-fill; after
+   saving, the row has no attachment (receipts are not stored).
 5. **Multi-currency**: add a USD expense with EUR base → dashboard converts
    it using the captured rate.
 
@@ -108,7 +109,7 @@ Three layers:
 ### G. Notifications & prompts
 22. Fresh login: passkey prompt (if none) → then notification prompt with the
     email checkbox — never both stacked. "Not now" never asks again;
-    Profile → Notifications still works.
+    Settings → Notifications still works.
 23. Turn the push switch off → no pushes arrive (bell still fills).
     Email switch off → no emails for invites/joins/leaves.
 
@@ -117,10 +118,10 @@ Three layers:
     data; a standing "Offline" pill appears; saving fails with "You're
     offline — reconnect to save".
 25. Appearance: Light/Dark/System each apply immediately; System follows the
-    OS. The header moon/sun quick-toggle stays in sync with Profile.
+    OS. The header moon/sun quick-toggle stays in sync with Settings → Appearance.
 26. Deploy update: banner "A new version of Budge is available" → Update
     reloads onto the new build.
 
 ### I. Reports
-27. Profile → Reports: personal PDF downloads with brand styling.
+27. Insights → Statement export: personal PDF downloads with brand styling.
     Group page → Download statement: per-member balances match the app.

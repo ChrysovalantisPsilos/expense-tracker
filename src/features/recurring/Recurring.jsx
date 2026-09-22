@@ -1,20 +1,22 @@
 import { useMemo, useState } from 'react'
 import {
   Stack, Card, CardBody, HStack, Text, Button, Center, Spinner,
-  List, ListItem, Divider, IconButton, Switch, Tag, SimpleGrid, Stat, StatLabel,
+  List, ListItem, Divider, Switch, Tag, SimpleGrid, Stat, StatLabel, Flex, Box,
   StatNumber, StatHelpText, Modal, ModalOverlay, ModalContent, ModalHeader,
   ModalBody, ModalFooter, FormControl, FormLabel, Input, Select, useToast,
   useDisclosure, NumberInput, NumberInputField,
 } from '@chakra-ui/react'
-import { Plus, Pencil, Trash2, Repeat, Bell } from 'lucide-react'
+import { Plus, Pencil, Trash2, Repeat, Bell, Pause, Play } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
+import RowActions from '../../shared/ui/RowActions.jsx'
+import RowAmount from '../../shared/ui/RowAmount.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import { useProfile } from '../../shared/lib/useProfile.js'
 import { useCategories } from '../transactions/useData.js'
 import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
-import { today } from '../../shared/lib/dates.js'
+import { today, shortDate } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { enablePush } from '../../shared/lib/push.js'
 import {
@@ -91,39 +93,39 @@ export default function Recurring() {
             {rules.map((r, i) => (
               <ListItem key={r.id}>
                 {i > 0 && <Divider />}
-                <HStack py={3} spacing={3} align="center" opacity={r.is_active ? 1 : 0.55}>
-                  <CategoryBadge category={r.categories} kind={r.kind} />
-                  <Stack spacing={0} flex="1" minW={0}>
-                    <HStack spacing={2}>
+                <HStack py={3} spacing={3} align="center">
+                  <HStack spacing={3} flex="1" minW={0} opacity={r.is_active ? 1 : 0.55}>
+                    <CategoryBadge category={r.categories} kind={r.kind} />
+                    <Stack spacing={0.5} flex="1" minW={0}>
                       <Text fontWeight="600" noOfLines={1}>
                         {r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
                       </Text>
-                      {!r.is_active && <Tag size="sm">Paused</Tag>}
-                    </HStack>
-                    <HStack spacing={1.5}>
-                      <Text fontSize="xs" color="text.muted">
-                        {frequencyLabel(r)} · next {r.next_run}
-                      </Text>
-                      {r.remind_days_before != null && (
-                        <Tag size="sm" colorScheme="brand" px={1.5}>
-                          <Bell size={10} style={{ marginRight: 3 }} /> {r.remind_days_before}d
-                        </Tag>
-                      )}
-                    </HStack>
-                  </Stack>
-                  <Stack spacing={0} align="end">
-                    <Text fontWeight="600" color={r.kind === 'income' ? 'status.positive' : 'text.primary'}>
+                      <Flex wrap="wrap" align="center" columnGap={2} rowGap={1}
+                        fontSize="xs" color="text.muted">
+                        <Text whiteSpace="nowrap">{frequencyLabel(r)}</Text>
+                        <Text whiteSpace="nowrap">next {shortDate(r.next_run)}</Text>
+                        {r.remind_days_before != null && (
+                          <Tag size="sm" colorScheme="brand" px={1.5}>
+                            <Bell size={10} style={{ marginRight: 3 }} /> {r.remind_days_before}d
+                          </Tag>
+                        )}
+                        {!r.is_active && <Tag size="sm">Paused</Tag>}
+                      </Flex>
+                    </Stack>
+                    <RowAmount color={r.kind === 'income' ? 'status.positive' : 'text.primary'}>
                       {formatMoney(r.amount_minor, r.currency)}
-                    </Text>
-                    <Text fontSize="xs" color="text.muted">
-                      {formatMoney(monthlyMinor(r), r.currency)}/mo
-                    </Text>
-                  </Stack>
-                  <Switch isChecked={r.is_active} onChange={() => toggle(r)} />
-                  <IconButton aria-label="Edit" size="xs" variant="ghost"
-                    icon={<Pencil size={14} />} onClick={() => openEdit(r)} />
-                  <IconButton aria-label="Delete" size="xs" variant="ghost" color="status.negative"
-                    icon={<Trash2 size={14} />} onClick={() => setRemoving(r)} />
+                    </RowAmount>
+                  </HStack>
+                  <Box display={{ base: 'none', sm: 'block' }} flexShrink={0}>
+                    <Switch isChecked={r.is_active} onChange={() => toggle(r)}
+                      aria-label={r.is_active ? 'Pause' : 'Resume'} />
+                  </Box>
+                  <RowActions slots={2} actions={[
+                    { label: r.is_active ? 'Pause' : 'Resume', icon: r.is_active ? Pause : Play,
+                      menuOnly: true, onClick: () => toggle(r) },
+                    { label: 'Edit', icon: Pencil, onClick: () => openEdit(r) },
+                    { label: 'Delete', icon: Trash2, danger: true, onClick: () => setRemoving(r) },
+                  ]} />
                 </HStack>
               </ListItem>
             ))}

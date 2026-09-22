@@ -13,7 +13,7 @@ const SEEN = 'budge:notifPrompted'
 
 // One-time ask, shortly after login: enable push notifications (and confirm
 // the email preference for big events)? "Not now" never auto-asks again —
-// the Profile switches stay the way to change either choice later. Waits for
+// the Settings switches stay the way to change either choice later. Waits for
 // the prompt slot so it never stacks on the passkey prompt.
 export default function NotificationPrompt() {
   const { user } = useAuth()
@@ -58,7 +58,7 @@ export default function NotificationPrompt() {
     // Email choice: the checkbox decides (defaults on, matching the account
     // default — unticking here is an explicit opt-out of big-event emails).
     try { await patchRow('profiles', user.id, { notify_email: emailToo }) }
-    catch { /* non-fatal; the Profile switch can still change it */ }
+    catch { /* non-fatal; the Settings switch can still change it */ }
     try {
       const status = await enablePush()
       if (status === 'subscribed') {
@@ -94,7 +94,7 @@ export default function NotificationPrompt() {
             <Text color="text.muted">
               Get a heads-up when friends add expenses or invite you to a group,
               and reminders before your bills are due. You can change this
-              anytime in Profile → Notifications.
+              anytime in Settings → Notifications.
             </Text>
             <Checkbox isChecked={emailToo}
               onChange={(e) => setEmailToo(e.target.checked)}>

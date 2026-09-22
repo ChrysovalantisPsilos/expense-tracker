@@ -7,6 +7,7 @@ import { KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
 import { claimPromptSlot, releasePromptSlot } from '../../shared/lib/promptGate.js'
+import { toPasskeyList } from './authMethods.js'
 
 const SEEN = 'budge:passkeyPrompted'
 
@@ -26,8 +27,7 @@ export default function PasskeyPrompt() {
     listPasskeys()
       .then(({ data, error }) => {
         if (!active || error) return
-        const list = Array.isArray(data) ? data : (data?.passkeys ?? [])
-        if (list.length === 0) {
+        if (toPasskeyList(data).length === 0) {
           sessionStorage.setItem(SEEN, '1')
           claimPromptSlot() // NotificationPrompt waits its turn
           setOpen(true)

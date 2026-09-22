@@ -155,19 +155,19 @@ export async function buildTransactions({ rows, mapping, userId, baseCurrency, c
   return { valid, errors }
 }
 
-// Insert in chunks, skipping rows whose deterministic identity already exists
-// (a re-imported file, or overlap with a previous export). Returns how many
-// were actually new vs skipped as duplicates.
+// Insert in chunks through the encrypting RPC, skipping rows whose
+// deterministic identity (client_uuid) already exists (a re-imported file, or
+// overlap with a previous export). Returns how many were actually new vs
+// skipped as duplicates.
 export async function importTransactions(rows) {
   let inserted = 0
   for (let i = 0; i < rows.length; i += 200) {
     const chunk = rows.slice(i, i + 200)
-    const { data, error } = await supabase
-      .from('transactions')
-      .upsert(chunk, { onConflict: 'user_id,client_uuid', ignoreDuplicates: true })
-      .select('id')
+    const { data, error } = await supabase.rpc('save_transactions', {
+      p_rows: chunk, p_ignore_duplicates: true,
+    })
     if (error) throw new Error(error.message)
-    inserted += (data ?? []).length
+    inserted += Number(data ?? 0)
   }
   return { inserted, duplicates: rows.length - inserted }
 }

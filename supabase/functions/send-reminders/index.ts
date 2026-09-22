@@ -9,9 +9,13 @@
 // each occurrence reminds exactly once. Delivery (web push, gated by the
 // user's switches) happens downstream: the notify_fanout trigger forwards
 // every notifications insert to the notify-user function.
+//
+// A rule's amount and description are encrypted at rest (0050), and — as with
+// the budget alerts (0047) — the notification text must not copy them back into
+// notifications.body in plaintext. So this function reads only the plain
+// schedule columns and sends a generic reminder; the details are one tap away.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { moneySymbol as money } from '../_shared/money.ts'
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -38,7 +42,7 @@ Deno.serve(async (req) => {
   const today = isoToday()
   const { data: rules, error } = await admin
     .from('recurring_rules')
-    .select('id, user_id, kind, description, amount_minor, currency, next_run, remind_days_before, last_reminded_for')
+    .select('id, user_id, kind, next_run, remind_days_before, last_reminded_for')
     .eq('is_active', true)
     .not('remind_days_before', 'is', null)
     .gt('next_run', today)
@@ -52,10 +56,11 @@ Deno.serve(async (req) => {
   let notified = 0
   for (const r of due) {
     const days = daysUntil(r.next_run, today)
-    const name = r.description || (r.kind === 'income' ? 'Recurring income' : 'Recurring payment')
     const when = days === 1 ? 'tomorrow' : `in ${days} days`
-    const title = r.kind === 'income' ? `Incoming: ${name}` : `Upcoming payment: ${name}`
-    const body = `${money(r.amount_minor, r.currency)} ${r.kind === 'income' ? 'expected' : 'due'} ${when} (${r.next_run}).`
+    const title = r.kind === 'income' ? 'Upcoming income' : 'Upcoming payment'
+    const body = r.kind === 'income'
+      ? `A recurring income is expected ${when} (${r.next_run}).`
+      : `A recurring payment is due ${when} (${r.next_run}).`
 
     const { error: nErr } = await admin.from('notifications').insert({
       user_id: r.user_id, type: 'reminder', title, body,

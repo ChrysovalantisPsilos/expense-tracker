@@ -4,7 +4,7 @@ import { Moon, Sun } from 'lucide-react'
 import { useAppearance } from '../lib/appearance.jsx'
 
 // Quick light/dark flip: pins the opposite of what's showing, writing through
-// the appearance pref so the choice persists and Profile's Light/Dark/System
+// the appearance pref so the choice persists and Settings' Light/Dark/System
 // control stays in sync. Forwards its ref so it can sit inside a Tooltip.
 const ThemeToggle = forwardRef(function ThemeToggle(props, ref) {
   const { colorMode } = useColorMode()

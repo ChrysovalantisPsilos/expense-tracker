@@ -23,7 +23,7 @@ export default function ReceiptScanner({ onScan }) {
     setProgress(0)
     try {
       const { total, date } = await scanReceipt(file, setProgress)
-      onScan?.({ file, total, date })
+      onScan?.({ total, date })
       if (total == null && date == null) {
         toast({ title: 'Couldn’t read the receipt — enter details manually.', status: 'warning' })
       } else {
@@ -72,7 +72,7 @@ export default function ReceiptScanner({ onScan }) {
               </>
             ) : (
               <Text fontSize="sm" color="text.muted">
-                Receipt attached. Check the amount and date below, then save.
+                Receipt read on your device (the photo isn’t saved). Check the amount and date below.
               </Text>
             )}
           </Box>

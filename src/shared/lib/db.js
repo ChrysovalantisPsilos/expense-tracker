@@ -49,18 +49,6 @@ export function useOwnedQuery(table, { select = '*', build, deps = [], fetch } =
   return { rows, loading, reload: load, mutate: setRows }
 }
 
-// Insert (stamping user_id so the own-rows RLS check passes) or update by id.
-export async function upsertOwned(table, { id, ...fields }) {
-  if (id) {
-    const { error } = await supabase.from(table).update(fields).eq('id', id)
-    if (error) throw new Error(error.message)
-    return
-  }
-  const { data: { user } } = await supabase.auth.getUser()
-  const { error } = await supabase.from(table).insert({ ...fields, user_id: user?.id })
-  if (error) throw new Error(error.message)
-}
-
 export async function removeRow(table, id) {
   const { error } = await supabase.from(table).delete().eq('id', id)
   if (error) throw new Error(error.message)

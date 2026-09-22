@@ -1,9 +1,10 @@
-import { useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
-  Box, Button, Container, Flex, Heading, HStack, SimpleGrid, Stack, Text,
+  Box, Button, Container, Flex, Heading, HStack, Link, SimpleGrid, Stack, Text,
 } from '@chakra-ui/react'
 import { HandCoins, Link2, ReceiptText } from 'lucide-react'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
+import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import ThemeToggle from '../../shared/ui/ThemeToggle.jsx'
 import TripSplitMock from './TripSplitMock.jsx'
@@ -53,9 +54,7 @@ const SHOWCASE = [
 function SectionHeading({ eyebrow, title, children }) {
   return (
     <Stack spacing={3} maxW="xl">
-      <Text fontSize="sm" fontWeight="700" color="accent.fg" textTransform="uppercase" letterSpacing="0.08em">
-        {eyebrow}
-      </Text>
+      <Eyebrow fontSize="sm" lineHeight="base">{eyebrow}</Eyebrow>
       <Heading as="h2" fontSize={{ base: '2xl', md: '3xl' }} letterSpacing="-0.02em" lineHeight="1.15">
         {title}
       </Heading>
@@ -187,7 +186,10 @@ export default function Landing() {
       <Box as="footer" borderTopWidth="1px" borderColor="border.default">
         <Container maxW="6xl" px={{ base: 4, md: 6 }}>
           <Flex h="64px" align="center" justify="space-between">
-            <Text fontSize="sm" color="text.muted">© {new Date().getFullYear()} Budgeer</Text>
+            <HStack spacing={4} fontSize="sm" color="text.muted">
+              <Text>© {new Date().getFullYear()} Budgeer</Text>
+              <Link as={RouterLink} to="/privacy">Privacy</Link>
+            </HStack>
             <ThemeToggle />
           </Flex>
         </Container>

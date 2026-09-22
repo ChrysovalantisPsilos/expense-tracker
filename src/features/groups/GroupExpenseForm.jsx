@@ -6,11 +6,9 @@ import {
   InputGroup, InputRightAddon,
 } from '@chakra-ui/react'
 import { Trash2 } from 'lucide-react'
-import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
 import { distributeByWeights, splitEqually } from './splitMath.js'
 import { addSharedExpense, updateSharedExpense, deleteSharedExpense } from './groups.js'
-import { uploadReceipt } from '../../shared/lib/receipts.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 
@@ -36,7 +34,6 @@ function prefillValues(expense, mode) {
 }
 
 export default function GroupExpenseForm({ group, members, defaultPayer, expense, isOpen, onClose, onSaved }) {
-  const { user } = useAuth()
   const toast = useToast()
   const isEdit = !!expense
   const cur = group.currency
@@ -54,7 +51,6 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
     expense ? (expense.expense_splits ?? []).map((s) => s.member_id) : members.map((m) => m.id))
   const [mode, setMode] = useState(initialMode)
   const [values, setValues] = useState(() => (isEdit ? prefillValues(expense, initialMode) : {}))
-  const [receiptFile, setReceiptFile] = useState(null)
   const [busy, setBusy] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -66,8 +62,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
     setSplitWith((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
   }
 
-  function handleScan({ file, total, date }) {
-    setReceiptFile(file)
+  function handleScan({ total, date }) {
     if (total != null) setAmount(String(total))
     if (date) setSpentAt(date)
   }
@@ -129,13 +124,9 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
         })
         toast({ title: 'Expense updated', status: 'success' })
       } else {
-        let receiptPath = null
-        if (receiptFile && navigator.onLine) {
-          try { receiptPath = await uploadReceipt(user.id, receiptFile) } catch { /* save without */ }
-        }
         await addSharedExpense({
           groupId: group.id, description, amountMinor: totalMinor, currency: cur,
-          paidBy, spentAt, memberIds: includedIds, shares, splitType: mode, receiptPath,
+          paidBy, spentAt, memberIds: includedIds, shares, splitType: mode,
         })
         toast({ title: 'Expense added', status: 'success' })
       }

@@ -13,14 +13,3 @@ export function fmtMinor(minor: number, currency: string): string {
   const v = (minor / factor).toFixed(factor === 1 ? 0 : 2)
   return `${v} ${currency}`
 }
-
-// "€12.34" with a symbol when we have one, else "12.34 EUR" (reminders/emails).
-export function moneySymbol(minor: number, currency: string): string {
-  const factor = minorFactor(currency)
-  const amount = (minor / factor).toLocaleString('en-US', {
-    minimumFractionDigits: factor === 1 ? 0 : 2,
-    maximumFractionDigits: factor === 1 ? 0 : 2,
-  })
-  const symbol = ({ EUR: '€', USD: '$', GBP: '£', JPY: '¥' } as Record<string, string>)[currency]
-  return symbol ? `${symbol}${amount}` : `${amount} ${currency}`
-}

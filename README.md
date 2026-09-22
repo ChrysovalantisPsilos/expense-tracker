@@ -70,7 +70,7 @@ supabase/
     expense includes you, a linked personal expense for your split is created
     and kept in sync by DB triggers (`migrations/0008`), so group spending
     flows into your dashboard/budgets/reports. Marked with a “Group” tag.
-  - **Profile** (name, nickname, avatar in a public `avatars` bucket, default
+  - **Settings** (name, nickname, avatar in a public `avatars` bucket, default
     currency) and a **landing splash** for logged-out visitors. Default
     currency is **EUR**.
 - **v1 (this scaffold):** personal expenses, income, categories, budgets,

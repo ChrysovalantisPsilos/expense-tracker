@@ -15,26 +15,24 @@ export function useCategories(kind) {
 
 // Transactions in a date range (defaults to current month). Optional
 // `categoryId` and `limit` narrow the query server-side (used by search).
-// `withGroup` also embeds the owning group's name for mirrored group expenses,
-// so the dashboard can bucket them under the group instead of Uncategorized.
 // `mutate` lets callers optimistically update the list (edit/delete).
-export function useTransactions({ kind, from, to, categoryId, limit, withGroup } = {}) {
+//
+// Amounts, descriptions and notes are encrypted at rest, so rows come from the
+// decrypting `my_transactions` RPC (newest first; same-day rows tie-break by
+// insertion time). Each row keeps the old select's shape: `categories` and,
+// for mirrored group expenses, `group_expenses.groups.name` (so the dashboard
+// can bucket them under the group). Realtime still watches the base table.
+export function useTransactions({ kind, from, to, categoryId, limit } = {}) {
   return useOwnedQuery('transactions', {
-    select: withGroup
-      ? '*, categories(name, icon), group_expenses(groups(name))'
-      : '*, categories(name, icon)',
-    build: (q) => {
-      // spent_at is a bare date — tie-break same-day rows by insertion time
-      // so the newest-added entry is always on top.
-      q = q.order('spent_at', { ascending: false }).order('created_at', { ascending: false })
-      if (kind) q = q.eq('kind', kind)
-      if (from) q = q.gte('spent_at', from)
-      if (to) q = q.lte('spent_at', to)
-      if (categoryId) q = q.eq('category_id', categoryId)
-      if (limit) q = q.limit(limit)
-      return q
+    fetch: async () => {
+      const { data, error } = await supabase.rpc('my_transactions', {
+        p_kind: kind ?? null, p_from: from ?? null, p_to: to ?? null,
+        p_category: categoryId ?? null, p_limit: limit ?? null,
+      })
+      if (error) throw new Error(error.message)
+      return data ?? []
     },
-    deps: [kind, from, to, categoryId, limit, withGroup],
+    deps: [kind, from, to, categoryId, limit],
   })
 }
 

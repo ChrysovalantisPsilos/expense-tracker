@@ -31,3 +31,28 @@ export function lastMonths(n, d = new Date()) {
   }
   return out
 }
+
+// Fixed English month abbreviations: toLocaleDateString('en-GB') renders
+// September as "Sept" on newer ICU builds, so it isn't stable across devices.
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+const dayMonth = (y, m, d, now) =>
+  `${d} ${MONTHS_SHORT[m]}${y === now.getFullYear() ? '' : ` ${y}`}`
+
+// A list-row date: "21 Sep", or "21 Sep 2025" outside the current year.
+// Takes a YYYY-MM-DD string (a timestamp's date part is used as-is); falls
+// back to the input for anything it can't read.
+export function shortDate(iso, now = new Date()) {
+  if (!iso) return ''
+  const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number)
+  if (!y || !(m >= 1 && m <= 12) || !d) return String(iso)
+  return dayMonth(y, m - 1, d, now)
+}
+
+// A timestamp in local time: "21 Sep, 14:05" (year added outside this year).
+export function shortDateTime(ts, now = new Date()) {
+  const t = new Date(ts)
+  if (Number.isNaN(t.getTime())) return ''
+  const hm = [t.getHours(), t.getMinutes()].map((n) => String(n).padStart(2, '0')).join(':')
+  return `${dayMonth(t.getFullYear(), t.getMonth(), t.getDate(), now)}, ${hm}`
+}

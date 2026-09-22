@@ -8,6 +8,7 @@ import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { NetworkFirst } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
+import { offlineReadRpc, offlineReadKey, requestUser } from './shared/lib/offlineReads.js'
 
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
@@ -22,6 +23,30 @@ registerRoute(
     cacheName: 'supabase-rest',
     plugins: [new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 })],
   }),
+)
+
+// Decrypting ledger reads are POST RPCs, which the route above (GET-only) can't
+// cache. Network first; on success file the response under a per-user,
+// per-arguments GET key in the same cache (so sign-out's cache wipe clears it);
+// offline, serve that copy. Only allowlisted read RPCs, never writes.
+registerRoute(
+  ({ url, request }) => !!offlineReadRpc(request.method, url.pathname),
+  async ({ url, request }) => {
+    const body = await request.clone().text()
+    const who = requestUser(request.headers.get('authorization'))
+    const key = offlineReadKey(url.origin, offlineReadRpc(request.method, url.pathname), body, who)
+    const cache = await caches.open('supabase-rest')
+    try {
+      const res = await fetch(request)
+      if (res.ok) await cache.put(key, res.clone())
+      return res
+    } catch (err) {
+      const hit = await cache.match(key)
+      if (hit) return hit
+      throw err
+    }
+  },
+  'POST',
 )
 
 // Prompt-mode updates: ReloadPrompt's "Update" button sends SKIP_WAITING.

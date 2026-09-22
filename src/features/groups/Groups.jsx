@@ -7,6 +7,7 @@ import {
 } from '@chakra-ui/react'
 import { Users, Plus, ChevronRight, Check, X } from 'lucide-react'
 import { listGroups, createGroup, listMyInvites, respondToInvite } from './groups.js'
+import { pluralise } from './groupFormat.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
 import { useLiveRefetch } from '../../shared/lib/realtime.js'
@@ -124,13 +125,12 @@ export default function Groups() {
                 <HStack spacing={3}>
                   <Avatar boxSize="40px" borderRadius="lg" src={g.image_url}
                     icon={<Users size={20} />} bg="bg.subtle" color="accent.fg" />
-                  <Stack spacing={0}>
-                    <Text fontWeight="600">{g.name}</Text>
+                  <Stack spacing={0} flex="1" minW={0}>
+                    <Text fontWeight="600" noOfLines={1}>{g.name}</Text>
                     <Text fontSize="xs" color="text.muted">
-                      {g.group_members?.[0]?.count ?? 0} members · {g.currency}
+                      {pluralise(g.group_members?.[0]?.count ?? 0, 'member')} · {g.currency}
                     </Text>
                   </Stack>
-                  <Spacer />
                   <Icon as={ChevronRight} color="text.muted" />
                 </HStack>
               </CardBody>

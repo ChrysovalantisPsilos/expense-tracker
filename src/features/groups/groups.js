@@ -1,4 +1,5 @@
 import { supabase, edgeFunctionError } from '../../shared/lib/supabase.js'
+import { fileStem, saveBlob, toBlob } from '../../shared/lib/download.js'
 
 // ---- Queries -------------------------------------------------------------
 
@@ -13,24 +14,19 @@ export async function listGroups() {
 
 // Full detail for one group: members (+avatars), expenses (+splits), settlements.
 export async function getGroup(groupId) {
-  const [g, members, expenses, settlements, avs, bal] = await Promise.all([
+  const [g, members, ledger, avs, bal] = await Promise.all([
     supabase.from('groups').select('*').eq('id', groupId).single(),
     supabase.from('group_members').select('*').eq('group_id', groupId).order('created_at'),
-    // Newest first; spent_at is a bare date, so same-day rows tie-break by
-    // when they were added (newest addition on top).
-    supabase.from('group_expenses')
-      .select('*, expense_splits(*)')
-      .eq('group_id', groupId)
-      .order('spent_at', { ascending: false })
-      .order('created_at', { ascending: false }),
-    supabase.from('settlements').select('*').eq('group_id', groupId)
-      .order('settled_at', { ascending: false })
-      .order('created_at', { ascending: false }),
+    // Amounts/descriptions are encrypted at rest, so expenses (+ splits) and
+    // settlements come from the decrypting, membership-checked group_ledger
+    // RPC. Both newest first; same-day rows tie-break by when they were added.
+    supabase.rpc('group_ledger', { p_group: groupId }),
     // Co-members' avatars (column-limited RPC) + server-computed balances.
     supabase.rpc('group_member_avatars', { p_group: groupId }),
     supabase.rpc('group_balances', { p_group: groupId }),
   ])
   if (g.error) throw g.error
+  if (ledger.error) throw new Error(ledger.error.message)
 
   const memberRows = members.data ?? []
   const avatarByUser = Object.fromEntries((avs.data ?? []).map((a) => [a.user_id, a.avatar_url]))
@@ -40,8 +36,8 @@ export async function getGroup(groupId) {
   return {
     group: g.data,
     members: withAvatars,
-    expenses: expenses.data ?? [],
-    settlements: settlements.data ?? [],
+    expenses: ledger.data?.expenses ?? [],
+    settlements: ledger.data?.settlements ?? [],
     balances,
   }
 }
@@ -82,24 +78,24 @@ export async function uploadGroupImage(groupId, file) {
 // (the server computes it via split_equally, matching the edit path).
 export async function addSharedExpense({
   groupId, description, amountMinor, currency, paidBy, spentAt, memberIds,
-  shares = null, splitType = 'equal', receiptPath = null,
+  shares = null, splitType = 'equal',
 }) {
   const { data, error } = await supabase.rpc('create_group_expense_v2', {
     p_group: groupId, p_description: description || null, p_amount: amountMinor,
     p_currency: currency, p_paid_by: paidBy, p_spent_at: spentAt,
     p_member_ids: memberIds, p_shares: shares, p_split_type: splitType,
-    p_receipt_path: receiptPath,
   })
   if (error) throw new Error(error.message)
   return data // expense id
 }
 
 export async function addSettlement({ groupId, fromMember, toMember, amountMinor, currency, settledAt }) {
-  // created_by is set server-side by the settlement_guard BEFORE INSERT trigger
-  // (authoritative, not client-trusted), so we don't send it.
-  const { error } = await supabase.from('settlements').insert({
-    group_id: groupId, from_member: fromMember, to_member: toMember,
-    amount_minor: amountMinor, currency, settled_at: settledAt,
+  // The amount is encrypted server-side by the add_settlement RPC. created_by
+  // is set by the settlement_guard BEFORE INSERT trigger (authoritative, not
+  // client-trusted), so we don't send it.
+  const { error } = await supabase.rpc('add_settlement', {
+    p_group: groupId, p_from: fromMember, p_to: toMember,
+    p_amount: amountMinor, p_currency: currency, p_settled_at: settledAt ?? null,
   })
   if (error) throw error
 }
@@ -113,14 +109,12 @@ export async function memberPaymentInfo(memberId) {
   return data ?? {}
 }
 
-// Create an invite for a group. Links self-expire (24h default set in the DB).
+// Create an invite for a group. created_by and the expiry (at most 24h) are
+// forced server-side by a BEFORE INSERT trigger, so we don't send them.
 export async function createInvite(groupId, { email = null } = {}) {
   const { data, error } = await supabase
     .from('group_invites')
-    .insert({
-      group_id: groupId, invited_email: email,
-      created_by: (await supabase.auth.getUser()).data.user?.id,
-    })
+    .insert({ group_id: groupId, invited_email: email })
     .select('token').single()
   if (error) throw error
   return { token: data.token, url: `${window.location.origin}/join/${data.token}` }
@@ -146,7 +140,8 @@ export async function emailInvite({ to, token }) {
 
 // Read-only look at a share link — never writes, so any number of people can
 // open the same link. Shape: { status, group_id?, preview? } where status is
-// 'joinable' | 'already_member' | 'invalid'.
+// 'joinable' | 'already_member' | 'invalid'. `preview` is previewGroup's shape
+// plus `members: [{ id, display_name, avatar_url }]` (no money).
 export async function previewLinkInvite(token) {
   const { data, error } = await supabase.rpc('preview_link_invite', { p_token: token })
   if (error) throw new Error(error.message)
@@ -161,7 +156,10 @@ export async function joinViaLink(token) {
   return data
 }
 
-// Read-only snapshot of a group from a share token — works logged-out (anon).
+// Minimal public snapshot of a group from a share token — works logged-out
+// (anon). Shape: { group: { name, image_url }, member_count, invited_by,
+// expires_at }, or null if the token is invalid/expired. No members, expenses
+// or balances are exposed to a logged-out visitor.
 export async function previewGroup(token) {
   const { data, error } = await supabase.rpc('group_preview', { p_token: token })
   if (error) throw error
@@ -230,13 +228,9 @@ export async function deleteGroup(groupId) {
 }
 
 // Immutable audit trail for a group (members can read; append-only server-side).
+// Summaries/amounts are encrypted at rest; the RPC decrypts for members only.
 export async function listAuditLog(groupId, limit = 200) {
-  const { data, error } = await supabase
-    .from('group_audit_log')
-    .select('id, actor_name, action, summary, amount_minor, currency, created_at')
-    .eq('group_id', groupId)
-    .order('created_at', { ascending: false })
-    .limit(limit)
+  const { data, error } = await supabase.rpc('group_audit_entries', { p_group: groupId, p_limit: limit })
   if (error) throw new Error(error.message)
   return data ?? []
 }
@@ -248,14 +242,5 @@ export async function downloadGroupReport(groupId, groupName = 'group') {
     body: { group_id: groupId },
   })
   if (error) throw new Error(await edgeFunctionError(error))
-  // data is a Blob (pdf). Trigger a download.
-  const blob = data instanceof Blob ? data : new Blob([data], { type: 'application/pdf' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${groupName.replace(/[^a-z0-9]+/gi, '-')}-statement.pdf`
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
+  saveBlob(toBlob(data, 'application/pdf'), `${fileStem(groupName, 'group')}-statement.pdf`)
 }

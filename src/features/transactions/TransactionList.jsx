@@ -1,21 +1,24 @@
 import { useState } from 'react'
 import {
-  List, ListItem, HStack, Stack, Text, Divider, IconButton, Tag, TagLabel, useToast,
+  List, ListItem, HStack, Stack, Text, Divider, Tag, TagLabel, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
-  ModalFooter, Button,
+  ModalFooter, Button, Flex,
 } from '@chakra-ui/react'
-import { Pencil, Trash2, Paperclip } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
+import RowActions from '../../shared/ui/RowActions.jsx'
+import RowAmount from '../../shared/ui/RowAmount.jsx'
 import TransactionForm from './TransactionForm.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
+import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
-import { receiptUrl } from '../../shared/lib/receipts.js'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 
 // Shared list of personal transactions with edit + delete.
 // Group-mirrored rows (group_expense_id set) are read-only here — they're
-// edited in the group — and show a "Group" tag instead of the row actions.
+// edited in the group — and show their group's tag under the title instead.
+// On phones the row actions fold into a ⋯ menu.
 // Each row's income/expense styling follows its own `kind`, so the same
 // list renders single-kind pages (Income/Expenses) and mixed search results.
 const kindOf = (r, fallback) => r.kind ?? fallback
@@ -25,12 +28,6 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
   const [editing, setEditing] = useState(null)
   const [removing, setRemoving] = useState(null)
   const [busy, setBusy] = useState(false)
-
-  async function openReceipt(path) {
-    const url = await receiptUrl(path)
-    if (url) window.open(url, '_blank', 'noopener')
-    else toast({ title: 'Could not open receipt', status: 'error' })
-  }
 
   function onEdited(updated) {
     editModal.onClose()
@@ -66,35 +63,28 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
           return (
             <ListItem key={r.id}>
               {i > 0 && <Divider />}
-              <HStack py={3} spacing={3} align="start">
+              <HStack py={3} spacing={3} align="center">
                 <CategoryBadge category={r.categories} kind={rk} />
-                <Stack spacing={0} flex="1" minW={0}>
+                <Stack spacing={0.5} flex="1" minW={0}>
                   <Text fontWeight="600" noOfLines={1}>
                     {r.description || r.categories?.name || (rk === 'income' ? 'Income' : 'Expense')}
                   </Text>
-                  <Text fontSize="xs" color="text.muted">{r.spent_at}</Text>
+                  <Flex wrap="wrap" align="center" columnGap={2} rowGap={1}>
+                    <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
+                    {shared && (
+                      <Tag size="sm" colorScheme="brand" maxW="100%">
+                        <TagLabel noOfLines={1}>{groupLabel(r)}</TagLabel>
+                      </Tag>
+                    )}
+                  </Flex>
                 </Stack>
-                {shared && (
-                  <Tag size="sm" colorScheme="brand" maxW="120px">
-                    <TagLabel noOfLines={1}>{groupLabel(r)}</TagLabel>
-                  </Tag>
-                )}
-                {r.receipt_path && (
-                  <IconButton aria-label="Receipt" size="xs" variant="ghost"
-                    icon={<Paperclip size={14} />} onClick={() => openReceipt(r.receipt_path)} />
-                )}
-                <Text fontWeight="semibold" color={rk === 'income' ? 'status.positive' : 'text.primary'}>
+                <RowAmount color={rk === 'income' ? 'status.positive' : 'text.primary'}>
                   {rk === 'income' ? '+' : ''}{formatMoney(r.amount_minor, r.currency)}
-                </Text>
-                {!shared && (
-                  <>
-                    <IconButton aria-label="Edit" size="xs" variant="ghost"
-                      icon={<Pencil size={14} />}
-                      onClick={() => { setEditing(r); editModal.onOpen() }} />
-                    <IconButton aria-label="Delete" size="xs" variant="ghost" color="status.negative"
-                      icon={<Trash2 size={14} />} onClick={() => setRemoving(r)} />
-                  </>
-                )}
+                </RowAmount>
+                <RowActions slots={2} actions={shared ? [] : [
+                  { label: 'Edit', icon: Pencil, onClick: () => { setEditing(r); editModal.onOpen() } },
+                  { label: 'Delete', icon: Trash2, danger: true, onClick: () => setRemoving(r) },
+                ]} />
               </HStack>
             </ListItem>
           )

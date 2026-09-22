@@ -1,11 +1,24 @@
 // On-device receipt OCR (Tesseract.js) + heuristic extraction of total + date.
 //
 // Notes:
-//  * Tesseract runs entirely in the browser. On first use it downloads the
-//    English trained data (~a few MB) and caches it, so subsequent scans work
-//    offline.
+//  * Tesseract runs entirely in the browser. Its worker, wasm core and English
+//    trained data are served from our own origin (vite.config.js copies them
+//    out of node_modules into OCR_ASSET_DIR), never from a CDN. They stay out
+//    of the service-worker precache, so they're only fetched when someone scans.
 //  * We only extract the total amount and the date — the two fields the user
 //    confirmed as the scope. Merchant/category stay manual.
+
+// Build-output folder for the OCR engine files; vite.config.js writes it.
+export const OCR_ASSET_DIR = 'tesseract'
+
+// Absolute same-origin URLs for Tesseract's worker, core and language data.
+// Absolute because the worker boots from a blob: URL, where relative paths
+// don't resolve. corePath is a folder: Tesseract picks the SIMD or plain
+// LSTM core inside it for the device.
+export function ocrPaths(origin) {
+  const base = `${origin}/${OCR_ASSET_DIR}`
+  return { workerPath: `${base}/worker.min.js`, corePath: `${base}/core`, langPath: `${base}/lang` }
+}
 
 // Run OCR. onProgress receives 0..1. Returns the raw recognized text.
 // Tesseract is imported dynamically so its ~hundreds of KB only load when the
@@ -15,6 +28,7 @@
 async function ocrImage(file, onProgress) {
   const { default: Tesseract } = await import('tesseract.js')
   const { data } = await Tesseract.recognize(file, 'eng', {
+    ...ocrPaths(window.location.origin),
     logger: (m) => {
       if (m.status === 'recognizing text' && onProgress) onProgress(m.progress)
     },

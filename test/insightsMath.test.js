@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildTrend, spendDelta, netWorth } from '../src/features/insights/insightsMath.js'
+import { buildTrend, spendDelta, netWorth, axisTick } from '../src/features/insights/insightsMath.js'
 
 const months = [
   { key: '2026-01', label: 'Jan' },
@@ -34,4 +34,12 @@ test('netWorth: assets vs liabilities and the net', () => {
     { type: 'savings', balance_minor: 200 },
   ]
   assert.deepEqual(netWorth(accounts), { assets: 1200, liabilities: 400, net: 800 })
+})
+
+test('axisTick: compact labels that stay distinct between neighbouring ticks', () => {
+  assert.deepEqual([0, 800, 1600, 2400, 3200].map(axisTick), ['0', '800', '1.6k', '2.4k', '3.2k'])
+  assert.equal(axisTick(2000), '2k')
+  assert.equal(axisTick(120000), '120k')
+  assert.equal(axisTick(1500000), '1.5M')
+  assert.equal(axisTick(250), '250')
 })

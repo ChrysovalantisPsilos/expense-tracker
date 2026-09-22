@@ -1,22 +1,21 @@
 import { supabase } from '../../shared/lib/supabase.js'
 
+// Comment bodies are encrypted at rest: reads go through the decrypting
+// `group_comments_for` RPC, posts through `add_group_comment` (which checks
+// you're posting as your own member row and rate-limits the fan-out).
+
 // Comments on a group item (an expense or a settlement), oldest first.
+// Rows: { id, body, created_at, author_member_id, author_id, author: { display_name } }.
 export async function listComments(groupId, targetId) {
-  const { data, error } = await supabase
-    .from('group_comments')
-    .select('id, body, created_at, author_member_id, author_id, author:group_members(display_name)')
-    .eq('group_id', groupId)
-    .eq('target_id', targetId)
-    .order('created_at', { ascending: true })
+  const { data, error } = await supabase.rpc('group_comments_for', { p_group: groupId, p_target: targetId })
   if (error) throw new Error(error.message)
   return data ?? []
 }
 
 export async function addComment({ groupId, targetType, targetId, authorMemberId, body }) {
-  const { data: { user } } = await supabase.auth.getUser()
-  const { error } = await supabase.from('group_comments').insert({
-    group_id: groupId, target_type: targetType, target_id: targetId,
-    author_member_id: authorMemberId, author_id: user?.id, body,
+  const { error } = await supabase.rpc('add_group_comment', {
+    p_group: groupId, p_target_type: targetType, p_target_id: targetId,
+    p_author_member: authorMemberId, p_body: body,
   })
   if (error) throw new Error(error.message)
 }

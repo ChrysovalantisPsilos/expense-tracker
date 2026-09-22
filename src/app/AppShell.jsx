@@ -6,7 +6,7 @@ import {
 import UserAvatar from '../shared/ui/UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Wallet, Users,
-  LogOut, Search, Repeat, TrendingUp, MoreHorizontal,
+  LogOut, Search, Repeat, TrendingUp, MoreHorizontal, Settings,
 } from 'lucide-react'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/useProfile.js'
@@ -90,15 +90,18 @@ export default function AppShell() {
         <Box h="1px" bg="border.default" my={2} mx={2} />
         {SECONDARY.map((n) => <SideItem key={n.to} {...n} />)}
         <Spacer />
-        <RouterNavLink to="/profile" style={{ width: '100%' }}>
+        <RouterNavLink to="/settings" title="Settings" style={{ width: '100%' }}>
           {({ isActive }) => (
             <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
               bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
               <UserAvatar size="xs" name={profile?.display_name}
                 src={profile?.avatar_url} highlight />
-              <Text fontSize="sm" fontWeight="500" noOfLines={1}>
-                {profile?.display_name || 'Profile'}
+              <Text fontSize="sm" fontWeight="500" noOfLines={1} flex="1">
+                {profile?.display_name || 'Settings'}
               </Text>
+              <Box as="span" color={isActive ? 'accent.fg' : 'text.muted'} flexShrink={0}>
+                <Settings size={16} />
+              </Box>
             </HStack>
           )}
         </RouterNavLink>
@@ -129,9 +132,7 @@ export default function AppShell() {
             icon={<Search size={18} />} onClick={() => navigate('/search')} />
           <NotificationBell />
           <ThemeToggle />
-          <IconButton aria-label="Sign out" variant="ghost" size="sm"
-            icon={<LogOut size={18} />} onClick={signOut} />
-          <RouterNavLink to="/profile">
+          <RouterNavLink to="/settings" aria-label="Settings">
             <UserAvatar size="sm" name={profile?.display_name}
               src={profile?.avatar_url} highlight />
           </RouterNavLink>

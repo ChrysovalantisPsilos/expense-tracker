@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
   // -- Web push (all types) ---------------------------------------------------
   if ((prefs?.notify_push ?? true) && secrets.vapid_public_key && secrets.vapid_private_key) {
     webpush.setVapidDetails(
-      secrets.vapid_subject ?? 'mailto:admin@example.com',
+      secrets.vapid_subject ?? 'https://budgeer.com', // RFC 8292: a URL subject is valid; no contact address
       secrets.vapid_public_key,
       secrets.vapid_private_key,
     )

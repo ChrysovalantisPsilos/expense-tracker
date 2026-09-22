@@ -4,7 +4,9 @@
 //
 // Auth/isolation: the function uses the CALLER'S JWT with the anon key, so RLS
 // restricts everything to groups the caller is a member of. A non-member gets
-// an empty group lookup → 403. No service-role key is used.
+// an empty group lookup → 403. No service-role key is used. Settlements and
+// the audit trail are encrypted at rest, so they come from the decrypting,
+// membership-checked group_ledger / group_audit_entries RPCs.
 
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { BRAND, loadBrandFonts, Statement } from '../_shared/pdf.ts'
@@ -21,20 +23,24 @@ Deno.serve(async (req) => {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return json({ error: 'not authenticated' }, 401)
-    const { data: allowed } = await supabase.rpc('rate_limit', { p_key: `group-report:${user.id}`, p_max: 30, p_seconds: 3600 })
-    if (allowed === false) return json({ error: 'Too many report requests. Please try again later.' }, 429)
+    // Per-caller quota (keyed on the caller's own uid server-side). Fails closed.
+    const { data: allowed, error: quotaErr } = await supabase.rpc('consume_quota', { p_scope: 'group-report' })
+    if (quotaErr) throw quotaErr
+    if (allowed !== true) return json({ error: 'Too many report requests. Please try again later.' }, 429)
 
     const { data: group } = await supabase
       .from('groups').select('id, name, currency').eq('id', group_id).maybeSingle()
     if (!group) return json({ error: 'not allowed for this group' }, 403)
     const cur = group.currency
 
-    const [{ data: members }, { data: settlements }, { data: log }, { data: bal }] = await Promise.all([
+    const [{ data: members }, { data: ledger }, { data: log }, { data: bal }] = await Promise.all([
       supabase.from('group_members').select('id, display_name').eq('group_id', group_id).order('created_at'),
-      supabase.from('settlements').select('from_member, to_member, amount_minor, currency, settled_at').eq('group_id', group_id).order('settled_at', { ascending: false }),
-      supabase.from('group_audit_log').select('created_at, summary, amount_minor, currency, action').eq('group_id', group_id).order('created_at', { ascending: false }),
+      supabase.rpc('group_ledger', { p_group: group_id }),
+      // No cap: the statement carries the full trail.
+      supabase.rpc('group_audit_entries', { p_group: group_id, p_limit: null }),
       supabase.rpc('group_balances', { p_group: group_id }),
     ])
+    const settlements = ledger?.settlements
 
     const nameOf = (id: string) => (members ?? []).find((m: any) => m.id === id)?.display_name ?? '—'
     const net = new Map<string, number>((bal ?? []).map((b: any) => [b.member_id, Number(b.net_minor)]))

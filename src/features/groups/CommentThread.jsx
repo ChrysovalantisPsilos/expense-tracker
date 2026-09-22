@@ -7,6 +7,7 @@ import { Trash2, Send } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useLiveRefetch } from '../../shared/lib/realtime.js'
+import { shortDateTime } from '../../shared/lib/dates.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { listComments, addComment, deleteComment } from './comments.js'
 
@@ -84,7 +85,7 @@ export default function CommentThread({ group, target, myMember, isOpen, onClose
                         {cm.author?.display_name || 'Member'}
                       </Text>
                       <Text fontSize="xs" color="text.muted">
-                        {String(cm.created_at).slice(0, 16).replace('T', ' ')}
+                        {shortDateTime(cm.created_at)}
                       </Text>
                       <Box flex="1" />
                       {cm.author_id === user?.id && (
