@@ -2,21 +2,20 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Box, Flex, Center, Stack, HStack, Heading, Text, Button, Spinner, Card,
-  CardBody, Avatar, Divider, List, ListItem, Spacer, Image, useColorMode, IconButton,
+  CardBody, Avatar, Divider, List, ListItem, Spacer, Image,
 } from '@chakra-ui/react'
-import { Users, Sun, Moon, Lock } from 'lucide-react'
+import { Users, Lock } from 'lucide-react'
 import { previewGroup } from './groups.js'
 import { memberName, describeBalance } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
+import ThemeToggle from '../../shared/ui/ThemeToggle.jsx'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
 
 export default function GroupPreview() {
   const { token } = useParams()
   const navigate = useNavigate()
-  const { colorMode, toggleColorMode } = useColorMode()
-  const ThemeIcon = colorMode === 'dark' ? Sun : Moon
   const [data, setData] = useState(undefined) // undefined=loading, null=invalid
 
   useEffect(() => {
@@ -62,8 +61,7 @@ export default function GroupPreview() {
           <Text fontFamily="heading" fontWeight="700" fontSize="lg">budgeer</Text>
         </HStack>
         <Spacer />
-        <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
-          icon={<ThemeIcon size={18} />} onClick={toggleColorMode} />
+        <ThemeToggle />
       </Flex>
 
       <Box flex="1" px={4} pb="120px" maxW="600px" w="full" mx="auto">

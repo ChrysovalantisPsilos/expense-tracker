@@ -2,18 +2,17 @@ import { useEffect, useState } from 'react'
 import { Outlet, NavLink as RouterNavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Box, Flex, HStack, VStack, IconButton, Text, Spacer, Tooltip,
-  useColorMode,
 } from '@chakra-ui/react'
 import UserAvatar from '../shared/ui/UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Wallet, Users,
-  Sun, Moon, LogOut, Search, Repeat, TrendingUp, MoreHorizontal,
+  LogOut, Search, Repeat, TrendingUp, MoreHorizontal,
 } from 'lucide-react'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/useProfile.js'
-import { useAppearance } from '../shared/lib/appearance.jsx'
 import Logo from '../shared/ui/Logo.jsx'
 import OfflineIndicator from '../shared/ui/OfflineIndicator.jsx'
+import ThemeToggle from '../shared/ui/ThemeToggle.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
@@ -70,18 +69,12 @@ function TabItem({ to, label, icon: Icon, end }) {
 }
 
 export default function AppShell() {
-  const { colorMode } = useColorMode()
-  const { setPref } = useAppearance()
-  // Quick flip: pin to the opposite of what's showing. Writes through the
-  // appearance pref so Profile's Light/Dark/System control stays in sync.
-  const flipTheme = () => setPref(colorMode === 'dark' ? 'light' : 'dark')
   const { signOut } = useAuth()
   const { profile } = useProfile()
   const location = useLocation()
   const navigate = useNavigate()
   const [, setTick] = useState(0)
   useEffect(() => { setTick((n) => n + 1) }, [location])
-  const ThemeIcon = colorMode === 'dark' ? Sun : Moon
 
   return (
     <Flex minH="100dvh" bg="bg.canvas">
@@ -111,8 +104,7 @@ export default function AppShell() {
         </RouterNavLink>
         <HStack px={1} justify="space-between">
           <Tooltip label="Toggle theme">
-            <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
-              icon={<ThemeIcon size={18} />} onClick={flipTheme} />
+            <ThemeToggle />
           </Tooltip>
           <Tooltip label="Sign out">
             <IconButton aria-label="Sign out" variant="ghost" size="sm"
@@ -136,8 +128,7 @@ export default function AppShell() {
           <IconButton aria-label="Search" variant="ghost" size="sm"
             icon={<Search size={18} />} onClick={() => navigate('/search')} />
           <NotificationBell />
-          <IconButton aria-label="Toggle theme" variant="ghost" size="sm"
-            icon={<ThemeIcon size={18} />} onClick={flipTheme} />
+          <ThemeToggle />
           <IconButton aria-label="Sign out" variant="ghost" size="sm"
             icon={<LogOut size={18} />} onClick={signOut} />
           <RouterNavLink to="/profile">
