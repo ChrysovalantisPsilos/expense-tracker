@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box, Button, Container, Flex, Heading, HStack, SimpleGrid, Stack, Text,
 } from '@chakra-ui/react'
 import { HandCoins, Link2, ReceiptText } from 'lucide-react'
-import Logo from '../../shared/ui/Logo.jsx'
+import BrandGlow from '../../shared/ui/BrandGlow.jsx'
+import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import ThemeToggle from '../../shared/ui/ThemeToggle.jsx'
 import TripSplitMock from './TripSplitMock.jsx'
 import BudgetsMock from './BudgetsMock.jsx'
@@ -50,38 +50,6 @@ const SHOWCASE = [
   },
 ]
 
-function useScrolled() {
-  const [scrolled, setScrolled] = useState(false)
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-  return scrolled
-}
-
-function Nav({ onLogin, onSignup }) {
-  const scrolled = useScrolled()
-  return (
-    <Box as="header" position="sticky" top={0} zIndex="sticky"
-      bg="color-mix(in srgb, var(--chakra-colors-bg-canvas) 85%, transparent)"
-      backdropFilter="saturate(1.4) blur(12px)"
-      borderBottomWidth="1px" borderColor={scrolled ? 'border.default' : 'transparent'}
-      transition="border-color 0.2s">
-      <Container maxW="6xl" px={{ base: 4, md: 6 }}>
-        <Flex h="60px" align="center" gap={{ base: 1, sm: 2 }}>
-          <Logo size={28} />
-          <Box flex="1" />
-          <ThemeToggle />
-          <Button size="sm" variant="ghost" px={{ base: 2, sm: 3 }} onClick={onLogin}>Log in</Button>
-          <Button size="sm" px={{ base: 3, sm: 4 }} onClick={onSignup}>Get started</Button>
-        </Flex>
-      </Container>
-    </Box>
-  )
-}
-
 function SectionHeading({ eyebrow, title, children }) {
   return (
     <Stack spacing={3} maxW="xl">
@@ -99,10 +67,7 @@ function SectionHeading({ eyebrow, title, children }) {
 function Hero({ onLogin, onSignup }) {
   return (
     <Box as="section" position="relative" overflow="hidden">
-      <Box position="absolute" top="-10%" right={{ base: '-40%', lg: '-5%' }} w={{ base: '120%', lg: '60%' }} h="120%"
-        bgGradient="radial(closest-side, brand.100, transparent)"
-        _dark={{ bgGradient: 'radial(closest-side, rgba(249, 93, 56, 0.14), transparent)' }}
-        pointerEvents="none" aria-hidden />
+      <BrandGlow top="-10%" right={{ base: '-40%', lg: '-5%' }} w={{ base: '120%', lg: '60%' }} h="120%" />
       <Container maxW="6xl" px={{ base: 4, md: 6 }} position="relative"
         pt={{ base: 10, md: 16, lg: 20 }} pb={{ base: 14, md: 20 }}>
         <Flex direction={{ base: 'column', lg: 'row' }} align="center" gap={{ base: 12, lg: 16 }}>
@@ -209,7 +174,10 @@ export default function Landing() {
 
   return (
     <Box minH="100dvh" bg="bg.canvas" overflowX="clip">
-      <Nav onLogin={onLogin} onSignup={onSignup} />
+      <PublicHeader>
+        <Button size="sm" variant="ghost" px={{ base: 2, sm: 3 }} onClick={onLogin}>Log in</Button>
+        <Button size="sm" px={{ base: 3, sm: 4 }} onClick={onSignup}>Get started</Button>
+      </PublicHeader>
       <main>
         <Hero onLogin={onLogin} onSignup={onSignup} />
         <HowItWorks />

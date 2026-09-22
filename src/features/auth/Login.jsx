@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Button, Card, CardBody, Center, Divider, FormControl, FormLabel, FormHelperText,
-  Input, Stack, Text, useToast, VStack, HStack, Icon,
+  Button, Divider, FormControl, FormLabel, FormHelperText,
+  Input, Stack, Text, useToast, HStack, Icon,
 } from '@chakra-ui/react'
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { isSupabaseConfigured, passkeysSupported } from '../../shared/lib/supabase.js'
 import { validatePassword } from '../../shared/lib/password.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
-import Logo from '../../shared/ui/Logo.jsx'
+import AuthLayout from './AuthLayout.jsx'
 
 export default function Login() {
   const { signInWithPassword, signUp, signInWithPasskey, signInWithProvider } = useAuth()
@@ -65,87 +65,78 @@ export default function Login() {
   }
 
   return (
-    <Center minH="100dvh" px={4}>
-      <Card maxW="sm" w="full">
-        <CardBody>
-          <Stack spacing={6}>
-            <VStack spacing={3}>
-              <Logo size={40} />
-              <Text color="text.muted">
-                {mode === 'signin' ? 'Welcome back' : 'Create your account'}
-              </Text>
-            </VStack>
+    <AuthLayout
+      title={mode === 'signin' ? 'Welcome back' : 'Create your account'}
+      subtitle={mode === 'signin'
+        ? 'Sign in to your groups and budgets'
+        : 'Free — track your money and split with friends'}>
+      {!isSupabaseConfigured && (
+        <Text fontSize="sm" color="orange.400" textAlign="center">
+          Supabase isn’t configured yet — set VITE_SUPABASE_URL and
+          VITE_SUPABASE_ANON_KEY in .env.
+        </Text>
+      )}
 
-            {!isSupabaseConfigured && (
-              <Text fontSize="sm" color="orange.400" textAlign="center">
-                Supabase isn’t configured yet — set VITE_SUPABASE_URL and
-                VITE_SUPABASE_ANON_KEY in .env.
-              </Text>
+      <form onSubmit={handleSubmit}>
+        <Stack spacing={4}>
+          <FormControl isRequired>
+            <FormLabel>Email</FormLabel>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </FormControl>
+          <FormControl isRequired>
+            <FormLabel>Password</FormLabel>
+            <Input type="password" value={password}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              onChange={(e) => setPassword(e.target.value)} />
+            {mode === 'signup' && (
+              <FormHelperText>At least 8 characters, with a letter and a number.</FormHelperText>
             )}
+          </FormControl>
+          {mode === 'signin' && (
+            <Button variant="link" colorScheme="brand" size="sm" alignSelf="flex-end"
+              onClick={() => navigate('/forgot-password')}>
+              Forgot password?
+            </Button>
+          )}
+          <Button type="submit" isLoading={busy} w="full">
+            {mode === 'signin' ? 'Sign in' : 'Sign up'}
+          </Button>
+        </Stack>
+      </form>
 
-            <form onSubmit={handleSubmit}>
-              <Stack spacing={4}>
-                <FormControl isRequired>
-                  <FormLabel>Email</FormLabel>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                </FormControl>
-                <FormControl isRequired>
-                  <FormLabel>Password</FormLabel>
-                  <Input type="password" value={password}
-                    autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                    onChange={(e) => setPassword(e.target.value)} />
-                  {mode === 'signup' && (
-                    <FormHelperText>At least 8 characters, with a letter and a number.</FormHelperText>
-                  )}
-                </FormControl>
-                {mode === 'signin' && (
-                  <Button variant="link" colorScheme="brand" size="sm" alignSelf="flex-end"
-                    onClick={() => navigate('/forgot-password')}>
-                    Forgot password?
-                  </Button>
-                )}
-                <Button type="submit" isLoading={busy} w="full">
-                  {mode === 'signin' ? 'Sign in' : 'Sign up'}
-                </Button>
-              </Stack>
-            </form>
+      <HStack>
+        <Divider />
+        <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">or continue with</Text>
+        <Divider />
+      </HStack>
+      <Stack spacing={3}>
+        {/* Google's guidelines: white button, the four-color G, and
+            "Sign in/up with Google". Kept white in both themes (the mark
+            is designed for a light surface). */}
+        <Button w="full" bg="white" color="gray.700" fontWeight="500"
+          borderWidth="1px" borderColor="gray.300"
+          _hover={{ bg: 'gray.50' }} _active={{ bg: 'gray.100' }}
+          leftIcon={<GoogleIcon boxSize={5} />}
+          onClick={() => signInWithProvider('google')}>
+          {mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
+        </Button>
+        {mode === 'signin' && passkeysSupported && (
+          <Button variant="outline" colorScheme="gray" w="full"
+            leftIcon={<KeyRound size={18} />} isLoading={passkeyBusy}
+            onClick={handlePasskey}>
+            Sign in with a passkey
+          </Button>
+        )}
+      </Stack>
 
-            <HStack>
-              <Divider />
-              <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">or continue with</Text>
-              <Divider />
-            </HStack>
-            <Stack spacing={3}>
-              {/* Google's guidelines: white button, the four-color G, and
-                  "Sign in/up with Google". Kept white in both themes (the mark
-                  is designed for a light surface). */}
-              <Button w="full" bg="white" color="gray.700" fontWeight="500"
-                borderWidth="1px" borderColor="gray.300"
-                _hover={{ bg: 'gray.50' }} _active={{ bg: 'gray.100' }}
-                leftIcon={<GoogleIcon boxSize={5} />}
-                onClick={() => signInWithProvider('google')}>
-                {mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
-              </Button>
-              {mode === 'signin' && passkeysSupported && (
-                <Button variant="outline" colorScheme="gray" w="full"
-                  leftIcon={<KeyRound size={18} />} isLoading={passkeyBusy}
-                  onClick={handlePasskey}>
-                  Sign in with a passkey
-                </Button>
-              )}
-            </Stack>
-
-            <Text fontSize="sm" textAlign="center" color="text.muted">
-              {mode === 'signin' ? "Don't have an account? " : 'Already have one? '}
-              <Button variant="link" colorScheme="brand" size="sm"
-                onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
-                {mode === 'signin' ? 'Sign up' : 'Sign in'}
-              </Button>
-            </Text>
-          </Stack>
-        </CardBody>
-      </Card>
-    </Center>
+      <Text fontSize="sm" textAlign="center" color="text.muted">
+        {mode === 'signin' ? "Don't have an account? " : 'Already have one? '}
+        <Button variant="link" colorScheme="brand" size="sm"
+          onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
+          {mode === 'signin' ? 'Sign up' : 'Sign in'}
+        </Button>
+      </Text>
+    </AuthLayout>
   )
 }
 

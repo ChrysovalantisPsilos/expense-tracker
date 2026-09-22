@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Box, Flex, Center, Stack, HStack, Heading, Text, Button, Spinner, Card,
-  CardBody, Avatar, Divider, List, ListItem, Spacer, Image,
+  CardBody, Avatar, Divider, List, ListItem, Spacer,
 } from '@chakra-ui/react'
 import { Users, Lock } from 'lucide-react'
 import { previewGroup } from './groups.js'
 import { memberName, describeBalance } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
-import ThemeToggle from '../../shared/ui/ThemeToggle.jsx'
+import PublicHeader from '../../shared/ui/PublicHeader.jsx'
+import BrandGlow from '../../shared/ui/BrandGlow.jsx'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
 
@@ -54,18 +55,13 @@ export default function GroupPreview() {
   const nameOf = (mid) => memberName(data.members, mid)
 
   return (
-    <Flex direction="column" minH="100dvh" bg="bg.canvas">
-      <Flex px={5} py={4} align="center">
-        <HStack spacing={2.5}>
-          <Image src="/budge-mark.svg" alt="Budgeer" boxSize="28px" />
-          <Text fontFamily="heading" fontWeight="700" fontSize="lg">budgeer</Text>
-        </HStack>
-        <Spacer />
-        <ThemeToggle />
-      </Flex>
+    <Flex direction="column" minH="100dvh" bg="bg.canvas" overflowX="clip">
+      <PublicHeader />
 
-      <Box flex="1" px={4} pb="120px" maxW="600px" w="full" mx="auto">
-        <Stack spacing={5}>
+      <Box as="main" flex="1" position="relative" px={4} pb="120px" maxW="600px" w="full" mx="auto">
+        <BrandGlow top={0} left="50%" transform="translateX(-50%)"
+          w={{ base: '160%', md: '900px' }} h="480px" />
+        <Stack spacing={5} position="relative">
           <Box textAlign="center" pt={2}>
             <Flex boxSize="56px" mx="auto" mb={3} align="center" justify="center"
               borderRadius="2xl" bg="bg.subtle" color="accent.fg"><Users size={28} /></Flex>
