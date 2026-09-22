@@ -432,6 +432,23 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 12. Every function in public pins search_path (extension-owned ones aside),
+--     so none can be hijacked by objects created earlier on the search path.
+-- ---------------------------------------------------------------------------
+do $$
+declare unpinned text;
+begin
+  select string_agg(p.proname, ', ' order by p.proname) into unpinned
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public' and p.prokind = 'f'
+    and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+    and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search_path=%');
+  if unpinned is null then raise notice 'PASS: every public function pins search_path';
+  else update _t set fails = fails + 1; raise notice 'FAIL: search_path not pinned on: %', unpinned; end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed (so CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
