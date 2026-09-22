@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import {
-  Heading, Stack, Card, CardBody, Button, useDisclosure, Collapse,
-  HStack, Text, Spacer, Center, Spinner,
+  Stack, Card, CardBody, useDisclosure, Collapse, Text, Center, Spinner,
 } from '@chakra-ui/react'
-import { FileSpreadsheet } from 'lucide-react'
+import { CalendarDays, FileSpreadsheet, Plus, X } from 'lucide-react'
+import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
+import CardHeader from '../../shared/ui/CardHeader.jsx'
 import TransactionForm from './TransactionForm.jsx'
 import TransactionList from './TransactionList.jsx'
 import { useTransactions, monthRange } from './useData.js'
@@ -18,13 +19,12 @@ export default function Expenses() {
 
   return (
     <Stack spacing={5}>
-      <HStack>
-        <Heading size="lg">Expenses</Heading>
-        <Spacer />
-        <Button size="sm" variant="ghost" leftIcon={<FileSpreadsheet size={16} />}
-          onClick={() => navigate('/import')}>Import</Button>
-        <Button size="sm" onClick={onToggle}>{isOpen ? 'Hide form' : 'Add expense'}</Button>
-      </HStack>
+      <PageHeader title="Expenses" action={<>
+        <PageAction variant="ghost" icon={<FileSpreadsheet size={16} />} label="Import"
+          onClick={() => navigate('/import')} />
+        <PageAction icon={isOpen ? <X size={16} /> : <Plus size={16} />}
+          label={isOpen ? 'Hide form' : 'Add expense'} onClick={onToggle} />
+      </>} />
 
       <Collapse in={isOpen} animateOpacity>
         <Card><CardBody>
@@ -37,7 +37,7 @@ export default function Expenses() {
       </Collapse>
 
       <Card><CardBody>
-        <Heading size="sm" mb={3}>This month</Heading>
+        <CardHeader icon={CalendarDays} title="This month" />
         {loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : rows.length === 0 ? (

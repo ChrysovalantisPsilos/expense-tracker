@@ -22,7 +22,7 @@ export default function OfflineIndicator() {
 
   if (online) return null
   return (
-    <Badge colorScheme="orange" display="flex" alignItems="center" gap={1}>
+    <Badge bg="bg.subtle" color="status.warning" display="flex" alignItems="center" gap={1}>
       <WifiOff size={12} /> Offline
     </Badge>
   )

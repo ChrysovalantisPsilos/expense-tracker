@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Box,
+  Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Box,
   Spinner, Flex, Badge, IconButton, Divider, List, ListItem, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
   ModalFooter, Avatar, Checkbox,
@@ -21,6 +21,8 @@ import { commentCounts } from './comments.js'
 import { memberName, describeBalance } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { receiptUrl } from '../../shared/lib/receipts.js'
+import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
+import CardHeader from '../../shared/ui/CardHeader.jsx'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
 import CommentThread from './CommentThread.jsx'
 import {
@@ -164,11 +166,12 @@ export default function GroupDetail() {
 
   return (
     <Stack spacing={5}>
-      <HStack>
-        <IconButton aria-label="Back" variant="ghost" size="sm"
+      <PageHeader eyebrow="Group" title={group.name} leading={<>
+        <IconButton aria-label="Back" variant="ghost" size="sm" ml={-2} flexShrink={0}
           icon={<ArrowLeft size={18} />} onClick={() => navigate('/groups')} />
         <Box position="relative" flexShrink={0}>
-          <Avatar borderRadius="lg" size="md" name={group.name} src={group.image_url} />
+          <Avatar borderRadius="lg" size="md" name={group.name} src={group.image_url}
+            bg="bg.subtle" color="accent.fg" />
           {isOwner && (
             <>
               <IconButton aria-label="Change group photo" icon={<Camera size={12} />}
@@ -178,11 +181,10 @@ export default function GroupDetail() {
             </>
           )}
         </Box>
-        <Heading size="lg" noOfLines={1}>{group.name}</Heading>
-        <Spacer />
-        <Button size="sm" leftIcon={<Plus size={16} />} onClick={openAdd}>Add expense</Button>
+      </>} action={<>
+        <PageAction icon={<Plus size={16} />} label="Add expense" onClick={openAdd} />
         <Menu>
-          <MenuButton as={IconButton} aria-label="Group options" size="sm"
+          <MenuButton as={IconButton} aria-label="Group options" size="sm" mr={-2}
             variant="ghost" icon={<MoreVertical size={18} />} />
           <MenuList>
             <MenuItem icon={<FileDown size={16} />} onClick={downloadReport}>
@@ -199,13 +201,13 @@ export default function GroupDetail() {
               </MenuItem>
             )}
             {isOwner && (
-              <MenuItem icon={<Trash2 size={16} />} color="red.500" onClick={deleteModal.onOpen}>
+              <MenuItem icon={<Trash2 size={16} />} color="status.negative" onClick={deleteModal.onOpen}>
                 Delete group
               </MenuItem>
             )}
           </MenuList>
         </Menu>
-      </HStack>
+      </>} />
 
       {/* Your balance summary */}
       <Card>
@@ -216,7 +218,7 @@ export default function GroupDetail() {
             <Stack spacing={0}>
               <Text fontSize="sm" color="text.muted">Your balance</Text>
               <Text fontWeight="700" fontSize="lg"
-                color={myNet > 0 ? 'green.500' : myNet < 0 ? 'red.500' : 'text.primary'}>
+                color={myNet > 0 ? 'status.positive' : myNet < 0 ? 'status.negative' : 'text.primary'}>
                 {myNet === 0 ? "You're all settled up"
                   : myNet > 0 ? `You are owed ${formatMoney(myNet, cur)}`
                   : `You owe ${formatMoney(-myNet, cur)}`}
@@ -231,15 +233,12 @@ export default function GroupDetail() {
 
       {/* Members */}
       <Card><CardBody>
-        <HStack mb={3}>
-          <Users size={18} />
-          <Heading size="sm">Members</Heading>
-          <Spacer />
+        <CardHeader icon={Users} title="Members" mb={3} action={<>
           <Button size="xs" variant="ghost" leftIcon={<Mail size={14} />}
             onClick={inviteModal.onOpen}>Email</Button>
           <Button size="xs" variant="ghost" leftIcon={<Link2 size={14} />}
             onClick={copyInvite}>Link</Button>
-        </HStack>
+        </>} />
         <List spacing={0}>
           {members.map((m, i) => {
             const net = balances.get(m.id) ?? 0
@@ -256,13 +255,13 @@ export default function GroupDetail() {
                   {m.role === 'owner' && <Badge colorScheme="brand">owner</Badge>}
                   <Spacer />
                   {net !== 0 && (
-                    <Text fontSize="sm" color={net > 0 ? 'green.500' : 'red.500'}>
+                    <Text fontSize="sm" color={net > 0 ? 'status.positive' : 'status.negative'}>
                       {describeBalance(net, cur)}
                     </Text>
                   )}
                   {isOwner && !isMe && (
                     <IconButton aria-label={`Remove ${m.display_name}`} size="xs" variant="ghost"
-                      color="red.400" icon={<UserMinus size={14} />}
+                      color="status.negative" icon={<UserMinus size={14} />}
                       onClick={() => setRemoveTarget(m)} />
                   )}
                 </HStack>
@@ -412,7 +411,7 @@ export default function GroupDetail() {
                 stay in the group for everyone else.
                 {isOwner && ' As the owner, ownership passes to another member.'}
               </Text>
-              <Checkbox colorScheme="brand" isChecked={leaveSilently}
+              <Checkbox isChecked={leaveSilently}
                 onChange={(e) => setLeaveSilently(e.target.checked)}>
                 <Text fontSize="sm">Leave silently — don’t notify the group</Text>
               </Checkbox>

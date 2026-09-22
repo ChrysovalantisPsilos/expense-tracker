@@ -83,7 +83,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                   <IconButton aria-label="Receipt" size="xs" variant="ghost"
                     icon={<Paperclip size={14} />} onClick={() => openReceipt(r.receipt_path)} />
                 )}
-                <Text fontWeight="semibold" color={rk === 'income' ? 'green.500' : 'text.primary'}>
+                <Text fontWeight="semibold" color={rk === 'income' ? 'status.positive' : 'text.primary'}>
                   {rk === 'income' ? '+' : ''}{formatMoney(r.amount_minor, r.currency)}
                 </Text>
                 {!shared && (
@@ -91,7 +91,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                     <IconButton aria-label="Edit" size="xs" variant="ghost"
                       icon={<Pencil size={14} />}
                       onClick={() => { setEditing(r); editModal.onOpen() }} />
-                    <IconButton aria-label="Delete" size="xs" variant="ghost" color="red.400"
+                    <IconButton aria-label="Delete" size="xs" variant="ghost" color="status.negative"
                       icon={<Trash2 size={14} />} onClick={() => setRemoving(r)} />
                   </>
                 )}

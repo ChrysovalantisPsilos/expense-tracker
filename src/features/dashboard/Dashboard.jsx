@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   SimpleGrid, Card, CardBody, Stat, StatLabel, StatNumber, StatHelpText,
-  Heading, Box, Text, Stack, Center, Spinner, Spacer, HStack, IconButton,
+  Box, Text, Stack, Center, Spinner, HStack, IconButton,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Button,
   List, ListItem, Divider,
 } from '@chakra-ui/react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
-import { PieChart as PieIcon, Table as TableIcon, Repeat } from 'lucide-react'
+import { PieChart as PieIcon, Table as TableIcon, Repeat, ReceiptText } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
 import { useTransactions, buildPeriods, oldestTransactionDate } from '../transactions/useData.js'
 import { today } from '../../shared/lib/dates.js'
@@ -18,17 +18,19 @@ import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
+import PageHeader from '../../shared/ui/PageHeader.jsx'
+import CardHeader from '../../shared/ui/CardHeader.jsx'
+import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
-
-// Warm-led categorical palette (coral/amber first, then complementary hues).
-const COLORS = ['#f95d38', '#fbb324', '#ef8a5a', '#e2431f', '#f6c453', '#c2703d', '#7c6f59', '#d6ccba']
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { baseCurrency } = useProfile()
   const { rules } = useRecurring()
+  const chart = useChartTheme()
+  const seriesColor = (i) => chart.series[i % chart.series.length]
   const [oldest, setOldest] = useState(null)
   const periods = useMemo(() => buildPeriods(oldest), [oldest])
   // Default to this month; its token is stable and always present in the list.
@@ -86,14 +88,12 @@ export default function Dashboard() {
 
   return (
     <Stack spacing={5}>
-      <HStack align="center">
-        <Heading size="lg">Overview</Heading>
-        <Spacer />
-        <Select maxW="200px" size="sm" borderRadius="lg" value={periodValue}
-          onChange={(e) => setPeriodValue(e.target.value)}>
+      <PageHeader eyebrow="Home" title="Overview" action={
+        <Select w={{ base: '140px', sm: '200px' }} size="sm" borderRadius="lg" value={periodValue}
+          aria-label="Period" onChange={(e) => setPeriodValue(e.target.value)}>
           {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </Select>
-      </HStack>
+      } />
 
       <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4}>
         <Card><CardBody>
@@ -117,7 +117,7 @@ export default function Dashboard() {
         <Card><CardBody>
           <Stat>
             <StatLabel>Net</StatLabel>
-            <StatNumber color={netTotal >= 0 ? 'green.500' : 'red.500'}>
+            <StatNumber color={netTotal >= 0 ? 'status.positive' : 'status.negative'}>
               {formatMoney(netTotal, baseCurrency)}
             </StatNumber>
             <StatHelpText>
@@ -128,9 +128,7 @@ export default function Dashboard() {
       </SimpleGrid>
 
       <Card><CardBody>
-        <HStack mb={4}>
-          <Heading size="sm">Spending by category</Heading>
-          <Spacer />
+        <CardHeader icon={PieIcon} title="Spending by category" action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
             <CkTooltip label="Chart">
               <IconButton aria-label="Chart view" size="xs" icon={<PieIcon size={15} />}
@@ -145,7 +143,7 @@ export default function Dashboard() {
                 onClick={() => chooseView('table')} />
             </CkTooltip>
           </HStack>
-        </HStack>
+        } />
         {loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : byCategory.length === 0 ? (
@@ -154,11 +152,12 @@ export default function Dashboard() {
           <Box h="280px">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
-                  {byCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100}
+                  paddingAngle={2} stroke={chart.surface}>
+                  {byCategory.map((_, i) => <Cell key={i} fill={seriesColor(i)} />)}
                 </Pie>
-                <Tooltip formatter={(v) => formatMoney(v, baseCurrency)} />
-                <Legend />
+                <Tooltip formatter={(v) => formatMoney(v, baseCurrency)} {...chart.tooltip} />
+                <Legend formatter={chart.legendFormatter} />
               </PieChart>
             </ResponsiveContainer>
           </Box>
@@ -176,7 +175,7 @@ export default function Dashboard() {
                 <Tr key={c.name}>
                   <Td>
                     <HStack spacing={2}>
-                      <Box boxSize="10px" borderRadius="sm" bg={COLORS[i % COLORS.length]} />
+                      <Box boxSize="10px" borderRadius="sm" bg={seriesColor(i)} />
                       <Text>{c.name}</Text>
                     </HStack>
                   </Td>
@@ -192,7 +191,7 @@ export default function Dashboard() {
       <BudgetsCard />
 
       <Card><CardBody>
-        <Heading size="sm" mb={3}>Expenses</Heading>
+        <CardHeader icon={ReceiptText} title="Expenses" />
         {loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : expenses.length === 0 ? (
@@ -207,15 +206,9 @@ export default function Dashboard() {
       </CardBody></Card>
 
       <Card><CardBody>
-        <HStack mb={activeRecurring.length ? 3 : 0}>
-          <Box color="accent.fg"><Repeat size={18} /></Box>
-          <Heading size="sm">Recurring</Heading>
-          <Spacer />
-          {subsMonthly > 0 && (
-            <Text fontSize="sm" color="text.muted">{formatMoney(subsMonthly, baseCurrency)}/mo</Text>
-          )}
-          <Button size="xs" variant="ghost" onClick={() => navigate('/recurring')}>Manage</Button>
-        </HStack>
+        <CardHeader icon={Repeat} title="Recurring" mb={activeRecurring.length ? 4 : 0}
+          subtitle={subsMonthly > 0 ? `${formatMoney(subsMonthly, baseCurrency)}/mo` : undefined}
+          action={<Button size="xs" variant="ghost" onClick={() => navigate('/recurring')}>Manage</Button>} />
         {activeRecurring.length === 0 ? (
           <Text color="text.muted" fontSize="sm">
             No recurring entries yet. Add subscriptions and bills to see them here.
@@ -235,7 +228,7 @@ export default function Dashboard() {
                         {frequencyLabel(r)} · next {r.next_run}
                       </Text>
                     </Stack>
-                    <Text fontWeight="600" color={r.kind === 'income' ? 'green.500' : 'text.primary'}>
+                    <Text fontWeight="600" color={r.kind === 'income' ? 'status.positive' : 'text.primary'}>
                       {formatMoney(r.amount_minor, r.currency)}
                     </Text>
                   </HStack>

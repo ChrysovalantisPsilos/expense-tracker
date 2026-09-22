@@ -39,7 +39,7 @@ export default function ResetPassword() {
 
   if (!canReset) {
     return (
-      <AuthLayout icon={<AlertTriangle size={28} />} iconColor="orange.400"
+      <AuthLayout icon={<AlertTriangle size={28} />} iconColor="status.warning"
         title="Link expired or invalid"
         subtitle={<>
           This password-reset link isn’t valid anymore. Reset links are

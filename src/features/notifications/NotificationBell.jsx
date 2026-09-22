@@ -68,8 +68,8 @@ export default function NotificationBell() {
           )}
         </Box>
       </PopoverTrigger>
-      <PopoverContent w="320px" _dark={{ bg: 'bg.surface' }}>
-        <PopoverHeader fontWeight="700">Notifications</PopoverHeader>
+      <PopoverContent w="320px">
+        <PopoverHeader>Notifications</PopoverHeader>
         <PopoverBody px={0} maxH="380px" overflowY="auto">
           {items.length === 0 ? (
             <Text px={4} py={6} color="text.muted" fontSize="sm" textAlign="center">

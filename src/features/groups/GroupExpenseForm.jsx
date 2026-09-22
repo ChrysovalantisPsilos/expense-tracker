@@ -254,7 +254,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
               </Stack>
 
               <Text fontSize="sm" mt={2} fontWeight="600"
-                color={summaryOk ? 'green.500' : 'text.muted'}>
+                color={summaryOk ? 'status.positive' : 'text.muted'}>
                 {summary()}
               </Text>
             </FormControl>

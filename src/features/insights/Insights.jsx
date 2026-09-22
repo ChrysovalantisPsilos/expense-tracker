@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Spinner,
+  Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Spinner,
   Box, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText, StatArrow,
   Progress, List, ListItem, Divider, IconButton, Select, Input, FormControl,
   FormLabel, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
@@ -9,8 +9,11 @@ import {
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, CartesianGrid,
 } from 'recharts'
-import { Plus, Pencil, Trash2, Target, TrendingUp, Wallet } from 'lucide-react'
+import { Plus, Pencil, Trash2, PiggyBank, TrendingUp, Wallet } from 'lucide-react'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
+import PageHeader from '../../shared/ui/PageHeader.jsx'
+import CardHeader from '../../shared/ui/CardHeader.jsx'
+import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { useTransactions } from '../transactions/useData.js'
 import { lastMonths } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -31,39 +34,37 @@ export default function Insights() {
   // Trend values are major units (chart axis); formatting converts back to minor.
   const trend = useMemo(() => buildTrend(rows, months, baseCurrency), [rows, months, baseCurrency])
   const delta = spendDelta(trend)
+  const chart = useChartTheme()
 
   return (
     <Stack spacing={5}>
-      <Heading size="lg">Insights</Heading>
+      <PageHeader title="Insights" />
 
       <Card><CardBody>
-        <HStack mb={4}>
-          <Box color="accent.fg"><TrendingUp size={18} /></Box>
-          <Heading size="sm">6-month trend</Heading>
-          <Spacer />
-          {delta != null && (
-            <Stat textAlign="right" size="sm">
-              <StatHelpText mb={0}>
-                <StatArrow type={delta > 0 ? 'increase' : 'decrease'} />
-                {Math.abs(delta)}% vs last month
-              </StatHelpText>
-            </Stat>
-          )}
-        </HStack>
+        <CardHeader icon={TrendingUp} title="6-month trend" action={delta != null && (
+          <Stat textAlign="right" size="sm">
+            <StatHelpText mb={0}>
+              {/* Spending: up is the bad direction, so it takes the negative tone. */}
+              <StatArrow type={delta > 0 ? 'increase' : 'decrease'}
+                color={delta > 0 ? 'status.negative' : 'status.positive'} />
+              {Math.abs(delta)}% vs last month
+            </StatHelpText>
+          </Stat>
+        )} />
         {loading ? (
           <Center py={10}><Spinner color="brand.500" /></Center>
         ) : (
           <Box h="260px">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={trend} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
-                <YAxis tickLine={false} axisLine={false} fontSize={11}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chart.grid} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} tick={chart.tick} />
+                <YAxis tickLine={false} axisLine={false} fontSize={11} tick={chart.tick}
                   tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : v)} />
-                <Tooltip formatter={(v) => formatMoney(Math.round(v * factor), baseCurrency)} />
-                <Legend />
-                <Bar dataKey="income" name="Income" fill="#16a34a" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expense" name="Expenses" fill="#f95d38" radius={[4, 4, 0, 0]} />
+                <Tooltip formatter={(v) => formatMoney(Math.round(v * factor), baseCurrency)} {...chart.tooltip} />
+                <Legend formatter={chart.legendFormatter} />
+                <Bar dataKey="income" name="Income" fill={chart.positive} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expense" name="Expenses" fill={chart.series[0]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Box>
@@ -92,13 +93,10 @@ function NetWorthCard({ baseCurrency }) {
 
   return (
     <Card><CardBody>
-      <HStack mb={4}>
-        <Box color="accent.fg"><Wallet size={18} /></Box>
-        <Heading size="sm">Net worth</Heading>
-        <Spacer />
+      <CardHeader icon={Wallet} title="Net worth" action={
         <Button size="xs" leftIcon={<Plus size={14} />}
           onClick={() => { setEditing(null); modal.onOpen() }}>Account</Button>
-      </HStack>
+      } />
 
       {loading ? (
         <Center py={6}><Spinner color="brand.500" /></Center>
@@ -106,11 +104,11 @@ function NetWorthCard({ baseCurrency }) {
         <>
           <SimpleGrid columns={3} spacing={3} mb={accounts.length ? 4 : 0}>
             <Stat size="sm"><StatLabel>Assets</StatLabel>
-              <StatNumber fontSize="lg" color="green.500">{formatMoney(assets, baseCurrency)}</StatNumber></Stat>
+              <StatNumber fontSize="lg" color="status.positive">{formatMoney(assets, baseCurrency)}</StatNumber></Stat>
             <Stat size="sm"><StatLabel>Debts</StatLabel>
-              <StatNumber fontSize="lg" color="red.400">{formatMoney(liabilities, baseCurrency)}</StatNumber></Stat>
+              <StatNumber fontSize="lg" color="status.negative">{formatMoney(liabilities, baseCurrency)}</StatNumber></Stat>
             <Stat size="sm"><StatLabel>Net</StatLabel>
-              <StatNumber fontSize="lg" color={net >= 0 ? 'text.primary' : 'red.400'}>
+              <StatNumber fontSize="lg" color={net >= 0 ? 'text.primary' : 'status.negative'}>
                 {formatMoney(net, baseCurrency)}</StatNumber></Stat>
           </SimpleGrid>
 
@@ -125,15 +123,16 @@ function NetWorthCard({ baseCurrency }) {
                   {i > 0 && <Divider />}
                   <HStack py={2.5} spacing={3}>
                     <Text fontWeight="600" noOfLines={1} flex="1">{acc.name}</Text>
-                    <Tag size="sm" colorScheme={acc.type === 'liability' ? 'red' : 'green'}>
+                    <Tag size="sm" bg="bg.subtle"
+                      color={acc.type === 'liability' ? 'status.negative' : 'status.positive'}>
                       {acc.type === 'liability' ? 'Debt' : 'Asset'}
                     </Tag>
-                    <Text fontWeight="600" color={acc.type === 'liability' ? 'red.400' : 'text.primary'}>
+                    <Text fontWeight="600" color={acc.type === 'liability' ? 'status.negative' : 'text.primary'}>
                       {acc.type === 'liability' ? '−' : ''}{formatMoney(acc.balance_minor, acc.currency)}
                     </Text>
                     <IconButton aria-label="Edit" size="xs" variant="ghost" icon={<Pencil size={14} />}
                       onClick={() => { setEditing(acc); modal.onOpen() }} />
-                    <IconButton aria-label="Delete" size="xs" variant="ghost" color="red.400"
+                    <IconButton aria-label="Delete" size="xs" variant="ghost" color="status.negative"
                       icon={<Trash2 size={14} />} onClick={() => remove(acc)} />
                   </HStack>
                 </ListItem>
@@ -227,13 +226,10 @@ function GoalsCard({ baseCurrency }) {
 
   return (
     <Card><CardBody>
-      <HStack mb={4}>
-        <Box color="accent.fg"><Target size={18} /></Box>
-        <Heading size="sm">Savings goals</Heading>
-        <Spacer />
+      <CardHeader icon={PiggyBank} title="Savings goals" action={
         <Button size="xs" leftIcon={<Plus size={14} />}
           onClick={() => { setEditing(null); modal.onOpen() }}>Goal</Button>
-      </HStack>
+      } />
 
       {loading ? (
         <Center py={6}><Spinner color="brand.500" /></Center>
@@ -249,13 +245,13 @@ function GoalsCard({ baseCurrency }) {
               <Box key={g.id}>
                 <HStack mb={1}>
                   <Text fontWeight="600" noOfLines={1} flex="1">{g.name}</Text>
-                  {done && <Tag size="sm" colorScheme="green">Reached 🎉</Tag>}
+                  {done && <Tag size="sm" bg="bg.subtle" color="status.positive">Reached 🎉</Tag>}
                   <IconButton aria-label="Edit" size="xs" variant="ghost" icon={<Pencil size={13} />}
                     onClick={() => { setEditing(g); modal.onOpen() }} />
-                  <IconButton aria-label="Delete" size="xs" variant="ghost" color="red.400"
+                  <IconButton aria-label="Delete" size="xs" variant="ghost" color="status.negative"
                     icon={<Trash2 size={13} />} onClick={() => remove(g)} />
                 </HStack>
-                <Progress value={pct} colorScheme={done ? 'green' : 'brand'} borderRadius="full" size="sm" mb={1} />
+                <Progress value={pct} variant={done ? 'positive' : undefined} size="sm" mb={1} />
                 <HStack fontSize="sm" color="text.muted">
                   <Text>{formatMoney(g.saved_minor, g.currency)} of {formatMoney(g.target_minor, g.currency)}</Text>
                   <Spacer />

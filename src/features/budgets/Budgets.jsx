@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import {
-  Heading, Stack, Card, CardBody, HStack, Text, Spacer, Progress, Button,
+  Stack, Card, CardBody, HStack, Text, Spacer, Progress, Button,
   FormControl, FormLabel, Select, useToast, Center, Spinner, Box,
 } from '@chakra-ui/react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
+import PageHeader from '../../shared/ui/PageHeader.jsx'
 import { useCategories, monthRange } from '../transactions/useData.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
 import { formatMoney, toMinor } from '../../shared/lib/currency.js'
+import { monthTitle } from '../../shared/lib/dates.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import { saveBudget } from './budgets.js'
 import { useBudgetProgress } from './useBudgetProgress.js'
@@ -42,7 +44,7 @@ export default function Budgets() {
 
   return (
     <Stack spacing={5}>
-      <Heading size="lg">Budgets</Heading>
+      <PageHeader eyebrow={monthTitle()} title="Budgets" />
 
       <Card><CardBody>
         <form onSubmit={addBudget}>
@@ -70,19 +72,19 @@ export default function Budgets() {
         <Stack spacing={3}>
           {items.map((b) => {
             const pct = b.limit > 0 ? Math.min(100, Math.round((b.spent / b.limit) * 100)) : 0
-            const over = b.spent > b.limit
+            const over = b.tone === 'negative'
             return (
               <Card key={b.id}><CardBody>
                 <HStack mb={3} spacing={3}>
                   <CategoryBadge category={b.category} size={32} />
                   <Text fontWeight="600">{b.name}</Text>
                   <Spacer />
-                  <Text fontSize="sm" color={over ? 'red.500' : 'text.muted'}>
+                  <Text fontSize="sm" color={over ? 'status.negative' : 'text.muted'}>
                     {formatMoney(b.spent, baseCurrency)} / {formatMoney(b.limit, baseCurrency)}
                   </Text>
                 </HStack>
-                <Progress value={pct} colorScheme={over ? 'red' : pct > 80 ? 'orange' : 'brand'} borderRadius="full" />
-                {over && <Box mt={1}><Text fontSize="xs" color="red.500">Over budget</Text></Box>}
+                <Progress value={pct} variant={b.tone} />
+                {over && <Box mt={1}><Text fontSize="xs" color="status.negative">Over budget</Text></Box>}
               </CardBody></Card>
             )
           })}

@@ -106,8 +106,7 @@ export default function OnboardingWizard({ profile, onDone }) {
             <IconButton aria-label="Skip setup" size="sm" variant="ghost"
               icon={<X size={18} />} onClick={finish} />
           </HStack>
-          <Progress value={((step + 1) / STEPS.length) * 100} size="xs"
-            colorScheme="brand" borderRadius="full" mt={3} />
+          <Progress value={((step + 1) / STEPS.length) * 100} size="xs" mt={3} />
         </ModalHeader>
 
         <ModalBody>

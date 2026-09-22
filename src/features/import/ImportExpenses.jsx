@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import {
   Heading, Stack, Card, CardBody, HStack, Text, Button, Box, Spacer, Select,
   FormControl, FormLabel, Table, Thead, Tbody, Tr, Th, Td, useToast,
-  IconButton, Badge, TableContainer,
+  IconButton, TableContainer,
 } from '@chakra-ui/react'
-import { ArrowLeft, UploadCloud, FileSpreadsheet, Check } from 'lucide-react'
+import { ArrowLeft, UploadCloud, FileSpreadsheet, Check, Eye, Store } from 'lucide-react'
+import PageHeader from '../../shared/ui/PageHeader.jsx'
+import CardHeader from '../../shared/ui/CardHeader.jsx'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
@@ -117,11 +119,10 @@ export default function ImportExpenses() {
 
   return (
     <Stack spacing={5} maxW="760px">
-      <HStack>
-        <IconButton aria-label="Back" variant="ghost" size="sm"
+      <PageHeader eyebrow="Expenses" title="Import from Excel" leading={
+        <IconButton aria-label="Back" variant="ghost" size="sm" ml={-2} flexShrink={0}
           icon={<ArrowLeft size={18} />} onClick={() => navigate('/expenses')} />
-        <Heading size="lg">Import from Excel</Heading>
-      </HStack>
+      } />
 
       {step === 'upload' && (
         <Card><CardBody>
@@ -143,13 +144,8 @@ export default function ImportExpenses() {
       {step === 'map' && (
         <>
           <Card><CardBody>
-            <HStack mb={4}>
-              <FileSpreadsheet size={18} />
-              <Text fontWeight="600">{fileName}</Text>
-              <Badge>{rows.length} rows</Badge>
-              <Spacer />
-              <Button size="sm" variant="ghost" onClick={() => setStep('upload')}>Change file</Button>
-            </HStack>
+            <CardHeader icon={FileSpreadsheet} title={fileName} subtitle={`${rows.length} rows`}
+              action={<Button size="xs" variant="ghost" onClick={() => setStep('upload')}>Change file</Button>} />
             <Text fontSize="sm" color="text.muted" mb={3}>
               Match your columns to Budgeer fields. Date and Amount are required.
             </Text>
@@ -157,7 +153,7 @@ export default function ImportExpenses() {
               {IMPORT_FIELDS.map((f) => (
                 <FormControl key={f.key}>
                   <FormLabel fontSize="sm" mb={1}>
-                    {f.label}{f.required && <Text as="span" color="red.400"> *</Text>}
+                    {f.label}{f.required && <Text as="span" color="status.negative"> *</Text>}
                   </FormLabel>
                   <Select size="sm" placeholder={f.required ? 'Select a column…' : '— none —'}
                     value={mapping[f.key] || ''}
@@ -170,7 +166,7 @@ export default function ImportExpenses() {
           </CardBody></Card>
 
           <Card><CardBody>
-            <Text fontWeight="600" mb={2}>Preview</Text>
+            <CardHeader icon={Eye} title="Preview" mb={3} />
             {previewTx.length === 0 ? (
               <Text fontSize="sm" color="text.muted">
                 Map Date and Amount to preview rows.
@@ -207,7 +203,7 @@ export default function ImportExpenses() {
 
       {step === 'review' && pending && (
         <Card><CardBody>
-          <Text fontWeight="600" mb={1}>New merchants</Text>
+          <CardHeader icon={Store} title="New merchants" mb={2} />
           <Text fontSize="sm" color="text.muted" mb={4}>
             Pick categories for merchants Budgeer hasn’t seen before — each choice
             is remembered as a rule and applied automatically on every future
@@ -242,7 +238,7 @@ export default function ImportExpenses() {
       {step === 'done' && result && (
         <Card><CardBody>
           <Stack spacing={3} align="center" py={6} textAlign="center">
-            <Box color="green.500"><Check size={40} /></Box>
+            <Box color="status.positive"><Check size={40} /></Box>
             <Heading size="md">Imported {result.inserted} transactions</Heading>
             {result.duplicates > 0 && (
               <Text fontSize="sm" color="text.muted">

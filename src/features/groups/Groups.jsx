@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Spinner,
+  Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Spinner,
   Flex, Icon, Avatar, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader,
   ModalBody, ModalFooter, FormControl, FormLabel, Input, Select, useToast,
 } from '@chakra-ui/react'
@@ -10,6 +10,7 @@ import { listGroups, createGroup, listMyInvites, respondToInvite } from './group
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
 import { useLiveRefetch } from '../../shared/lib/realtime.js'
+import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 
 export default function Groups() {
   const navigate = useNavigate()
@@ -71,11 +72,8 @@ export default function Groups() {
 
   return (
     <Stack spacing={5}>
-      <HStack>
-        <Heading size="lg">Groups</Heading>
-        <Spacer />
-        <Button leftIcon={<Plus size={18} />} onClick={onOpen}>New group</Button>
-      </HStack>
+      <PageHeader title="Groups"
+        action={<PageAction icon={<Plus size={16} />} label="New group" onClick={onOpen} />} />
 
       {invites.length > 0 && (
         <Stack spacing={2}>

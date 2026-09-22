@@ -71,7 +71,7 @@ export default function Login() {
         ? 'Sign in to your groups and budgets'
         : 'Free — track your money and split with friends'}>
       {!isSupabaseConfigured && (
-        <Text fontSize="sm" color="orange.400" textAlign="center">
+        <Text fontSize="sm" color="status.warning" textAlign="center">
           Supabase isn’t configured yet — set VITE_SUPABASE_URL and
           VITE_SUPABASE_ANON_KEY in .env.
         </Text>

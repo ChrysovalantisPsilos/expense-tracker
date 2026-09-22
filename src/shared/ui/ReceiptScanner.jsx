@@ -68,7 +68,7 @@ export default function ReceiptScanner({ onScan }) {
             {busy ? (
               <>
                 <Text fontSize="sm" color="text.muted" mb={1}>Reading receipt…</Text>
-                <Progress value={progress * 100} size="sm" colorScheme="brand" borderRadius="full" />
+                <Progress value={progress * 100} size="sm" />
               </>
             ) : (
               <Text fontSize="sm" color="text.muted">

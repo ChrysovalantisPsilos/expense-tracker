@@ -16,7 +16,7 @@ export default function OptionalDate({ label, value, onChange, ...rest }) {
   return (
     <Stack spacing={on ? 2 : 0}>
       <HStack spacing={2}>
-        <Switch size="sm" colorScheme="brand" isChecked={on}
+        <Switch size="sm" isChecked={on}
           onChange={(e) => toggle(e.target.checked)} />
         <Text fontSize="sm" color="text.muted" cursor="pointer"
           onClick={() => toggle(!on)}>{label}</Text>

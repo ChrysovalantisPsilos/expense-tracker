@@ -4,6 +4,7 @@ import { useTransactions } from '../transactions/useData.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
+import { budgetTone } from './budgetMath.js'
 
 // This month's budgets with their actual spend — shared by the dashboard card
 // and the Budgets page. Budgets are stored in the base currency; spend is
@@ -18,14 +19,18 @@ export function useBudgetProgress() {
   const items = useMemo(() => {
     const spentByCat = sumToBaseByKey(txns, baseCurrency, (r) => r.category_id ?? null)
     return budgets
-      .map((b) => ({
-        id: b.id,
-        categoryId: b.category_id,
-        category: b.categories ?? null,
-        name: b.categories?.name ?? 'Category',
-        limit: b.amount_minor,
-        spent: spentByCat.get(b.category_id) ?? 0,
-      }))
+      .map((b) => {
+        const spent = spentByCat.get(b.category_id) ?? 0
+        return {
+          id: b.id,
+          categoryId: b.category_id,
+          category: b.categories ?? null,
+          name: b.categories?.name ?? 'Category',
+          limit: b.amount_minor,
+          spent,
+          tone: budgetTone(spent, b.amount_minor),
+        }
+      })
       // Most-used budgets first (over-budget floats to the top).
       .sort((a, b) => (b.spent / (b.limit || 1)) - (a.spent / (a.limit || 1)))
   }, [budgets, txns, baseCurrency])

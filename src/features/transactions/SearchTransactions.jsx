@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import {
-  Heading, Stack, Card, CardBody, HStack, Input, Select,
+  Stack, Card, CardBody, HStack, Input, Select,
   InputGroup, InputLeftElement, Button, Text, Center, Spinner, Spacer,
   FormControl, FormLabel, SimpleGrid,
 } from '@chakra-ui/react'
-import { Search, X } from 'lucide-react'
+import { ListFilter, Search, X } from 'lucide-react'
+import PageHeader from '../../shared/ui/PageHeader.jsx'
+import CardHeader from '../../shared/ui/CardHeader.jsx'
 import TransactionList from './TransactionList.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import { useTransactions, useCategories } from './useData.js'
@@ -59,7 +61,7 @@ export default function SearchTransactions() {
 
   return (
     <Stack spacing={5}>
-      <Heading size="lg">Search</Heading>
+      <PageHeader title="Search" />
 
       <Card><CardBody>
         <Stack spacing={4}>
@@ -114,17 +116,13 @@ export default function SearchTransactions() {
       </CardBody></Card>
 
       <Card><CardBody>
-        <HStack mb={3} align="baseline">
-          <Heading size="sm">
-            {loading ? 'Searching…' : `${filtered.length} result${filtered.length === 1 ? '' : 's'}`}
-          </Heading>
-          <Spacer />
-          {!loading && filtered.length > 0 && (
+        <CardHeader icon={ListFilter}
+          title={loading ? 'Searching…' : `${filtered.length} result${filtered.length === 1 ? '' : 's'}`}
+          action={!loading && filtered.length > 0 && (
             <Text fontSize="sm" color="text.muted">
               Net {net < 0 ? '−' : ''}{formatMoney(Math.abs(net), baseCurrency)}
             </Text>
-          )}
-        </HStack>
+          )} />
         {loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : filtered.length === 0 ? (

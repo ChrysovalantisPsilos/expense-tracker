@@ -96,7 +96,7 @@ export default function NotificationPrompt() {
               and reminders before your bills are due. You can change this
               anytime in Profile → Notifications.
             </Text>
-            <Checkbox colorScheme="brand" isChecked={emailToo}
+            <Checkbox isChecked={emailToo}
               onChange={(e) => setEmailToo(e.target.checked)}>
               <Text fontSize="sm">
                 Also email me about big events — invites, members joining or leaving

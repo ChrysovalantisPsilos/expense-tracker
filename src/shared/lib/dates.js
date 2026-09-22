@@ -12,6 +12,10 @@ export function monthRange(d = new Date()) {
   return { from: isoDate(start), to: isoDate(end) }
 }
 
+// A month as a heading, e.g. "September 2026".
+export const monthTitle = (d = new Date()) =>
+  d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+
 // The last `n` calendar months, oldest → newest, each as
 // { key: 'YYYY-MM', label: 'Jan', from, to }.
 export function lastMonths(n, d = new Date()) {

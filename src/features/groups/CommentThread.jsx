@@ -88,7 +88,7 @@ export default function CommentThread({ group, target, myMember, isOpen, onClose
                       </Text>
                       <Box flex="1" />
                       {cm.author_id === user?.id && (
-                        <IconButton aria-label="Delete comment" size="xs" variant="ghost" color="red.400"
+                        <IconButton aria-label="Delete comment" size="xs" variant="ghost" color="status.negative"
                           icon={<Trash2 size={13} />} isDisabled={busy} onClick={() => remove(cm.id)} />
                       )}
                     </HStack>

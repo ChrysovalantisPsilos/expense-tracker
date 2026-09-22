@@ -1,6 +1,9 @@
 import {
-  Heading, Stack, Card, CardBody, Text, Center, Spinner,
+  Stack, Card, CardBody, Text, Center, Spinner,
 } from '@chakra-ui/react'
+import { CalendarDays } from 'lucide-react'
+import PageHeader from '../../shared/ui/PageHeader.jsx'
+import CardHeader from '../../shared/ui/CardHeader.jsx'
 import TransactionForm from './TransactionForm.jsx'
 import TransactionList from './TransactionList.jsx'
 import { useTransactions, monthRange } from './useData.js'
@@ -13,14 +16,14 @@ export default function Income() {
 
   return (
     <Stack spacing={5}>
-      <Heading size="lg">Income</Heading>
+      <PageHeader title="Income" />
 
       <Card><CardBody>
         <TransactionForm kind="income" baseCurrency={baseCurrency} onSaved={reload} />
       </CardBody></Card>
 
       <Card><CardBody>
-        <Heading size="sm" mb={3}>This month</Heading>
+        <CardHeader icon={CalendarDays} title="This month" />
         {loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : rows.length === 0 ? (

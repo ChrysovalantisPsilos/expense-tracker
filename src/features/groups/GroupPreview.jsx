@@ -82,7 +82,7 @@ export default function GroupPreview() {
                       <Text fontWeight="500">{m.display_name}</Text>
                       <Spacer />
                       {net !== 0 && (
-                        <Text fontSize="sm" color={net > 0 ? 'green.500' : 'red.500'}>
+                        <Text fontSize="sm" color={net > 0 ? 'status.positive' : 'status.negative'}>
                           {describeBalance(net, cur)}
                         </Text>
                       )}

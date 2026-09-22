@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Heading, Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Spinner,
+  Stack, Card, CardBody, HStack, Text, Button, Center, Spinner,
   List, ListItem, Divider, IconButton, Switch, Tag, SimpleGrid, Stat, StatLabel,
   StatNumber, StatHelpText, Modal, ModalOverlay, ModalContent, ModalHeader,
   ModalBody, ModalFooter, FormControl, FormLabel, Input, Select, useToast,
@@ -10,6 +10,7 @@ import { Plus, Pencil, Trash2, Repeat, Bell } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
+import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import { useProfile } from '../../shared/lib/useProfile.js'
 import { useCategories } from '../transactions/useData.js'
 import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
@@ -56,11 +57,8 @@ export default function Recurring() {
 
   return (
     <Stack spacing={5}>
-      <HStack>
-        <Heading size="lg">Recurring</Heading>
-        <Spacer />
-        <Button size="sm" leftIcon={<Plus size={16} />} onClick={openNew}>Add</Button>
-      </HStack>
+      <PageHeader title="Recurring"
+        action={<PageAction icon={<Plus size={16} />} label="Add" onClick={openNew} />} />
 
       <SimpleGrid columns={{ base: 2, sm: 2 }} spacing={4}>
         <Card><CardBody>
@@ -73,7 +71,7 @@ export default function Recurring() {
         <Card><CardBody>
           <Stat>
             <StatLabel>Recurring income</StatLabel>
-            <StatNumber color="green.500">{formatMoney(incomeMonthly, baseCurrency)}</StatNumber>
+            <StatNumber color="status.positive">{formatMoney(incomeMonthly, baseCurrency)}</StatNumber>
             <StatHelpText>per month</StatHelpText>
           </Stat>
         </CardBody></Card>
@@ -114,17 +112,17 @@ export default function Recurring() {
                     </HStack>
                   </Stack>
                   <Stack spacing={0} align="end">
-                    <Text fontWeight="600" color={r.kind === 'income' ? 'green.500' : 'text.primary'}>
+                    <Text fontWeight="600" color={r.kind === 'income' ? 'status.positive' : 'text.primary'}>
                       {formatMoney(r.amount_minor, r.currency)}
                     </Text>
                     <Text fontSize="xs" color="text.muted">
                       {formatMoney(monthlyMinor(r), r.currency)}/mo
                     </Text>
                   </Stack>
-                  <Switch isChecked={r.is_active} onChange={() => toggle(r)} colorScheme="brand" />
+                  <Switch isChecked={r.is_active} onChange={() => toggle(r)} />
                   <IconButton aria-label="Edit" size="xs" variant="ghost"
                     icon={<Pencil size={14} />} onClick={() => openEdit(r)} />
-                  <IconButton aria-label="Delete" size="xs" variant="ghost" color="red.400"
+                  <IconButton aria-label="Delete" size="xs" variant="ghost" color="status.negative"
                     icon={<Trash2 size={14} />} onClick={() => setRemoving(r)} />
                 </HStack>
               </ListItem>
@@ -290,8 +288,7 @@ function RecurringForm({ rule, baseCurrency, onClose, onSaved }) {
                     <Text>Remind me before each charge</Text>
                   </HStack>
                 </FormLabel>
-                <Switch id="remind-switch" colorScheme="brand"
-                  isChecked={remind} onChange={toggleRemind} />
+                <Switch id="remind-switch" isChecked={remind} onChange={toggleRemind} />
               </HStack>
               {remind && (
                 <HStack mt={3} spacing={2}>
