@@ -31,6 +31,9 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Social-preview card is only fetched by link scrapers — don't ship it
+        // to every installed client's precache.
+        globIgnores: ['og-image.png'],
       },
     }),
   ],
