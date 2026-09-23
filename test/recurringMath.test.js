@@ -146,3 +146,44 @@ test('monthlyBudgetShare: yearly expense rules only, first part and whether it i
   assert.equal(monthlyBudgetShare({ kind: 'income', frequency: 'yearly', interval_n: 1, amount_minor: 12000 }), null)
   assert.equal(monthlyBudgetShare({ kind: 'expense', frequency: 'monthly', interval_n: 12, amount_minor: 12000 }), null)
 })
+
+// ---- Yearly subscriptions kept separate (0068) -------------------------------
+import { monthlyTotals, yearlySubscriptions } from '../src/features/recurring/recurringMath.js'
+
+const mix = [
+  { id: 'm', is_active: true, kind: 'expense', amount_minor: 999, currency: 'EUR', frequency: 'monthly', interval_n: 1, next_run: '2026-10-01' },
+  { id: 'i', is_active: true, kind: 'income', amount_minor: 60000, currency: 'EUR', frequency: 'yearly', interval_n: 1, next_run: '2026-12-01' },
+  { id: 'y1', is_active: true, kind: 'expense', amount_minor: 12000, currency: 'EUR', frequency: 'yearly', interval_n: 1, next_run: '2027-03-15' },
+  { id: 'y2', is_active: true, kind: 'expense', amount_minor: 10000, currency: 'EUR', frequency: 'yearly', interval_n: 2, next_run: '2026-11-02' },
+  { id: 'y3', is_active: true, kind: 'expense', amount_minor: 5999, currency: 'EUR', frequency: 'yearly', interval_n: 1, next_run: '2026-10-20' },
+  { id: 'y4', is_active: true, kind: 'expense', amount_minor: 2400, currency: 'EUR', frequency: 'yearly', interval_n: 1, next_run: '2027-01-05' },
+  { id: 'off', is_active: false, kind: 'expense', amount_minor: 99999, currency: 'EUR', frequency: 'yearly', interval_n: 1, next_run: '2026-10-01' },
+  { id: 'ended', is_active: true, kind: 'expense', amount_minor: 77777, currency: 'EUR', frequency: 'yearly', interval_n: 1, next_run: '2027-01-01', end_date: '2026-12-31' },
+]
+
+test('monthlyTotals: per-month by kind; separateYearly drops yearly expense rules only', () => {
+  const all = monthlyTotals(mix)
+  // y2 = 10000/2/12 = 416.67 → 417; y3 = 499.92 → 500; ended rule still active → 6481.
+  assert.deepEqual(all, { expense: 999 + 1000 + 417 + 500 + 200 + 6481, income: 5000 })
+  assert.deepEqual(monthlyTotals(mix, true), { expense: 999, income: 5000 })
+})
+
+test('yearlySubscriptions: per year, per month, soonest next three, active and not ended', () => {
+  const y = yearlySubscriptions(mix, 'EUR')
+  assert.equal(y.count, 4)
+  assert.equal(y.perYear, 12000 + 5000 + 5999 + 2400)
+  assert.equal(y.perMonth, 1000 + 417 + 500 + 200)
+  assert.deepEqual(y.next.map((r) => r.id), ['y3', 'y2', 'y4'])
+  assert.equal(y.foreign, false)
+  assert.deepEqual(yearlySubscriptions(mix, 'EUR', 10).next.map((r) => r.id), ['y3', 'y2', 'y4', 'y1'])
+})
+
+test('yearlySubscriptions: other currencies are summed at face value and flagged', () => {
+  const y = yearlySubscriptions([{ ...mix[2], currency: 'USD' }, mix[3]], 'EUR')
+  assert.equal(y.perYear, 12000 + 5000)
+  assert.equal(y.foreign, true)
+  // Zero-decimal base: whole units stay whole.
+  const yen = yearlySubscriptions([{ ...mix[2], currency: 'JPY', amount_minor: 10001, interval_n: 2 }], 'JPY')
+  assert.ok(Number.isInteger(yen.perYear) && Number.isInteger(yen.perMonth))
+  assert.deepEqual(yearlySubscriptions([mix[0], mix[1]], 'EUR'), { perYear: 0, perMonth: 0, count: 0, next: [], foreign: false })
+})

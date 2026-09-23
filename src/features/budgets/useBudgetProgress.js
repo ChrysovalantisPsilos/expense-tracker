@@ -11,10 +11,11 @@ import { budgetTone, carriedFrom } from './budgetMath.js'
 // and the Budgets page. Budgets are stored in the base currency; spend is
 // converted to base too, so they're directly comparable. Both queries are live.
 // A yearly subscription counts its monthly share (spread.js, the same split
-// as the server's budget alerts).
+// as the server's budget alerts), or nothing when the user keeps yearly
+// subscriptions separate (countsMonthly ≡ the alerts' counts_in_month).
 // `carriedFrom` is the month the caps rolled over from (null: this month's own).
 export function useBudgetProgress() {
-  const { baseCurrency } = useProfile()
+  const { baseCurrency, separateYearly } = useProfile()
   const { from, to } = monthRange()
 
   const b = useMonthBudgets()
@@ -23,7 +24,7 @@ export function useBudgetProgress() {
   const txns = t.rows
 
   const items = useMemo(() => {
-    const spend = spendRows(txns, baseCurrency, from, to)
+    const spend = spendRows(txns, baseCurrency, from, to, { separateYearly })
     const spentByCat = sumToBaseByKey(spend, baseCurrency, (r) => r.category_id ?? null)
     return budgets
       .map((b) => {
@@ -40,7 +41,7 @@ export function useBudgetProgress() {
       })
       // Most-used budgets first (over-budget floats to the top).
       .sort((a, b) => (b.spent / (b.limit || 1)) - (a.spent / (a.limit || 1)))
-  }, [budgets, txns, baseCurrency, from, to])
+  }, [budgets, txns, baseCurrency, from, to, separateYearly])
 
   const reload = () => Promise.all([b.reload(), t.reload()])
   return {

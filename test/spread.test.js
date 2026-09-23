@@ -96,3 +96,35 @@ test('monthlyShare: per-month cost of spread expenses only', () => {
   assert.equal(monthlyShare(plain), null)
   assert.equal(monthlyShare({ ...yearly, kind: 'income' }), null)
 })
+
+// ---- Keeping yearly subscriptions separate (0068) ----------------------------
+import { countsMonthly, ruleCountsMonthly } from '../src/shared/lib/spread.js'
+
+// JS half of public.counts_in_month (DB test 50 checks the same truth table).
+test('countsMonthly: only a spread expense is dropped, and only when kept separate', () => {
+  assert.equal(countsMonthly(yearly), true)
+  assert.equal(countsMonthly(yearly, false), true)
+  assert.equal(countsMonthly(yearly, true), false)
+  assert.equal(countsMonthly(plain, true), true)
+  assert.equal(countsMonthly({ ...yearly, kind: 'income' }, true), true)
+  assert.equal(countsMonthly({ ...yearly, spread_months: null }, true), true)
+})
+
+test('ruleCountsMonthly: yearly expense rules drop out when kept separate', () => {
+  const y = { kind: 'expense', frequency: 'yearly', interval_n: 1 }
+  assert.equal(ruleCountsMonthly(y, false), true)
+  assert.equal(ruleCountsMonthly(y, true), false)
+  assert.equal(ruleCountsMonthly({ ...y, kind: 'income' }, true), true)
+  assert.equal(ruleCountsMonthly({ ...y, frequency: 'monthly' }, true), true)
+})
+
+test('spendRows: separateYearly leaves spread rows out of every window, plain rows stay', () => {
+  const opts = { separateYearly: true }
+  assert.deepEqual(spendRows([yearly, plain], 'EUR', '2026-09-01', '2026-09-30', opts).map((r) => r.id), ['p'])
+  assert.deepEqual(spendRows([yearly], 'EUR', '2026-03-01', '2026-03-31', opts), [])
+  assert.deepEqual(spendRows([yearly, plain], 'EUR', null, null, opts).map((r) => r.id), ['p'])
+  // Default: unchanged (spread).
+  assert.deepEqual(spendRows([yearly, plain], 'EUR', '2026-09-01', '2026-09-30').map((r) => r.id), ['y', 'p'])
+  // The ledger view is untouched: the payment is still listed.
+  assert.deepEqual(paidInWindow([yearly, plain], '2026-03-01', '2026-03-31'), [yearly])
+})

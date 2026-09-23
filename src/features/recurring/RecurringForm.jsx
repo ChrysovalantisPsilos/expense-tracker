@@ -11,6 +11,7 @@ import { useCategories } from '../transactions/useData.js'
 import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { enablePush } from '../../shared/lib/push.js'
 import { saveRecurring } from './recurring.js'
 import { FREQUENCIES, nextRunAfter, monthlyBudgetShare } from './recurringMath.js'
@@ -42,7 +43,9 @@ export default function RecurringForm({ rule, initial, baseCurrency, onClose, on
   const [remind, setRemind] = useState(rule?.remind_days_before != null)
   const [remindDays, setRemindDays] = useState(String(rule?.remind_days_before ?? 3))
   const { busy, run } = useAsyncSubmit()
-  // A yearly expense counts evenly in each month's budgets (spread.js).
+  const { separateYearly } = useProfile()
+  // A yearly expense counts evenly in each month's budgets (spread.js), unless
+  // the user keeps yearly subscriptions out of monthly spending (Settings).
   const share = Number(amount) > 0 ? monthlyBudgetShare({
     kind, frequency, interval_n: parseInt(intervalN, 10) || 1, amount_minor: toMinor(amount, currency),
   }) : null
@@ -148,7 +151,9 @@ export default function RecurringForm({ rule, initial, baseCurrency, onClose, on
         </HStack>
         {share && (
           <Text fontSize="sm" color="text.muted" mt={-2}>
-            {`Counts as ${share.exact ? '' : 'about '}${formatMoney(share.perMonth, currency)}/month in budgets, spread over ${share.months} months.`}
+            {separateYearly
+              ? 'Kept out of monthly spending and budgets: it shows under Yearly subscriptions on Home.'
+              : `Counts as ${share.exact ? '' : 'about '}${formatMoney(share.perMonth, currency)}/month in budgets, spread over ${share.months} months.`}
           </Text>
         )}
 

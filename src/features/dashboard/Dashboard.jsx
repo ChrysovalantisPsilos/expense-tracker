@@ -32,6 +32,7 @@ import {
   periodTotals, periodProjection, projectedTotals, recurringOverview,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
+import YearlySubscriptionsCard from '../recurring/YearlySubscriptionsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
@@ -40,7 +41,7 @@ const UNAVAILABLE = 'Not available until your transactions load.'
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { baseCurrency } = useProfile()
+  const { baseCurrency, separateYearly } = useProfile()
   const { rules } = useRecurring()
   const [oldest, setOldest] = useState(null)
   const periods = useMemo(() => buildPeriods(oldest), [oldest])
@@ -61,12 +62,14 @@ export default function Dashboard() {
 
   // Recurring is forward-looking, so it ignores the historical period filter:
   // it always shows what's coming up next plus the monthly subscriptions total.
-  const { subsMonthly, activeRecurring } = useMemo(() => recurringOverview(rules), [rules])
+  const { subsMonthly, activeRecurring } = useMemo(
+    () => recurringOverview(rules, separateYearly), [rules, separateYearly])
 
-  // Spread yearly charges count as their monthly parts in every total.
+  // Spread yearly charges count as their monthly parts in every total — or,
+  // when the user keeps them separate, not at all (the Yearly card has them).
   const spend = useMemo(
-    () => spendRows(rows, baseCurrency, period.from, period.to),
-    [rows, baseCurrency, period.from, period.to])
+    () => spendRows(rows, baseCurrency, period.from, period.to, { separateYearly }),
+    [rows, baseCurrency, period.from, period.to, separateYearly])
   const totals = useMemo(() => periodTotals(spend, baseCurrency), [spend, baseCurrency])
   const { byCategory, bucketRow } = totals
   const expenses = useMemo(
@@ -81,7 +84,9 @@ export default function Dashboard() {
   // but only for periods that are still ongoing (end today or later). Past
   // periods and "all time" stay purely actual.
   const todayISO = useMemo(() => today(), [])
-  const proj = useMemo(() => periodProjection(rules, period.to, todayISO), [rules, period.to, todayISO])
+  const proj = useMemo(
+    () => periodProjection(rules, period.to, todayISO, separateYearly),
+    [rules, period.to, todayISO, separateYearly])
   const { spentTotal, earnedTotal, netTotal } = projectedTotals(totals, proj)
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
 
@@ -123,6 +128,8 @@ export default function Dashboard() {
         </SimpleGrid>
       </Panel>
       )}
+
+      {separateYearly && <YearlySubscriptionsCard rules={rules} baseCurrency={baseCurrency} />}
 
       <Panel icon={ChartBarDecreasing} title="Spending by category" action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">

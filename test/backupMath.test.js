@@ -425,3 +425,19 @@ test('payment: a PayPal.me name fills an empty one and is kept when set', () => 
   assert.deepEqual(planPayment(data, { payment_iban: 'CY17002001280000001200527600', payment_paypal: 'Other' }),
     { patch: null, kept: ['PayPal.me name'] })
 })
+
+test('profile: the yearly-subscriptions setting round-trips and fills only the default', () => {
+  const doc = buildBackup({ userId: 'u', profile: { display_name: 'A', yearly_separate: true } })
+  const { data } = readBackup(JSON.stringify(doc)).backup
+  assert.equal(data.profile.yearly_separate, true)
+  const blank = { display_name: 'A', yearly_separate: false }
+  assert.deepEqual(planProfile(data, blank, { emailName: 'a', emptyAccount: false }),
+    { patch: { yearly_separate: true }, kept: [] })
+  // An account that already keeps them separate isn't switched back.
+  const off = { ...data, profile: { ...data.profile, yearly_separate: false } }
+  assert.deepEqual(planProfile(off, { display_name: 'A', yearly_separate: true }, { emailName: 'a', emptyAccount: false }),
+    { patch: {}, kept: ['yearly subscriptions setting'] })
+  // Older backups without the field leave it alone.
+  assert.equal(fresh().data.profile.yearly_separate, null)
+  assert.deepEqual(planProfile(fresh().data, blank, { emailName: 'a', emptyAccount: false }).patch.yearly_separate, undefined)
+})

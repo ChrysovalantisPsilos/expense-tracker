@@ -32,6 +32,8 @@ export function ProfileProvider({ children }) {
   const value = useMemo(() => ({
     profile: uid ? profile : null,
     baseCurrency: (uid && profile?.base_currency) || 'EUR',
+    // Keep yearly subscriptions out of monthly spending (0068; off by default).
+    separateYearly: !!(uid && profile?.yearly_separate),
     loading,
     error,
     reload,

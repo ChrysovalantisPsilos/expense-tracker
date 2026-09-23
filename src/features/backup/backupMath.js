@@ -100,6 +100,7 @@ export function buildBackup({
         base_currency: profile.base_currency ?? null,
         notify_email: profile.notify_email ?? null,
         notify_push: profile.notify_push ?? null,
+        yearly_separate: profile.yearly_separate ?? null,
       },
       payment: {
         iban: payment.payment_iban ?? null, revolut: payment.payment_revolut ?? null,
@@ -278,6 +279,7 @@ function validateBackup(doc) {
     base_currency: prof.base_currency == null ? null : p.currency(prof.base_currency, 'currency'),
     notify_email: p.bool(prof.notify_email, 'email switch', { optional: true }),
     notify_push: p.bool(prof.notify_push, 'push switch', { optional: true }),
+    yearly_separate: p.bool(prof.yearly_separate, 'yearly subscriptions switch', { optional: true }),
   }
   const pay = isObj(data.payment) ? data.payment : {}
   const pc = checker('payment details')
@@ -560,6 +562,12 @@ export function planProfile(backup, current, { emailName, emptyAccount }) {
     if (typeof b[field] !== 'boolean' || b[field] === current[field]) continue
     if (current[field] === true && b[field] === false) patch[field] = false
     else kept.push(label)
+  }
+  // Yearly subscriptions count in monthly spending by default (0068). Only
+  // that untouched default follows a backup that kept them separate.
+  if (typeof b.yearly_separate === 'boolean' && b.yearly_separate !== !!current.yearly_separate) {
+    if (b.yearly_separate && !current.yearly_separate) patch.yearly_separate = true
+    else kept.push('yearly subscriptions setting')
   }
   return { patch, kept }
 }

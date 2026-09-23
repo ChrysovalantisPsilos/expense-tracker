@@ -13,6 +13,12 @@ import { toBaseMinor } from './currency.js'
 // public.month_share, ruleSpreadMonths ≡ public.recurring_spread_months. The
 // server's budget alerts must agree with the budget bars to the cent, so any
 // change here changes 0067's functions too (and vice versa).
+//
+// "Keep yearly subscriptions separate" (profiles.yearly_separate, 0068): when
+// a user turns it on, spread rows are left out of monthly spend altogether
+// (they show in Home's "Yearly subscriptions" card instead). countsMonthly ≡
+// public.counts_in_month (0068), which the server's budget alerts apply to the
+// same rows, so the bars and the alerts keep agreeing.
 
 const MAX_SPREAD = 120
 
@@ -53,6 +59,16 @@ export function spreadDates(spentAt, n) {
 
 const isSpread = (r) => r.kind === 'expense' && r.spread_months >= 2
 
+// Does this row count in monthly spend? Everything does, except a spread
+// (yearly-subscription) expense when the user keeps those separate.
+// JS↔SQL LOCKSTEP: ≡ public.counts_in_month(spread_months, yearly_separate).
+export const countsMonthly = (row, separateYearly = false) => !(separateYearly && isSpread(row))
+
+// Does a recurring rule's upcoming charge count in monthly spend? The rule-side
+// twin of countsMonthly: its charges will be spread rows exactly when
+// ruleSpreadMonths says so (the 0067 trigger derives them from the rule).
+export const ruleCountsMonthly = (rule, separateYearly = false) => !(separateYearly && ruleSpreadMonths(rule))
+
 const inWindow = (date, from, to) => (!from || date >= from) && (!to || date <= to)
 
 // A transaction list trimmed to the rows actually paid in [from, to] (either
@@ -66,9 +82,12 @@ export const paidInWindow = (rows, from, to) => rows.filter((r) => inWindow(r.sp
 // (amount_minor = the part, exchange_rate 1, currency = base) dated on its
 // month's day, so the existing sums (toBaseMinor, bucketOf, month keys) need
 // no special case and add up to the cent with the server's month_share.
-export function spendRows(rows, baseCurrency, from = null, to = null) {
+// `separateYearly` (the user's 0068 setting) drops spread rows instead
+// (countsMonthly).
+export function spendRows(rows, baseCurrency, from = null, to = null, { separateYearly = false } = {}) {
   const out = []
   for (const r of rows) {
+    if (!countsMonthly(r, separateYearly)) continue
     if (!isSpread(r)) {
       if (inWindow(r.spent_at, from, to)) out.push(r)
       continue

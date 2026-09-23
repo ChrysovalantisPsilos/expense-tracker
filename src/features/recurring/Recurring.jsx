@@ -15,27 +15,26 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { useRecurring, setRecurringActive, deleteRecurring } from './recurring.js'
-import { monthlyMinor, frequencyLabel, monthlyBudgetShare } from './recurringMath.js'
+import {
+  monthlyTotals, frequencyLabel, monthlyBudgetShare, yearlySubscriptions,
+} from './recurringMath.js'
 import RecurringForm from './RecurringForm.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 
 export default function Recurring() {
-  const { baseCurrency = 'EUR' } = useProfile()
+  const { baseCurrency = 'EUR', separateYearly } = useProfile()
   const { rules, loading, error, reload } = useRecurring()
   const toast = useToast()
   const form = useDisclosure()
   const [editing, setEditing] = useState(null)
   const [removing, setRemoving] = useState(null)
 
-  const { expenseMonthly, incomeMonthly } = useMemo(() => {
-    let e = 0, i = 0
-    for (const r of rules) {
-      if (!r.is_active) continue
-      const m = monthlyMinor(r)
-      if (r.kind === 'income') i += m; else e += m
-    }
-    return { expenseMonthly: e, incomeMonthly: i }
-  }, [rules])
+  // Per-month figures; a user who keeps yearly subscriptions out of monthly
+  // spending sees them as their own per-year line instead.
+  const monthly = useMemo(() => monthlyTotals(rules, separateYearly), [rules, separateYearly])
+  const yearly = useMemo(
+    () => (separateYearly ? yearlySubscriptions(rules, baseCurrency) : null),
+    [rules, separateYearly, baseCurrency])
 
   function openNew() { setEditing(null); form.onOpen() }
   function openEdit(r) { setEditing(r); form.onOpen() }
@@ -60,15 +59,20 @@ export default function Recurring() {
       <Panel>
         <SimpleGrid columns={2} spacing={4}>
           <Box>
-            <Figure label="Subscriptions" size="lg" value={formatMoney(expenseMonthly, baseCurrency)} />
+            <Figure label="Subscriptions" size="lg" value={formatMoney(monthly.expense, baseCurrency)} />
             <Text fontSize="xs" color="text.muted">per month</Text>
           </Box>
           <Box textAlign="right">
             <Figure label="Recurring income" size="lg" align="right" tone="positive"
-              value={formatMoney(incomeMonthly, baseCurrency)} />
+              value={formatMoney(monthly.income, baseCurrency)} />
             <Text fontSize="xs" color="text.muted">per month</Text>
           </Box>
         </SimpleGrid>
+        {yearly?.count > 0 && (
+          <Figure layout="inline" label="Yearly subscriptions (separate)" size="md"
+            value={`${formatMoney(yearly.perYear, baseCurrency)}/yr`}
+            mt={3} pt={3} borderTopWidth="1px" borderColor="border.default" />
+        )}
       </Panel>
 
       <Panel>

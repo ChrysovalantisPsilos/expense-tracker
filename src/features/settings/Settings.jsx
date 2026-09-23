@@ -1,6 +1,6 @@
 import { Stack } from '@chakra-ui/react'
 import {
-  BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags,
+  BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -10,6 +10,7 @@ import { NavList, NavRow } from '../../shared/ui/NavList.jsx'
 
 const PREFERENCES = [
   { to: '/settings/categories', label: 'Categories', desc: 'Add, rename, recolour or archive', icon: Tags },
+  { to: '/settings/spending', label: 'Monthly spending', desc: 'How yearly subscriptions count', icon: CalendarRange },
   { to: '/settings/notifications', label: 'Notifications', desc: 'Push and email alerts', icon: BellRing },
   { to: '/settings/appearance', label: 'Appearance', desc: 'Light, dark or match your device', icon: Palette },
 ]

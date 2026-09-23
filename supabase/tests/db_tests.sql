@@ -2826,11 +2826,94 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 50. 0068: "Count yearly subscriptions in monthly spending". Only the owner
+--     can set profiles.yearly_separate. With it off (the default) a yearly
+--     charge's monthly share counts toward a budget alert; with it on the
+--     spread row is skipped (new or earlier) while plain rows still count.
+--     counts_in_month (JS twin: countsMonthly, test/spread.test.js) is
+--     internal.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; u uuid; cat uuid; r uuid; n int; v boolean;
+        m0 date := date_trunc('month', current_date)::date;
+begin
+  begin
+    if not public.counts_in_month(null, true) or not public.counts_in_month(null, false)
+       or not public.counts_in_month(12, false) or not public.counts_in_month(12, null)
+       or public.counts_in_month(12, true) then
+      raise exception 'counts_in_month truth table';
+    end if;
+    if has_function_privilege('authenticated', 'public.counts_in_month(int, boolean)', 'execute')
+       or has_function_privilege('anon', 'public.counts_in_month(int, boolean)', 'execute') then
+      raise exception 'counts_in_month callable by clients';
+    end if;
+
+    u1 := pg_temp.zz_user('ysoff');
+    u2 := pg_temp.zz_user('yson');
+    if (select yearly_separate from public.profiles where id = u2) then
+      raise exception 'yearly_separate defaults to on';
+    end if;
+    -- The owner sets it; another user can't (RLS: 0 rows).
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set yearly_separate = true where id = u2;
+    update public.profiles set yearly_separate = true where id = u1;
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if n <> 0 then raise exception 'set another user''s yearly_separate'; end if;
+    select yearly_separate into v from public.profiles where id = u1;
+    if v then raise exception 'yearly_separate leaked onto another user'; end if;
+    select yearly_separate into v from public.profiles where id = u2;
+    if v is distinct from true then raise exception 'owner could not set yearly_separate'; end if;
+
+    -- Same data for both: a €200 budget this month, a €2,400 yearly rule
+    -- charged yesterday (€200 a month, spread), then €160 of plain spending.
+    foreach u in array array[u1, u2] loop
+      -- Claims first: category inserts take their owner from them (0060).
+      perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+      update public.profiles set base_currency = 'EUR' where id = u;
+      insert into public.categories (user_id, name, kind) values (u, 'ZZT yearly', 'expense') returning id into cat;
+      insert into public.budgets (user_id, category_id, amount_enc, currency, period_start)
+        values (u, cat, public.enc_minor(20000), 'EUR', m0);
+      execute 'set local role authenticated';
+      r := public.save_recurring_rule(null, jsonb_build_object('amount_minor', 240000, 'currency', 'EUR',
+        'category_id', cat, 'frequency', 'yearly', 'next_run', current_date - 1));
+      execute 'reset role';
+      perform public.materialize_recurring_rules();
+      if not exists (select 1 from public.transactions where recurring_rule_id = r and spread_months = 12) then
+        raise exception 'yearly row not materialised';
+      end if;
+      execute 'set local role authenticated';
+      perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+        'client_uuid', gen_random_uuid(), 'category_id', cat, 'amount_minor', 16000, 'currency', 'EUR',
+        'spent_at', current_date)));
+      execute 'reset role';
+    end loop;
+
+    -- Off: the yearly share (€200) hits the cap → "exceeded"; the €160 after
+    -- it crosses nothing new.
+    select count(*) into n from public.notifications where user_id = u1 and type = 'budget' and title = 'Budget exceeded';
+    if n <> 1 then raise exception 'pref off: % exceeded alerts (want 1)', n; end if;
+    select count(*) into n from public.notifications where user_id = u1 and type = 'budget' and title = 'Budget almost used';
+    if n <> 0 then raise exception 'pref off: % almost-used alerts (want 0)', n; end if;
+    -- On: the yearly row counts nowhere; the €160 alone is 80% → "almost used".
+    select count(*) into n from public.notifications where user_id = u2 and type = 'budget' and title = 'Budget exceeded';
+    if n <> 0 then raise exception 'pref on: the yearly row still counted (% exceeded)', n; end if;
+    select count(*) into n from public.notifications where user_id = u2 and type = 'budget' and title = 'Budget almost used';
+    if n <> 1 then raise exception 'pref on: % almost-used alerts (want 1)', n; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: yearly_separate owner-only; budget alerts skip yearly rows when kept separate';
+    else update _t set fails = fails + 1; raise notice 'FAIL: yearly_separate — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 50; f int; p int;  -- tests 1–49 + B-0059
+declare expected_tests constant int := 51; f int; p int;  -- tests 1–50 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

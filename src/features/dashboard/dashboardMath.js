@@ -2,7 +2,7 @@
 // minor units in the user's base currency.
 import { toBaseMinor } from '../../shared/lib/currency.js'
 import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
-import { monthlyMinor, expectedInWindow } from '../recurring/recurringMath.js'
+import { monthlyTotals, expectedInWindow } from '../recurring/recurringMath.js'
 
 // A period's totals from its rows: `spent` and `earned` (base currency),
 // `byCategory` (bucket totals, largest first) and `bucketRow` (bucket name →
@@ -30,10 +30,11 @@ export function periodTotals(rows, baseCurrency) {
 
 // Recurring charges still to come in a period, folded into its projection —
 // only while the period is ongoing (it ends today or later). Past periods and
-// "all time" (no end) stay purely actual.
-export function periodProjection(rules, periodTo, todayISO) {
+// "all time" (no end) stay purely actual. `separateYearly`: the user keeps
+// yearly subscriptions out of monthly spending (0068).
+export function periodProjection(rules, periodTo, todayISO, separateYearly = false) {
   if (!periodTo || periodTo < todayISO) return { expense: 0, income: 0 }
-  return expectedInWindow(rules, todayISO, periodTo)
+  return expectedInWindow(rules, todayISO, periodTo, separateYearly)
 }
 
 // Headline figures: actual totals plus the projection, and the net.
@@ -44,12 +45,12 @@ export function projectedTotals({ spent, earned }, proj) {
 }
 
 // Active recurring rules, soonest charge first, and the monthly cost of the
-// active expense ones (subscriptions). Ignores the period filter: recurring
-// is forward-looking.
-export function recurringOverview(rules) {
+// active expense ones (subscriptions; without yearly ones when the user keeps
+// those separate). Ignores the period filter: recurring is forward-looking.
+export function recurringOverview(rules, separateYearly = false) {
   const active = rules.filter((r) => r.is_active)
   return {
-    subsMonthly: active.reduce((s, r) => s + (r.kind !== 'income' ? monthlyMinor(r) : 0), 0),
+    subsMonthly: monthlyTotals(rules, separateYearly).expense,
     activeRecurring: [...active].sort((a, b) => (a.next_run < b.next_run ? -1 : 1)),
   }
 }

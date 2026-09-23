@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
-import {
-  Stack, HStack, Box, Text, Switch, FormLabel, Divider, Center, Spinner, useToast,
-} from '@chakra-ui/react'
+import { Stack, Divider, Center, Spinner, useToast } from '@chakra-ui/react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { enablePush } from '../../shared/lib/push.js'
 import { getProfile, updateProfile } from '../../shared/lib/profile.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
+import PrefRow from './PrefRow.jsx'
 
 export default function NotificationSettings() {
   const { user } = useAuth()
@@ -62,17 +61,5 @@ export default function NotificationSettings() {
         )}
       </Panel>
     </SettingsPage>
-  )
-}
-
-function PrefRow({ id, label, hint, isChecked, onChange }) {
-  return (
-    <HStack justify="space-between" align="start" spacing={4}>
-      <Box minW={0}>
-        <FormLabel htmlFor={id} m={0} fontWeight="600" cursor="pointer">{label}</FormLabel>
-        <Text fontSize="sm" color="text.muted">{hint}</Text>
-      </Box>
-      <Switch id={id} colorScheme="brand" isChecked={isChecked} onChange={onChange} mt={1} />
-    </HStack>
   )
 }
