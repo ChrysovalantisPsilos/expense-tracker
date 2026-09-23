@@ -24,16 +24,27 @@ export function useCategories(kind) {
 // can bucket them under the group). Realtime still watches the base table.
 export function useTransactions({ kind, from, to, categoryId, limit } = {}) {
   return useOwnedQuery('transactions', {
-    fetch: async () => {
-      const { data, error } = await supabase.rpc('my_transactions', {
-        p_kind: kind ?? null, p_from: from ?? null, p_to: to ?? null,
-        p_category: categoryId ?? null, p_limit: limit ?? null,
-      })
-      if (error) throw new Error(error.message)
-      return data ?? []
-    },
+    fetch: () => listTransactions({ kind, from, to, categoryId, limit }),
     deps: [kind, from, to, categoryId, limit],
   })
+}
+
+// One-shot read behind useTransactions (same filters, same row shape).
+export async function listTransactions({ kind, from, to, categoryId, limit } = {}) {
+  const { data, error } = await supabase.rpc('my_transactions', {
+    p_kind: kind ?? null, p_from: from ?? null, p_to: to ?? null,
+    p_category: categoryId ?? null, p_limit: limit ?? null,
+  })
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
+// How many transactions the user has in total (a cheap head count).
+export async function countTransactions() {
+  const { count, error } = await supabase
+    .from('transactions').select('id', { count: 'exact', head: true })
+  if (error) throw new Error(error.message)
+  return count ?? 0
 }
 
 // Re-exported for existing callers; the implementation lives in lib/dates.js.
@@ -51,6 +62,23 @@ export async function oldestTransactionDate() {
     .limit(1)
     .maybeSingle()
   return data?.spent_at ?? null
+}
+
+// Every category the user has, archived ones included (backup/restore).
+export async function listAllCategories() {
+  const { data, error } = await supabase
+    .from('categories').select('id, name, kind, icon, color, is_archived').order('name')
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
+// Create categories (name, kind, icon, color, is_archived). Plain columns, so
+// a direct insert; RLS checks user_id is the caller's own.
+export async function createCategories(userId, rows) {
+  if (!rows.length) return
+  const { error } = await supabase.from('categories')
+    .insert(rows.map((r) => ({ ...r, user_id: userId })))
+  if (error) throw new Error(error.message)
 }
 
 // One-time default-category seed after first login.

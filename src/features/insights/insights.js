@@ -14,11 +14,11 @@ async function rpcRows(name, args) {
 
 // ── Net-worth accounts (manually maintained balances) ───────────────────────
 export function useAccounts() {
-  const { rows: accounts, loading, reload } = useOwnedQuery('accounts', {
-    fetch: () => rpcRows('my_accounts'),
-  })
+  const { rows: accounts, loading, reload } = useOwnedQuery('accounts', { fetch: listAccounts })
   return { accounts, loading, reload }
 }
+
+export const listAccounts = () => rpcRows('my_accounts')
 
 export async function saveAccount(acc) {
   const { error } = await supabase.rpc('save_account', {
@@ -31,11 +31,11 @@ export const deleteAccount = (id) => removeRow('accounts', id)
 
 // ── Savings goals ───────────────────────────────────────────────────────────
 export function useGoals() {
-  const { rows: goals, loading, reload } = useOwnedQuery('savings_goals', {
-    fetch: () => rpcRows('my_goals'),
-  })
+  const { rows: goals, loading, reload } = useOwnedQuery('savings_goals', { fetch: listGoals })
   return { goals, loading, reload }
 }
+
+export const listGoals = () => rpcRows('my_goals')
 
 export async function saveGoal(goal) {
   const { error } = await supabase.rpc('save_goal', {

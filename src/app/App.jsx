@@ -27,6 +27,7 @@ import NotificationSettings from '../features/settings/NotificationSettings.jsx'
 import AppearanceSettings from '../features/settings/AppearanceSettings.jsx'
 import SecuritySettings from '../features/settings/SecuritySettings.jsx'
 import PasskeyPrompt from '../features/settings/PasskeyPrompt.jsx'
+import YourData from '../features/backup/YourData.jsx'
 import Privacy from '../features/privacy/Privacy.jsx'
 import NotificationPrompt from '../features/notifications/NotificationPrompt.jsx'
 import OnboardingWizard from '../features/onboarding/OnboardingWizard.jsx'
@@ -95,6 +96,7 @@ function AuthedRoutes() {
           <Route path="settings/notifications" element={<NotificationSettings />} />
           <Route path="settings/appearance" element={<AppearanceSettings />} />
           <Route path="settings/security" element={<SecuritySettings />} />
+          <Route path="settings/data" element={<YourData />} />
           {/* Old name for Settings — keeps bookmarks and old links working. */}
           <Route path="profile" element={<Navigate to="/settings" replace />} />
         </Route>

@@ -1,6 +1,6 @@
 import { Stack } from '@chakra-ui/react'
 import {
-  UserRound, BellRing, Palette, ShieldCheck, FileText, LogOut,
+  UserRound, BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/useProfile.js'
@@ -13,6 +13,7 @@ const SECTIONS = [
   { to: '/settings/notifications', label: 'Notifications', desc: 'Push and email alerts', icon: BellRing },
   { to: '/settings/appearance', label: 'Appearance', desc: 'Light, dark or match your device', icon: Palette },
   { to: '/settings/security', label: 'Security', desc: 'Sign-in and account deletion', icon: ShieldCheck },
+  { to: '/settings/data', label: 'Your data', desc: 'Back up or restore your account', icon: DatabaseBackup },
 ]
 
 // The Settings list: who you are at the top (taps into Account), then one row

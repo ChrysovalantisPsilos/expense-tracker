@@ -27,6 +27,7 @@ Three layers:
 - Search & filter across all transactions
 - Smart statement import (CSV/XLSX): auto-mapped columns, duplicate-proof re-imports, learned merchant→category rules
 - Branded PDF statements (personal + per-group)
+- Backup & restore (Settings → Your data): one JSON file, optionally password-encrypted in the browser; restore merges and skips duplicates
 
 **Groups**
 - Groups with invites via link, email, or in-app; join/decline inbox
@@ -125,3 +126,19 @@ Three layers:
 ### I. Reports
 27. Insights → Statement export: personal PDF downloads with brand styling.
     Group page → Download statement: per-member balances match the app.
+
+### J. Backup & restore **[2 accounts]**
+28. Settings → Your data → Export backup, once with no password and once
+    with a password → `budgeer-backup-YYYY-MM-DD.json` downloads. The plain
+    file is readable JSON (`format: "budgeer-backup"`, `version: 1`); the
+    protected one shows only `kdf`, `iv` and `ciphertext`.
+29. On a second (empty) account, Restore from backup → pick the protected
+    file → a wrong password says "Wrong password or damaged file." → the right
+    one shows the contents → Restore → progress, then "Added N expenses, …".
+    Expenses, income, categories, budgets, recurring entries, accounts and
+    goals match the first account; group shares are plain expenses whose
+    notes say "Group: <name>". No budget alerts fire for past months.
+30. Restore the same file again → "Nothing new to add"; no counts change.
+31. A damaged file (edit an amount to `-1`, or truncate it) is refused with a
+    clear message and nothing is saved. Name/currency/notification/payment
+    settings already set on the account are kept and listed in the summary.

@@ -158,16 +158,19 @@ export async function buildTransactions({ rows, mapping, userId, baseCurrency, c
 // Insert in chunks through the encrypting RPC, skipping rows whose
 // deterministic identity (client_uuid) already exists (a re-imported file, or
 // overlap with a previous export). Returns how many were actually new vs
-// skipped as duplicates.
-export async function importTransactions(rows) {
+// skipped as duplicates. `onProgress(done, total)` reports after each chunk.
+// 500 rows a chunk keeps each call quick while staying far below the
+// server's 300-calls-an-hour limit (150,000 rows).
+export async function importTransactions(rows, onProgress) {
   let inserted = 0
-  for (let i = 0; i < rows.length; i += 200) {
-    const chunk = rows.slice(i, i + 200)
+  for (let i = 0; i < rows.length; i += 500) {
+    const chunk = rows.slice(i, i + 500)
     const { data, error } = await supabase.rpc('save_transactions', {
       p_rows: chunk, p_ignore_duplicates: true,
     })
     if (error) throw new Error(error.message)
     inserted += Number(data ?? 0)
+    onProgress?.(Math.min(i + 500, rows.length), rows.length)
   }
   return { inserted, duplicates: rows.length - inserted }
 }

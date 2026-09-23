@@ -189,6 +189,7 @@ export default function Privacy() {
             <Bullets items={[
               <><Lead>Notifications.</Lead> You can turn push and email notifications off at any time in Settings → Notifications.</>,
               <><Lead>Payment details.</Lead> They’re optional, and you can clear them at any time in Settings → Account → Getting paid.</>,
+              <><Lead>Backups.</Lead> You can download a backup of your data from Settings → Your data, and it can be password-protected.</>,
               <><Lead>Deleting your account.</Lead> In Settings → Security → Delete account. This permanently deletes your account, your profile picture and your personal records: expenses, income, categories, accounts, budgets, goals, recurring payments, notifications and the comments you’ve written.</>,
               <><Lead>What stays after you delete.</Lead> Group history stays for the other members: the expenses, splits and settlements you were part of, and the change log, still shown under your name. Groups you own pass to another member; a group you own with no other members is deleted, along with its picture.</>,
             ]} />

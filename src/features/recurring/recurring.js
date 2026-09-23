@@ -12,14 +12,14 @@ export {
 // `save_recurring_rule` (the server forces user_id; on update only the keys
 // sent change). Realtime still watches the base table.
 export function useRecurring() {
-  const { rows: rules, loading, reload } = useOwnedQuery('recurring_rules', {
-    fetch: async () => {
-      const { data, error } = await supabase.rpc('my_recurring_rules')
-      if (error) throw new Error(error.message)
-      return data ?? []
-    },
-  })
+  const { rows: rules, loading, reload } = useOwnedQuery('recurring_rules', { fetch: listRecurring })
   return { rules, loading, reload }
+}
+
+export async function listRecurring() {
+  const { data, error } = await supabase.rpc('my_recurring_rules')
+  if (error) throw new Error(error.message)
+  return data ?? []
 }
 
 async function saveRule(id, fields) {
