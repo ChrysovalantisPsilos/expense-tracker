@@ -123,7 +123,6 @@ Three layers:
 26. Deploy update: with the app open and idle, a new deploy installs and the
     page reloads on its own within ~1 min (no button). While typing in a field
     or with a dialog open it waits, then updates once you finish or switch away.
-    reloads onto the new build.
 
 ### I. Reports
 27. Insights → Statement export: personal PDF downloads with brand styling.
