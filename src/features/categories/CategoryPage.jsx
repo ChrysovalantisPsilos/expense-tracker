@@ -20,6 +20,7 @@ import { formatMoney, fromMinor } from '../../shared/lib/currency.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import TransactionList from '../transactions/TransactionList.jsx'
+import { listHeading } from '../transactions/listHeading.js'
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { buildPeriods, isMonthPeriod, withPeriod } from '../transactions/periods.js'
 import { NO_CATEGORY } from '../transactions/txnFilter.js'
@@ -66,6 +67,7 @@ export default function CategoryPage() {
     categoryId, from: period.from, to: period.to, baseCurrency, separateYearly,
   }), [txns.rows, categoryId, period.from, period.to, baseCurrency, separateYearly])
   const paged = usePaged(listed, 10, period.value)
+  const listHead = listHeading({ kind: kind ?? 'expense', periodLabel: period.label, count: listed.length, loading: txns.loading })
 
   // Budgets are monthly and expense-only. Past months are shown as they
   // were; only this month's cap can be changed (edit_budget's carry-over
@@ -136,9 +138,7 @@ export default function CategoryPage() {
         )}
       </Panel>
 
-      <Panel icon={ReceiptText} title={kind === 'income' ? 'Income' : 'Expenses'}
-        subtitle={txns.loading ? period.label
-          : `${period.label} · ${listed.length} ${listed.length === 1 ? 'entry' : 'entries'}`}>
+      <Panel icon={ReceiptText} title={listHead.title} subtitle={listHead.subtitle} divider>
         {txns.error ? <QueryError error={txns.error} onRetry={txns.reload} what="these entries" /> : txns.loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : listed.length === 0 ? (

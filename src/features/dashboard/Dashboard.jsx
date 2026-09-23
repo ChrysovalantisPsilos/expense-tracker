@@ -6,6 +6,7 @@ import {
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, Table as TableIcon, ReceiptText, Users } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
+import { listHeading } from '../transactions/listHeading.js'
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { buildPeriods } from '../transactions/periods.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
@@ -84,6 +85,7 @@ export default function Dashboard() {
 
   // Paginate the expenses (10/page), back to page 1 when the period changes.
   const expPage = usePaged(expenses, 10, periodValue)
+  const expHead = listHeading({ kind: 'expense', periodLabel: period.label, count: expenses.length, loading })
 
   return (
     <Stack spacing={5}>
@@ -178,7 +180,7 @@ export default function Dashboard() {
 
       <BudgetsCard />
 
-      <Panel icon={ReceiptText} title="Expenses">
+      <Panel icon={ReceiptText} title={expHead.title} subtitle={expHead.subtitle} divider>
         {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : expenses.length === 0 ? (

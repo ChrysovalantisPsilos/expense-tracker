@@ -23,7 +23,8 @@ put `ref={playback.ref}` on the container (Panel forwards it), and pass
 The white rounded-2xl card with the soft lifted shadow. Every screen block.
 `title`, `eyebrow`, `icon` (Lucide), `iconTone` (the icon tile's `tone`;
 `'negative'` = pale red danger tile), `subtitle`, `action` (node) → header
-(it's CardHeader: h2 title). `elevation` `'lifted'` (default) | `'soft'` |
+(it's CardHeader: h2 title, a step larger than a list row's so it never reads
+as one); `divider` rules the header off from a list of rows (the expense lists). `elevation` `'lifted'` (default) | `'soft'` |
 `'none'` (a card nested inside another surface). `p` replaces the default
 padding. `label` turns the whole card into one decorative `role="img"` (landing
 only). Other Box props pass through; forwards `ref`.
@@ -127,8 +128,9 @@ shadow; Unfold unclips once fully open and clips again as it starts closing.
 Collapse is still right for shadowless content (e.g. a filters row).
 
 ## Also reused (in `shared/ui/`)
-`CardHeader` (Panel's header; use directly only outside a Panel; takes
-`iconTone` too), `RowActions`, `RowAmount` (ItemRow uses both),
+`CardHeader` (Panel's header; use directly outside a Panel, or for a list's
+header lower down in one — Transactions' list under its search; takes
+`iconTone` and `divider` too), `RowActions`, `RowAmount` (ItemRow uses both),
 `CategoryBadge`, `UserAvatar`, `Eyebrow`, `PageHeader`, `SegmentedControl`.
 `NavList` / `NavRow`: the iOS-style grouped list (Settings, More) — NavList is
 a lifted Panel with hairline-split rows; `label` puts a SectionLabel above it.

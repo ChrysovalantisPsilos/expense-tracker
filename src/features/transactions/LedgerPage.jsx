@@ -6,16 +6,17 @@ import {
   FormControl, FormLabel, SimpleGrid, Button, Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
 import {
-  FileSpreadsheet, MoreHorizontal, Plus, Search, SlidersHorizontal, X,
+  FileSpreadsheet, MoreHorizontal, Plus, ReceiptText, Search, SlidersHorizontal, X,
 } from 'lucide-react'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import BackButton from '../../shared/ui/BackButton.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
+import CardHeader from '../../shared/ui/CardHeader.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import TransactionList from './TransactionList.jsx'
+import { listHeading } from './listHeading.js'
 import { useTransactions, useCategories } from './useData.js'
 import {
   isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS, NO_CATEGORY,
@@ -97,6 +98,7 @@ export default function LedgerPage() {
   const clearAll = () => setLedger({ ...EMPTY_FILTERS, text: '' }, { own: false })
 
   const net = netBaseMinor(shown, baseCurrency)
+  const head = listHeading({ kind, periodLabel: 'This month', count: shown.length, loading, searching })
 
   return (
     <Stack spacing={5}>
@@ -174,20 +176,15 @@ export default function LedgerPage() {
           </Collapse>
         </Box>
 
-        {searching ? (
-          <HStack spacing={2} mb={2}>
-            <SectionLabel flex="1" minW={0}
-              aside={!loading && shown.length > 0
-                ? `Net ${net < 0 ? '−' : ''}${formatMoney(Math.abs(net), baseCurrency)}` : undefined}>
-              {loading ? 'Searching…' : `${shown.length} result${shown.length === 1 ? '' : 's'}`}
-            </SectionLabel>
+        <CardHeader icon={ReceiptText} title={head.title} divider
+          subtitle={searching && !loading && shown.length > 0
+            ? `${head.subtitle} · Net ${net < 0 ? '−' : ''}${formatMoney(Math.abs(net), baseCurrency)}`
+            : head.subtitle}
+          action={searching && (
             <Button size="xs" variant="ghost" leftIcon={<X size={14} />} onClick={clearAll}>
               Clear
             </Button>
-          </HStack>
-        ) : (
-          <SectionLabel mb={2}>This month</SectionLabel>
-        )}
+          )} />
         {error ? <QueryError error={error} onRetry={reload} what="your transactions" /> : loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : shown.length === 0 ? (
