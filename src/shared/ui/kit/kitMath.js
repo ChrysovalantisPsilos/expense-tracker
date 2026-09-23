@@ -70,3 +70,9 @@ export function playProps(playback, from, to, transition) {
   if (!playback || playback.reduce) return { initial: false, animate: to }
   return { initial: from, animate: playback.inView ? to : from, transition }
 }
+
+// The phase after `phase` in a looping animation of `count` phases (the last
+// wraps to 0). See usePhases in motion.jsx.
+export function nextPhase(phase, count) {
+  return count > 0 ? (phase + 1) % count : 0
+}

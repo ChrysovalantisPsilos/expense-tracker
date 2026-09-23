@@ -17,10 +17,10 @@ export const LEGAL_VERSIONS = { privacy: '2026-09-23', terms: '2026-09-23' }
 export const LEGAL_CHANGES = [
   {
     version: '2026-09-23',
-    summary: 'A full Privacy Notice that explains who is responsible for your data, why we use it, who processes it, how long we keep it and how to use your rights; new Terms of Use; the weekly summary is now optional; and accounts unused for two years are deleted after an email warning.',
+    summary: 'A full Privacy Notice that explains who is responsible for your data, why we use it, who processes it, how long we keep it and how to use your rights; new Terms of Use that make clear Budgeer is a free hobby project, not a financial service; the weekly summary is now optional; and accounts unused for two years are deleted after an email warning.',
     items: [
       'A full Privacy Notice: who is responsible for your data, why we use it and on what legal basis, who processes it and where, and how long we keep it.',
-      'New Terms of Use for the app, including that Budgeer is a hobby project and does not provide financial advice.',
+      'New Terms of Use for the app: Budgeer is a free hobby project provided as is, not a bank or financial service, and does not give financial advice.',
       'Your rights, with a way to exercise each one in Settings → Privacy.',
       'Automatic clean-up: notifications after 90 days, group change logs after 2 years, and accounts unused for 2 years (after an email warning).',
       'The weekly summary is now optional and off for new accounts.',

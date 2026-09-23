@@ -3,8 +3,8 @@ import {
   Box, Button, Container, Flex, Heading, HStack, Link, SimpleGrid, Stack, Text,
 } from '@chakra-ui/react'
 import {
-  ArchiveRestore, Download, FileSpreadsheet, HandCoins, Landmark, Link2, LockKeyhole, PiggyBank,
-  Percent, Repeat, ReceiptText, ScanLine,
+  ArchiveRestore, Download, FileSpreadsheet, Landmark, LockKeyhole, PiggyBank,
+  Percent, Repeat, ScanLine,
 } from 'lucide-react'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
@@ -17,25 +17,7 @@ import InsightsMock from './InsightsMock.jsx'
 import { SUPPORT_EMAIL } from '../../shared/lib/contact.js'
 import CurrencyMock from './CurrencyMock.jsx'
 import SectionHeading from './SectionHeading.jsx'
-import Comparison from './Comparison.jsx'
-
-const STEPS = [
-  {
-    icon: Link2,
-    title: 'Create a group & invite friends with a link',
-    body: 'Create a group for a trip, your flat or a night out, share one invite link, and friends join with a free account.',
-  },
-  {
-    icon: ReceiptText,
-    title: 'Add expenses as you go',
-    body: 'Log who paid, in any currency. Split equally, or by amount, percentage or shares.',
-  },
-  {
-    icon: HandCoins,
-    title: 'See who owes what and settle up',
-    body: 'Budgeer works out the fewest payments to square up, and shows each friend’s IBAN, Revolut or PayPal to pay back.',
-  },
-]
+import HowItWorks from './HowItWorks.jsx'
 
 const SHOWCASE = [
   {
@@ -97,31 +79,6 @@ function Hero({ onLogin, onSignup }) {
             <TripSplitMock />
           </Box>
         </Flex>
-      </Container>
-    </Box>
-  )
-}
-
-function HowItWorks() {
-  return (
-    <Box as="section" bg="bg.surface" borderTopWidth="1px" borderBottomWidth="1px" borderColor="border.default">
-      <Container maxW="6xl" px={{ base: 4, md: 6 }} py={{ base: 14, md: 20 }}>
-        <SectionHeading eyebrow="How it works" title="Shared costs, sorted in three steps" />
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={{ base: 4, md: 6 }} mt={{ base: 8, md: 12 }}>
-          {STEPS.map((s, i) => (
-            <Stack key={s.title} spacing={3} p={{ base: 5, md: 6 }} bg="bg.canvas"
-              borderRadius="2xl" borderWidth="1px" borderColor="border.default">
-              <HStack spacing={3}>
-                <IconTile icon={s.icon} size={44} radius="xl" />
-                <Text fontFamily="heading" fontWeight="700" color="text.muted" fontSize="sm">
-                  Step {i + 1}
-                </Text>
-              </HStack>
-              <Heading as="h3" fontSize="lg" lineHeight="1.3">{s.title}</Heading>
-              <Text color="text.muted">{s.body}</Text>
-            </Stack>
-          ))}
-        </SimpleGrid>
       </Container>
     </Box>
   )
@@ -209,7 +166,6 @@ export default function Landing() {
         <HowItWorks />
         <Showcase />
         <AlsoIncluded />
-        <Comparison />
         <ClosingCta onSignup={onSignup} />
       </main>
       <Box as="footer" borderTopWidth="1px" borderColor="border.default">
@@ -218,6 +174,7 @@ export default function Landing() {
             <HStack spacing={4} rowGap={1} flexWrap="wrap" fontSize="sm" color="text.muted">
               <Text>© {new Date().getFullYear()} Budgeer</Text>
               <Link as={RouterLink} to="/help">Help</Link>
+              <Link as={RouterLink} to="/help#install-app">Install the app</Link>
               <Link as={RouterLink} to="/privacy">Privacy</Link>
               <Link as={RouterLink} to="/terms">Terms</Link>
               <Link href={`mailto:${SUPPORT_EMAIL}`}>Contact</Link>

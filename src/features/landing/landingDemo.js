@@ -65,6 +65,35 @@ export function buildTripDemo() {
   }
 }
 
+// "How it works", step 2: one shared expense split equally among the group,
+// with each member's share (the payer's own share lands in their spending).
+export function splitDemo() {
+  const amountMinor = toMinor(58.4, DEMO_CURRENCY)
+  const shares = splitEqually(amountMinor, MEMBERS.length)
+  return {
+    label: 'Groceries for the flat',
+    paidBy: 'Anna',
+    amountMinor,
+    members: MEMBERS.map((m, i) => ({ ...m, shareMinor: shares[i] })),
+  }
+}
+
+// "How it works", step 3: the trip's final balances, then the balances after
+// each of the fewest payments that settle them — ending with everyone at 0.
+// frames[0] is before any payment; frames[k] follows payments[k - 1].
+export function settleDemo() {
+  const { balances, settlements } = buildTripDemo().steps.at(-1)
+  const net = new Map(balances.map((b) => [b.id, b.netMinor]))
+  const snapshot = () => balances.map((b) => ({ id: b.id, name: b.name, netMinor: net.get(b.id) }))
+  const frames = [snapshot()]
+  for (const s of settlements) {
+    net.set(s.from, net.get(s.from) + s.amountMinor)
+    net.set(s.to, net.get(s.to) - s.amountMinor)
+    frames.push(snapshot())
+  }
+  return { payments: settlements, frames }
+}
+
 // Monthly budgets vs. spend, in the app's order (most used first) and with the
 // app's bar colours (budgetTone): Food & Dining is over its cap (red) and
 // Groceries past 80% of it (amber).

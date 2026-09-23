@@ -1,11 +1,11 @@
 // Which navigation entry is "current" for a pathname. A tab lights up for its
 // own section and for the pages you reach from it (Import lives under
 // Transactions; a category's page, with its budget, under Budgets; Insights,
-// Recurring, Settings and Help are gathered under More).
+// Recurring, Settings, Help and the legal pages are gathered under More).
 const SECTIONS = {
   '/transactions': ['/transactions', '/import'],
   '/budgets': ['/budgets', '/categories'],
-  '/more': ['/more', '/insights', '/recurring', '/settings', '/help'],
+  '/more': ['/more', '/insights', '/recurring', '/settings', '/help', '/privacy', '/terms'],
 }
 
 // `pathname` is `prefix` itself or a page below it (`/groups/42`), but not a

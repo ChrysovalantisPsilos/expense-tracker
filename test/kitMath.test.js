@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   textColor, fillColor, tileColor, shareSwatch, barWidth, trendHeights, signedAmount, playProps,
+  nextPhase,
 } from '../src/shared/ui/kit/kitMath.js'
 
 test('textColor / fillColor: known tones map to theme tokens, unknown fall back', () => {
@@ -57,4 +58,12 @@ test('playProps: static without playback or under reduced motion; gated by inVie
   assert.deepEqual(playProps({ reduce: true, inView: false }, from, to, tr), { initial: false, animate: to })
   assert.deepEqual(playProps({ reduce: false, inView: false }, from, to, tr), { initial: from, animate: from, transition: tr })
   assert.deepEqual(playProps({ reduce: false, inView: true }, from, to, tr), { initial: from, animate: to, transition: tr })
+})
+
+test('nextPhase: steps through and wraps to the start', () => {
+  assert.equal(nextPhase(0, 3), 1)
+  assert.equal(nextPhase(1, 3), 2)
+  assert.equal(nextPhase(2, 3), 0)
+  assert.equal(nextPhase(0, 1), 0)
+  assert.equal(nextPhase(4, 0), 0)
 })

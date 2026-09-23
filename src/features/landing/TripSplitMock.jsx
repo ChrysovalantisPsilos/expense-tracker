@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { AvatarGroup, Box, Flex, HStack, Stack, Text } from '@chakra-ui/react'
 import { AnimatePresence } from 'framer-motion'
 import { Plane, Receipt } from 'lucide-react'
@@ -12,7 +11,7 @@ import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 import TransferRow from '../../shared/ui/kit/TransferRow.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
-import { MotionBox, usePlayback } from '../../shared/ui/kit/motion.jsx'
+import { MotionBox, popIn, usePhases, usePlayback } from '../../shared/ui/kit/motion.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { buildTripDemo } from './landingDemo.js'
 
@@ -24,13 +23,7 @@ const money = (minor) => formatMoney(minor, TRIP.currency)
 // ms each phase is held before advancing; the settle-up plan lingers longest.
 const STEP_MS = 1600
 const SETTLE_MS = 4200
-
-const pop = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0 },
-  transition: { duration: 0.35, ease: 'easeOut' },
-}
+const HOLDS = [...Array(LAST).fill(STEP_MS), SETTLE_MS]
 
 function Balances({ step }) {
   const owedToYou = step.settlements.find((s) => s.to === 'you')
@@ -69,26 +62,16 @@ const SCREEN_CARD = { elevation: 'none', borderRadius: 'xl', mx: 2.5, mb: 2.5 }
 // Hero mockup: a phone-style group card where the trip's expenses land one by
 // one, balances update, and it ends on the settle-up plan — then loops.
 export default function TripSplitMock() {
-  const { ref, reduce, playing } = usePlayback()
+  const playback = usePlayback()
   // Phase k < LAST shows the state after k+1 expenses; LAST is the settle-up.
-  const [phase, setPhase] = useState(reduce ? LAST : 0)
-  const shown = reduce ? LAST : phase
+  const shown = usePhases(playback, HOLDS)
   const step = TRIP.steps[Math.min(shown, LAST - 1)]
 
-  useEffect(() => {
-    if (!playing) return undefined
-    const t = setTimeout(
-      () => setPhase((p) => (p >= LAST ? 0 : p + 1)),
-      phase >= LAST ? SETTLE_MS : STEP_MS,
-    )
-    return () => clearTimeout(t)
-  }, [playing, phase])
-
   const settling = shown >= LAST
-  const anim = reduce ? { initial: false } : pop
+  const anim = popIn(playback)
 
   return (
-    <Box ref={ref} position="relative" w="full" maxW="360px" mx="auto"
+    <Box ref={playback.ref} position="relative" w="full" maxW="360px" mx="auto"
       role="img" aria-label={`Example group "${TRIP.groupName}": four friends split trip expenses and see who owes what.`}>
       <Box
         bg="bg.surface" borderWidth="1px" borderColor="border.default"

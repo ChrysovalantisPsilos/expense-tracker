@@ -6,6 +6,8 @@ import {
   budgetsDemo,
   insightsDemo,
   currencyDemo,
+  splitDemo,
+  settleDemo,
 } from '../src/features/landing/landingDemo.js'
 import { toBaseMinor, toMinor } from '../src/shared/lib/currency.js'
 
@@ -89,4 +91,22 @@ test('currencyDemo: rows use toBaseMinor, JPY is zero-decimal, total matches', (
   assert.equal(jpy.minor, 1800)
   assert.equal(jpy.baseMinor, 1116) // ¥1800 × 0.0062 = €11.16
   assert.equal(totalBaseMinor, sum(rows.map((r) => r.baseMinor)))
+})
+
+test('splitDemo: equal shares that add up to the expense', () => {
+  const d = splitDemo()
+  assert.equal(d.members.length, 4)
+  assert.equal(sum(d.members.map((m) => m.shareMinor)), d.amountMinor)
+  assert.ok(d.members.every((m) => Number.isInteger(m.shareMinor)))
+  assert.equal(d.members[0].shareMinor, 1460) // €58.40 / 4
+})
+
+test('settleDemo: one frame per payment, balances conserved, ending at zero', () => {
+  const { payments, frames } = settleDemo()
+  const trip = buildTripDemo().steps.at(-1)
+  assert.equal(frames.length, payments.length + 1)
+  assert.deepEqual(frames[0], trip.balances)
+  for (const f of frames) assert.equal(sum(f.map((b) => b.netMinor)), 0)
+  assert.ok(frames.at(-1).every((b) => b.netMinor === 0))
+  assert.ok(payments.length >= 2 && payments.length <= 3)
 })

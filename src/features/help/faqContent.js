@@ -1,10 +1,12 @@
 // The Help & FAQ page's questions and answers. Plain data: each section has an
 // `id` and `title`; each item an `id` (its #anchor, lowercase-with-dashes and
 // unique across the page), a question `q` and an answer `a` (one string per
-// paragraph). Every answer must stay true to the app — update it alongside any
-// change to the feature it describes.
+// paragraph); optionally numbered `steps` and a `media` illustration — an
+// install guide ({ type: 'install', platform }) or a short clip from the app
+// ({ type: 'clip', name, alt }: public/help/<name>.webm + .jpg poster). Every
+// answer must stay true to the app — update it alongside any change to the
+// feature it describes (and re-record its clip).
 import { SUPPORT_EMAIL, PRIVACY_EMAIL } from '../../shared/lib/contact.js'
-import { COMPARISON_TITLE, comparisonFaqAnswer } from '../landing/comparison.js'
 
 export const FAQ_SECTIONS = [
   {
@@ -26,22 +28,31 @@ export const FAQ_SECTIONS = [
       },
       {
         id: 'compared-to-others',
-        q: COMPARISON_TITLE,
-        a: comparisonFaqAnswer(),
+        q: 'How is Budgeer different?',
+        a: [
+          'Most money apps do one of two things: bill splitters look after shared costs with friends, and budgeting apps look after your own money. Budgeer does both in one place.',
+          'Your budget and your groups in one app. Track your own spending against monthly budgets and split costs with friends in the same place. Your share of a group expense lands in your own spending automatically, converted at the European Central Bank rate for the day.',
+          'Free, with no daily cap and no ads. Every feature is free. There’s no daily limit on how many expenses you add — only hourly safety limits against abuse — and no ads or analytics trackers.',
+          'Private by default. Your data is stored in the EU (Paris). Amounts and descriptions are encrypted at rest on the server — that’s not end-to-end encryption. Receipts are read on your device and never uploaded.',
+          'Where others are better: Budgeer has no live bank connection — you import CSV or Excel statements instead. It isn’t in the App Store or Google Play; you install it from your browser. And it’s a one-person hobby project, so it has less polish than long-established apps, and support replies can take a few days.',
+        ],
       },
       {
         id: 'financial-advice',
         q: 'Is Budgeer a financial service? Does it give financial advice?',
         a: [
-          'No. Budgeer is a free hobby project, built and run by one person in their spare time. It’s a tool for recording and organising your own numbers.',
-          'It doesn’t provide financial, investment, tax or legal advice. Its figures — including exchange rates, projections, budget alerts, spread-out subscriptions, imports and receipt scans — may contain mistakes, so check important numbers against your bank statements, and ask a qualified professional when you need advice.',
+          'No. Budgeer is a free hobby project, built and run by one person in their spare time. It isn’t a bank, a payment service, a financial adviser or any other regulated financial service: it never holds, moves or collects money, and it can’t see your bank accounts. It’s a tool for recording and organising the numbers you enter yourself.',
+          'It doesn’t give financial, investment, tax or legal advice, and nothing in it is a recommendation to do anything with your money. Its figures — including exchange rates, projections, budget alerts, spread-out subscriptions, balances, imports and receipt scans — may contain mistakes. It’s provided as is, without guarantees, so check important numbers against your bank statements, and ask a qualified professional when you need advice.',
+          'The decisions you make with it, and settling up with friends, are up to you. The Terms of Use set this out in full.',
         ],
       },
       {
         id: 'who-runs-budgeer',
         q: 'Who runs Budgeer?',
         a: [
-          `Budgeer is a hobby project operated from Belgium. For help or to report a problem, email ${SUPPORT_EMAIL}; for anything about your personal data, email ${PRIVACY_EMAIL}.`,
+          'One person, in their spare time, from Belgium. There’s no company or support team behind it, and it’s free because it’s a hobby. It’s looked after with care, but it can have bugs or downtime, features can change, and support replies may take a few days.',
+          'If Budgeer ever has to close, you’ll be told in advance where possible, with time to download your data.',
+          `For help or to report a problem, email ${SUPPORT_EMAIL}; for anything about your personal data, email ${PRIVACY_EMAIL}.`,
         ],
       },
       {
@@ -55,6 +66,77 @@ export const FAQ_SECTIONS = [
         id: 'app-tour',
         q: 'Can I see the app tour again?',
         a: ['Yes. Go to Settings → Help → Take the tour again.'],
+      },
+    ],
+  },
+  {
+    id: 'install',
+    title: 'Install Budgeer on your phone',
+    items: [
+      {
+        id: 'install-app',
+        q: 'Can I install Budgeer like an app?',
+        a: [
+          'Yes. Budgeer is a web app: you install it straight from your browser, not from the App Store or Google Play. It’s free and takes a few seconds.',
+          'Pick your device below. Once installed, Budgeer opens from its own icon, full screen, like any other app.',
+        ],
+      },
+      {
+        id: 'install-iphone',
+        q: 'How do I install it on an iPhone or iPad?',
+        a: ['Use Safari:'],
+        steps: [
+          'Open www.budgeer.com in Safari.',
+          'Tap the Share button — the square with an arrow pointing up. It’s at the bottom of the screen on an iPhone (tap ⋯ first if you don’t see it) and at the top right on an iPad.',
+          'Scroll down the list and tap Add to Home Screen.',
+          'Tap Add. Budgeer’s icon appears on your home screen.',
+        ],
+        media: { type: 'install', platform: 'iphone' },
+      },
+      {
+        id: 'install-android',
+        q: 'How do I install it on an Android phone?',
+        a: ['Use Chrome:'],
+        steps: [
+          'Open www.budgeer.com in Chrome.',
+          'Tap the ⋮ menu at the top right.',
+          'Tap Install app (on some phones it says Add to Home screen, then Install).',
+          'Confirm with Install. Budgeer’s icon appears with your other apps.',
+        ],
+        media: { type: 'install', platform: 'android' },
+      },
+      {
+        id: 'install-samsung',
+        q: 'How do I install it with Samsung Internet?',
+        a: ['On a Samsung phone’s own browser:'],
+        steps: [
+          'Open www.budgeer.com in Samsung Internet.',
+          'Tap the menu (three lines) at the bottom right.',
+          'Tap Add page to, then Home screen. If the address bar shows an install icon, you can tap that instead.',
+          'Tap Add. Budgeer’s icon appears on your home screen.',
+        ],
+        media: { type: 'install', platform: 'samsung' },
+      },
+      {
+        id: 'install-desktop',
+        q: 'Can I install it on my computer?',
+        a: ['Yes, in Chrome or Edge:'],
+        steps: [
+          'Open www.budgeer.com.',
+          'Click the install icon at the right of the address bar (a screen with an arrow).',
+          'Click Install. Budgeer opens in its own window and can be pinned to your taskbar or dock.',
+        ],
+        media: { type: 'install', platform: 'desktop' },
+      },
+      {
+        id: 'install-benefits',
+        q: 'What changes once it’s installed?',
+        a: [
+          'It opens from its own icon, full screen, without the browser’s address bar.',
+          'It opens even offline and shows your recently loaded data; adding or changing anything still needs a connection.',
+          'On an iPhone or iPad, notifications only work once Budgeer is installed on your home screen. On Android and computers they work in the browser too.',
+          'It updates itself automatically — there’s nothing to download from a store. Your data lives in your account, not on the phone, so removing the app later doesn’t delete anything.',
+        ],
       },
     ],
   },
@@ -319,15 +401,6 @@ export const FAQ_SECTIONS = [
     id: 'troubleshooting',
     title: 'Troubleshooting',
     items: [
-      {
-        id: 'install-app',
-        q: 'How do I install the app?',
-        a: [
-          'iPhone and iPad: open budgeer.com in Safari, tap Share, then Add to Home Screen.',
-          'Android: open it in Chrome, open the ⋮ menu and tap Install app (or Add to Home screen).',
-          'Computer: in Chrome or Edge, click the install icon at the right of the address bar.',
-        ],
-      },
       {
         id: 'old-data',
         q: 'The app shows old data. What do I do?',

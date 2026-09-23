@@ -32,6 +32,12 @@ export function detectEnvironment({ host = '', supabaseUrl = '' } = {}) {
 
 export const otherEnvironment = (env) => (env === LIVE ? TEST : LIVE)
 
+// The origin to put in links people share (e.g. a FAQ answer's link): the
+// live site's canonical www origin — so the link opens, and its preview
+// loads, without the apex's redirect — or the page's own origin elsewhere
+// (the test site, localhost), where the link must stay on that site.
+export const shareOrigin = (env, origin) => (env === LIVE ? SITES[LIVE].origin : origin)
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Pages keyed by a row id or invite token that won't exist on the other site

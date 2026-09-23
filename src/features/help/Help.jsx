@@ -3,22 +3,33 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel,
   Box, Button, Container, Heading, IconButton, Input, InputGroup, InputLeftElement,
-  InputRightElement, Link, Stack, Text, useToast,
+  InputRightElement, Link, ListItem, OrderedList, Stack, Text, useToast,
 } from '@chakra-ui/react'
-import { ArrowLeft, Link as LinkIcon, Search, X } from 'lucide-react'
+import { Link as LinkIcon, Search, X } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
+import BackButton from '../../shared/ui/BackButton.jsx'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
+import HobbyNotice from '../../shared/ui/HobbyNotice.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
+import { CURRENT_ENV, shareOrigin } from '../../shared/lib/environment.js'
 import { FAQ_SECTIONS } from './faqContent.js'
+import FaqClip from './FaqClip.jsx'
+import InstallIllustration from './InstallIllustration.jsx'
 import {
   anchorFromHash, applyOpenIndexes, countItems, filterFaq, openIndexes, questionLink,
 } from './faqMath.js'
 
 const PATH = '/help'
 const INTRO = 'Answers to the questions people ask most. Search, or browse by topic.'
+
+// An answer's optional illustration: an install sketch or a clip of the app.
+function Media({ media }) {
+  if (media.type === 'install') return <InstallIllustration platform={media.platform} />
+  return <FaqClip name={media.name} alt={media.alt} />
+}
 
 // One section's questions as an accessible accordion (each question is an h3
 // button; arrow keys, Home and End move between them). `open` is the page's
@@ -49,6 +60,12 @@ function FaqSection({ section, open, onOpenChange, onCopyLink }) {
                 {item.a.map((p, j) => (
                   <Text key={j} color="text.muted" lineHeight="1.7">{p}</Text>
                 ))}
+                {item.steps && (
+                  <OrderedList spacing={1.5} pl={1} color="text.muted" lineHeight="1.7">
+                    {item.steps.map((step) => <ListItem key={step}>{step}</ListItem>)}
+                  </OrderedList>
+                )}
+                {item.media && <Media media={item.media} />}
                 <Box>
                   <Button size="xs" variant="ghost" ml={-2} leftIcon={<LinkIcon size={14} />}
                     onClick={() => onCopyLink(item.id)}>
@@ -97,7 +114,7 @@ function FaqBody() {
   async function onCopyLink(id) {
     navigate({ hash: id }, { replace: true })
     try {
-      await navigator.clipboard.writeText(questionLink(window.location.origin, PATH, id))
+      await navigator.clipboard.writeText(questionLink(shareOrigin(CURRENT_ENV, window.location.origin), PATH, id))
       toast({ title: 'Link copied', status: 'success', duration: 2000 })
     } catch {
       toast({ title: 'The link is in the address bar', status: 'info', duration: 3000 })
@@ -106,6 +123,7 @@ function FaqBody() {
 
   return (
     <Stack spacing={5}>
+      <HobbyNotice />
       <Box role="search">
         <InputGroup size="lg">
           <InputLeftElement pointerEvents="none" color="text.muted"><Search size={18} /></InputLeftElement>
@@ -147,17 +165,16 @@ function FaqBody() {
 }
 
 // Help & FAQ, readable signed in or out: inside the app shell (with a way
-// back to Settings) when signed in, on the public layout when signed out.
+// back to where the user came from, else Settings) when signed in, on the
+// public layout when signed out.
 export default function Help() {
   const { user } = useAuth()
 
   if (user) {
     return (
       <Stack spacing={5}>
-        <PageHeader eyebrow="Help" title="Help & FAQ" description={INTRO} leading={
-          <IconButton as={RouterLink} to="/settings" aria-label="Back to settings"
-            variant="ghost" size="sm" ml={-2} flexShrink={0} icon={<ArrowLeft size={18} />} />
-        } />
+        <PageHeader eyebrow="Help" title="Help & FAQ" description={INTRO}
+          leading={<BackButton fallback="/settings" />} />
         <FaqBody />
       </Stack>
     )

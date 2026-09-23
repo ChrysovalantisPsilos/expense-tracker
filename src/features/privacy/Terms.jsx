@@ -18,22 +18,30 @@ const SECTIONS = [
       about the service, contact {SUPPORT}; for anything about your personal data, {PRIVACY}.
     </Body>
   ) },
-  { id: 'service', title: 'What Budgeer is', body: (
+  { id: 'service', title: 'What Budgeer is — and isn’t', body: (
     <>
-      <Body><strong>{DISCLAIMER}</strong></Body>
+      <Body>
+        <strong>Budgeer is a free hobby project, run by one person in their spare time.</strong> It
+        helps you keep track of your own spending and income and split shared costs with friends,
+        for personal, non-commercial use. It is not a business service: there is no subscription,
+        no service-level promise and no guaranteed support.
+      </Body>
       <Bullets items={[
-        'Budgeer is a free hobby project run by one person. It helps you keep track of your own spending and income and split shared costs with friends, for personal, non-commercial use.',
-        'It is provided “as is” and “as available”, without any promise that it will always work, be error-free, or keep every feature.',
-        'We may change Budgeer or stop offering it. Where possible we will give reasonable notice first — at least 30 days before shutting it down — so you can download your data (Settings → Privacy).',
+        'Budgeer is not a bank, a payment service, an e-money or investment service, or a financial, tax or legal adviser. It never holds, moves or collects money, and it doesn’t connect to your bank accounts.',
+        'It is provided free of charge, “as is” and “as available”. We don’t promise that it will always be available, work without interruption or errors, keep your data forever, or keep every feature.',
+        'We don’t guarantee that anything it shows is accurate, complete or up to date — see “No financial advice” below.',
       ]} />
     </>
   ) },
   { id: 'advice', title: 'No financial advice', body: (
-    <Bullets items={[
-      'Budgeer only records and organises the data you enter. Nothing in it is financial, investment, tax or legal advice, or a recommendation to do anything with your money.',
-      'Figures can be wrong. Calculations, totals and balances, exchange rates (the European Central Bank’s daily reference rates, or an estimate until they arrive), projections, budget alerts, yearly subscriptions spread over months, bank-statement imports and receipt scans may be inaccurate or incomplete.',
-      'Always check important figures against your bank statements, and ask a qualified professional before making financial, tax or legal decisions.',
-    ]} />
+    <>
+      <Body><strong>{DISCLAIMER}</strong></Body>
+      <Bullets items={[
+        'Budgeer only records and organises the data you enter. Nothing in it is financial, investment, tax or legal advice, or a recommendation to do anything with your money.',
+        'Figures can be wrong. Calculations, totals and balances, exchange rates (the European Central Bank’s daily reference rates, or an estimate until they arrive), projections, budget alerts, yearly subscriptions spread over months, bank-statement imports and receipt scans may be inaccurate or incomplete.',
+        'You are responsible for your own decisions and for checking figures. Always check important amounts against your bank statements before relying on them or paying anyone, and ask a qualified professional before making financial, tax or legal decisions.',
+      ]} />
+    </>
   ) },
   { id: 'account', title: 'Your account', body: (
     <Bullets items={[
@@ -66,17 +74,24 @@ const SECTIONS = [
   { id: 'liability', title: 'Limitation of liability', body: (
     <>
       <Body>
-        To the extent Belgian law allows, and because Budgeer is a free hobby project, we are not
-        liable for any loss or damage arising from your use of Budgeer or from relying on its
-        figures — including financial losses, lost data, missed payments, disagreements within a
-        group, or decisions you make based on the app — nor for indirect or consequential loss.
+        Budgeer is free and provided as a hobby, so to the fullest extent Belgian law allows, we are
+        not liable for any loss or damage arising from your use of Budgeer, from it being
+        unavailable, or from relying on its figures — including financial losses, lost data or
+        backups, missed or wrong payments, disagreements within a group, or decisions you make
+        based on the app — nor for indirect or consequential loss.
       </Body>
       <Body>
         This never excludes or limits our liability for intent or fraud, for gross negligence, or
-        for death or personal injury, and it doesn’t affect any mandatory right you have as a
-        consumer under Belgian or EU law.
+        for death or personal injury, or anything else the law doesn’t allow us to exclude, and it
+        doesn’t affect any mandatory right you have as a consumer under Belgian or EU law.
       </Body>
     </>
+  ) },
+  { id: 'availability', title: 'Changes and shutting down', body: (
+    <Bullets items={[
+      'We may change, pause or remove features, or take Budgeer offline for maintenance, without notice when that’s needed to keep it working or secure.',
+      'We may stop offering Budgeer altogether. If we do, we will tell you in advance where possible — at least 30 days before it shuts down — so you can download your data (Settings → Privacy) or a backup (Settings → Your data) first.',
+    ]} />
   ) },
   { id: 'ending', title: 'Ending your use', body: (
     <Bullets items={[
@@ -107,7 +122,7 @@ export default function Terms() {
     <LegalLayout
       eyebrow="Terms of Use"
       title="The terms for using Budgeer"
-      intro={`The rules for using Budgeer, in plain language: what the service is, what we expect from you, and what you can expect from us. ${DISCLAIMER}`}
+      intro="The rules for using Budgeer, in plain language: what the service is — and isn’t — what we expect from you, and what you can expect from us."
       version={LEGAL_VERSIONS.terms}
       sections={SECTIONS}
     />

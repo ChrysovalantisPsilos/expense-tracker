@@ -18,9 +18,16 @@ function searchTerms(query) {
   return q ? q.split(' ') : []
 }
 
+// Everything a question can be found by: its question, answer, steps and
+// the description of its clip.
+function itemText(item) {
+  return [item.q, ...item.a, ...(item.steps ?? []), item.media?.alt ?? ''].join(' ')
+}
+
 // The sections whose questions match `query`: every word of the query must
-// appear somewhere in the question, its answer or its section's title. Empty
-// sections are dropped; an empty query returns `sections` unchanged.
+// appear somewhere in the question, its answer (steps and clip description
+// included) or its section's title. Empty sections are dropped; an empty
+// query returns `sections` unchanged.
 export function filterFaq(sections, query) {
   const terms = searchTerms(query)
   if (terms.length === 0) return sections
@@ -28,7 +35,7 @@ export function filterFaq(sections, query) {
     .map((section) => {
       const title = normalizeText(section.title)
       const items = section.items.filter((item) => {
-        const hay = `${title} ${normalizeText(item.q)} ${normalizeText(item.a.join(' '))}`
+        const hay = `${title} ${normalizeText(itemText(item))}`
         return terms.every((t) => hay.includes(t))
       })
       return { ...section, items }
@@ -67,7 +74,16 @@ export function applyOpenIndexes(openIds, items, indexes) {
   return next
 }
 
-// The shareable link to one question.
+// The shareable link to one question. `origin` should be the site's
+// canonical origin (shareOrigin in shared/lib/environment.js), so a pasted
+// link reaches the page — and its preview — without a redirect.
 export function questionLink(origin, path, id) {
   return `${origin}${path}#${id}`
+}
+
+// Where a FAQ clip's files live: public/help/<name>.webm, with a .jpg poster
+// frame shown before it plays (and instead of it with reduced motion).
+const CLIP_DIR = '/help'
+export function clipSources(name) {
+  return { video: `${CLIP_DIR}/${name}.webm`, poster: `${CLIP_DIR}/${name}.jpg` }
 }

@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   LIVE, TEST, detectEnvironment, otherEnvironment, otherSiteUrl, devTitle, faviconFor, markEnvironment,
+  shareOrigin,
 } from '../src/shared/lib/environment.js'
 
 const PROD_URL = 'https://tuxfpylowcxazinqtrzx.supabase.co'
@@ -88,4 +89,13 @@ test('markEnvironment applies the markers to a document', () => {
   markEnvironment(l, LIVE)
   assert.equal(l.title, 'Budgeer')
   assert.equal(l.icon.href, '/budgeer-mark.svg')
+})
+
+test('shared links use the canonical www origin on the live site, the page origin elsewhere', () => {
+  // Live: the apex redirects to www, and link previews follow the canonical origin.
+  assert.equal(shareOrigin(LIVE, 'https://budgeer.com'), 'https://www.budgeer.com')
+  assert.equal(shareOrigin(LIVE, 'https://www.budgeer.com'), 'https://www.budgeer.com')
+  // Test site and local dev keep their own origin, so the link stays there.
+  assert.equal(shareOrigin(TEST, 'https://dev.budgeer.com'), 'https://dev.budgeer.com')
+  assert.equal(shareOrigin(TEST, 'http://localhost:5173'), 'http://localhost:5173')
 })

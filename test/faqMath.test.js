@@ -1,7 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { existsSync, statSync } from 'node:fs'
 import {
   normalizeText, filterFaq, countItems, anchorFromHash, openIndexes, applyOpenIndexes, questionLink,
+  clipSources,
 } from '../src/features/help/faqMath.js'
 import { FAQ_SECTIONS } from '../src/features/help/faqContent.js'
 
@@ -69,7 +71,20 @@ test('applyOpenIndexes updates one section and leaves the others alone', () => {
 })
 
 test('questionLink builds a shareable deep link', () => {
-  assert.equal(questionLink('https://budgeer.com', '/help', 'fx'), 'https://budgeer.com/help#fx')
+  assert.equal(questionLink('https://www.budgeer.com', '/help', 'fx'), 'https://www.budgeer.com/help#fx')
+})
+
+test('search also finds a question by its steps and its clip description', () => {
+  const sections = [{ id: 's', title: 'Setup', items: [
+    { id: 'ios', q: 'On an iPhone?', a: ['Use Safari:'], steps: ['Tap Share.', 'Tap Add to Home Screen.'] },
+    { id: 'clip', q: 'Settle?', a: ['Tap Settle up.'], media: { type: 'clip', name: 'x', alt: 'Recording a Revolut payment' } },
+  ] }]
+  assert.deepEqual(filterFaq(sections, 'home screen').flatMap((s) => s.items.map((i) => i.id)), ['ios'])
+  assert.deepEqual(filterFaq(sections, 'revolut').flatMap((s) => s.items.map((i) => i.id)), ['clip'])
+})
+
+test('clipSources points at the WebM and its poster frame under /help', () => {
+  assert.deepEqual(clipSources('settle-up'), { video: '/help/settle-up.webm', poster: '/help/settle-up.jpg' })
 })
 
 test('the FAQ content is well formed: unique anchor ids, non-empty questions and answers', () => {
@@ -84,5 +99,29 @@ test('the FAQ content is well formed: unique anchor ids, non-empty questions and
       assert.ok(Array.isArray(i.a) && i.a.length > 0 && i.a.every((p) => p.trim().length > 0), i.id)
     }
   }
-  assert.ok(ids.length >= 30 && ids.length <= 40, `${ids.length} questions`)
+  assert.ok(ids.length >= 30 && ids.length <= 50, `${ids.length} questions`)
+})
+
+const INSTALL_PLATFORMS = ['iphone', 'android', 'samsung', 'desktop']
+
+test('FAQ media is well formed: known install platforms, and every clip is on disk, small and described', () => {
+  const items = FAQ_SECTIONS.flatMap((s) => s.items)
+  for (const i of items) {
+    if (i.steps) assert.ok(i.steps.length > 0 && i.steps.every((p) => p.trim().length > 0), i.id)
+    if (!i.media) continue
+    if (i.media.type === 'install') {
+      assert.ok(INSTALL_PLATFORMS.includes(i.media.platform), `${i.id}: ${i.media.platform}`)
+      continue
+    }
+    assert.equal(i.media.type, 'clip', i.id)
+    assert.ok(i.media.alt?.trim().length > 20, `${i.id}: clip needs a description`)
+    for (const file of Object.values(clipSources(i.media.name))) {
+      const path = new URL(`../public${file}`, import.meta.url)
+      assert.ok(existsSync(path), `${i.id}: ${file} is missing`)
+      // Clips aren't precached; keep each one light for phones on data.
+      assert.ok(statSync(path).size < 300 * 1024, `${i.id}: ${file} is over 300 KB`)
+    }
+  }
+  const platforms = items.filter((i) => i.media?.type === 'install').map((i) => i.media.platform)
+  assert.deepEqual([...platforms].sort(), [...INSTALL_PLATFORMS].sort(), 'one install guide per platform')
 })

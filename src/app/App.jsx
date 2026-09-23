@@ -112,8 +112,6 @@ function AuthedRoutes() {
     <Suspense fallback={<PageSpinner fullScreen />}>
       <Routes>
         <Route path="/join/:token" element={<JoinGroup />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/terms" element={<Terms />} />
         {kitRoute}
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
@@ -138,6 +136,8 @@ function AuthedRoutes() {
           <Route path="settings/data" element={<YourData />} />
           <Route path="settings/privacy" element={<PrivacySettings />} />
           <Route path="help" element={<Help />} />
+          <Route path="privacy" element={<Privacy />} />
+          <Route path="terms" element={<Terms />} />
           {/* Old name for Settings — keeps bookmarks and old links working. */}
           <Route path="profile" element={<Navigate to="/settings" replace />} />
           {/* Expenses, Income and Search became one Transactions page. */}

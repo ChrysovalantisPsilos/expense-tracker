@@ -1,6 +1,5 @@
 import LegalLayout, { Body, Bullets, Facts, Lead, MailLink, PageLink } from './LegalLayout.jsx'
 import { PRIVACY_EMAIL } from '../../shared/lib/contact.js'
-import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
 import { CONTROLLER, LEGAL_VERSIONS, RETENTION as R } from './legal.js'
 
 // The Privacy Notice (GDPR Art. 13/14). Every statement must stay true to the
@@ -256,7 +255,7 @@ export default function Privacy() {
     <LegalLayout
       eyebrow="Privacy Notice"
       title="How Budgeer handles your personal data"
-      intro={`Budgeer is a free expense tracker and bill splitter. ${DISCLAIMER} This notice explains what personal data we collect, why, who receives it, how long we keep it, and how to use your rights.`}
+      intro="Budgeer is a free expense tracker and bill splitter. This notice explains what personal data we collect, why, who receives it, how long we keep it, and how to use your rights."
       version={LEGAL_VERSIONS.privacy}
       sections={SECTIONS}
     />
