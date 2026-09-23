@@ -1,0 +1,4 @@
+Numéro de séquence;Date d'exécution;Date valeur;Montant;Devise du compte;Numéro de compte;Type de transaction;Contrepartie;Nom de la contrepartie;Communication;Détails;Statut;Motif du refus
+2026-0077;12/08/2026;12/08/2026;-4,80;EUR;BE00 0000 0000 0000;Paiement par carte de débit;;BOULANGERIE DUPRÉ;;PAIEMENT AVEC LA CARTE DE DEBIT BOULANGERIE DUPRÉ;Accepté;
+2026-0076;11/08/2026;12/08/2026;-62,10;EUR;BE00 0000 0000 0000;Paiement par carte de débit;;DELHAIZE IXELLES;;;Accepté;
+2026-0075;10/08/2026;10/08/2026;15,00;EUR;BE00 0000 0000 0000;Virement;BE44 4444 4444 4444;MARIE DUBOIS;Remboursement café;;Accepté;

@@ -1,0 +1,4 @@
+Rekeningnummer;Naam van de rekening;Rekening tegenpartij;Omzetnummer;Boekingsdatum;Valutadatum;Bedrag;Munteenheid;Omschrijving;Detail van de omzet;Bericht
+BE00 0000 0000 0000;Zichtrekening;;00123;14/09/2026;14/09/2026;-12,99;EUR;Betaling Bancontact;DELHAIZE LEUVEN 14/09 12:31 Kaart 1234;
+BE00 0000 0000 0000;Zichtrekening;BE55 5555 5555 5555;00122;13/09/2026;13/09/2026;500,00;EUR;Overschrijving;VAN: P. JANSSENS;Terugbetaling
+BE00 0000 0000 0000;Zichtrekening;;00121;12/09/2026;12/09/2026;-9,50;EUR;Betaling Maestro;SPOTIFY STOCKHOLM;

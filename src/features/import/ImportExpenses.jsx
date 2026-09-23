@@ -2,9 +2,11 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Heading, Stack, HStack, Text, Button, Spacer, Select,
-  FormControl, FormLabel, useToast, IconButton, Input,
+  FormControl, FormLabel, useToast, IconButton, Input, Collapse,
 } from '@chakra-ui/react'
-import { ArrowLeft, UploadCloud, FileSpreadsheet, Check, Eye, Store, ArrowRightLeft } from 'lucide-react'
+import {
+  ArrowLeft, UploadCloud, FileSpreadsheet, Check, Eye, Store, ArrowRightLeft, SlidersHorizontal,
+} from 'lucide-react'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
@@ -15,11 +17,15 @@ import { useCategories } from '../transactions/useData.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, parseManualRate } from '../../shared/lib/currency.js'
 import {
-  IMPORT_FIELDS, parseWorkbook, guessMapping, buildTransactions, importTransactions,
-  listRules, saveRule,
+  parseWorkbook, buildTransactions, importTransactions, listRules, saveRule, rememberMapping,
 } from './importExpenses.js'
-import { rowToDraft, merchantKey } from './importMath.js'
+import { previewDrafts, merchantKey } from './importMath.js'
+import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
+import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
+
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
+const mappingComplete = (m) => Boolean(m.date && (m.amount || (m.debit && m.credit)))
 
 export default function ImportExpenses() {
   const navigate = useNavigate()
@@ -33,6 +39,9 @@ export default function ImportExpenses() {
   const [headers, setHeaders] = useState([])
   const [rows, setRows] = useState([])
   const [mapping, setMapping] = useState({})
+  const [headerRow, setHeaderRow] = useState(0)
+  const [detection, setDetection] = useState(null) // { preset, confidence, remembered }
+  const [showMapping, setShowMapping] = useState(false)
   const { busy, run } = useAsyncSubmit()
   const [result, setResult] = useState(null)
   const [pending, setPending] = useState(null)   // { valid, errors, groups }
@@ -45,12 +54,16 @@ export default function ImportExpenses() {
     e.target.value = ''
     if (!file) return
     try {
-      const { headers, rows } = await parseWorkbook(file)
-      if (!rows.length) { toast({ title: 'That file has no rows', status: 'warning' }); return }
+      const parsed = await parseWorkbook(file)
+      if (!parsed.rows.length) { toast({ title: 'That file has no rows', status: 'warning' }); return }
       setFileName(file.name)
-      setHeaders(headers)
-      setRows(rows)
-      setMapping(guessMapping(headers))
+      setHeaders(parsed.headers)
+      setRows(parsed.rows)
+      setHeaderRow(parsed.headerRow)
+      setMapping(parsed.detection.mapping)
+      setDetection(parsed.detection)
+      // Sure enough → straight to the preview; otherwise ask for the columns.
+      setShowMapping(parsed.detection.confidence < CONFIDENCE_THRESHOLD)
       setStep('map')
     } catch (err) {
       toast({ title: 'Couldn’t read that file', description: err.message,
@@ -58,20 +71,24 @@ export default function ImportExpenses() {
     }
   }
 
-  const previewTx = useMemoPreview(rows, mapping, baseCurrency)
+  // Same rowToDraft + sign rule the real import uses, so the preview can't
+  // misrepresent it (no FX lookup — shown in each row's own currency).
+  const preview = useMemo(() => previewDrafts(rows, mapping, baseCurrency), [rows, mapping, baseCurrency])
 
   // Build rows (saved rules pre-categorize known merchants), then either go
   // straight to import or stop at the review step for unknown merchants.
   // `manualRates` fills in currencies the ECB lookup couldn't cover; while any
   // are still missing the import stops at the 'rates' step (never 1:1).
   async function prepare(manualRates = {}) {
-    if (!mapping.date || !mapping.amount) {
-      toast({ title: 'Map both Date and Amount first', status: 'warning' }); return
+    if (!mappingComplete(mapping)) {
+      toast({ title: 'Map Date and Amount (or Debit + Credit) first', status: 'warning' }); return
     }
+    rememberMapping(headers, mapping)
     await run(async () => {
       const rules = await listRules().catch(() => [])
-      const { valid, errors, missingRates: missing } = await buildTransactions({
+      const { valid, errors, skipped, missingRates: missing } = await buildTransactions({
         rows, mapping, userId: user.id, baseCurrency, categories, rules, manualRates,
+        firstRow: headerRow + 2,
       })
       if (missing.length) {
         setMissingRates(missing)
@@ -94,9 +111,9 @@ export default function ImportExpenses() {
         .map(([pattern, count]) => ({ pattern, count }))
         .sort((a, b) => b.count - a.count)
       if (groups.length === 0) {
-        await finishImport(valid, errors, {})
+        await finishImport(valid, errors, skipped, {})
       } else {
-        setPending({ valid, errors, groups })
+        setPending({ valid, errors, skipped, groups })
         setAssign({})
         setStep('review')
       }
@@ -105,7 +122,7 @@ export default function ImportExpenses() {
 
   // Apply review choices (as both this-import categories and saved rules),
   // then insert. Duplicate-proof: re-imports are skipped server-side.
-  async function finishImport(valid, errors, assignments) {
+  async function finishImport(valid, errors, skipped, assignments) {
     await run(async () => {
       const chosen = Object.entries(assignments).filter(([, catId]) => catId)
       for (const [pattern, catId] of chosen) {
@@ -117,7 +134,7 @@ export default function ImportExpenses() {
         return hit ? { ...t, category_id: hit[1] } : t
       })
       const { inserted, duplicates } = await importTransactions(withCats)
-      setResult({ inserted, duplicates, skipped: errors.length, errors: errors.slice(0, 10) })
+      setResult({ inserted, duplicates, failed: errors.length, errors: errors.slice(0, 10), ignored: skipped.length })
       setStep('done')
       setPending(null)
     }, { errorTitle: 'Import failed' })
@@ -125,7 +142,7 @@ export default function ImportExpenses() {
 
   return (
     <Stack spacing={5} maxW="760px">
-      <PageHeader eyebrow="Transactions" title="Import from Excel" leading={
+      <PageHeader eyebrow="Transactions" title="Import a bank statement" leading={
         <IconButton aria-label="Back" variant="ghost" size="sm" ml={-2} flexShrink={0}
           icon={<ArrowLeft size={18} />} onClick={() => navigate('/transactions')} />
       } />
@@ -134,59 +151,78 @@ export default function ImportExpenses() {
         <Panel>
           <Stack spacing={4} align="center" py={8} textAlign="center">
             <IconTile icon={UploadCloud} size={64} radius="2xl" />
-            <Text fontWeight="600">Upload a spreadsheet</Text>
+            <Text fontWeight="600">Upload a statement or spreadsheet</Text>
             <Text fontSize="sm" color="text.muted" maxW="sm">
-              Any .xlsx or .csv (up to 5 MB) with a header row. Columns are
-              detected automatically and you confirm the mapping before anything
-              is saved. Foreign-currency rows convert at the ECB rate for their date.
+              The CSV or Excel export from your bank (up to 5 MB), or any sheet
+              with a header row. The layout is recognised automatically —
+              including {PRESET_NAMES.join(', ')} — and you see a preview before
+              anything is saved. Pending and declined payments are left out;
+              foreign-currency rows convert at the ECB rate for their date.
             </Text>
             <Button as="label" leftIcon={<FileSpreadsheet size={16} />} cursor="pointer">
               Choose file
-              <input type="file" accept=".xlsx,.xls,.csv" hidden onChange={onFile} />
+              <input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,text/csv" hidden onChange={onFile} />
             </Button>
           </Stack>
         </Panel>
       )}
 
-      {step === 'map' && (
+      {step === 'map' && detection && (
         <>
-          <Panel icon={FileSpreadsheet} title={fileName} subtitle={`${rows.length} rows`}
+          <Panel icon={FileSpreadsheet} title={fileName} subtitle={plural(rows.length, 'row')}
             action={<Button size="xs" variant="ghost" onClick={() => setStep('upload')}>Change file</Button>}>
-            <Text fontSize="sm" color="text.muted" mb={3}>
-              Match your columns to Budgeer fields. Date and Amount are required.
-            </Text>
-            <Stack spacing={3}>
-              {IMPORT_FIELDS.map((f) => (
-                <FormControl key={f.key}>
-                  <FormLabel fontSize="sm" mb={1}>
-                    {f.label}{f.required && <Text as="span" color="status.negative"> *</Text>}
-                  </FormLabel>
-                  <Select size="sm" placeholder={f.required ? 'Select a column…' : '— none —'}
-                    value={mapping[f.key] || ''}
-                    onChange={(e) => setMapping((m) => ({ ...m, [f.key]: e.target.value }))}>
-                    {headers.map((h) => <option key={h} value={h}>{h}</option>)}
-                  </Select>
-                </FormControl>
-              ))}
-            </Stack>
+            <HStack align="start" spacing={3}>
+              <Text fontSize="sm" color="text.muted" flex="1">
+                {detection.remembered
+                  ? 'Using the columns you confirmed for this layout last time.'
+                  : detection.preset
+                    ? `Recognised as a ${detection.preset.name} export.`
+                    : detection.confidence >= CONFIDENCE_THRESHOLD
+                      ? 'Columns detected automatically.'
+                      : 'We couldn’t be sure which column is which — please check the mapping below.'}
+                {' '}Check the preview before importing.
+              </Text>
+              <Button size="xs" variant="outline" leftIcon={<SlidersHorizontal size={14} />}
+                aria-expanded={showMapping} onClick={() => setShowMapping((v) => !v)}>
+                {showMapping ? 'Hide columns' : 'Adjust columns'}
+              </Button>
+            </HStack>
+            <Collapse in={showMapping} animateOpacity>
+              <Stack spacing={3} pt={4}>
+                <Text fontSize="sm" color="text.muted">
+                  Match your columns to Budgeer fields: Date, plus either a signed
+                  Amount or Debit and Credit columns. Budgeer remembers your choice
+                  for files with the same columns.
+                </Text>
+                <MappingFields headers={headers} mapping={mapping} onChange={setMapping} />
+              </Stack>
+            </Collapse>
           </Panel>
 
           <Panel icon={Eye} title="Preview" subtitle="The first rows, as they’ll be saved">
-            {previewTx.length === 0 ? (
+            {preview.rows.length === 0 ? (
               <Text fontSize="sm" color="text.muted">
-                Map Date and Amount to preview rows.
+                {mappingComplete(mapping)
+                  ? 'No row could be read with these columns — adjust the mapping.'
+                  : 'Map Date and Amount (or Debit + Credit) to preview rows.'}
               </Text>
             ) : (
-              previewTx.map((t, i) => (
+              preview.rows.map((t, i) => (
                 <ItemRow key={i} title={t.description || '—'} meta={`${t.spent_at} · ${t.kind}`}
-                  amount={formatMoney(t.amount_minor, t.currency)} />
+                  amount={`${t.kind === 'income' ? '+' : '−'}${formatMoney(t.amount_minor, t.currency)}`} />
               ))
+            )}
+            {(preview.skipped > 0 || preview.errors > 0) && (
+              <Text fontSize="xs" color="text.muted" mt={3}>
+                {preview.skipped > 0 && `${plural(preview.skipped, 'line')} left out (pending, declined, balances or notes). `}
+                {preview.errors > 0 && `${plural(preview.errors, 'row')} can’t be read (e.g. row ${preview.firstError.index + headerRow + 2}: ${preview.firstError.reason}).`}
+              </Text>
             )}
             <HStack mt={4}>
               <Spacer />
               <Button leftIcon={<Check size={16} />} isLoading={busy}
-                isDisabled={!mapping.date || !mapping.amount} onClick={() => prepare()}>
-                Import {rows.length} rows
+                isDisabled={preview.ready === 0} onClick={() => prepare()}>
+                Import {plural(preview.ready, 'row')}
               </Button>
             </HStack>
           </Panel>
@@ -254,7 +290,7 @@ export default function ImportExpenses() {
             <Button variant="ghost" onClick={() => { setPending(null); setStep('map') }}>Back</Button>
             <Spacer />
             <Button leftIcon={<Check size={16} />} isLoading={busy}
-              onClick={() => finishImport(pending.valid, pending.errors, assign)}>
+              onClick={() => finishImport(pending.valid, pending.errors, pending.skipped, assign)}>
               Import {pending.valid.length} rows
             </Button>
           </HStack>
@@ -272,10 +308,16 @@ export default function ImportExpenses() {
                 imported before and got skipped — re-importing never duplicates.
               </Text>
             )}
-            {result.skipped > 0 && (
+            {result.failed > 0 && (
               <Text fontSize="sm" color="text.muted">
-                Skipped {result.skipped} row{result.skipped === 1 ? '' : 's'} with a missing/invalid
+                Skipped {plural(result.failed, 'row')} with a missing/invalid
                 date or amount{result.errors.length ? ` (e.g. row ${result.errors[0].row}: ${result.errors[0].reason})` : ''}.
+              </Text>
+            )}
+            {result.ignored > 0 && (
+              <Text fontSize="sm" color="text.muted">
+                Left out {plural(result.ignored, 'line')} that {result.ignored === 1 ? 'isn’t a booked transaction' : 'aren’t booked transactions'} (pending,
+                declined, balances or notes).
               </Text>
             )}
             <HStack pt={2}>
@@ -287,23 +329,4 @@ export default function ImportExpenses() {
       )}
     </Stack>
   )
-}
-
-// Lightweight synchronous preview of the first few rows (no FX lookup — uses the
-// row's own currency for display; exchange_rate is resolved at import time). Uses
-// the same rowToDraft the real import does, so the preview can't misrepresent it.
-function useMemoPreview(rows, mapping, baseCurrency) {
-  return useMemo(() => {
-    if (!mapping.date || !mapping.amount) return []
-    const out = []
-    for (const r of rows.slice(0, 6)) {
-      const draft = rowToDraft(r, mapping, baseCurrency)
-      if (draft.error) continue
-      out.push({
-        spent_at: draft.spent_at, kind: draft.kind, currency: draft.currency,
-        amount_minor: draft.amount_minor, description: draft.description,
-      })
-    }
-    return out
-  }, [rows, mapping, baseCurrency])
 }

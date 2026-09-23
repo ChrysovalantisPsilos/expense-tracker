@@ -1,33 +1,48 @@
-// Import personal transactions from an Excel/CSV file. Parsing + normalisation
-// live here; the page just drives the wizard. Columns are auto-detected and the
+// Import personal transactions from a bank statement (CSV / Excel). Parsing +
+// normalisation live here; the page just drives the wizard. The layout is
+// auto-detected (known bank presets, else header words + content) and the
 // user confirms/overrides the mapping before importing.
 import { supabase } from '../../shared/lib/supabase.js'
 import { rateOnOrBefore } from '../../shared/lib/currency.js'
 import { getRateSeries } from '../../shared/lib/fx.js'
 import { importFileProblem, rowsToObjects } from './sheetParse.js'
+import { detectMapping, headerSignature, savedMappingFor } from './statementDetect.js'
+// Pure helpers (parsing, drafts, deterministic identity) live in
+// importMath.js so they're unit-testable.
+import { deterministicUuid, rowToDraft, signedConvention } from './importMath.js'
 
-export const IMPORT_FIELDS = [
-  { key: 'date', label: 'Date', required: true },
-  { key: 'amount', label: 'Amount', required: true },
-  { key: 'description', label: 'Description', required: false },
-  { key: 'category', label: 'Category', required: false },
-  { key: 'currency', label: 'Currency', required: false },
-  { key: 'type', label: 'Type (income/expense)', required: false },
-]
+// Mappings the user confirmed, per header layout — a per-device convenience
+// (the next export from the same bank skips the mapping step). Browser
+// storage may be unavailable (private mode, blocked): then nothing is
+// remembered and detection runs as usual.
+const MAPPINGS_KEY = 'budgeer:import-mappings:v1'
+const MAX_REMEMBERED = 20
 
-const GUESS = {
-  date: ['date', 'spent', 'when', 'day', 'posted'],
-  amount: ['amount', 'value', 'total', 'price', 'cost', 'debit', 'sum'],
-  currency: ['currency', 'ccy', 'cur'],
-  category: ['category', 'cat', 'tag'],
-  description: ['description', 'desc', 'memo', 'note', 'details', 'payee', 'merchant', 'name'],
-  type: ['type', 'kind', 'direction'],
+function rememberedMappings() {
+  try {
+    const all = JSON.parse(localStorage.getItem(MAPPINGS_KEY) ?? '{}')
+    return all && typeof all === 'object' && !Array.isArray(all) ? all : {}
+  } catch {
+    return {}
+  }
 }
 
-// Parse the first sheet into { headers, rows } (rows keyed by header). The
-// file is size-checked first, then parsed by SheetJS in a Web Worker (loaded
-// only now, so it isn't in the main bundle and a heavy file can't freeze the
-// page). Errors come back as clear, actionable messages.
+export function rememberMapping(headers, mapping) {
+  try {
+    const all = rememberedMappings()
+    const sig = headerSignature(headers)
+    delete all[sig]
+    const kept = Object.entries(all).slice(-(MAX_REMEMBERED - 1))
+    localStorage.setItem(MAPPINGS_KEY, JSON.stringify(Object.fromEntries([...kept, [sig, mapping]])))
+  } catch { /* storage full/blocked: just not remembered */ }
+}
+
+// Parse the first sheet into { headers, rows (keyed by header), headerRow,
+// detection }. The file is size-checked first, then parsed in a Web Worker
+// (SheetJS is loaded only there, so it isn't in the main bundle and a heavy
+// file can't freeze the page). A mapping the user confirmed before for the
+// same header layout wins over detection. Errors come back as clear,
+// actionable messages.
 export async function parseWorkbook(file) {
   const problem = importFileProblem(file)
   if (problem) throw new Error(problem)
@@ -40,25 +55,15 @@ export async function parseWorkbook(file) {
       worker.postMessage(buf, [buf])
     })
     if (!res.ok) throw new Error(res.message)
-    return { headers: res.headers, rows: rowsToObjects(res.headers, res.rows) }
+    const rows = rowsToObjects(res.headers, res.rows)
+    const detected = detectMapping(res.headers, rows)
+    const saved = savedMappingFor(rememberedMappings(), res.headers)
+    const detection = saved ? { ...detected, mapping: saved, confidence: 1, remembered: true } : detected
+    return { headers: res.headers, rows, headerRow: res.headerRow, detection }
   } finally {
     worker.terminate()
   }
 }
-
-export function guessMapping(headers) {
-  const m = {}
-  const lower = (headers || []).map((h) => ({ h, l: String(h ?? '').toLowerCase().trim() }))
-  for (const field of Object.keys(GUESS)) {
-    const hit = lower.find(({ l }) => l && GUESS[field].some((g) => l === g || l.includes(g)))
-    m[field] = hit ? hit.h : ''
-  }
-  return m
-}
-
-// Pure helpers (parsing, drafts, deterministic identity) live in
-// importMath.js so they're unit-testable.
-import { deterministicUuid, parseAmount, rowToDraft } from './importMath.js'
 
 // The user's saved auto-categorization rules.
 export async function listRules() {
@@ -75,11 +80,14 @@ export async function saveRule(userId, pattern, categoryId) {
 }
 
 // Turn raw rows + a mapping into ready-to-insert transactions, collecting
-// per-row errors for anything unparseable.
+// per-row errors for anything unparseable and the lines that aren't
+// transactions (pending/declined, balance lines, footers) as `skipped`.
+// `firstRow` is the file line number of rows[0], for messages.
 //
 // Bank-statement conventions handled automatically:
-// - Sign: with no Type column mapped and both signs present, negative rows
-//   are expenses and positive rows income (the near-universal export format).
+// - Sign: a debit/credit marker column or Debit/Credit columns decide the
+//   kind; otherwise, when both signs are present, negative rows are expenses
+//   and positive rows income (the near-universal export format).
 // - Rules: uncategorized rows are matched against the user's saved
 //   "contains → category" rules (longest pattern wins).
 // - Currency: each foreign row is converted at the ECB rate for ITS date (one
@@ -88,7 +96,7 @@ export async function saveRule(userId, pattern, categoryId) {
 //   `missingRates` ([{ currency, count }]) and the caller must ask the user —
 //   a foreign amount is never booked at 1:1.
 export async function buildTransactions({
-  rows, mapping, userId, baseCurrency, categories, rules = [], manualRates = {},
+  rows, mapping, userId, baseCurrency, categories, rules = [], manualRates = {}, firstRow = 2,
 }) {
   const catByName = new Map((categories || []).map((c) => [c.name.toLowerCase(), c.id]))
   const sortedRules = [...rules].sort((a, b) => b.pattern.length - a.pattern.length)
@@ -98,21 +106,20 @@ export async function buildTransactions({
     return sortedRules.find((r) => upper.includes(r.pattern.toUpperCase()))?.category_id ?? null
   }
 
-  // Sign convention only applies when both signs exist and no Type column.
-  const signed = !mapping.type && rows.some((r) => parseAmount(r[mapping.amount]) < 0)
-    && rows.some((r) => parseAmount(r[mapping.amount]) > 0)
-
+  const signed = signedConvention(rows, mapping)
   const drafts = rows.map((r) => rowToDraft(r, mapping, baseCurrency, { signed }))
   const seriesByCurrency = await fetchSeries(drafts, baseCurrency)
   const missing = new Map() // currency -> rows without a rate
 
   const valid = []
   const errors = []
+  const skipped = []
   const seen = new Map() // identity key -> occurrence count
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i]
     const draft = drafts[i]
-    if (draft.error) { errors.push({ row: i + 2, reason: draft.error }); continue }
+    if (draft.skip) { skipped.push({ row: i + firstRow, reason: draft.skip }); continue }
+    if (draft.error) { errors.push({ row: i + firstRow, reason: draft.error }); continue }
     const { spent_at, kind, currency, amount_minor, description } = draft
 
     const exchange_rate = currency === baseCurrency ? 1
@@ -139,14 +146,14 @@ export async function buildTransactions({
     })
   }
   const missingRates = [...missing].map(([currency, count]) => ({ currency, count }))
-  return { valid, errors, missingRates }
+  return { valid, errors, skipped, missingRates }
 }
 
 // One ECB series per foreign currency, spanning that currency's row dates.
 async function fetchSeries(drafts, baseCurrency) {
   const spans = new Map() // currency -> [first, last]
   for (const d of drafts) {
-    if (d.error || d.currency === baseCurrency) continue
+    if (d.error || d.skip || d.currency === baseCurrency) continue
     const [a, b] = spans.get(d.currency) ?? [d.spent_at, d.spent_at]
     spans.set(d.currency, [d.spent_at < a ? d.spent_at : a, d.spent_at > b ? d.spent_at : b])
   }

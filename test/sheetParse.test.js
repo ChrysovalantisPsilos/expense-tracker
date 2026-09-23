@@ -36,11 +36,13 @@ test('__proto__ fixture: hostile headers never pollute or replace prototypes', (
   assert.equal(objs[1]['Amount (2)'], 'dup2')
 })
 
-test('parseSheet: dates are local calendar days, whatever the timezone', () => {
+test('parseSheet: CSV cells stay text; .xlsx dates are local calendar days', () => {
+  // Text is never date-guessed on read ("03/04/2026" could be either way);
+  // the column's order is detected later.
   const buf = bytes('Date,Amount\n2026-09-01,1\n09/30/2026,2\n')
   const { rows } = parseSheet(XLSX, buf)
-  assert.deepEqual(rows.map((r) => r[0]), ['2026-09-01', '2026-09-30'])
-  // A real .xlsx date cell, too.
+  assert.deepEqual(rows, [['2026-09-01', '1'], ['09/30/2026', '2']])
+  // A real .xlsx date cell is its local calendar day, whatever the timezone.
   const wb = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Date', 'Amount'], [new Date(2026, 8, 1), 5]]), 'S')
   const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })

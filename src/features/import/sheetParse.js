@@ -2,6 +2,8 @@
 // passes in SheetJS, and the unit tests do the same in node. Pure apart from
 // the SheetJS calls; no DOM, no Supabase.
 import { isoDate } from '../../shared/lib/dates.js'
+import { sniffContainer, decodeText, parseDelimited } from './statementText.js'
+import { findHeaderRow } from './statementDetect.js'
 
 // Statement files are small; anything bigger is almost certainly not one, and
 // parsing it would freeze low-end phones.
@@ -38,39 +40,50 @@ export function uniqueHeaders(raw) {
 // their LOCAL calendar day as YYYY-MM-DD (SheetJS builds local-midnight Dates).
 const cell = (v) => (v instanceof Date ? (isNaN(v) ? null : isoDate(v)) : v ?? null)
 
-// Parse the first sheet of `buf` into { headers, rows } where rows are arrays
-// aligned with headers. Arrays (not header-keyed objects) cross the worker
-// boundary, so a hostile header such as "__proto__" is never used as a key
-// here. Hardened against files SheetJS chokes on — notably Apple Numbers
+// Parse the first sheet of `buf` into { headers, rows, headerRow } where rows
+// are arrays aligned with headers and headerRow is the header's 0-based line
+// (bank exports often start with account/period preamble lines). Text files
+// (CSV/TSV, whatever their extension) go through our own decoder and parser
+// so every cell stays text — SheetJS would guess "03/04/2026" US-style — and
+// Greek/Windows code pages decode correctly. Real workbooks (.xlsx, .xls,
+// HTML-table "Excel" exports) go through SheetJS. Arrays (not header-keyed
+// objects) cross the worker boundary, so a hostile header such as
+// "__proto__" is never used as a key here.
+export function parseSheet(XLSX, buf) {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf)
+  const kind = sniffContainer(bytes)
+  const aoa = kind === 'text' ? parseDelimited(decodeText(bytes).text) : readWorkbook(XLSX, bytes, kind)
+  const headerRow = findHeaderRow(aoa)
+  const headers = uniqueHeaders(aoa[headerRow] ?? [])
+  const rows = aoa.slice(headerRow + 1).map((r) => headers.map((_, i) => cell(r[i])))
+  return { headers, rows, headerRow }
+}
+
+// SheetJS, hardened against files it chokes on — notably Apple Numbers
 // exports, whose metadata can crash the default reader: retry with the extra
 // parsing off, and on real failure throw a clear message.
-export function parseSheet(XLSX, buf) {
+function readWorkbook(XLSX, bytes, kind) {
+  // HTML "spreadsheets" are text: keep their cells as written.
+  const base = { type: 'array', cellDates: true, raw: kind === 'html' }
   let wb
   try {
-    wb = XLSX.read(buf, { type: 'array', cellDates: true })
+    wb = XLSX.read(bytes, base)
   } catch {
     try {
       // Drop styles/HTML/number-format/VBA parsing — smaller surface, avoids
       // several export-quirk crashes.
-      wb = XLSX.read(buf, {
-        type: 'array', cellDates: true, cellStyles: false, cellHTML: false, cellNF: false, bookVBA: false,
-      })
+      wb = XLSX.read(bytes, { ...base, cellStyles: false, cellHTML: false, cellNF: false, bookVBA: false })
     } catch {
       throw new Error(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
     }
   }
-
   const ws = wb.Sheets[wb.SheetNames[0]]
-  if (!ws) return { headers: [], rows: [] }
-  let aoa
+  if (!ws) return []
   try {
-    aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: null })
+    return XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: null })
   } catch {
     throw new Error(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
   }
-  const headers = uniqueHeaders(aoa[0] ?? [])
-  const rows = aoa.slice(1).map((r) => headers.map((_, i) => cell(r[i])))
-  return { headers, rows }
 }
 
 // Header-keyed rows for the mapping step. Null-prototype objects: a column

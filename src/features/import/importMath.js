@@ -1,14 +1,19 @@
-// Pure statement-import helpers (no xlsx/supabase — unit-testable). Only depends
-// on the pure money helpers in currency.js.
+// Pure statement-import helpers (no xlsx/supabase — unit-testable): turning
+// one raw statement row + a column mapping into a transaction draft.
 import { toMinor, CURRENCIES } from '../../shared/lib/currency.js'
 import { isoDate } from '../../shared/lib/dates.js'
+import { parseLocaleAmount, monthNumber, ymd, foldText } from '../../shared/lib/localeParse.js'
 
 // A merchant key for rules: strip numbers/dates/punctuation and generic bank
 // prefixes, keep the first meaningful word — so "POS LIDL 1234 NICOSIA" and
-// "LIDL 992 LARNACA" both become "LIDL" and share one rule.
+// "LIDL 992 LARNACA" both become "LIDL" and share one rule. The noise words
+// cover the EN/FR/NL/EL boilerplate banks put in front of the merchant.
 const BANK_NOISE = new Set([
   'POS', 'CARD', 'PAYMENT', 'PURCHASE', 'VISA', 'MASTERCARD', 'DEBIT',
   'CREDIT', 'TRANSFER', 'TO', 'FROM', 'THE',
+  'BETALING', 'MET', 'DEBETKAART', 'BANCONTACT', 'MAESTRO', 'OVERSCHRIJVING',
+  'NAAR', 'VAN', 'AANKOOP', 'PAIEMENT', 'AVEC', 'CARTE', 'VIREMENT', 'VERS',
+  'ACHAT', 'ΑΓΟΡΑ', 'ΚΑΡΤΑ', 'ΜΕ', 'ΣΕ', 'ΑΠΟ', 'ΠΛΗΡΩΜΗ', 'ΜΕΤΑΦΟΡΑ',
 ])
 export function merchantKey(description) {
   if (!description) return ''
@@ -21,30 +26,185 @@ export function merchantKey(description) {
   return core.slice(0, 2).join(' ') || words.slice(0, 2).join(' ')
 }
 
-export function parseAmount(v) {
-  if (v == null || v === '') return NaN
+// A cell as an amount. Spreadsheet numbers pass through; text is parsed with
+// the column's decimal separator when known (see detectDecimal).
+export function parseAmount(v, decimal) {
   if (typeof v === 'number') return v
-  let s = String(v).trim().replace(/[^\d.,-]/g, '')
-  if (s.includes(',') && s.includes('.')) s = s.replace(/,/g, '')
-  else if (s.includes(',') && !s.includes('.')) s = s.replace(',', '.')
-  return Number(s)
+  return parseLocaleAmount(v, decimal)
 }
 
-// A statement date as local YYYY-MM-DD. ISO text ("2026-09-21", optionally
-// with a time) is taken literally: new Date('2026-09-21') is UTC midnight,
-// which is the 20th west of UTC. Other text and Date cells use the local
-// calendar day (never toISOString, which shifts a day east of UTC).
-export function parseDate(v) {
+// Excel stores dates as days since 1899-12-30; a date column that SheetJS
+// didn't type as a date arrives as such a serial number.
+const EXCEL_EPOCH = Date.UTC(1899, 11, 30)
+function fromExcelSerial(n) {
+  const d = new Date(EXCEL_EPOCH + Math.floor(n) * 86400000)
+  return ymd(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
+}
+
+const NAMED_DATE = /^(\d{1,2})[\s./-]*([\p{L}]+)\.?[\s./-]*(\d{2,4})/u
+const NAMED_DATE_US = /^([\p{L}]+)\.?\s+(\d{1,2}),?\s+(\d{4})/u
+
+// A statement date as local YYYY-MM-DD, or null. `order` says how to read an
+// all-numeric d/m/y date: 'dmy' (Europe, the default), 'mdy' or 'ymd' — the
+// importer detects it per column (detectDateOrder), because "03/04/2026" is
+// only unambiguous in context. Also takes ISO text (literally: new
+// Date('2026-09-21') is UTC midnight, the 20th west of UTC), compact
+// yyyymmdd, "21 Jul 2026" / "21 juil. 2026" / "21 Ιουλ 2026", Date cells
+// (their local calendar day — never toISOString) and Excel serials.
+export function parseDate(v, order = 'dmy') {
   if (v instanceof Date) return isNaN(v) ? null : isoDate(v)
-  if (v == null || v === '') return null
-  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])/.exec(String(v).trim())
-  if (iso) {
-    const [, y, m, d] = iso.map(Number)
-    const check = new Date(y, m - 1, d)
-    return check.getMonth() === m - 1 && check.getDate() === d ? iso[0].slice(0, 10) : null
+  if (typeof v === 'number') return v > 20000 && v < 80000 ? fromExcelSerial(v) : null
+  if (v == null) return null
+  const s = String(v).trim()
+  if (!s) return null
+  let m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:$|[T\s])/.exec(s)
+  if (m) return ymd(+m[1], +m[2], +m[3])
+  m = /^(\d{4})(\d{2})(\d{2})$/.exec(s)
+  if (m) return ymd(+m[1], +m[2], +m[3])
+  m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}|\d{2})(?:$|[\s,T])/.exec(s)
+  if (m) {
+    let [day, month] = order === 'mdy' ? [+m[2], +m[1]] : [+m[1], +m[2]]
+    // The column's order, unless this value can only be read the other way.
+    if (month > 12 && day <= 12) [day, month] = [month, day]
+    return ymd(+m[3], month, day)
   }
-  const d = new Date(v)
-  return isNaN(d) ? null : isoDate(d)
+  m = NAMED_DATE.exec(s)
+  if (m && monthNumber(m[2])) return ymd(+m[3], monthNumber(m[2]), +m[1])
+  m = NAMED_DATE_US.exec(s)
+  if (m && monthNumber(m[1])) return ymd(+m[3], monthNumber(m[1]), +m[2])
+  return null
+}
+
+// Debit/credit marker cells: D/C, Dr/Cr, Af/Bij (NL), Débit/Crédit (FR),
+// Χ/Π and Χρέωση/Πίστωση (EL), plus plain income/expense words.
+const EXPENSE_WORDS = new Set(['d', 'dr', 'debit', 'debet', 'af', 'χ', 'χρεωση', 'out', 'expense',
+  'withdrawal', 'uitgave', 'depense', 'εξοδο', 'εξοδα'])
+const INCOME_WORDS = new Set(['c', 'cr', 'credit', 'bij', 'π', 'πιστωση', 'in', 'income',
+  'deposit', 'inkomst', 'inkomsten', 'revenu', 'recette', 'εσοδο', 'εσοδα'])
+export function directionOf(value) {
+  const t = foldText(value).replace(/[^\p{L}]/gu, '')
+  if (!t) return null
+  if (EXPENSE_WORDS.has(t) || t.startsWith('expense')) return 'expense'
+  if (INCOME_WORDS.has(t) || t.startsWith('income')) return 'income'
+  return null
+}
+
+// A currency cell as an ISO code: "eur", "€" and " EUR " are all EUR. Blank
+// is ''. Anything else comes back upper-cased (rowToDraft rejects it).
+const SYMBOLS = { '€': 'EUR', '$': 'USD', '£': 'GBP', '¥': 'JPY', 'CHF': 'CHF' }
+export function normalizeCurrency(raw) {
+  const s = String(raw ?? '').trim().toUpperCase()
+  return SYMBOLS[s] ?? s
+}
+
+// Rows a bank lists but that aren't (yet) money moving: card holds still
+// pending, declined/refused/reverted payments — in EN/FR/NL/EL.
+// Matched against the folded (lowercase, unaccented) cell.
+const NOT_BOOKED = /pending|declined|reverted|failed|cancel|refus|rejet|geweigerd|afgewezen|in afwachting|en attente|εκκρεμ|απορριφ|ακυρ/
+// Balance and total lines some exports mix into the rows.
+const SUMMARY = /^(opening|closing|starting|ending|previous|new)\s+balance|^(ancien|nouveau)\s+solde|^solde|^(oud|nieuw|begin|eind)\s*saldo|^saldo|^υπολοιπο|^(νεο|προηγουμενο)\s+(μικτο\s+)?υπολοιπο|^total(e|en)?$|^totaal$|^συνολο$/i
+
+// Payee + memo + details as one description ("LIDL · Card payment"), each
+// part once, capped at the column's 500 characters.
+function describe(row, mapping) {
+  const parts = []
+  for (const key of ['counterparty', 'description', 'details']) {
+    const v = mapping[key] ? String(row[mapping[key]] ?? '').replace(/\s+/g, ' ').trim() : ''
+    if (v && !parts.some((p) => p.includes(v))) parts.push(v)
+  }
+  return parts.length ? parts.join(' · ').slice(0, 500) : null
+}
+
+// The row's signed amount: Amount (minus a separate Fee), or Credit − Debit.
+function signedAmount(row, mapping) {
+  const dec = mapping.decimal
+  if (mapping.amount) {
+    const amount = parseAmount(row[mapping.amount], dec)
+    const fee = mapping.fee ? parseAmount(row[mapping.fee], dec) : NaN
+    return Number.isFinite(fee) ? amount - Math.abs(fee) : amount
+  }
+  if (mapping.debit || mapping.credit) {
+    const debit = mapping.debit ? parseAmount(row[mapping.debit], dec) : NaN
+    const credit = mapping.credit ? parseAmount(row[mapping.credit], dec) : NaN
+    if (!Number.isFinite(debit) && !Number.isFinite(credit)) return NaN
+    return (Number.isFinite(credit) ? Math.abs(credit) : 0) - (Number.isFinite(debit) ? Math.abs(debit) : 0)
+  }
+  return NaN
+}
+
+// Whether a positive amount means income for this file: the case when the
+// file is a signed statement (no marker column, no debit/credit split) and
+// actually has both signs — a list of positive amounts is a list of spending.
+export function signedConvention(rows, mapping) {
+  if (mapping.type || !mapping.amount) return false
+  let neg = false
+  let pos = false
+  for (const r of rows) {
+    const n = signedAmount(r, mapping)
+    if (n < 0) neg = true
+    else if (n > 0) pos = true
+    if (neg && pos) return true
+  }
+  return false
+}
+
+// Derive a normalized transaction draft from one raw statement row + the column
+// mapping. Returns { skip } for lines that aren't transactions (pending or
+// declined, balance/summary lines, footers with neither date nor amount),
+// { error } when a real-looking row lacks a valid date or a nonzero amount,
+// otherwise the parsed fields. `signed` (see signedConvention) treats a
+// positive amount as income. Shared by the import preview and the
+// authoritative buildTransactions so the two can never derive a row differently.
+export function rowToDraft(row, mapping, baseCurrency, { signed = false } = {}) {
+  if (mapping.status && NOT_BOOKED.test(foldText(row[mapping.status]))) {
+    return { skip: 'pending or declined' }
+  }
+  const amountRaw = signedAmount(row, mapping)
+  const spent_at = parseDate(row[mapping.date], mapping.dateOrder)
+  const description = describe(row, mapping)
+  if (!spent_at && !Number.isFinite(amountRaw)) return { skip: 'not a transaction' }
+  if (description && SUMMARY.test(foldText(description))) return { skip: 'balance line' }
+  if (!spent_at) return { error: 'missing/invalid date' }
+  if (!Number.isFinite(amountRaw) || amountRaw === 0) return { error: 'missing/invalid amount' }
+
+  // A blank currency cell means the base currency. An unknown code is an
+  // error, not "base": booking ฿500 as €500 would silently corrupt totals.
+  const rawCurrency = mapping.currency ? normalizeCurrency(row[mapping.currency]) : ''
+  const currency = rawCurrency || baseCurrency
+  if (!CURRENCIES.includes(currency)) return { error: `unsupported currency ${rawCurrency}` }
+
+  let kind = 'expense'
+  if (mapping.type) {
+    if (directionOf(row[mapping.type]) === 'income') kind = 'income'
+  } else if (!mapping.amount || signed) {
+    if (amountRaw > 0) kind = 'income'
+  }
+
+  return {
+    spent_at, kind, currency, amountRaw,
+    amount_minor: toMinor(Math.abs(amountRaw), currency), description,
+  }
+}
+
+// The live preview under the mapping step: the first `limit` rows as they'd
+// be saved, and how many rows are ready / skipped / unreadable — derived by
+// the same rowToDraft + sign rule the import uses.
+export function previewDrafts(rows, mapping, baseCurrency, limit = 6) {
+  const out = { rows: [], ready: 0, skipped: 0, errors: 0, firstError: null }
+  if (!mapping.date || !(mapping.amount || mapping.debit || mapping.credit)) return out
+  const signed = signedConvention(rows, mapping)
+  rows.forEach((r, i) => {
+    const d = rowToDraft(r, mapping, baseCurrency, { signed })
+    if (d.skip) { out.skipped++; return }
+    if (d.error) {
+      out.errors++
+      out.firstError ??= { index: i, reason: d.error }
+      return
+    }
+    out.ready++
+    if (out.rows.length < limit) out.rows.push(d)
+  })
+  return out
 }
 
 // Deterministic row identity: the same statement line always maps to the same
@@ -57,39 +217,4 @@ export async function deterministicUuid(parts) {
   hash[8] = (hash[8] & 0x3f) | 0x80 // variant 10
   const hex = [...hash.slice(0, 16)].map((b) => b.toString(16).padStart(2, '0')).join('')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
-}
-
-// Derive a normalized transaction draft from one raw statement row + the column
-// mapping. Returns { error } when the row lacks a valid date or a nonzero
-// amount, otherwise the parsed fields. `signed` (buildTransactions only) treats
-// a positive amount as income when the file has no Type column but mixes signs.
-// Shared by the import preview and the authoritative buildTransactions so the
-// two can never derive a row differently.
-export function rowToDraft(row, mapping, baseCurrency, { signed = false } = {}) {
-  const amountRaw = parseAmount(row[mapping.amount])
-  const spent_at = parseDate(row[mapping.date])
-  if (!spent_at) return { error: 'missing/invalid date' }
-  if (!isFinite(amountRaw) || amountRaw === 0) return { error: 'missing/invalid amount' }
-
-  // A blank currency cell means the base currency. An unknown code is an
-  // error, not "base": booking ฿500 as €500 would silently corrupt totals.
-  const rawCurrency = mapping.currency ? String(row[mapping.currency] ?? '').toUpperCase().trim() : ''
-  const currency = rawCurrency || baseCurrency
-  if (!CURRENCIES.includes(currency)) return { error: `unsupported currency ${rawCurrency}` }
-
-  let kind = 'expense'
-  if (mapping.type) {
-    const t = String(row[mapping.type] ?? '').toLowerCase()
-    if (t.startsWith('income') || t === 'credit' || t === 'cr' || t === 'in') kind = 'income'
-  } else if (signed && amountRaw > 0) {
-    kind = 'income'
-  }
-
-  const description = mapping.description && row[mapping.description] != null
-    ? String(row[mapping.description]).slice(0, 500) : null
-
-  return {
-    spent_at, kind, currency, amountRaw,
-    amount_minor: toMinor(Math.abs(amountRaw), currency), description,
-  }
 }

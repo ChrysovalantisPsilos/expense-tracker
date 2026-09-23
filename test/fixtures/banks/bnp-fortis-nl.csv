@@ -1,0 +1,5 @@
+﻿Volgnummer;Uitvoeringsdatum;Valutadatum;Bedrag;Valuta rekening;Rekeningnummer;Type verrichting;Tegenpartij;Naam van de tegenpartij;Mededeling;Details;Status;Reden van weigering
+2026-0142;03/09/2026;03/09/2026;-23,45;EUR;BE00 0000 0000 0000;Betaling met debetkaart;;COLRUYT HALLE;;BETALING MET DEBETKAART NUMMER 4871 XXXX XXXX 1234 COLRUYT HALLE 03/09/2026;Geaccepteerd;
+2026-0141;01/09/2026;01/09/2026;2.150,00;EUR;BE00 0000 0000 0000;Overschrijving;BE11 1111 1111 1111;ACME BV;Loon augustus;;Geaccepteerd;
+2026-0140;31/08/2026;31/08/2026;-1.020,50;EUR;BE00 0000 0000 0000;Domiciliering;BE22 2222 2222 2222;HUISBAAS NV;Huur september;;Geaccepteerd;
+2026-0139;30/08/2026;30/08/2026;-80,00;EUR;BE00 0000 0000 0000;Overschrijving;BE33 3333 3333 3333;JAN PEETERS;Concert;;Geweigerd;Onvoldoende saldo

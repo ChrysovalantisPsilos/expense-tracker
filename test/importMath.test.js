@@ -42,7 +42,8 @@ test('parseDate: the calendar day never shifts with the timezone', () => {
   // new Date('2026-09-01') is UTC midnight = 31 Aug west of UTC; toISOString
   // of a local midnight is the previous day east of UTC. Both must be 1 Sep.
   assert.equal(parseDate('2026-09-01'), '2026-09-01')
-  assert.equal(parseDate('09/01/2026'), '2026-09-01') // US-style text → local day
+  assert.equal(parseDate('09/01/2026', 'mdy'), '2026-09-01') // US-style text → local day
+  assert.equal(parseDate('01/09/2026'), '2026-09-01') // day-first by default
   assert.equal(parseDate(new Date(2026, 8, 1, 0, 0)), '2026-09-01')
   assert.equal(parseDate(new Date(2026, 8, 30, 23, 59)), '2026-09-30')
 })
