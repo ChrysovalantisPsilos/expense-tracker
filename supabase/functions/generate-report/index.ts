@@ -17,13 +17,20 @@
 // the period); kept separate, they're left out of the totals and get their own
 // section, with the active yearly rules' cost (my_recurring_rules).
 //
-// Excel is SheetJS; the PDF uses the shared brand toolkit (_shared/pdf.ts).
+// Excel is SheetJS (the same 0.20.3 build as the app); the PDF uses the shared
+// brand toolkit (_shared/pdf.ts). The file goes back through fileResponse
+// (_shared/files.ts), whose Content-Type keeps it binary in the app.
 
-import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
+import * as XLSX from 'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
-import { BRAND, loadBrandFonts, money, Statement } from '../_shared/pdf.ts'
+import { loadBrandFonts, money, Statement } from '../_shared/pdf.ts'
 import { withCors, json, callerClient } from '../_shared/http.ts'
-import { buildStatement, pendingNote, yearlyLabel, yearlyNote } from './statementMath.ts'
+import { fileResponse } from '../_shared/files.ts'
+import { categoryBars } from '../_shared/breakdown.ts'
+import {
+  buildStatement, pendingNote, statementSheets, yearlyLabel, yearlyNote,
+  type Sheet, type Statement as StatementData, type StatementRow,
+} from './statementMath.ts'
 
 interface Body {
   from: string
@@ -73,83 +80,29 @@ Deno.serve(withCors(async (req) => {
     const stmt = buildStatement(txns ?? [], base, { from, to, separateYearly, rules })
     const notes = [pendingNote(stmt.pending), yearlyNote(stmt.yearlyMode)].filter(Boolean) as string[]
 
-    if (format === 'pdf') {
-      const bytes = await buildPdf({ from, to, base, ...stmt, notes, name: profile?.display_name })
-      return new Response(bytes, {
-        headers: { 'Content-Type': 'application/pdf' },
-      })
-    }
-
-    const bytes = buildXlsx({ base, ...stmt, notes })
-    return new Response(bytes, {
-      headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
-    })
+    const bytes = format === 'pdf'
+      ? await buildPdf({ from, to, base, stmt, notes, name: profile?.display_name })
+      : buildXlsx(statementSheets(stmt, base, notes))
+    return fileResponse(bytes, format, `financial-statement_${from}_${to}.${format}`)
   } catch (e) {
     console.error('generate-report error', e)
     return json({ error: 'Could not generate the report.' }, 500)
   }
 }))
 
-// Neutralise spreadsheet formula injection: cells starting with a formula
-// trigger are prefixed with an apostrophe so Excel/Sheets treat them as text.
-function safeCell(v: unknown) {
-  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(v)) return `'${v}`
-  return v
-}
-
-function buildXlsx({ base, rows, totalSpent, totalIncome, byCategory, notes, yearly }: any): Uint8Array {
+function buildXlsx(sheets: Sheet[]): Uint8Array {
   const wb = XLSX.utils.book_new()
-  const summary = [
-    ['Financial Statement'],
-    ['Base currency', base],
-    [],
-    ['Total income', totalIncome],
-    ['Total expenses', totalSpent],
-    ['Net', totalIncome - totalSpent],
-    ...notes.map((n: string) => [n]),
-    [],
-    ['Spending by category'],
-    ...Object.entries(byCategory).sort((a: any, b: any) => b[1] - a[1])
-      .map(([k, v]) => [safeCell(k), v]),
-  ]
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), 'Summary')
-
-  const txnSheet = XLSX.utils.json_to_sheet(
-    rows.map((r: any) => ({
-      Date: r.date, Type: r.kind, Category: safeCell(r.category), Description: safeCell(r.description),
-      Currency: r.currency, Amount: r.amount,
-      [`Amount (${base})`]: r.base_amount ?? 'Rate pending',
-      Yearly: yearlyLabel(r) ?? '',
-    })),
-  )
-  XLSX.utils.book_append_sheet(wb, txnSheet, 'Transactions')
-
-  if (yearly) {
-    const sheet = [
-      ['Yearly subscriptions (kept out of the totals)'],
-      [`Paid in this period (${base})`, yearly.paidTotal],
-      [`Active subscriptions per year (${base})`, yearly.perYear],
-      [`Per month (${base})`, yearly.perMonth],
-      ...(yearly.foreign ? [['Other currencies are added at face value (recurring entries have no exchange rate).']] : []),
-      [],
-      ['Payments in this period'],
-      ['Date', 'Description', 'Currency', 'Amount', `Amount (${base})`],
-      ...yearly.payments.map((r: any) => [
-        r.date, safeCell(r.description || r.category), r.currency, r.amount, r.base_amount ?? 'Rate pending',
-      ]),
-      [],
-      ['Active yearly subscriptions'],
-      ['Subscription', 'Next charge', 'Currency', 'Charge', 'Per year'],
-      ...yearly.rules.map((r: any) => [safeCell(r.name), r.nextRun, r.currency, r.amount, r.perYear]),
-    ]
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sheet), 'Yearly subscriptions')
-  }
+  for (const s of sheets) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s.rows), s.name)
   return new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }))
 }
 
-async function buildPdf(
-  { from, to, base, rows, totalSpent, totalIncome, byCategory, notes, yearly, name }: any,
-): Promise<Uint8Array> {
+// A row whose rate is pending shows its own amount, starred (see the notes).
+const pendingCell = (r: StatementRow) => ({ text: `${money(r.amount, r.currency)} *`, tone: 'muted' as const })
+
+async function buildPdf({ from, to, base, stmt, notes, name }: {
+  from: string; to: string; base: string; stmt: StatementData; notes: string[]; name?: string
+}): Promise<Uint8Array> {
+  const { rows, totalSpent, totalIncome, byCategory, yearly } = stmt
   const pdf = await PDFDocument.create()
   const fonts = await loadBrandFonts(pdf)
   const doc = new Statement(pdf, fonts)
@@ -157,83 +110,86 @@ async function buildPdf(
   doc.header('Financial statement', `${from}  →  ${to}   ·   ${base}`, name)
 
   const net = totalIncome - totalSpent
-  doc.statCards([
-    { label: 'Income', value: money(totalIncome, base), color: BRAND.green },
-    { label: 'Expenses', value: money(totalSpent, base), color: BRAND.coral },
-    { label: 'Net', value: money(net, base), color: net < 0 ? BRAND.red : BRAND.ink },
+  doc.tiles([
+    { label: 'Income', value: money(totalIncome, base), tone: 'positive' },
+    { label: 'Spent', value: money(totalSpent, base) },
+    {
+      label: 'Net', value: `${net > 0 ? '+' : ''}${money(net, base)}`,
+      tone: net < 0 ? 'negative' : net > 0 ? 'positive' : 'muted',
+    },
   ])
-  for (const n of notes) doc.muted(`* ${n}`)
+  doc.notes(notes)
 
-  const cats = Object.entries(byCategory)
-    .map(([label, value]) => ({ label, value: Number(value) }))
-    .sort((a, b) => b.value - a.value)
-  if (cats.length > 0 && totalSpent > 0) {
-    doc.sectionTitle('Spending by category')
-    doc.pie(cats, totalSpent, base)
+  // The app's "Where your money went": top 5 categories + "Other".
+  const bars = categoryBars(Object.entries(byCategory).map(([label, value]) => ({ name: label, value })))
+  if (bars.length > 0) {
+    doc.panel({
+      title: 'Where your money went',
+      subtitle: `${money(totalSpent, base)} spent, by category`,
+      contentH: Statement.breakdownHeight(bars.length),
+    }, (x, y, w) => doc.breakdown(x, y, w, bars.map((b) => ({ ...b, meta: money(b.value, base) }))))
   }
 
   if (yearly) {
-    doc.sectionTitle('Yearly subscriptions')
-    doc.rows([
-      { left: 'Paid in this period (not in the totals)', right: money(yearly.paidTotal, base) },
-      { left: 'Active subscriptions per year', right: money(yearly.perYear, base), strong: true },
-      { left: 'Per month', right: `≈ ${money(yearly.perMonth, base)}` },
-    ])
+    doc.sectionTitle('Yearly subscriptions', 'Kept out of the totals')
+    doc.tiles([
+      { label: 'Paid in this period', value: money(yearly.paidTotal, base) },
+      { label: 'Active subscriptions, per year', value: money(yearly.perYear, base), tone: 'accent' },
+      { label: 'Per month', value: `≈ ${money(yearly.perMonth, base)}` },
+    ], { size: 13 })
     if (yearly.foreign) doc.muted('Other currencies are added at face value (recurring entries have no exchange rate).')
     if (yearly.payments.length > 0) {
       doc.table(
         [
-          { title: 'Paid', width: 66 },
-          { title: 'Payment', width: 355 },
-          { title: `Amount (${base})`, width: 90, align: 'right' },
+          { title: 'Paid', width: 70 },
+          { title: 'Payment', width: 336 },
+          { title: `Amount (${base})`, width: 105, align: 'right' },
         ],
-        yearly.payments.map((r: any) => [
+        yearly.payments.map((r) => [
           r.date,
           r.description || r.category,
-          r.base_amount == null
-            ? { text: `${money(r.amount, r.currency)} *`, color: BRAND.muted }
-            : money(r.base_amount, ''),
+          r.base_amount == null ? pendingCell(r) : { text: money(r.base_amount), bold: true },
         ]),
       )
     }
     if (yearly.rules.length > 0) {
       doc.table(
         [
-          { title: 'Subscription', width: 231 },
+          { title: 'Subscription', width: 216 },
           { title: 'Next charge', width: 90 },
-          { title: 'Charge', width: 100, align: 'right' },
-          { title: 'Per year', width: 90, align: 'right' },
+          { title: 'Charge', width: 105, align: 'right' },
+          { title: 'Per year', width: 100, align: 'right' },
         ],
-        yearly.rules.map((r: any) => [
-          r.name, r.nextRun, money(r.amount, r.currency), money(r.perYear, r.currency),
+        yearly.rules.map((r) => [
+          r.name, r.nextRun, money(r.amount, r.currency), { text: money(r.perYear, r.currency), bold: true },
         ]),
       )
     }
   }
 
-  doc.sectionTitle('Transactions')
+  doc.sectionTitle('Transactions', `${rows.length} in this period`)
   if (rows.length === 0) {
     doc.muted('No transactions in this period.')
   } else {
     doc.table(
       [
-        { title: 'Date', width: 66 },
-        { title: 'Category', width: 105 },
-        { title: 'Description', width: 250 },
-        { title: `Amount (${base})`, width: 90, align: 'right' },
+        { title: 'Date', width: 70 },
+        { title: 'Category', width: 110 },
+        { title: 'Description', width: 226 },
+        { title: `Amount (${base})`, width: 105, align: 'right' },
       ],
-      rows.map((r: any) => {
+      rows.map((r) => {
         // Yearly payments carry their mark (the totals count them per the
         // note up top); the description is truncated before the mark is.
         const mark = yearlyLabel(r)
+        const income = r.kind === 'income'
         return [
           r.date,
           r.category,
           mark ? `${mark}  ·  ${r.description || '—'}` : (r.description || '—'),
           r.base_amount == null
-            // Rate pending: its own currency, starred (see the note up top).
-            ? { text: `${money(r.amount, r.currency)} *`, color: BRAND.muted }
-            : { text: money(r.base_amount, ''), color: r.kind === 'income' ? BRAND.green : BRAND.ink },
+            ? pendingCell(r)
+            : { text: `${income ? '+' : ''}${money(r.base_amount)}`, tone: income ? 'positive' : 'default', bold: true },
         ]
       }),
     )

@@ -6,7 +6,7 @@
     <rect x="9.25" y="3.6" width="7.5" height="40" rx="3.75" fill="#f95d38"/>
     <g transform="rotate(-90 24 29.6)" stroke-width="7.5">
       <circle cx="24" cy="29.6" r="11" stroke="#fbb324" stroke-dasharray="19 50.1"/>
-      <circle cx="24" cy="29.6" r="11" stroke="#f95d38" stroke-dasharray="48 21.1" stroke-dashoffset="-21"/>
+      <circle cx="24" cy="29.6" r="11" stroke="#f95d38" stroke-dasharray="48.2 20.9" stroke-dashoffset="-21"/>
     </g>
   </g>
 </svg>

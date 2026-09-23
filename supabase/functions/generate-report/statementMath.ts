@@ -182,3 +182,66 @@ export function yearlyLabel({ yearly: y, currency }: StatementRow): string | nul
   const every = y.months === 12 ? 'Yearly' : `Every ${y.months / 12} years`
   return `${every} · ${y.exact ? '' : '≈'}${fmtMinor(y.perMonthMinor, currency)}/mo`
 }
+
+// Neutralise spreadsheet formula injection: text starting with a formula
+// trigger gets a leading apostrophe so Excel/Sheets keep it as text.
+export function safeCell(v: string): string {
+  return /^[=+\-@\t\r]/.test(v) ? `'${v}` : v
+}
+
+type SheetCell = string | number
+export interface Sheet { name: string; rows: SheetCell[][] }
+
+// The Excel workbook's content: one sheet per entry, as rows of plain cells
+// (strings and numbers only; the edge function hands each to SheetJS). Sheet
+// names follow Excel's rules: at most 31 characters, none of []:*?/\, unique.
+export function statementSheets(stmt: Statement, base: string, notes: string[]): Sheet[] {
+  const { rows, totalSpent, totalIncome, byCategory, yearly } = stmt
+  const sheets: Sheet[] = [{
+    name: 'Summary',
+    rows: [
+      ['Financial Statement'],
+      ['Base currency', base],
+      [],
+      ['Total income', totalIncome],
+      ['Total expenses', totalSpent],
+      ['Net', totalIncome - totalSpent],
+      ...notes.map((n) => [n]),
+      [],
+      ['Spending by category'],
+      ...Object.entries(byCategory).sort((a, b) => b[1] - a[1]).map(([k, v]) => [safeCell(k), v]),
+    ],
+  }, {
+    name: 'Transactions',
+    rows: [
+      ['Date', 'Type', 'Category', 'Description', 'Currency', 'Amount', `Amount (${base})`, 'Yearly'],
+      ...rows.map((r) => [
+        r.date, r.kind, safeCell(r.category), safeCell(r.description),
+        r.currency, r.amount, r.base_amount ?? 'Rate pending', yearlyLabel(r) ?? '',
+      ]),
+    ],
+  }]
+  if (yearly) {
+    sheets.push({
+      name: 'Yearly subscriptions',
+      rows: [
+        ['Yearly subscriptions (kept out of the totals)'],
+        [`Paid in this period (${base})`, yearly.paidTotal],
+        [`Active subscriptions per year (${base})`, yearly.perYear],
+        [`Per month (${base})`, yearly.perMonth],
+        ...(yearly.foreign ? [['Other currencies are added at face value (recurring entries have no exchange rate).']] : []),
+        [],
+        ['Payments in this period'],
+        ['Date', 'Description', 'Currency', 'Amount', `Amount (${base})`],
+        ...yearly.payments.map((r) => [
+          r.date, safeCell(r.description || r.category), r.currency, r.amount, r.base_amount ?? 'Rate pending',
+        ]),
+        [],
+        ['Active yearly subscriptions'],
+        ['Subscription', 'Next charge', 'Currency', 'Charge', 'Per year'],
+        ...yearly.rules.map((r) => [safeCell(r.name), r.nextRun, r.currency, r.amount, r.perYear]),
+      ],
+    })
+  }
+  return sheets
+}

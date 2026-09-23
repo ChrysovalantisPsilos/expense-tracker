@@ -1,36 +1,46 @@
 // Shared brand-matched PDF toolkit for the report edge functions.
 //
-// Coral header band, Poppins headings + Nunito Sans body, sand-toned cards,
-// striped tables and category pies — mirroring the app's look. Fonts are the
-// static TTFs bundled in the @expo-google-fonts npm packages (verified to
-// resolve from the edge runtime; google/fonts only keeps variable fonts for
-// these families), with DejaVu Sans as a Unicode fallback and Helvetica as the
-// last resort. Every text draw degrades gracefully.
+// Mirrors the in-app kit (src/app/theme.js, src/shared/ui/kit): the budgeer
+// mark and wordmark, Poppins headings + Nunito Sans body, white rounded
+// panels on sand hairlines, sand figure tiles, the "Where your money went"
+// stacked bar and ranked category bars, settle-up transfer rows and quiet
+// tables. Fonts are the static TTFs bundled in the @expo-google-fonts npm
+// packages (verified to resolve from the edge runtime; google/fonts only keeps
+// variable fonts for these families), with DejaVu Sans as a Unicode fallback
+// and Helvetica as the last resort. Every text draw degrades gracefully.
 
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1'
 import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
 
-const c = (r: number, g: number, b: number) => rgb(r / 255, g / 255, b / 255)
+type Color = ReturnType<typeof rgb>
+const hex = (h: string): Color => rgb(
+  parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255,
+)
 
-export const BRAND = {
-  coral: c(249, 93, 56),
-  coralDark: c(189, 52, 24),
-  gold: c(245, 158, 11),
-  ink: c(36, 32, 25),
-  muted: c(124, 111, 89),
-  line: c(232, 225, 213),
-  card: c(250, 248, 244),
-  stripe: c(243, 239, 231),
+// Light-mode kit tokens (theme.js semantic colours).
+const BRAND = {
+  coral: hex('#f95d38'), // brand.500
+  accent: hex('#e2431f'), // brand.600 — accent.fg
+  amber: hex('#fbb324'), // amber.400
+  ink: hex('#242019'), // text.primary
+  muted: hex('#7c6f59'), // text.muted
+  line: hex('#e8e1d5'), // border.default
+  subtle: hex('#f3efe7'), // bg.subtle (tiles, tracks)
+  canvas: hex('#faf8f4'), // bg.canvas
   white: rgb(1, 1, 1),
-  green: c(22, 163, 74),
-  red: c(226, 67, 31),
+  positive: hex('#2f7a45'), // status.positive
+  negative: hex('#c2372b'), // status.negative
 }
-// Warm, on-brand palette cycled across pie slices / legends.
-const PIE = [
-  c(249, 93, 56), c(245, 158, 11), c(255, 160, 136), c(189, 52, 24),
-  c(154, 139, 114), c(251, 179, 36), c(255, 122, 90), c(95, 85, 69),
-  c(253, 223, 138), c(214, 204, 186),
-]
+
+type Tone = 'default' | 'muted' | 'accent' | 'positive' | 'negative'
+const TONE: Record<Tone, Color> = {
+  default: BRAND.ink, muted: BRAND.muted, accent: BRAND.accent, positive: BRAND.positive, negative: BRAND.negative,
+}
+
+// Share-breakdown swatches, coral/amber first; "Other" is always muted sand
+// (the hex values of kitMath.js SHARE_SWATCHES / OTHER_SWATCH).
+const SWATCHES = ['#f95d38', '#fbb324', '#ffa088', '#d97a06', '#f6c453', '#c2703d', '#ef8a5a'].map(hex)
+const swatch = (i: number, label: string) => (label === 'Other' ? BRAND.muted : SWATCHES[i % SWATCHES.length])
 
 const EXPO = 'https://cdn.jsdelivr.net/npm/@expo-google-fonts'
 const DEJAVU = 'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf'
@@ -78,12 +88,16 @@ export async function loadBrandFonts(pdf: PDFDocument): Promise<BrandFonts> {
   }
 }
 
+// One character the brand fonts draw: Latin to Extended-B, general
+// punctuation (’ “ ” – — … •), € and the minus sign.
+const BRAND_CHARS = /^[\u0020-\u024F\u2000-\u206F\u20AC\u2212]$/
+
 // Fold characters the brand fonts can't encode down to ASCII (last resort).
 function asciiFold(s: string): string {
   return String(s)
     .replace(/[‘’‚]/g, "'").replace(/[“”„]/g, '"')
     .replace(/[→➡➔]/g, '->').replace(/←/g, '<-')
-    .replace(/[–—]/g, '-').replace(/…/g, '...')
+    .replace(/[–—−]/g, '-').replace(/…/g, '...').replace(/≈/g, '~')
     .replace(/[^\x20-\x7E\xA0-\xFF]/g, '?')
 }
 
@@ -93,10 +107,28 @@ export function money(n: number, cur?: string): string {
   return `${neg ? '-' : ''}${s}${cur ? ' ' + cur : ''}`
 }
 
-type Cell = string | { text: string; color?: ReturnType<typeof rgb>; font?: PDFFont }
-interface Col { title: string; width: number; align?: 'left' | 'right' }
+// An SVG path for a rectangle in screen space (y down) with per-corner radii
+// [top-left, top-right, bottom-right, bottom-left].
+function roundRect(x: number, y: number, w: number, h: number, r: number | number[]): string {
+  const [tl, tr, br, bl] = (Array.isArray(r) ? r : [r, r, r, r]).map((v) => Math.max(0, Math.min(v, w / 2, h / 2)))
+  return `M ${x + tl} ${y} H ${x + w - tr} A ${tr} ${tr} 0 0 1 ${x + w} ${y + tr} V ${y + h - br}`
+    + ` A ${br} ${br} 0 0 1 ${x + w - br} ${y + h} H ${x + bl} A ${bl} ${bl} 0 0 1 ${x} ${y + h - bl}`
+    + ` V ${y + tl} A ${tl} ${tl} 0 0 1 ${x + tl} ${y} Z`
+}
 
-// A flowing, brand-styled A4 statement. Coordinates are screen-space
+// A stroked arc (screen space, degrees clockwise from 3 o'clock).
+function arc(cx: number, cy: number, r: number, a0: number, a1: number): string {
+  const p = (a: number) => [cx + r * Math.cos((a * Math.PI) / 180), cy + r * Math.sin((a * Math.PI) / 180)]
+  const [x0, y0] = p(a0)
+  const [x1, y1] = p(a1)
+  return `M ${x0} ${y0} A ${r} ${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1} ${y1}`
+}
+
+type Cell = string | { text: string; tone?: Tone; bold?: boolean }
+interface Col { title: string; width: number; align?: 'left' | 'right' }
+export interface Tile { label: string; value: string; tone?: Tone }
+
+// A flowing, brand-styled A4 document. Coordinates are screen-space
 // (y grows downward from the top); drawText's bottom-left origin is handled
 // internally so callers think top-down.
 export class Statement {
@@ -120,38 +152,50 @@ export class Statement {
     this.y = this.M
   }
   ensure(h: number) {
-    if (this.y + h > this.H - 46) this.addPage()
+    if (this.y + h > this.H - 54) this.addPage()
   }
 
-  // Draw a string with its baseline near screen-y `ty`. The brand fonts are
-  // Latin only and render non-Latin text as blank boxes without throwing, so
-  // anything beyond Latin Extended-B is routed to the Unicode face; anything it
-  // still can't encode falls back to an ASCII fold.
-  text(str: string, x: number, ty: number, opts: { size?: number; font?: PDFFont; color?: any } = {}) {
+  // The brand fonts cover Latin (plus general punctuation, € and the minus
+  // sign) and render anything else as blank boxes without throwing, so a
+  // string is drawn in runs: brand font where it can, the Unicode face for the
+  // rest (≈, →, non-Latin names).
+  runs(str: string, font: PDFFont): { s: string; font: PDFFont }[] {
+    const uni = this.f.uni
+    if (!uni) return [{ s: str, font }]
+    const out: { s: string; font: PDFFont }[] = []
+    for (const ch of str) {
+      const f = BRAND_CHARS.test(ch) ? font : uni
+      const last = out[out.length - 1]
+      if (last && last.font === f) last.s += ch
+      else out.push({ s: ch, font: f })
+    }
+    return out
+  }
+  runWidth(s: string, font: PDFFont, size: number): number {
+    try { return font.widthOfTextAtSize(s, size) }
+    catch { return asciiFold(s).length * size * 0.5 }
+  }
+
+  // Draw a string with its top near screen-y `ty`; anything no face can
+  // encode falls back to an ASCII fold.
+  text(str: string, x: number, ty: number, opts: { size?: number; font?: PDFFont; color?: Color } = {}) {
     const size = opts.size ?? 10
     const color = opts.color ?? BRAND.ink
     const yb = this.H - ty - size
-    let font = opts.font ?? this.f.body
-    if (this.f.uni && /[^ -ɏ]/.test(str)) font = this.f.uni
-    try { this.page.drawText(str, { x, y: yb, size, font, color }); return }
-    catch { /* fall through */ }
-    if (this.f.uni) {
-      try { this.page.drawText(str, { x, y: yb, size, font: this.f.uni, color }); return }
-      catch { /* fall through */ }
+    let rx = x
+    for (const run of this.runs(str, opts.font ?? this.f.body)) {
+      try { this.page.drawText(run.s, { x: rx, y: yb, size, font: run.font, color }) }
+      catch { this.page.drawText(asciiFold(run.s), { x: rx, y: yb, size, font: run.font, color }) }
+      rx += this.runWidth(run.s, run.font, size)
     }
-    this.page.drawText(asciiFold(str), { x, y: yb, size, font, color })
   }
-
-  fill(x: number, ty: number, w: number, h: number, color: any, border?: any) {
-    this.page.drawRectangle({
-      x, y: this.H - ty - h, width: w, height: h, color,
-      ...(border ? { borderColor: border, borderWidth: 0.8 } : {}),
-    })
+  textRight(str: string, xRight: number, ty: number, opts: { size?: number; font?: PDFFont; color?: Color } = {}) {
+    const size = opts.size ?? 10
+    const font = opts.font ?? this.f.body
+    this.text(str, xRight - this.width(str, font, size), ty, opts)
   }
-
   width(str: string, font: PDFFont, size: number): number {
-    try { return font.widthOfTextAtSize(str, size) }
-    catch { return asciiFold(str).length * size * 0.5 }
+    return this.runs(str, font).reduce((w, run) => w + this.runWidth(run.s, run.font, size), 0)
   }
   truncate(str: string, font: PDFFont, size: number, maxW: number): string {
     if (this.width(str, font, size) <= maxW) return str
@@ -159,162 +203,251 @@ export class Statement {
     while (s.length > 1 && this.width(s + '…', font, size) > maxW) s = s.slice(0, -1)
     return s + '…'
   }
-  textRight(str: string, xRight: number, ty: number, opts: { size?: number; font?: PDFFont; color?: any } = {}) {
-    const size = opts.size ?? 10
-    const font = opts.font ?? this.f.body
-    this.text(str, xRight - this.width(str, font, size), ty, opts)
+  // Greedy word wrap to `maxW`.
+  wrap(str: string, font: PDFFont, size: number, maxW: number): string[] {
+    const lines: string[] = []
+    let line = ''
+    for (const word of str.split(/\s+/).filter(Boolean)) {
+      const next = line ? `${line} ${word}` : word
+      if (line && this.width(next, font, size) > maxW) { lines.push(line); line = word } else line = next
+    }
+    if (line) lines.push(line)
+    return lines
   }
 
+  fill(x: number, ty: number, w: number, h: number, color: Color, r: number | number[] = 0, border?: Color) {
+    if (w <= 0 || h <= 0) return
+    this.page.drawSvgPath(roundRect(x, ty, w, h, r), {
+      x: 0, y: this.H, color, ...(border ? { borderColor: border, borderWidth: 0.8 } : { borderWidth: 0 }),
+    })
+  }
+  dot(cx: number, cy: number, r: number, color: Color) {
+    this.page.drawCircle({ x: cx, y: this.H - cy, size: r, color })
+  }
+
+  // The budgeer mark (public/budgeer-mark.svg) at `size`pt, top-left at (x, ty):
+  // a lowercase b whose bowl is a budget ring, amber then coral.
+  mark(x: number, ty: number, size: number) {
+    const s = size / 48
+    this.fill(x + 9.25 * s, ty + 3.6 * s, 7.5 * s, 40 * s, BRAND.coral, 3.75 * s)
+    const cx = x + 24 * s
+    const cy = ty + 29.6 * s
+    const r = 11 * s
+    const deg = (len: number) => (len / (2 * Math.PI * 11)) * 360 - 90
+    const ring = (a0: number, a1: number, color: Color) =>
+      this.page.drawSvgPath(arc(cx, cy, r, a0, a1), { x: 0, y: this.H, borderColor: color, borderWidth: 7.5 * s })
+    ring(deg(0), deg(19), BRAND.amber)
+    ring(deg(21), deg(69.2), BRAND.coral)
+  }
+
+  // Masthead: mark + wordmark (and whom it's for) on the left, the title and
+  // its meta line on the right, over a sand band.
   header(title: string, meta: string, name?: string) {
-    const bandH = 96
-    this.page.drawRectangle({ x: 0, y: this.H - bandH, width: this.W, height: bandH, color: BRAND.coral })
-    this.text('budgeer', this.M, 30, { size: 23, font: this.f.headBold, color: BRAND.white })
-    if (name) this.text(name, this.M, 62, { size: 10.5, font: this.f.body, color: c(255, 235, 228) })
-    this.textRight(title, this.W - this.M, 32, { size: 15, font: this.f.head, color: BRAND.white })
-    this.textRight(meta, this.W - this.M, 58, { size: 9.5, font: this.f.body, color: c(255, 224, 214) })
-    this.y = bandH + 26
+    const bandH = 92
+    this.page.drawRectangle({ x: 0, y: this.H - bandH, width: this.W, height: bandH, color: BRAND.canvas })
+    this.page.drawRectangle({ x: 0, y: this.H - bandH, width: this.W, height: 0.8, color: BRAND.line })
+    this.mark(this.M - 4, 26, 34)
+    this.text('budgeer', this.M + 32, 31, { size: 20, font: this.f.headBold })
+    if (name) {
+      this.text(this.truncate(name, this.f.body, 9.5, 220), this.M, 66, { size: 9.5, color: BRAND.muted })
+    }
+    this.textRight(title, this.W - this.M, 30, { size: 16, font: this.f.head })
+    this.textRight(meta, this.W - this.M, 55, { size: 9.5, color: BRAND.muted })
+    this.y = bandH + 24
   }
 
-  sectionTitle(str: string) {
-    this.ensure(34)
-    this.y += 6
-    this.fill(this.M, this.y + 1, 4, 13, BRAND.coral)
-    this.text(str, this.M + 12, this.y, { size: 12.5, font: this.f.head, color: BRAND.ink })
-    this.y += 24
+  // A kit SectionLabel-style heading for content that flows across pages.
+  sectionTitle(str: string, aside?: string) {
+    this.ensure(56)
+    this.y += 4
+    this.text(str, this.M, this.y, { size: 13, font: this.f.head })
+    if (aside) this.textRight(aside, this.M + this.CW, this.y + 3, { size: 9, color: BRAND.muted })
+    this.y += 26
   }
 
-  muted(str: string) {
-    this.ensure(18)
-    this.text(str, this.M, this.y, { size: 10, color: BRAND.muted })
-    this.y += 18
+  // A white rounded card with a title (and muted subtitle); `draw` fills
+  // `contentH` points of content from (x, y) with width w.
+  panel(opts: { title: string; subtitle?: string; contentH: number }, draw: (x: number, y: number, w: number) => void) {
+    const pad = 18
+    const headH = opts.subtitle ? 40 : 28
+    const h = pad + headH + opts.contentH + pad
+    this.ensure(h + 14)
+    const top = this.y
+    this.fill(this.M, top, this.CW, h, BRAND.white, 14, BRAND.line)
+    this.text(opts.title, this.M + pad, top + pad, { size: 13, font: this.f.head })
+    if (opts.subtitle) this.text(opts.subtitle, this.M + pad, top + pad + 19, { size: 9, color: BRAND.muted })
+    draw(this.M + pad, top + pad + headH, this.CW - pad * 2)
+    this.y = top + h + 14
   }
 
-  statCards(items: { label: string; value: string; color: any }[]) {
-    this.ensure(74)
-    const gap = 12
-    const n = items.length
-    const w = (this.CW - gap * (n - 1)) / n
-    const h = 62
+  // Figure tiles (kit Figure on a sand Tile): small muted label, big value.
+  tiles(items: Tile[], opts: { columns?: number; size?: number; x?: number; y?: number; w?: number } = {}): number {
+    const columns = opts.columns ?? items.length
+    const size = opts.size ?? 16
+    const gap = 10
+    const x0 = opts.x ?? this.M
+    const w = opts.w ?? this.CW
+    const tw = (w - gap * (columns - 1)) / columns
+    const th = size + 32
+    const flowing = opts.y == null
+    const y0 = opts.y ?? this.y
+    if (flowing) this.ensure(Math.ceil(items.length / columns) * (th + gap) + 10)
     items.forEach((it, i) => {
-      const x = this.M + i * (w + gap)
-      this.fill(x, this.y, w, h, BRAND.card, BRAND.line)
-      this.text(it.label.toUpperCase(), x + 14, this.y + 16, { size: 8, font: this.f.bodyBold, color: BRAND.muted })
-      const vs = this.truncate(it.value, this.f.headBold, 15, w - 24)
-      this.text(vs, x + 14, this.y + 34, { size: 15, font: this.f.headBold, color: it.color })
+      const x = x0 + (i % columns) * (tw + gap)
+      const y = (flowing ? this.y : y0) + Math.floor(i / columns) * (th + gap)
+      this.fill(x, y, tw, th, BRAND.subtle, 12)
+      this.text(this.truncate(it.label, this.f.body, 8.5, tw - 24), x + 12, y + 10, { size: 8.5, color: BRAND.muted })
+      const font = size >= 14 ? this.f.headBold : this.f.bodyBold
+      this.text(this.truncate(it.value, font, size, tw - 24), x + 12, y + 23, {
+        size, font, color: TONE[it.tone ?? 'default'],
+      })
     })
-    this.y += h + 22
+    const h = Math.ceil(items.length / columns) * (th + gap) - gap
+    if (flowing) this.y += h + 16
+    return h
+  }
+  static tilesHeight(n: number, columns: number, size = 16) {
+    return Math.ceil(n / columns) * (size + 32 + 10) - 10
   }
 
-  // Category pie with a legend to its right. `items` are pre-sorted desc.
-  pie(items: { label: string; value: number }[], total: number, cur: string) {
-    const r = 68
-    const cx = this.M + r + 6
-    const blockH = r * 2 + 12
-    this.ensure(blockH + 6)
-    const cy = this.y + r
-    let a0 = -Math.PI / 2
+  // A sand note box with wrapped muted text (e.g. pending-rate notes).
+  notes(lines: string[]) {
+    if (lines.length === 0) return
+    const size = 9
+    const wrapped = lines.flatMap((l) => this.wrap(l, this.f.body, size, this.CW - 28))
+    const h = wrapped.length * 13 + 18
+    this.ensure(h + 14)
+    this.fill(this.M, this.y, this.CW, h, BRAND.subtle, 12)
+    wrapped.forEach((l, i) => this.text(l, this.M + 14, this.y + 9 + i * 13, { size, color: BRAND.muted }))
+    this.y += h + 14
+  }
+
+  // "Where your money went": the kit StackedBar (segments with a 2pt gap in a
+  // rounded track) over ranked category rows — swatch, name, amount, share and
+  // a bar sized relative to the largest. `items` come from categoryBars.
+  static breakdownHeight(n: number) { return 12 + 18 + n * 36 - 8 }
+  breakdown(x: number, y: number, w: number, items: { name: string; meta: string; share: number; ratio: number }[]) {
+    const bh = 12
+    const gap = 2
+    const usable = w - gap * (items.length - 1)
+    this.fill(x, y, w, bh, BRAND.subtle, bh / 2)
+    let sx = x
     items.forEach((it, i) => {
-      const frac = it.value / total
-      const a1 = a0 + frac * Math.PI * 2
-      const col = PIE[i % PIE.length]
-      if (frac >= 0.999) {
-        this.page.drawCircle({ x: cx, y: this.H - cy, size: r, color: col })
-      } else {
-        const p0 = [cx + r * Math.cos(a0), cy + r * Math.sin(a0)]
-        const p1 = [cx + r * Math.cos(a1), cy + r * Math.sin(a1)]
-        const large = a1 - a0 > Math.PI ? 1 : 0
-        const path = `M ${cx} ${cy} L ${p0[0]} ${p0[1]} A ${r} ${r} 0 ${large} 1 ${p1[0]} ${p1[1]} Z`
-        this.page.drawSvgPath(path, { x: 0, y: this.H, color: col, borderWidth: 0 })
+      const sw = (usable * it.share) / 100
+      const first = i === 0
+      const last = i === items.length - 1
+      this.fill(sx, y, sw, bh, swatch(i, it.name), [first ? bh / 2 : 0, last ? bh / 2 : 0, last ? bh / 2 : 0, first ? bh / 2 : 0])
+      sx += sw + gap
+    })
+    let ry = y + bh + 18
+    items.forEach((it, i) => {
+      const color = swatch(i, it.name)
+      this.dot(x + 4, ry + 6, 4, color)
+      const pct = `${it.share}%`
+      const pctW = this.width(pct, this.f.bodyBold, 10)
+      const metaW = this.width(it.meta, this.f.body, 9)
+      this.text(this.truncate(it.name, this.f.bodyBold, 10, w - 16 - pctW - metaW - 24), x + 14, ry, { size: 10, font: this.f.bodyBold })
+      this.textRight(pct, x + w, ry, { size: 10, font: this.f.bodyBold, color: BRAND.muted })
+      this.textRight(it.meta, x + w - pctW - 12, ry + 1, { size: 9, color: BRAND.muted })
+      const track = ry + 17
+      this.fill(x + 14, track, w - 14, 6, BRAND.subtle, 3)
+      this.fill(x + 14, track, Math.max((w - 14) * it.ratio, 6), 6, color, 3)
+      ry += 36
+    })
+  }
+
+  // Settle-up payments (kit TransferRow): from → to on a sand tile, amount in
+  // accent on the right.
+  static transfersHeight(n: number) { return n * 34 - 6 }
+  transfers(x: number, y: number, w: number, items: { from: string; to: string; amount: string }[]) {
+    items.forEach((t, i) => {
+      const ty = y + i * 34
+      this.fill(x, ty, w, 28, BRAND.subtle, 10)
+      const aw = this.width(t.amount, this.f.bodyBold, 10.5)
+      const nameW = (w - aw - 80) / 2
+      let cx = x + 12
+      const who = (name: string) => {
+        this.dot(cx + 7, ty + 14, 7, BRAND.coral)
+        const initial = (name.trim()[0] ?? '?').toUpperCase()
+        this.text(initial, cx + 7 - this.width(initial, this.f.bodyBold, 7.5) / 2, ty + 9.5, { size: 7.5, font: this.f.bodyBold, color: BRAND.white })
+        const shown = this.truncate(name, this.f.bodyBold, 10, nameW)
+        this.text(shown, cx + 19, ty + 8, { size: 10, font: this.f.bodyBold })
+        cx += 19 + this.width(shown, this.f.bodyBold, 10) + 8
       }
-      a0 = a1
+      who(t.from)
+      this.text('→', cx, ty + 8, { size: 10, color: BRAND.muted })
+      cx += 16
+      who(t.to)
+      this.textRight(t.amount, x + w - 12, ty + 8, { size: 10.5, font: this.f.bodyBold, color: BRAND.accent })
     })
-    this.page.drawCircle({ x: cx, y: this.H - cy, size: r * 0.52, color: BRAND.white })
-
-    const lx = cx + r + 26
-    const lw = this.M + this.CW - lx
-    let ly = this.y + 4
-    const shown = items.slice(0, 8)
-    for (let i = 0; i < shown.length; i++) {
-      const it = shown[i]
-      const pct = ((it.value / total) * 100).toFixed(1)
-      this.fill(lx, ly + 1, 9, 9, PIE[i % PIE.length])
-      const amt = `${money(it.value, cur)}  ·  ${pct}%`
-      const amtW = this.width(amt, this.f.body, 9)
-      const nm = this.truncate(it.label, this.f.bodyBold, 9.5, lw - 16 - amtW - 10)
-      this.text(nm, lx + 16, ly, { size: 9.5, font: this.f.bodyBold, color: BRAND.ink })
-      this.textRight(amt, lx + lw, ly, { size: 9, color: BRAND.muted })
-      ly += 17
-    }
-    if (items.length > shown.length) {
-      const rest = items.slice(shown.length).reduce((s, it) => s + it.value, 0)
-      this.text(`+ ${items.length - shown.length} more`, lx + 16, ly, { size: 9, color: BRAND.muted })
-      this.textRight(money(rest, cur), lx + lw, ly, { size: 9, color: BRAND.muted })
-      ly += 17
-    }
-    this.y += Math.max(blockH, ly - this.y) + 12
   }
 
+  // A quiet table: a sand header strip with small muted labels, hairlines
+  // between rows; the header repeats on each new page.
   table(cols: Col[], rows: Cell[][]) {
     const xs: number[] = []
     let x = this.M
     for (const col of cols) { xs.push(x); x += col.width }
-    const rowH = 19
+    const rowH = 21
+    const headH = 22
     const drawHead = () => {
-      this.fill(this.M, this.y, this.CW, 22, BRAND.coral)
+      this.fill(this.M, this.y, this.CW, headH, BRAND.subtle, 8)
       cols.forEach((col, i) => {
-        const tx = xs[i]
-        if (col.align === 'right') {
-          this.textRight(col.title, tx + col.width - 8, this.y + 6.5, { size: 8.5, font: this.f.bodyBold, color: BRAND.white })
-        } else {
-          this.text(col.title, tx + 8, this.y + 6.5, { size: 8.5, font: this.f.bodyBold, color: BRAND.white })
-        }
+        const t = col.title.toUpperCase()
+        const o = { size: 7.5, font: this.f.bodyBold, color: BRAND.muted }
+        if (col.align === 'right') this.textRight(t, xs[i] + col.width - 10, this.y + 7.5, o)
+        else this.text(t, xs[i] + 10, this.y + 7.5, o)
       })
-      this.y += 22
+      this.y += headH + 2
     }
-    this.ensure(22 + rowH)
+    this.ensure(headH + rowH * 2)
     drawHead()
     rows.forEach((row, ri) => {
-      if (this.y + rowH > this.H - 46) { this.addPage(); drawHead() }
-      if (ri % 2 === 1) this.fill(this.M, this.y, this.CW, rowH, BRAND.stripe)
+      if (this.y + rowH > this.H - 54) { this.addPage(); drawHead() }
       cols.forEach((col, i) => {
         const cell = row[i]
         const val = typeof cell === 'string' ? cell : cell.text
-        const color = typeof cell === 'string' ? BRAND.ink : (cell.color ?? BRAND.ink)
-        const font = typeof cell === 'string' ? this.f.body : (cell.font ?? this.f.body)
-        const tx = xs[i]
-        if (col.align === 'right') {
-          this.textRight(this.truncate(val, font, 9, col.width - 12), tx + col.width - 8, this.y + 5.5, { size: 9, font, color })
-        } else {
-          this.text(this.truncate(val, font, 9, col.width - 12), tx + 8, this.y + 5.5, { size: 9, font, color })
-        }
+        const tone = typeof cell === 'string' ? 'default' : (cell.tone ?? 'default')
+        const font = typeof cell !== 'string' && cell.bold ? this.f.bodyBold : this.f.body
+        const shown = this.truncate(val, font, 9, col.width - 16)
+        const o = { size: 9, font, color: TONE[tone] }
+        if (col.align === 'right') this.textRight(shown, xs[i] + col.width - 10, this.y + 6, o)
+        else this.text(shown, xs[i] + 10, this.y + 6, o)
       })
       this.y += rowH
+      if (ri < rows.length - 1) this.page.drawRectangle({ x: this.M + 10, y: this.H - this.y, width: this.CW - 20, height: 0.6, color: BRAND.line })
     })
+    this.y += 14
+  }
+
+  // Label left, value right (the kit's inline Figure); `strong` rows sit on a
+  // sand tile.
+  rows(items: { left: string; right: string; tone?: Tone; strong?: boolean }[]) {
+    for (const it of items) {
+      this.ensure(24)
+      if (it.strong) this.fill(this.M, this.y, this.CW, 22, BRAND.subtle, 8)
+      this.text(this.truncate(it.left, this.f.body, 10, this.CW - 160), this.M + 10, this.y + 5, { size: 10, color: it.strong ? BRAND.ink : BRAND.muted })
+      this.textRight(it.right, this.M + this.CW - 10, this.y + 5, { size: 10, font: this.f.bodyBold, color: TONE[it.tone ?? 'default'] })
+      this.y += 24
+    }
     this.y += 8
   }
 
-  // Two-column list (label left, value right) used for balances / totals.
-  rows(items: { left: string; right: string; rightColor?: any; strong?: boolean }[]) {
-    for (const it of items) {
-      this.ensure(20)
-      if (it.strong) this.fill(this.M, this.y, this.CW, 19, BRAND.card)
-      const lf = it.strong ? this.f.bodyBold : this.f.body
-      this.text(this.truncate(it.left, lf, 10, this.CW - 140), this.M + (it.strong ? 8 : 0), this.y + 3, { size: 10, font: lf, color: BRAND.ink })
-      this.textRight(it.right, this.M + this.CW - (it.strong ? 8 : 0), this.y + 3, { size: 10, font: this.f.bodyBold, color: it.rightColor ?? BRAND.ink })
-      this.y += 19
-    }
-    this.y += 6
+  muted(str: string) {
+    this.ensure(20)
+    this.text(str, this.M, this.y, { size: 9.5, color: BRAND.muted })
+    this.y += 22
   }
 
   finish() {
     const pages = this.pdf.getPages()
     const total = pages.length
     pages.forEach((p, i) => {
-      p.drawRectangle({ x: this.M, y: 36, width: this.CW, height: 0.8, color: BRAND.line })
-      p.drawText('Generated by Budgeer', { x: this.M, y: 24, size: 8, font: this.f.body, color: BRAND.muted })
-      const label = `${i + 1} / ${total}`
-      const w = this.width(label, this.f.body, 8)
-      p.drawText(label, { x: this.M + this.CW - w, y: 24, size: 8, font: this.f.body, color: BRAND.muted })
+      this.page = p
+      p.drawRectangle({ x: this.M, y: 40, width: this.CW, height: 0.8, color: BRAND.line })
+      this.mark(this.M - 2, this.H - 34, 12)
+      this.text('Generated by Budgeer · budgeer.com', this.M + 13, this.H - 31, { size: 8, color: BRAND.muted })
+      this.textRight(`${i + 1} / ${total}`, this.M + this.CW, this.H - 31, { size: 8, color: BRAND.muted })
     })
   }
 }

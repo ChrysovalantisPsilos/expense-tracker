@@ -14,9 +14,18 @@ test('fileStem: falls back when nothing safe is left', () => {
   assert.equal(fileStem(''), 'file')
 })
 
-test('toBlob: passes a Blob through untouched', () => {
+test('toBlob: passes a Blob of the right (or no requested) type through untouched', () => {
   const b = new Blob(['x'], { type: 'application/pdf' })
-  assert.equal(toBlob(b, 'text/plain'), b)
+  assert.equal(toBlob(b, 'application/pdf'), b)
+  assert.equal(toBlob(b), b)
+})
+
+test('toBlob: re-types a Blob, keeping its bytes (a spreadsheet arrives as octet-stream)', async () => {
+  const b = new Blob([new Uint8Array([80, 75, 3, 4, 255])], { type: 'application/octet-stream' })
+  const xlsx = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  const out = toBlob(b, xlsx)
+  assert.equal(out.type, xlsx)
+  assert.deepEqual(new Uint8Array(await out.arrayBuffer()), new Uint8Array([80, 75, 3, 4, 255]))
 })
 
 test('toBlob: wraps binary/string data with the given type', async () => {

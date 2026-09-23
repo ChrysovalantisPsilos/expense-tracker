@@ -1,5 +1,6 @@
 import { supabase, edgeFunctionError } from '../../shared/lib/supabase.js'
 import { fileStem, saveBlob, toBlob } from '../../shared/lib/download.js'
+import { FILE_TYPES } from '../../../supabase/functions/_shared/files.ts'
 
 // ---- Queries -------------------------------------------------------------
 
@@ -275,5 +276,5 @@ export async function downloadGroupReport(groupId, groupName = 'group') {
     body: { group_id: groupId },
   })
   if (error) throw new Error(await edgeFunctionError(error))
-  saveBlob(toBlob(data, 'application/pdf'), `${fileStem(groupName, 'group')}-statement.pdf`)
+  saveBlob(toBlob(data, FILE_TYPES.pdf), `${fileStem(groupName, 'group')}-statement.pdf`)
 }

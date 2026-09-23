@@ -1,5 +1,6 @@
 // Edge Function: send-invite
-// Emails a Budgeer group-invite link via Resend, styled to match the app.
+// Emails a Budgeer group-invite link via Resend, in the shared branded layout
+// (_shared/email.ts: escaped HTML + a plain-text alternative).
 // Dormant until RESEND_API_KEY is set (returns 503 so the app falls back to a
 // share link). verify_jwt = true.
 //
@@ -16,21 +17,10 @@
 // invite emails a day, whoever sends them.
 
 import { withCors, json, callerClient } from '../_shared/http.ts'
-import { esc, brandEmail } from '../_shared/email.ts'
+import { brandEmail } from '../_shared/email.ts'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const SUBJECT = 'You’re invited to a group on Budgeer'
-
-function inviteEmail(opts: { heading: string; url: string }): string {
-  const heading = esc(opts.heading)
-  const url = esc(opts.url)
-  return brandEmail({
-    inner: `<h1 style="margin:0 0 10px;font-size:20px;color:#242019;">${heading}</h1>
-          <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5f5545;">Budgeer helps you split shared expenses and see who owes whom. Tap below to join the group.</p>
-          <a href="${url}" style="display:inline-block;background:#f95d38;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 26px;border-radius:10px;">Join the group</a>
-          <p style="margin:26px 0 0;font-size:13px;line-height:1.5;color:#9a8b72;">Or paste this link into your browser:<br><a href="${url}" style="color:#c2703d;word-break:break-all;">${url}</a></p>`,
-  })
-}
 
 Deno.serve(withCors(async (req) => {
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
@@ -89,13 +79,18 @@ Deno.serve(withCors(async (req) => {
     const who = inviterName ? `${inviterName} invited you` : 'You’re invited'
     const group = groupName ? ` to join “${groupName}”` : ''
     const heading = `${who}${group} on Budgeer`
-    const url = `${APP_ORIGIN}/join/${token}`
-    const html = inviteEmail({ heading, url })
+    const { html, text } = brandEmail({
+      origin: APP_ORIGIN,
+      heading,
+      paragraphs: ['Budgeer helps you split shared expenses and see who owes whom. Tap below to join the group.'],
+      cta: { label: 'Join the group', url: `${APP_ORIGIN}/join/${token}` },
+      showLink: true,
+    })
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [recipient], subject: SUBJECT, html }),
+      body: JSON.stringify({ from: FROM, to: [recipient], subject: SUBJECT, html, text }),
     })
     if (!res.ok) {
       console.error('resend error', res.status, await res.text().catch(() => ''))
