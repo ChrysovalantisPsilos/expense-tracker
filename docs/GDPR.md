@@ -66,6 +66,8 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | Supabase, Inc. | Processor (DB, Auth, Storage, Edge Functions, Vault) | everything above | AWS eu-west-3 (Paris) for both TEST and PROD; US company (support access) | Supabase DPA + SCCs |
 | Vercel Inc. | Processor (static hosting, CDN) | IP, request logs | global edge incl. US | Vercel DPA + SCCs (DPF if certified — verify) |
 | Resend (Plus Five Five, Inc.) | Processor (email) | recipient address, email content (invites, group event emails, the service notices of § 6a, privacy-request form) | sending region eu-west-1 (Ireland); US company; open/click tracking off | Resend DPA + SCCs |
+| Cloudflare, Inc. | Processor (DNS, website proxy/CDN, Email Routing for privacy@/support@) | IP + requested URLs (proxy); inbound emails to privacy@/support@ in transit, not stored | global edge incl. US | Cloudflare DPA + SCCs; DPF |
+| Google (Gmail mailbox) | Mailbox for privacy@/support@ (forwarded by Cloudflare; replies sent as privacy@/support@ through Resend SMTP) | sender address and message content of privacy/support emails and privacy-request forms | Google data centres, incl. US | DPF + Google terms; correspondence deleted when no longer needed, ≤ 2 years after the request is closed |
 | Google | Independent controller (OAuth sign-in; avatar images on googleusercontent.com) | identity, IP when avatar loads | global | Google's terms; DPF |
 | Browser push services (FCM, Mozilla, Apple, Microsoft) | Deliver encrypted push payloads | endpoint, timing | global | payload end-to-end encrypted (RFC 8291) |
 | Frankfurter (frankfurter.dev) | Independent service (ECB rates) | currency codes, date, user's IP (browser call) | unknown | no contract; no user identifiers sent |
@@ -158,9 +160,11 @@ security suite (`supabase/tests/db_tests.sql`).
 
 ## 9. Operator to-do (outside the code)
 
-- Make privacy@budgeer.com and support@budgeer.com real, monitored inboxes (the
-  budgeer.com domain has Resend inbound enabled — route/forward them).
-- Accept/sign the DPAs of Supabase, Vercel and Resend and keep copies; confirm
+- privacy@ and support@budgeer.com: Cloudflare Email Routing → a Gmail mailbox;
+  replies are sent as those addresses through Resend SMTP (done). Keep the
+  mailbox tidy: delete privacy/support correspondence when no longer needed,
+  at the latest two years after a request is closed; keep the request log.
+- Accept/sign the DPAs of Supabase, Vercel, Resend and Cloudflare and keep copies; confirm
   each one's SCC module and sub-processor list; verify Vercel's DPF status.
 - Set `PRIVACY_INBOX` (optional; defaults to privacy@budgeer.com) and confirm
   `RESEND_API_KEY`, `INVITE_FROM`, `APP_ORIGIN` in both projects' function

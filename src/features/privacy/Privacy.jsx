@@ -70,9 +70,19 @@ const RECIPIENTS = [
     ['Safeguard', 'Vercel’s Data Processing Addendum with the EU Standard Contractual Clauses (and the EU–US Data Privacy Framework where Vercel is certified).'],
   ] },
   { name: 'Resend (Plus Five Five, Inc.)', lines: [
-    ['Role', 'Processor: delivers our emails. It receives the recipient’s address and the email: invites (your name and the group’s name), group event emails if you turned them on, the emails about your account and your data described above (inactivity warnings, deletion confirmations, security and update notices, privacy request receipts), and privacy requests you send through the form (with what you wrote). Our emails never contain your amounts or expense descriptions, and we don’t use open or click tracking.'],
+    ['Role', 'Processor: delivers our emails. It receives the recipient’s address and the email: invites (your name and the group’s name), group event emails if you turned them on, the emails about your account and your data described above (inactivity warnings, deletion confirmations, security and update notices, privacy request receipts), privacy requests you send through the form (with what you wrote), and the replies we send you from privacy@ or support@. Our emails never contain your amounts or expense descriptions, and we don’t use open or click tracking.'],
     ['Where', 'Sent from the EU region eu-west-1 (Ireland); Resend is a US company.'],
     ['Safeguard', 'Resend’s Data Processing Addendum with the EU Standard Contractual Clauses.'],
+  ] },
+  { name: 'Cloudflare (Cloudflare, Inc.)', lines: [
+    ['Role', 'Processor: manages the budgeer.com domain, protects and speeds up the website (so it sees your IP address and the pages you load), and receives emails sent to privacy@budgeer.com and support@budgeer.com and passes them on to our mailbox without keeping them.'],
+    ['Where', 'A worldwide network, including the United States; Cloudflare is a US company.'],
+    ['Safeguard', 'Cloudflare’s Data Processing Addendum with the EU Standard Contractual Clauses (and the EU–US Data Privacy Framework).'],
+  ] },
+  { name: 'Google (Gmail)', lines: [
+    ['Role', 'Our privacy and support mailbox is a Gmail account. If you email privacy@ or support@, or use the privacy request form, your message and email address are stored there so we can answer; our replies are sent through Resend. We delete this correspondence when it’s no longer needed, and at the latest two years after the request is closed.'],
+    ['Where', 'Google’s data centres worldwide; Google is a US company.'],
+    ['Safeguard', 'The EU–US Data Privacy Framework (Google is certified) and Google’s terms.'],
   ] },
   { name: 'Google', lines: [
     ['Role', 'Independent controller — only if you use “Sign in with Google”. Google confirms who you are and shares your name, email address and profile picture with us. Your Google profile picture is loaded from Google’s servers, so Google sees your IP address when it’s shown.'],
@@ -98,6 +108,7 @@ const RETENTION_ITEMS = [
   <><Lead>Group change log:</Lead> entries deleted automatically after {R.groupLogYears} years.</>,
   <><Lead>Invites:</Lead> links expire after 24 hours at most and are deleted a week after they expire.</>,
   <><Lead>Rate-limit counters and sign-in audit records:</Lead> deleted after {R.rateLimitDays} days at most.</>,
+  <><Lead>Emails to privacy@ and support@:</Lead> kept in our mailbox only as long as needed to answer and follow up, and deleted at the latest two years after your request is closed.</>,
   <><Lead>Inactive accounts:</Lead> if nobody has signed in to or used an account for {R.inactiveWarnMonths} months, we email a warning; at {R.inactiveDeleteMonths} months — and never sooner than {R.inactiveNoticeDays} days after the warning — the account is deleted exactly as described under “Erasure”. Signing in stops it.</>,
   <><Lead>Consent history:</Lead> kept while your account exists, to show what you agreed to.</>,
   <><Lead>Backups:</Lead> our database host keeps encrypted backups for a limited period, so deleted data disappears from them when they roll over.</>,
@@ -204,7 +215,7 @@ const SECTIONS = [
   { id: 'transfers', title: 'Transfers outside the EU', body: (
     <Body>
       Our database is stored in the EU. Where a provider above can access data from outside the
-      European Economic Area (Supabase, Vercel and Resend are US companies), the transfer is
+      European Economic Area (Supabase, Vercel, Resend, Cloudflare and Google are US companies), the transfer is
       covered by the European Commission’s Standard Contractual Clauses in that provider’s data
       processing agreement, and — for providers certified under it — by the EU–US Data Privacy
       Framework adequacy decision. Email us for a copy of the relevant safeguards.
