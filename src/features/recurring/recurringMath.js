@@ -1,18 +1,12 @@
 // Pure recurring-rule math (no React/supabase imports — unit-testable).
 import {
-  monthlyShare, ruleSpreadMonths, ruleCountsMonthly, spreadDates, spreadPart,
+  monthlyMinor, monthlyShare, ruleSpreadMonths, ruleCountsMonthly, spreadDates, spreadPart, yearlyRules,
 } from '../../shared/lib/spread.js'
 
+// A rule's cost in monthly minor units (shared with the statement).
+export { monthlyMinor }
+
 export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly']
-
-// Average months-per-period, used to normalise every rule to a monthly cost.
-const MONTHLY_FACTOR = { daily: 365 / 12, weekly: 52 / 12, monthly: 1, yearly: 1 / 12 }
-
-// A rule's cost expressed in monthly minor units (for the "per month" total).
-export function monthlyMinor(rule) {
-  const perPeriod = rule.amount_minor / (rule.interval_n || 1)
-  return Math.round(perPeriod * MONTHLY_FACTOR[rule.frequency])
-}
 
 // Per-month cost of the active rules, split by kind: { expense, income }.
 // With `separateYearly` (the user keeps yearly subscriptions out of monthly
@@ -30,7 +24,8 @@ export function monthlyTotals(rules, separateYearly = false) {
 }
 
 // The "Yearly subscriptions" figures (Home card, Recurring summary) from the
-// active yearly expense rules that still have a charge to come:
+// active yearly expense rules that still have a charge to come (yearlyRules,
+// shared with the statement's "Yearly subscriptions" section):
 //   perYear   Σ charge ÷ N (an every-2-years €100 counts €50 a year)
 //   perMonth  Σ monthlyMinor — the same per-rule rounding the Recurring page's
 //             monthly figures use, so both pages agree
@@ -41,15 +36,7 @@ export function monthlyTotals(rules, separateYearly = false) {
 //             expectedInWindow — their amounts are summed at face value as
 //             base currency; the UI says so when this is set.
 export function yearlySubscriptions(rules, baseCurrency, limit = 3) {
-  const yearly = rules
-    .filter((r) => r.is_active && ruleSpreadMonths(r) && (!r.end_date || r.next_run <= r.end_date))
-    .sort((a, b) => (a.next_run < b.next_run ? -1 : a.next_run > b.next_run ? 1 : 0))
-  let perYear = 0
-  let perMonth = 0
-  for (const r of yearly) {
-    perYear += Math.round(r.amount_minor / Math.max(1, Number(r.interval_n) || 1))
-    perMonth += monthlyMinor(r)
-  }
+  const { rules: yearly, perYear, perMonth } = yearlyRules(rules)
   return {
     perYear, perMonth, count: yearly.length, next: yearly.slice(0, limit),
     foreign: yearly.some((r) => r.currency !== baseCurrency),

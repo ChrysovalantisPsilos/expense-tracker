@@ -2960,11 +2960,85 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 52. 0070: the weekly digest follows the yearly-subscription setting. With
+--     it on (the default) a yearly row counts its part dated this week — here
+--     a €2,400 charge paid two months ago counts €200, outranking €50 of food
+--     — and a part dated before the week doesn't count; kept separate, yearly
+--     rows count nowhere (a user with only those gets no digest).
+--     spread_part_date (JS twin: spreadDates) clamps from the payment's day.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; u3 uuid; u uuid; gym uuid; food uuid; old uuid; body text; n int;
+        paid date := ((current_date - 3) - interval '2 months')::date;
+        paid_old date := ((current_date - 7) - interval '1 month')::date;
+begin
+  begin
+    if public.spread_part_date('2026-01-31', 0) <> '2026-01-31'
+       or public.spread_part_date('2026-01-31', 1) <> '2026-02-28'
+       or public.spread_part_date('2024-01-31', 1) <> '2024-02-29'
+       or public.spread_part_date('2026-01-31', 2) <> '2026-03-31'
+       or public.spread_part_date('2026-11-15', 3) <> '2027-02-15' then
+      raise exception 'spread_part_date dates';
+    end if;
+    if has_function_privilege('authenticated', 'public.spread_part_date(date, int)', 'execute')
+       or has_function_privilege('anon', 'public.spread_part_date(date, int)', 'execute')
+       or has_function_privilege('authenticated', 'public.send_weekly_digests()', 'execute') then
+      raise exception 'digest helpers callable by clients';
+    end if;
+
+    u1 := pg_temp.zz_user('dgon');
+    u2 := pg_temp.zz_user('dgsep');
+    u3 := pg_temp.zz_user('dgonly');
+    update public.profiles set yearly_separate = true where id in (u2, u3);
+    foreach u in array array[u1, u2, u3] loop
+      perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+      update public.profiles set base_currency = 'EUR' where id = u;
+      insert into public.categories (user_id, name, kind) values (u, 'ZZT gym', 'expense') returning id into gym;
+      insert into public.categories (user_id, name, kind) values (u, 'ZZT food', 'expense') returning id into food;
+      insert into public.categories (user_id, name, kind) values (u, 'ZZT old', 'expense') returning id into old;
+      execute 'set local role authenticated';
+      -- €2,400 a year, paid two months ago: its part 2 (€200) is dated this week.
+      perform public.save_recurring_rule(null, jsonb_build_object('amount_minor', 240000, 'currency', 'EUR',
+        'category_id', gym, 'frequency', 'yearly', 'next_run', paid));
+      -- €12,000 a year whose part 1 is dated just before the week.
+      perform public.save_recurring_rule(null, jsonb_build_object('amount_minor', 1200000, 'currency', 'EUR',
+        'category_id', old, 'frequency', 'yearly', 'next_run', paid_old));
+      if u <> u3 then
+        perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+          'client_uuid', gen_random_uuid(), 'category_id', food, 'amount_minor', 5000, 'currency', 'EUR',
+          'spent_at', current_date)));
+      end if;
+      execute 'reset role';
+    end loop;
+    perform public.materialize_recurring_rules();
+    select count(*) into n from public.transactions
+     where user_id in (u1, u2, u3) and spread_months = 12 and spent_at in (paid, paid_old);
+    if n <> 6 then raise exception 'yearly rows not materialised (% of 6)', n; end if;
+
+    perform public.send_weekly_digests();
+    select string_agg(x.body, ' | ') into body from public.notifications x where x.user_id = u1 and x.type = 'digest';
+    if body is distinct from '2 expenses this week · top category: ZZT gym. Open Budgeer to see your totals.' then
+      raise exception 'setting on: %', body;
+    end if;
+    select string_agg(x.body, ' | ') into body from public.notifications x where x.user_id = u2 and x.type = 'digest';
+    if body is distinct from '1 expense this week · top category: ZZT food. Open Budgeer to see your totals.' then
+      raise exception 'kept separate: %', body;
+    end if;
+    select count(*) into n from public.notifications where user_id = u3 and type = 'digest';
+    if n <> 0 then raise exception 'kept separate, yearly only: % digest(s)', n; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: weekly digest counts yearly parts dated this week, or none when kept separate';
+    else update _t set fails = fails + 1; raise notice 'FAIL: digest yearly — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 52; f int; p int;  -- tests 1–51 + B-0059
+declare expected_tests constant int := 53; f int; p int;  -- tests 1–52 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

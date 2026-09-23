@@ -1,4 +1,5 @@
 // Currency helpers. Money is stored as integer minor units (cents).
+import { toBaseMinor } from '../../../supabase/functions/_shared/money.ts'
 
 // Supported currencies: every currency the ECB publishes a daily reference
 // rate for (so each one can be converted to any other), EUR first — it's the
@@ -37,28 +38,10 @@ export function formatMoney(minor, currency = 'EUR', locale = undefined) {
   }).format(fromMinor(minor, currency))
 }
 
-// Convert a minor amount to the user's base currency using the rate captured
-// at entry time (never today's rate — that would rewrite history). The rate is
-// major-per-major, so we scale by the decimal-factor ratio to stay correct when
-// the source and base currencies have different decimal places (e.g. JPY↔EUR).
-//
-// Exact integer arithmetic, rounding half away from zero — the same answer as
-// SQL public.to_base_minor (numeric round). Floats get ties wrong: ¥275 at
-// 0.0062 is €1.705, which float maths rounds to €1.70 and SQL to €1.71. A group
-// expense's split is checked against the server's number, so they must agree.
-// Rates are stored as numeric(18, 8), i.e. at most 8 decimals.
-const RATE_SCALE = 100000000n
-export function toBaseMinor(minor, exchangeRate, fromCurrency = 'EUR', baseCurrency = 'EUR') {
-  const m = Number(minor)
-  const r = Math.round(Number(exchangeRate) * 1e8)
-  if (!Number.isSafeInteger(m) || !Number.isSafeInteger(r)) {
-    return Math.round(m * Number(exchangeRate) * minorFactor(baseCurrency) / minorFactor(fromCurrency))
-  }
-  const num = BigInt(Math.abs(m)) * BigInt(Math.abs(r)) * BigInt(minorFactor(baseCurrency))
-  const den = RATE_SCALE * BigInt(minorFactor(fromCurrency))
-  const q = Number((2n * num + den) / (2n * den))
-  return q !== 0 && (m < 0) !== (r < 0) ? -q : q
-}
+// toBaseMinor: a minor amount in the base currency at the row's captured rate
+// — exact integer maths that matches SQL to_base_minor. One copy, shared with
+// the edge functions (the statement's totals must agree with the app's).
+export { toBaseMinor }
 
 // ---------------------------------------------------------------------------
 // Pending rates. A row the server wrote without a known rate (a mirrored group
