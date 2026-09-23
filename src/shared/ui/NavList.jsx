@@ -7,16 +7,16 @@ import SectionLabel from './kit/SectionLabel.jsx'
 
 // An iOS-style grouped list: one lifted Panel, rows split by hairlines, with
 // an optional SectionLabel `label` above it ("PREFERENCES"). Used by the More
-// tab and the Settings page.
-export function NavList({ label, children }) {
+// tab and the Settings page. Other props (e.g. data-tour) go on the outer box.
+export function NavList({ label, children, ...props }) {
   const list = (
-    <Panel p={0} overflow="hidden">
+    <Panel p={0} overflow="hidden" {...(label ? {} : props)}>
       <Stack spacing={0} divider={<Divider />}>{children}</Stack>
     </Panel>
   )
   if (!label) return list
   return (
-    <Box>
+    <Box {...props}>
       <SectionLabel mb={2} px={1}>{label}</SectionLabel>
       {list}
     </Box>

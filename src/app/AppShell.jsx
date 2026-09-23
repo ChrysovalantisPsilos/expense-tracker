@@ -23,7 +23,7 @@ import { isNavActive } from './navMatch.js'
 // desktop sidebar. `tour` names the app tour's stop (data-tour, tourSteps.js).
 const PRIMARY = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
-  { to: '/transactions', label: 'Transactions', icon: ReceiptText, tour: 'nav-transactions' },
+  { to: '/transactions', label: 'Transactions', icon: ReceiptText },
   { to: '/groups', label: 'Groups', icon: Users, tour: 'nav-groups' },
   { to: '/budgets', label: 'Budgets', icon: Target, tour: 'nav-budgets' },
 ]

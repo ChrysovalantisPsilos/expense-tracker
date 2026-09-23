@@ -49,7 +49,7 @@ export default function Settings() {
             highlight flexShrink={0} />} />
       </NavList>
       <NavList label="Preferences">{rows(PREFERENCES)}</NavList>
-      <NavList label="Privacy & security">{rows(PRIVACY)}</NavList>
+      <NavList label="Privacy & security" data-tour="settings-privacy">{rows(PRIVACY)}</NavList>
       <NavList label="Help">
         <NavRow to="/help" icon={CircleHelp} label="Help & FAQ" description="Answers to common questions" />
         <NavRow href={`mailto:${SUPPORT_EMAIL}`} icon={Mail} label="Contact support" description={SUPPORT_EMAIL} />

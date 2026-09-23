@@ -18,22 +18,22 @@ export const TOUR_STEPS = [
   {
     id: 'categories', route: '/', target: 'categories',
     title: 'Where it goes',
-    body: 'Your spending by category. Tap a category to see its expenses.',
+    body: 'Your spending by category. Tap one to open its page: its entries for any period, its budget, and its name, icon and colour.',
   },
   {
-    id: 'transactions', target: 'nav-transactions', prefer: NAV,
-    title: 'Transactions',
-    body: 'Everything you spend and earn, in one list.',
+    id: 'subscriptions', route: '/', target: 'subscriptions',
+    title: 'Subscriptions',
+    body: 'Your recurring bills by how often they charge — weekly, monthly, quarterly or yearly — with the next charges. Manage opens Recurring.',
   },
   {
     id: 'add-expense', route: '/transactions', target: 'add-expense',
-    title: 'Add an expense',
-    body: 'Log what you spend or earn, in any currency.',
+    title: 'Add an expense or income',
+    body: 'Opens a page for the amount (in any currency), category, date and notes. Switch on Repeat for a bill that comes back. Tap any entry to edit it.',
   },
   {
     id: 'search', route: '/transactions', target: 'ledger-search',
     title: 'Search and filters',
-    body: 'Find anything you’ve logged. To import a bank or card statement, use the ⋯ menu at the top.',
+    body: 'Everything you spend and earn, in one list you can search. To import a bank or card statement, use the ⋯ menu at the top.',
   },
   {
     id: 'groups', target: 'nav-groups', prefer: NAV,
@@ -43,17 +43,17 @@ export const TOUR_STEPS = [
   {
     id: 'budgets', target: 'nav-budgets', prefer: NAV,
     title: 'Budgets',
-    body: 'Set a monthly limit for each category. What you don’t spend can carry over to next month.',
+    body: 'Set a monthly limit for each category; what you don’t spend can carry over. Tap a budget to open its category.',
   },
   {
     id: 'more', media: 'mobile', target: 'nav-more', prefer: NAV,
     title: 'More',
-    body: 'Recurring bills, Insights and Settings are here.',
+    body: 'Insights (trends, net worth and goals), Recurring and Settings are here.',
   },
   {
     id: 'more', media: 'desktop', target: 'nav-more', prefer: NAV,
     title: 'Insights and Recurring',
-    body: 'Trends, net worth and goals, plus your subscriptions and recurring bills.',
+    body: 'Trends, net worth and goals, plus your subscriptions, bills and regular income.',
   },
   {
     id: 'account', media: 'mobile', target: 'account',
@@ -66,8 +66,13 @@ export const TOUR_STEPS = [
     body: 'Settings, light or dark, and sign-out. The bell at the top shows what’s new.',
   },
   {
+    id: 'privacy', route: '/settings', target: 'settings-privacy',
+    title: 'Privacy and security',
+    body: 'How you sign in (password, Google, passkeys), backups of your data, and Privacy: your data rights, consents and requests.',
+  },
+  {
     id: 'done',
     title: 'You’re all set',
-    body: 'You can take this tour again any time from Settings.',
+    body: 'Questions? Settings → Help & FAQ has answers, and you can take this tour again from there.',
   },
 ]

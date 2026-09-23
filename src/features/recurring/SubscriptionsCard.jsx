@@ -24,7 +24,7 @@ export default function SubscriptionsCard({ rules, baseCurrency }) {
     () => subscriptionGroups(rules, baseCurrency, { upcomingOnly: true }), [rules, baseCurrency])
 
   return (
-    <Panel icon={Repeat} title="Subscriptions"
+    <Panel data-tour="subscriptions" icon={Repeat} title="Subscriptions"
       action={<Button as={RouterLink} to="/recurring" size="xs" variant="ghost">Manage</Button>}>
       {groups.length === 0 ? (
         <Text color="text.muted" fontSize="sm">
