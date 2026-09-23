@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@tesseract.js-data/ell": "^1.0.0",
     "@tesseract.js-data/eng": "^1.0.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",

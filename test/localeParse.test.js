@@ -1,6 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseLocaleAmount, monthNumber, foldText, ymd } from '../src/shared/lib/localeParse.js'
+import {
+  parseLocaleAmount, monthNumber, foldText, ymd, parseDateText, findDates,
+} from '../src/shared/lib/localeParse.js'
 
 test('parseLocaleAmount: European and English separators', () => {
   assert.equal(parseLocaleAmount('1.234,56'), 1234.56)
@@ -59,6 +61,27 @@ test('monthNumber: EN / FR / NL / EL names, accents and tonos ignored', () => {
   assert.equal(monthNumber('mrt'), 3)
   assert.equal(monthNumber('Δεκεμβρίου'), 12)
   assert.equal(monthNumber('Total'), null)
+})
+
+test('parseDateText: ISO, compact, numeric orders, named months, trailing time', () => {
+  assert.equal(parseDateText('2026-09-01T23:30:00'), '2026-09-01')
+  assert.equal(parseDateText('20260901'), '2026-09-01')
+  assert.equal(parseDateText('03/04/2026'), '2026-04-03')
+  assert.equal(parseDateText('03/04/2026', 'mdy'), '2026-03-04')
+  assert.equal(parseDateText('13/04/2026', 'mdy'), '2026-04-13') // can only be day-first
+  assert.equal(parseDateText('1.9.26 08:00'), '2026-09-01')
+  assert.equal(parseDateText('21-JUL-26'), '2026-07-21')
+  assert.equal(parseDateText('Jul 21, 2026'), '2026-07-21')
+  assert.equal(parseDateText('21 Ιουλ 2026'), '2026-07-21')
+  assert.equal(parseDateText('31/02/2026'), null)
+  assert.equal(parseDateText('12,50'), null)
+  assert.equal(parseDateText(''), null)
+})
+
+test('findDates: dates inside free text, in order', () => {
+  assert.deepEqual(findDates('Ticket 0045 le 03 août 2026 à 09:14, due 2026-09-01'), ['2026-08-03', '2026-09-01'])
+  assert.deepEqual(findDates('TOTAL 12.50 EUR 2026'), [])
+  assert.deepEqual(findDates('ref 123/45/67890'), [])
 })
 
 test('foldText and ymd', () => {

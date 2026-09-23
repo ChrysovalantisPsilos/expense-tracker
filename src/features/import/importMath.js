@@ -2,7 +2,7 @@
 // one raw statement row + a column mapping into a transaction draft.
 import { toMinor, CURRENCIES } from '../../shared/lib/currency.js'
 import { isoDate } from '../../shared/lib/dates.js'
-import { parseLocaleAmount, monthNumber, ymd, foldText } from '../../shared/lib/localeParse.js'
+import { parseLocaleAmount, parseDateText, ymd, foldText } from '../../shared/lib/localeParse.js'
 
 // A merchant key for rules: strip numbers/dates/punctuation and generic bank
 // prefixes, keep the first meaningful word — so "POS LIDL 1234 NICOSIA" and
@@ -41,38 +41,17 @@ function fromExcelSerial(n) {
   return ymd(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate())
 }
 
-const NAMED_DATE = /^(\d{1,2})[\s./-]*([\p{L}]+)\.?[\s./-]*(\d{2,4})/u
-const NAMED_DATE_US = /^([\p{L}]+)\.?\s+(\d{1,2}),?\s+(\d{4})/u
-
 // A statement date as local YYYY-MM-DD, or null. `order` says how to read an
 // all-numeric d/m/y date: 'dmy' (Europe, the default), 'mdy' or 'ymd' — the
 // importer detects it per column (detectDateOrder), because "03/04/2026" is
-// only unambiguous in context. Also takes ISO text (literally: new
-// Date('2026-09-21') is UTC midnight, the 20th west of UTC), compact
-// yyyymmdd, "21 Jul 2026" / "21 juil. 2026" / "21 Ιουλ 2026", Date cells
-// (their local calendar day — never toISOString) and Excel serials.
+// only unambiguous in context. Text is read by parseDateText (ISO taken
+// literally, yyyymmdd, named months in EN/FR/NL/EL); Date cells give their
+// local calendar day (never toISOString); numbers are Excel serials.
 export function parseDate(v, order = 'dmy') {
   if (v instanceof Date) return isNaN(v) ? null : isoDate(v)
   if (typeof v === 'number') return v > 20000 && v < 80000 ? fromExcelSerial(v) : null
   if (v == null) return null
-  const s = String(v).trim()
-  if (!s) return null
-  let m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:$|[T\s])/.exec(s)
-  if (m) return ymd(+m[1], +m[2], +m[3])
-  m = /^(\d{4})(\d{2})(\d{2})$/.exec(s)
-  if (m) return ymd(+m[1], +m[2], +m[3])
-  m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}|\d{2})(?:$|[\s,T])/.exec(s)
-  if (m) {
-    let [day, month] = order === 'mdy' ? [+m[2], +m[1]] : [+m[1], +m[2]]
-    // The column's order, unless this value can only be read the other way.
-    if (month > 12 && day <= 12) [day, month] = [month, day]
-    return ymd(+m[3], month, day)
-  }
-  m = NAMED_DATE.exec(s)
-  if (m && monthNumber(m[2])) return ymd(+m[3], monthNumber(m[2]), +m[1])
-  m = NAMED_DATE_US.exec(s)
-  if (m && monthNumber(m[1])) return ymd(+m[3], monthNumber(m[1]), +m[2])
-  return null
+  return parseDateText(String(v), order)
 }
 
 // Debit/credit marker cells: D/C, Dr/Cr, Af/Bij (NL), Débit/Crédit (FR),

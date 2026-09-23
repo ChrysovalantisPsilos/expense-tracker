@@ -89,8 +89,42 @@ export function monthNumber(word) {
   return MONTH_BY_NAME.get(foldText(word).replace(/\.$/, '')) ?? null
 }
 
-// A regex alternation of every month word (folded), longest first.
-export const MONTH_WORDS = [...MONTH_BY_NAME.keys()].sort((a, b) => b.length - a.length).join('|')
+const NAMED_DATE = /^(\d{1,2})[\s./-]*(\p{L}+)\.?[\s./-]*(\d{4}|\d{2})(?!\d)/u
+const NAMED_DATE_US = /^(\p{L}+)\.?\s+(\d{1,2}),?\s+(\d{4})(?!\d)/u
+
+// A date written as text, as "YYYY-MM-DD", or null. Reads ISO (taken
+// literally: new Date('2026-09-21') is UTC midnight, the 20th west of UTC),
+// compact yyyymmdd, d/m/y with / . or - (two-digit years are 20xx), and
+// named months: "21 Jul 2026", "21 juil. 2026", "21-JUL-26", "21 Ιουλ 2026",
+// "Jul 21, 2026". `order` ('dmy' default, or 'mdy') decides an all-numeric
+// date unless the value can only be read the other way ("13/01" is day-first).
+// A trailing time or text after the date is ignored.
+export function parseDateText(text, order = 'dmy') {
+  const s = String(text ?? '').trim()
+  let m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?:$|[T\s])/.exec(s)
+  if (m) return ymd(+m[1], +m[2], +m[3])
+  m = /^(\d{4})(\d{2})(\d{2})$/.exec(s)
+  if (m) return ymd(+m[1], +m[2], +m[3])
+  m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4}|\d{2})(?:$|[\s,T])/.exec(s)
+  if (m) {
+    let [day, month] = order === 'mdy' ? [+m[2], +m[1]] : [+m[1], +m[2]]
+    if (month > 12 && day <= 12) [day, month] = [month, day]
+    return ymd(+m[3], month, day)
+  }
+  m = NAMED_DATE.exec(s)
+  if (m && monthNumber(m[2])) return ymd(+m[3], monthNumber(m[2]), +m[1])
+  m = NAMED_DATE_US.exec(s)
+  if (m && monthNumber(m[1])) return ymd(+m[3], monthNumber(m[1]), +m[2])
+  return null
+}
+
+// Every date found in free text (e.g. OCR'd receipt lines), in order.
+export function findDates(text, order = 'dmy') {
+  const tokens = String(text ?? '').match(
+    /(?<!\d)(?:\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}|\d{1,2}[\s./-]*\p{L}{3,}\.?[\s./-]*\d{2,4}|\p{L}{3,}\.?\s+\d{1,2},?\s+\d{4})(?!\d)/gu,
+  ) ?? []
+  return tokens.map((t) => parseDateText(t, order)).filter(Boolean)
+}
 
 // "YYYY-MM-DD" when y/m/d is a real calendar day, else null. Two-digit years
 // are 20xx.

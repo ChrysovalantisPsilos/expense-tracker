@@ -1,0 +1,15 @@
+DELHAIZE LEUVEN
+Bondgenotenlaan 1
+3000 Leuven
+BTW BE 0000.000.000
+Kassabon 1234  Kassa 03
+AARDAPPELEN 2KG           3,49
+MELK HALFVOLLE            1,15
+KAAS JONG BELEGEN         5,79
+KORTING SUPERPLUS        -1,00
+Subtotaal                 9,43
+TOTAAL TE BETALEN EUR     9,43
+Maestro                   9,43
+BTW 6%  8,90  0,53
+18.09.2026  17:22
+Bedankt en tot ziens

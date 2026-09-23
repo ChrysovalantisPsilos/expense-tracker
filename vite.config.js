@@ -7,14 +7,16 @@ import { OCR_ASSET_DIR } from './src/shared/lib/receiptScan.js'
 
 // Receipt OCR engine, served from our own origin instead of Tesseract's
 // jsDelivr defaults: the worker, both LSTM cores (Tesseract picks SIMD or not
-// per device) and the English LSTM data. Keys are paths under OCR_ASSET_DIR,
-// matching ocrPaths() in receiptScan.js.
+// per device) and the English + Greek LSTM data (best_int: ~2.9 MB + ~1.3 MB,
+// fetched only when someone scans, then cached by Tesseract in IndexedDB).
+// Keys are paths under OCR_ASSET_DIR, matching ocrPaths() in receiptScan.js.
 const require = createRequire(import.meta.url)
 const OCR_FILES = {
   'worker.min.js': 'tesseract.js/dist/worker.min.js',
   'core/tesseract-core-simd-lstm.wasm.js': 'tesseract.js-core/tesseract-core-simd-lstm.wasm.js',
   'core/tesseract-core-lstm.wasm.js': 'tesseract.js-core/tesseract-core-lstm.wasm.js',
   'lang/eng.traineddata.gz': '@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz',
+  'lang/ell.traineddata.gz': '@tesseract.js-data/ell/4.0.0_best_int/ell.traineddata.gz',
 }
 
 // Copies OCR_FILES into the build and serves them in dev.

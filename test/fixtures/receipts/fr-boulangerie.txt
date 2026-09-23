@@ -1,0 +1,15 @@
+*** BOULANGERIE DUPRÉ ***
+Rue de la Paix 12
+1050 Ixelles
+TVA BE 0000.000.000
+Ticket n° 004512
+Le 03 août 2026 à 09:14
+2 Baguette tradition      2,60
+1 Pain au chocolat        1,40
+1 Tarte aux pommes       12,50
+Sous-total TTC           16,50
+Total HT                 15,57
+TVA 6%                    0,93
+TOTAL À PAYER €          16,50
+Bancontact               16,50
+Merci de votre visite

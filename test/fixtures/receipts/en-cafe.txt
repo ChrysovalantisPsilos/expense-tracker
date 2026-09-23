@@ -1,0 +1,17 @@
+  THE BEAN HOUSE
+12 Makarios Ave, Nicosia
+Tel: 22 000000
+VAT No: CY00000000X
+Date: 14/09/2026 08:42  Till 2
+Cashier: Maria
+
+Flat White        2   7.00
+Croissant         1   2.80
+Orange Juice      1   3.50
+SUBTOTAL             13.30
+VAT 19%               2.12
+TOTAL           EUR  13.30
+CASH                 20.00
+CHANGE                6.70
+
+Thank you, come again!
