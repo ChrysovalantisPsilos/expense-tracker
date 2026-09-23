@@ -12,6 +12,11 @@ export function parseTxnType(value) {
   return TXN_TYPES.includes(value) ? value : 'expense'
 }
 
+// `categoryId` value for personal expenses with no category — the breakdowns'
+// "Uncategorized" bucket (a group share buckets under its group instead). The
+// server can't filter on "no category", so it's refined here.
+export const NO_CATEGORY = 'none'
+
 // The advanced filters (everything besides the `?q=` text).
 export const EMPTY_FILTERS = { categoryId: '', from: '', to: '', min: '', max: '' }
 
@@ -23,12 +28,14 @@ export function isFiltering(text, filters) {
 
 // Rows whose description, notes or category name contain `text` (any case)
 // and whose base-currency amount sits within [min, max] (decimal strings in
-// the base currency; '' means unbounded).
-export function filterTransactions(rows, { text = '', min = '', max = '' }, baseCurrency) {
+// the base currency; '' means unbounded). `categoryId: NO_CATEGORY` keeps only
+// uncategorised personal rows (any other category is filtered server-side).
+export function filterTransactions(rows, { text = '', min = '', max = '', categoryId = '' }, baseCurrency) {
   const q = text.trim().toLowerCase()
   const minBase = min !== '' ? toMinor(min, baseCurrency) : null
   const maxBase = max !== '' ? toMinor(max, baseCurrency) : null
   return rows.filter((r) => {
+    if (categoryId === NO_CATEGORY && (r.category_id || r.group_expense_id)) return false
     if (q) {
       const hay = `${r.description ?? ''} ${r.notes ?? ''} ${r.categories?.name ?? ''}`.toLowerCase()
       if (!hay.includes(q)) return false

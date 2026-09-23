@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
   SimpleGrid, Box, Text, Stack, Center, Spinner, HStack, IconButton,
-  Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Button,
+  Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Button, Link,
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, Table as TableIcon, Repeat, ReceiptText, Users } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { buildPeriods } from '../transactions/periods.js'
+import { linkBuckets } from '../transactions/ledgerLinks.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring } from '../recurring/recurring.js'
@@ -62,14 +63,19 @@ export default function Dashboard() {
   // it always shows what's coming up next plus the monthly subscriptions total.
   const { subsMonthly, activeRecurring } = useMemo(() => recurringOverview(rules), [rules])
 
-  const totals = useMemo(
-    () => periodTotals(spendRows(rows, baseCurrency, period.from, period.to), baseCurrency),
+  // Spread yearly charges count as their monthly parts in every total.
+  const spend = useMemo(
+    () => spendRows(rows, baseCurrency, period.from, period.to),
     [rows, baseCurrency, period.from, period.to])
+  const totals = useMemo(() => periodTotals(spend, baseCurrency), [spend, baseCurrency])
   const { byCategory, bucketRow } = totals
   const expenses = useMemo(
     () => paidInWindow(rows, period.from, period.to).filter((r) => r.kind !== 'income'),
     [rows, period.from, period.to])
-  const bars = useMemo(() => categoryBars(byCategory), [byCategory])
+  // Each bar drills down to its expenses for this period (a group share to its
+  // group); the folded "Other" merges several buckets, so it has no link.
+  const bars = useMemo(
+    () => linkBuckets(categoryBars(byCategory), spend, period), [byCategory, spend, period])
 
   // Fold not-yet-charged recurring into the period's spend/income projection,
   // but only for periods that are still ongoing (end today or later). Past
@@ -150,7 +156,9 @@ export default function Dashboard() {
             <Tbody>
               {bars.map((c) => (
                 <Tr key={c.name}>
-                  <Td>{c.name}</Td>
+                  <Td>
+                    {c.to ? <Link as={RouterLink} to={c.to} aria-label={c.linkLabel}>{c.name}</Link> : c.name}
+                  </Td>
                   <Td isNumeric fontWeight="600">{formatMoney(c.value, baseCurrency)}</Td>
                   <Td isNumeric color="text.muted">{c.share}%</Td>
                 </Tr>
@@ -166,7 +174,8 @@ export default function Dashboard() {
                 title={c.name} meta={formatMoney(c.value, baseCurrency)}
                 tooltip={`${c.name}: ${formatMoney(c.value, baseCurrency)} (${c.share}%)`}
                 media={<BucketIcon row={bucketRow.get(c.name)} />}
-                percent={Math.max(c.ratio * 100, 2)} valueLabel={`${c.share}%`} />
+                percent={Math.max(c.ratio * 100, 2)} valueLabel={`${c.share}%`}
+                to={c.to} linkLabel={c.linkLabel} />
             ))}
           </Stack>
         )}

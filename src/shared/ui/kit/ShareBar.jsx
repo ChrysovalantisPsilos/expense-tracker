@@ -1,4 +1,6 @@
+import { Link as RouterLink } from 'react-router-dom'
 import { Box, Flex, HStack, SimpleGrid, Text } from '@chakra-ui/react'
+import { ChevronRight } from 'lucide-react'
 import { MotionBox } from './motion.jsx'
 import { playProps, shareSwatch } from './kitMath.js'
 
@@ -6,6 +8,8 @@ import { playProps, shareSwatch } from './kitMath.js'
 // shares should sum to 100 (categoryBars / distributeByWeights give that).
 // Optional `color` per item; otherwise shareSwatch() picks one by position
 // ("Other" is always muted). Give both components the same items.
+// Optional `to` (in-app path) + `linkLabel` (its accessible name) make that
+// legend entry a drill-down link; StackedBar ignores them.
 const colorOf = (item, i) => item.color ?? shareSwatch(i, item.label)
 
 // One horizontal bar split into segments with a 2px gap. Optional
@@ -22,15 +26,30 @@ export function StackedBar({ items, h = '12px', playback, ...props }) {
   )
 }
 
+// A linked legend entry: a 32px-tall tap target that bleeds 4px sideways so
+// its hover fill has room, with a chevron after the percent.
+const LINKED = {
+  as: RouterLink, minH: '32px', px: 1, mx: -1, borderRadius: 'md',
+  transition: 'background 0.15s', _hover: { bg: 'bg.subtle' },
+  _focusVisible: { boxShadow: 'outline', outline: 'none' },
+}
+
 // The legend under a StackedBar: dot, muted name, bold percent, in columns.
+// When some entries link, the others keep the chevron's room so the percents
+// line up, and the 32px targets need no extra row gap.
 export function ShareLegend({ items, columns = 2, ...props }) {
+  const anyLinked = items.some((item) => item.to)
   return (
-    <SimpleGrid columns={columns} spacingX={4} spacingY={1.5} {...props}>
+    <SimpleGrid columns={columns} spacingX={4} spacingY={anyLinked ? 0 : 1.5} {...props}>
       {items.map((item, i) => (
-        <HStack key={item.label} spacing={2} minW={0}>
+        <HStack key={item.label} spacing={2} minW={0}
+          {...(item.to && { ...LINKED, to: item.to, 'aria-label': item.linkLabel })}>
           <Box boxSize="8px" borderRadius="full" bg={colorOf(item, i)} flexShrink={0} />
           <Text fontSize="xs" color="text.muted" noOfLines={1} flex="1">{item.label}</Text>
           <Text fontSize="xs" fontWeight="700">{item.share}%</Text>
+          {item.to
+            ? <Box color="text.muted" flexShrink={0} aria-hidden><ChevronRight size={14} /></Box>
+            : anyLinked && <Box w="14px" flexShrink={0} />}
         </HStack>
       ))}
     </SimpleGrid>

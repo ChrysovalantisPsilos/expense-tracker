@@ -67,6 +67,8 @@ test('spendingShares: the month\'s expenses by category, top 5 + Other, summing 
   assert.equal(shares.reduce((sum, s) => sum + s.share, 0), 100)
   assert.equal(shares[0].share, 58)
   assert.equal(shares[5].share, 5) // Gifts + Books
+  assert.equal(shares[5].folded, true)
+  assert.ok(shares.slice(0, 5).every((s) => !('folded' in s)))
 })
 
 test('spendingShares: converts to base currency and buckets group shares under the group', () => {

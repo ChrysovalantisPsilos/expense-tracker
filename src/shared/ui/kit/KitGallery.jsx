@@ -141,7 +141,8 @@ export default function KitGallery() {
             <Stack spacing={4}>
               <ProgressRow icon={ShoppingCart} title="Groceries" meta="€312.40 of €400.00" percent={78}
                 tooltip="Groceries: €312.40 (78%)" />
-              <ProgressRow icon={Coffee} title="Coffee" meta="€41.00 of €50.00" percent={82} tone="warning" />
+              <ProgressRow icon={Coffee} title="Coffee" meta="€41.00 of €50.00 · linked" percent={82} tone="warning"
+                to="/kit" linkLabel="Show Coffee expenses for this month" actions={ACTIONS} actionSlots={2} />
               <ProgressRow icon={UtensilsCrossed} title="Dining out" meta="€186.90 of €150.00" percent={125} />
               <ProgressRow icon={TrendingUp} title="Emergency fund" meta="€3,000 of €3,000" percent={100}
                 tone="positive" valueLabel="Reached" actions={ACTIONS} actionSlots={2} />
@@ -151,6 +152,8 @@ export default function KitGallery() {
           <Panel title="StackedBar + ShareLegend">
             <StackedBar items={SHARES} />
             <ShareLegend items={SHARES} mt={3} />
+            <ShareLegend mt={4} items={SHARES.map((s) => (s.label === 'Other' ? s
+              : { ...s, to: '/kit', linkLabel: `Show ${s.label} expenses for this month` }))} />
           </Panel>
 
           <Panel title="TrendBars">

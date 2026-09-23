@@ -87,14 +87,19 @@ clamps at 100%), `tone` (fill; `budgetTone()` output fits; defaults to
 `'negative'` when over), `over` (default `percent > 100`), `overLabel`,
 `valueLabel` (replaces "78%"), `icon`/`media`, `actions`/`actionSlots`,
 `tooltip` (native hover tooltip — the row's HTML `title`, since `title` is the
-heading; e.g. "Housing: €850.00 (48%)"), `playback`/`delay`.
+heading; e.g. "Housing: €850.00 (48%)"), `playback`/`delay`. `to` (in-app path)
+makes the row a drill-down link with a chevron — one tab stop over the whole
+row, `actions` still their own buttons — and `linkLabel` is its accessible
+name ("Show Groceries expenses for this month").
 
 ## StackedBar / ShareLegend (`ShareBar.jsx`)
 One bar split into segments (2px gaps) + its legend (dot, muted name, bold %,
 2 columns). Both take the same `items: [{ label, share, color? }]` with integer
 `share`s summing to 100 (use `categoryBars` or `distributeByWeights`). Colours
 default by position (coral/amber first, "Other" always muted). StackedBar:
-`h`, `playback`. ShareLegend: `columns`, Box props (`mt={3}`).
+`h`, `playback`. ShareLegend: `columns`, Box props (`mt={3}`); an item's
+optional `to` + `linkLabel` make that entry a drill-down link (32px tap
+target, chevron), as for ProgressRow.
 
 ## TrendBars
 Rounded columns scaled to the peak, pale brand with the `current` one (default

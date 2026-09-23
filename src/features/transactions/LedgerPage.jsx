@@ -19,13 +19,15 @@ import TransactionForm from './TransactionForm.jsx'
 import TransactionList from './TransactionList.jsx'
 import { useTransactions, useCategories } from './useData.js'
 import {
-  parseTxnType, isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS,
+  isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS, NO_CATEGORY,
 } from './txnFilter.js'
+import { parseLedgerParams, withLedgerParams } from './ledgerLinks.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 
+const OWN_EDIT = { ownEdit: true }
 const TYPES = [['expense', 'Expenses'], ['income', 'Income'], ['all', 'All']]
 const KINDS = [['expense', 'Expense'], ['income', 'Income']]
 const ADD_LABEL = { expense: 'Add expense', income: 'Add income', all: 'Add' }
@@ -36,22 +38,35 @@ const EMPTY_TEXT = {
   all: 'Nothing logged this month yet.',
 }
 
-// The Transactions page (/transactions). `?type=expense|income|all` picks the
-// ledger and `?q=` is the search text, so both survive reloads and links.
-// With no search it shows this month's entries; searching (text or the
-// Filters panel) spans all history. The add form stays folded behind "Add".
+// The Transactions page (/transactions). The URL holds its whole state —
+// `?type=expense|income|all`, the `?q=` search text and every filter
+// (`category`, `from`, `to`, `min`, `max`; see ledgerLinks.js) — so it
+// survives reloads, back/forward and links (Home's and Insights' category
+// drill-downs land here). With no search it shows this month's entries;
+// searching (text or the Filters panel) spans all history, or the chosen
+// dates. The add form stays folded behind "Add".
 export default function LedgerPage() {
   const { baseCurrency = 'EUR' } = useProfile()
   const navigate = useNavigate()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
-  const type = parseTxnType(params.get('type'))
-  const text = params.get('q') ?? ''
+  const { type, text, filters } = parseLedgerParams(params)
   const kind = type === 'all' ? undefined : type
 
-  const [filters, setFilters] = useState(EMPTY_FILTERS)
-  const setFilter = (k) => (v) => setFilters((f) => ({ ...f, [k]: v }))
-  const filtersPanel = useDisclosure()
+  // Edits replace the history entry (typing shouldn't stack up Back steps) and
+  // are marked as the page's own. Any other URL change — a link, back/forward,
+  // Clear — remounts the filter fields so they match the URL afresh (a date
+  // switch holds its own on/off state).
+  function setLedger(changes, { own = true } = {}) {
+    setParams((p) => withLedgerParams(p, changes), { replace: true, state: own ? OWN_EDIT : null })
+  }
+  const [fieldsKey, setFieldsKey] = useState(location.key)
+  if (!location.state?.ownEdit && fieldsKey !== location.key) setFieldsKey(location.key)
+  const setFilter = (k) => (v) => setLedger({ [k]: v })
+  const hasFilters = isFiltering('', filters)
+  // Arriving with filters (a drill-down link) shows them, so they're visible
+  // and clearable.
+  const filtersPanel = useDisclosure({ defaultIsOpen: hasFilters })
   const addForm = useDisclosure()
   const [pickedKind, setPickedKind] = useState('expense') // the form's kind under "All"
   const formKind = kind ?? pickedKind
@@ -68,29 +83,23 @@ export default function LedgerPage() {
     kind,
     from: filters.from || undefined,
     to: filters.to || undefined,
-    categoryId: filters.categoryId || undefined,
+    // "No category" can't be asked of the server; filterTransactions refines it.
+    categoryId: filters.categoryId && filters.categoryId !== NO_CATEGORY ? filters.categoryId : undefined,
     limit: 1000,
   } : { kind, from: month.from, to: month.to })
-  const { categories } = useCategories(kind)
+  const { categories, loading: categoriesLoading } = useCategories(kind)
   const shown = searching ? filterTransactions(rows, { text, ...filters }, baseCurrency) : rows
+  // A linked category that isn't in the picker (archived, or another kind's)
+  // still shows as selected rather than a misleading "Any".
+  const unlistedCategory = filters.categoryId && filters.categoryId !== NO_CATEGORY
+    && !categoriesLoading && !categories.some((c) => c.id === filters.categoryId)
+    ? rows.find((r) => r.category_id === filters.categoryId)?.categories?.name ?? 'Selected category'
+    : null
 
-  function setParam(key, value) {
-    setParams((p) => {
-      const next = new URLSearchParams(p)
-      if (value) next.set(key, value); else next.delete(key)
-      return next
-    }, { replace: true })
-  }
+  // Categories are per kind, so switching type drops the category filter.
+  const switchType = (next) => setLedger({ type: next, categoryId: '' })
 
-  function switchType(next) {
-    setParam('type', next)
-    setFilters((f) => ({ ...f, categoryId: '' })) // categories are per kind
-  }
-
-  function clearAll() {
-    setFilters(EMPTY_FILTERS)
-    setParam('q', '')
-  }
+  const clearAll = () => setLedger({ ...EMPTY_FILTERS, text: '' }, { own: false })
 
   const net = netBaseMinor(shown, baseCurrency)
 
@@ -133,27 +142,36 @@ export default function LedgerPage() {
               <InputLeftElement pointerEvents="none" color="text.muted"><Search size={16} /></InputLeftElement>
               <Input ref={searchRef} enterKeyHint="search" aria-label="Search transactions"
                 placeholder="Search transactions…"
-                value={text} onChange={(e) => setParam('q', e.target.value)} />
+                value={text} onChange={(e) => setLedger({ text: e.target.value })} />
               {text && (
                 <InputRightElement>
                   <IconButton aria-label="Clear search" size="xs" variant="ghost"
-                    icon={<X size={14} />} onClick={() => setParam('q', '')} />
+                    icon={<X size={14} />} onClick={() => setLedger({ text: '' })} />
                 </InputRightElement>
               )}
             </InputGroup>
-            <IconButton aria-label="Filters" aria-expanded={filtersPanel.isOpen} flexShrink={0}
-              variant={filtersPanel.isOpen ? 'solid' : 'outline'}
-              colorScheme={filtersPanel.isOpen ? 'brand' : 'gray'}
-              icon={<SlidersHorizontal size={16} />} onClick={filtersPanel.onToggle} />
+            <Box position="relative" flexShrink={0}>
+              <IconButton aria-label={hasFilters ? 'Filters (active)' : 'Filters'}
+                aria-expanded={filtersPanel.isOpen}
+                variant={filtersPanel.isOpen ? 'solid' : 'outline'}
+                colorScheme={filtersPanel.isOpen ? 'brand' : 'gray'}
+                icon={<SlidersHorizontal size={16} />} onClick={filtersPanel.onToggle} />
+              {hasFilters && !filtersPanel.isOpen && (
+                <Box position="absolute" top="-2px" right="-2px" boxSize="10px" borderRadius="full"
+                  bg="brand.500" borderWidth="2px" borderColor="bg.surface" pointerEvents="none" />
+              )}
+            </Box>
           </HStack>
 
           <Collapse in={filtersPanel.isOpen} animateOpacity>
-            <SimpleGrid columns={{ base: 2, md: 3 }} spacing={3} pt={4}>
+            <SimpleGrid key={fieldsKey} columns={{ base: 2, md: 3 }} spacing={3} pt={4}>
               <FormControl gridColumn={{ base: 'span 2', md: 'auto' }}>
                 <FormLabel fontSize="xs" color="text.muted">Category</FormLabel>
                 <Select placeholder="Any" value={filters.categoryId}
                   onChange={(e) => setFilter('categoryId')(e.target.value)}>
                   {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {unlistedCategory && <option value={filters.categoryId}>{unlistedCategory}</option>}
+                  <option value={NO_CATEGORY}>Uncategorized</option>
                 </Select>
               </FormControl>
               <FormControl>

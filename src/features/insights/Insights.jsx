@@ -25,6 +25,7 @@ import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { useTransactions } from '../transactions/useData.js'
+import { linkBuckets } from '../transactions/ledgerLinks.js'
 import { lastMonths, shortDate } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -60,7 +61,12 @@ export default function Insights() {
   const factor = minorFactor(baseCurrency)
   const money = (major) => formatMoney(Math.round(major * factor), baseCurrency)
   const trend = useMemo(() => buildTrend(spend, months, baseCurrency), [spend, months, baseCurrency])
-  const shares = useMemo(() => spendingShares(spend, thisMonth, baseCurrency), [spend, thisMonth, baseCurrency])
+  // Each legend entry drills down to this month's expenses in it (a group share
+  // to its group); the folded "Other" merges several buckets, so it has no link.
+  const shares = useMemo(() => linkBuckets(
+    spendingShares(spend, thisMonth, baseCurrency), spend,
+    { ...months[months.length - 1], label: 'This month' }, (s) => s.label,
+  ), [spend, months, thisMonth, baseCurrency])
   // Spending abroad lists actual payments (each at its own rate), not shares.
   const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
 

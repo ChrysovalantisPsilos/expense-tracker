@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  parseTxnType, isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS,
+  parseTxnType, isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS, NO_CATEGORY,
 } from '../src/features/transactions/txnFilter.js'
 
 const row = (o) => ({ kind: 'expense', amount_minor: 1000, exchange_rate: 1, currency: 'EUR', ...o })
@@ -53,4 +53,16 @@ test('netBaseMinor adds income and subtracts expenses', () => {
   ]
   assert.equal(netBaseMinor(rows, 'EUR'), 5000 - 1000 - 1000)
   assert.equal(netBaseMinor([], 'EUR'), 0)
+})
+
+test('NO_CATEGORY keeps only uncategorised personal rows', () => {
+  const rows = [
+    row({ id: 1, category_id: 'c1', categories: { name: 'Food' } }),
+    row({ id: 2, category_id: null }),
+    row({ id: 3, category_id: null, group_expense_id: 'g1' }), // a group share: bucketed by group
+  ]
+  const ids = (f) => filterTransactions(rows, f, 'EUR').map((r) => r.id)
+  assert.deepEqual(ids({ categoryId: NO_CATEGORY }), [2])
+  assert.deepEqual(ids({ categoryId: 'c1' }), [1, 2, 3]) // a real category is filtered server-side
+  assert.equal(isFiltering('', { ...EMPTY_FILTERS, categoryId: NO_CATEGORY }), true)
 })

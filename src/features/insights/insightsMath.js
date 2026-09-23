@@ -68,12 +68,13 @@ const monthExpenses = (rows, monthKey) =>
 
 // "Where your money went": the month's spending by category as StackedBar /
 // ShareLegend items [{ label, share }] — top 5 + "Other", integer shares that
-// sum to 100, "Other" last. Buckets and converts exactly like the dashboard breakdown
+// sum to 100, "Other" last (`folded: true` when it merges several buckets). Buckets and converts exactly like the dashboard breakdown
 // (bucketOf + sumToBaseByKey, then categoryBars). [] when nothing was spent.
 export function spendingShares(rows, monthKey, baseCurrency) {
   const totals = sumToBaseByKey(monthExpenses(rows, monthKey), baseCurrency, bucketOf)
   const categories = [...totals.entries()].map(([name, value]) => ({ name, value }))
-  return categoryBars(categories).map((c) => ({ label: c.name, share: c.share }))
+  return categoryBars(categories)
+    .map((c) => ({ label: c.name, share: c.share, ...(c.folded && { folded: true }) }))
 }
 
 // "Spending abroad": the month's foreign-currency expenses with their value
