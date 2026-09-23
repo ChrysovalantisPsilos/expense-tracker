@@ -7,6 +7,7 @@ import NotificationPrompt from '../features/notifications/NotificationPrompt.jsx
 import { useProfile } from '../shared/lib/ProfileProvider.jsx'
 import { useEnsureDefaultCategories } from '../features/transactions/useData.js'
 import { useTour } from '../features/onboarding/tour.js'
+import { useLegalGate } from '../features/privacy/useLegalGate.js'
 import { STORAGE_KEYS } from '../shared/lib/keys.js'
 import PageSpinner from '../shared/ui/PageSpinner.jsx'
 
@@ -40,6 +41,9 @@ const CategoryPage = lazy(() => import('../features/categories/CategoryPage.jsx'
 const SecuritySettings = lazy(() => import('../features/settings/SecuritySettings.jsx'))
 const YourData = lazy(() => import('../features/backup/YourData.jsx'))
 const Privacy = lazy(() => import('../features/privacy/Privacy.jsx'))
+const Terms = lazy(() => import('../features/privacy/Terms.jsx'))
+const PrivacySettings = lazy(() => import('../features/privacy/PrivacySettings.jsx'))
+const LegalGate = lazy(() => import('../features/privacy/LegalGate.jsx'))
 const Help = lazy(() => import('../features/help/Help.jsx'))
 const OnboardingWizard = lazy(() => import('../features/onboarding/OnboardingWizard.jsx'))
 const ProductTour = lazy(() => import('../features/onboarding/ProductTour.jsx'))
@@ -66,6 +70,7 @@ function PublicRoutes() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/join/:token" element={<GroupPreview />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         <Route path="/help" element={<Help />} />
         {kitRoute}
         <Route path="*" element={<Landing />} />
@@ -87,6 +92,10 @@ function AuthedRoutes() {
   // profile without the 0069 column never auto-starts it.)
   const { tour, endTour } = useTour(!profileLoading && !!profile?.onboarded_at && profile.tour_done === false)
 
+  // Privacy Notice / Terms acceptance (Google sign-ups, version changes):
+  // blocks the app, ahead of the setup wizard and the other prompts.
+  const legal = useLegalGate()
+
   // First-login default-category seed (a data hook owned by transactions, so
   // the shared profile code never reaches into a feature).
   useEnsureDefaultCategories()
@@ -104,6 +113,7 @@ function AuthedRoutes() {
       <Routes>
         <Route path="/join/:token" element={<JoinGroup />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         {kitRoute}
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
@@ -126,6 +136,7 @@ function AuthedRoutes() {
           <Route path="settings/categories" element={<Categories />} />
           <Route path="settings/security" element={<SecuritySettings />} />
           <Route path="settings/data" element={<YourData />} />
+          <Route path="settings/privacy" element={<PrivacySettings />} />
           <Route path="help" element={<Help />} />
           {/* Old name for Settings — keeps bookmarks and old links working. */}
           <Route path="profile" element={<Navigate to="/settings" replace />} />
@@ -138,7 +149,9 @@ function AuthedRoutes() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {needsOnboarding ? (
+      {legal.needs ? (
+        <Suspense fallback={null}><LegalGate status={legal.status} onAccept={legal.accept} /></Suspense>
+      ) : needsOnboarding ? (
         <Suspense fallback={null}><OnboardingWizard profile={profile} /></Suspense>
       ) : tour ? (
         <Suspense fallback={null}><ProductTour {...tour} onEnd={endTour} /></Suspense>

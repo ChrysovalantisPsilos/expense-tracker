@@ -62,12 +62,14 @@ export function AuthProvider({ children }) {
     [],
   )
 
+  // `metadata` is stored on the new user; the sign-up form passes the legal
+  // versions accepted, which the database records as consent (0072).
   const signUp = useCallback(
-    (email, password) =>
+    (email, password, metadata) =>
       supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: window.location.origin },
+        options: { emailRedirectTo: window.location.origin, data: metadata },
       }),
     [],
   )

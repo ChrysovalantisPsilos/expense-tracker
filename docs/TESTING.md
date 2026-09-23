@@ -200,3 +200,25 @@ only reports for now and doesn't fail the build.
 38. Old links: `/expenses` → Transactions (Expenses), `/income` →
     Transactions (Income), `/search` → Transactions (All) with the search
     field focused.
+
+### L. Privacy & legal (GDPR)
+
+39. Sign-up: the "I'm 16 or older and I accept the Terms of Use and the
+    Privacy Notice" box is required (links open in a new tab); the hobby /
+    no-financial-advice line sits under it. After confirming the email and
+    signing in, no legal prompt appears, and Settings → Privacy → consent
+    history shows both documents "accepted when you signed up".
+40. Google sign-up (or any account without the current versions, e.g. after a
+    `LEGAL_VERSIONS` bump): a blocking "Before you continue" / "We've updated
+    our terms" prompt lists the changes; /privacy and /terms stay readable;
+    "I don't agree" offers Download my data, Delete my account and Sign out;
+    Accept records it and the prompt doesn't return.
+41. Settings → Privacy: Download my data saves `budgeer-my-data-<date>.json`
+    with your profile, consents, notifications, records and your part of each
+    group (no other user's ids/emails). "Send a request" emails the privacy
+    inbox (Reply-To = your address; 4th request in a day is refused). The
+    switches record history rows. Weekly summary is off for a new account.
+42. Delete account: the dialog lists what's deleted and what stays; afterwards
+    co-members see "Former member" in the group and its change log.
+43. Footer / Settings links: Help, Privacy, Terms, Contact (support@) on the
+    landing page; Privacy, Privacy Notice and Terms of Use in Settings.

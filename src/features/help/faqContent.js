@@ -266,8 +266,8 @@ export const FAQ_SECTIONS = [
         id: 'delete-account',
         q: 'What happens if I delete my account?',
         a: [
-          'Your account and personal records are permanently deleted. Expenses you shared in groups stay for the other members, so their balances still add up, but your name is removed from them.',
-          'Download a backup first if you might want your data later.',
+          'Your account and personal records are permanently deleted (Settings → Security → Delete account lists exactly what goes). Expenses you shared in groups stay for the other members, so their balances still add up, but they show “Former member” instead of your name, with no link to you.',
+          'Download your data (Settings → Privacy) or a backup (Settings → Your data) first if you might want it later.',
         ],
       },
     ],
@@ -295,15 +295,15 @@ export const FAQ_SECTIONS = [
         id: 'download-delete-data',
         q: 'How do I download or delete my data?',
         a: [
-          'Both are in Settings → Privacy: download a copy of your data, or delete your account.',
+          'Settings → Privacy → Download my data saves everything we hold about you as one file. To delete your account, go to Settings → Security → Delete account (Settings → Privacy links there too).',
         ],
       },
       {
         id: 'privacy-requests',
         q: 'Who do I contact about my privacy?',
         a: [
-          `Email ${PRIVACY_EMAIL}. Budgeer is operated from Belgium; if you’re not happy with our answer, you can complain to the Belgian Data Protection Authority.`,
-          'The Privacy page explains in detail what we store and who can see it.',
+          `Email ${PRIVACY_EMAIL}, or use the request form in Settings → Privacy. We answer within one month. Budgeer is operated from Belgium; if you’re not happy with our answer, you can complain to the Belgian Data Protection Authority.`,
+          'The Privacy Notice explains in detail what we store, why, who receives it and how long we keep it.',
         ],
       },
     ],

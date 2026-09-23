@@ -8,13 +8,24 @@ import SettingsPage from './SettingsPage.jsx'
 import PrefRow from './PrefRow.jsx'
 
 export default function NotificationSettings() {
+  return (
+    <SettingsPage title="Notifications">
+      <NotificationPrefs />
+    </SettingsPage>
+  )
+}
+
+// The message switches. Also shown in Settings → Privacy, where they are how
+// you give or withdraw consent; every change is recorded server-side in your
+// consent history (0072). The weekly summary is opt-in (off for new accounts).
+export function NotificationPrefs({ title, onChanged }) {
   const { user } = useAuth()
   const toast = useToast()
-  const [prefs, setPrefs] = useState(null) // { notify_email, notify_push }
+  const [prefs, setPrefs] = useState(null) // { notify_email, notify_push, notify_digest }
 
   useEffect(() => {
     let active = true
-    getProfile(user.id, 'notify_email, notify_push').then((data) => {
+    getProfile(user.id, 'notify_email, notify_push, notify_digest').then((data) => {
       if (active && data) setPrefs(data)
     })
     return () => { active = false }
@@ -25,6 +36,7 @@ export default function NotificationSettings() {
     setPrefs({ ...prefs, [field]: value }) // optimistic
     try {
       await updateProfile(user.id, { [field]: value })
+      onChanged?.()
       // Turning push on is the moment to enrol this device (user gesture).
       if (field === 'notify_push' && value) {
         const status = await enablePush()
@@ -43,23 +55,25 @@ export default function NotificationSettings() {
   }
 
   return (
-    <SettingsPage title="Notifications">
-      <Panel>
-        {prefs === null ? (
-          <Center py={4}><Spinner size="sm" color="brand.500" /></Center>
-        ) : (
-          <Stack spacing={4} divider={<Divider />}>
-            <PrefRow id="pref-push" label="Push notifications"
-              hint="Group activity and payment reminders, on every device you’ve allowed."
-              isChecked={prefs.notify_push}
-              onChange={(e) => setPref('notify_push', e.target.checked)} />
-            <PrefRow id="pref-email" label="Email me"
-              hint="Big events only: group invites, members joining or leaving."
-              isChecked={prefs.notify_email}
-              onChange={(e) => setPref('notify_email', e.target.checked)} />
-          </Stack>
-        )}
-      </Panel>
-    </SettingsPage>
+    <Panel title={title}>
+      {prefs === null ? (
+        <Center py={4}><Spinner size="sm" color="brand.500" /></Center>
+      ) : (
+        <Stack spacing={4} divider={<Divider />}>
+          <PrefRow id="pref-push" label="Push notifications"
+            hint="Group activity, payment reminders and budget alerts, on every device you’ve allowed."
+            isChecked={prefs.notify_push}
+            onChange={(e) => setPref('notify_push', e.target.checked)} />
+          <PrefRow id="pref-email" label="Email me"
+            hint="Big events only: group invites, members joining or leaving."
+            isChecked={prefs.notify_email}
+            onChange={(e) => setPref('notify_email', e.target.checked)} />
+          <PrefRow id="pref-digest" label="Weekly summary"
+            hint="Optional: every Sunday, how many expenses you logged and your top category."
+            isChecked={!!prefs.notify_digest}
+            onChange={(e) => setPref('notify_digest', e.target.checked)} />
+        </Stack>
+      )}
+    </Panel>
   )
 }

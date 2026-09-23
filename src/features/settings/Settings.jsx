@@ -1,6 +1,7 @@
 import { Stack } from '@chakra-ui/react'
 import {
   BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass, CircleHelp, Mail,
+  Scale, UserCheck,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -19,7 +20,9 @@ const PREFERENCES = [
 const PRIVACY = [
   { to: '/settings/security', label: 'Security', desc: 'Sign-in and account deletion', icon: ShieldCheck },
   { to: '/settings/data', label: 'Your data', desc: 'Back up or restore your account', icon: DatabaseBackup },
-  { to: '/privacy', label: 'Privacy', desc: 'What we store and how it’s protected', icon: FileText },
+  { to: '/settings/privacy', label: 'Privacy', desc: 'Your data rights, consents and requests', icon: UserCheck },
+  { to: '/privacy', label: 'Privacy Notice', desc: 'What we store, why, and who receives it', icon: FileText },
+  { to: '/terms', label: 'Terms of Use', desc: 'The rules for using Budgeer', icon: Scale },
 ]
 
 const rows = (items) => items.map(({ to, label, desc, icon }) => (

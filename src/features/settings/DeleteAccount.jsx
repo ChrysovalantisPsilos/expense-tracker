@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import {
   Box, Stack, Text, Button, FormControl,
-  FormLabel, Input, useDisclosure, useToast,
+  FormLabel, Input, ListItem, UnorderedList, useDisclosure, useToast,
 } from '@chakra-ui/react'
 import { AlertTriangle, Trash2 } from 'lucide-react'
 import { deleteMyAccount } from '../../shared/lib/profile.js'
@@ -23,8 +23,8 @@ export default function DeleteAccount({ user }) {
       <Panel borderColor="status.negativeBorder" icon={AlertTriangle} iconTone="negative"
         title="Delete account">
         <Text fontSize="sm" color="text.muted" mb={4}>
-          Permanently deletes your account and personal data. Groups you own pass
-          to another member; your expense history stays for them. This can’t be undone.
+          Permanently deletes your account and personal data. Shared group expenses
+          stay for the other members under “Former member”. This can’t be undone.
         </Text>
         <Button colorScheme="red" variant="outline" leftIcon={<Trash2 size={16} />}
           onClick={deleteModal.onOpen}>Delete my account</Button>
@@ -36,7 +36,9 @@ export default function DeleteAccount({ user }) {
   )
 }
 
-function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
+// Also offered by the legal prompt (privacy/LegalGate) to someone who doesn't
+// accept updated terms.
+export function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
   const toast = useToast()
   // Require a password if the user has an email/password identity (default to
   // requiring it when we can't tell); otherwise ask for a typed phrase.
@@ -63,10 +65,10 @@ function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
       submitProps={{ colorScheme: 'red', isDisabled: !canSubmit }}>
       <Stack spacing={4}>
         <Text color="text.muted" fontSize="sm">
-          This permanently deletes your account and personal data. Groups you
-          own are handed to another member; your expense history stays for
-          them. This can’t be undone.
+          This can’t be undone. You may want to download your data first
+          (Settings → Privacy).
         </Text>
+        <DeletionScope />
         <FormControl isRequired>
           <FormLabel>{isPasswordUser ? 'Enter your password to confirm'
             : 'Type DELETE to confirm'}</FormLabel>
@@ -76,5 +78,26 @@ function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
         </FormControl>
       </Stack>
     </FormModal>
+  )
+}
+
+// What deletion erases and what stays — must match _shared/accountDeletion.ts,
+// the auth.users cascades and the 0072 anonymise trigger (and the Privacy
+// Notice's "Erasure").
+function DeletionScope() {
+  return (
+    <Stack spacing={2} fontSize="sm" color="text.muted">
+      <Text fontWeight="600" color="text.primary">Deleted</Text>
+      <UnorderedList spacing={1} pl={1}>
+        <ListItem>Your sign-in, passkeys, profile, picture and payment details</ListItem>
+        <ListItem>Your expenses and income, categories and rules, accounts, budgets, goals and recurring payments</ListItem>
+        <ListItem>Your notifications, push subscriptions, consent history and the group comments you wrote</ListItem>
+        <ListItem>Groups you own that have no other members (the rest pass to another member)</ListItem>
+      </UnorderedList>
+      <Text fontWeight="600" color="text.primary">Stays for your groups</Text>
+      <UnorderedList spacing={1} pl={1}>
+        <ListItem>Group expenses, splits and settlements you were part of, so others’ balances stay right — shown as “Former member”, with no link to you</ListItem>
+      </UnorderedList>
+    </Stack>
   )
 }

@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Button, Divider, FormControl, FormLabel, FormHelperText,
-  Input, Stack, Text, useToast, HStack, Icon,
+  Button, Checkbox, Divider, FormControl, FormLabel, FormHelperText,
+  Input, Link, Stack, Text, useToast, HStack, Icon,
 } from '@chakra-ui/react'
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { isSupabaseConfigured, passkeysSupported } from '../../shared/lib/supabase.js'
 import { validatePassword } from '../../shared/lib/password.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
+import { signupConsentMetadata } from '../privacy/legal.js'
 import AuthLayout from './AuthLayout.jsx'
 
 export default function Login() {
@@ -17,6 +19,7 @@ export default function Login() {
   const [mode, setMode] = useState(searchParams.get('signup') ? 'signup' : 'signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [accepted, setAccepted] = useState(false)
   const [busy, setBusy] = useState(false)
   const [passkeyBusy, setPasskeyBusy] = useState(false)
   const toast = useToast()
@@ -38,10 +41,15 @@ export default function Login() {
     if (mode === 'signup') {
       const err = validatePassword(password)
       if (err) { toast({ title: err, status: 'warning' }); return }
+      if (!accepted) {
+        toast({ title: 'Please accept the Terms of Use and Privacy Notice', status: 'warning' })
+        return
+      }
     }
     setBusy(true)
-    const fn = mode === 'signin' ? signInWithPassword : signUp
-    const { data, error } = await fn(email, password)
+    const { data, error } = mode === 'signin'
+      ? await signInWithPassword(email, password)
+      : await signUp(email, password, signupConsentMetadata())
     setBusy(false)
     if (error) {
       // Some backend failures (e.g. a 500 when the confirmation email can't be
@@ -92,6 +100,20 @@ export default function Login() {
               <FormHelperText>At least 8 characters, with a letter and a number.</FormHelperText>
             )}
           </FormControl>
+          {mode === 'signup' && (
+            <Checkbox isChecked={accepted} onChange={(e) => setAccepted(e.target.checked)}
+              alignItems="flex-start" colorScheme="brand" isRequired>
+              <Text as="span" fontSize="sm" color="text.muted">
+                I’m 16 or older and I accept the{' '}
+                <Link as={RouterLink} to="/terms" target="_blank" color="accent.fg">Terms of Use</Link>{' '}
+                and the{' '}
+                <Link as={RouterLink} to="/privacy" target="_blank" color="accent.fg">Privacy Notice</Link>.
+              </Text>
+            </Checkbox>
+          )}
+          {mode === 'signup' && (
+            <Text fontSize="xs" color="text.muted">{DISCLAIMER}</Text>
+          )}
           {mode === 'signin' && (
             <Button variant="link" colorScheme="brand" size="sm" alignSelf="flex-end"
               onClick={() => navigate('/forgot-password')}>
@@ -120,6 +142,11 @@ export default function Login() {
           onClick={() => signInWithProvider('google')}>
           {mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
         </Button>
+        {mode === 'signup' && (
+          <Text fontSize="xs" color="text.muted" textAlign="center">
+            With Google, you’ll be asked to accept the Terms and Privacy Notice after signing in.
+          </Text>
+        )}
         {mode === 'signin' && passkeysSupported && (
           <Button variant="outline" colorScheme="gray" w="full"
             leftIcon={<KeyRound size={18} />} isLoading={passkeyBusy}

@@ -2,24 +2,12 @@
 // their parity with the SQL / client copies. Node strips the TypeScript types.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync, readdirSync } from 'node:fs'
+import { latestSql } from './migrations.js'
 import { allowedOrigins, corsHeaders } from '../supabase/functions/_shared/cors.ts'
 import { timingSafeEqual } from '../supabase/functions/_shared/cron.ts'
 import { eachLimited, isAllowedPushEndpoint } from '../supabase/functions/_shared/push.ts'
 import { ZERO_DECIMAL, fmtMinor } from '../supabase/functions/_shared/money.ts'
 import { CURRENCIES, minorFactor } from '../src/shared/lib/currency.js'
-
-const MIGRATIONS = new URL('../supabase/migrations/', import.meta.url)
-// The newest migration that (re)defines a SQL function.
-function latestSql(fn) {
-  const files = readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort().reverse()
-  for (const f of files) {
-    const src = readFileSync(new URL(f, MIGRATIONS), 'utf8')
-    const at = src.search(new RegExp(`create (or replace )?function public\\.${fn}\\(`))
-    if (at >= 0) return src.slice(at, src.indexOf('$$;', src.indexOf('$$', at) + 2))
-  }
-  throw new Error(`no migration defines ${fn}`)
-}
 
 test('CORS names only the app origins', () => {
   const allowed = allowedOrigins('https://preview.example.dev/', ' https://extra.example.dev ,')

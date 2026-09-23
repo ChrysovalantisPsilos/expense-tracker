@@ -225,10 +225,11 @@ export default function Landing() {
       <Box as="footer" borderTopWidth="1px" borderColor="border.default">
         <Container maxW="6xl" px={{ base: 4, md: 6 }}>
           <Flex minH="64px" py={3} align="center" justify="space-between">
-            <HStack spacing={4} fontSize="sm" color="text.muted">
+            <HStack spacing={4} rowGap={1} flexWrap="wrap" fontSize="sm" color="text.muted">
               <Text>© {new Date().getFullYear()} Budgeer</Text>
               <Link as={RouterLink} to="/help">Help</Link>
               <Link as={RouterLink} to="/privacy">Privacy</Link>
+              <Link as={RouterLink} to="/terms">Terms</Link>
               <Link href={`mailto:${SUPPORT_EMAIL}`}>Contact</Link>
             </HStack>
             <ThemeToggle />

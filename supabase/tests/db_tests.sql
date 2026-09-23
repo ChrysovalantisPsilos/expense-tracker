@@ -165,6 +165,7 @@ declare u uuid; cnt int;
 begin
   begin
     u := pg_temp.zz_user('a');
+    update public.profiles set notify_digest = true where id = u;  -- opt-in (0072)
     insert into public.transactions (user_id, kind, amount_enc, currency, spent_at)
     values (u, 'expense', public.enc_minor(1234), 'EUR', current_date);
     perform public.send_weekly_digests();
@@ -1294,6 +1295,7 @@ begin
       values (u1, vcat, public.enc_minor(100), 'EUR', date_trunc('month', current_date)::date);
     insert into public.transactions (user_id, kind, category_id, amount_enc, currency, spent_at)
       values (u1, 'expense', vcat, public.enc_minor(200), 'EUR', current_date);
+    update public.profiles set notify_digest = true where id = u1;  -- opt-in (0072)
     perform public.send_weekly_digests();
     select count(*) into n from public.notifications where user_id = u1 and body like '%victim secret%';
     if n <> 0 then raise exception 'foreign category name leaked into % notification(s)', n; end if;
@@ -1840,7 +1842,7 @@ begin
     if public.to_base_minor(1000, 160, 'EUR', 'JPY') <> 1600 then raise exception 'EUR->JPY'; end if;
     if public.to_base_minor(1234, 1, 'EUR', 'EUR') <> 1234 then raise exception 'EUR->EUR'; end if;
     u := pg_temp.zz_user('yen');
-    update public.profiles set base_currency = 'EUR' where id = u;
+    update public.profiles set base_currency = 'EUR', notify_digest = true where id = u;
     insert into public.categories (user_id, name, kind) values (u, 'ZZT yen cat', 'expense') returning id into yen;
     insert into public.categories (user_id, name, kind) values (u, 'ZZT euro cat', 'expense') returning id into eur;
     insert into public.budgets (user_id, category_id, amount_enc, currency, period_start)
@@ -2991,6 +2993,8 @@ begin
     u2 := pg_temp.zz_user('dgsep');
     u3 := pg_temp.zz_user('dgonly');
     update public.profiles set yearly_separate = true where id in (u2, u3);
+    -- The digest is opt-in (0072): these accounts opted in.
+    update public.profiles set notify_digest = true where id in (u1, u2, u3);
     foreach u in array array[u1, u2, u3] loop
       perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
       update public.profiles set base_currency = 'EUR' where id = u;
@@ -3035,11 +3039,421 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 53. 0072 consents: sign-up records acceptance only for the versions in
+--     force; clients can read only their own rows and can't insert, update or
+--     delete any (so they can't forge the owner or the time); accepting goes
+--     through accept_legal_documents(), which records the SERVER's versions
+--     once; the server clock stamps every row.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; n int; st jsonb; v jsonb := public.current_legal_versions(); cid uuid; ts timestamptz;
+begin
+  begin
+    insert into auth.users (instance_id, id, aud, role, email, raw_user_meta_data, created_at, updated_at)
+    values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated',
+            'zzt-cons1-' || md5(random()::text) || '@example.com',
+            jsonb_build_object('accepted_privacy', v->>'privacy', 'accepted_terms', v->>'terms'), now(), now())
+    returning id into u1;
+    insert into auth.users (instance_id, id, aud, role, email, raw_user_meta_data, created_at, updated_at)
+    values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated',
+            'zzt-cons2-' || md5(random()::text) || '@example.com',
+            jsonb_build_object('accepted_privacy', '1999-01-01', 'accepted_terms', v->>'terms'), now(), now())
+    returning id into u2;
+    select count(*) into n from public.consents
+     where user_id = u1 and source = 'signup' and granted
+       and ((purpose = 'privacy_notice' and version = v->>'privacy') or (purpose = 'terms' and version = v->>'terms'));
+    if n <> 2 then raise exception 'sign-up acceptance not recorded (% of 2)', n; end if;
+    select count(*) into n from public.consents where user_id = u2;
+    if n <> 0 then raise exception 'a stale version was recorded at sign-up'; end if;
+
+    if has_function_privilege('anon', 'public.accept_legal_documents()', 'execute')
+       or has_function_privilege('anon', 'public.my_legal_status()', 'execute')
+       or has_function_privilege('authenticated', 'public.record_signup_consent()', 'execute')
+       or has_function_privilege('authenticated', 'public.log_preference_consent()', 'execute')
+       or has_function_privilege('authenticated', 'public.anonymise_departing_user()', 'execute')
+       or not has_function_privilege('authenticated', 'public.accept_legal_documents()', 'execute') then
+      raise exception 'consent function privileges wrong';
+    end if;
+    if exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'consents' and cmd <> 'SELECT') then
+      raise exception 'consents has a write policy';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    st := public.my_legal_status();
+    if not (st->>'needs_acceptance')::boolean then raise exception 'u2 should need to accept: %', st; end if;
+    begin
+      insert into public.consents (user_id, purpose, version, granted, source, created_at)
+      values (u2, 'terms', v->>'terms', true, 'prompt', '2000-01-01');
+      raise exception 'GUARD_MISSED: client inserted a consent row';
+    exception when insufficient_privilege then null;
+    end;
+    begin
+      update public.consents set granted = false where user_id = u1;
+      raise exception 'GUARD_MISSED: client updated consents';
+    exception when insufficient_privilege then null;
+    end;
+    begin
+      delete from public.consents where user_id = u2;
+      raise exception 'GUARD_MISSED: client deleted consents';
+    exception when insufficient_privilege then null;
+    end;
+    select count(*) into n from public.consents where user_id = u1;
+    if n <> 0 then raise exception 'read another user''s consents'; end if;
+    st := public.accept_legal_documents();
+    st := public.accept_legal_documents();   -- idempotent per version
+    if (st->>'needs_acceptance')::boolean or st->>'privacy_accepted' is distinct from v->>'privacy' then
+      raise exception 'accept did not take: %', st;
+    end if;
+    select count(*) into n from public.consents where user_id = u2;
+    if n <> 2 then raise exception 'accept recorded % rows, expected 2', n; end if;
+    execute 'reset role';
+
+    -- Even a privileged insert gets the server clock.
+    insert into public.consents (user_id, purpose, granted, source, created_at)
+    values (u2, 'weekly_digest', true, 'settings', '2000-01-01') returning id, created_at into cid, ts;
+    if ts <> now() then raise exception 'created_at not forced to now(): %', ts; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: consents — sign-up/accept paths only, own rows only, server clock';
+    else update _t set fails = fails + 1; raise notice 'FAIL: consents — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 54. 0072: the weekly digest is opt-in — off for a new profile (column
+--     default false), not sent until the owner opts in; every switch change is
+--     recorded in the owner's consent history, and nobody else can flip it.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; u2 uuid; cat uuid; b boolean; n int; def text;
+begin
+  begin
+    select column_default into def from information_schema.columns
+     where table_schema = 'public' and table_name = 'profiles' and column_name = 'notify_digest';
+    if def is distinct from 'false' then raise exception 'notify_digest default is %', def; end if;
+    u := pg_temp.zz_user('dig');
+    u2 := pg_temp.zz_user('dig2');
+    select notify_digest into b from public.profiles where id = u;
+    if b then raise exception 'digest on for a new profile'; end if;
+
+    insert into public.categories (user_id, name, kind) values (u, 'ZZT dig', 'expense') returning id into cat;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'client_uuid', gen_random_uuid(), 'category_id', cat, 'amount_minor', 1234, 'currency', 'EUR',
+      'spent_at', current_date)));
+    execute 'reset role';
+    perform public.send_weekly_digests();
+    select count(*) into n from public.notifications where user_id = u and type = 'digest';
+    if n <> 0 then raise exception 'digest sent without opt-in'; end if;
+
+    -- Another user can't opt u in (RLS: no row).
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set notify_digest = true where id = u;
+    execute 'reset role';
+    if (select notify_digest from public.profiles where id = u) then raise exception 'another user opted u in'; end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set notify_digest = true where id = u;
+    update public.profiles set notify_email = false where id = u;
+    update public.profiles set display_name = 'ZZ Dig' where id = u;   -- not a consent change
+    select count(*) into n from public.consents where user_id = u and source = 'settings'
+       and ((purpose = 'weekly_digest' and granted) or (purpose = 'email_notifications' and not granted));
+    execute 'reset role';
+    if n <> 2 then raise exception 'switch changes recorded % of 2', n; end if;
+    select count(*) into n from public.consents where user_id = u;
+    if n <> 2 then raise exception 'unexpected extra consent rows (%)', n; end if;
+
+    perform public.send_weekly_digests();
+    select count(*) into n from public.notifications where user_id = u and type = 'digest';
+    if n <> 1 then raise exception 'opted-in digest not sent (%)', n; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: weekly digest opt-in (off by default) + switch changes logged';
+    else update _t set fails = fails + 1; raise notice 'FAIL: digest opt-in — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 55. 0074 export_my_data(): the caller's own data, decrypted — and nothing of
+--     another user's beyond what the caller already sees (no other user's
+--     personal records, id or email). Signed-in callers only.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; c1 uuid; c2 uuid; doc jsonb; txt text; e2 text;
+begin
+  begin
+    u1 := pg_temp.zz_user('exp1');
+    u2 := pg_temp.zz_user('exp2');
+    select email into e2 from auth.users where id = u2;
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZT e1', 'expense') returning id into c1;
+    insert into public.categories (user_id, name, kind) values (u2, 'ZZT e2', 'expense') returning id into c2;
+    insert into public.groups (name, owner_id, currency) values ('ZZT export', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'ZZ One', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'ZZ Two') returning id into m2;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'client_uuid', gen_random_uuid(), 'category_id', c2, 'amount_minor', 777, 'currency', 'EUR',
+      'description', 'zz-theirs-secret')));
+    perform public.create_group_expense_v2(gid, 'zz-shared-dinner', 3000, 'EUR', m2, current_date,
+                                           array[m1, m2], null, 'equal');
+    perform public.create_group_expense_v2(gid, 'zz-not-mine', 500, 'EUR', m2, current_date,
+                                           array[m2], null, 'equal');
+    execute 'reset role';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'client_uuid', gen_random_uuid(), 'category_id', c1, 'amount_minor', 4242, 'currency', 'EUR',
+      'description', 'zz-mine-secret', 'notes', 'zz-mine-note')));
+    doc := public.export_my_data();
+    execute 'reset role';
+    txt := doc::text;
+
+    if doc->'account'->>'id' is distinct from u1::text then raise exception 'wrong account'; end if;
+    if position('zz-mine-secret' in txt) = 0 or position('zz-mine-note' in txt) = 0 then
+      raise exception 'own transaction missing or not decrypted';
+    end if;
+    if not exists (select 1 from jsonb_array_elements(doc->'transactions') t
+                    where t->>'description' = 'zz-mine-secret' and (t->>'amount_minor')::bigint = 4242) then
+      raise exception 'own amount not decrypted';
+    end if;
+    if jsonb_array_length(doc->'groups') <> 1
+       or jsonb_array_length(doc->'groups'->0->'expenses_you_are_part_of') <> 1
+       or doc->'groups'->0->'expenses_you_are_part_of'->0->>'description' <> 'zz-shared-dinner'
+       or (doc->'groups'->0->'expenses_you_are_part_of'->0->>'your_share_minor')::bigint <> 1500 then
+      raise exception 'group part wrong: %', doc->'groups';
+    end if;
+    if position('zz-theirs-secret' in txt) > 0 then raise exception 'leaked another user''s transaction'; end if;
+    if position('zz-not-mine' in txt) > 0 then raise exception 'leaked a group expense the caller isn''t part of'; end if;
+    if position(u2::text in txt) > 0 then raise exception 'leaked another user''s id'; end if;
+    if position(e2 in txt) > 0 then raise exception 'leaked another user''s email'; end if;
+    if position('_enc' in txt) > 0 then raise exception 'ciphertext column in export'; end if;
+
+    if has_function_privilege('anon', 'public.export_my_data()', 'execute') then
+      raise exception 'anon can export';
+    end if;
+    perform set_config('request.jwt.claims', '{"role":"authenticated"}', true);
+    begin
+      execute 'set local role authenticated';
+      perform public.export_my_data();
+      raise exception 'GUARD_MISSED: export without a user';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+    end;
+    execute 'reset role';
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: export_my_data returns only the caller''s data, decrypted';
+    else update _t set fails = fails + 1; raise notice 'FAIL: export_my_data — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 56. 0073 purge_expired_personal_data(): deletes exactly what is past each
+--     threshold (time-shifted rows either side of it), drops inactivity
+--     warnings the owner answered by coming back, and is cron/postgres-only.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; u3 uuid; gid uuid; n int; res jsonb; tag text := 'zzt-' || md5(random()::text);
+begin
+  begin
+    u := pg_temp.zz_user('ret');
+    u3 := pg_temp.zz_user('ret3');
+    insert into public.groups (name, owner_id, currency) values ('ZZT retention', u, 'EUR') returning id into gid;
+    insert into public.notifications (user_id, type, title, created_at) values
+      (u, 'digest', tag || ' old', now() - interval '90 days' - interval '1 minute'),
+      (u, 'digest', tag || ' keep', now() - interval '90 days' + interval '1 minute');
+    insert into public.group_audit_log (group_id, actor_id, actor_name, action, summary_enc, created_at) values
+      (gid, u, tag || ' old', 'expense_added', public.enc_text('zz'), now() - interval '2 years' - interval '1 minute'),
+      (gid, u, tag || ' keep', 'expense_added', public.enc_text('zz'), now() - interval '2 years' + interval '1 minute');
+    insert into public.rate_limits (key, count, window_start) values
+      (tag || ':old', 1, now() - interval '30 days' - interval '1 minute'),
+      (tag || ':keep', 1, now() - interval '30 days' + interval '1 minute');
+    if to_regclass('auth.audit_log_entries') is not null then
+      execute format($q$insert into auth.audit_log_entries (instance_id, id, payload, created_at, ip_address) values
+        (null, gen_random_uuid(), '{"t":"%1$s old"}', now() - interval '30 days' - interval '1 minute', ''),
+        (null, gen_random_uuid(), '{"t":"%1$s keep"}', now() - interval '30 days' + interval '1 minute', '')$q$, tag);
+    end if;
+    -- u came back after its warning (created now); u3 has been idle since.
+    update auth.users set created_at = now() - interval '25 months', last_sign_in_at = null where id = u3;
+    insert into public.inactivity_notices (user_id, warned_at) values
+      (u, now() - interval '10 days'), (u3, now() - interval '5 days');
+
+    res := public.purge_expired_personal_data();
+
+    select count(*) into n from public.notifications where title like tag || '%';
+    if n <> 1 or not exists (select 1 from public.notifications where title = tag || ' keep') then
+      raise exception 'notifications: % left', n;
+    end if;
+    select count(*) into n from public.group_audit_log where actor_name like tag || '%';
+    if n <> 1 or not exists (select 1 from public.group_audit_log where actor_name = tag || ' keep') then
+      raise exception 'audit log: % left', n;
+    end if;
+    select count(*) into n from public.rate_limits where key like tag || '%';
+    if n <> 1 or not exists (select 1 from public.rate_limits where key = tag || ':keep') then
+      raise exception 'rate limits: % left', n;
+    end if;
+    if to_regclass('auth.audit_log_entries') is not null then
+      execute format($q$select count(*) from auth.audit_log_entries where payload::text like '%%%s%%'$q$, tag) into n;
+      if n <> 1 then raise exception 'auth audit log: % left', n; end if;
+    end if;
+    if exists (select 1 from public.inactivity_notices where user_id = u) then
+      raise exception 'answered warning not dropped';
+    end if;
+    if not exists (select 1 from public.inactivity_notices where user_id = u3) then
+      raise exception 'live warning dropped';
+    end if;
+    if not (res ? 'notifications' and res ? 'group_audit_log') then raise exception 'result: %', res; end if;
+
+    if has_function_privilege('authenticated', 'public.purge_expired_personal_data()', 'execute')
+       or has_function_privilege('anon', 'public.purge_expired_personal_data()', 'execute') then
+      raise exception 'purge callable by clients';
+    end if;
+    select count(*) into n from cron.job
+     where (jobname = 'gdpr-retention' and command like '%purge_expired_personal_data%')
+        or (jobname = 'inactive-accounts' and command like '%run_inactivity_sweep%');
+    if n <> 2 then raise exception 'retention cron jobs missing (% of 2)', n; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: retention purge deletes exactly what is past each threshold';
+    else update _t set fails = fails + 1; raise notice 'FAIL: retention purge — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 57. 0073 inactive_accounts(): warn at 23 months idle (once per stretch),
+--     delete at 24 months only after a warning at least 28 days old; a
+--     session refresh or a sign-in counts as use. Service-role only.
+-- ---------------------------------------------------------------------------
+do $$
+declare a uuid; b uuid; c uuid; d uuid; e uuid; f uuid; h uuid; act text; n int;
+begin
+  begin
+    a := pg_temp.zz_user('ia-active');
+    b := pg_temp.zz_user('ia-warn');
+    c := pg_temp.zz_user('ia-del');
+    d := pg_temp.zz_user('ia-early');
+    e := pg_temp.zz_user('ia-session');
+    f := pg_temp.zz_user('ia-back');
+    h := pg_temp.zz_user('ia-rewarn');
+    update auth.users set created_at = now() - interval '23 months' - interval '1 day', last_sign_in_at = null where id = b;
+    update auth.users set created_at = now() - interval '40 months', last_sign_in_at = now() - interval '24 months' - interval '1 day' where id = c;
+    update auth.users set created_at = now() - interval '40 months', last_sign_in_at = now() - interval '25 months' where id = d;
+    update auth.users set created_at = now() - interval '30 months', last_sign_in_at = now() - interval '30 months' where id = e;
+    insert into auth.sessions (id, user_id, created_at, updated_at, refreshed_at)
+      values (gen_random_uuid(), e, now() - interval '30 months', now() - interval '30 months',
+              (now() - interval '1 day') at time zone 'UTC');
+    update auth.users set created_at = now() - interval '40 months', last_sign_in_at = now() - interval '5 days' where id = f;
+    update auth.users set created_at = now() - interval '60 months', last_sign_in_at = now() - interval '25 months' where id = h;
+    insert into public.inactivity_notices (user_id, warned_at) values
+      (c, now() - interval '28 days' - interval '1 minute'),
+      (d, now() - interval '10 days'),
+      (f, now() - interval '40 days'),
+      (h, now() - interval '26 months');   -- a warning from an earlier idle stretch
+
+    select string_agg(x.user_id::text || '=' || x.action, ',') into act
+      from public.inactive_accounts() x where x.user_id in (a, b, c, d, e, f, h);
+    select count(*) into n from public.inactive_accounts() x where x.user_id in (a, d, e, f);
+    if n <> 0 then raise exception 'selected an account it must not: %', act; end if;
+    if not exists (select 1 from public.inactive_accounts() x where x.user_id = b and x.action = 'warn') then
+      raise exception '23 months idle not warned: %', act;
+    end if;
+    if not exists (select 1 from public.inactive_accounts() x where x.user_id = c and x.action = 'delete') then
+      raise exception '24 months idle + old warning not deleted: %', act;
+    end if;
+    if not exists (select 1 from public.inactive_accounts() x where x.user_id = h and x.action = 'warn') then
+      raise exception 'new idle stretch not re-warned: %', act;
+    end if;
+
+    perform public.mark_inactivity_warned(b);
+    if exists (select 1 from public.inactive_accounts() x where x.user_id = b) then
+      raise exception 'warned account selected again';
+    end if;
+
+    if has_function_privilege('authenticated', 'public.inactive_accounts()', 'execute')
+       or has_function_privilege('authenticated', 'public.mark_inactivity_warned(uuid)', 'execute')
+       or has_function_privilege('authenticated', 'public.run_inactivity_sweep()', 'execute')
+       or has_function_privilege('anon', 'public.inactive_accounts()', 'execute')
+       or not has_function_privilege('service_role', 'public.inactive_accounts()', 'execute') then
+      raise exception 'inactivity function privileges wrong';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: inactive-account selection (warn at 23 months, delete at 24 after notice)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: inactive accounts — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 58. 0072: deleting an account anonymises what stays for the group — its
+--     member rows (current and earlier-left) become "Former member" with no
+--     link back, as does its name on the change log; the shared expense stays.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; u3 uuid; gid uuid; m1 uuid; m2 uuid; m3 uuid; eid uuid; r record; n int;
+begin
+  begin
+    u1 := pg_temp.zz_user('an1');
+    u2 := pg_temp.zz_user('an2');
+    u3 := pg_temp.zz_user('an3');
+    update public.profiles set display_name = 'ZZ Bobby' where id = u2;
+    insert into public.groups (name, owner_id, currency) values ('ZZT anon', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'ZZ Owner', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'ZZ Bobby') returning id into m2;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u3, 'ZZ Leaver') returning id into m3;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    eid := public.create_group_expense_v2(gid, 'zz anon dinner', 900, 'EUR', m2, current_date,
+                                          array[m1, m2], null, 'equal');
+    execute 'reset role';
+    perform set_config('request.jwt.claims', json_build_object('sub', u3, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.remove_group_member(m3, true);
+    execute 'reset role';
+    if not exists (select 1 from public.group_audit_log where group_id = gid and actor_name = 'ZZ Bobby') then
+      raise exception 'setup: no audit row under the name';
+    end if;
+
+    perform set_config('request.jwt.claims', '', true);   -- as the service would
+    delete from auth.users where id in (u2, u3);
+
+    select * into r from public.group_members where id = m2;
+    if r.user_id is not null or r.former_user_id is not null or r.display_name <> 'Former member' then
+      raise exception 'member row not anonymised: %', row_to_json(r);
+    end if;
+    select * into r from public.group_members where id = m3;
+    if r.user_id is not null or r.former_user_id is not null or r.display_name <> 'Former member' then
+      raise exception 'earlier-left row not anonymised: %', row_to_json(r);
+    end if;
+    select count(*) into n from public.group_audit_log where group_id = gid and actor_name = 'ZZ Bobby';
+    if n <> 0 then raise exception 'change log still names the deleted user'; end if;
+    select count(*) into n from public.group_audit_log where group_id = gid and actor_name = 'Former member' and actor_id is null;
+    if n = 0 then raise exception 'change log entry lost instead of anonymised'; end if;
+    if not exists (select 1 from public.group_expenses where id = eid and paid_by = m2) then
+      raise exception 'shared expense removed';
+    end if;
+    select display_name into r from public.group_members where id = m1;
+    if r.display_name <> 'ZZ Owner' then raise exception 'other member renamed'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: account deletion anonymises the group history left behind';
+    else update _t set fails = fails + 1; raise notice 'FAIL: deletion anonymisation — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 53; f int; p int;  -- tests 1–52 + B-0059
+declare expected_tests constant int := 59; f int; p int;  -- tests 1–58 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;
