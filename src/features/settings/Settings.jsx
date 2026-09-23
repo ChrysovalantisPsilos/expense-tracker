@@ -1,6 +1,6 @@
 import { Stack } from '@chakra-ui/react'
 import {
-  BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass,
+  BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass, CircleHelp,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -26,7 +26,8 @@ const rows = (items) => items.map(({ to, label, desc, icon }) => (
 ))
 
 // The Settings list: who you are at the top (taps into Account), then the
-// sub-pages in labelled groups, help (replay the app tour), then sign-out.
+// sub-pages in labelled groups, help (the FAQ and replaying the app tour),
+// then sign-out.
 export default function Settings() {
   const { user, signOut } = useAuth()
   const { profile } = useProfile()
@@ -44,6 +45,7 @@ export default function Settings() {
       <NavList label="Preferences">{rows(PREFERENCES)}</NavList>
       <NavList label="Privacy & security">{rows(PRIVACY)}</NavList>
       <NavList label="Help">
+        <NavRow to="/help" icon={CircleHelp} label="Help & FAQ" description="Answers to common questions" />
         <NavRow icon={Compass} label="Take the tour again" description="A quick look around the app"
           data-tour="replay" onClick={() => startTour({ returnTo: '/settings', returnFocus: '[data-tour="replay"]' })} />
       </NavList>

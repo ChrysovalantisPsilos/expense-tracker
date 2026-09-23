@@ -40,6 +40,7 @@ const CategoryPage = lazy(() => import('../features/categories/CategoryPage.jsx'
 const SecuritySettings = lazy(() => import('../features/settings/SecuritySettings.jsx'))
 const YourData = lazy(() => import('../features/backup/YourData.jsx'))
 const Privacy = lazy(() => import('../features/privacy/Privacy.jsx'))
+const Help = lazy(() => import('../features/help/Help.jsx'))
 const OnboardingWizard = lazy(() => import('../features/onboarding/OnboardingWizard.jsx'))
 const ProductTour = lazy(() => import('../features/onboarding/ProductTour.jsx'))
 
@@ -65,6 +66,7 @@ function PublicRoutes() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/join/:token" element={<GroupPreview />} />
         <Route path="/privacy" element={<Privacy />} />
+        <Route path="/help" element={<Help />} />
         {kitRoute}
         <Route path="*" element={<Landing />} />
       </Routes>
@@ -124,6 +126,7 @@ function AuthedRoutes() {
           <Route path="settings/categories" element={<Categories />} />
           <Route path="settings/security" element={<SecuritySettings />} />
           <Route path="settings/data" element={<YourData />} />
+          <Route path="help" element={<Help />} />
           {/* Old name for Settings — keeps bookmarks and old links working. */}
           <Route path="profile" element={<Navigate to="/settings" replace />} />
           {/* Expenses, Income and Search became one Transactions page. */}

@@ -1,6 +1,6 @@
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  Box, Button, Container, Heading, ListItem, Stack, Text, UnorderedList,
+  Box, Button, Container, Heading, Link, ListItem, Stack, Text, UnorderedList,
 } from '@chakra-ui/react'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
@@ -148,6 +148,10 @@ export default function Privacy() {
             </Text>
             <Text fontSize="sm" color="text.muted">
               Last updated <time dateTime={LAST_UPDATED.iso}>{LAST_UPDATED.label}</time>
+            </Text>
+            <Text fontSize="sm" color="text.muted">
+              Questions about using the app? See{' '}
+              <Link as={RouterLink} to="/help" color="accent.fg" fontWeight="600">Help &amp; FAQ</Link>.
             </Text>
           </Stack>
 

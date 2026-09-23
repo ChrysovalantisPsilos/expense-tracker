@@ -11,6 +11,7 @@ import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import ThemeToggle from '../../shared/ui/ThemeToggle.jsx'
+import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
 import TripSplitMock from './TripSplitMock.jsx'
 import BudgetsMock from './BudgetsMock.jsx'
 import InsightsMock from './InsightsMock.jsx'
@@ -222,13 +223,15 @@ export default function Landing() {
       </main>
       <Box as="footer" borderTopWidth="1px" borderColor="border.default">
         <Container maxW="6xl" px={{ base: 4, md: 6 }}>
-          <Flex h="64px" align="center" justify="space-between">
+          <Flex minH="64px" py={3} align="center" justify="space-between">
             <HStack spacing={4} fontSize="sm" color="text.muted">
               <Text>© {new Date().getFullYear()} Budgeer</Text>
+              <Link as={RouterLink} to="/help">Help</Link>
               <Link as={RouterLink} to="/privacy">Privacy</Link>
             </HStack>
             <ThemeToggle />
           </Flex>
+          <Text fontSize="xs" color="text.muted" pb={4}>{DISCLAIMER}</Text>
         </Container>
       </Box>
     </Box>
