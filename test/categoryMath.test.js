@@ -128,6 +128,12 @@ test('icon/colour keys match the CHECK constraints and the icon registry', () =>
   const icons = readFileSync(new URL('../src/shared/lib/icons.jsx', import.meta.url), 'utf8')
   const registry = icons.slice(icons.indexOf('const CATEGORY_ICONS = {'), icons.indexOf('}', icons.indexOf('const CATEGORY_ICONS = {')))
   assert.deepEqual([...registry.matchAll(/^\s+'?([a-z-]+)'?:/gm)].map((m) => m[1]), CATEGORY_ICON_KEYS)
+  // Each key renders its own Lucide icon, so no two categories look alike.
+  const comps = [...registry.matchAll(/^\s+'?[a-z-]+'?:\s*(\w+),/gm)].map((m) => m[1])
+  assert.equal(comps.length, CATEGORY_ICON_KEYS.length)
+  assert.deepEqual(comps.filter((c, i) => comps.indexOf(c) !== i), [])
+  // Salary is a wallet (not a suitcase: that read as travel/business).
+  assert.match(registry, /^\s+salary: Wallet,/m)
 })
 
 test('icon picker: every key has a label and sits in exactly one group', () => {
@@ -154,6 +160,7 @@ test('categoryIconKey: a stored key wins, else the name suggests one, else other
     'Investments': 'investments', 'Refunds': 'refunds', 'ATM withdrawal': 'cash',
     'Transfer to savings': 'transfer', 'Savings': 'savings', 'Business expenses': 'business',
     'Electronics': 'electronics', 'Insurance': 'insurance', 'Bike repairs': 'bike',
+    'Salary': 'salary', 'Paycheck': 'salary', 'Payday': 'salary', 'Wages': 'salary',
   }
   for (const [name, key] of Object.entries(hints)) assert.equal(categoryIconKey(name), key, name)
   // Every suggestion is a key the server accepts.

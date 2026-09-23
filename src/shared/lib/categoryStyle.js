@@ -94,7 +94,7 @@ const NAME_HINTS = [
   [/entertain|movie|cinema|film|theat/i, 'entertainment'],
   [/freelance|side gig/i, 'freelance'],
   [/business|office/i, 'business'],
-  [/salary|income|wage|payroll|\bpay\b/i, 'salary'],
+  [/salary|income|wage|payroll|paycheck|payday|\bpay\b/i, 'salary'],
   [/travel|holiday|vacation|trip/i, 'travel'],
   [/coffee|cafe/i, 'coffee'],
   [/gym|fitness/i, 'fitness'],

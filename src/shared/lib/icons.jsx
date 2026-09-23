@@ -7,7 +7,7 @@
 
 import {
   Utensils, ShoppingCart, Car, Fuel, Home, Lightbulb, ShoppingBag, HeartPulse,
-  Clapperboard, Briefcase, Tag, Plane, Coffee, Dumbbell, GraduationCap,
+  Clapperboard, Wallet, Tag, Plane, Coffee, Dumbbell, GraduationCap,
   Gift, PiggyBank,
   KeyRound, Smartphone, Wifi, ShieldCheck, Landmark, Percent, Tv, Droplet, Zap,
   SquareParking, Bus, CarTaxiFront, Bike, PlaneTakeoff, BedDouble, Wine, Gamepad2, Music,
@@ -26,7 +26,7 @@ const CATEGORY_ICONS = {
   shopping: ShoppingBag,
   health: HeartPulse,
   entertainment: Clapperboard,
-  salary: Briefcase,
+  salary: Wallet,
   travel: Plane,
   coffee: Coffee,
   fitness: Dumbbell,
