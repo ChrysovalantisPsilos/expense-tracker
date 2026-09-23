@@ -1,28 +1,24 @@
 import { useState } from 'react'
-import {
-  Box, List, ListItem, Text, Tag, TagLabel, useToast,
-  useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
-  ModalFooter, Button, Flex,
-} from '@chakra-ui/react'
+import { useNavigate } from 'react-router-dom'
+import { Box, List, ListItem, Text, Tag, TagLabel, useToast, Flex } from '@chakra-ui/react'
 import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
-import TransactionForm from './TransactionForm.jsx'
+import DeleteTransactionDialog from './DeleteTransactionDialog.jsx'
 import { formatMoney, baseEquivalent } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { monthlyShare } from '../../shared/lib/spread.js'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
-import RecurringForm from '../recurring/RecurringForm.jsx'
-import { canMakeRecurring, frequencyLabel, ruleFromTransaction } from '../recurring/recurringMath.js'
+import { frequencyLabel } from '../recurring/recurringMath.js'
 
 // Shared list of personal transactions with edit + delete.
 // Group-mirrored rows (group_expense_id set) are read-only here — they're
 // edited in the group — and show their group's tag under the title instead.
-// "Make recurring" turns a row into a recurring rule (next charge one period
-// after it); rows that belong to a rule say "Repeats every month", and a
-// yearly subscription's payment adds "Spread over 12 months" (it counts in
+// Tapping a row (or Edit) opens it on the transaction page, where it can also
+// be set to repeat. Rows that belong to a rule say "Repeats every month", and
+// a yearly subscription's payment adds "Spread over 12 months" (it counts in
 // monthly spend a twelfth at a time; the row itself is the real payment).
 // On phones the row actions fold into a ⋯ menu.
 // Each row's income/expense styling follows its own `kind`, so the same
@@ -30,19 +26,12 @@ import { canMakeRecurring, frequencyLabel, ruleFromTransaction } from '../recurr
 const kindOf = (r, fallback) => r.kind ?? fallback
 export default function TransactionList({ rows, kind, baseCurrency, mutate, reload }) {
   const toast = useToast()
-  const editModal = useDisclosure()
-  const [editing, setEditing] = useState(null)
+  const navigate = useNavigate()
   const [removing, setRemoving] = useState(null)
-  const [repeating, setRepeating] = useState(null) // the row being made recurring
   const [busy, setBusy] = useState(false)
 
-  function onEdited(updated) {
-    editModal.onClose()
-    setEditing(null)
-    // Optimistic local update; reload for the authoritative category join.
-    mutate((rs) => rs.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)))
-    reload()
-  }
+  // The page gets the row in router state, so it opens without a fetch.
+  const open = (r) => navigate(`/transactions/${r.id}`, { state: { row: r } })
 
   async function confirmRemove() {
     const row = removing
@@ -70,7 +59,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
           const conv = baseEquivalent(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
           return (
             <ListItem key={r.id}>
-              <ItemRow py={2.5}
+              <ItemRow py={2.5} onClick={shared ? undefined : () => open(r)}
                 media={<CategoryBadge category={r.categories} kind={rk} size={32} />}
                 title={r.description || r.categories?.name || (rk === 'income' ? 'Income' : 'Expense')}
                 meta={<RowMeta row={r} shared={shared} />}
@@ -84,10 +73,8 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                     {r.rate_estimated && ' · est.'}
                   </>
                 )}
-                actionSlots={3} actions={shared ? [] : [
-                  { label: 'Edit', icon: Pencil, onClick: () => { setEditing(r); editModal.onOpen() } },
-                  ...(canMakeRecurring(r)
-                    ? [{ label: 'Make recurring', icon: Repeat, onClick: () => setRepeating(r) }] : []),
+                actionSlots={2} actions={shared ? [] : [
+                  { label: 'Edit', icon: Pencil, onClick: () => open(r) },
                   { label: 'Delete', icon: Trash2, danger: true, onClick: () => setRemoving(r) },
                 ]} />
             </ListItem>
@@ -95,42 +82,8 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
         })}
       </List>
 
-      {/* Edit modal */}
-      <Modal isOpen={editModal.isOpen} onClose={() => { editModal.onClose(); setEditing(null) }} isCentered>
-        <ModalOverlay />
-        <ModalContent mx={4}>
-          <ModalHeader>Edit {kindOf(editing ?? {}, kind) === 'income' ? 'income' : 'expense'}</ModalHeader>
-          <ModalBody pb={5}>
-            {editing && (
-              <TransactionForm baseCurrency={baseCurrency} transaction={editing} onSaved={onEdited} />
-            )}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-
-      {repeating && (
-        <RecurringForm baseCurrency={baseCurrency}
-          initial={{ ...ruleFromTransaction(repeating), from_date: repeating.spent_at }}
-          onClose={() => setRepeating(null)} onSaved={() => { setRepeating(null); reload() }} />
-      )}
-
-      {/* Delete confirm */}
-      <Modal isOpen={!!removing} onClose={() => setRemoving(null)} isCentered>
-        <ModalOverlay />
-        <ModalContent mx={4}>
-          <ModalHeader>Delete this {kindOf(removing ?? {}, kind) === 'income' ? 'income' : 'expense'}?</ModalHeader>
-          <ModalBody>
-            <Text color="text.muted">
-              {removing?.description || removing?.categories?.name || 'This entry'} ·{' '}
-              {removing && formatMoney(removing.amount_minor, removing.currency)}. This can’t be undone.
-            </Text>
-          </ModalBody>
-          <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={() => setRemoving(null)}>Cancel</Button>
-            <Button colorScheme="red" isLoading={busy} onClick={confirmRemove}>Delete</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <DeleteTransactionDialog row={removing} onClose={() => setRemoving(null)}
+        onConfirm={confirmRemove} busy={busy} />
     </>
   )
 }

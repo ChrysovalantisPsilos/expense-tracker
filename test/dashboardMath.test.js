@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  periodTotals, periodProjection, projectedTotals, recurringOverview,
+  periodTotals, periodProjection, projectedTotals,
 } from '../src/features/dashboard/dashboardMath.js'
 
 const rows = [
@@ -46,24 +46,13 @@ test('projectedTotals adds the projection and nets income − spend', () => {
     { spentTotal: 3500, earnedTotal: 1200, netTotal: -2300 })
 })
 
-test('recurringOverview: active rules soonest first; monthly cost of expenses only', () => {
-  const o = recurringOverview(rules)
-  assert.deepEqual(o.activeRecurring.map((r) => r.next_run), ['2026-09-25', '2026-09-28'])
-  assert.equal(o.subsMonthly, 999)
-})
-
 // ---- Yearly subscriptions kept separate (0068) -------------------------------
 const withYearly = [
   ...rules,
   { is_active: true, kind: 'expense', amount_minor: 12000, frequency: 'yearly', interval_n: 1, next_run: '2026-09-27' },
 ]
 
-test('periodProjection / recurringOverview: separateYearly leaves yearly rules out', () => {
+test('periodProjection: separateYearly leaves yearly rules out', () => {
   assert.deepEqual(periodProjection(withYearly, '2026-09-30', '2026-09-23'), { expense: 999 + 1000, income: 10000 })
   assert.deepEqual(periodProjection(withYearly, '2026-09-30', '2026-09-23', true), { expense: 999, income: 10000 })
-  assert.equal(recurringOverview(withYearly).subsMonthly, 999 + 1000)
-  const o = recurringOverview(withYearly, true)
-  assert.equal(o.subsMonthly, 999)
-  // Still listed among the active rules — only the monthly figure changes.
-  assert.equal(o.activeRecurring.length, 3)
 })

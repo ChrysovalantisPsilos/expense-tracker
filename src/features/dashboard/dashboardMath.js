@@ -2,7 +2,7 @@
 // minor units in the user's base currency.
 import { toBaseMinor } from '../../shared/lib/currency.js'
 import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
-import { monthlyTotals, expectedInWindow } from '../recurring/recurringMath.js'
+import { expectedInWindow } from '../recurring/recurringMath.js'
 
 // A period's totals from its rows: `spent` and `earned` (base currency),
 // `byCategory` (bucket totals, largest first) and `bucketRow` (bucket name →
@@ -42,15 +42,4 @@ export function projectedTotals({ spent, earned }, proj) {
   const spentTotal = spent + proj.expense
   const earnedTotal = earned + proj.income
   return { spentTotal, earnedTotal, netTotal: earnedTotal - spentTotal }
-}
-
-// Active recurring rules, soonest charge first, and the monthly cost of the
-// active expense ones (subscriptions; without yearly ones when the user keeps
-// those separate). Ignores the period filter: recurring is forward-looking.
-export function recurringOverview(rules, separateYearly = false) {
-  const active = rules.filter((r) => r.is_active)
-  return {
-    subsMonthly: monthlyTotals(rules, separateYearly).expense,
-    activeRecurring: [...active].sort((a, b) => (a.next_run < b.next_run ? -1 : 1)),
-  }
 }

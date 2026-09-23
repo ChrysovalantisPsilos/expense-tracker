@@ -11,12 +11,10 @@ import {
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import BackButton from '../../shared/ui/BackButton.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import Unfold from '../../shared/ui/kit/Unfold.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
-import TransactionForm from './TransactionForm.jsx'
 import TransactionList from './TransactionList.jsx'
 import { useTransactions, useCategories } from './useData.js'
 import {
@@ -30,9 +28,7 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 
 const OWN_EDIT = { ownEdit: true }
 const TYPES = [['expense', 'Expenses'], ['income', 'Income'], ['all', 'All']]
-const KINDS = [['expense', 'Expense'], ['income', 'Income']]
 const ADD_LABEL = { expense: 'Add expense', income: 'Add income', all: 'Add' }
-const FORM_TITLE = { expense: 'New expense', income: 'New income' }
 const EMPTY_TEXT = {
   expense: 'Nothing logged yet.',
   income: 'No income logged yet.',
@@ -45,7 +41,7 @@ const EMPTY_TEXT = {
 // survives reloads, back/forward and links. Opened with filters already in
 // the URL (a link), it shows a back button. With no search it shows this month's entries;
 // searching (text or the Filters panel) spans all history, or the chosen
-// dates. The add form stays folded behind "Add".
+// dates. "Add" opens the transaction page (/transactions/new).
 export default function LedgerPage() {
   const { baseCurrency = 'EUR' } = useProfile()
   const navigate = useNavigate()
@@ -69,9 +65,6 @@ export default function LedgerPage() {
   // and clearable.
   const filtersPanel = useDisclosure({ defaultIsOpen: hasFilters })
   const [openedFiltered] = useState(hasFilters)
-  const addForm = useDisclosure()
-  const [pickedKind, setPickedKind] = useState('expense') // the form's kind under "All"
-  const formKind = kind ?? pickedKind
 
   // /search redirects here with { focusSearch } so the field is ready to type in.
   const searchRef = useRef(null)
@@ -108,8 +101,8 @@ export default function LedgerPage() {
   return (
     <Stack spacing={5}>
       <PageHeader title="Transactions" leading={openedFiltered ? <BackButton /> : undefined} action={<>
-        <PageAction icon={addForm.isOpen ? <X size={16} /> : <Plus size={16} />} data-tour="add-expense"
-          label={addForm.isOpen ? 'Hide form' : ADD_LABEL[type]} onClick={addForm.onToggle} />
+        <PageAction icon={<Plus size={16} />} data-tour="add-expense" label={ADD_LABEL[type]}
+          onClick={() => navigate(`/transactions/new?kind=${kind ?? 'expense'}`)} />
         <Menu placement="bottom-end" isLazy>
           <MenuButton as={IconButton} aria-label="More actions" size="sm" variant="ghost"
             icon={<MoreHorizontal size={18} />} />
@@ -123,19 +116,6 @@ export default function LedgerPage() {
 
       <SegmentedControl label="Transaction type" options={TYPES} value={type}
         onChange={switchType} size="sm" isFitted w={{ base: 'full', sm: 'sm' }} />
-
-      <Unfold in={addForm.isOpen} animateOpacity>
-        <Panel icon={Plus} title={FORM_TITLE[formKind]}>
-          <Stack spacing={4}>
-            {!kind && (
-              <SegmentedControl label="Kind to add" options={KINDS} value={pickedKind}
-                onChange={setPickedKind} size="sm" isFitted />
-            )}
-            <TransactionForm key={formKind} kind={formKind} baseCurrency={baseCurrency}
-              onSaved={() => { reload(); addForm.onClose() }} />
-          </Stack>
-        </Panel>
-      </Unfold>
 
       <Panel>
         <Box mb={5}>
@@ -215,7 +195,7 @@ export default function LedgerPage() {
             {searching ? 'No transactions match this search.' : EMPTY_TEXT[type]}
           </Text>
         ) : (
-          <TransactionList rows={shown} kind={formKind} baseCurrency={baseCurrency}
+          <TransactionList rows={shown} kind={kind} baseCurrency={baseCurrency}
             mutate={mutate} reload={reload} />
         )}
       </Panel>

@@ -1,18 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import {
   SimpleGrid, Box, Text, Stack, Center, Spinner, HStack, IconButton,
-  Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Button, Link,
+  Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
-import { ChartBarDecreasing, Table as TableIcon, Repeat, ReceiptText, Users } from 'lucide-react'
+import { ChartBarDecreasing, Table as TableIcon, ReceiptText, Users } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { buildPeriods } from '../transactions/periods.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
-import { today, shortDate } from '../../shared/lib/dates.js'
+import { today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring } from '../recurring/recurring.js'
-import { frequencyLabel } from '../recurring/recurringMath.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { spendRows, paidInWindow } from '../../shared/lib/spread.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
@@ -23,16 +22,15 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
-import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import { BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import {
-  periodTotals, periodProjection, projectedTotals, recurringOverview,
+  periodTotals, periodProjection, projectedTotals,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
-import YearlySubscriptionsCard from '../recurring/YearlySubscriptionsCard.jsx'
+import SubscriptionsCard from '../recurring/SubscriptionsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
@@ -40,7 +38,6 @@ const VIEW_KEY = STORAGE_KEYS.overviewView
 const UNAVAILABLE = 'Not available until your transactions load.'
 
 export default function Dashboard() {
-  const navigate = useNavigate()
   const { baseCurrency, separateYearly } = useProfile()
   const { rules } = useRecurring()
   const [oldest, setOldest] = useState(null)
@@ -60,13 +57,8 @@ export default function Dashboard() {
   const [view, setView] = useState(() => localStorage.getItem(VIEW_KEY) || 'chart')
   function chooseView(v) { setView(v); localStorage.setItem(VIEW_KEY, v) }
 
-  // Recurring is forward-looking, so it ignores the historical period filter:
-  // it always shows what's coming up next plus the monthly subscriptions total.
-  const { subsMonthly, activeRecurring } = useMemo(
-    () => recurringOverview(rules, separateYearly), [rules, separateYearly])
-
   // Spread yearly charges count as their monthly parts in every total — or,
-  // when the user keeps them separate, not at all (the Yearly card has them).
+  // when the user keeps them separate, not at all (the Subscriptions card lists them).
   const spend = useMemo(
     () => spendRows(rows, baseCurrency, period.from, period.to, { separateYearly }),
     [rows, baseCurrency, period.from, period.to, separateYearly])
@@ -90,10 +82,8 @@ export default function Dashboard() {
   const { spentTotal, earnedTotal, netTotal } = projectedTotals(totals, proj)
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
 
-  // Paginate the two lists (10/page). Expenses reset to page 1 when the period
-  // changes; recurring clamps if a rule is removed.
+  // Paginate the expenses (10/page), back to page 1 when the period changes.
   const expPage = usePaged(expenses, 10, periodValue)
-  const recPage = usePaged(activeRecurring, 10)
 
   return (
     <Stack spacing={5}>
@@ -128,8 +118,6 @@ export default function Dashboard() {
         </SimpleGrid>
       </Panel>
       )}
-
-      {separateYearly && <YearlySubscriptionsCard rules={rules} baseCurrency={baseCurrency} />}
 
       <Panel data-tour="categories" icon={ChartBarDecreasing} title="Spending by category" action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
@@ -204,29 +192,7 @@ export default function Dashboard() {
         )}
       </Panel>
 
-      <Panel icon={Repeat} title="Recurring"
-        subtitle={subsMonthly > 0 ? `${formatMoney(subsMonthly, baseCurrency)}/mo` : undefined}
-        action={<Button size="xs" variant="ghost" onClick={() => navigate('/recurring')}>Manage</Button>}>
-        {activeRecurring.length === 0 ? (
-          <Text color="text.muted" fontSize="sm">
-            No recurring entries yet. Add subscriptions and bills to see them here.
-          </Text>
-        ) : (
-          <>
-            <Box as="ul" listStyleType="none">
-              {recPage.pageItems.map((r) => (
-                <ItemRow as="li" key={r.id} py={2.5}
-                  media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-                  title={r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
-                  meta={`${frequencyLabel(r)} · next ${shortDate(r.next_run)}`}
-                  amount={formatMoney(r.amount_minor, r.currency)}
-                  amountTone={r.kind === 'income' ? 'positive' : 'default'} />
-              ))}
-            </Box>
-            <Paginator page={recPage.page} count={recPage.count} onPage={recPage.setPage} />
-          </>
-        )}
-      </Panel>
+      <SubscriptionsCard rules={rules} baseCurrency={baseCurrency} />
     </Stack>
   )
 }

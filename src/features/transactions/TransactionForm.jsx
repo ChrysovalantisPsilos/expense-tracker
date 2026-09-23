@@ -1,30 +1,40 @@
 import { useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  Button, Divider, FormControl, FormHelperText, FormLabel, HStack, Input, Link, Select, Stack,
-  Switch, Text, Textarea, useToast, NumberInput, NumberInputField,
+  Button, FormControl, FormHelperText, FormLabel, HStack, Input, Link, Select, Stack,
+  Switch, Text, Textarea, useToast,
 } from '@chakra-ui/react'
+import { Repeat, Trash2 } from 'lucide-react'
 import { useCategories } from './useData.js'
 import { toMinor, fromMinor, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
 import { insertTransaction, updateTransaction } from './writes.js'
-import { saveRecurring } from '../recurring/recurring.js'
-import { frequencyLabel, nextRunAfter, ruleFromTransaction } from '../recurring/recurringMath.js'
+import { saveRecurring, deleteRecurring } from '../recurring/recurring.js'
+import { editRepeat, planRepeat, repeatDraft } from '../recurring/recurringMath.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
+import RepeatFields from '../recurring/RepeatFields.jsx'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import FxPreview from '../../shared/ui/FxPreview.jsx'
+import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 
-// Fast-path entry for a single expense or income. Pass `transaction` to edit
-// an existing one instead of creating a new one. "Repeat" also makes it a
-// recurring rule whose next charge is one period after the entry's date (the
-// entry itself is the first occurrence).
-const REPEAT_FREQUENCIES = [['weekly', 'Weekly'], ['monthly', 'Monthly'], ['yearly', 'Yearly']]
-export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR', transaction = null, onSaved }) {
+const KINDS = [['expense', 'Expense'], ['income', 'Income']]
+
+// The body of the transaction page: one expense or income, new or
+// (`transaction`) existing, and its Repeat section. `rule` is the recurring
+// rule the entry belongs to (transactions.recurring_rule_id), whose schedule
+// the Repeat section then edits; switching Repeat on for an entry without one
+// makes a rule whose first occurrence is this entry. Saving writes the entry,
+// then creates/updates/removes the rule (planRepeat). `onDelete` (existing
+// entries) shows a Delete button; the page confirms it.
+export default function TransactionForm({
+  kind: initialKind = 'expense', baseCurrency = 'EUR', transaction = null, rule = null, onSaved, onDelete,
+}) {
   const isEdit = !!transaction
-  const kindEff = transaction?.kind ?? kind
-  const { categories } = useCategories(kindEff)
+  const [kind, setKind] = useState(transaction?.kind ?? initialKind)
+  const { categories } = useCategories(kind)
   const toast = useToast()
   const [amount, setAmount] = useState(
     transaction ? String(fromMinor(transaction.amount_minor, transaction.currency)) : '')
@@ -35,11 +45,8 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
   const [notes, setNotes] = useState(transaction?.notes ?? '')
   const [busy, setBusy] = useState(false)
   const [manualRate, setManualRate] = useState('')
-  const [repeat, setRepeat] = useState(false)
-  const [repeatFreq, setRepeatFreq] = useState('monthly')
-  const [repeatN, setRepeatN] = useState('1')
-  const repeatEvery = Math.max(1, parseInt(repeatN, 10) || 1)
-  const alreadyRepeats = !!transaction?.recurring_rule_id
+  const [repeat, setRepeat] = useState(!!rule)
+  const [draft, setDraft] = useState(() => repeatDraft(rule, { fromDate: spentAt }))
 
   // Exchange rate: the ECB rate for the expense's date. Editing keeps the rate
   // the row was saved with unless its currency or date changes — except a
@@ -54,12 +61,40 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
       : fx.status === 'ok' ? fx.rate
         : fx.status === 'missing' ? parseManualRate(manualRate) : null
   // Stable across retries of one submit so a lost-response retry can't
-  // duplicate; rotated after a successful insert for the next entry.
+  // duplicate.
   const clientUuid = useRef(crypto.randomUUID())
+  const amountMinor = Number(amount) > 0 ? toMinor(amount, currency) : 0
+
+  // The next charge follows the entry's date until the user picks one.
+  function changeDate(v) {
+    setSpentAt(v)
+    setDraft((d) => editRepeat(d, {}, v || today()))
+  }
 
   function handleScan({ total, date }) {
     if (total != null) setAmount(String(total))
-    if (date) setSpentAt(date)
+    if (date) changeDate(date)
+  }
+
+  function pickKind(k) {
+    setKind(k)
+    setCategoryId('') // categories are per kind
+  }
+
+  // After the entry is saved: its rule. Never fails the save — the entry is
+  // already in, so a failure here is a warning.
+  async function saveRepeat(entry) {
+    const plan = planRepeat({ rule, repeat, draft, before: transaction, entry })
+    try {
+      if (plan.action === 'create') await saveRecurring(plan.fields)
+      else if (plan.action === 'update') await saveRecurring({ id: plan.id, ...plan.fields })
+      else if (plan.action === 'delete') await deleteRecurring(plan.id)
+    } catch (err) {
+      toast({
+        title: rule ? 'Saved, but its repeat couldn’t be updated' : 'Saved, but it couldn’t be set to repeat',
+        description: err.message, status: 'warning',
+      })
+    }
   }
 
   async function submit(e) {
@@ -76,167 +111,130 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
       })
       return
     }
-    setBusy(true)
-    const exchange_rate = rate
-    // After the entry is saved: the rule it repeats by (never fails the save).
-    const makeRecurring = async (entry) => {
-      if (!repeat) return
-      try {
-        await saveRecurring(ruleFromTransaction(entry, { frequency: repeatFreq, interval_n: repeatEvery }))
-      } catch (err) {
-        toast({ title: 'Saved, but it couldn’t be set to repeat', description: err.message, status: 'warning' })
-      }
-    }
-
-    if (isEdit) {
-      const fields = {
-        kind: kindEff,
-        category_id: categoryId || null,
-        amount_minor: toMinor(amount, currency),
-        currency,
-        exchange_rate,
-        description: description || null,
-        notes: notes || null,
-        spent_at: spentAt,
-      }
-      try {
-        await updateTransaction(transaction.id, fields)
-      } catch (e) {
-        setBusy(false)
-        toast(saveErrorToast(e))
-        return
-      }
-      await makeRecurring({ ...fields, id: transaction.id, account_id: transaction.account_id })
-      setBusy(false)
-      toast({ title: 'Saved', status: 'success' })
-      onSaved?.({ id: transaction.id, ...fields })
-      return
-    }
-
     // Capture the FX rate at entry time so historical balances never shift.
-    const row = {
-      client_uuid: clientUuid.current,
-      kind: kindEff,
+    const fields = {
+      kind,
       category_id: categoryId || null,
       amount_minor: toMinor(amount, currency),
       currency,
-      exchange_rate,
+      exchange_rate: rate,
       description: description || null,
       notes: notes || null,
       spent_at: spentAt,
     }
+    setBusy(true)
     try {
-      await insertTransaction(row)
-    } catch (e) {
+      if (isEdit) await updateTransaction(transaction.id, fields)
+      else await insertTransaction({ ...fields, client_uuid: clientUuid.current })
+    } catch (err) {
       setBusy(false)
-      toast(saveErrorToast(e))
+      toast(saveErrorToast(err))
       return
     }
-    await makeRecurring(row) // linked through row.client_uuid
-    clientUuid.current = crypto.randomUUID() // fresh id for the next entry
+    // A new entry is linked to its rule through its client_uuid.
+    await saveRepeat(isEdit
+      ? { ...fields, id: transaction.id, account_id: transaction.account_id }
+      : { ...fields, client_uuid: clientUuid.current })
     setBusy(false)
-    setAmount(''); setDescription(''); setNotes('')
-    setRepeat(false)
-    toast({ title: `${kindEff === 'income' ? 'Income' : 'Expense'} saved`, status: 'success' })
+    toast({ title: isEdit ? 'Saved' : `${kind === 'income' ? 'Income' : 'Expense'} saved`, status: 'success' })
     onSaved?.()
   }
 
+  const firstNext = !rule && repeat
+  const nextHelp = firstNext
+    ? `This entry is the first; the next is on ${shortDate(draft.nextRun)}.${
+      draft.nextRun < today() ? ' Any missed since then are added tonight.' : ''}`
+    : undefined
+
   return (
-    <form onSubmit={submit}>
-      <Stack spacing={3}>
-        {kindEff === 'expense' && !isEdit && (
-          <>
-            <ReceiptScanner onScan={handleScan} />
-            <Divider />
-          </>
-        )}
-        <HStack>
-          <FormControl isRequired>
-            <FormLabel>Amount</FormLabel>
-            <MoneyInput value={amount} onChange={setAmount} />
-          </FormControl>
-          <FormControl maxW="110px">
-            <FormLabel>Currency</FormLabel>
-            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
+    <Stack as="form" spacing={5} onSubmit={submit}>
+      <Panel>
+        <Stack spacing={4}>
+          <SegmentedControl label="Kind" options={KINDS} value={kind} onChange={pickKind}
+            size="sm" isFitted />
+          {kind === 'expense' && !isEdit && <ReceiptScanner onScan={handleScan} />}
+
+          <HStack align="start">
+            <FormControl isRequired>
+              <FormLabel>Amount</FormLabel>
+              <MoneyInput value={amount} onChange={setAmount} />
+            </FormControl>
+            <FormControl maxW="110px">
+              <FormLabel>Currency</FormLabel>
+              <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </FormControl>
+          </HStack>
+          {needsFx && (
+            <FxPreview from={currency} to={baseCurrency} amountMinor={amountMinor}
+              fx={fx} captured={keepCaptured ? captured : null} rate={rate}
+              manual={manualRate} onManual={setManualRate} />
+          )}
+
+          <FormControl>
+            <FormLabel>Category</FormLabel>
+            <Select placeholder="Uncategorized" value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
+            <FormHelperText>
+              <Link as={RouterLink} to="/settings/categories" color="accent.fg">Manage categories</Link>
+            </FormHelperText>
           </FormControl>
-        </HStack>
-        {needsFx && (
-          <FxPreview from={currency} to={baseCurrency} amountMinor={amount ? toMinor(amount, currency) : 0}
-            fx={fx} captured={keepCaptured ? captured : null} rate={rate}
-            manual={manualRate} onManual={setManualRate} />
-        )}
 
-        <FormControl>
-          <FormLabel>Category</FormLabel>
-          <Select placeholder="Uncategorized" value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
-          <FormHelperText>
-            <Link as={RouterLink} to="/settings/categories" color="accent.fg">Manage categories</Link>
-          </FormHelperText>
-        </FormControl>
-
-        <HStack align="end">
           <FormControl>
             <FormLabel>Description</FormLabel>
             <Input value={description} onChange={(e) => setDescription(e.target.value)}
-              placeholder={kindEff === 'income' ? 'Paycheck' : 'Coffee'} />
+              placeholder={kind === 'income' ? 'Paycheck' : 'Coffee'} />
           </FormControl>
-          <FormControl maxW="170px">
+
+          <FormControl isRequired>
             <FormLabel>Date</FormLabel>
-            <Input type="date" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} />
+            <Input type="date" value={spentAt} onChange={(e) => changeDate(e.target.value)} />
           </FormControl>
-        </HStack>
 
-        <FormControl>
-          <FormLabel>Notes</FormLabel>
-          <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </FormControl>
-
-        {alreadyRepeats ? (
-          <Text fontSize="sm" color="text.muted">
-            Repeats {transaction.recurring ? frequencyLabel(transaction.recurring) : 'on a schedule'} —
-            {' '}<Link as={RouterLink} to="/recurring" color="accent.fg">change it in Recurring</Link>
-          </Text>
-        ) : (
           <FormControl>
-            <HStack justify="space-between">
-              <FormLabel mb={0} htmlFor="repeat-switch">Repeat</FormLabel>
-              <Switch id="repeat-switch" isChecked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
-            </HStack>
-            {repeat && (
-              <>
-                <HStack mt={2} spacing={2}>
-                  <Text fontSize="sm" color="text.muted">Every</Text>
-                  <NumberInput size="sm" min={1} maxW="72px" value={repeatN} onChange={setRepeatN}>
-                    <NumberInputField aria-label="Repeat every" />
-                  </NumberInput>
-                  <Select size="sm" maxW="140px" aria-label="Repeat frequency" value={repeatFreq}
-                    onChange={(e) => setRepeatFreq(e.target.value)}>
-                    {REPEAT_FREQUENCIES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                  </Select>
-                </HStack>
-                <FormHelperText>
-                  This one is the first; the next is on {shortDate(nextRunAfter(spentAt || today(), repeatFreq, repeatEvery))}.
-                  {nextRunAfter(spentAt || today(), repeatFreq, repeatEvery) < today()
-                    && ' Any missed since then are added tonight.'}
-                </FormHelperText>
-              </>
-            )}
+            <FormLabel>Notes</FormLabel>
+            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </FormControl>
-        )}
+        </Stack>
+      </Panel>
 
-        <Button type="submit" isLoading={busy} isDisabled={!rate}>
-          {isEdit ? 'Save changes' : `Add ${kindEff === 'income' ? 'income' : 'expense'}`}
+      <Panel icon={Repeat} title="Repeat"
+        subtitle={rule ? 'Part of a recurring series' : 'Log it again on a schedule'}
+        action={
+          <Switch id="repeat-switch" isChecked={repeat} onChange={(e) => setRepeat(e.target.checked)}
+            aria-label="Repeat" />
+        }>
+        {repeat ? (
+          <Stack spacing={3}>
+            {rule && (
+              <Text fontSize="sm" color="text.muted">
+                Changes to the amount, category or description here apply to its future charges too.
+              </Text>
+            )}
+            <RepeatFields value={draft} onChange={(c) => setDraft((d) => editRepeat(d, c, spentAt || today()))}
+              nextHelp={nextHelp} pausable={!!rule}
+              kind={kind} currency={currency} amountMinor={amountMinor} />
+          </Stack>
+        ) : rule ? (
+          <Text fontSize="sm" color="text.muted">
+            Saving stops this from repeating. Entries it already added stay.
+          </Text>
+        ) : null}
+      </Panel>
+
+      <Stack direction={{ base: 'column-reverse', sm: 'row' }} spacing={3}>
+        {onDelete && (
+          <Button variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />} onClick={onDelete}>
+            Delete
+          </Button>
+        )}
+        <Button type="submit" flex="1" isLoading={busy} isDisabled={!rate}>
+          {isEdit ? 'Save changes' : `Add ${kind === 'income' ? 'income' : 'expense'}`}
         </Button>
       </Stack>
-    </form>
+    </Stack>
   )
 }

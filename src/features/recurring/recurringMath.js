@@ -1,50 +1,43 @@
 // Pure recurring-rule math (no React/supabase imports — unit-testable).
 import {
-  monthlyMinor, monthlyShare, ruleSpreadMonths, ruleCountsMonthly, spreadDates, spreadPart, yearlyRules,
+  monthlyMinor, monthlyShare, perYearMinor, ruleSpreadMonths, ruleCountsMonthly, spreadDates, spreadPart,
 } from '../../shared/lib/spread.js'
 
 // A rule's cost in monthly minor units (shared with the statement).
 export { monthlyMinor }
 
+// The stored frequencies (the recurrence_freq enum).
 export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly']
 
-// Per-month cost of the active rules, split by kind: { expense, income }.
-// With `separateYearly` (the user keeps yearly subscriptions out of monthly
-// spending, 0068) yearly expense rules are left out — see yearlySubscriptions.
-// Amounts are summed at face value, as base currency (rules carry no rate).
-export function monthlyTotals(rules, separateYearly = false) {
-  let expense = 0
-  let income = 0
-  for (const r of rules) {
-    if (!r.is_active || !ruleCountsMonthly(r, separateYearly)) continue
-    if (r.kind === 'income') income += monthlyMinor(r)
-    else expense += monthlyMinor(r)
-  }
-  return { expense, income }
+// ---- Repeat choices ----------------------------------------------------------
+// The frequencies a user picks from. "Quarterly" is not a stored frequency: it
+// is a monthly rule every 3 months (no schema change), shown as its own choice
+// and labelled "every quarter". It has no "every N" of its own — a monthly
+// rule every 6 months is "Monthly, every 6".
+export const REPEAT_CHOICES = [
+  ['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly'], ['quarterly', 'Quarterly'], ['yearly', 'Yearly'],
+]
+
+const isQuarterly = (r) => r.frequency === 'monthly' && Number(r.interval_n) === 3
+
+const every = (n) => Math.max(1, parseInt(n, 10) || 1)
+
+// A choice + "every N" → the rule's stored { frequency, interval_n }.
+export function choiceToRule(choice, n = 1) {
+  return choice === 'quarterly'
+    ? { frequency: 'monthly', interval_n: 3 }
+    : { frequency: choice, interval_n: every(n) }
 }
 
-// The "Yearly subscriptions" figures (Home card, Recurring summary) from the
-// active yearly expense rules that still have a charge to come (yearlyRules,
-// shared with the statement's "Yearly subscriptions" section):
-//   perYear   Σ charge ÷ N (an every-2-years €100 counts €50 a year)
-//   perMonth  Σ monthlyMinor — the same per-rule rounding the Recurring page's
-//             monthly figures use, so both pages agree
-//   next      the `limit` soonest rules (by next charge)
-//   count     how many rules
-//   foreign   true when some rule is in another currency than `baseCurrency`.
-//             Rules carry no exchange rate, so — like the Recurring page and
-//             expectedInWindow — their amounts are summed at face value as
-//             base currency; the UI says so when this is set.
-export function yearlySubscriptions(rules, baseCurrency, limit = 3) {
-  const { rules: yearly, perYear, perMonth } = yearlyRules(rules)
-  return {
-    perYear, perMonth, count: yearly.length, next: yearly.slice(0, limit),
-    foreign: yearly.some((r) => r.currency !== baseCurrency),
-  }
+// The other way: a stored rule → { choice, n } for the form.
+export function ruleToChoice(rule) {
+  if (isQuarterly(rule)) return { choice: 'quarterly', n: 1 }
+  return { choice: rule.frequency, n: every(rule.interval_n) }
 }
 
-// "every month", "every 2 weeks", "every day"…
+// "every month", "every 2 weeks", "every quarter", "every day"…
 export function frequencyLabel({ frequency, interval_n = 1 }) {
+  if (isQuarterly({ frequency, interval_n })) return 'every quarter'
   const unit = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }[frequency]
   return interval_n > 1 ? `every ${interval_n} ${unit}s` : `every ${unit}`
 }
@@ -71,8 +64,8 @@ export function nextRunAfter(iso, frequency, n = 1) {
   return date.toISOString().slice(0, 10)
 }
 
-// A new recurring rule made from a transaction ("Make recurring" / the form's
-// Repeat switch): same kind, amount, currency, category, account and
+// A new recurring rule made from a transaction (the transaction page's Repeat
+// section, see planRepeat): same kind, amount, currency, category, account and
 // description; the next charge is one period after the transaction's date, so
 // the transaction itself is the first occurrence. The server links the two
 // through `source_transaction_id` (a listed row) or `source_client_uuid` (an
@@ -101,10 +94,6 @@ export function monthlyBudgetShare(rule) {
   const n = ruleSpreadMonths(rule)
   return n ? monthlyShare({ kind: 'expense', amount_minor: rule.amount_minor, spread_months: n }) : null
 }
-
-// Can this transaction be made recurring? Not a mirrored group share (it's
-// edited in its group) and not a row that already belongs to a rule.
-export const canMakeRecurring = (t) => !!t && !t.group_expense_id && !t.recurring_rule_id
 
 // Sum of recurring charges expected to fall within [fromISO, toISO], split by
 // kind (minor units, in each rule's own currency). Used to fold not-yet-charged
@@ -140,3 +129,154 @@ export function expectedInWindow(rules, fromISO, toISO, separateYearly = false) 
   }
   return { expense, income }
 }
+
+// ---- The Repeat section's draft ----------------------------------------------
+// The form state behind the Repeat fields (RepeatFields.jsx), shared by the
+// transaction page and the recurring-entry form. Text fields stay strings so
+// the inputs can be empty mid-edit.
+//   rule      an existing rule to edit, or null for a new one
+//   fromDate  a new rule made from a transaction: the entry's date. The next
+//             charge then follows the chosen frequency from it (the entry is
+//             the first occurrence) until the user picks a date themselves.
+//   todayISO  a new rule's next charge otherwise
+export function repeatDraft(rule, { fromDate, todayISO } = {}) {
+  const { choice, n } = rule ? ruleToChoice(rule) : { choice: 'monthly', n: 1 }
+  return {
+    choice,
+    n: String(n),
+    nextRun: rule?.next_run ?? (fromDate ? nextRunAfter(fromDate, 'monthly', 1) : todayISO),
+    follows: !rule && !!fromDate,
+    endDate: rule?.end_date ?? '',
+    remind: rule?.remind_days_before != null,
+    remindDays: String(rule?.remind_days_before ?? 3),
+    active: rule?.is_active ?? true,
+  }
+}
+
+// Apply `changes` to a draft. While the next charge follows the entry's date
+// (`follows`), a new frequency, interval or `fromDate` moves it; picking a
+// date by hand stops that.
+export function editRepeat(draft, changes, fromDate) {
+  const d = { ...draft, ...changes }
+  if ('nextRun' in changes) d.follows = false
+  if (d.follows && fromDate) {
+    const { frequency, interval_n } = choiceToRule(d.choice, d.n)
+    d.nextRun = nextRunAfter(fromDate, frequency, interval_n)
+  }
+  return d
+}
+
+// A draft → the rule's schedule fields for save_recurring_rule.
+// Reminders are 1–60 days before (3 when the field is left empty).
+export function repeatRuleFields(d) {
+  return {
+    ...choiceToRule(d.choice, d.n),
+    next_run: d.nextRun,
+    end_date: d.endDate || null,
+    remind_days_before: d.remind ? Math.min(60, Math.max(1, parseInt(d.remindDays, 10) || 3)) : null,
+    is_active: d.active,
+  }
+}
+
+// The fields an entry and its rule share: editing one of them on an entry
+// that repeats changes the rule's future charges too.
+const SHARED_FIELDS = ['kind', 'amount_minor', 'currency', 'category_id', 'description']
+const pickShared = (o) => Object.fromEntries(SHARED_FIELDS.map((k) => [k, o?.[k] ?? null]))
+
+// What saving the transaction page does to the entry's recurring rule, once
+// the entry itself is saved:
+//   { action: 'none' }
+//   { action: 'create', fields }     Repeat switched on for an entry with no
+//                                    rule (linked via `entry.id`, or
+//                                    `entry.client_uuid` for a new entry)
+//   { action: 'update', id, fields } the linked rule: only what changed — an
+//                                    edited shared field of the entry, or the
+//                                    schedule — so fixing an old charge's
+//                                    note never rolls the rule back to that
+//                                    charge's amount after a price change
+//   { action: 'delete', id }         Repeat switched off on a linked entry
+// `before` is the entry as loaded (null for a new one), `entry` as saved.
+export function planRepeat({ rule, repeat, draft, before, entry }) {
+  if (!rule) {
+    return repeat
+      ? { action: 'create', fields: { ...ruleFromTransaction(entry), ...repeatRuleFields(draft) } }
+      : { action: 'none' }
+  }
+  if (!repeat) return { action: 'delete', id: rule.id }
+  const was = { ...pickShared(before), ...repeatRuleFields(repeatDraft(rule)) }
+  const now = { ...pickShared(entry), ...repeatRuleFields(draft) }
+  const fields = Object.fromEntries(Object.entries(now).filter(([k, v]) => v !== was[k]))
+  return Object.keys(fields).length ? { action: 'update', id: rule.id, fields } : { action: 'none' }
+}
+
+// ---- Subscriptions by frequency (Home card, Recurring page) ------------------
+// Expense rules grouped by how often they charge. Other intervals fold into
+// their base unit (every 2 months → Monthly, every 2 years → Yearly), a daily
+// rule folds into Weekly, and a monthly rule every 3 months is Quarterly.
+const SUBSCRIPTION_GROUPS = [
+  { key: 'weekly', label: 'Weekly', unit: 'week' },
+  { key: 'monthly', label: 'Monthly', unit: 'month' },
+  { key: 'quarterly', label: 'Quarterly', unit: 'quarter' },
+  { key: 'yearly', label: 'Yearly', unit: 'year' },
+]
+
+export function subscriptionGroup(rule) {
+  if (rule.frequency === 'daily' || rule.frequency === 'weekly') return 'weekly'
+  if (isQuarterly(rule)) return 'quarterly'
+  return rule.frequency === 'yearly' ? 'yearly' : 'monthly'
+}
+
+// What a rule costs per period of its group, in minor units of its currency:
+// every 2 weeks €20 → €10 a week, daily €1 → €7 a week, every 2 years €100 →
+// €50 a year (perYearMinor, the statement's figure).
+export function periodMinor(rule) {
+  const n = every(rule.interval_n)
+  const amount = Number(rule.amount_minor) || 0
+  switch (subscriptionGroup(rule)) {
+    case 'weekly': return Math.round((rule.frequency === 'daily' ? amount * 7 : amount) / n)
+    case 'quarterly': return amount
+    case 'yearly': return perYearMinor(rule)
+    default: return Math.round(amount / n)
+  }
+}
+
+// A rule that still has a charge to come: active and not past its end date.
+const upcoming = (r) => r.is_active && (!r.end_date || r.next_run <= r.end_date)
+
+// The groups the user has, in SUBSCRIPTION_GROUPS order, each with:
+//   rules     every expense rule in the group, paused and ended ones included
+//             (the Recurring page lists them to resume or edit), input order
+//   total     Σ periodMinor of its upcoming rules: the cost per `unit`
+//   perMonth  Σ monthlyMinor of them (the same per-rule rounding as the
+//             statement's yearly section, so both agree)
+//   next      the `limit` soonest upcoming rules
+//   count     how many upcoming rules
+//   foreign   some upcoming rule is in another currency than `baseCurrency`
+//             (rules carry no exchange rate, so they're summed at face value)
+// `upcomingOnly` leaves out groups with nothing to come (Home's card).
+// Income isn't a subscription: only expense rules count.
+export function subscriptionGroups(rules, baseCurrency, { limit = 3, upcomingOnly = false } = {}) {
+  const out = []
+  for (const g of SUBSCRIPTION_GROUPS) {
+    const all = rules.filter((r) => r.kind !== 'income' && subscriptionGroup(r) === g.key)
+    const live = all.filter(upcoming)
+      .sort((a, b) => (a.next_run < b.next_run ? -1 : a.next_run > b.next_run ? 1 : 0))
+    if (!all.length || (upcomingOnly && !live.length)) continue
+    out.push({
+      ...g,
+      rules: all,
+      total: live.reduce((s, r) => s + periodMinor(r), 0),
+      perMonth: live.reduce((s, r) => s + monthlyMinor(r), 0),
+      next: live.slice(0, limit),
+      count: live.length,
+      foreign: live.some((r) => r.currency !== baseCurrency),
+    })
+  }
+  return out
+}
+
+// What the active income rules bring in per month (the Recurring page's
+// Income tab).
+export const incomePerMonth = (rules) => rules
+  .filter((r) => r.kind === 'income' && upcoming(r))
+  .reduce((s, r) => s + monthlyMinor(r), 0)

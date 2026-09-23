@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { supabase } from '../../shared/lib/supabase.js'
-import { useOwnedQuery } from '../../shared/lib/db.js'
+import { useLiveQuery, useOwnedQuery } from '../../shared/lib/db.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { fillPendingRates } from '../../shared/lib/fx.js'
@@ -50,6 +50,19 @@ export async function listTransactions({ kind, from, to, categoryId, limit, spre
   })
   if (error) throw new Error(error.message)
   return baseCurrency ? fillPendingRates(data ?? [], baseCurrency) : data ?? []
+}
+
+// One transaction (the transaction page), same row shape as useTransactions.
+// `known` is the row the list already had (router state): used as is, so
+// opening an entry costs no request. Opened from a bare link or a reload, it's
+// looked up in the user's history — the same decrypting read, so it is
+// served from the offline cache too. `row` is null when there's no such entry.
+export function useTransaction(id, known) {
+  const { baseCurrency } = useProfile()
+  const { data, loading, error, reload } = useLiveQuery(
+    async () => known ?? (await listTransactions({ baseCurrency })).find((r) => r.id === id) ?? null,
+    { deps: [id, baseCurrency], enabled: !!id, initial: null, keepPrevious: false })
+  return { row: data, loading: !!id && loading, error, reload }
 }
 
 // How many transactions the user has in total (a cheap head count).

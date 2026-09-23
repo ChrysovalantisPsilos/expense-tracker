@@ -54,8 +54,8 @@ test('expectedInWindow: income vs expense split', () => {
   assert.deepEqual(expectedInWindow(rules, '2026-07-15', '2026-07-31'), { expense: 800, income: 200000 })
 })
 
-// ---- Make recurring: next charge one period after the transaction ----------
-import { nextRunAfter, ruleFromTransaction, canMakeRecurring } from '../src/features/recurring/recurringMath.js'
+// ---- Repeat from an entry: next charge one period after the transaction -----
+import { nextRunAfter, ruleFromTransaction } from '../src/features/recurring/recurringMath.js'
 
 test('nextRunAfter: one period later, as the SQL materializer steps', () => {
   assert.equal(nextRunAfter('2026-09-01', 'monthly'), '2026-10-01') // rent on the 1st
@@ -99,13 +99,6 @@ test('ruleFromTransaction: carries the entry over; next charge after its date', 
   assert.ok(!('source_client_uuid' in ruleFromTransaction({ ...t, id: undefined })))
 })
 
-test('canMakeRecurring: not group shares, not rows that already belong to a rule', () => {
-  assert.equal(canMakeRecurring({ id: 1 }), true)
-  assert.equal(canMakeRecurring({ id: 1, group_expense_id: 'g' }), false)
-  assert.equal(canMakeRecurring({ id: 1, recurring_rule_id: 'r' }), false)
-  assert.equal(canMakeRecurring(null), false)
-})
-
 test('stepping chains from the clamped date like the materializer: 31 Mar is not restored', () => {
   const chain = (iso, f, k) => Array.from({ length: k }).reduce((acc) => [...acc, nextRunAfter(acc.at(-1), f)], [iso])
   assert.deepEqual(chain('2026-01-31', 'monthly', 3), ['2026-01-31', '2026-02-28', '2026-03-28', '2026-04-28'])
@@ -147,8 +140,10 @@ test('monthlyBudgetShare: yearly expense rules only, first part and whether it i
   assert.equal(monthlyBudgetShare({ kind: 'expense', frequency: 'monthly', interval_n: 12, amount_minor: 12000 }), null)
 })
 
-// ---- Yearly subscriptions kept separate (0068) -------------------------------
-import { monthlyTotals, yearlySubscriptions } from '../src/features/recurring/recurringMath.js'
+// ---- Subscriptions by frequency (Home card, Recurring page) ------------------
+import {
+  subscriptionGroups, subscriptionGroup, periodMinor, incomePerMonth,
+} from '../src/features/recurring/recurringMath.js'
 
 const mix = [
   { id: 'm', is_active: true, kind: 'expense', amount_minor: 999, currency: 'EUR', frequency: 'monthly', interval_n: 1, next_run: '2026-10-01' },
@@ -161,29 +156,156 @@ const mix = [
   { id: 'ended', is_active: true, kind: 'expense', amount_minor: 77777, currency: 'EUR', frequency: 'yearly', interval_n: 1, next_run: '2027-01-01', end_date: '2026-12-31' },
 ]
 
-test('monthlyTotals: per-month by kind; separateYearly drops yearly expense rules only', () => {
-  const all = monthlyTotals(mix)
-  // y2 = 10000/2/12 = 416.67 → 417; y3 = 499.92 → 500; ended rule still active → 6481.
-  assert.deepEqual(all, { expense: 999 + 1000 + 417 + 500 + 200 + 6481, income: 5000 })
-  assert.deepEqual(monthlyTotals(mix, true), { expense: 999, income: 5000 })
+const rule = (o) => ({ is_active: true, kind: 'expense', currency: 'EUR', interval_n: 1, next_run: '2026-10-01', ...o })
+
+test('subscriptionGroup: other intervals fold into their unit; daily is Weekly; monthly ×3 is Quarterly', () => {
+  assert.equal(subscriptionGroup(rule({ frequency: 'daily' })), 'weekly')
+  assert.equal(subscriptionGroup(rule({ frequency: 'weekly', interval_n: 2 })), 'weekly')
+  assert.equal(subscriptionGroup(rule({ frequency: 'monthly' })), 'monthly')
+  assert.equal(subscriptionGroup(rule({ frequency: 'monthly', interval_n: 2 })), 'monthly')
+  assert.equal(subscriptionGroup(rule({ frequency: 'monthly', interval_n: 3 })), 'quarterly')
+  assert.equal(subscriptionGroup(rule({ frequency: 'monthly', interval_n: 6 })), 'monthly')
+  assert.equal(subscriptionGroup(rule({ frequency: 'yearly', interval_n: 2 })), 'yearly')
 })
 
-test('yearlySubscriptions: per year, per month, soonest next three, active and not ended', () => {
-  const y = yearlySubscriptions(mix, 'EUR')
+test('periodMinor: cost per period of the group', () => {
+  assert.equal(periodMinor(rule({ frequency: 'weekly', interval_n: 2, amount_minor: 2000 })), 1000)
+  assert.equal(periodMinor(rule({ frequency: 'daily', amount_minor: 100 })), 700)
+  assert.equal(periodMinor(rule({ frequency: 'daily', interval_n: 2, amount_minor: 101 })), 354) // 353.5 → 354
+  assert.equal(periodMinor(rule({ frequency: 'monthly', interval_n: 2, amount_minor: 999 })), 500)
+  assert.equal(periodMinor(rule({ frequency: 'monthly', interval_n: 3, amount_minor: 4500 })), 4500)
+  assert.equal(periodMinor(rule({ frequency: 'yearly', interval_n: 2, amount_minor: 10000 })), 5000)
+})
+
+test('subscriptionGroups: only the groups present, in order; income never counts', () => {
+  const groups = subscriptionGroups(mix, 'EUR')
+  assert.deepEqual(groups.map((g) => g.key), ['monthly', 'yearly'])
+  const quarterly = rule({ id: 'q', frequency: 'monthly', interval_n: 3, amount_minor: 3000, next_run: '2026-11-01' })
+  const weekly = rule({ id: 'w', frequency: 'weekly', amount_minor: 500, next_run: '2026-09-28' })
+  const all = subscriptionGroups([...mix, quarterly, weekly], 'EUR')
+  assert.deepEqual(all.map((g) => [g.key, g.label, g.unit]),
+    [['weekly', 'Weekly', 'week'], ['monthly', 'Monthly', 'month'], ['quarterly', 'Quarterly', 'quarter'], ['yearly', 'Yearly', 'year']])
+  const q = all.find((g) => g.key === 'quarterly')
+  assert.equal(q.total, 3000)
+  assert.equal(q.perMonth, 1000)
+  // Only income rules: no subscriptions at all.
+  assert.deepEqual(subscriptionGroups([mix[1]], 'EUR'), [])
+})
+
+test('subscriptionGroups: yearly totals per year and per month, soonest next three, active and not ended', () => {
+  const y = subscriptionGroups(mix, 'EUR').find((g) => g.key === 'yearly')
   assert.equal(y.count, 4)
-  assert.equal(y.perYear, 12000 + 5000 + 5999 + 2400)
+  assert.equal(y.total, 12000 + 5000 + 5999 + 2400) // every 2 years counts half a year
+  // y2 = 10000/2/12 = 416.67 → 417; y3 = 499.92 → 500.
   assert.equal(y.perMonth, 1000 + 417 + 500 + 200)
   assert.deepEqual(y.next.map((r) => r.id), ['y3', 'y2', 'y4'])
   assert.equal(y.foreign, false)
-  assert.deepEqual(yearlySubscriptions(mix, 'EUR', 10).next.map((r) => r.id), ['y3', 'y2', 'y4', 'y1'])
+  // The list keeps paused and ended rules (to resume or edit them); totals don't.
+  assert.deepEqual(y.rules.map((r) => r.id), ['y1', 'y2', 'y3', 'y4', 'off', 'ended'])
+  const more = subscriptionGroups(mix, 'EUR', { limit: 10 }).find((g) => g.key === 'yearly')
+  assert.deepEqual(more.next.map((r) => r.id), ['y3', 'y2', 'y4', 'y1'])
 })
 
-test('yearlySubscriptions: other currencies are summed at face value and flagged', () => {
-  const y = yearlySubscriptions([{ ...mix[2], currency: 'USD' }, mix[3]], 'EUR')
-  assert.equal(y.perYear, 12000 + 5000)
+test('subscriptionGroups: upcomingOnly hides a group whose rules are all paused or ended', () => {
+  const paused = [mix[0], mix[6], mix[7]]
+  assert.deepEqual(subscriptionGroups(paused, 'EUR').map((g) => g.key), ['monthly', 'yearly'])
+  assert.deepEqual(subscriptionGroups(paused, 'EUR', { upcomingOnly: true }).map((g) => g.key), ['monthly'])
+})
+
+test('subscriptionGroups: other currencies are summed at face value and flagged', () => {
+  const [y] = subscriptionGroups([{ ...mix[2], currency: 'USD' }, mix[3]], 'EUR')
+  assert.equal(y.total, 12000 + 5000)
   assert.equal(y.foreign, true)
   // Zero-decimal base: whole units stay whole.
-  const yen = yearlySubscriptions([{ ...mix[2], currency: 'JPY', amount_minor: 10001, interval_n: 2 }], 'JPY')
-  assert.ok(Number.isInteger(yen.perYear) && Number.isInteger(yen.perMonth))
-  assert.deepEqual(yearlySubscriptions([mix[0], mix[1]], 'EUR'), { perYear: 0, perMonth: 0, count: 0, next: [], foreign: false })
+  const [yen] = subscriptionGroups([{ ...mix[2], currency: 'JPY', amount_minor: 10001, interval_n: 2 }], 'JPY')
+  assert.ok(Number.isInteger(yen.total) && Number.isInteger(yen.perMonth))
+})
+
+test('incomePerMonth: active income rules only', () => {
+  const salary = rule({ kind: 'income', frequency: 'monthly', amount_minor: 250000 })
+  assert.equal(incomePerMonth([...mix, salary, { ...salary, is_active: false }]), 5000 + 250000)
+})
+
+// ---- Repeat choices and the Repeat section -----------------------------------
+import {
+  REPEAT_CHOICES, choiceToRule, ruleToChoice, frequencyLabel as label, repeatDraft, editRepeat,
+  repeatRuleFields, planRepeat,
+} from '../src/features/recurring/recurringMath.js'
+
+test('Quarterly is monthly every 3 months, both ways, and reads "every quarter"', () => {
+  assert.deepEqual(REPEAT_CHOICES.map(([v]) => v), ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'])
+  assert.deepEqual(choiceToRule('quarterly', 5), { frequency: 'monthly', interval_n: 3 })
+  assert.deepEqual(choiceToRule('weekly', '2'), { frequency: 'weekly', interval_n: 2 })
+  assert.deepEqual(choiceToRule('monthly', ''), { frequency: 'monthly', interval_n: 1 })
+  assert.deepEqual(ruleToChoice({ frequency: 'monthly', interval_n: 3 }), { choice: 'quarterly', n: 1 })
+  assert.deepEqual(ruleToChoice({ frequency: 'monthly', interval_n: 6 }), { choice: 'monthly', n: 6 })
+  assert.equal(label({ frequency: 'monthly', interval_n: 3 }), 'every quarter')
+  assert.equal(label({ frequency: 'monthly', interval_n: 6 }), 'every 6 months')
+})
+
+test('repeatDraft: a new rule from an entry follows its date; an existing rule round-trips', () => {
+  const d = repeatDraft(null, { fromDate: '2026-01-31' })
+  assert.equal(d.nextRun, '2026-02-28')
+  assert.equal(d.follows, true)
+  assert.equal(repeatDraft(null, { todayISO: '2026-09-23' }).nextRun, '2026-09-23')
+  // Changing frequency or the entry's date moves the next charge…
+  assert.equal(editRepeat(d, { choice: 'quarterly' }, '2026-01-31').nextRun, '2026-04-30')
+  assert.equal(editRepeat(d, { choice: 'weekly', n: '2' }, '2026-01-31').nextRun, '2026-02-14')
+  assert.equal(editRepeat(d, {}, '2026-03-10').nextRun, '2026-04-10')
+  // …until the user picks a date.
+  const picked = editRepeat(d, { nextRun: '2026-05-01' }, '2026-01-31')
+  assert.equal(picked.follows, false)
+  assert.equal(editRepeat(picked, { choice: 'yearly' }, '2026-01-31').nextRun, '2026-05-01')
+  const stored = {
+    frequency: 'monthly', interval_n: 3, next_run: '2026-12-01', end_date: null, remind_days_before: 2, is_active: false,
+  }
+  assert.deepEqual(repeatRuleFields(repeatDraft(stored)), stored)
+  assert.equal(repeatDraft(stored).follows, false)
+})
+
+test('repeatRuleFields: reminders are clamped to 1–60 days, off is null', () => {
+  const d = repeatDraft(null, { todayISO: '2026-09-23' })
+  assert.equal(repeatRuleFields({ ...d, remind: true, remindDays: '90' }).remind_days_before, 60)
+  assert.equal(repeatRuleFields({ ...d, remind: true, remindDays: '' }).remind_days_before, 3)
+  assert.equal(repeatRuleFields({ ...d, remind: false, remindDays: '5' }).remind_days_before, null)
+  assert.equal(repeatRuleFields({ ...d, endDate: '' }).end_date, null)
+})
+
+const entry = {
+  id: 't1', kind: 'expense', amount_minor: 1299, currency: 'EUR', category_id: 'c1',
+  account_id: null, description: 'Netflix', notes: null, spent_at: '2026-09-10',
+}
+const linked = {
+  id: 'r1', kind: 'expense', amount_minor: 1499, currency: 'EUR', category_id: 'c1', description: 'Netflix',
+  frequency: 'monthly', interval_n: 1, next_run: '2026-10-10', end_date: null, remind_days_before: null, is_active: true,
+}
+
+test('planRepeat: nothing on, nothing to do; switching Repeat on makes a rule from the entry', () => {
+  const draft = repeatDraft(null, { fromDate: entry.spent_at })
+  assert.deepEqual(planRepeat({ rule: null, repeat: false, draft, before: entry, entry }), { action: 'none' })
+  const made = planRepeat({ rule: null, repeat: true, draft: editRepeat(draft, { remind: true, remindDays: '2' }), before: entry, entry })
+  assert.equal(made.action, 'create')
+  assert.deepEqual(made.fields, {
+    kind: 'expense', amount_minor: 1299, currency: 'EUR', category_id: 'c1', account_id: null,
+    description: 'Netflix', frequency: 'monthly', interval_n: 1, next_run: '2026-10-10',
+    end_date: null, remind_days_before: 2, is_active: true, source_transaction_id: 't1',
+  })
+  // A new entry links through its client_uuid.
+  const fresh = planRepeat({ rule: null, repeat: true, draft, before: null, entry: { ...entry, id: undefined, client_uuid: 'cu' } })
+  assert.equal(fresh.fields.source_client_uuid, 'cu')
+})
+
+test('planRepeat: a linked rule gets only what changed, is paused, or removed', () => {
+  const draft = repeatDraft(linked)
+  // Saved as loaded (an old charge's note fixed): the rule is left alone —
+  // even though this charge's amount differs from the rule's current price.
+  assert.deepEqual(planRepeat({ rule: linked, repeat: true, draft, before: entry, entry: { ...entry, notes: 'x' } }),
+    { action: 'none' })
+  // A new price on the entry reaches the rule; so does a new schedule.
+  assert.deepEqual(planRepeat({ rule: linked, repeat: true, draft, before: entry, entry: { ...entry, amount_minor: 1599 } }),
+    { action: 'update', id: 'r1', fields: { amount_minor: 1599 } })
+  assert.deepEqual(planRepeat({
+    rule: linked, repeat: true, draft: editRepeat(draft, { choice: 'quarterly', active: false }), before: entry, entry,
+  }), { action: 'update', id: 'r1', fields: { interval_n: 3, is_active: false } })
+  assert.deepEqual(planRepeat({ rule: linked, repeat: false, draft, before: entry, entry }), { action: 'delete', id: 'r1' })
 })

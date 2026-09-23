@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import {
   buildStatement, pendingNote, yearlyLabel, yearlyNote,
 } from '../supabase/functions/generate-report/statementMath.ts'
-import { yearlySubscriptions } from '../src/features/recurring/recurringMath.js'
+import { subscriptionGroups } from '../src/features/recurring/recurringMath.js'
 
 // my_transactions order: newest first.
 const txns = [
@@ -132,8 +132,8 @@ test('yearly kept separate: out of the totals, in their own section', () => {
   // The section: the period's payments and the Home card's figures.
   assert.deepEqual(s.yearly.payments.map((r) => r.description), ['Insurance'])
   assert.equal(s.yearly.paidTotal, 240.05)
-  const card = yearlySubscriptions(rules, 'EUR')
-  assert.equal(s.yearly.perYear, card.perYear / 100) // 120 + 100/2
+  const card = subscriptionGroups(rules, 'EUR').find((g) => g.key === 'yearly')
+  assert.equal(s.yearly.perYear, card.total / 100) // 120 + 100/2
   assert.equal(s.yearly.perYear, 170)
   assert.equal(s.yearly.perMonth, card.perMonth / 100)
   assert.equal(s.yearly.foreign, true)

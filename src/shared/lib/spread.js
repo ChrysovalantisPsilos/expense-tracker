@@ -4,5 +4,5 @@
 // rules, the JS↔SQL lockstep pairs and the "keep yearly separate" setting.
 export {
   ruleSpreadMonths, spreadPart, spreadDates, countsMonthly, ruleCountsMonthly,
-  paidInWindow, spendRows, monthlyShare, monthlyMinor, yearlyRules,
+  paidInWindow, spendRows, monthlyShare, monthlyMinor, perYearMinor,
 } from '../../../supabase/functions/_shared/spread.ts'

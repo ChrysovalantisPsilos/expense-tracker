@@ -18,7 +18,7 @@
 //
 // "Keep yearly subscriptions separate" (profiles.yearly_separate, 0068): when
 // a user turns it on, spread rows are left out of monthly spend altogether
-// (they show in Home's "Yearly subscriptions" card and the statement's own
+// (they show in Home's Subscriptions card, Yearly tab, and the statement's own
 // section instead). countsMonthly ≡ public.counts_in_month (0068).
 
 import { toBaseMinor } from './money.ts'
@@ -133,7 +133,7 @@ export function monthlyShare(row: Row): { perMonth: number; months: number; exac
 }
 
 // ---------------------------------------------------------------------------
-// Rule costs (the Recurring page, Home's "Yearly subscriptions" card and the
+// Rule costs (the Recurring page, Home's Subscriptions card and the
 // statement's "Yearly subscriptions" section).
 // ---------------------------------------------------------------------------
 

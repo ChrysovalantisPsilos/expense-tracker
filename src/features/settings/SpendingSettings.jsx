@@ -12,7 +12,7 @@ import PrefRow from './PrefRow.jsx'
 // profiles.yearly_separate (0068). Off (the default) spreads a yearly
 // subscription over the months it covers; on keeps those payments out of every
 // monthly figure — Home, Insights, budgets and the server's budget alerts —
-// and shows them in Home's "Yearly subscriptions" card instead.
+// (Home's Subscriptions card lists them under Yearly either way).
 export default function SpendingSettings() {
   const { user } = useAuth()
   const { profile, separateYearly } = useProfile()
@@ -42,7 +42,7 @@ export default function SpendingSettings() {
           <Center py={4}><Spinner size="sm" color="brand.500" /></Center>
         ) : (
           <PrefRow id="pref-yearly" label="Count yearly subscriptions in monthly spending"
-            hint="On: a yearly payment is spread over the months it covers. Off: it stays out of monthly totals and budgets, in its own card on Home."
+            hint="On: a yearly payment is spread over the months it covers. Off: it stays out of monthly totals and budgets (Home's Subscriptions card still lists it)."
             isChecked={!separate} onChange={onChange} />
         )}
       </Panel>
