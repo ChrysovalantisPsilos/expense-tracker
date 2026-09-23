@@ -21,7 +21,7 @@ export default function YearlySubscriptionsCard({ rules, baseCurrency }) {
   if (y.count === 0) return null
 
   return (
-    <Panel icon={CalendarClock} title="Yearly subscriptions" subtitle="Kept out of monthly spending"
+    <Panel icon={CalendarClock} title="Yearly subscriptions"
       action={<Button size="xs" variant="ghost" onClick={() => navigate('/recurring')}>Manage</Button>}>
       <SimpleGrid columns={2} spacing={4}>
         <Figure label="Per year" size="lg" value={formatMoney(y.perYear, baseCurrency)} />

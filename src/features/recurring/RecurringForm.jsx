@@ -149,11 +149,9 @@ export default function RecurringForm({ rule, initial, baseCurrency, onClose, on
             </Select>
           </FormControl>
         </HStack>
-        {share && (
+        {share && !separateYearly && (
           <Text fontSize="sm" color="text.muted" mt={-2}>
-            {separateYearly
-              ? 'Kept out of monthly spending and budgets: it shows under Yearly subscriptions on Home.'
-              : `Counts as ${share.exact ? '' : 'about '}${formatMoney(share.perMonth, currency)}/month in budgets, spread over ${share.months} months.`}
+            {`Counts as ${share.exact ? '' : 'about '}${formatMoney(share.perMonth, currency)}/month in budgets, spread over ${share.months} months.`}
           </Text>
         )}
 

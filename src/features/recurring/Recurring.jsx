@@ -69,7 +69,7 @@ export default function Recurring() {
           </Box>
         </SimpleGrid>
         {yearly?.count > 0 && (
-          <Figure layout="inline" label="Yearly subscriptions (separate)" size="md"
+          <Figure layout="inline" label="Yearly subscriptions" size="md"
             value={`${formatMoney(yearly.perYear, baseCurrency)}/yr`}
             mt={3} pt={3} borderTopWidth="1px" borderColor="border.default" />
         )}
