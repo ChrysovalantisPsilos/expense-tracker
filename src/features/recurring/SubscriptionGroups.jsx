@@ -16,7 +16,7 @@ export function GroupTabs({ groups, label, children }) {
     <Tabs variant="soft-rounded" colorScheme="brand" size="sm" isLazy index={index}
       onChange={(i) => setPicked(groups[i].key)}>
       <TabList aria-label={label} flexWrap="wrap" gap={1}>
-        {groups.map((g) => <Tab key={g.key}>{g.label}</Tab>)}
+        {groups.map((g) => <Tab key={g.key} px={3}>{g.label}</Tab>)}
       </TabList>
       <TabPanels>
         {groups.map((g) => <TabPanel key={g.key} px={0} pb={0} pt={4}>{children(g)}</TabPanel>)}

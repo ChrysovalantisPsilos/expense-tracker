@@ -31,7 +31,8 @@ export default function TransactionPage() {
   const navigate = useNavigate()
   const toast = useToast()
   const { baseCurrency = 'EUR' } = useProfile()
-  const known = location.state?.row?.id === id ? location.state.row : null
+  const passed = location.state?.row
+  const known = id && passed?.id === id ? passed : null
   const { row, loading, error, reload } = useTransaction(id, known)
   const { rules, loading: rulesLoading } = useRecurring()
   const [confirming, setConfirming] = useState(false)
