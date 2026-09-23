@@ -11,7 +11,7 @@ export const LIVE = 'live'
 export const TEST = 'test'
 
 export const SITES = {
-  [LIVE]: { origin: 'https://budgeer.com', name: 'live site' },
+  [LIVE]: { origin: 'https://www.budgeer.com', name: 'live site' },
   [TEST]: { origin: 'https://dev.budgeer.com', name: 'test site' },
 }
 

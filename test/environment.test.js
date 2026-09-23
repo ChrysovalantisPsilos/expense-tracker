@@ -33,20 +33,20 @@ test('otherEnvironment flips', () => {
 
 test('the other site keeps the current path and query', () => {
   assert.equal(otherSiteUrl(LIVE, { pathname: '/', search: '' }), 'https://dev.budgeer.com/')
-  assert.equal(otherSiteUrl(TEST, { pathname: '/settings/data', search: '' }), 'https://budgeer.com/settings/data')
+  assert.equal(otherSiteUrl(TEST, { pathname: '/settings/data', search: '' }), 'https://www.budgeer.com/settings/data')
   assert.equal(otherSiteUrl(LIVE, { pathname: '/transactions', search: '?type=expense&from=2026-09-01' }),
     'https://dev.budgeer.com/transactions?type=expense&from=2026-09-01')
   assert.equal(otherSiteUrl(TEST, { pathname: '/transactions/new', search: '?kind=income' }),
-    'https://budgeer.com/transactions/new?kind=income')
+    'https://www.budgeer.com/transactions/new?kind=income')
   assert.equal(otherSiteUrl(LIVE), 'https://dev.budgeer.com/')
 })
 
 test('id pages go to their list on the other site', () => {
   const id = '3f1c2a9e-8b7d-4c6e-9a1b-2c3d4e5f6a7b'
   assert.equal(otherSiteUrl(LIVE, { pathname: `/transactions/${id}`, search: '?x=1' }), 'https://dev.budgeer.com/transactions')
-  assert.equal(otherSiteUrl(TEST, { pathname: `/groups/${id}` }), 'https://budgeer.com/groups')
+  assert.equal(otherSiteUrl(TEST, { pathname: `/groups/${id}` }), 'https://www.budgeer.com/groups')
   assert.equal(otherSiteUrl(TEST, { pathname: `/categories/${id}`, search: '?period=2026-09' }),
-    'https://budgeer.com/settings/categories')
+    'https://www.budgeer.com/settings/categories')
   assert.equal(otherSiteUrl(LIVE, { pathname: '/join/abc123' }), 'https://dev.budgeer.com/')
   // Section lists themselves are kept.
   assert.equal(otherSiteUrl(LIVE, { pathname: '/groups' }), 'https://dev.budgeer.com/groups')
