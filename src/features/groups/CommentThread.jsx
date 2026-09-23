@@ -101,9 +101,9 @@ export default function CommentThread({ group, target, myMember, isOpen, onClose
           {myMember ? (
             <HStack as="form" onSubmit={send} w="full" align="end" spacing={2}>
               <Textarea rows={1} value={body} onChange={(e) => setBody(e.target.value)}
-                placeholder="Write a comment…" resize="none"
+                aria-label="Write a comment" placeholder="Write a comment…" resize="none"
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) send(e) }} />
-              <IconButton type="submit" aria-label="Send" icon={<Send size={16} />}
+              <IconButton type="submit" aria-label="Send comment" icon={<Send size={16} />}
                 isLoading={busy} isDisabled={!body.trim()} />
             </HStack>
           ) : (

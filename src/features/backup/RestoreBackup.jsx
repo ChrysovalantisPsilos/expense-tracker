@@ -54,18 +54,22 @@ export default function RestoreBackup() {
 
 function RestoreDialog({ flow, setFlow, onClose }) {
   const busy = flow.step === 'running'
+  // A locked backup opens straight on its password field.
+  const passwordRef = useRef(null)
   const titles = {
     error: 'Can’t restore this file', password: 'Enter the backup’s password',
     review: 'Restore this backup?', running: 'Restoring…', done: 'Restore complete',
   }
   return (
-    <Modal isOpen onClose={busy ? () => {} : onClose} isCentered scrollBehavior="inside">
+    <Modal isOpen onClose={busy ? () => {} : onClose} isCentered scrollBehavior="inside"
+      initialFocusRef={flow.step === 'password' ? passwordRef : undefined}>
       <ModalOverlay />
       <ModalContent mx={4}>
         <ModalHeader pr={12}>{titles[flow.step]}</ModalHeader>
         {!busy && <ModalCloseButton />}
         {flow.step === 'error' && <ErrorStep message={flow.error} onClose={onClose} />}
-        {flow.step === 'password' && <PasswordStep envelope={flow.envelope} setFlow={setFlow} onClose={onClose} />}
+        {flow.step === 'password' && <PasswordStep envelope={flow.envelope} setFlow={setFlow} onClose={onClose}
+          inputRef={passwordRef} />}
         {(flow.step === 'review' || flow.step === 'running') && (
           <ReviewStep backup={flow.backup} setFlow={setFlow} onClose={onClose} running={busy} />
         )}
@@ -86,7 +90,7 @@ function ErrorStep({ message, onClose }) {
   )
 }
 
-function PasswordStep({ envelope, setFlow, onClose }) {
+function PasswordStep({ envelope, setFlow, onClose, inputRef }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -114,7 +118,7 @@ function PasswordStep({ envelope, setFlow, onClose }) {
           </Text>
           <FormControl isInvalid={!!error}>
             <FormLabel>Password</FormLabel>
-            <Input type="password" autoFocus value={password} autoComplete="off"
+            <Input ref={inputRef} type="password" value={password} autoComplete="off"
               onChange={(e) => { setPassword(e.target.value); setError(null) }} />
             <FormErrorMessage>{error}</FormErrorMessage>
           </FormControl>

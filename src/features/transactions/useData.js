@@ -55,12 +55,6 @@ export async function countTransactions() {
   return count ?? 0
 }
 
-// Re-exported for existing callers; the implementation lives in lib/dates.js.
-export { monthRange } from '../../shared/lib/dates.js'
-
-// Period math lives in periods.js (unit-tested); re-exported for callers.
-export { buildPeriods } from './periods.js'
-
 // The user's oldest transaction date (YYYY-MM-DD), or null if none.
 export async function oldestTransactionDate() {
   const { data } = await supabase

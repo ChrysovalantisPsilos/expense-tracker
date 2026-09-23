@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import {
   Box, Button, Center, HStack, Image, Text, useToast,
 } from '@chakra-ui/react'
-import QRCode from 'qrcode'
 import { ExternalLink, QrCode, Copy } from 'lucide-react'
 import { memberPaymentInfo } from './groups.js'
 import { revolutUrl, paypalUrl } from '../../shared/lib/payLinks.js'
@@ -49,6 +48,8 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
           '', '',
           `Budgeer settle-up · ${groupName ?? ''}`.slice(0, 140),
         ].join('\n')
+        // The QR encoder is only fetched the first time someone asks for one.
+        const { default: QRCode } = await import('qrcode')
         setQr(await QRCode.toDataURL(payload, { margin: 1, width: 220 }))
       }
       setShowQr(true)

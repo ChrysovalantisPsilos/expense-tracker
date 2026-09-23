@@ -189,8 +189,8 @@ Environment variables (build-time, public by design):
 The anon key is safe in the browser because RLS protects the data. Never put
 the service-role key in a `VITE_` variable.
 
-Scripts: `npm run dev` · `npm test` · `npm run lint` (`lint:strict` fails on
-warnings too) · `npm run build` · `npm run preview`.
+Scripts: `npm run dev` · `npm test` · `npm run lint` (strict: warnings fail
+too) · `npm run build` · `npm run preview`.
 
 ### Back end
 

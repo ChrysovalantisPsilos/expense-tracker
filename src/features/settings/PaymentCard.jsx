@@ -7,6 +7,7 @@ import { Landmark } from 'lucide-react'
 import { getMyPaymentInfo, savePaymentInfo } from '../../shared/lib/profile.js'
 import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 
 // "Getting paid": the IBAN / Revolut tag / PayPal.me name friends see when
 // settling up.
@@ -16,7 +17,7 @@ export default function PaymentCard({ user }) {
   const [revolut, setRevolut] = useState('')
   const [paypal, setPaypal] = useState('')
   const [loaded, setLoaded] = useState(false)
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
 
   useEffect(() => {
     let active = true
@@ -37,8 +38,7 @@ export default function PaymentCard({ user }) {
       toast({ title: 'A PayPal.me name is up to 20 letters and numbers.', status: 'warning' })
       return
     }
-    setBusy(true)
-    try {
+    await run(async () => {
       await savePaymentInfo({
         iban: iban.replace(/\s+/g, '').toUpperCase() || null,
         revolut: revolut.replace(/^@/, '').trim() || null,
@@ -46,8 +46,7 @@ export default function PaymentCard({ user }) {
       })
       setPaypal(paypalName ?? '')
       toast({ title: 'Payment details saved', status: 'success' })
-    } catch (e) { toast({ title: e.message, status: 'error' }) }
-    finally { setBusy(false) }
+    })
   }
 
   return (

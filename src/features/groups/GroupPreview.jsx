@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  Box, Flex, Center, Stack, HStack, Heading, Text, Button, Spinner, Image,
+  Box, Flex, Center, Stack, HStack, Heading, Text, Button, Image,
 } from '@chakra-ui/react'
 import { Users, Lock } from 'lucide-react'
 import { previewGroup } from './groups.js'
@@ -9,6 +9,7 @@ import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { shortDateTime } from '../../shared/lib/dates.js'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
+import PageSpinner from '../../shared/ui/PageSpinner.jsx'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
 
@@ -30,7 +31,7 @@ export default function GroupPreview() {
     navigate('/login')
   }
 
-  if (data === undefined) return <Center h="100dvh"><Spinner size="lg" color="brand.500" /></Center>
+  if (data === undefined) return <PageSpinner fullScreen />
   if (data === null) {
     return (
       <Center h="100dvh" px={4}>

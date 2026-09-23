@@ -11,7 +11,6 @@ const anonKey = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY_DEV
 export const isSupabaseConfigured = Boolean(url && anonKey)
 
 if (!isSupabaseConfigured) {
-  // eslint-disable-next-line no-console
   console.error(
     '[supabase] Missing config. Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY ' +
       '(or the _DEV pair) in the host environment.',

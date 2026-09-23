@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import {
   Box, Stack, Text, Button, FormControl,
-  FormLabel, Input, useDisclosure, useToast, Modal, ModalOverlay, ModalContent,
-  ModalHeader, ModalBody, ModalFooter,
+  FormLabel, Input, useDisclosure, useToast,
 } from '@chakra-ui/react'
 import { AlertTriangle, Trash2 } from 'lucide-react'
 import { deleteMyAccount } from '../../shared/lib/profile.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import FormModal from '../../shared/ui/FormModal.jsx'
+import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { hasPasswordIdentity } from './authMethods.js'
 
 // The danger zone at the foot of Security: set apart by space and a red
@@ -41,52 +42,39 @@ function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
   // requiring it when we can't tell); otherwise ask for a typed phrase.
   const isPasswordUser = hasPasswordIdentity(user)
   const [value, setValue] = useState('')
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
+  const inputRef = useRef(null)
 
   const canSubmit = isPasswordUser ? value.length > 0 : value.trim().toUpperCase() === 'DELETE'
 
   async function confirm() {
-    setBusy(true)
-    try {
+    if (!canSubmit) return
+    await run(async () => {
       // The server re-verifies the password for password users, so pass it along.
       await deleteMyAccount(isPasswordUser ? { password: value } : {})
       toast({ title: 'Your account has been deleted', status: 'success' })
       await signOut() // App flips to the logged-out landing
-    } catch (e) {
-      toast({ title: 'Could not delete account', description: e.message, status: 'error' })
-      setBusy(false)
-    }
+    }, { errorTitle: 'Could not delete account' })
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent as="form" mx={4}
-        onSubmit={(e) => { e.preventDefault(); if (canSubmit) confirm() }}>
-        <ModalHeader>Delete your account?</ModalHeader>
-        <ModalBody>
-          <Stack spacing={4}>
-            <Text color="text.muted" fontSize="sm">
-              This permanently deletes your account and personal data. Groups you
-              own are handed to another member; your expense history stays for
-              them. This can’t be undone.
-            </Text>
-            <FormControl isRequired>
-              <FormLabel>{isPasswordUser ? 'Enter your password to confirm'
-                : 'Type DELETE to confirm'}</FormLabel>
-              <Input type={isPasswordUser ? 'password' : 'text'} autoFocus value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder={isPasswordUser ? 'Your password' : 'DELETE'} />
-            </FormControl>
-          </Stack>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button colorScheme="red" type="submit" isLoading={busy} isDisabled={!canSubmit}>
-            Delete account
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <FormModal isOpen={isOpen} onClose={onClose} title="Delete your account?" onSubmit={confirm}
+      busy={busy} submitLabel="Delete account" initialFocusRef={inputRef}
+      submitProps={{ colorScheme: 'red', isDisabled: !canSubmit }}>
+      <Stack spacing={4}>
+        <Text color="text.muted" fontSize="sm">
+          This permanently deletes your account and personal data. Groups you
+          own are handed to another member; your expense history stays for
+          them. This can’t be undone.
+        </Text>
+        <FormControl isRequired>
+          <FormLabel>{isPasswordUser ? 'Enter your password to confirm'
+            : 'Type DELETE to confirm'}</FormLabel>
+          <Input ref={inputRef} type={isPasswordUser ? 'password' : 'text'} value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={isPasswordUser ? 'Your password' : 'DELETE'} />
+        </FormControl>
+      </Stack>
+    </FormModal>
   )
 }

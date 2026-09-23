@@ -1,9 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
   Box, Stack, HStack, Text, Button, Center, Spinner,
-  Icon, useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader,
-  ModalBody, ModalFooter, FormControl, FormLabel, Input, Select, useToast,
+  Icon, useDisclosure, FormControl, FormLabel, Input, Select, useToast,
 } from '@chakra-ui/react'
 import { Plus, ChevronRight, Check, X } from 'lucide-react'
 import {
@@ -15,6 +14,8 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useLiveQuery } from '../../shared/lib/db.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import FormModal from '../../shared/ui/FormModal.jsx'
+import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import GroupMark from './GroupMark.jsx'
@@ -30,7 +31,8 @@ export default function Groups() {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [name, setName] = useState('')
   const [currency, setCurrency] = useState(baseCurrency)
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
+  const nameRef = useRef(null)
   const toast = useToast()
 
   // Live overview: balances, memberships, and the invite inbox update as they
@@ -63,17 +65,13 @@ export default function Groups() {
     } catch (e) { toast({ title: e.message, status: 'error' }) }
   }
 
-  async function submit(e) {
-    e.preventDefault()
+  async function submit() {
     if (!name.trim()) return
-    setBusy(true)
-    try {
+    await run(async () => {
       const id = await createGroup(name.trim(), currency || 'EUR')
       onClose(); setName('')
       navigate(`/groups/${id}`)
-    } catch (e) {
-      toast({ title: e.message, status: 'error' })
-    } finally { setBusy(false) }
+    })
   }
 
   return (
@@ -161,33 +159,24 @@ export default function Groups() {
         </Stack>
       )}
 
-      <Modal isOpen={isOpen} onClose={onClose} isCentered>
-        <ModalOverlay />
-        <ModalContent as="form" onSubmit={submit} mx={4}>
-          <ModalHeader>New group</ModalHeader>
-          <ModalBody>
-            <Stack spacing={4}>
-              <FormControl isRequired>
-                <FormLabel>Name</FormLabel>
-                <Input autoFocus value={name} onChange={(e) => setName(e.target.value)}
-                  placeholder="Italy 2026, Flat 3B…" />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Currency</FormLabel>
-                <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                  {CURRENCIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </Select>
-              </FormControl>
-            </Stack>
-          </ModalBody>
-          <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button type="submit" isLoading={busy}>Create</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <FormModal isOpen={isOpen} onClose={onClose} title="New group" onSubmit={submit}
+        busy={busy} submitLabel="Create" initialFocusRef={nameRef}>
+        <Stack spacing={4}>
+          <FormControl isRequired>
+            <FormLabel>Name</FormLabel>
+            <Input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="Italy 2026, Flat 3B…" />
+          </FormControl>
+          <FormControl>
+            <FormLabel>Currency</FormLabel>
+            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </Select>
+          </FormControl>
+        </Stack>
+      </FormModal>
     </Stack>
   )
 }

@@ -10,6 +10,7 @@ import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import SettingsPage from './SettingsPage.jsx'
 import PaymentCard from './PaymentCard.jsx'
 
@@ -31,7 +32,7 @@ function IdentityCard({ user }) {
   const [displayName, setDisplayName] = useState('')
   const [currency, setCurrency] = useState('EUR')
   const [avatarUrl, setAvatarUrl] = useState('')
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
@@ -48,8 +49,7 @@ function IdentityCard({ user }) {
 
   async function save(e) {
     e.preventDefault()
-    setBusy(true)
-    try {
+    await run(async () => {
       await updateProfile(user.id, {
         display_name: displayName || null,
         base_currency: currency,
@@ -57,8 +57,7 @@ function IdentityCard({ user }) {
       // Nudge live consumers (nav bar) to refetch the new name/avatar at once.
       window.dispatchEvent(new Event(EVENTS.profileUpdated))
       toast({ title: 'Profile saved', status: 'success' })
-    } catch (e) { toast({ title: e.message, status: 'error' }) }
-    finally { setBusy(false) }
+    })
   }
 
   async function onAvatar(e) {

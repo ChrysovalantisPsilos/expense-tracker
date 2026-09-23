@@ -11,6 +11,7 @@ import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import FormModal from '../../shared/ui/FormModal.jsx'
 import { categoryIcon } from '../../shared/lib/icons.jsx'
 import { CATEGORY_COLORS, CATEGORY_COLOR_KEYS, CATEGORY_ICON_KEYS } from '../../shared/lib/categoryStyle.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -99,8 +100,7 @@ function CategoryModal({ category, all, onClose, onSaved }) {
   const others = (all ?? []).filter((c) => c.kind === category?.kind && c.id !== category?.id)
   const nameError = categoryNameError(name, others)
 
-  async function submit(e) {
-    e.preventDefault()
+  async function submit() {
     setTouched(true)
     if (nameError) return
     await run(async () => {
@@ -113,59 +113,49 @@ function CategoryModal({ category, all, onClose, onSaved }) {
 
   const preview = { name, icon, color }
   return (
-    <Modal isOpen={!!category} onClose={onClose} isCentered scrollBehavior="inside">
-      <ModalOverlay />
-      <ModalContent as="form" onSubmit={submit} mx={4}>
-        <ModalHeader>
-          {isEdit ? 'Edit category' : `New ${category?.kind === 'income' ? 'income' : 'expense'} category`}
-        </ModalHeader>
-        <ModalBody>
-          <Stack spacing={5}>
-            <HStack spacing={3} align="start">
-              <Box pt={8}><CategoryBadge category={preview} kind={category?.kind} size={40} /></Box>
-              <FormControl isRequired isInvalid={touched && !!nameError}>
-                <FormLabel>Name</FormLabel>
-                <Input value={name} maxLength={CATEGORY_NAME_MAX + 10}
-                  onChange={(e) => setName(e.target.value)} onBlur={() => name && setTouched(true)}
-                  placeholder={category?.kind === 'income' ? 'Freelance' : 'Pets'} />
-                <FormErrorMessage>{nameError}</FormErrorMessage>
-              </FormControl>
-            </HStack>
+    <FormModal isOpen={!!category} onClose={onClose} scrollBehavior="inside" onSubmit={submit}
+      busy={busy} submitLabel={isEdit ? 'Save' : 'Add category'}
+      title={isEdit ? 'Edit category' : `New ${category?.kind === 'income' ? 'income' : 'expense'} category`}>
+      <Stack spacing={5}>
+        <HStack spacing={3} align="start">
+          <Box pt={8}><CategoryBadge category={preview} kind={category?.kind} size={40} /></Box>
+          <FormControl isRequired isInvalid={touched && !!nameError}>
+            <FormLabel>Name</FormLabel>
+            <Input value={name} maxLength={CATEGORY_NAME_MAX + 10}
+              onChange={(e) => setName(e.target.value)} onBlur={() => name && setTouched(true)}
+              placeholder={category?.kind === 'income' ? 'Freelance' : 'Pets'} />
+            <FormErrorMessage>{nameError}</FormErrorMessage>
+          </FormControl>
+        </HStack>
 
-            <FormControl as="fieldset">
-              <FormLabel as="legend">Icon</FormLabel>
-              <SimpleGrid columns={8} spacing={1.5} role="radiogroup" aria-label="Icon">
-                {CATEGORY_ICON_KEYS.map((k) => {
-                  const Icon = categoryIcon({ icon: k })
-                  const on = icon === k
-                  return (
-                    <IconButton key={k} size="sm" role="radio" aria-checked={on} aria-label={k}
-                      variant={on ? 'solid' : 'ghost'} colorScheme={on ? 'brand' : 'gray'}
-                      icon={<Icon size={16} />} onClick={() => setIcon(k)} />
-                  )
-                })}
-              </SimpleGrid>
-            </FormControl>
+        <FormControl as="fieldset">
+          <FormLabel as="legend">Icon</FormLabel>
+          <SimpleGrid columns={8} spacing={1.5} role="radiogroup" aria-label="Icon">
+            {CATEGORY_ICON_KEYS.map((k) => {
+              const Icon = categoryIcon({ icon: k })
+              const on = icon === k
+              return (
+                <IconButton key={k} size="sm" role="radio" aria-checked={on} aria-label={k}
+                  variant={on ? 'solid' : 'ghost'} colorScheme={on ? 'brand' : 'gray'}
+                  icon={<Icon size={16} />} onClick={() => setIcon(k)} />
+              )
+            })}
+          </SimpleGrid>
+        </FormControl>
 
-            <FormControl as="fieldset">
-              <FormLabel as="legend">Colour</FormLabel>
-              <HStack spacing={2} flexWrap="wrap" role="radiogroup" aria-label="Colour">
-                <Swatch label="Default" on={!color} onClick={() => setColor(null)} />
-                {CATEGORY_COLOR_KEYS.map((k) => (
-                  <Swatch key={k} label={k} hex={CATEGORY_COLORS[k]} on={color === k}
-                    onClick={() => setColor(k)} />
-                ))}
-              </HStack>
-              <FormHelperText>Used for the category’s icon everywhere in the app.</FormHelperText>
-            </FormControl>
-          </Stack>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={busy}>{isEdit ? 'Save' : 'Add category'}</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+        <FormControl as="fieldset">
+          <FormLabel as="legend">Colour</FormLabel>
+          <HStack spacing={2} flexWrap="wrap" role="radiogroup" aria-label="Colour">
+            <Swatch label="Default" on={!color} onClick={() => setColor(null)} />
+            {CATEGORY_COLOR_KEYS.map((k) => (
+              <Swatch key={k} label={k} hex={CATEGORY_COLORS[k]} on={color === k}
+                onClick={() => setColor(k)} />
+            ))}
+          </HStack>
+          <FormHelperText>Used for the category’s icon everywhere in the app.</FormHelperText>
+        </FormControl>
+      </Stack>
+    </FormModal>
   )
 }
 

@@ -13,6 +13,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import Unfold from '../../shared/ui/kit/Unfold.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
+import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import TransactionForm from './TransactionForm.jsx'
 import TransactionList from './TransactionList.jsx'
@@ -157,13 +158,11 @@ export default function LedgerPage() {
               </FormControl>
               <FormControl>
                 <FormLabel fontSize="xs" color="text.muted">Min ({baseCurrency})</FormLabel>
-                <Input type="number" inputMode="decimal" placeholder="0"
-                  value={filters.min} onChange={(e) => setFilter('min')(e.target.value)} />
+                <MoneyInput placeholder="0" value={filters.min} onChange={setFilter('min')} />
               </FormControl>
               <FormControl>
                 <FormLabel fontSize="xs" color="text.muted">Max ({baseCurrency})</FormLabel>
-                <Input type="number" inputMode="decimal" placeholder="∞"
-                  value={filters.max} onChange={(e) => setFilter('max')(e.target.value)} />
+                <MoneyInput placeholder="∞" value={filters.max} onChange={setFilter('max')} />
               </FormControl>
               <FormControl>
                 <OptionalDate label="From" value={filters.from} onChange={setFilter('from')} />

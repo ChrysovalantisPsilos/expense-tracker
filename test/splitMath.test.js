@@ -70,3 +70,44 @@ test('a foreign expense splits its group amount exactly (equal split = SQL split
   assert.deepEqual(shares, [1658, 1657, 1657]) // db_tests #45: the payer (first) nets 4972 − 1658
   assert.equal(shares.reduce((a, b) => a + b, 0), total)
 })
+
+// ---- Form preview: computeSplit / prefillSplitValues ------------------------
+import { computeSplit, prefillSplitValues } from '../src/features/groups/splitMath.js'
+
+test('computeSplit: equal split is the SQL split_equally', () => {
+  assert.deepEqual(computeSplit('equal', 1000, ['a', 'b', 'c'], {}, 'EUR'),
+    { shares: [334, 333, 333], assigned: 1000, ok: true })
+  assert.equal(computeSplit('equal', 0, ['a'], {}, 'EUR').ok, false)
+  assert.deepEqual(computeSplit('equal', 1000, [], {}, 'EUR'), { shares: [], assigned: 0, ok: false })
+})
+
+test('computeSplit: exact amounts must add up to the total', () => {
+  const ok = computeSplit('exact', 1000, ['a', 'b'], { a: '6.50', b: '3.5' }, 'EUR')
+  assert.deepEqual(ok, { shares: [650, 350], assigned: 1000, ok: true })
+  const short = computeSplit('exact', 1000, ['a', 'b'], { a: '6.50' }, 'EUR')
+  assert.deepEqual(short, { shares: [650, 0], assigned: 650, ok: false })
+  // Zero-decimal group currency: amounts are whole units.
+  assert.deepEqual(computeSplit('exact', 1500, ['a', 'b'], { a: '1000', b: '500' }, 'JPY').shares, [1000, 500])
+})
+
+test('computeSplit: percent needs 100%, shares need any weight; both apportion exactly', () => {
+  const pct = computeSplit('percent', 1000, ['a', 'b', 'c'], { a: '33.3', b: '33.3', c: '33.4' }, 'EUR')
+  assert.equal(pct.ok, true)
+  assert.equal(pct.shares.reduce((x, y) => x + y, 0), 1000)
+  assert.equal(computeSplit('percent', 1000, ['a', 'b'], { a: '50', b: '40' }, 'EUR').ok, false)
+  const sh = computeSplit('shares', 1000, ['a', 'b'], { a: '3', b: '1' }, 'EUR')
+  assert.deepEqual(sh, { shares: [750, 250], assigned: 1000, ok: true, wsum: 4 })
+  assert.equal(computeSplit('shares', 1000, ['a', 'b'], {}, 'EUR').ok, false)
+})
+
+test('prefillSplitValues rebuilds the inputs from stored group-currency shares', () => {
+  const expense = {
+    amount_minor: 900, group_amount_minor: 1000,
+    expense_splits: [{ member_id: 'a', share_minor: 750 }, { member_id: 'b', share_minor: 250 }],
+  }
+  assert.deepEqual(prefillSplitValues(expense, 'exact', 'EUR'), { a: '7.5', b: '2.5' })
+  assert.deepEqual(prefillSplitValues(expense, 'percent', 'EUR'), { a: '75', b: '25' })
+  assert.deepEqual(prefillSplitValues(expense, 'shares', 'EUR'), { a: '750', b: '250' })
+  assert.deepEqual(prefillSplitValues(expense, 'equal', 'EUR'), {})
+  assert.deepEqual(prefillSplitValues(null, 'exact', 'EUR'), {})
+})

@@ -18,3 +18,10 @@ export function sanitizeAmountInput(input) {
   if (dec !== undefined) raw = int + '.' + dec.slice(0, 2)
   return raw
 }
+
+// sanitizeAmountInput for fields that may go below zero (e.g. an overdrawn
+// account balance): a leading "-" (or "−") is kept, anything else as above.
+export function sanitizeSignedAmountInput(input) {
+  const negative = /^\s*[-−]/.test(input)
+  return (negative ? '-' : '') + sanitizeAmountInput(input)
+}

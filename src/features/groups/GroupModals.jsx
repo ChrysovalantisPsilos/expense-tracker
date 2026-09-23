@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Stack, HStack, Text, FormControl, FormLabel, Input, Select, Button, useToast,
-  Box, IconButton, Tooltip,
+  Box, IconButton, Tooltip, Checkbox,
 } from '@chakra-ui/react'
 import { ArrowRight, Wand2, BellRing } from 'lucide-react'
 import {
@@ -16,6 +16,7 @@ import { simplifyDebts } from './splitMath.js'
 import { memberName } from './groupFormat.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import PayShortcuts from './PayShortcuts.jsx'
+import FormModal from '../../shared/ui/FormModal.jsx'
 
 export function DeleteGroupModal({ group, isOpen, onClose, busy, onConfirm }) {
   const [text, setText] = useState('')
@@ -50,6 +51,57 @@ export function DeleteGroupModal({ group, isOpen, onClose, busy, onConfirm }) {
   )
 }
 
+// Leave confirm; `onConfirm(silent)` — silent skips notifying the group.
+export function LeaveGroupModal({ group, isOwner, isOpen, onClose, busy, onConfirm }) {
+  const [silent, setSilent] = useState(false)
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} isCentered>
+      <ModalOverlay />
+      <ModalContent mx={4}>
+        <ModalHeader>Leave “{group.name}”?</ModalHeader>
+        <ModalBody>
+          <Stack spacing={4}>
+            <Text color="text.muted">
+              You can only leave once your balance is settled. Your past expenses
+              stay in the group for everyone else.
+              {isOwner && ' As the owner, ownership passes to another member.'}
+            </Text>
+            <Checkbox isChecked={silent} onChange={(e) => setSilent(e.target.checked)}>
+              <Text fontSize="sm">Leave silently — don’t notify the group</Text>
+            </Checkbox>
+          </Stack>
+        </ModalBody>
+        <ModalFooter gap={2}>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button colorScheme="red" isLoading={busy} onClick={() => onConfirm(silent)}>Leave</Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  )
+}
+
+// Remove-member confirm (owner only); `member` null = closed.
+export function RemoveMemberModal({ member, onClose, busy, onConfirm }) {
+  return (
+    <Modal isOpen={!!member} onClose={onClose} isCentered>
+      <ModalOverlay />
+      <ModalContent mx={4}>
+        <ModalHeader>Remove {member?.display_name}?</ModalHeader>
+        <ModalBody>
+          <Text color="text.muted">
+            They can only be removed if settled up. If they’ve been part of any
+            expenses, their history is kept.
+          </Text>
+        </ModalBody>
+        <ModalFooter gap={2}>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button colorScheme="red" isLoading={busy} onClick={onConfirm}>Remove</Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  )
+}
+
 const INVITE_STATUS_MESSAGE = {
   already_member: 'That person is already in this group.',
   already_invited: 'They already have a pending invite to this group.',
@@ -58,14 +110,13 @@ const INVITE_STATUS_MESSAGE = {
 export function InviteEmailModal({ group, isOpen, onClose }) {
   const toast = useToast()
   const [email, setEmail] = useState('')
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
+  const emailRef = useRef(null)
 
-  async function submit(e) {
-    e.preventDefault()
+  async function submit() {
     const addr = email.trim()
     if (!addr) return
-    setBusy(true)
-    try {
+    await run(async () => {
       // First try to invite an existing Budgeer user (in-app request).
       const status = await inviteExistingUser(group.id, addr)
       if (status === 'invited') {
@@ -86,29 +137,18 @@ export function InviteEmailModal({ group, isOpen, onClose }) {
       } else {
         toast({ title: INVITE_STATUS_MESSAGE[status] ?? 'Couldn’t send the invite.', status: 'error' })
       }
-    } catch (err) {
-      toast({ title: err.message, status: 'error' })
-    } finally { setBusy(false) }
+    })
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent as="form" onSubmit={submit} mx={4}>
-        <ModalHeader>Invite by email</ModalHeader>
-        <ModalBody>
-          <FormControl isRequired>
-            <FormLabel>Email address</FormLabel>
-            <Input type="email" autoFocus value={email}
-              onChange={(e) => setEmail(e.target.value)} placeholder="friend@example.com" />
-          </FormControl>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={busy}>Send invite</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <FormModal isOpen={isOpen} onClose={onClose} title="Invite by email" onSubmit={submit}
+      busy={busy} submitLabel="Send invite" initialFocusRef={emailRef}>
+      <FormControl isRequired>
+        <FormLabel>Email address</FormLabel>
+        <Input ref={emailRef} type="email" value={email}
+          onChange={(e) => setEmail(e.target.value)} placeholder="friend@example.com" />
+      </FormControl>
+    </FormModal>
   )
 }
 
@@ -136,7 +176,7 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
       .filter((t) => t.from === myMember.id || t.to === myMember.id)
   }, [balances, myMember])
 
-  function useSuggestion(t) {
+  function applySuggestion(t) {
     if (t.from === myMember.id) { setDirection('out'); setOtherId(t.to) }
     else { setDirection('in'); setOtherId(t.from) }
     setAmount(String(fromMinor(t.amount, group.currency)))
@@ -149,8 +189,7 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
     } catch (e) { toast({ title: e.message, status: 'info' }) }
   }
 
-  async function submit(e) {
-    e.preventDefault()
+  async function submit() {
     if (!otherId) return toast({ title: 'Pick a person', status: 'warning' })
     if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
     const from = direction === 'out' ? myMember.id : otherId
@@ -166,105 +205,96 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent as="form" onSubmit={submit} mx={4}>
-        <ModalHeader>Settle up</ModalHeader>
-        <ModalBody>
-          {others.length === 0 ? (
-            <Text color="text.muted">Add another member first.</Text>
-          ) : (
-            <Stack spacing={4}>
-              {myPlan.length > 0 && (
-                <Box borderWidth="1px" borderColor="border.default" borderRadius="lg" p={3}>
-                  <HStack mb={2} color="accent.fg">
-                    <Wand2 size={15} />
-                    <Text fontSize="sm" fontWeight="600">Suggested to settle up</Text>
-                  </HStack>
-                  <Stack spacing={1.5}>
-                    {myPlan.map((t, i) => {
-                      const iPay = t.from === myMember.id
-                      return (
-                        <HStack key={i} fontSize="sm">
-                          <Text noOfLines={1} flex="1">
-                            {iPay
-                              ? <>Pay <b>{nameOf(t.to)}</b> {formatMoney(t.amount, group.currency)}</>
-                              : <><b>{nameOf(t.from)}</b> pays you {formatMoney(t.amount, group.currency)}</>}
-                          </Text>
-                          {!iPay && members.find((m) => m.id === t.from)?.user_id && (
-                            <Tooltip label="Send them a reminder">
-                              <IconButton aria-label="Nudge to settle" size="xs" variant="ghost"
-                                icon={<BellRing size={13} />} onClick={() => nudge(t.from)} />
-                            </Tooltip>
-                          )}
-                          <Button size="xs" variant="ghost" onClick={() => useSuggestion(t)}>Use</Button>
-                        </HStack>
-                      )
-                    })}
-                  </Stack>
-                </Box>
-              )}
-              <HStack spacing={2}>
-                <Button flex="1" variant={direction === 'out' ? 'solid' : 'outline'}
-                  colorScheme={direction === 'out' ? 'brand' : 'gray'}
-                  onClick={() => setDirection('out')}>I paid</Button>
-                <Button flex="1" variant={direction === 'in' ? 'solid' : 'outline'}
-                  colorScheme={direction === 'in' ? 'brand' : 'gray'}
-                  onClick={() => setDirection('in')}>I received</Button>
+    <FormModal isOpen={isOpen} onClose={onClose} title="Settle up" onSubmit={submit}
+      busy={busy} submitLabel="Record" submitProps={{ isDisabled: others.length === 0 }}>
+      {others.length === 0 ? (
+        <Text color="text.muted">Add another member first.</Text>
+      ) : (
+        <Stack spacing={4}>
+          {myPlan.length > 0 && (
+            <Box borderWidth="1px" borderColor="border.default" borderRadius="lg" p={3}>
+              <HStack mb={2} color="accent.fg">
+                <Wand2 size={15} />
+                <Text fontSize="sm" fontWeight="600">Suggested to settle up</Text>
               </HStack>
-
-              <FormControl isRequired>
-                <FormLabel>{direction === 'out' ? 'Paid to' : 'Received from'}</FormLabel>
-                <Select value={otherId} onChange={(e) => setOtherId(e.target.value)}>
-                  {others.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
-                </Select>
-                {otherId && (
-                  <Text fontSize="xs" color="text.muted" mt={1}>
-                    {otherNet === 0 ? `${otherName} is settled up`
-                      : otherNet > 0 ? `${otherName} is owed ${formatMoney(otherNet, group.currency)} overall`
-                      : `${otherName} owes ${formatMoney(-otherNet, group.currency)} overall`}
-                  </Text>
-                )}
-              </FormControl>
-
-              <HStack align="end" justify="center" color="text.muted" fontSize="sm">
-                <Text fontWeight="600" color="text.primary">
-                  {direction === 'out' ? 'You' : otherName || '—'}
-                </Text>
-                <ArrowRight size={16} />
-                <Text fontWeight="600" color="text.primary">
-                  {direction === 'out' ? otherName || '—' : 'You'}
-                </Text>
-              </HStack>
-
-              <HStack>
-                <FormControl isRequired>
-                  <FormLabel>Amount ({group.currency})</FormLabel>
-                  <MoneyInput value={amount} onChange={setAmount} />
-                </FormControl>
-                <FormControl maxW="160px">
-                  <FormLabel>Date</FormLabel>
-                  <Input type="date" value={settledAt} onChange={(e) => setSettledAt(e.target.value)} />
-                </FormControl>
-              </HStack>
-
-              {direction === 'out' && otherId && Number(amount) > 0 && (
-                <PayShortcuts
-                  member={others.find((m) => m.id === otherId)}
-                  amountMinor={toMinor(amount, group.currency)}
-                  currency={group.currency}
-                  groupName={group.name}
-                />
-              )}
-            </Stack>
+              <Stack spacing={1.5}>
+                {myPlan.map((t, i) => {
+                  const iPay = t.from === myMember.id
+                  return (
+                    <HStack key={i} fontSize="sm">
+                      <Text noOfLines={1} flex="1">
+                        {iPay
+                          ? <>Pay <b>{nameOf(t.to)}</b> {formatMoney(t.amount, group.currency)}</>
+                          : <><b>{nameOf(t.from)}</b> pays you {formatMoney(t.amount, group.currency)}</>}
+                      </Text>
+                      {!iPay && members.find((m) => m.id === t.from)?.user_id && (
+                        <Tooltip label="Send them a reminder">
+                          <IconButton aria-label="Nudge to settle" size="xs" variant="ghost"
+                            icon={<BellRing size={13} />} onClick={() => nudge(t.from)} />
+                        </Tooltip>
+                      )}
+                      <Button size="xs" variant="ghost" onClick={() => applySuggestion(t)}>Use</Button>
+                    </HStack>
+                  )
+                })}
+              </Stack>
+            </Box>
           )}
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={busy} isDisabled={others.length === 0}>Record</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+          <HStack spacing={2}>
+            <Button flex="1" variant={direction === 'out' ? 'solid' : 'outline'}
+              colorScheme={direction === 'out' ? 'brand' : 'gray'}
+              onClick={() => setDirection('out')}>I paid</Button>
+            <Button flex="1" variant={direction === 'in' ? 'solid' : 'outline'}
+              colorScheme={direction === 'in' ? 'brand' : 'gray'}
+              onClick={() => setDirection('in')}>I received</Button>
+          </HStack>
+
+          <FormControl isRequired>
+            <FormLabel>{direction === 'out' ? 'Paid to' : 'Received from'}</FormLabel>
+            <Select value={otherId} onChange={(e) => setOtherId(e.target.value)}>
+              {others.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
+            </Select>
+            {otherId && (
+              <Text fontSize="xs" color="text.muted" mt={1}>
+                {otherNet === 0 ? `${otherName} is settled up`
+                  : otherNet > 0 ? `${otherName} is owed ${formatMoney(otherNet, group.currency)} overall`
+                  : `${otherName} owes ${formatMoney(-otherNet, group.currency)} overall`}
+              </Text>
+            )}
+          </FormControl>
+
+          <HStack align="end" justify="center" color="text.muted" fontSize="sm">
+            <Text fontWeight="600" color="text.primary">
+              {direction === 'out' ? 'You' : otherName || '—'}
+            </Text>
+            <ArrowRight size={16} />
+            <Text fontWeight="600" color="text.primary">
+              {direction === 'out' ? otherName || '—' : 'You'}
+            </Text>
+          </HStack>
+
+          <HStack>
+            <FormControl isRequired>
+              <FormLabel>Amount ({group.currency})</FormLabel>
+              <MoneyInput value={amount} onChange={setAmount} />
+            </FormControl>
+            <FormControl maxW="160px">
+              <FormLabel>Date</FormLabel>
+              <Input type="date" value={settledAt} onChange={(e) => setSettledAt(e.target.value)} />
+            </FormControl>
+          </HStack>
+
+          {direction === 'out' && otherId && Number(amount) > 0 && (
+            <PayShortcuts
+              member={others.find((m) => m.id === otherId)}
+              amountMinor={toMinor(amount, group.currency)}
+              currency={group.currency}
+              groupName={group.name}
+            />
+          )}
+        </Stack>
+      )}
+    </FormModal>
   )
 }
 
@@ -272,10 +302,10 @@ export function RenameGroupModal({ group, isOpen, onClose, onSaved }) {
   const toast = useToast()
   const [name, setName] = useState(group.name)
   const { busy, run } = useAsyncSubmit()
+  const nameRef = useRef(null)
   useEffect(() => { if (isOpen) setName(group.name) }, [isOpen, group.name])
 
-  async function submit(e) {
-    e.preventDefault()
+  async function submit() {
     if (!name.trim()) return
     await run(async () => {
       await renameGroup(group.id, name.trim())
@@ -285,21 +315,12 @@ export function RenameGroupModal({ group, isOpen, onClose, onSaved }) {
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent as="form" onSubmit={submit} mx={4}>
-        <ModalHeader>Rename group</ModalHeader>
-        <ModalBody>
-          <FormControl isRequired>
-            <FormLabel>Group name</FormLabel>
-            <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} />
-          </FormControl>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={busy}>Save</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <FormModal isOpen={isOpen} onClose={onClose} title="Rename group" onSubmit={submit}
+      busy={busy} initialFocusRef={nameRef}>
+      <FormControl isRequired>
+        <FormLabel>Group name</FormLabel>
+        <Input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} />
+      </FormControl>
+    </FormModal>
   )
 }

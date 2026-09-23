@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   buildTrend, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
+  goalProgress, goalSavedAfter,
 } from '../src/features/insights/insightsMath.js'
 
 const months = [
@@ -110,4 +111,17 @@ test('foreignSpending: this month\'s foreign expenses converted at their capture
 test('foreignSpending: a zero-decimal base currency gets whole minor units', () => {
   const rows = [tx({ id: 1, spent_at: '2026-09-01', amount_minor: 1000, currency: 'EUR', exchange_rate: 160.5, description: 'Hotel' })]
   assert.equal(foreignSpending(rows, '2026-09', 'JPY').totalBaseMinor, 1605)
+})
+
+test('goalProgress: percent, reached flag and a tenth-of-target step', () => {
+  assert.deepEqual(goalProgress({ saved_minor: 2500, target_minor: 10000 }), { pct: 25, done: false, step: 1000 })
+  assert.deepEqual(goalProgress({ saved_minor: 12000, target_minor: 10000 }), { pct: 100, done: true, step: 1000 })
+  assert.deepEqual(goalProgress({ saved_minor: 1, target_minor: 3 }), { pct: 33, done: false, step: 1 })
+  // No target: nothing reached, no divide-by-zero.
+  assert.deepEqual(goalProgress({ saved_minor: 500, target_minor: 0 }), { pct: 0, done: false, step: 1 })
+})
+
+test('goalSavedAfter never goes below zero', () => {
+  assert.equal(goalSavedAfter({ saved_minor: 500 }, 1000), 1500)
+  assert.equal(goalSavedAfter({ saved_minor: 500 }, -1000), 0)
 })

@@ -6,12 +6,13 @@ import {
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, Table as TableIcon, Repeat, ReceiptText, Users } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
-import { useTransactions, buildPeriods, oldestTransactionDate } from '../transactions/useData.js'
+import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
+import { buildPeriods } from '../transactions/periods.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { useRecurring, monthlyMinor, frequencyLabel, expectedInWindow } from '../recurring/recurring.js'
-import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
-import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
+import { useRecurring } from '../recurring/recurring.js'
+import { frequencyLabel } from '../recurring/recurringMath.js'
+import { formatMoney } from '../../shared/lib/currency.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
@@ -25,6 +26,9 @@ import { BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
+import {
+  periodTotals, periodProjection, projectedTotals, recurringOverview,
+} from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 
@@ -53,43 +57,18 @@ export default function Dashboard() {
 
   // Recurring is forward-looking, so it ignores the historical period filter:
   // it always shows what's coming up next plus the monthly subscriptions total.
-  const { subsMonthly, activeRecurring } = useMemo(() => {
-    const active = rules.filter((r) => r.is_active)
-    const subsMonthly = active.reduce((s, r) => s + (r.kind !== 'income' ? monthlyMinor(r) : 0), 0)
-    const activeRecurring = [...active].sort((a, b) => (a.next_run < b.next_run ? -1 : 1))
-    return { subsMonthly, activeRecurring }
-  }, [rules])
+  const { subsMonthly, activeRecurring } = useMemo(() => recurringOverview(rules), [rules])
 
-  const { spent, earned, byCategory, expenses, bucketRow } = useMemo(() => {
-    let spent = 0, earned = 0
-    const expenses = []
-    const bucketRow = new Map() // bucket name → a row in it, for the bar's icon
-    for (const r of rows) {
-      const base = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
-      if (r.kind === 'income') earned += base
-      else {
-        spent += base; expenses.push(r)
-        if (!bucketRow.has(bucketOf(r))) bucketRow.set(bucketOf(r), r)
-      }
-    }
-    const byCategory = [...sumToBaseByKey(expenses, baseCurrency, bucketOf).entries()]
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-    return { spent, earned, byCategory, expenses, bucketRow }
-  }, [rows, baseCurrency])
+  const totals = useMemo(() => periodTotals(rows, baseCurrency), [rows, baseCurrency])
+  const { byCategory, expenses, bucketRow } = totals
   const bars = useMemo(() => categoryBars(byCategory), [byCategory])
 
   // Fold not-yet-charged recurring into the period's spend/income projection,
   // but only for periods that are still ongoing (end today or later). Past
   // periods and "all time" stay purely actual.
   const todayISO = useMemo(() => today(), [])
-  const proj = useMemo(() => {
-    if (!period.to || period.to < todayISO) return { expense: 0, income: 0 }
-    return expectedInWindow(rules, todayISO, period.to)
-  }, [rules, period.to, todayISO])
-  const spentTotal = spent + proj.expense
-  const earnedTotal = earned + proj.income
-  const netTotal = earnedTotal - spentTotal
+  const proj = useMemo(() => periodProjection(rules, period.to, todayISO), [rules, period.to, todayISO])
+  const { spentTotal, earnedTotal, netTotal } = projectedTotals(totals, proj)
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
 
   // Paginate the two lists (10/page). Expenses reset to page 1 when the period

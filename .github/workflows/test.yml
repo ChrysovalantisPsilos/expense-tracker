@@ -3,9 +3,8 @@
 #   show up away from UTC can't hide — see the test:* scripts), lint,
 #   production build, and a dependency audit.
 #
-# Lint policy: `npm run lint` fails on errors and lets warnings through, so
-# known debt doesn't block merges. Once the warning count is 0, switch that
-# step to `npm run lint:strict` (--max-warnings=0) to make warnings blocking.
+# Lint policy: `npm run lint` is strict (--max-warnings=0) — a warning fails
+# the build just like an error.
 name: ci
 on:
   push:

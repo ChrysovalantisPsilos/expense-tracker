@@ -38,6 +38,22 @@ export function netWorth(accounts) {
   return { assets, liabilities, net: assets - liabilities }
 }
 
+// A savings goal's progress: `pct` (0–100, whole), `done` once the target is
+// reached, and `step` — the quick-add increment, a tenth of the target (≥ 1
+// minor unit).
+export function goalProgress({ saved_minor: saved, target_minor: target }) {
+  return {
+    pct: target > 0 ? Math.min(100, Math.round((saved / target) * 100)) : 0,
+    done: target > 0 && saved >= target,
+    step: Math.max(1, Math.round(target / 10)),
+  }
+}
+
+// The saved amount after a quick add/remove of `deltaMinor`; never below zero.
+export function goalSavedAfter(goal, deltaMinor) {
+  return Math.max(0, goal.saved_minor + deltaMinor)
+}
+
 // Y-axis tick label for the trend chart (major units): "800", "1.6k", "2.4k",
 // "120k", "1.5M". One decimal keeps neighbouring ticks distinct, where whole
 // thousands would print 1.6k and 2.4k both as "2k".

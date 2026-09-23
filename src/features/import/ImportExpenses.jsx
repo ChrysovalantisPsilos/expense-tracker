@@ -16,9 +16,10 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, parseManualRate } from '../../shared/lib/currency.js'
 import {
   IMPORT_FIELDS, parseWorkbook, guessMapping, buildTransactions, importTransactions,
-  listRules, saveRule, merchantKey,
+  listRules, saveRule,
 } from './importExpenses.js'
-import { rowToDraft } from './importMath.js'
+import { rowToDraft, merchantKey } from './importMath.js'
+import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 
 export default function ImportExpenses() {
   const navigate = useNavigate()
@@ -32,7 +33,7 @@ export default function ImportExpenses() {
   const [headers, setHeaders] = useState([])
   const [rows, setRows] = useState([])
   const [mapping, setMapping] = useState({})
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
   const [result, setResult] = useState(null)
   const [pending, setPending] = useState(null)   // { valid, errors, groups }
   const [assign, setAssign] = useState({})       // merchant pattern -> category id
@@ -67,8 +68,7 @@ export default function ImportExpenses() {
     if (!mapping.date || !mapping.amount) {
       toast({ title: 'Map both Date and Amount first', status: 'warning' }); return
     }
-    setBusy(true)
-    try {
+    await run(async () => {
       const rules = await listRules().catch(() => [])
       const { valid, errors, missingRates: missing } = await buildTransactions({
         rows, mapping, userId: user.id, baseCurrency, categories, rules, manualRates,
@@ -76,11 +76,11 @@ export default function ImportExpenses() {
       if (missing.length) {
         setMissingRates(missing)
         setStep('rates')
-        setBusy(false); return
+        return
       }
       if (!valid.length) {
         toast({ title: 'Nothing to import', description: 'No rows had a valid date + amount.', status: 'warning' })
-        setBusy(false); return
+        return
       }
       // Unknown merchants: uncategorized rows grouped by merchant key.
       const byMerchant = new Map()
@@ -100,16 +100,13 @@ export default function ImportExpenses() {
         setAssign({})
         setStep('review')
       }
-    } catch (err) {
-      toast({ title: 'Import failed', description: err.message, status: 'error' })
-    } finally { setBusy(false) }
+    }, { errorTitle: 'Import failed' })
   }
 
   // Apply review choices (as both this-import categories and saved rules),
   // then insert. Duplicate-proof: re-imports are skipped server-side.
   async function finishImport(valid, errors, assignments) {
-    setBusy(true)
-    try {
+    await run(async () => {
       const chosen = Object.entries(assignments).filter(([, catId]) => catId)
       for (const [pattern, catId] of chosen) {
         await saveRule(user.id, pattern, catId).catch(() => {}) // rule is a bonus, not a blocker
@@ -123,9 +120,7 @@ export default function ImportExpenses() {
       setResult({ inserted, duplicates, skipped: errors.length, errors: errors.slice(0, 10) })
       setStep('done')
       setPending(null)
-    } catch (err) {
-      toast({ title: 'Import failed', description: err.message, status: 'error' })
-    } finally { setBusy(false) }
+    }, { errorTitle: 'Import failed' })
   }
 
   return (

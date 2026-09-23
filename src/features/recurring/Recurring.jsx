@@ -14,9 +14,8 @@ import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
-import {
-  useRecurring, monthlyMinor, frequencyLabel, setRecurringActive, deleteRecurring,
-} from './recurring.js'
+import { useRecurring, setRecurringActive, deleteRecurring } from './recurring.js'
+import { monthlyMinor, frequencyLabel } from './recurringMath.js'
 import RecurringForm from './RecurringForm.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom'
 import {
   Box, Flex, HStack, VStack, IconButton, Text, Spacer, Tooltip,
@@ -11,9 +11,11 @@ import {
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/ProfileProvider.jsx'
 import Logo from '../shared/ui/Logo.jsx'
+import PageSpinner from '../shared/ui/PageSpinner.jsx'
 import OfflineIndicator from '../shared/ui/OfflineIndicator.jsx'
 import ThemeToggle from '../shared/ui/ThemeToggle.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
+import { useNotificationFeed } from '../features/notifications/notifications.js'
 import { isNavActive } from './navMatch.js'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
@@ -83,6 +85,8 @@ function TabItem({ to, label, icon: Icon }) {
 export default function AppShell() {
   const { signOut } = useAuth()
   const { profile } = useProfile()
+  // One live feed for both bells (mobile top bar + desktop header).
+  const feed = useNotificationFeed()
   const location = useLocation()
   const [, setTick] = useState(0)
   useEffect(() => { setTick((n) => n + 1) }, [location])
@@ -139,7 +143,7 @@ export default function AppShell() {
           <Logo size={26} />
           <Spacer />
           <OfflineIndicator />
-          <NotificationBell />
+          <NotificationBell feed={feed} />
           <ThemeToggle />
           <RouterLink to="/settings" aria-label="Settings">
             <UserAvatar size="sm" name={profile?.display_name}
@@ -151,12 +155,15 @@ export default function AppShell() {
         <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end" align="center"
           gap={2} px={6} pt={4}>
           <OfflineIndicator />
-          <NotificationBell />
+          <NotificationBell feed={feed} />
         </Flex>
 
         <Box as="main" flex="1" px={{ base: 4, md: 6 }} py={{ base: 4, md: 4 }}
           pb={{ base: '92px', md: 8 }} maxW="900px" w="full" mx="auto">
-          <Outlet />
+          {/* Pages are lazy chunks: the shell stays put while one loads. */}
+          <Suspense fallback={<PageSpinner />}>
+            <Outlet />
+          </Suspense>
         </Box>
       </Flex>
 

@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   Stack, HStack, Text, Button, Center, Spinner, Box, Divider, Select, Input,
-  FormControl, FormLabel, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
-  ModalFooter, useToast, useDisclosure,
+  FormControl, FormLabel, useToast, useDisclosure,
 } from '@chakra-ui/react'
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, CartesianGrid,
@@ -11,6 +10,8 @@ import {
   Plus, Pencil, Trash2, PiggyBank, Landmark, CreditCard, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
+import MoneyInput from '../../shared/ui/MoneyInput.jsx'
+import FormModal from '../../shared/ui/FormModal.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
@@ -34,6 +35,7 @@ import {
 } from './insights.js'
 import {
   buildTrend, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
+  goalProgress, goalSavedAfter,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
@@ -252,49 +254,38 @@ function AccountModal({ account, baseCurrency, onClose, onSaved }) {
   const [currency] = useState(account?.currency ?? baseCurrency)
   const { busy, run } = useAsyncSubmit()
 
-  async function submit(e) {
-    e.preventDefault()
+  async function submit() {
     if (!name.trim()) return toast({ title: 'Name it', status: 'warning' })
     await run(async () => {
       await saveAccount({
         id: account?.id, name: name.trim(), type,
-        balance_minor: toMinor(balance || '0', currency), currency,
+        balance_minor: toMinor(Number(balance) || 0, currency), currency,
       })
       onSaved()
     })
   }
 
   return (
-    <Modal isOpen onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent as="form" onSubmit={submit} mx={4}>
-        <ModalHeader>{isEdit ? 'Edit account' : 'Add account'}</ModalHeader>
-        <ModalBody>
-          <Stack spacing={4}>
-            <FormControl isRequired>
-              <FormLabel>Name</FormLabel>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Checking, Visa, Savings…" />
-            </FormControl>
-            <FormControl>
-              <FormLabel>Type</FormLabel>
-              <Select value={type} onChange={(e) => setType(e.target.value)}>
-                <option value="asset">Asset (what you own)</option>
-                <option value="liability">Debt (what you owe)</option>
-              </Select>
-            </FormControl>
-            <FormControl isRequired>
-              <FormLabel>Balance ({currency})</FormLabel>
-              <Input type="number" inputMode="decimal" value={balance}
-                onChange={(e) => setBalance(e.target.value)} placeholder="0" />
-            </FormControl>
-          </Stack>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={busy}>{isEdit ? 'Save' : 'Add'}</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <FormModal isOpen onClose={onClose} title={isEdit ? 'Edit account' : 'Add account'}
+      onSubmit={submit} busy={busy} submitLabel={isEdit ? 'Save' : 'Add'}>
+      <Stack spacing={4}>
+        <FormControl isRequired>
+          <FormLabel>Name</FormLabel>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Checking, Visa, Savings…" />
+        </FormControl>
+        <FormControl>
+          <FormLabel>Type</FormLabel>
+          <Select value={type} onChange={(e) => setType(e.target.value)}>
+            <option value="asset">Asset (what you own)</option>
+            <option value="liability">Debt (what you owe)</option>
+          </Select>
+        </FormControl>
+        <FormControl isRequired>
+          <FormLabel>Balance ({currency})</FormLabel>
+          <MoneyInput allowNegative value={balance} onChange={setBalance} placeholder="0" />
+        </FormControl>
+      </Stack>
+    </FormModal>
   )
 }
 
@@ -312,7 +303,7 @@ function GoalsCard({ baseCurrency }) {
   async function addTo(g, deltaMinor) {
     try {
       // Send the full goal — the encrypting save RPC rewrites every field.
-      await saveGoal({ ...g, saved_minor: Math.max(0, g.saved_minor + deltaMinor) })
+      await saveGoal({ ...g, saved_minor: goalSavedAfter(g, deltaMinor) })
       reload()
     } catch (e) { toast({ title: e.message, status: 'error' }) }
   }
@@ -327,9 +318,7 @@ function GoalsCard({ baseCurrency }) {
       ) : (
         <Stack spacing={5}>
           {goals.map((g) => {
-            const pct = g.target_minor > 0 ? Math.min(100, Math.round((g.saved_minor / g.target_minor) * 100)) : 0
-            const done = g.saved_minor >= g.target_minor && g.target_minor > 0
-            const step = Math.max(1, Math.round(g.target_minor / 10))
+            const { pct, done, step } = goalProgress(g)
             const by = g.target_date ? ` · by ${shortDate(g.target_date)}` : ''
             return (
               <Box key={g.id}>
@@ -375,8 +364,7 @@ function GoalModal({ goal, baseCurrency, onClose, onSaved }) {
   const [targetDate, setTargetDate] = useState(goal?.target_date ?? '')
   const { busy, run } = useAsyncSubmit()
 
-  async function submit(e) {
-    e.preventDefault()
+  async function submit() {
     if (!name.trim()) return toast({ title: 'Name it', status: 'warning' })
     if (!target || Number(target) <= 0) return toast({ title: 'Set a target', status: 'warning' })
     await run(async () => {
@@ -390,38 +378,27 @@ function GoalModal({ goal, baseCurrency, onClose, onSaved }) {
   }
 
   return (
-    <Modal isOpen onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent as="form" onSubmit={submit} mx={4}>
-        <ModalHeader>{isEdit ? 'Edit goal' : 'New goal'}</ModalHeader>
-        <ModalBody>
-          <Stack spacing={4}>
-            <FormControl isRequired>
-              <FormLabel>Name</FormLabel>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Emergency fund, holiday…" />
-            </FormControl>
-            <HStack>
-              <FormControl isRequired>
-                <FormLabel>Target ({currency})</FormLabel>
-                <Input type="number" inputMode="decimal" value={target}
-                  onChange={(e) => setTarget(e.target.value)} placeholder="0" />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Saved so far</FormLabel>
-                <Input type="number" inputMode="decimal" value={saved}
-                  onChange={(e) => setSaved(e.target.value)} placeholder="0" />
-              </FormControl>
-            </HStack>
-            <FormControl>
-              <OptionalDate label="Set a target date" value={targetDate} onChange={setTargetDate} />
-            </FormControl>
-          </Stack>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={busy}>{isEdit ? 'Save' : 'Add'}</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <FormModal isOpen onClose={onClose} title={isEdit ? 'Edit goal' : 'New goal'}
+      onSubmit={submit} busy={busy} submitLabel={isEdit ? 'Save' : 'Add'}>
+      <Stack spacing={4}>
+        <FormControl isRequired>
+          <FormLabel>Name</FormLabel>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Emergency fund, holiday…" />
+        </FormControl>
+        <HStack>
+          <FormControl isRequired>
+            <FormLabel>Target ({currency})</FormLabel>
+            <MoneyInput value={target} onChange={setTarget} placeholder="0" />
+          </FormControl>
+          <FormControl>
+            <FormLabel>Saved so far</FormLabel>
+            <MoneyInput value={saved} onChange={setSaved} placeholder="0" />
+          </FormControl>
+        </HStack>
+        <FormControl>
+          <OptionalDate label="Set a target date" value={targetDate} onChange={setTargetDate} />
+        </FormControl>
+      </Stack>
+    </FormModal>
   )
 }

@@ -56,11 +56,9 @@ export function guessMapping(headers) {
   return m
 }
 
-// Pure helpers (merchant keys, parsing, deterministic identity) live in
-// importMath.js so they're unit-testable; merchantKey is re-exported for the
-// wizard page.
-import { merchantKey, deterministicUuid, parseAmount, rowToDraft } from './importMath.js'
-export { merchantKey }
+// Pure helpers (parsing, drafts, deterministic identity) live in
+// importMath.js so they're unit-testable.
+import { deterministicUuid, parseAmount, rowToDraft } from './importMath.js'
 
 // The user's saved auto-categorization rules.
 export async function listRules() {

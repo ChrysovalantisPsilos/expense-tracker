@@ -17,7 +17,7 @@ import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { BRAND, loadBrandFonts, money, Statement } from '../_shared/pdf.ts'
 import { withCors, json, callerClient } from '../_shared/http.ts'
-import { minorFactor } from '../_shared/money.ts'
+import { buildStatement, pendingNote } from './statementMath.ts'
 
 interface Body {
   from: string
@@ -52,42 +52,19 @@ Deno.serve(withCors(async (req) => {
       .rpc('my_transactions', { p_from: from, p_to: to })
     if (error) throw error
 
-    // The RPC returns newest first; the statement reads oldest first.
-    const rows = (txns ?? []).slice().reverse().map((t) => {
-      const sf = minorFactor(t.currency)
-      // Mirrored group expenses bucket under their group's name; everything else
-      // uses its category (matching the in-app breakdown).
-      const category = t.group_expense_id
-        ? (t.group_expenses?.groups?.name ?? 'Group')
-        : (t.categories?.name ?? 'Uncategorized')
-      return {
-        date: t.spent_at,
-        kind: t.kind,
-        category,
-        description: t.description ?? '',
-        currency: t.currency,
-        amount: t.amount_minor / sf,
-        // rate is major-per-major, so divide source minor by its own factor first.
-        base_amount: (t.amount_minor / sf) * Number(t.exchange_rate),
-      }
-    })
-
-    const totalSpent = rows.filter((r) => r.kind === 'expense').reduce((s, r) => s + r.base_amount, 0)
-    const totalIncome = rows.filter((r) => r.kind === 'income').reduce((s, r) => s + r.base_amount, 0)
-
-    const byCategory: Record<string, number> = {}
-    for (const r of rows.filter((r) => r.kind === 'expense')) {
-      byCategory[r.category] = (byCategory[r.category] ?? 0) + r.base_amount
-    }
+    // Oldest first; foreign rows whose rate is still pending are listed but
+    // kept out of every total (see statementMath.ts).
+    const stmt = buildStatement(txns ?? [], base)
+    const note = pendingNote(stmt.pending)
 
     if (format === 'pdf') {
-      const bytes = await buildPdf({ from, to, base, rows, totalSpent, totalIncome, byCategory, name: profile?.display_name })
+      const bytes = await buildPdf({ from, to, base, ...stmt, note, name: profile?.display_name })
       return new Response(bytes, {
         headers: { 'Content-Type': 'application/pdf' },
       })
     }
 
-    const bytes = buildXlsx({ base, rows, totalSpent, totalIncome, byCategory })
+    const bytes = buildXlsx({ base, ...stmt, note })
     return new Response(bytes, {
       headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     })
@@ -104,7 +81,7 @@ function safeCell(v: unknown) {
   return v
 }
 
-function buildXlsx({ base, rows, totalSpent, totalIncome, byCategory }: any): Uint8Array {
+function buildXlsx({ base, rows, totalSpent, totalIncome, byCategory, note }: any): Uint8Array {
   const wb = XLSX.utils.book_new()
   const summary = [
     ['Financial Statement'],
@@ -113,6 +90,7 @@ function buildXlsx({ base, rows, totalSpent, totalIncome, byCategory }: any): Ui
     ['Total income', totalIncome],
     ['Total expenses', totalSpent],
     ['Net', totalIncome - totalSpent],
+    ...(note ? [[note]] : []),
     [],
     ['Spending by category'],
     ...Object.entries(byCategory).sort((a: any, b: any) => b[1] - a[1])
@@ -123,7 +101,8 @@ function buildXlsx({ base, rows, totalSpent, totalIncome, byCategory }: any): Ui
   const txnSheet = XLSX.utils.json_to_sheet(
     rows.map((r: any) => ({
       Date: r.date, Type: r.kind, Category: safeCell(r.category), Description: safeCell(r.description),
-      Currency: r.currency, Amount: r.amount, [`Amount (${base})`]: r.base_amount,
+      Currency: r.currency, Amount: r.amount,
+      [`Amount (${base})`]: r.base_amount ?? 'Rate pending',
     })),
   )
   XLSX.utils.book_append_sheet(wb, txnSheet, 'Transactions')
@@ -131,7 +110,7 @@ function buildXlsx({ base, rows, totalSpent, totalIncome, byCategory }: any): Ui
 }
 
 async function buildPdf(
-  { from, to, base, rows, totalSpent, totalIncome, byCategory, name }: any,
+  { from, to, base, rows, totalSpent, totalIncome, byCategory, note, name }: any,
 ): Promise<Uint8Array> {
   const pdf = await PDFDocument.create()
   const fonts = await loadBrandFonts(pdf)
@@ -145,6 +124,7 @@ async function buildPdf(
     { label: 'Expenses', value: money(totalSpent, base), color: BRAND.coral },
     { label: 'Net', value: money(net, base), color: net < 0 ? BRAND.red : BRAND.ink },
   ])
+  if (note) doc.muted(`* ${note}`)
 
   const cats = Object.entries(byCategory)
     .map(([label, value]) => ({ label, value: Number(value) }))
@@ -169,7 +149,10 @@ async function buildPdf(
         r.date,
         r.category,
         r.description || '—',
-        { text: money(r.base_amount, ''), color: r.kind === 'income' ? BRAND.green : BRAND.ink },
+        r.base_amount == null
+          // Rate pending: its own currency, starred (see the note up top).
+          ? { text: `${money(r.amount, r.currency)} *`, color: BRAND.muted }
+          : { text: money(r.base_amount, ''), color: r.kind === 'income' ? BRAND.green : BRAND.ink },
       ]),
     )
   }

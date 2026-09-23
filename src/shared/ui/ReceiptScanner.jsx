@@ -4,13 +4,14 @@ import {
 } from '@chakra-ui/react'
 import { Camera, X } from 'lucide-react'
 import { scanReceipt } from '../lib/receiptScan.js'
+import { useAsyncSubmit } from '../lib/useAsyncSubmit.js'
 
 // Opens the phone's native camera, OCRs the photo on-device, and reports the
 // extracted total + date (and the file) up to the parent to prefill the form.
 export default function ReceiptScanner({ onScan }) {
   const inputRef = useRef(null)
   const [preview, setPreview] = useState(null)
-  const [busy, setBusy] = useState(false)
+  const { busy, run } = useAsyncSubmit()
   const [progress, setProgress] = useState(0)
   const toast = useToast()
 
@@ -19,9 +20,8 @@ export default function ReceiptScanner({ onScan }) {
     e.target.value = '' // allow re-picking the same file
     if (!file) return
     setPreview(URL.createObjectURL(file))
-    setBusy(true)
     setProgress(0)
-    try {
+    await run(async () => {
       const { total, date } = await scanReceipt(file, setProgress)
       onScan?.({ total, date })
       if (total == null && date == null) {
@@ -34,11 +34,7 @@ export default function ReceiptScanner({ onScan }) {
           status: 'success',
         })
       }
-    } catch (err) {
-      toast({ title: 'Scan failed', description: err.message, status: 'error' })
-    } finally {
-      setBusy(false)
-    }
+    }, { errorTitle: 'Scan failed' })
   }
 
   function clear() {

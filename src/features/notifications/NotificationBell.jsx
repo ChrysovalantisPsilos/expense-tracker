@@ -7,10 +7,8 @@ import {
   Bell, UserPlus, ReceiptText, HandCoins, MessageSquare, CalendarClock,
   UserCheck, UserMinus, PiggyBank, BarChart3, BellRing,
 } from 'lucide-react'
-import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { useLiveQuery } from '../../shared/lib/db.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
-import { listNotifications, markAllRead } from './notifications.js'
+import { markAllRead } from './notifications.js'
 
 const ICON = {
   invite: UserPlus, expense: ReceiptText, settlement: HandCoins,
@@ -19,17 +17,12 @@ const ICON = {
   budget: PiggyBank, digest: BarChart3, nudge: BellRing,
 }
 
-export default function NotificationBell() {
+// `feed` is the shell's one useNotificationFeed() — the mobile and desktop
+// bells share it rather than each opening a channel.
+export default function NotificationBell({ feed }) {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const { isOpen, onOpen, onClose } = useDisclosure()
-  // Live: new notifications appear instantly; reconnect/visibility catch up.
-  const { data: items, error, reload, mutate: setItems } = useLiveQuery(listNotifications, {
-    key: 'bell',
-    specs: [{ table: 'notifications', filter: `user_id=eq.${user.id}` }],
-    deps: [user.id],
-    initial: [],
-  })
+  const { items, error, reload, setItems } = feed
 
   const unread = items.filter((n) => !n.read_at).length
 

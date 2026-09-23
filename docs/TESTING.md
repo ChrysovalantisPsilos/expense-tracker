@@ -11,9 +11,8 @@ Four layers:
    date bugs hide in UTC.
 2. **Lint** (`npm run lint`, ESLint 9, `eslint.config.js`): React, hooks,
    a11y, unused imports (an error), and the ban on `shared/` importing from
-   `features/`. It fails on errors and lets warnings through;
-   `npm run lint:strict` also fails on warnings, and is the target once the
-   backlog is clear.
+   `features/`. It is strict (`--max-warnings=0`): a warning fails it just
+   like an error.
 3. **Database tests** (`supabase/tests/db_tests.sql`): triggers, RLS,
    definer functions, rate limits, encryption guards and notifications.
    Paste the file into the Supabase SQL editor, or run

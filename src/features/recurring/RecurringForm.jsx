@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import {
-  Stack, HStack, Text, Button, Switch, Modal, ModalOverlay, ModalContent, ModalHeader,
-  ModalBody, ModalFooter, FormControl, FormHelperText, FormLabel, Input, Select, useToast,
+  Stack, HStack, Text, Button, Switch, FormControl, FormHelperText, FormLabel, Input, Select, useToast,
   NumberInput, NumberInputField,
 } from '@chakra-ui/react'
 import { Bell } from 'lucide-react'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
+import FormModal from '../../shared/ui/FormModal.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { toMinor, fromMinor } from '../../shared/lib/currency.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { enablePush } from '../../shared/lib/push.js'
-import { FREQUENCIES, saveRecurring } from './recurring.js'
-import { nextRunAfter } from './recurringMath.js'
+import { saveRecurring } from './recurring.js'
+import { FREQUENCIES, nextRunAfter } from './recurringMath.js'
 
 // Add or edit a recurring rule. `rule` edits an existing one; `initial` starts a
 // new one pre-filled from a transaction ("Make recurring": ruleFromTransaction
@@ -65,8 +65,7 @@ export default function RecurringForm({ rule, initial, baseCurrency, onClose, on
     }
   }
 
-  async function submit(e) {
-    e.preventDefault()
+  async function submit() {
     if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
     await run(async () => {
       await saveRecurring({
@@ -93,101 +92,93 @@ export default function RecurringForm({ rule, initial, baseCurrency, onClose, on
   }
 
   return (
-    <Modal isOpen onClose={onClose} isCentered scrollBehavior="inside">
-      <ModalOverlay />
-      <ModalContent as="form" onSubmit={submit} mx={4}>
-        <ModalHeader>{isEdit ? 'Edit recurring entry' : initial ? 'Make recurring' : 'New recurring entry'}</ModalHeader>
-        <ModalBody>
-          <Stack spacing={4}>
-            <HStack spacing={2}>
-              <Button flex="1" variant={kind === 'expense' ? 'solid' : 'outline'}
-                colorScheme={kind === 'expense' ? 'brand' : 'gray'}
-                onClick={() => { setKind('expense'); setCategoryId('') }}>Expense</Button>
-              <Button flex="1" variant={kind === 'income' ? 'solid' : 'outline'}
-                colorScheme={kind === 'income' ? 'brand' : 'gray'}
-                onClick={() => { setKind('income'); setCategoryId('') }}>Income</Button>
-            </HStack>
+    <FormModal isOpen onClose={onClose} scrollBehavior="inside" onSubmit={submit} busy={busy}
+      title={isEdit ? 'Edit recurring entry' : initial ? 'Make recurring' : 'New recurring entry'}
+      submitLabel={isEdit ? 'Save' : 'Add'}>
+      <Stack spacing={4}>
+        <HStack spacing={2}>
+          <Button flex="1" variant={kind === 'expense' ? 'solid' : 'outline'}
+            colorScheme={kind === 'expense' ? 'brand' : 'gray'}
+            onClick={() => { setKind('expense'); setCategoryId('') }}>Expense</Button>
+          <Button flex="1" variant={kind === 'income' ? 'solid' : 'outline'}
+            colorScheme={kind === 'income' ? 'brand' : 'gray'}
+            onClick={() => { setKind('income'); setCategoryId('') }}>Income</Button>
+        </HStack>
 
-            <FormControl isRequired>
-              <FormLabel>Description</FormLabel>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)}
-                placeholder={kind === 'income' ? 'Salary' : 'Netflix, rent, gym…'} />
-            </FormControl>
+        <FormControl isRequired>
+          <FormLabel>Description</FormLabel>
+          <Input value={description} onChange={(e) => setDescription(e.target.value)}
+            placeholder={kind === 'income' ? 'Salary' : 'Netflix, rent, gym…'} />
+        </FormControl>
 
-            <FormControl isRequired>
-              <FormLabel>Amount ({currency})</FormLabel>
-              <MoneyInput value={amount} onChange={setAmount} />
-            </FormControl>
+        <FormControl isRequired>
+          <FormLabel>Amount ({currency})</FormLabel>
+          <MoneyInput value={amount} onChange={setAmount} />
+        </FormControl>
 
-            <FormControl>
-              <FormLabel>Category</FormLabel>
-              <Select placeholder="Uncategorized" value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </Select>
-            </FormControl>
+        <FormControl>
+          <FormLabel>Category</FormLabel>
+          <Select placeholder="Uncategorized" value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
+        </FormControl>
 
-            <HStack align="end">
-              <FormControl maxW="120px">
-                <FormLabel>Every</FormLabel>
-                <NumberInput min={1} value={intervalN}
-                  onChange={(v) => { setIntervalN(v); follow(frequency, v) }}>
-                  <NumberInputField />
-                </NumberInput>
-              </FormControl>
-              <FormControl>
-                <FormLabel>Frequency</FormLabel>
-                <Select value={frequency}
-                  onChange={(e) => { setFrequency(e.target.value); follow(e.target.value, intervalN) }}>
-                  {FREQUENCIES.map((f) => (
-                    <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>
-                  ))}
-                </Select>
-              </FormControl>
-            </HStack>
+        <HStack align="end">
+          <FormControl maxW="120px">
+            <FormLabel>Every</FormLabel>
+            <NumberInput min={1} value={intervalN}
+              onChange={(v) => { setIntervalN(v); follow(frequency, v) }}>
+              <NumberInputField />
+            </NumberInput>
+          </FormControl>
+          <FormControl>
+            <FormLabel>Frequency</FormLabel>
+            <Select value={frequency}
+              onChange={(e) => { setFrequency(e.target.value); follow(e.target.value, intervalN) }}>
+              {FREQUENCIES.map((f) => (
+                <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>
+              ))}
+            </Select>
+          </FormControl>
+        </HStack>
 
-            <FormControl>
-              <FormLabel>Next charge</FormLabel>
-              <Input type="date" value={nextRun}
-                onChange={(e) => { setNextRun(e.target.value); setNextTouched(true) }} />
-              {initial?.from_date && (
-                <FormHelperText>
-                  {`The entry on ${shortDate(initial.from_date)} counts as the first one.`}
-                  {!isEdit && nextRun < today() && ' Charges from then until today are added automatically tonight.'}
-                </FormHelperText>
-              )}
-            </FormControl>
-            <FormControl>
-              <OptionalDate label="Set an end date" value={endDate} onChange={setEndDate} />
-            </FormControl>
+        <FormControl>
+          <FormLabel>Next charge</FormLabel>
+          <Input type="date" value={nextRun}
+            onChange={(e) => { setNextRun(e.target.value); setNextTouched(true) }} />
+          {initial?.from_date && (
+            <FormHelperText>
+              {`The entry on ${shortDate(initial.from_date)} counts as the first one.`}
+              {!isEdit && nextRun < today() && ' Charges from then until today are added automatically tonight.'}
+            </FormHelperText>
+          )}
+        </FormControl>
+        <FormControl>
+          <OptionalDate label="Set an end date" value={endDate} onChange={setEndDate} />
+        </FormControl>
 
-            <FormControl>
-              <HStack justify="space-between">
-                <FormLabel mb={0} htmlFor="remind-switch">
-                  <HStack spacing={2}>
-                    <Bell size={15} />
-                    <Text>Remind me before each charge</Text>
-                  </HStack>
-                </FormLabel>
-                <Switch id="remind-switch" isChecked={remind} onChange={toggleRemind} />
+        <FormControl>
+          <HStack justify="space-between">
+            <FormLabel mb={0} htmlFor="remind-switch">
+              <HStack spacing={2}>
+                <Bell size={15} />
+                <Text>Remind me before each charge</Text>
               </HStack>
-              {remind && (
-                <HStack mt={3} spacing={2}>
-                  <NumberInput min={1} max={60} maxW="90px" value={remindDays}
-                    onChange={setRemindDays}>
-                    <NumberInputField />
-                  </NumberInput>
-                  <Text fontSize="sm" color="text.muted">days before, via notification</Text>
-                </HStack>
-              )}
-            </FormControl>
-          </Stack>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={busy}>{isEdit ? 'Save' : 'Add'}</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+            </FormLabel>
+            <Switch id="remind-switch" isChecked={remind} onChange={toggleRemind} />
+          </HStack>
+          {remind && (
+            <HStack mt={3} spacing={2}>
+              <NumberInput min={1} max={60} maxW="90px" value={remindDays}
+                onChange={setRemindDays}>
+                <NumberInputField />
+              </NumberInput>
+              <Text fontSize="sm" color="text.muted">days before, via notification</Text>
+            </HStack>
+          )}
+        </FormControl>
+      </Stack>
+    </FormModal>
   )
 }

@@ -1,11 +1,6 @@
 import { useOwnedQuery, removeRow } from '../../shared/lib/db.js'
 import { supabase } from '../../shared/lib/supabase.js'
 
-// Pure math lives in recurringMath.js (unit-tested); re-exported for callers.
-export {
-  FREQUENCIES, monthlyMinor, frequencyLabel, expectedInWindow,
-} from './recurringMath.js'
-
 // A rule's amount and description are encrypted at rest, so reads go through
 // the decrypting `my_recurring_rules` RPC (active first, then by next charge
 // date; rows keep the `categories` embed) and writes through the encrypting
