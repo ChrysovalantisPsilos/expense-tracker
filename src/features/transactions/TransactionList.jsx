@@ -20,7 +20,7 @@ import { saveErrorToast } from '../../shared/lib/saveError.js'
 // edited in the group — and show their group's tag under the title instead.
 // On phones the row actions fold into a ⋯ menu.
 // Each row's income/expense styling follows its own `kind`, so the same
-// list renders single-kind pages (Income/Expenses) and mixed search results.
+// list renders every mode of the Transactions page (Expenses, Income, All).
 const kindOf = (r, fallback) => r.kind ?? fallback
 export default function TransactionList({ rows, kind, baseCurrency, mutate, reload }) {
   const toast = useToast()

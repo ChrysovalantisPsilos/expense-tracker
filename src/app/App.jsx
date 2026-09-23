@@ -9,11 +9,9 @@ import VerifyEmail from '../features/auth/VerifyEmail.jsx'
 import ForgotPassword from '../features/auth/ForgotPassword.jsx'
 import ResetPassword from '../features/auth/ResetPassword.jsx'
 import Dashboard from '../features/dashboard/Dashboard.jsx'
-import Expenses from '../features/transactions/Expenses.jsx'
 import ImportExpenses from '../features/import/ImportExpenses.jsx'
 import Budgets from '../features/budgets/Budgets.jsx'
-import Income from '../features/transactions/Income.jsx'
-import SearchTransactions from '../features/transactions/SearchTransactions.jsx'
+import LedgerPage from '../features/transactions/LedgerPage.jsx'
 import Recurring from '../features/recurring/Recurring.jsx'
 import Insights from '../features/insights/Insights.jsx'
 import More from './More.jsx'
@@ -81,14 +79,12 @@ function AuthedRoutes() {
         <Route path="/privacy" element={<Privacy />} />
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
-          <Route path="search" element={<SearchTransactions />} />
           <Route path="recurring" element={<Recurring />} />
           <Route path="insights" element={<Insights />} />
           <Route path="more" element={<More />} />
-          <Route path="expenses" element={<Expenses />} />
+          <Route path="transactions" element={<LedgerPage />} />
           <Route path="import" element={<ImportExpenses />} />
           <Route path="budgets" element={<Budgets />} />
-          <Route path="income" element={<Income />} />
           <Route path="groups" element={<Groups />} />
           <Route path="groups/:id" element={<GroupDetail />} />
           <Route path="settings" element={<Settings />} />
@@ -99,6 +95,12 @@ function AuthedRoutes() {
           <Route path="settings/data" element={<YourData />} />
           {/* Old name for Settings — keeps bookmarks and old links working. */}
           <Route path="profile" element={<Navigate to="/settings" replace />} />
+          {/* Expenses, Income and Search became one Transactions page. */}
+          <Route path="expenses" element={<Navigate to="/transactions?type=expense" replace />} />
+          <Route path="income" element={<Navigate to="/transactions?type=income" replace />} />
+          <Route path="search" element={
+            <Navigate to="/transactions?type=all" replace state={{ focusSearch: true }} />
+          } />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

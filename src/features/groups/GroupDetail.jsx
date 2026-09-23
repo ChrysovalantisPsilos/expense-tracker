@@ -24,6 +24,7 @@ import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import CardHeader from '../../shared/ui/CardHeader.jsx'
 import RowAmount from '../../shared/ui/RowAmount.jsx'
+import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
 import CommentThread from './CommentThread.jsx'
 import {
@@ -273,13 +274,8 @@ export default function GroupDetail() {
       {/* History — tabbed (Expenses / Settlements / Activity) */}
       <Card><CardBody>
         <HStack mb={4}>
-          <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
-            {[['expenses', 'Expenses'], ['settlements', 'Settlements'], ['activity', 'Activity']].map(([t, label]) => (
-              <Button key={t} size="xs" borderRadius="md"
-                variant={tab === t ? 'solid' : 'ghost'} colorScheme={tab === t ? 'brand' : 'gray'}
-                onClick={() => setTab(t)}>{label}</Button>
-            ))}
-          </HStack>
+          <SegmentedControl label="History" value={tab} onChange={setTab}
+            options={[['expenses', 'Expenses'], ['settlements', 'Settlements'], ['activity', 'Activity']]} />
           <Spacer />
           {tab === 'activity' && (
             <Button size="xs" variant="ghost" leftIcon={<FileDown size={14} />}

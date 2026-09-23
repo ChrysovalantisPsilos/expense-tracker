@@ -50,7 +50,7 @@ src/
   auth/          AuthProvider + session handling
   components/    AppShell (nav), TransactionForm
   lib/           supabase client, currency, offline queue, data hooks
-  pages/         Login, Dashboard, Expenses, Budgets, Income, Reports
+  pages/         Login, Dashboard, Transactions (expenses + income + search), Budgets, Reports
 supabase/
   migrations/    0001_init.sql  (schema + RLS + seed)
   functions/     generate-report (xlsx + pdf edge function)

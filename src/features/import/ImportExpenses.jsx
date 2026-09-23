@@ -119,9 +119,9 @@ export default function ImportExpenses() {
 
   return (
     <Stack spacing={5} maxW="760px">
-      <PageHeader eyebrow="Expenses" title="Import from Excel" leading={
+      <PageHeader eyebrow="Transactions" title="Import from Excel" leading={
         <IconButton aria-label="Back" variant="ghost" size="sm" ml={-2} flexShrink={0}
-          icon={<ArrowLeft size={18} />} onClick={() => navigate('/expenses')} />
+          icon={<ArrowLeft size={18} />} onClick={() => navigate('/transactions')} />
       } />
 
       {step === 'upload' && (
@@ -254,7 +254,7 @@ export default function ImportExpenses() {
             )}
             <HStack pt={2}>
               <Button variant="ghost" onClick={() => { setStep('upload'); setResult(null) }}>Import another</Button>
-              <Button onClick={() => navigate('/expenses')}>View expenses</Button>
+              <Button onClick={() => navigate('/transactions?type=all')}>View transactions</Button>
             </HStack>
           </Stack>
         </CardBody></Card>

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Outlet, NavLink as RouterNavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom'
 import {
   Box, Flex, HStack, VStack, IconButton, Text, Spacer, Tooltip,
 } from '@chakra-ui/react'
 import UserAvatar from '../shared/ui/UserAvatar.jsx'
 import {
-  LayoutDashboard, ReceiptText, Target, Wallet, Users,
-  LogOut, Search, Repeat, TrendingUp, MoreHorizontal, Settings,
+  LayoutDashboard, ReceiptText, Target, Users,
+  LogOut, Repeat, TrendingUp, MoreHorizontal, Settings,
 } from 'lucide-react'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/useProfile.js'
@@ -14,13 +14,13 @@ import Logo from '../shared/ui/Logo.jsx'
 import OfflineIndicator from '../shared/ui/OfflineIndicator.jsx'
 import ThemeToggle from '../shared/ui/ThemeToggle.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
+import { isNavActive } from './navMatch.js'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
 // desktop sidebar.
 const PRIMARY = [
-  { to: '/', label: 'Home', icon: LayoutDashboard, end: true },
-  { to: '/expenses', label: 'Expenses', icon: ReceiptText },
-  { to: '/income', label: 'Income', icon: Wallet },
+  { to: '/', label: 'Home', icon: LayoutDashboard },
+  { to: '/transactions', label: 'Transactions', icon: ReceiptText },
   { to: '/groups', label: 'Groups', icon: Users },
   { to: '/budgets', label: 'Budgets', icon: Target },
 ]
@@ -29,15 +29,27 @@ const PRIMARY = [
 const SECONDARY = [
   { to: '/insights', label: 'Insights', icon: TrendingUp },
   { to: '/recurring', label: 'Recurring', icon: Repeat },
-  { to: '/search', label: 'Search', icon: Search },
 ]
-// Mobile bottom bar: the five primary tabs plus a "More" entry.
+// Mobile bottom bar: the four primary tabs plus a "More" entry.
+// Which tab is lit for a given page is decided by navMatch.js.
 const MOBILE_NAV = [...PRIMARY, { to: '/more', label: 'More', icon: MoreHorizontal }]
 
-function SideItem({ to, label, icon: Icon, end }) {
+// A nav link that knows whether it's the current section (see navMatch.js).
+// `children` renders from the active flag.
+function NavItem({ to, children, ...rest }) {
+  const { pathname } = useLocation()
+  const isActive = isNavActive(to, pathname)
   return (
-    <RouterNavLink to={to} end={end} style={{ width: '100%' }}>
-      {({ isActive }) => (
+    <RouterLink to={to} aria-current={isActive ? 'page' : undefined} {...rest}>
+      {children(isActive)}
+    </RouterLink>
+  )
+}
+
+function SideItem({ to, label, icon: Icon }) {
+  return (
+    <NavItem to={to} style={{ width: '100%' }}>
+      {(isActive) => (
         <HStack
           spacing={3} px={3} py={2.5} borderRadius="lg" w="full"
           color={isActive ? 'accent.fg' : 'text.muted'}
@@ -50,21 +62,21 @@ function SideItem({ to, label, icon: Icon, end }) {
           <Text fontSize="sm">{label}</Text>
         </HStack>
       )}
-    </RouterNavLink>
+    </NavItem>
   )
 }
 
-function TabItem({ to, label, icon: Icon, end }) {
+function TabItem({ to, label, icon: Icon }) {
   return (
-    <RouterNavLink to={to} end={end}>
-      {({ isActive }) => (
+    <NavItem to={to}>
+      {(isActive) => (
         <VStack spacing={0.5} px={2} py={1} minW="60px"
           color={isActive ? 'accent.fg' : 'text.muted'}>
           <Icon size={22} strokeWidth={isActive ? 2.4 : 2} />
           <Text fontSize="10px" fontWeight={isActive ? '600' : '500'}>{label}</Text>
         </VStack>
       )}
-    </RouterNavLink>
+    </NavItem>
   )
 }
 
@@ -72,7 +84,6 @@ export default function AppShell() {
   const { signOut } = useAuth()
   const { profile } = useProfile()
   const location = useLocation()
-  const navigate = useNavigate()
   const [, setTick] = useState(0)
   useEffect(() => { setTick((n) => n + 1) }, [location])
 
@@ -90,8 +101,8 @@ export default function AppShell() {
         <Box h="1px" bg="border.default" my={2} mx={2} />
         {SECONDARY.map((n) => <SideItem key={n.to} {...n} />)}
         <Spacer />
-        <RouterNavLink to="/settings" title="Settings" style={{ width: '100%' }}>
-          {({ isActive }) => (
+        <NavItem to="/settings" title="Settings" style={{ width: '100%' }}>
+          {(isActive) => (
             <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
               bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
               <UserAvatar size="xs" name={profile?.display_name}
@@ -104,7 +115,7 @@ export default function AppShell() {
               </Box>
             </HStack>
           )}
-        </RouterNavLink>
+        </NavItem>
         <HStack px={1} justify="space-between">
           <Tooltip label="Toggle theme">
             <ThemeToggle />
@@ -128,24 +139,18 @@ export default function AppShell() {
           <Logo size={26} />
           <Spacer />
           <OfflineIndicator />
-          <IconButton aria-label="Search" variant="ghost" size="sm"
-            icon={<Search size={18} />} onClick={() => navigate('/search')} />
           <NotificationBell />
           <ThemeToggle />
-          <RouterNavLink to="/settings" aria-label="Settings">
+          <RouterLink to="/settings" aria-label="Settings">
             <UserAvatar size="sm" name={profile?.display_name}
               src={profile?.avatar_url} highlight />
-          </RouterNavLink>
+          </RouterLink>
         </Flex>
 
         {/* Desktop header strip (sync badges + notifications) */}
         <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end" align="center"
           gap={2} px={6} pt={4}>
           <OfflineIndicator />
-          <Tooltip label="Search transactions">
-            <IconButton aria-label="Search" variant="ghost" size="sm"
-              icon={<Search size={18} />} onClick={() => navigate('/search')} />
-          </Tooltip>
           <NotificationBell />
         </Flex>
 

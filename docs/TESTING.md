@@ -24,7 +24,7 @@ Three layers:
 - Budgets per category/month, with 80% / 100% push alerts
 - Recurring rules (subscriptions, salary) auto-logged nightly, with per-rule payment reminders
 - Savings goals, net worth (accounts), insights & 6-month trends
-- Search & filter across all transactions
+- One Transactions page (Expenses / Income / All switch) with search & filters across all history
 - Smart statement import (CSV/XLSX): auto-mapped columns, duplicate-proof re-imports, learned merchant→category rules
 - Branded PDF statements (personal + per-group)
 - Backup & restore (Settings → Your data): one JSON file, optionally password-encrypted in the browser; restore merges and skips duplicates
@@ -48,7 +48,7 @@ Three layers:
 ## Manual test plan
 
 ### A. Personal expenses
-1. **Add an expense** (Expenses → amount `5,50` using the comma key on a
+1. **Add an expense** (Transactions → Expenses → Add expense → amount `5,50` using the comma key on a
    phone) → saves as 5.50 and appears at the top of the list instantly, no
    refresh.
 2. **Same-day ordering**: add two expenses dated today → the most recently
@@ -81,7 +81,7 @@ Three layers:
 
 ### E. Import
 12. Export a bank CSV (or make one: date, description, amount with negatives
-    for debits). Import → columns auto-map → new merchants ask for categories
+    for debits). Transactions → ⋯ → Import file → columns auto-map → new merchants ask for categories
     once. **Re-import the same file** → "already imported before" — zero
     duplicates.
 13. Import a second file containing the same merchant → it's categorized
@@ -142,3 +142,21 @@ Three layers:
 31. A damaged file (edit an amount to `-1`, or truncate it) is refused with a
     clear message and nothing is saved. Name/currency/notification/payment
     settings already set on the account are kept and listed in the summary.
+
+### K. Navigation
+32. Phone width: the bottom bar is exactly Home · Transactions · Groups ·
+    Budgets · More; the top bar is bell, theme toggle, avatar (plus the
+    offline badge when offline). Transactions stays lit on `/import`; More
+    stays lit on Insights, Recurring and every Settings page; Groups stays lit
+    inside a group.
+33. Desktop: the sidebar is Home, Transactions, Groups, Budgets, a divider,
+    Insights, Recurring, then the user row (→ Settings), theme toggle and sign
+    out. No More or Search entries.
+34. Transactions: the Expenses / Income / All switch and the search text are
+    in the URL (`?type=…&q=…`) and survive a reload. With no search the list is
+    this month; typing searches all history and shows the result count and
+    net. The Filters button adds category, amount and date filters. "Add"
+    follows the switch; under All the form asks Expense or Income first.
+35. Old links: `/expenses` → Transactions (Expenses), `/income` →
+    Transactions (Income), `/search` → Transactions (All) with the search
+    field focused.

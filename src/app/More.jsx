@@ -1,14 +1,11 @@
 import { Stack } from '@chakra-ui/react'
-import {
-  TrendingUp, Repeat, Search, Settings,
-} from 'lucide-react'
+import { TrendingUp, Repeat, Settings } from 'lucide-react'
 import PageHeader from '../shared/ui/PageHeader.jsx'
 import { NavList, NavRow } from '../shared/ui/NavList.jsx'
 
 const LINKS = [
   { to: '/insights', label: 'Insights', desc: 'Trends, net worth & goals', icon: TrendingUp },
   { to: '/recurring', label: 'Recurring', desc: 'Subscriptions & recurring bills', icon: Repeat },
-  { to: '/search', label: 'Search', desc: 'Find any transaction', icon: Search },
   { to: '/settings', label: 'Settings', desc: 'Account, notifications & security', icon: Settings },
 ]
 
