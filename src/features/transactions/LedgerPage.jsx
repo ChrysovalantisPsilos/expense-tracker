@@ -106,7 +106,7 @@ export default function LedgerPage() {
   return (
     <Stack spacing={5}>
       <PageHeader title="Transactions" action={<>
-        <PageAction icon={addForm.isOpen ? <X size={16} /> : <Plus size={16} />}
+        <PageAction icon={addForm.isOpen ? <X size={16} /> : <Plus size={16} />} data-tour="add-expense"
           label={addForm.isOpen ? 'Hide form' : ADD_LABEL[type]} onClick={addForm.onToggle} />
         <Menu placement="bottom-end" isLazy>
           <MenuButton as={IconButton} aria-label="More actions" size="sm" variant="ghost"
@@ -137,7 +137,7 @@ export default function LedgerPage() {
 
       <Panel>
         <Box mb={5}>
-          <HStack spacing={2}>
+          <HStack spacing={2} data-tour="ledger-search">
             <InputGroup>
               <InputLeftElement pointerEvents="none" color="text.muted"><Search size={16} /></InputLeftElement>
               <Input ref={searchRef} enterKeyHint="search" aria-label="Search transactions"

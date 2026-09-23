@@ -5,7 +5,7 @@ import {
   Stack, HStack, Text, Heading, FormControl, FormLabel, Input, Select, Button,
   IconButton, Progress, Box, useToast,
 } from '@chakra-ui/react'
-import { X, ArrowRight, ArrowLeft, Sparkles, Landmark, Users, BellRing, KeyRound } from 'lucide-react'
+import { X, ArrowRight, ArrowLeft, Sparkles, Landmark, Users, BellRing, KeyRound, Compass } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
@@ -15,16 +15,20 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { updateProfile, savePaymentInfo } from '../../shared/lib/profile.js'
 import { createGroup } from '../groups/groups.js'
 import Logo from '../../shared/ui/Logo.jsx'
+import { startTour } from './tour.js'
 
 // Post-signup setup wizard. Shows once per account (App gates on
 // profiles.onboarded_at). Collects the essentials, folds in the notification +
 // passkey asks so they don't fire separately, and every step is skippable —
-// closing at any point stamps onboarded_at so it never nags again.
+// closing at any point stamps onboarded_at so it never nags again. Its last
+// step hands over to the app tour (ProductTour); skipping that, or closing
+// the wizard early, marks the tour seen too (profiles.tour_done).
 export default function OnboardingWizard({ profile, onDone }) {
   const { user, registerPasskey } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
   const [step, setStep] = useState(0)
+  const [open, setOpen] = useState(true)
 
   const [name, setName] = useState(profile?.display_name ?? '')
   const [currency, setCurrency] = useState(profile?.base_currency ?? 'EUR')
@@ -35,17 +39,22 @@ export default function OnboardingWizard({ profile, onDone }) {
   const [groupName, setGroupName] = useState('')
   const [pushDone, setPushDone] = useState(false)
   const [passkeyDone, setPasskeyDone] = useState(false)
+  const [groupPath, setGroupPath] = useState(null) // the group made on step 1, if any
 
   const { busy, run } = useAsyncSubmit()
 
-  const STEPS = ['Welcome', 'Getting paid', 'Stay in the loop']
+  const STEPS = ['Welcome', 'Getting paid', 'Stay in the loop', 'Look around']
   const isLast = step === STEPS.length - 1
 
   // Finishing or dismissing both end the wizard the same way: persist the flag
-  // (+ suppress the standalone prompts this session) and hand control back.
-  async function finish() {
+  // (+ suppress the standalone prompts this session) and hand control back —
+  // to the tour when `tour` is set, otherwise marking the tour seen as well.
+  // A group made on the way is where things end up.
+  async function finish({ tour = false } = {}) {
+    setOpen(false) // release the modal's focus trap before the tour takes over
+    const fields = { onboarded_at: new Date().toISOString(), ...(tour ? {} : { tour_done: true }) }
     try {
-      await updateProfile(user.id, { onboarded_at: new Date().toISOString() })
+      await updateProfile(user.id, fields)
     } catch { /* non-fatal — App still unmounts us via the realtime refetch */ }
     // The wizard already covered these, so don't let the separate prompts re-ask.
     try {
@@ -53,6 +62,8 @@ export default function OnboardingWizard({ profile, onDone }) {
       localStorage.setItem('budge:notifPrompted', '1')
     } catch { /* private mode */ }
     window.dispatchEvent(new Event(EVENTS.profileUpdated))
+    if (tour) startTour({ returnTo: groupPath || '/' })
+    else if (groupPath) navigate(groupPath)
     onDone?.()
   }
 
@@ -73,9 +84,8 @@ export default function OnboardingWizard({ profile, onDone }) {
       if (groupName.trim()) {
         const gid = await createGroup(groupName.trim(), currency)
         toast({ title: `Group “${groupName.trim()}” created`, status: 'success' })
-        await finish()
-        navigate(`/groups/${gid}`)
-        return
+        setGroupPath(`/groups/${gid}`)
+        setGroupName('')
       }
       setStep(2)
     }, { errorTitle: 'Couldn’t save' })
@@ -97,14 +107,14 @@ export default function OnboardingWizard({ profile, onDone }) {
   }
 
   return (
-    <Modal isOpen onClose={finish} isCentered scrollBehavior="inside" closeOnOverlayClick={false}>
+    <Modal isOpen={open} onClose={() => finish()} isCentered scrollBehavior="inside" closeOnOverlayClick={false}>
       <ModalOverlay />
       <ModalContent mx={4}>
         <ModalHeader pb={2}>
           <HStack justify="space-between" align="start">
             <Logo size={26} />
             <IconButton aria-label="Skip setup" size="sm" variant="ghost"
-              icon={<X size={18} />} onClick={finish} />
+              icon={<X size={18} />} onClick={() => finish()} />
           </HStack>
           <Progress value={((step + 1) / STEPS.length) * 100} size="xs" mt={3} />
         </ModalHeader>
@@ -174,6 +184,16 @@ export default function OnboardingWizard({ profile, onDone }) {
               <Text fontSize="xs" color="text.muted">You can change both anytime in Settings.</Text>
             </Stack>
           )}
+
+          {step === 3 && (
+            <Stack spacing={4}>
+              <HStack color="accent.fg"><Compass size={18} /><Heading size="sm">Let’s take a quick look around</Heading></HStack>
+              <Text fontSize="sm" color="text.muted">
+                A one-minute tour of where things are: adding expenses, groups, budgets and more.
+                You can take it again any time from Settings.
+              </Text>
+            </Stack>
+          )}
         </ModalBody>
 
         <ModalFooter gap={2}>
@@ -182,7 +202,7 @@ export default function OnboardingWizard({ profile, onDone }) {
               onClick={() => setStep(step - 1)} isDisabled={busy}>Back</Button>
           )}
           <Box flex="1" />
-          {!isLast && (
+          {step < 2 && (
             <Button variant="ghost" onClick={() => setStep(step + 1)} isDisabled={busy}>Skip</Button>
           )}
           {step === 0 && (
@@ -191,10 +211,19 @@ export default function OnboardingWizard({ profile, onDone }) {
           {step === 1 && (
             <Button rightIcon={<ArrowRight size={16} />} isLoading={busy} onClick={savePaymentAndGroup}>Continue</Button>
           )}
+          {step === 2 && (
+            <Button rightIcon={<ArrowRight size={16} />} onClick={() => setStep(3)}>Continue</Button>
+          )}
           {isLast && (
-            <Button isLoading={busy} onClick={() => run(finish, { errorTitle: 'Couldn’t finish' })}>
-              Finish
-            </Button>
+            <>
+              <Button variant="ghost" isDisabled={busy} onClick={() => run(finish, { errorTitle: 'Couldn’t finish' })}>
+                Skip tour
+              </Button>
+              <Button isLoading={busy} rightIcon={<ArrowRight size={16} />}
+                onClick={() => run(() => finish({ tour: true }), { errorTitle: 'Couldn’t finish' })}>
+                Start tour
+              </Button>
+            </>
           )}
         </ModalFooter>
       </ModalContent>

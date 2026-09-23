@@ -107,9 +107,9 @@ export default function Dashboard() {
       {error ? (
         // One error (with Retry) for the transactions every card below needs,
         // instead of €0.00 totals that look real.
-        <Panel><QueryError error={error} onRetry={reload} what="your transactions" /></Panel>
+        <Panel data-tour="overview"><QueryError error={error} onRetry={reload} what="your transactions" /></Panel>
       ) : (
-      <Panel>
+      <Panel data-tour="overview">
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} alignItems="center">
           <Box>
             <Figure label="Spent" size="xl" value={formatMoney(spentTotal, baseCurrency)} />
@@ -131,7 +131,7 @@ export default function Dashboard() {
 
       {separateYearly && <YearlySubscriptionsCard rules={rules} baseCurrency={baseCurrency} />}
 
-      <Panel icon={ChartBarDecreasing} title="Spending by category" action={
+      <Panel data-tour="categories" icon={ChartBarDecreasing} title="Spending by category" action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
             <CkTooltip label="Chart">
               <IconButton aria-label="Chart view" size="xs" icon={<ChartBarDecreasing size={15} />}

@@ -10,4 +10,5 @@ export const STORAGE_KEYS = {
 
 export const EVENTS = {
   profileUpdated: 'budge:profile-updated', // window event → useProfile refetches
+  startTour: 'budge:start-tour',           // window event → App runs the app tour
 }

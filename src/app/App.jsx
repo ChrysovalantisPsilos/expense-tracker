@@ -6,6 +6,7 @@ import PasskeyPrompt from '../features/settings/PasskeyPrompt.jsx'
 import NotificationPrompt from '../features/notifications/NotificationPrompt.jsx'
 import { useProfile } from '../shared/lib/ProfileProvider.jsx'
 import { useEnsureDefaultCategories } from '../features/transactions/useData.js'
+import { useTour } from '../features/onboarding/tour.js'
 import { STORAGE_KEYS } from '../shared/lib/keys.js'
 import PageSpinner from '../shared/ui/PageSpinner.jsx'
 
@@ -38,6 +39,7 @@ const SecuritySettings = lazy(() => import('../features/settings/SecuritySetting
 const YourData = lazy(() => import('../features/backup/YourData.jsx'))
 const Privacy = lazy(() => import('../features/privacy/Privacy.jsx'))
 const OnboardingWizard = lazy(() => import('../features/onboarding/OnboardingWizard.jsx'))
+const ProductTour = lazy(() => import('../features/onboarding/ProductTour.jsx'))
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
 
@@ -75,6 +77,11 @@ function AuthedRoutes() {
   // folds in the passkey + notification asks — so the standalone prompts wait
   // until onboarding is done to avoid stacking.
   const needsOnboarding = !profileLoading && profile && !profile.onboarded_at
+  // The app tour follows the wizard (its last step starts it) and can be
+  // replayed from Settings. If it was never finished or skipped (the app
+  // closed mid-tour), it picks up again once per session. (=== false: a
+  // profile without the 0069 column never auto-starts it.)
+  const { tour, endTour } = useTour(!profileLoading && !!profile?.onboarded_at && profile.tour_done === false)
 
   // First-login default-category seed (a data hook owned by transactions, so
   // the shared profile code never reaches into a feature).
@@ -125,6 +132,8 @@ function AuthedRoutes() {
       </Routes>
       {needsOnboarding ? (
         <Suspense fallback={null}><OnboardingWizard profile={profile} /></Suspense>
+      ) : tour ? (
+        <Suspense fallback={null}><ProductTour {...tour} onEnd={endTour} /></Suspense>
       ) : (
         <>
           <PasskeyPrompt />

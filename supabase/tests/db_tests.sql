@@ -2909,11 +2909,62 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 51. 0069: profiles.tour_done (the app tour finished/skipped). A new account
+--     starts unseen; only the owner can set it (another user: RLS 0 rows;
+--     anon: no column grant). Backfill: every profile that had finished
+--     onboarding before 0069 (cut-off 2026-09-23, before it reached either
+--     project) is marked seen — an aggregate over whatever exists, so it
+--     holds on an empty database too.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; v boolean; n int;
+begin
+  begin
+    select count(*) into n from public.profiles
+     where onboarded_at < timestamptz '2026-09-23 00:00+00' and not tour_done;
+    if n <> 0 then raise exception 'backfill: % already-onboarded profile(s) not marked seen', n; end if;
+
+    u1 := pg_temp.zz_user('tour');
+    u2 := pg_temp.zz_user('tourx');
+    if (select tour_done from public.profiles where id = u1) then
+      raise exception 'tour_done defaults to seen';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set tour_done = true where id = u1;
+    update public.profiles set tour_done = true where id = u2;  -- RLS: 0 rows
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if n <> 0 then raise exception 'set another user''s tour_done'; end if;
+    select tour_done into v from public.profiles where id = u1;
+    if v is distinct from true then raise exception 'owner could not set tour_done'; end if;
+    select tour_done into v from public.profiles where id = u2;
+    if v then raise exception 'tour_done leaked onto another user'; end if;
+
+    perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+    begin
+      execute 'set local role anon';
+      update public.profiles set tour_done = true where id = u2;
+      execute 'reset role';
+      raise exception 'anon could update tour_done';
+    exception when insufficient_privilege then
+      execute 'reset role';
+    end;
+    if (select tour_done from public.profiles where id = u2) then raise exception 'anon set tour_done'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: tour_done owner-only (not other users, not anon); onboarded accounts backfilled as seen';
+    else update _t set fails = fails + 1; raise notice 'FAIL: tour_done — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 51; f int; p int;  -- tests 1–50 + B-0059
+declare expected_tests constant int := 52; f int; p int;  -- tests 1–51 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

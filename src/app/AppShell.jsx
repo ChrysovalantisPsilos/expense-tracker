@@ -19,12 +19,12 @@ import { useNotificationFeed } from '../features/notifications/notifications.js'
 import { isNavActive } from './navMatch.js'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
-// desktop sidebar.
+// desktop sidebar. `tour` names the app tour's stop (data-tour, tourSteps.js).
 const PRIMARY = [
   { to: '/', label: 'Home', icon: LayoutDashboard },
-  { to: '/transactions', label: 'Transactions', icon: ReceiptText },
-  { to: '/groups', label: 'Groups', icon: Users },
-  { to: '/budgets', label: 'Budgets', icon: Target },
+  { to: '/transactions', label: 'Transactions', icon: ReceiptText, tour: 'nav-transactions' },
+  { to: '/groups', label: 'Groups', icon: Users, tour: 'nav-groups' },
+  { to: '/budgets', label: 'Budgets', icon: Target, tour: 'nav-budgets' },
 ]
 // Secondary destinations — listed directly in the desktop sidebar, and gathered
 // under the "More" tab on mobile.
@@ -34,7 +34,7 @@ const SECONDARY = [
 ]
 // Mobile bottom bar: the four primary tabs plus a "More" entry.
 // Which tab is lit for a given page is decided by navMatch.js.
-const MOBILE_NAV = [...PRIMARY, { to: '/more', label: 'More', icon: MoreHorizontal }]
+const MOBILE_NAV = [...PRIMARY, { to: '/more', label: 'More', icon: MoreHorizontal, tour: 'nav-more' }]
 
 // A nav link that knows whether it's the current section (see navMatch.js).
 // `children` renders from the active flag.
@@ -48,9 +48,9 @@ function NavItem({ to, children, ...rest }) {
   )
 }
 
-function SideItem({ to, label, icon: Icon }) {
+function SideItem({ to, label, icon: Icon, tour }) {
   return (
-    <NavItem to={to} style={{ width: '100%' }}>
+    <NavItem to={to} style={{ width: '100%' }} data-tour={tour}>
       {(isActive) => (
         <HStack
           spacing={3} px={3} py={2.5} borderRadius="lg" w="full"
@@ -68,9 +68,9 @@ function SideItem({ to, label, icon: Icon }) {
   )
 }
 
-function TabItem({ to, label, icon: Icon }) {
+function TabItem({ to, label, icon: Icon, tour }) {
   return (
-    <NavItem to={to}>
+    <NavItem to={to} data-tour={tour}>
       {(isActive) => (
         <VStack spacing={0.5} px={2} py={1} minW="60px"
           color={isActive ? 'accent.fg' : 'text.muted'}>
@@ -103,32 +103,36 @@ export default function AppShell() {
         <Box px={2} py={2} mb={2}><Logo size={30} /></Box>
         {PRIMARY.map((n) => <SideItem key={n.to} {...n} />)}
         <Box h="1px" bg="border.default" my={2} mx={2} />
-        {SECONDARY.map((n) => <SideItem key={n.to} {...n} />)}
+        <Flex direction="column" gap={1} data-tour="nav-more">
+          {SECONDARY.map((n) => <SideItem key={n.to} {...n} />)}
+        </Flex>
         <Spacer />
-        <NavItem to="/settings" title="Settings" style={{ width: '100%' }}>
-          {(isActive) => (
-            <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
-              bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
-              <UserAvatar size="xs" name={profile?.display_name}
-                src={profile?.avatar_url} highlight />
-              <Text fontSize="sm" fontWeight="500" noOfLines={1} flex="1">
-                {profile?.display_name || 'Settings'}
-              </Text>
-              <Box as="span" color={isActive ? 'accent.fg' : 'text.muted'} flexShrink={0}>
-                <Settings size={16} />
-              </Box>
-            </HStack>
-          )}
-        </NavItem>
-        <HStack px={1} justify="space-between">
-          <Tooltip label="Toggle theme">
-            <ThemeToggle />
-          </Tooltip>
-          <Tooltip label="Sign out">
-            <IconButton aria-label="Sign out" variant="ghost" size="sm"
-              icon={<LogOut size={18} />} onClick={signOut} />
-          </Tooltip>
-        </HStack>
+        <Flex direction="column" gap={1} data-tour="account">
+          <NavItem to="/settings" title="Settings" style={{ width: '100%' }}>
+            {(isActive) => (
+              <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
+                bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
+                <UserAvatar size="xs" name={profile?.display_name}
+                  src={profile?.avatar_url} highlight />
+                <Text fontSize="sm" fontWeight="500" noOfLines={1} flex="1">
+                  {profile?.display_name || 'Settings'}
+                </Text>
+                <Box as="span" color={isActive ? 'accent.fg' : 'text.muted'} flexShrink={0}>
+                  <Settings size={16} />
+                </Box>
+              </HStack>
+            )}
+          </NavItem>
+          <HStack px={1} justify="space-between">
+            <Tooltip label="Toggle theme">
+              <ThemeToggle />
+            </Tooltip>
+            <Tooltip label="Sign out">
+              <IconButton aria-label="Sign out" variant="ghost" size="sm"
+                icon={<LogOut size={18} />} onClick={signOut} />
+            </Tooltip>
+          </HStack>
+        </Flex>
       </Flex>
 
       {/* Main column */}
@@ -143,12 +147,14 @@ export default function AppShell() {
           <Logo size={26} />
           <Spacer />
           <OfflineIndicator />
-          <NotificationBell feed={feed} />
-          <ThemeToggle />
-          <RouterLink to="/settings" aria-label="Settings">
-            <UserAvatar size="sm" name={profile?.display_name}
-              src={profile?.avatar_url} highlight />
-          </RouterLink>
+          <Flex align="center" gap={3} data-tour="account">
+            <NotificationBell feed={feed} />
+            <ThemeToggle />
+            <RouterLink to="/settings" aria-label="Settings">
+              <UserAvatar size="sm" name={profile?.display_name}
+                src={profile?.avatar_url} highlight />
+            </RouterLink>
+          </Flex>
         </Flex>
 
         {/* Desktop header strip (sync badges + notifications) */}

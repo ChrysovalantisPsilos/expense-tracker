@@ -25,11 +25,12 @@ export function NavList({ label, children }) {
 
 // One row: a sand icon tile (or custom `media`, e.g. an avatar), a label, an
 // optional muted description, and a chevron when it navigates. Pass `to` for
-// an in-app link or `onClick` for an action (rendered as a button).
-export function NavRow({ to, onClick, icon, media, label, description }) {
+// an in-app link or `onClick` for an action (rendered as a button). Other
+// props (e.g. a data- attribute) go on the row.
+export function NavRow({ to, onClick, icon, media, label, description, ...rest }) {
   const target = to ? { as: RouterLink, to } : { as: 'button', type: 'button', onClick }
   return (
-    <HStack {...target} textAlign="left" w="full" spacing={3} px={4} py={3.5} minW={0}
+    <HStack {...target} {...rest} textAlign="left" w="full" spacing={3} px={4} py={3.5} minW={0}
       _hover={{ bg: 'bg.subtle' }} _focusVisible={{ bg: 'bg.subtle', boxShadow: 'outline' }}
       transition="background 0.15s">
       {media ?? <IconTile icon={icon} size={40} radius="xl" />}
