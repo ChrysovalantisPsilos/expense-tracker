@@ -298,6 +298,10 @@ const theme = extendTheme({
             '--alert-bg': `colors.${TOAST_FILL[c] ?? 'text.primary'}`,
             '--alert-fg': 'colors.bg.surface',
           }),
+          // Emails, links and server messages can be one long unbroken word;
+          // let them wrap instead of pushing the toast past a phone's edge.
+          title: { overflowWrap: 'anywhere' },
+          description: { overflowWrap: 'anywhere' },
         }),
       },
     },

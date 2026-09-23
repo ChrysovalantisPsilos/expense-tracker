@@ -105,7 +105,7 @@ export default function GroupDetail() {
     try {
       const url = await createInviteLink(id)
       await navigator.clipboard.writeText(url)
-      toast({ title: 'Invite link copied', description: url, status: 'success' })
+      toast({ title: 'Invite link copied', description: 'Paste it in a chat to invite friends.', status: 'success' })
     } catch (e) {
       toast({ title: 'Could not create invite', description: e.message, status: 'error' })
     }

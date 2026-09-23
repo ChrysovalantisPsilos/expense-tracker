@@ -163,6 +163,10 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
   const [amount, setAmount] = useState('')
   const [settledAt, setSettledAt] = useState(() => today())
   const { busy, run } = useAsyncSubmit()
+  // Open on the form's first real choice rather than the first tabbable
+  // element — that is the suggestion list's reminder bell, whose tooltip
+  // would pop up the moment the dialog appears.
+  const directionRef = useRef(null)
 
   const otherNet = balances?.get(otherId) ?? 0
   const otherName = others.find((m) => m.id === otherId)?.display_name ?? ''
@@ -206,7 +210,8 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
 
   return (
     <FormModal isOpen={isOpen} onClose={onClose} title="Settle up" onSubmit={submit}
-      busy={busy} submitLabel="Record" submitProps={{ isDisabled: others.length === 0 }}>
+      busy={busy} submitLabel="Record" submitProps={{ isDisabled: others.length === 0 }}
+      initialFocusRef={directionRef}>
       {others.length === 0 ? (
         <Text color="text.muted">Add another member first.</Text>
       ) : (
@@ -241,7 +246,7 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
             </Box>
           )}
           <HStack spacing={2}>
-            <Button flex="1" variant={direction === 'out' ? 'solid' : 'outline'}
+            <Button ref={directionRef} flex="1" variant={direction === 'out' ? 'solid' : 'outline'}
               colorScheme={direction === 'out' ? 'brand' : 'gray'}
               onClick={() => setDirection('out')}>I paid</Button>
             <Button flex="1" variant={direction === 'in' ? 'solid' : 'outline'}
