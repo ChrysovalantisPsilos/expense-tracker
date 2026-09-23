@@ -1307,6 +1307,44 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 29. Deleting a group that has expenses works (the audit trigger must not
+--     log into a group that is being deleted), via delete_group.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; gid uuid; m1 uuid; eid uuid; left_rows int; logged int;
+begin
+  begin
+    select id into u1 from auth.users order by created_at limit 1;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    gid := public.create_group('ZZT delete', 'EUR');
+    execute 'reset role';
+    select id into m1 from public.group_members where group_id = gid and user_id = u1;
+    execute 'set local role authenticated';
+    perform public.create_group_expense_v2(gid, 'zz lunch', 1000, 'EUR', m1, current_date, array[m1], null, 'equal');
+    perform public.create_group_expense_v2(gid, 'zz dinner', 2000, 'EUR', m1, current_date, array[m1], null, 'equal');
+    execute 'reset role';
+    -- A single expense delete is still audited...
+    select id into eid from public.group_expenses where group_id = gid order by created_at limit 1;
+    execute 'set local role authenticated';
+    delete from public.group_expenses where id = eid;
+    execute 'reset role';
+    select count(*) into logged from public.group_audit_log where group_id = gid and action = 'expense_deleted';
+    if logged <> 1 then raise exception 'single delete not audited (got %)', logged; end if;
+    -- ...and deleting the whole group (cascade) no longer trips the audit FK.
+    execute 'set local role authenticated';
+    perform public.delete_group(gid);
+    execute 'reset role';
+    select count(*) into left_rows from public.groups where id = gid;
+    if left_rows <> 0 then raise exception 'group not deleted'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: delete_group works on a group with expenses';
+    else update _t set fails = fails + 1; raise notice 'FAIL: delete_group with expenses — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed (so CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
