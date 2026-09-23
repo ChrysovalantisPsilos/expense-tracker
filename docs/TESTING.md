@@ -120,7 +120,9 @@ Three layers:
     offline — reconnect to save".
 25. Appearance: Light/Dark/System each apply immediately; System follows the
     OS. The header moon/sun quick-toggle stays in sync with Settings → Appearance.
-26. Deploy update: banner "A new version of Budge is available" → Update
+26. Deploy update: with the app open and idle, a new deploy installs and the
+    page reloads on its own within ~1 min (no button). While typing in a field
+    or with a dialog open it waits, then updates once you finish or switch away.
     reloads onto the new build.
 
 ### I. Reports

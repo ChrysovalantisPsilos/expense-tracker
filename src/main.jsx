@@ -14,7 +14,7 @@ import ErrorBoundary from './app/ErrorBoundary.jsx'
 import theme from './app/theme.js'
 import { AuthProvider } from './shared/auth/AuthProvider.jsx'
 import { AppearanceProvider } from './shared/lib/appearance.jsx'
-import ReloadPrompt from './app/ReloadPrompt.jsx'
+import AutoUpdate from './app/AutoUpdate.jsx'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -29,7 +29,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           </AuthProvider>
         </AppearanceProvider>
       </BrowserRouter>
-      <ReloadPrompt />
+      <AutoUpdate />
     </ChakraProvider>
   </React.StrictMode>,
 )

@@ -49,7 +49,7 @@ registerRoute(
   'POST',
 )
 
-// Prompt-mode updates: ReloadPrompt's "Update" button sends SKIP_WAITING.
+// Updates: AutoUpdate sends SKIP_WAITING once it's safe to reload.
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
 })

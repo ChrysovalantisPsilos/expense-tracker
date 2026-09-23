@@ -3,9 +3,9 @@ import { Box, Button, Center, Heading, Stack, Text } from '@chakra-ui/react'
 
 // Last line of defense: without a boundary, any uncaught render/effect error
 // unmounts the entire React root — the user gets a silent white page and,
-// because ReloadPrompt dies with it, can't even accept a fixed deploy. This
-// keeps a friendly recovery screen (and the update prompt, which lives
-// outside the boundary) on screen instead.
+// because AutoUpdate dies with it, can't even pick up a fixed deploy. This
+// keeps a friendly recovery screen on screen instead, and AutoUpdate (which
+// lives outside the boundary) keeps installing new versions.
 export default class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
