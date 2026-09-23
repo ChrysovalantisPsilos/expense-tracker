@@ -186,6 +186,17 @@ only reports for now and doesn't fail the build.
     this month; typing searches all history and shows the result count and
     net. The Filters button adds category, amount and date filters. "Add"
     follows the switch; under All the form asks Expense or Income first.
-37. Old links: `/expenses` → Transactions (Expenses), `/income` →
+37. Category page: tap a Home category bar, an Insights legend entry, a
+    budget row or a Settings → Categories row → `/categories/<id>` opens with
+    the category's icon and name, the period's spend (a Period picker; Home's
+    bars carry their period), its budget bar or "Set a budget" (this month
+    only; year/all-time say budgets are monthly) and the period's entries.
+    Edit opens an in-page panel: monthly budget (clearing it removes the
+    budget), name/icon/colour and Archive. ← returns where you came from (Home
+    when opened directly). "Uncategorized" has a page too, without Edit.
+    Group buckets still open the group; the folded "Other" isn't a link.
+    Budgets page: the row opens the category page; Edit (44px) opens it with
+    the panel open.
+38. Old links: `/expenses` → Transactions (Expenses), `/income` →
     Transactions (Income), `/search` → Transactions (All) with the search
     field focused.

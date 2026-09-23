@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  Box, Button, Center, FormControl, FormErrorMessage, FormHelperText, FormLabel, HStack,
-  IconButton, Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
-  Select, SimpleGrid, Spinner, Stack, Text, Tooltip, useToast,
+  Box, Button, Center, FormControl, FormHelperText, FormLabel, HStack,
+  Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
+  Select, Spinner, Stack, Text, useToast,
 } from '@chakra-ui/react'
-import { Archive, ArchiveRestore, Check, Pencil, Plus, Tags, Trash2 } from 'lucide-react'
+import { Archive, ArchiveRestore, Pencil, Plus, Tags, Trash2 } from 'lucide-react'
 import SettingsPage from '../settings/SettingsPage.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
@@ -12,21 +13,22 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import FormModal from '../../shared/ui/FormModal.jsx'
-import { categoryIcon } from '../../shared/lib/icons.jsx'
-import { CATEGORY_COLORS, CATEGORY_COLOR_KEYS, CATEGORY_ICON_KEYS } from '../../shared/lib/categoryStyle.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import {
   useAllCategories, createCategory, updateCategory, countCategoryUse, deleteCategory,
 } from './categories.js'
-import { CATEGORY_NAME_MAX, categoryNameError, moveTargets, sortCategories } from './categoryMath.js'
+import { moveTargets, sameKindOthers, sortCategories } from './categoryMath.js'
+import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
+import { categoryPath } from './categoryLinks.js'
 
 const KINDS = [['expense', 'Expenses'], ['income', 'Income']]
 
 // Settings → Categories: add, rename, re-icon, recolour, archive and delete
 // expense and income categories. Archived ones keep their past entries but
-// leave the pickers.
+// leave the pickers. A row opens the category's page (its entries and budget).
 export default function Categories() {
   const toast = useToast()
+  const navigate = useNavigate()
   const { rows, loading, error, reload } = useAllCategories()
   const [kind, setKind] = useState('expense')
   const [editing, setEditing] = useState(null) // { kind } for new, a row to edit
@@ -59,6 +61,7 @@ export default function Categories() {
               <Box key={c.id} role="listitem">
                 <ItemRow media={<CategoryBadge category={c} kind={c.kind} size={32} />}
                   title={c.name} meta={c.is_archived ? 'Archived' : undefined} dimmed={c.is_archived}
+                  onClick={() => navigate(categoryPath(c.id))} chevron
                   actionSlots={3} actions={[
                     { label: `Edit ${c.name}`, icon: Pencil, onClick: () => setEditing(c) },
                     c.is_archived
@@ -80,95 +83,30 @@ export default function Categories() {
   )
 }
 
-// The icon key the badge currently shows for `c` (a legacy/unknown stored
-// icon falls back to its name heuristic's key, so saving keeps its look).
-function currentIconKey(c) {
-  if (CATEGORY_ICON_KEYS.includes(c?.icon)) return c.icon
-  const shown = categoryIcon(c ?? '')
-  return CATEGORY_ICON_KEYS.find((k) => categoryIcon({ icon: k }) === shown) ?? 'other'
-}
-
 // Add (category = { kind }) or edit (category = a row) one category.
 function CategoryModal({ category, all, onClose, onSaved }) {
   const toast = useToast()
   const isEdit = !!category?.id
-  const [name, setName] = useState(category?.name ?? '')
-  const [icon, setIcon] = useState(isEdit ? currentIconKey(category) : 'other')
-  const [color, setColor] = useState(category?.color ?? null)
-  const [touched, setTouched] = useState(false)
+  const draft = useCategoryDraft(category, sameKindOthers(all, category))
   const { busy, run } = useAsyncSubmit()
-  const others = (all ?? []).filter((c) => c.kind === category?.kind && c.id !== category?.id)
-  const nameError = categoryNameError(name, others)
 
   async function submit() {
-    setTouched(true)
-    if (nameError) return
+    draft.setTouched(true)
+    if (draft.nameError) return
     await run(async () => {
-      if (isEdit) await updateCategory(category.id, { name, icon, color })
-      else await createCategory({ name, kind: category.kind, icon, color })
-      toast({ title: isEdit ? 'Category saved' : `${name.trim()} added`, status: 'success' })
+      if (isEdit) await updateCategory(category.id, draft.values)
+      else await createCategory({ ...draft.values, kind: category.kind })
+      toast({ title: isEdit ? 'Category saved' : `${draft.name.trim()} added`, status: 'success' })
       onSaved?.(); onClose()
     })
   }
 
-  const preview = { name, icon, color }
   return (
     <FormModal isOpen={!!category} onClose={onClose} scrollBehavior="inside" onSubmit={submit}
       busy={busy} submitLabel={isEdit ? 'Save' : 'Add category'}
       title={isEdit ? 'Edit category' : `New ${category?.kind === 'income' ? 'income' : 'expense'} category`}>
-      <Stack spacing={5}>
-        <HStack spacing={3} align="start">
-          <Box pt={8}><CategoryBadge category={preview} kind={category?.kind} size={40} /></Box>
-          <FormControl isRequired isInvalid={touched && !!nameError}>
-            <FormLabel>Name</FormLabel>
-            <Input value={name} maxLength={CATEGORY_NAME_MAX + 10}
-              onChange={(e) => setName(e.target.value)} onBlur={() => name && setTouched(true)}
-              placeholder={category?.kind === 'income' ? 'Freelance' : 'Pets'} />
-            <FormErrorMessage>{nameError}</FormErrorMessage>
-          </FormControl>
-        </HStack>
-
-        <FormControl as="fieldset">
-          <FormLabel as="legend">Icon</FormLabel>
-          <SimpleGrid columns={8} spacing={1.5} role="radiogroup" aria-label="Icon">
-            {CATEGORY_ICON_KEYS.map((k) => {
-              const Icon = categoryIcon({ icon: k })
-              const on = icon === k
-              return (
-                <IconButton key={k} size="sm" role="radio" aria-checked={on} aria-label={k}
-                  variant={on ? 'solid' : 'ghost'} colorScheme={on ? 'brand' : 'gray'}
-                  icon={<Icon size={16} />} onClick={() => setIcon(k)} />
-              )
-            })}
-          </SimpleGrid>
-        </FormControl>
-
-        <FormControl as="fieldset">
-          <FormLabel as="legend">Colour</FormLabel>
-          <HStack spacing={2} flexWrap="wrap" role="radiogroup" aria-label="Colour">
-            <Swatch label="Default" on={!color} onClick={() => setColor(null)} />
-            {CATEGORY_COLOR_KEYS.map((k) => (
-              <Swatch key={k} label={k} hex={CATEGORY_COLORS[k]} on={color === k}
-                onClick={() => setColor(k)} />
-            ))}
-          </HStack>
-          <FormHelperText>Used for the category’s icon everywhere in the app.</FormHelperText>
-        </FormControl>
-      </Stack>
+      <CategoryFields draft={draft} kind={category?.kind} />
     </FormModal>
-  )
-}
-
-function Swatch({ label, hex, on, onClick }) {
-  return (
-    <Tooltip label={label} openDelay={400}>
-      <Box as="button" type="button" role="radio" aria-checked={on} aria-label={label} onClick={onClick}
-        boxSize="32px" borderRadius="full" bg={hex ?? 'bg.subtle'} borderWidth="2px"
-        borderColor={on ? 'text.primary' : 'border.default'} display="grid" placeItems="center"
-        color={hex ? 'white' : 'text.muted'} _focusVisible={{ boxShadow: 'outline' }}>
-        {on && <Check size={16} />}
-      </Box>
-    </Tooltip>
   )
 }
 

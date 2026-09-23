@@ -40,8 +40,9 @@ test('Any other entry matches its own path and the pages below it', () => {
 test('exactly one bottom-bar tab is active on every routed page', () => {
   const TABS = ['/', '/transactions', '/groups', '/budgets', '/more']
   const PAGES = ['/', '/transactions', '/import', '/groups', '/groups/g1', '/budgets',
-    '/more', '/insights', '/recurring', '/settings', '/settings/notifications']
+    '/more', '/insights', '/recurring', '/settings', '/settings/notifications', '/categories/none']
   for (const p of PAGES) {
     assert.equal(TABS.filter((t) => isNavActive(t, p)).length, 1, p)
   }
+  assert.equal(isNavActive('/budgets', '/categories/c1'), true) // a category's page, with its budget
 })

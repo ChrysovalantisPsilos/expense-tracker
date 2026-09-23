@@ -1,8 +1,10 @@
 // Which navigation entry is "current" for a pathname. A tab lights up for its
 // own section and for the pages you reach from it (Import lives under
-// Transactions; Insights, Recurring and Settings are gathered under More).
+// Transactions; a category's page, with its budget, under Budgets; Insights,
+// Recurring and Settings are gathered under More).
 const SECTIONS = {
   '/transactions': ['/transactions', '/import'],
+  '/budgets': ['/budgets', '/categories'],
   '/more': ['/more', '/insights', '/recurring', '/settings'],
 }
 

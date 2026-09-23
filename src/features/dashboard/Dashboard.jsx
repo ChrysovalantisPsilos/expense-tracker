@@ -8,7 +8,7 @@ import { ChartBarDecreasing, Table as TableIcon, Repeat, ReceiptText, Users } fr
 import TransactionList from '../transactions/TransactionList.jsx'
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { buildPeriods } from '../transactions/periods.js'
-import { linkBuckets } from '../transactions/ledgerLinks.js'
+import { linkBuckets } from '../categories/categoryLinks.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring } from '../recurring/recurring.js'
@@ -112,7 +112,7 @@ export default function Dashboard() {
       <Panel data-tour="overview">
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} alignItems="center">
           <Box>
-            <Figure label="Spent" size="xl" value={formatMoney(spentTotal, baseCurrency)} />
+            <Figure label="Spent" size="hero" value={formatMoney(spentTotal, baseCurrency)} />
             {proj.expense > 0 && (
               <Text fontSize="xs" color="text.muted" mt={1}>
                 incl. {formatMoney(proj.expense, baseCurrency)} upcoming

@@ -4,6 +4,10 @@
 // UNIQUE is case-sensitive, the form is stricter so "food" and "Food" can't
 // both exist.
 
+import { NO_CATEGORY } from '../transactions/txnFilter.js'
+import { paidInWindow, spendRows } from '../../shared/lib/spread.js'
+import { toBaseMinor } from '../../shared/lib/currency.js'
+
 export const CATEGORY_NAME_MAX = 60
 
 // eslint-disable-next-line no-control-regex
@@ -37,4 +41,39 @@ export function sortCategories(categories, kind) {
 export function moveTargets(categories, deleting) {
   return sortCategories(categories, deleting?.kind)
     .filter((c) => c.id !== deleting?.id && !c.is_archived)
+}
+
+// The categories a name must not clash with when adding/editing `category`:
+// the same kind's (archived included), without the one being edited.
+export function sameKindOthers(categories, category) {
+  return (categories ?? []).filter((c) => c.kind === category?.kind && c.id !== category?.id)
+}
+
+// The update an edit form's { name, icon, color } makes to `category`, or
+// null when nothing changed (the name compares trimmed, as it's stored).
+export function categoryPatch(category, { name, icon, color }) {
+  const patch = {}
+  if (String(name ?? '').trim() !== category.name) patch.name = name
+  if ((icon ?? null) !== (category.icon ?? null)) patch.icon = icon
+  if ((color ?? null) !== (category.color ?? null)) patch.color = color
+  return Object.keys(patch).length ? patch : null
+}
+
+// A category's page for one period { from, to } (null = open-ended), from
+// the rows my_transactions returned with `spread` (see spread.js):
+//   listed — the real payments in the period, newest first as given (a
+//            yearly subscription paid earlier isn't listed)
+//   total  — base-currency minor units counted in the period: a spread
+//            yearly subscription counts its monthly parts (or nothing when
+//            `separateYearly`), exactly as the budget bars and Home count it
+// `categoryId` NO_CATEGORY keeps personal rows with no category (group
+// shares bucket under their group instead); any other id keeps that
+// category's rows.
+export function categoryPeriod(rows, { categoryId, from, to, baseCurrency, separateYearly = false }) {
+  const mine = (rows ?? []).filter((r) => (categoryId === NO_CATEGORY
+    ? !r.category_id && !r.group_expense_id
+    : r.category_id === categoryId))
+  const total = spendRows(mine, baseCurrency, from, to, { separateYearly })
+    .reduce((sum, r) => sum + toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency), 0)
+  return { listed: paidInWindow(mine, from, to), total }
 }

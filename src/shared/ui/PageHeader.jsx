@@ -6,15 +6,16 @@ import Eyebrow from './Eyebrow.jsx'
 // optional muted description, and an `action` slot on the right. `leading`
 // holds anything that sits before the title (a back button, a group photo);
 // `meta` is an optional node under the title (e.g. a group's member stack).
-// The title truncates to one line so the action always stays on screen.
-export default function PageHeader({ title, eyebrow, description, action, leading, meta }) {
+// The title truncates to one line so the action always stays on screen
+// (`titleLines` allows more, for a user-chosen name that must stay readable).
+export default function PageHeader({ title, eyebrow, description, action, leading, meta, titleLines = 1 }) {
   return (
     <Flex align="center" gap={3} minW={0}>
       {leading}
       <Box flex="1" minW={0}>
         {eyebrow && <Eyebrow noOfLines={1} mb={0.5}>{eyebrow}</Eyebrow>}
         <Heading as="h1" fontSize={{ base: '2xl', md: '3xl' }} letterSpacing="-0.02em"
-          lineHeight="1.2" noOfLines={1} wordBreak="break-all">
+          lineHeight="1.2" noOfLines={titleLines} wordBreak={titleLines > 1 ? 'break-word' : 'break-all'}>
           {title}
         </Heading>
         {description && <Text color="text.muted" fontSize="sm" mt={1}>{description}</Text>}

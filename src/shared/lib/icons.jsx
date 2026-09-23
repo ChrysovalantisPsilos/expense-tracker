@@ -1,13 +1,20 @@
 // Central Lucide icon registry. Category rows store a stable icon *key*
 // (e.g. "utensils") in categories.icon; we map that key to a Lucide component
-// here. Falls back to a name heuristic, then a generic icon — so user-created
-// categories (or legacy emoji values) still render something sensible.
+// here. A missing or unknown key falls back to the icon the category's name
+// suggests (categoryIconKey's name hints), then a generic tag — so
+// user-created categories (or legacy emoji values) still render something
+// sensible.
 
 import {
   Utensils, ShoppingCart, Car, Fuel, Home, Lightbulb, ShoppingBag, HeartPulse,
   Clapperboard, Briefcase, Tag, Plane, Coffee, Dumbbell, GraduationCap,
   Gift, PiggyBank,
+  KeyRound, Smartphone, Wifi, ShieldCheck, Landmark, Percent, Tv, Droplet, Zap,
+  SquareParking, Bus, CarTaxiFront, Bike, PlaneTakeoff, BedDouble, Wine, Gamepad2, Music,
+  BookOpen, Volleyball, Palette,
+  Laptop, TrendingUp, Undo2, HandHeart, Banknote, ArrowRightLeft, BriefcaseBusiness, Headphones,
 } from 'lucide-react'
+import { categoryIconKey } from './categoryStyle.js'
 
 const CATEGORY_ICONS = {
   utensils: Utensils,
@@ -27,32 +34,38 @@ const CATEGORY_ICONS = {
   gifts: Gift,
   savings: PiggyBank,
   other: Tag,
+  rent: KeyRound,
+  phone: Smartphone,
+  internet: Wifi,
+  insurance: ShieldCheck,
+  taxes: Landmark,
+  'bank-fees': Percent,
+  streaming: Tv,
+  water: Droplet,
+  electricity: Zap,
+  parking: SquareParking,
+  bus: Bus,
+  taxi: CarTaxiFront,
+  bike: Bike,
+  flights: PlaneTakeoff,
+  hotel: BedDouble,
+  bars: Wine,
+  games: Gamepad2,
+  music: Music,
+  books: BookOpen,
+  sports: Volleyball,
+  hobbies: Palette,
+  freelance: Laptop,
+  investments: TrendingUp,
+  refunds: Undo2,
+  'gifts-received': HandHeart,
+  cash: Banknote,
+  transfer: ArrowRightLeft,
+  business: BriefcaseBusiness,
+  electronics: Headphones,
 }
-
-const NAME_HINTS = [
-  [/food|dining|restaurant|eat/i, Utensils],
-  [/grocery|groceries|market/i, ShoppingCart],
-  [/fuel|petrol|diesel|gas station/i, Fuel],
-  [/transport|car|gas|uber|taxi/i, Car],
-  [/hous|rent|mortgage/i, Home],
-  [/util|electric|water|internet|phone/i, Lightbulb],
-  [/shop/i, ShoppingBag],
-  [/health|medical|pharmacy|doctor/i, HeartPulse],
-  [/entertain|movie|game|music/i, Clapperboard],
-  [/salary|income|pay|wage/i, Briefcase],
-  [/travel|flight|hotel/i, Plane],
-  [/coffee|cafe/i, Coffee],
-  [/gym|fitness|sport/i, Dumbbell],
-  [/educat|school|course|book/i, GraduationCap],
-  [/gift|present/i, Gift],
-  [/saving|invest/i, PiggyBank],
-]
 
 // Returns a Lucide component for a category row (or a plain name string).
 export function categoryIcon(catOrName) {
-  const key = typeof catOrName === 'string' ? null : catOrName?.icon
-  const name = typeof catOrName === 'string' ? catOrName : catOrName?.name ?? ''
-  if (key && CATEGORY_ICONS[key]) return CATEGORY_ICONS[key]
-  for (const [re, Icon] of NAME_HINTS) if (re.test(name)) return Icon
-  return Tag
+  return CATEGORY_ICONS[categoryIconKey(catOrName)] ?? Tag
 }

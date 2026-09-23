@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Stack, HStack, Text, Button, FormControl, FormLabel, Select, useToast, Center, Spinner,
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
@@ -8,7 +9,7 @@ import PageHeader from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { fromMinor, toMinor } from '../../shared/lib/currency.js'
+import { toMinor } from '../../shared/lib/currency.js'
 import { monthTitle } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
@@ -16,6 +17,7 @@ import { editBudget, deleteBudget, copyPreviousBudgets, useMonthBudgets } from '
 import { useBudgetProgress } from './useBudgetProgress.js'
 import { carriedLabel, previousPeriod } from './budgetMath.js'
 import BudgetRow from './BudgetRow.jsx'
+import { categoryPath } from '../categories/categoryLinks.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
 
 export default function Budgets() {
@@ -28,7 +30,7 @@ export default function Budgets() {
   const [catId, setCatId] = useState('')
   const [amount, setAmount] = useState('')
   const [confirmCopy, setConfirmCopy] = useState(false)
-  const amountRef = useRef(null)
+  const navigate = useNavigate()
   const toast = useToast()
   const { busy: copying, run } = useAsyncSubmit()
 
@@ -50,10 +52,9 @@ export default function Budgets() {
     }
   }
 
+  // Editing happens on the category's page, in its Edit panel.
   function startEdit(item) {
-    setCatId(item.categoryId ?? '')
-    setAmount(String(fromMinor(item.limit, baseCurrency)))
-    amountRef.current?.focus()
+    navigate(categoryPath(item.categoryId), { state: { edit: true } })
   }
 
   async function remove(item) {
@@ -98,7 +99,7 @@ export default function Budgets() {
             </FormControl>
             <FormControl maxW="160px">
               <FormLabel>Monthly cap</FormLabel>
-              <MoneyInput ref={amountRef} value={amount} onChange={setAmount} />
+              <MoneyInput value={amount} onChange={setAmount} />
             </FormControl>
             <Button type="submit">Set</Button>
           </HStack>
@@ -117,6 +118,9 @@ export default function Budgets() {
           </Stack>
         ) : (
           <Stack spacing={5}>
+            <Text color="text.muted" fontSize="sm">
+              Tap a budget to see what you spent and change it.
+            </Text>
             {carriedFrom && (
               <Text color="text.muted" fontSize="sm">
                 Budgets roll over until you change them. Edit or delete one and this month gets its own.

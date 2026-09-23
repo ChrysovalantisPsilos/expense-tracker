@@ -30,7 +30,8 @@ const OVERLAY_FOCUS = {
 //            — budgetTone()'s output fits. Defaults to 'negative' when over.
 //   over     defaults to percent > 100; shows `overLabel` as a red pill
 //   valueLabel overrides the "78%" text
-//   icon / media, actions / actionSlots as in ItemRow
+//   icon / media, actions / actionSlots as in ItemRow; `actionSize` 'lg'
+//            gives the actions 44px targets (RowActions)
 //   tooltip  native hover tooltip for the whole row (its HTML `title`; the
 //            `title` prop is the row's heading)
 //   playback / delay: optional usePlayback() gate to grow the bar in
@@ -39,7 +40,7 @@ const OVERLAY_FOCUS = {
 //            this month") — the visible title alone is too terse out of context
 export default function ProgressRow({
   icon, media, title, meta, percent, tone, over = percent > 100, overLabel = 'Over budget',
-  valueLabel = `${percent}%`, actions, actionSlots, tooltip, playback, delay = 0,
+  valueLabel = `${percent}%`, actions, actionSlots, actionSize, tooltip, playback, delay = 0,
   to, linkLabel, ...props
 }) {
   const fill = fillColor(tone ?? (over ? 'negative' : 'brand'))
@@ -68,9 +69,9 @@ export default function ProgressRow({
         {actions && (to ? (
           // Positioned after the link's stretch, so it paints (and clicks) above it.
           <Box position="relative" flexShrink={0}>
-            <RowActions actions={actions} slots={actionSlots} />
+            <RowActions actions={actions} slots={actionSlots} size={actionSize} />
           </Box>
-        ) : <RowActions actions={actions} slots={actionSlots} />)}
+        ) : <RowActions actions={actions} slots={actionSlots} size={actionSize} />)}
       </HStack>
       <Box h="8px" borderRadius="full" bg="bg.subtle" overflow="hidden">
         <MotionBox h="full" borderRadius="full" bg={fill}

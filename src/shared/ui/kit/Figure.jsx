@@ -2,7 +2,8 @@ import { Box, HStack, Text } from '@chakra-ui/react'
 import { textColor } from './kitMath.js'
 import { Reveal } from './motion.jsx'
 
-const VALUE_SIZE = { sm: 'sm', md: 'md', lg: 'xl', xl: '3xl' }
+// 'hero': the page's headline number — xl on phones, larger from laptop width.
+const VALUE_SIZE = { sm: 'sm', md: 'md', lg: 'xl', xl: '3xl', hero: { base: '3xl', lg: '5xl' } }
 
 // A headline number: small muted `label` above a big bold Poppins `value`
 // ("Total" / "€357.00"). `layout="inline"` puts the label left and the value
@@ -11,7 +12,7 @@ const VALUE_SIZE = { sm: 'sm', md: 'md', lg: 'xl', xl: '3xl' }
 export default function Figure({ label, value, tone = 'default', size = 'md', layout = 'stack', align = 'left', playback, delay, ...props }) {
   const number = (
     <Text fontFamily="heading" fontWeight="700" fontSize={VALUE_SIZE[size]} color={textColor(tone)}
-      lineHeight={size === 'xl' ? 1.15 : undefined} whiteSpace="nowrap">
+      lineHeight={size === 'xl' || size === 'hero' ? 1.15 : undefined} whiteSpace="nowrap">
       {value}
     </Text>
   )

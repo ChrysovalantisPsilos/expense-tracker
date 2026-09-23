@@ -42,7 +42,8 @@ danger — `tileColor()`), `radius` (default `'lg'`; use `'xl'` from 40px).
 
 ## Figure
 A headline number: small muted `label` above a bold Poppins `value`
-("Total / €357.00"). `size` `'sm' | 'md'` (default) `| 'lg' | 'xl'`, `tone`,
+("Total / €357.00"). `size` `'sm' | 'md'` (default) `| 'lg' | 'xl' | 'hero'` (xl on phones, larger
+from laptop width — Home's Spent), `tone`,
 `align` `'left' | 'right'`. `layout="inline"` = label left, value right on one
 row (a card's total line). Optional `playback`/`delay` reveal the value.
 
@@ -76,7 +77,8 @@ Switch, a comment button; give it a fixed width so amounts line up),
 `actions` (RowActions items `[{ label, icon, onClick, danger? }]`) +
 `actionSlots`, `dimmed` (fades the content, not the controls — a paused rule),
 `onClick` (the row becomes a button; `trailing` and `actions` always stay
-outside it, so buttons never nest), `py` (default 2). Passing `actions`
+outside it, so buttons never nest; `chevron` ends it with a › when it opens a
+page), `py` (default 2). Passing `actions`
 (even `[]`) gives the amount a fixed-width column so figures line up — do it
 for every row of a list or none.
 
@@ -85,7 +87,8 @@ Budget/goal row: icon, `title`, `meta` ("€312.40 of €400.00"), percent on th
 right or an "Over budget" pill, and a bar underneath. `percent` (number; bar
 clamps at 100%), `tone` (fill; `budgetTone()` output fits; defaults to
 `'negative'` when over), `over` (default `percent > 100`), `overLabel`,
-`valueLabel` (replaces "78%"), `icon`/`media`, `actions`/`actionSlots`,
+`valueLabel` (replaces "78%"), `icon`/`media`, `actions`/`actionSlots`
+(`actionSize="lg"` for 44px action targets),
 `tooltip` (native hover tooltip — the row's HTML `title`, since `title` is the
 heading; e.g. "Housing: €850.00 (48%)"), `playback`/`delay`. `to` (in-app path)
 makes the row a drill-down link with a chevron — one tab stop over the whole

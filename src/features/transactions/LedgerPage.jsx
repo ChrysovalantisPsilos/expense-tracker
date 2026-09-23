@@ -9,6 +9,7 @@ import {
   FileSpreadsheet, MoreHorizontal, Plus, Search, SlidersHorizontal, X,
 } from 'lucide-react'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
+import BackButton from '../../shared/ui/BackButton.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import Unfold from '../../shared/ui/kit/Unfold.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
@@ -41,8 +42,8 @@ const EMPTY_TEXT = {
 // The Transactions page (/transactions). The URL holds its whole state —
 // `?type=expense|income|all`, the `?q=` search text and every filter
 // (`category`, `from`, `to`, `min`, `max`; see ledgerLinks.js) — so it
-// survives reloads, back/forward and links (Home's and Insights' category
-// drill-downs land here). With no search it shows this month's entries;
+// survives reloads, back/forward and links. Opened with filters already in
+// the URL (a link), it shows a back button. With no search it shows this month's entries;
 // searching (text or the Filters panel) spans all history, or the chosen
 // dates. The add form stays folded behind "Add".
 export default function LedgerPage() {
@@ -67,6 +68,7 @@ export default function LedgerPage() {
   // Arriving with filters (a drill-down link) shows them, so they're visible
   // and clearable.
   const filtersPanel = useDisclosure({ defaultIsOpen: hasFilters })
+  const [openedFiltered] = useState(hasFilters)
   const addForm = useDisclosure()
   const [pickedKind, setPickedKind] = useState('expense') // the form's kind under "All"
   const formKind = kind ?? pickedKind
@@ -105,7 +107,7 @@ export default function LedgerPage() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader title="Transactions" action={<>
+      <PageHeader title="Transactions" leading={openedFiltered ? <BackButton /> : undefined} action={<>
         <PageAction icon={addForm.isOpen ? <X size={16} /> : <Plus size={16} />} data-tour="add-expense"
           label={addForm.isOpen ? 'Hide form' : ADD_LABEL[type]} onClick={addForm.onToggle} />
         <Menu placement="bottom-end" isLazy>

@@ -1,4 +1,5 @@
 // Pure budget helpers (no I/O) — unit-tested in test/budgetMath.test.js.
+import { toMinor } from '../../shared/lib/currency.js'
 
 // How close spend is to its cap, as the tone its progress bar takes (the
 // theme's Progress variants): 'negative' once over the cap, 'warning' from 80%
@@ -14,6 +15,18 @@ export function budgetTone(spent, limit) {
 // row's over-budget state comes from budgetTone, not from this number.
 export function budgetPercent(spent, limit) {
   return limit > 0 ? Math.round((spent / limit) * 100) : 0
+}
+
+// What saving a budget amount field does, given the category's current cap
+// (minor units, or null for none) and the field's text: { set: minor },
+// { remove: true } (the field was cleared), or null (nothing to do — same
+// amount, still no budget, or an unreadable value).
+export function budgetChange(currentMinor, amount, currency) {
+  const text = String(amount ?? '').trim()
+  if (!text) return currentMinor == null ? null : { remove: true }
+  const minor = toMinor(text, currency)
+  if (!Number.isFinite(minor) || minor < 0) return null
+  return minor === currentMinor ? null : { set: minor }
 }
 
 // ---- Rollover (the same rule as SQL budget_source_period / my_budgets) -----

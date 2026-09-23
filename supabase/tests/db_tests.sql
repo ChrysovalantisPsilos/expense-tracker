@@ -2201,6 +2201,7 @@ begin
       raise exception 'GUARD_MISSED: unknown icon';
     exception when check_violation then null; end;
     update public.categories set icon = 'fuel' where id = c2;   -- 0066's new key is accepted
+    update public.categories set icon = 'gifts-received' where id = c2;   -- and 0071's
     begin
       update public.categories set color = '#ff0000' where id = c1;
       raise exception 'GUARD_MISSED: free-form colour';

@@ -1,4 +1,5 @@
 import { Box, HStack, Stack, Text } from '@chakra-ui/react'
+import { ChevronRight } from 'lucide-react'
 import IconTile from './IconTile.jsx'
 import RowActions from '../RowActions.jsx'
 import RowAmount from '../RowAmount.jsx'
@@ -23,10 +24,11 @@ const CLICKABLE = {
 //           `actionSlots` reserves room for that many buttons on every row.
 //   dimmed  fades the row's content (e.g. a paused rule) but not its controls
 //   onClick makes the row a button — icon, text and amount only: `trailing`
-//           and `actions` stay outside it, so buttons never nest
+//           and `actions` stay outside it, so buttons never nest.
+//           `chevron` ends the button with a › (it opens a page)
 export default function ItemRow({
   icon, media, title, meta, amount, amountTone = 'default', amountMeta,
-  trailing, actions, actionSlots, dimmed, onClick, py = 2, ...props
+  trailing, actions, actionSlots, dimmed, onClick, chevron, py = 2, ...props
 }) {
   const fixed = actions !== undefined
   const AmountText = fixed ? RowAmount : Text
@@ -52,6 +54,9 @@ export default function ItemRow({
           </AmountText>
           {amountMeta && <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">{amountMeta}</Text>}
         </Stack>
+      )}
+      {onClick && chevron && (
+        <Box color="text.muted" flexShrink={0} aria-hidden><ChevronRight size={16} /></Box>
       )}
     </>
   )

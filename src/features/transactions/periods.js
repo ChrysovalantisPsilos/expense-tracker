@@ -1,19 +1,36 @@
 import { isoDate } from '../../shared/lib/dates.js'
 
+// Period options (a month, a year, all time) as { value, label, from, to }.
+// `value` is a stable token — 'm:2026-9', 'y:2026', 'all' — that pages keep
+// in their state or URL. Pure module (no React/supabase) so it's unit-testable.
+
+function monthPeriod(y, m, d) {
+  const start = new Date(y, m, 1)
+  const end = new Date(y, m + 1, 0)
+  const now = y === d.getFullYear() && m === d.getMonth()
+  return {
+    value: `m:${start.getFullYear()}-${start.getMonth() + 1}`,
+    label: now ? 'This month' : start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    from: isoDate(start), to: isoDate(end),
+  }
+}
+
+const yearPeriod = (yr, d) => ({
+  value: `y:${yr}`, label: yr === d.getFullYear() ? 'This year' : String(yr),
+  from: `${yr}-01-01`, to: `${yr}-12-31`,
+})
+
+const ALL_TIME = { value: 'all', label: 'All time', from: null, to: null }
+
 // Dashboard period options, clamped so the user never sees months/years from
 // before they have any data. The range spans from `oldestISO` (their oldest
 // transaction, YYYY-MM-DD) up to now — importing older data extends it for
-// free. With no transactions, only "This month" is offered. Pure module (no
-// React/supabase) so it's unit-testable.
+// free. With no transactions, only "This month" is offered.
 export function buildPeriods(oldestISO, d = new Date()) {
-  const iso = isoDate
   const y = d.getFullYear()
   const m = d.getMonth()
 
-  const thisMonth = {
-    value: `m:${y}-${m + 1}`, label: 'This month',
-    from: iso(new Date(y, m, 1)), to: iso(new Date(y, m + 1, 0)),
-  }
+  const thisMonth = monthPeriod(y, m, d)
   if (!oldestISO) return [thisMonth]
 
   const oldest = new Date(oldestISO)
@@ -23,22 +40,35 @@ export function buildPeriods(oldestISO, d = new Date()) {
 
   const out = []
   for (let idx = nowMonthIdx; idx >= oldestMonthIdx; idx--) {
-    const start = new Date(Math.floor(idx / 12), idx % 12, 1)
-    const end = new Date(start.getFullYear(), start.getMonth() + 1, 0)
-    out.push({
-      value: `m:${start.getFullYear()}-${start.getMonth() + 1}`,
-      label: idx === nowMonthIdx ? 'This month' : start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-      from: iso(start), to: iso(end),
-    })
+    out.push(monthPeriod(Math.floor(idx / 12), idx % 12, d))
   }
   // Future-dated data can leave the months loop empty (oldest is after now):
   // "This month" must always exist — it's the default selection and callers
   // index into the list.
   if (!out.some((p) => p.value === thisMonth.value)) out.unshift(thisMonth)
-  for (let yr = y; yr >= oldestY; yr--) {
-    out.push({ value: `y:${yr}`, label: yr === y ? 'This year' : String(yr), from: `${yr}-01-01`, to: `${yr}-12-31` })
-  }
+  for (let yr = y; yr >= oldestY; yr--) out.push(yearPeriod(yr, d))
   // "All time" only adds value once there's data spanning more than this month.
-  if (oldestMonthIdx < nowMonthIdx) out.push({ value: 'all', label: 'All time', from: null, to: null })
+  if (oldestMonthIdx < nowMonthIdx) out.push(ALL_TIME)
   return out
 }
+
+// The period a token names (as buildPeriods would label it), or null for
+// anything malformed — a hand-edited URL falls back to the caller's default.
+export function periodFromValue(value, d = new Date()) {
+  const v = String(value ?? '')
+  if (v === 'all') return ALL_TIME
+  const month = /^m:(\d{4})-(\d{1,2})$/.exec(v)
+  if (month && +month[2] >= 1 && +month[2] <= 12) return monthPeriod(+month[1], +month[2] - 1, d)
+  const year = /^y:(\d{4})$/.exec(v)
+  if (year) return yearPeriod(+year[1], d)
+  return null
+}
+
+// A period picker's options with `period` (e.g. from a link) always among
+// them: a period outside the data range goes first rather than vanishing.
+export function withPeriod(periods, period) {
+  return periods.some((p) => p.value === period.value) ? periods : [period, ...periods]
+}
+
+// Whether a period is a single month (budgets are monthly).
+export const isMonthPeriod = (period) => String(period?.value).startsWith('m:')

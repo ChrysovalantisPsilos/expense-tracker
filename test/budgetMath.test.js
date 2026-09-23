@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { budgetPercent, budgetTone } from '../src/features/budgets/budgetMath.js'
+import { budgetChange, budgetPercent, budgetTone } from '../src/features/budgets/budgetMath.js'
 
 test('budgetTone: under 80% of the cap keeps the default fill', () => {
   assert.equal(budgetTone(0, 10000), undefined)
@@ -52,4 +52,16 @@ test('carriedFrom: rows from an earlier month are carried; own rows or none are 
 test('carriedLabel: month name, with the year only when it differs', () => {
   assert.equal(carriedLabel('2026-08-01', '2026-09-01', 'en-GB'), 'Carried over from August')
   assert.equal(carriedLabel('2025-12-01', '2026-01-01', 'en-GB'), 'Carried over from December 2025')
+})
+
+test('budgetChange: set, change, remove or nothing to do', () => {
+  assert.deepEqual(budgetChange(null, '400', 'EUR'), { set: 40000 })
+  assert.deepEqual(budgetChange(40000, '412.5', 'EUR'), { set: 41250 })
+  assert.equal(budgetChange(40000, '400.00', 'EUR'), null) // same cap
+  assert.deepEqual(budgetChange(40000, '', 'EUR'), { remove: true })
+  assert.deepEqual(budgetChange(40000, '  ', 'EUR'), { remove: true })
+  assert.equal(budgetChange(null, '', 'EUR'), null) // still no budget
+  assert.equal(budgetChange(null, '.', 'EUR'), null) // unreadable
+  assert.deepEqual(budgetChange(null, '0', 'EUR'), { set: 0 }) // a zero cap is a cap
+  assert.deepEqual(budgetChange(null, '5000', 'JPY'), { set: 5000 }) // zero-decimal currency
 })
