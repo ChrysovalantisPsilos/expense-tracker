@@ -27,8 +27,10 @@ export function NavList({ label, children }) {
 // optional muted description, and a chevron when it navigates. Pass `to` for
 // an in-app link or `onClick` for an action (rendered as a button). Other
 // props (e.g. a data- attribute) go on the row.
-export function NavRow({ to, onClick, icon, media, label, description, ...rest }) {
-  const target = to ? { as: RouterLink, to } : { as: 'button', type: 'button', onClick }
+export function NavRow({ to, href, onClick, icon, media, label, description, ...rest }) {
+  const target = to ? { as: RouterLink, to }
+    : href ? { as: 'a', href }
+    : { as: 'button', type: 'button', onClick }
   return (
     <HStack {...target} {...rest} textAlign="left" w="full" spacing={3} px={4} py={3.5} minW={0}
       _hover={{ bg: 'bg.subtle' }} _focusVisible={{ bg: 'bg.subtle', boxShadow: 'outline' }}

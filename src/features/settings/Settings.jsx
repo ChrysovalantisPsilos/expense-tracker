@@ -1,12 +1,13 @@
 import { Stack } from '@chakra-ui/react'
 import {
-  BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass, CircleHelp,
+  BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass, CircleHelp, Mail,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { NavList, NavRow } from '../../shared/ui/NavList.jsx'
+import { SUPPORT_EMAIL } from '../../shared/lib/contact.js'
 import { startTour } from '../onboarding/tour.js'
 
 const PREFERENCES = [
@@ -46,6 +47,7 @@ export default function Settings() {
       <NavList label="Privacy & security">{rows(PRIVACY)}</NavList>
       <NavList label="Help">
         <NavRow to="/help" icon={CircleHelp} label="Help & FAQ" description="Answers to common questions" />
+        <NavRow href={`mailto:${SUPPORT_EMAIL}`} icon={Mail} label="Contact support" description={SUPPORT_EMAIL} />
         <NavRow icon={Compass} label="Take the tour again" description="A quick look around the app"
           data-tour="replay" onClick={() => startTour({ returnTo: '/settings', returnFocus: '[data-tour="replay"]' })} />
       </NavList>

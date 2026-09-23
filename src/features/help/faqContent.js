@@ -3,6 +3,7 @@
 // unique across the page), a question `q` and an answer `a` (one string per
 // paragraph). Every answer must stay true to the app — update it alongside any
 // change to the feature it describes.
+import { SUPPORT_EMAIL, PRIVACY_EMAIL } from '../../shared/lib/contact.js'
 
 export const FAQ_SECTIONS = [
   {
@@ -34,7 +35,7 @@ export const FAQ_SECTIONS = [
         id: 'who-runs-budgeer',
         q: 'Who runs Budgeer?',
         a: [
-          'Budgeer is a hobby project operated from Belgium. You can reach us at privacy@budgeer.com.',
+          `Budgeer is a hobby project operated from Belgium. For help or to report a problem, email ${SUPPORT_EMAIL}; for anything about your personal data, email ${PRIVACY_EMAIL}.`,
         ],
       },
       {
@@ -301,7 +302,7 @@ export const FAQ_SECTIONS = [
         id: 'privacy-requests',
         q: 'Who do I contact about my privacy?',
         a: [
-          'Email privacy@budgeer.com. Budgeer is operated from Belgium; if you’re not happy with our answer, you can complain to the Belgian Data Protection Authority.',
+          `Email ${PRIVACY_EMAIL}. Budgeer is operated from Belgium; if you’re not happy with our answer, you can complain to the Belgian Data Protection Authority.`,
           'The Privacy page explains in detail what we store and who can see it.',
         ],
       },
@@ -346,6 +347,13 @@ export const FAQ_SECTIONS = [
         q: 'Import didn’t recognise my bank.',
         a: [
           'You can still import the file: tell Budgeer which columns hold the date, amount and description, and the rest is the same. The file needs a header row and must be under 5 MB.',
+        ],
+      },
+      {
+        id: 'contact-support',
+        q: 'My question isn’t answered here. How do I get help?',
+        a: [
+          `Email ${SUPPORT_EMAIL} with what you were doing, what you expected and what happened (a screenshot helps — blank out any amounts or names you’d rather not share). Budgeer is a hobby project, so replies may take a few days. For requests about your personal data, use ${PRIVACY_EMAIL} instead.`,
         ],
       },
     ],

@@ -15,6 +15,7 @@ import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
 import TripSplitMock from './TripSplitMock.jsx'
 import BudgetsMock from './BudgetsMock.jsx'
 import InsightsMock from './InsightsMock.jsx'
+import { SUPPORT_EMAIL } from '../../shared/lib/contact.js'
 import CurrencyMock from './CurrencyMock.jsx'
 
 const STEPS = [
@@ -228,6 +229,7 @@ export default function Landing() {
               <Text>© {new Date().getFullYear()} Budgeer</Text>
               <Link as={RouterLink} to="/help">Help</Link>
               <Link as={RouterLink} to="/privacy">Privacy</Link>
+              <Link href={`mailto:${SUPPORT_EMAIL}`}>Contact</Link>
             </HStack>
             <ThemeToggle />
           </Flex>
