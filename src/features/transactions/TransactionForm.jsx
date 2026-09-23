@@ -71,9 +71,13 @@ export default function TransactionForm({
     setDraft((d) => editRepeat(d, {}, v || today()))
   }
 
-  function handleScan({ total, date }) {
+  // A confirmed receipt fills the amount and date, the shop's name when the
+  // description is still empty, and the currency when the app supports it.
+  function handleScan({ total, date, merchant, currency: scanned }) {
     if (total != null) setAmount(String(total))
     if (date) changeDate(date)
+    if (merchant && !description.trim()) setDescription(merchant)
+    if (scanned && CURRENCIES.includes(scanned)) setCurrency(scanned)
   }
 
   function pickKind(k) {
