@@ -229,7 +229,7 @@ export class Statement {
   // a lowercase b whose bowl is a budget ring, amber then coral.
   mark(x: number, ty: number, size: number) {
     const s = size / 48
-    this.fill(x + 9.25 * s, ty + 3.6 * s, 7.5 * s, 40 * s, BRAND.coral, 3.75 * s)
+    this.fill(x + 9.25 * s, ty + 3.6 * s, 7.5 * s, 29.4 * s, BRAND.coral, 3.75 * s)
     const cx = x + 24 * s
     const cy = ty + 29.6 * s
     const r = 11 * s
