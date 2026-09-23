@@ -56,16 +56,18 @@ test('categoryTile: a known colour key tints the tile; anything else keeps the d
   for (const hex of Object.values(CATEGORY_COLORS)) assert.match(hex, /^#[0-9A-F]{6}$/)
 })
 
-// The icon and colour keys are CHECK constraints on the server (0060) and
+// The icon and colour keys are CHECK constraints on the server (colours: 0060;
+// icons: widened by 0066) and
 // Lucide mappings in icons.jsx — all three lists must stay identical.
 const sqlList = (sql, column) => {
   const m = sql.match(new RegExp(`${column} is null or ${column} in \\(([^)]*)\\)`))
   return m[1].match(/'([a-z-]+)'/g).map((s) => s.slice(1, -1))
 }
 
-test('icon/colour keys match the 0060 CHECK constraints and the icon registry', () => {
+test('icon/colour keys match the CHECK constraints and the icon registry', () => {
   const sql = readFileSync(new URL('../supabase/migrations/0060_category_management.sql', import.meta.url), 'utf8')
-  assert.deepEqual(sqlList(sql, 'icon'), CATEGORY_ICON_KEYS)
+  const iconSql = readFileSync(new URL('../supabase/migrations/0066_fuel_icon.sql', import.meta.url), 'utf8')
+  assert.deepEqual(sqlList(iconSql, 'icon'), CATEGORY_ICON_KEYS)
   assert.deepEqual(sqlList(sql, 'color'), CATEGORY_COLOR_KEYS)
   const icons = readFileSync(new URL('../src/shared/lib/icons.jsx', import.meta.url), 'utf8')
   const registry = icons.slice(icons.indexOf('const CATEGORY_ICONS = {'), icons.indexOf('}', icons.indexOf('const CATEGORY_ICONS = {')))

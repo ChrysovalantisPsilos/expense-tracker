@@ -4,7 +4,7 @@
 // categories (or legacy emoji values) still render something sensible.
 
 import {
-  Utensils, ShoppingCart, Car, Home, Lightbulb, ShoppingBag, HeartPulse,
+  Utensils, ShoppingCart, Car, Fuel, Home, Lightbulb, ShoppingBag, HeartPulse,
   Clapperboard, Briefcase, Tag, Plane, Coffee, Dumbbell, GraduationCap,
   Gift, PiggyBank,
 } from 'lucide-react'
@@ -13,6 +13,7 @@ const CATEGORY_ICONS = {
   utensils: Utensils,
   groceries: ShoppingCart,
   transport: Car,
+  fuel: Fuel,
   housing: Home,
   utilities: Lightbulb,
   shopping: ShoppingBag,
@@ -31,7 +32,8 @@ const CATEGORY_ICONS = {
 const NAME_HINTS = [
   [/food|dining|restaurant|eat/i, Utensils],
   [/grocery|groceries|market/i, ShoppingCart],
-  [/transport|car|fuel|gas|uber|taxi/i, Car],
+  [/fuel|petrol|diesel|gas station/i, Fuel],
+  [/transport|car|gas|uber|taxi/i, Car],
   [/hous|rent|mortgage/i, Home],
   [/util|electric|water|internet|phone/i, Lightbulb],
   [/shop/i, ShoppingBag],

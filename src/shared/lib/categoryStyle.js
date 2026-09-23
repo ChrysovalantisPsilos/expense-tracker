@@ -1,10 +1,10 @@
 // A category's look: which icon key and colour key it may store. Pure, and
 // kept in lockstep with the CHECK constraints in
-// supabase/migrations/0060_category_management.sql (test/categoryStyle.test.js
-// compares the two). icons.jsx maps each icon key to its Lucide component.
+// supabase/migrations/0060_category_management.sql and 0066_fuel_icon.sql
+// (test/categoryMath.test.js compares them). icons.jsx maps each icon key to its Lucide component.
 
 export const CATEGORY_ICON_KEYS = [
-  'utensils', 'groceries', 'transport', 'housing', 'utilities', 'shopping', 'health',
+  'utensils', 'groceries', 'transport', 'fuel', 'housing', 'utilities', 'shopping', 'health',
   'entertainment', 'salary', 'travel', 'coffee', 'fitness', 'education', 'gifts',
   'savings', 'other',
 ]
