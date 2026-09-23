@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  SimpleGrid, Card, CardBody, Stat, StatLabel, StatNumber, StatHelpText,
-  Box, Text, Stack, Center, Spinner, HStack, IconButton,
+  SimpleGrid, Box, Text, Stack, Center, Spinner, HStack, IconButton,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Button,
-  List, ListItem, Divider,
 } from '@chakra-ui/react'
-import { ChartBarDecreasing, Table as TableIcon, Repeat, ReceiptText } from 'lucide-react'
+import { ChartBarDecreasing, Table as TableIcon, Repeat, ReceiptText, Users } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
 import { useTransactions, buildPeriods, oldestTransactionDate } from '../transactions/useData.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
@@ -18,8 +16,14 @@ import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
-import RowAmount from '../../shared/ui/RowAmount.jsx'
+import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import Tile from '../../shared/ui/kit/Tile.jsx'
+import Figure from '../../shared/ui/kit/Figure.jsx'
+import IconTile from '../../shared/ui/kit/IconTile.jsx'
+import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
+import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 
@@ -53,18 +57,22 @@ export default function Dashboard() {
     return { subsMonthly, activeRecurring }
   }, [rules])
 
-  const { spent, earned, byCategory, expenses } = useMemo(() => {
+  const { spent, earned, byCategory, expenses, bucketRow } = useMemo(() => {
     let spent = 0, earned = 0
     const expenses = []
+    const bucketRow = new Map() // bucket name → a row in it, for the bar's icon
     for (const r of rows) {
       const base = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
       if (r.kind === 'income') earned += base
-      else { spent += base; expenses.push(r) }
+      else {
+        spent += base; expenses.push(r)
+        if (!bucketRow.has(bucketOf(r))) bucketRow.set(bucketOf(r), r)
+      }
     }
     const byCategory = [...sumToBaseByKey(expenses, baseCurrency, bucketOf).entries()]
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
-    return { spent, earned, byCategory, expenses }
+    return { spent, earned, byCategory, expenses, bucketRow }
   }, [rows, baseCurrency])
   const bars = useMemo(() => categoryBars(byCategory), [byCategory])
 
@@ -79,6 +87,7 @@ export default function Dashboard() {
   const spentTotal = spent + proj.expense
   const earnedTotal = earned + proj.income
   const netTotal = earnedTotal - spentTotal
+  const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
 
   // Paginate the two lists (10/page). Expenses reset to page 1 when the period
   // changes; recurring clamps if a rule is removed.
@@ -94,40 +103,26 @@ export default function Dashboard() {
         </Select>
       } />
 
-      <SimpleGrid columns={{ base: 1, sm: 3 }} spacing={4}>
-        <Card><CardBody>
-          <Stat>
-            <StatLabel>Spent</StatLabel>
-            <StatNumber>{formatMoney(spentTotal, baseCurrency)}</StatNumber>
+      <Panel>
+        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} alignItems="center">
+          <Box>
+            <Figure label="Spent" size="xl" value={formatMoney(spentTotal, baseCurrency)} />
             {proj.expense > 0 && (
-              <StatHelpText>incl. {formatMoney(proj.expense, baseCurrency)} upcoming</StatHelpText>
+              <Text fontSize="xs" color="text.muted" mt={1}>
+                incl. {formatMoney(proj.expense, baseCurrency)} upcoming
+              </Text>
             )}
-          </Stat>
-        </CardBody></Card>
-        <Card><CardBody>
-          <Stat>
-            <StatLabel>Income</StatLabel>
-            <StatNumber>{formatMoney(earnedTotal, baseCurrency)}</StatNumber>
-            {proj.income > 0 && (
-              <StatHelpText>incl. {formatMoney(proj.income, baseCurrency)} upcoming</StatHelpText>
-            )}
-          </Stat>
-        </CardBody></Card>
-        <Card><CardBody>
-          <Stat>
-            <StatLabel>Net</StatLabel>
-            <StatNumber color={netTotal >= 0 ? 'status.positive' : 'status.negative'}>
-              {formatMoney(netTotal, baseCurrency)}
-            </StatNumber>
-            <StatHelpText>
-              {proj.expense > 0 || proj.income > 0 ? 'incl. upcoming recurring' : 'income − expenses'}
-            </StatHelpText>
-          </Stat>
-        </CardBody></Card>
-      </SimpleGrid>
+          </Box>
+          <SimpleGrid columns={2} spacing={2}>
+            <SummaryTile label="Income" value={formatMoney(earnedTotal, baseCurrency)} tone="positive"
+              note={proj.income > 0 ? `incl. ${formatMoney(proj.income, baseCurrency)} upcoming` : undefined} />
+            <SummaryTile label="Net" value={net.text} tone={net.tone}
+              note={proj.expense > 0 || proj.income > 0 ? 'incl. upcoming recurring' : 'income − expenses'} />
+          </SimpleGrid>
+        </SimpleGrid>
+      </Panel>
 
-      <Card><CardBody>
-        <CardHeader icon={ChartBarDecreasing} title="Spending by category" action={
+      <Panel icon={ChartBarDecreasing} title="Spending by category" action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
             <CkTooltip label="Chart">
               <IconButton aria-label="Chart view" size="xs" icon={<ChartBarDecreasing size={15} />}
@@ -142,11 +137,11 @@ export default function Dashboard() {
                 onClick={() => chooseView('table')} />
             </CkTooltip>
           </HStack>
-        } />
+        }>
         {loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : byCategory.length === 0 ? (
-          <Text color="text.muted">No expenses in this period.</Text>
+          <Text color="text.muted" fontSize="sm">No expenses in this period.</Text>
         ) : view === 'table' ? (
           <Table size="sm" variant="simple">
             <Thead>
@@ -169,35 +164,24 @@ export default function Dashboard() {
         ) : (
           // Ranked bars: one hue (identity is the label, not a colour), each row
           // labelled with its amount and share, so nothing depends on hover.
-          <Stack spacing={3} role="list" aria-label="Spending by category">
+          <Stack spacing={4} role="list" aria-label="Spending by category">
             {bars.map((c) => (
-              <Box key={c.name} role="listitem"
-                title={`${c.name}: ${formatMoney(c.value, baseCurrency)} (${c.share}%)`}>
-                <HStack justify="space-between" spacing={3} mb={1.5}>
-                  <Text fontSize="sm" fontWeight="600" noOfLines={1} minW={0}>{c.name}</Text>
-                  <Text fontSize="sm" whiteSpace="nowrap">
-                    <Text as="span" fontWeight="700">{formatMoney(c.value, baseCurrency)}</Text>
-                    <Text as="span" color="text.muted"> · {c.share}%</Text>
-                  </Text>
-                </HStack>
-                <Box h="8px" bg="bg.subtle" borderRadius="full" overflow="hidden">
-                  <Box h="full" w={`${Math.max(c.ratio * 100, 2)}%`} bg="brand.500"
-                    _dark={{ bg: 'brand.400' }} borderRadius="full" />
-                </Box>
-              </Box>
+              <ProgressRow key={c.name} role="listitem"
+                title={c.name} meta={formatMoney(c.value, baseCurrency)}
+                media={<BucketIcon row={bucketRow.get(c.name)} />}
+                percent={Math.max(c.ratio * 100, 2)} valueLabel={`${c.share}%`} />
             ))}
           </Stack>
         )}
-      </CardBody></Card>
+      </Panel>
 
       <BudgetsCard />
 
-      <Card><CardBody>
-        <CardHeader icon={ReceiptText} title="Expenses" />
+      <Panel icon={ReceiptText} title="Expenses">
         {loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : expenses.length === 0 ? (
-          <Text color="text.muted">No expenses in this period.</Text>
+          <Text color="text.muted" fontSize="sm">No expenses in this period.</Text>
         ) : (
           <>
             <TransactionList rows={expPage.pageItems} kind="expense" baseCurrency={baseCurrency}
@@ -205,42 +189,48 @@ export default function Dashboard() {
             <Paginator page={expPage.page} count={expPage.count} onPage={expPage.setPage} />
           </>
         )}
-      </CardBody></Card>
+      </Panel>
 
-      <Card><CardBody>
-        <CardHeader icon={Repeat} title="Recurring" mb={activeRecurring.length ? 4 : 0}
-          subtitle={subsMonthly > 0 ? `${formatMoney(subsMonthly, baseCurrency)}/mo` : undefined}
-          action={<Button size="xs" variant="ghost" onClick={() => navigate('/recurring')}>Manage</Button>} />
+      <Panel icon={Repeat} title="Recurring"
+        subtitle={subsMonthly > 0 ? `${formatMoney(subsMonthly, baseCurrency)}/mo` : undefined}
+        action={<Button size="xs" variant="ghost" onClick={() => navigate('/recurring')}>Manage</Button>}>
         {activeRecurring.length === 0 ? (
           <Text color="text.muted" fontSize="sm">
             No recurring entries yet. Add subscriptions and bills to see them here.
           </Text>
         ) : (
           <>
-            <List spacing={0}>
-              {recPage.pageItems.map((r, i) => (
-                <ListItem key={r.id}>
-                  {i > 0 && <Divider />}
-                  <HStack py={2.5} spacing={3}>
-                    <Stack spacing={0} flex="1" minW={0}>
-                      <Text fontWeight="600" noOfLines={1}>
-                        {r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
-                      </Text>
-                      <Text fontSize="xs" color="text.muted">
-                        {frequencyLabel(r)} · next {shortDate(r.next_run)}
-                      </Text>
-                    </Stack>
-                    <RowAmount color={r.kind === 'income' ? 'status.positive' : 'text.primary'}>
-                      {formatMoney(r.amount_minor, r.currency)}
-                    </RowAmount>
-                  </HStack>
-                </ListItem>
+            <Box as="ul" listStyleType="none">
+              {recPage.pageItems.map((r) => (
+                <ItemRow as="li" key={r.id} py={2.5}
+                  media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
+                  title={r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
+                  meta={`${frequencyLabel(r)} · next ${shortDate(r.next_run)}`}
+                  amount={formatMoney(r.amount_minor, r.currency)}
+                  amountTone={r.kind === 'income' ? 'positive' : 'default'} />
               ))}
-            </List>
+            </Box>
             <Paginator page={recPage.page} count={recPage.count} onPage={recPage.setPage} />
           </>
         )}
-      </CardBody></Card>
+      </Panel>
     </Stack>
   )
+}
+
+// A sand tile with a muted label, a bold figure in its tone and a muted note.
+function SummaryTile({ label, value, tone, note }) {
+  return (
+    <Tile minW={0}>
+      <Figure label={label} value={value} tone={tone} />
+      {note && <Text fontSize="xs" color="text.muted" noOfLines={1}>{note}</Text>}
+    </Tile>
+  )
+}
+
+// A category bar's icon: the category's own, or a people icon for a group's
+// share bucket ("Other" and uncategorized fall back to the generic tag).
+function BucketIcon({ row }) {
+  if (row?.group_expense_id) return <IconTile icon={Users} />
+  return <CategoryBadge category={row?.categories} size={32} />
 }

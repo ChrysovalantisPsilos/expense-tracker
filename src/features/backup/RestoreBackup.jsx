@@ -1,13 +1,15 @@
 import { useRef, useState } from 'react'
 import {
-  Card, CardBody, Stack, Text, Button, FormControl, FormLabel, FormErrorMessage, Input,
-  Progress, SimpleGrid, Box, Flex, useToast, Modal, ModalOverlay, ModalContent, ModalHeader,
+  Stack, Text, Button, FormControl, FormLabel, FormErrorMessage, Input,
+  Progress, Box, Flex, useToast, Modal, ModalOverlay, ModalContent, ModalHeader,
   ModalBody, ModalFooter, ModalCloseButton,
 } from '@chakra-ui/react'
 import { Upload, Check, Info, ShieldAlert } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { EVENTS } from '../../shared/lib/keys.js'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import IconTile from '../../shared/ui/kit/IconTile.jsx'
+import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { readBackup, unlockBackup, backupContents, restoreSummary } from './backupMath.js'
 import { restoreBackup } from './backup.js'
 import Note from './Note.jsx'
@@ -35,8 +37,7 @@ export default function RestoreBackup() {
   }
 
   return (
-    <Card><CardBody>
-      <CardHeader icon={Upload} title="Restore from backup" mb={2} />
+    <Panel title="Restore from backup" icon={Upload}>
       <Text fontSize="sm" color="text.muted" mb={4}>
         Adds what’s missing from a Budgeer backup file to this account. Nothing
         is deleted or overwritten, and entries you already have are skipped — so
@@ -47,7 +48,7 @@ export default function RestoreBackup() {
         Choose backup file
       </Button>
       {flow && <RestoreDialog flow={flow} setFlow={setFlow} onClose={() => setFlow(null)} />}
-    </CardBody></Card>
+    </Panel>
   )
 }
 
@@ -175,14 +176,12 @@ function ReviewStep({ backup, setFlow, onClose, running }) {
               Backup made {made.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.
             </Text>
           )}
-          <SimpleGrid columns={{ base: 2, sm: 3 }} spacing={2}>
+          <BalanceGrid columns={{ base: 2, sm: 3 }}>
             {CONTENT_ROWS.map(([k, label]) => (
-              <Box key={k} bg="bg.subtle" borderRadius="lg" px={3} py={2} minW={0}>
-                <Text fontWeight="700" fontSize="lg">{contents[k]}</Text>
-                <Text fontSize="xs" color="text.muted" noOfLines={1}>{label}</Text>
-              </Box>
+              <BalanceTile key={k} label={label} value={contents[k]}
+                tone={contents[k] ? 'default' : 'muted'} />
             ))}
-          </SimpleGrid>
+          </BalanceGrid>
           {contents.groupShares > 0 && (
             <Note icon={Info}>
               {contents.groupShares} of the expenses are your shares of group
@@ -214,7 +213,7 @@ function DoneStep({ tally, onClose }) {
     <>
       <ModalBody>
         <Stack spacing={3} align="center" textAlign="center" py={2}>
-          <Box color="status.positive"><Check size={36} /></Box>
+          <IconTile icon={Check} size={56} radius="xl" tone="positive" />
           <Text fontWeight="600">{added}</Text>
           {skipped && <Text fontSize="sm" color="text.muted">{skipped}</Text>}
           {kept && <Text fontSize="sm" color="text.muted">{kept}</Text>}

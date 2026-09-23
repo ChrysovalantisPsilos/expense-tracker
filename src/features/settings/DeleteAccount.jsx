@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Box, Card, CardBody, Flex, Heading, HStack, Stack, Text, Button, FormControl,
+  Box, Heading, HStack, Stack, Text, Button, FormControl,
   FormLabel, Input, useDisclosure, useToast, Modal, ModalOverlay, ModalContent,
   ModalHeader, ModalBody, ModalFooter,
 } from '@chakra-ui/react'
@@ -8,6 +8,8 @@ import { AlertTriangle, Trash2 } from 'lucide-react'
 import { supabase, edgeFunctionError } from '../../shared/lib/supabase.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { hasPasswordIdentity } from './authMethods.js'
 
 // The danger zone at the foot of Security: set apart by space and a red
@@ -18,13 +20,11 @@ export default function DeleteAccount({ user }) {
   return (
     <Box pt={6}>
       <Eyebrow color="status.negative" mb={2}>Danger zone</Eyebrow>
-      <Card borderColor="status.negativeBorder"><CardBody>
+      <Panel borderColor="status.negativeBorder">
+        {/* CardHeader's layout with a red icon tile (CardHeader's is always sand). */}
         <HStack spacing={3} mb={2}>
-          <Flex boxSize="32px" align="center" justify="center" borderRadius="lg" flexShrink={0}
-            bg="status.negativeSubtle" color="status.negative">
-            <AlertTriangle size={16} />
-          </Flex>
-          <Heading as="h2" size="sm">Delete account</Heading>
+          <IconTile icon={AlertTriangle} tone="negative" bg="status.negativeSubtle" />
+          <Heading as="h2" size="sm" lineHeight="1.5">Delete account</Heading>
         </HStack>
         <Text fontSize="sm" color="text.muted" mb={4}>
           Permanently deletes your account and personal data. Groups you own pass
@@ -32,7 +32,7 @@ export default function DeleteAccount({ user }) {
         </Text>
         <Button colorScheme="red" variant="outline" leftIcon={<Trash2 size={16} />}
           onClick={deleteModal.onOpen}>Delete my account</Button>
-      </CardBody></Card>
+      </Panel>
 
       <DeleteAccountModal user={user} isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}
         signOut={signOut} />

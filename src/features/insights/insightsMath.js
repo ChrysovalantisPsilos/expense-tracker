@@ -1,4 +1,6 @@
-import { toBaseMinor, minorFactor } from '../../shared/lib/currency.js'
+import { toBaseMinor, minorFactor, baseEquivalent } from '../../shared/lib/currency.js'
+import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
+import { categoryBars } from '../dashboard/categoryBars.js'
 
 // Income/expense trend in MAJOR base-currency units, one entry per month bucket
 // (keyed by YYYY-MM). `months` come from lastMonths(); rows outside those months
@@ -41,3 +43,36 @@ export function netWorth(accounts) {
 // thousands would print 1.6k and 2.4k both as "2k".
 const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
 export const axisTick = (v) => compact.format(v).replace(/K$/, 'k')
+
+// Expense rows (anything not income) dated in the `monthKey` (YYYY-MM) month.
+const monthExpenses = (rows, monthKey) =>
+  rows.filter((r) => r.kind !== 'income' && String(r.spent_at).slice(0, 7) === monthKey)
+
+// "Where your money went": the month's spending by category as StackedBar /
+// ShareLegend items [{ label, share }] — top 5 + "Other", integer shares that
+// sum to 100, "Other" last. Buckets and converts exactly like the dashboard breakdown
+// (bucketOf + sumToBaseByKey, then categoryBars). [] when nothing was spent.
+export function spendingShares(rows, monthKey, baseCurrency) {
+  const totals = sumToBaseByKey(monthExpenses(rows, monthKey), baseCurrency, bucketOf)
+  const categories = [...totals.entries()].map(([name, value]) => ({ name, value }))
+  return categoryBars(categories).map((c) => ({ label: c.name, share: c.share }))
+}
+
+// "Spending abroad": the month's foreign-currency expenses with their value
+// in the base currency at each row's captured rate (baseEquivalent), newest
+// first as given, plus the base-currency total. Rows in the base currency or
+// without a rate are left out, so { items: [], totalBaseMinor: 0 } means
+// there's nothing to show.
+//   items: [{ id, label, currency, minor, rate, baseMinor }]
+export function foreignSpending(rows, monthKey, baseCurrency) {
+  const items = []
+  for (const r of monthExpenses(rows, monthKey)) {
+    const conv = baseEquivalent(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
+    if (!conv) continue
+    items.push({
+      id: r.id, label: r.description || r.categories?.name || 'Expense',
+      currency: r.currency, minor: r.amount_minor, rate: conv.rate, baseMinor: conv.baseMinor,
+    })
+  }
+  return { items, totalBaseMinor: items.reduce((sum, i) => sum + i.baseMinor, 0) }
+}

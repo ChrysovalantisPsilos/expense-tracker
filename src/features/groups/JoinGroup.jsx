@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  Box, Flex, Center, Stack, HStack, Heading, Text, Button, Spinner, Card,
-  CardBody, Avatar, Divider, List, ListItem, Spacer, useToast,
+  Box, Flex, Center, Stack, HStack, Heading, Text, Button, Spinner,
+  Avatar, Divider, List, ListItem, Spacer, useToast,
 } from '@chakra-ui/react'
-import { Users, Check, X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { previewLinkInvite, joinViaLink } from './groups.js'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import GroupMark from './GroupMark.jsx'
 
 export default function JoinGroup() {
   const { token } = useParams()
@@ -80,15 +82,15 @@ export default function JoinGroup() {
       <Box maxW="440px" w="full">
         <Stack spacing={5}>
           <Box textAlign="center">
-            <Flex boxSize="56px" mx="auto" mb={3} align="center" justify="center"
-              borderRadius="2xl" bg="bg.subtle" color="accent.fg"><Users size={28} /></Flex>
+            <Flex justify="center" mb={3}>
+              <GroupMark name={group.name} src={group.image_url} size={56} />
+            </Flex>
             <Heading size="lg">{group.name || 'Group invite'}</Heading>
             <Text color="text.muted" mt={1}>You’ve been invited to join</Text>
           </Box>
 
           {members.length > 0 && (
-            <Card><CardBody>
-              <Heading size="sm" mb={3}>Members</Heading>
+            <Panel title="Members">
               <List spacing={0}>
                 {members.map((m, i) => (
                   <ListItem key={m.id}>
@@ -101,7 +103,7 @@ export default function JoinGroup() {
                   </ListItem>
                 ))}
               </List>
-            </CardBody></Card>
+            </Panel>
           )}
 
           <Stack spacing={2}>

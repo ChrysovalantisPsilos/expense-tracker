@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Button, Text, HStack, Flex, FormControl, FormLabel, Switch, useToast,
+  Button, Text, HStack, FormControl, FormLabel, Switch, useToast,
 } from '@chakra-ui/react'
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
@@ -9,6 +9,7 @@ import { passkeysSupported } from '../../shared/lib/supabase.js'
 import { claimPromptSlot, releasePromptSlot } from '../../shared/lib/promptGate.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { getProfile, updateProfile } from '../profile/profile.js'
+import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { toPasskeyList } from './authMethods.js'
 
 // sessionStorage can be unavailable (private mode, blocked site data): treat
@@ -74,8 +75,7 @@ export default function PasskeyPrompt() {
       <ModalContent mx={4}>
         <ModalHeader>
           <HStack>
-            <Flex boxSize="36px" align="center" justify="center" borderRadius="lg"
-              bg="bg.subtle" color="accent.fg"><KeyRound size={20} /></Flex>
+            <IconTile icon={KeyRound} size={36} />
             <Text>Add a passkey</Text>
           </HStack>
         </ModalHeader>

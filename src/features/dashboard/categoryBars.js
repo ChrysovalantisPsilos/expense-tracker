@@ -3,7 +3,7 @@ import { distributeByWeights } from '../groups/splitMath.js'
 // Rows for the "Spending by category" ranked-bar chart. Input is
 // [{ name, value }] (minor units, any order). Keeps the `top` largest and folds
 // the rest into "Other" (a real "Other" category merges into it), so a long
-// tail never crowds a phone screen. Each row gets:
+// tail never crowds a phone screen. "Other" is always the last row. Each row gets:
 //   share — integer percent of the total; shares sum to exactly 100
 //   ratio — value relative to the largest row (0..1), the bar's length
 export function categoryBars(categories, top = 5) {
@@ -16,6 +16,8 @@ export function categoryBars(categories, top = 5) {
     if (existing) rows = rows.map((c) => (c === existing ? { ...c, value: c.value + rest } : c))
     else rows = [...rows, { name: 'Other', value: rest }]
   }
+  // "Other" is a leftover bucket, not a ranked category: always list it last.
+  rows = [...rows.filter((c) => c.name !== 'Other'), ...rows.filter((c) => c.name === 'Other')]
   if (rows.length === 0) return []
   const shares = distributeByWeights(100, rows.map((c) => c.value))
   const max = Math.max(...rows.map((c) => c.value))

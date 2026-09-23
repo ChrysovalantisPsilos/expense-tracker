@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import {
-  Card, CardBody, Stack, HStack, Box, Text, Button, IconButton, Divider, useToast,
-} from '@chakra-ui/react'
+import { Text, Button, useToast } from '@chakra-ui/react'
 import { Fingerprint, KeyRound, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import { toPasskeyList } from './authMethods.js'
 
 // List / add / remove passkeys. Renders nothing when this browser can't do
@@ -43,35 +42,22 @@ export default function PasskeysCard() {
   if (passkeys === null) return null
 
   return (
-    <Card><CardBody>
-      <CardHeader icon={Fingerprint} title="Passkeys" mb={3} action={
-        <Button size="sm" leftIcon={<Plus size={14} />} isLoading={pkBusy}
-          onClick={addPasskey}>Add</Button>
-      } />
+    <Panel title="Passkeys" icon={Fingerprint} action={
+      <Button size="sm" leftIcon={<Plus size={14} />} isLoading={pkBusy}
+        onClick={addPasskey}>Add</Button>
+    }>
       {passkeys.length === 0 ? (
         <Text fontSize="sm" color="text.muted">
           No passkeys yet. Add one to sign in with Face ID, Touch ID, or your
           device PIN — no password needed.
         </Text>
       ) : (
-        <Stack spacing={0} divider={<Divider />}>
-          {passkeys.map((pk) => (
-            <HStack key={pk.id} py={2} spacing={3}>
-              <Box color="text.muted" flexShrink={0}><KeyRound size={16} /></Box>
-              <Box flex="1" minW={0}>
-                <Text fontSize="sm" fontWeight="600" noOfLines={1}>{pk.friendly_name || 'Passkey'}</Text>
-                {pk.created_at && (
-                  <Text fontSize="xs" color="text.muted">
-                    added {String(pk.created_at).slice(0, 10)}
-                  </Text>
-                )}
-              </Box>
-              <IconButton aria-label="Remove passkey" size="sm" variant="ghost"
-                icon={<Trash2 size={16} />} onClick={() => removePasskey(pk.id)} />
-            </HStack>
-          ))}
-        </Stack>
+        passkeys.map((pk) => (
+          <ItemRow key={pk.id} icon={KeyRound} title={pk.friendly_name || 'Passkey'}
+            meta={pk.created_at ? `added ${String(pk.created_at).slice(0, 10)}` : undefined}
+            actions={[{ label: 'Remove passkey', icon: Trash2, onClick: () => removePasskey(pk.id), danger: true }]} />
+        ))
       )}
-    </CardBody></Card>
+    </Panel>
   )
 }

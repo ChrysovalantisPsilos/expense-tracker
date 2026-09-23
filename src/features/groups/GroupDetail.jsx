@@ -1,24 +1,33 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Box,
-  Spinner, Flex, IconButton, Divider, List, ListItem, useToast,
+  Stack, HStack, Text, Spacer, Button, Center,
+  Spinner, Flex, IconButton, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
   ModalFooter, Checkbox,
 } from '@chakra-ui/react'
-import { ArrowRight, ArrowRightLeft, HandCoins, FileDown, MessageSquare } from 'lucide-react'
+import { ArrowRightLeft, HandCoins, FileDown, MessageSquare, Receipt } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useLiveRefetch } from '../../shared/lib/realtime.js'
 import {
   getGroup, createInviteLink, removeMember, deleteGroup, listAuditLog, downloadGroupReport,
 } from './groups.js'
 import { commentCounts } from './comments.js'
-import { memberName, splitLabel, settlePlan, pluralise } from './groupFormat.js'
+import {
+  memberName, splitLabel, settlePlan, pluralise, paidByLabel, groupTotal,
+  memberBalances, balanceHighlight, isEveryoneEqualSplit,
+} from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
-import RowAmount from '../../shared/ui/RowAmount.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import Figure from '../../shared/ui/kit/Figure.jsx'
+import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
+import HighlightPill from '../../shared/ui/kit/HighlightPill.jsx'
+import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import TransferRow from '../../shared/ui/kit/TransferRow.jsx'
+import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
+import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import GroupHeader from './GroupHeader.jsx'
 import MembersSheet from './MembersSheet.jsx'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
@@ -141,65 +150,62 @@ export default function GroupDetail() {
 
   const { group, members, expenses, settlements } = data
   const cur = group.currency
+  const money = (minor) => formatMoney(minor, cur)
   const plan = settlePlan(balances, members, myMember?.id)
+  const highlight = balanceHighlight(plan)
+  const memberNets = memberBalances(balances, members, user.id)
+  const avatarOf = (mid) => members.find((m) => m.id === mid)?.avatar_url
   const isOwner = group.owner_id === user.id
+  const mine = signedAmount(myNet, money)
 
   return (
     <Stack spacing={5}>
       <GroupHeader group={group} members={members} myUserId={user.id} isOwner={isOwner}
+        total={money(groupTotal(expenses, cur))}
         onPhotoChanged={load} onAdd={openAdd} onMembers={membersSheet.onOpen}
         onReport={downloadReport} onRename={renameModal.onOpen}
         onLeave={myMember ? leaveModal.onOpen : undefined} onDelete={deleteModal.onOpen} />
 
-      {/* Your balance summary */}
-      <Card>
-        <CardBody>
-          <HStack>
-            <Flex boxSize="44px" align="center" justify="center" borderRadius="xl"
-              bg="bg.subtle" color="accent.fg"><HandCoins size={22} /></Flex>
-            <Stack spacing={0}>
-              <Text fontSize="sm" color="text.muted">Your balance</Text>
-              <Text fontWeight="700" fontSize="lg"
-                color={myNet > 0 ? 'status.positive' : myNet < 0 ? 'status.negative' : 'text.primary'}>
-                {myNet === 0 ? "You're all settled up"
-                  : myNet > 0 ? `You are owed ${formatMoney(myNet, cur)}`
-                  : `You owe ${formatMoney(-myNet, cur)}`}
-              </Text>
-            </Stack>
-            <Spacer />
-            <Button size="sm" variant="outline" leftIcon={<HandCoins size={16} />}
-              onClick={settleModal.onOpen}>Settle up</Button>
-          </HStack>
-        </CardBody>
-      </Card>
+      {/* Your balance: your net, everyone's net, and the line that matters most */}
+      <Panel>
+        <HStack align="center" spacing={3}>
+          <Figure label="Your balance" value={mine.text} tone={mine.tone} size="xl" flex="1" />
+          <Button size="sm" variant="outline" leftIcon={<HandCoins size={16} />} flexShrink={0}
+            onClick={settleModal.onOpen}>Settle up</Button>
+        </HStack>
+        {memberNets.length > 1 && (
+          <>
+            <SectionLabel mt={4} mb={2}>Balances</SectionLabel>
+            <BalanceGrid>
+              {memberNets.map((b) => {
+                const { text, tone } = signedAmount(b.net, money)
+                return <BalanceTile key={b.id} label={b.label} value={text} tone={tone} />
+              })}
+            </BalanceGrid>
+          </>
+        )}
+        <HighlightPill mt={3} amount={highlight ? money(highlight.amount) : undefined}>
+          {highlight ? highlight.text : 'You’re all settled up'}
+        </HighlightPill>
+      </Panel>
 
       {/* Who owes whom: the whole group's settle-up plan (fewest payments) */}
       {plan.length > 0 && (
-        <Card><CardBody>
-          <CardHeader icon={ArrowRightLeft} title="Who owes whom"
-            subtitle={`${pluralise(plan.length, 'payment')} to settle everyone up`} />
+        <Panel icon={ArrowRightLeft} title="Who owes whom"
+          subtitle={`${pluralise(plan.length, 'payment')} to settle everyone up`}>
           <Stack spacing={2}>
             {plan.map((t) => (
-              <HStack key={`${t.from}-${t.to}`} spacing={2} px={3} py={2.5} borderRadius="lg"
-                bg={t.mine ? 'bg.subtle' : 'transparent'}
-                borderWidth={t.mine ? 0 : '1px'} borderColor="border.default">
-                <Text fontSize="sm" fontWeight="600" noOfLines={1} minW={0}>{t.fromName}</Text>
-                <Box color="text.muted" flexShrink={0}><ArrowRight size={14} /></Box>
-                <Text fontSize="sm" fontWeight="600" noOfLines={1} minW={0} flex="1">{t.toName}</Text>
-                <Text fontSize="sm" fontWeight="700" whiteSpace="nowrap"
-                  color={t.to === myMember?.id ? 'status.positive'
-                    : t.from === myMember?.id ? 'status.negative' : 'text.primary'}>
-                  {formatMoney(t.amount, cur)}
-                </Text>
-              </HStack>
+              <TransferRow key={`${t.from}-${t.to}`} amount={money(t.amount)} amountTone={t.tone}
+                from={{ name: t.fromName, src: avatarOf(t.from), highlight: t.from === myMember?.id }}
+                to={{ name: t.toName, src: avatarOf(t.to), highlight: t.to === myMember?.id }} />
             ))}
           </Stack>
-        </CardBody></Card>
+        </Panel>
       )}
 
       {/* History — tabbed (Expenses / Settlements / Activity) */}
-      <Card><CardBody>
-        <HStack mb={4}>
+      <Panel>
+        <HStack mb={3}>
           <SegmentedControl label="History" value={tab} onChange={setTab}
             options={[['expenses', 'Expenses'], ['settlements', 'Settlements'], ['activity', 'Activity']]} />
           <Spacer />
@@ -212,88 +218,63 @@ export default function GroupDetail() {
         {tab === 'expenses' && (expenses.length === 0 ? (
           <Text color="text.muted" fontSize="sm">No shared expenses yet.</Text>
         ) : (
-          <List spacing={0}>
-            {expenses.map((e, i) => {
+          <Stack spacing={0}>
+            {expenses.map((e) => {
               const canEdit = e.created_by === user.id || isOwner
+              const label = e.description || 'Expense'
               return (
-              <ListItem key={e.id}>
-                {i > 0 && <Divider />}
-                <HStack py={3} spacing={2} align="center"
-                  cursor={canEdit ? 'pointer' : 'default'}
-                  onClick={canEdit ? () => openEdit(e) : undefined}
-                  _hover={canEdit ? { opacity: 0.75 } : undefined} transition="opacity 0.1s">
-                  <Stack spacing={0.5} flex="1" minW={0}>
-                    <Text fontWeight="600" noOfLines={1}>{e.description || 'Expense'}</Text>
-                    <Flex wrap="wrap" columnGap={1.5} fontSize="xs" color="text.muted">
-                      <Text noOfLines={1} maxW="100%">{nameOf(e.paid_by)} paid</Text>
-                      <Text whiteSpace="nowrap">· {shortDate(e.spent_at)}</Text>
-                      <Text whiteSpace="nowrap">· {splitLabel(e)}</Text>
-                    </Flex>
-                  </Stack>
-                  <HStack spacing={0.5} flexShrink={0}>
-                    <IconButton aria-label="Comments" size="xs" variant="ghost" color="text.muted"
-                      icon={<MessageSquare size={15} />}
-                      onClick={(ev) => { ev.stopPropagation(); setThread({ type: 'expense', id: e.id, label: e.description || 'Expense' }) }} />
-                    {counts.get(e.id) > 0 && <Text fontSize="xs" color="text.muted">{counts.get(e.id)}</Text>}
-                  </HStack>
-                  <RowAmount>{formatMoney(e.amount_minor, e.currency)}</RowAmount>
+                <HStack key={e.id} spacing={1}>
+                  <ItemRow flex="1" icon={Receipt} title={label}
+                    meta={<RowMeta parts={[paidByLabel(members, e.paid_by, myMember?.id), shortDate(e.spent_at),
+                      { text: splitLabel(e), phone: !isEveryoneEqualSplit(e, members) }]} />}
+                    amount={formatMoney(e.amount_minor, e.currency)}
+                    onClick={canEdit ? () => openEdit(e) : undefined} px={canEdit ? 1 : 0} mx={canEdit ? -1 : 0} />
+                  <CommentButton count={counts.get(e.id)}
+                    onClick={() => setThread({ type: 'expense', id: e.id, label })} />
                 </HStack>
-              </ListItem>
               )
             })}
-          </List>
+          </Stack>
         ))}
 
         {tab === 'settlements' && (settlements.length === 0 ? (
           <Text color="text.muted" fontSize="sm">No settlements yet.</Text>
         ) : (
-          <List spacing={0}>
-            {settlements.map((s, i) => (
-              <ListItem key={s.id}>
-                {i > 0 && <Divider />}
-                <HStack py={2.5} fontSize="sm" spacing={3}>
-                  <Stack spacing={0} flex="1" minW={0}>
-                    <Text noOfLines={1}>{nameOf(s.from_member)} → {nameOf(s.to_member)}</Text>
-                    <Text fontSize="xs" color="text.muted">{shortDate(s.settled_at)}</Text>
-                  </Stack>
-                  <HStack spacing={0.5}>
-                    <IconButton aria-label="Comments" size="xs" variant="ghost" color="text.muted"
-                      icon={<MessageSquare size={15} />}
-                      onClick={() => setThread({ type: 'settlement', id: s.id, label: `${nameOf(s.from_member)} → ${nameOf(s.to_member)}` })} />
-                    {counts.get(s.id) > 0 && <Text fontSize="xs" color="text.muted">{counts.get(s.id)}</Text>}
-                  </HStack>
-                  <RowAmount>{formatMoney(s.amount_minor, s.currency)}</RowAmount>
+          <Stack spacing={0}>
+            {settlements.map((s) => {
+              const label = `${nameOf(s.from_member)} → ${nameOf(s.to_member)}`
+              return (
+                <HStack key={s.id} spacing={1}>
+                  <ItemRow flex="1" icon={HandCoins} title={label} meta={shortDate(s.settled_at)}
+                    amount={formatMoney(s.amount_minor, s.currency)} />
+                  <CommentButton count={counts.get(s.id)}
+                    onClick={() => setThread({ type: 'settlement', id: s.id, label })} />
                 </HStack>
-              </ListItem>
-            ))}
-          </List>
+              )
+            })}
+          </Stack>
         ))}
 
         {tab === 'activity' && (auditLog.length === 0 ? (
           <Text fontSize="sm" color="text.muted">No activity yet.</Text>
         ) : (
-          <List spacing={0}>
-            {auditLog.slice(0, 25).map((a, i) => (
-              <ListItem key={a.id}>
-                {i > 0 && <Divider />}
-                <HStack py={2} align="start">
-                  <Stack spacing={0} flex="1">
-                    <Text fontSize="sm">{a.summary}</Text>
-                    <Text fontSize="xs" color="text.muted">
-                      {shortDateTime(a.created_at)}
-                    </Text>
-                  </Stack>
-                  {a.amount_minor != null && (
-                    <Text fontSize="sm" fontWeight="600">
-                      {formatMoney(a.amount_minor, a.currency || cur)}
-                    </Text>
-                  )}
-                </HStack>
-              </ListItem>
+          <Stack spacing={0}>
+            {auditLog.slice(0, 25).map((a) => (
+              <HStack key={a.id} py={2} align="start" spacing={3}>
+                <Stack spacing={0} flex="1" minW={0}>
+                  <Text fontSize="sm">{a.summary}</Text>
+                  <Text fontSize="xs" color="text.muted">{shortDateTime(a.created_at)}</Text>
+                </Stack>
+                {a.amount_minor != null && (
+                  <Text fontSize="sm" fontWeight="700" whiteSpace="nowrap">
+                    {formatMoney(a.amount_minor, a.currency || cur)}
+                  </Text>
+                )}
+              </HStack>
             ))}
-          </List>
+          </Stack>
         ))}
-      </CardBody></Card>
+      </Panel>
 
       <GroupExpenseForm key={editingExpense?.id || 'new'} group={group} members={members}
         defaultPayer={myMember?.id} expense={editingExpense}
@@ -363,5 +344,38 @@ export default function GroupDetail() {
         </ModalContent>
       </Modal>
     </Stack>
+  )
+}
+
+// A row's muted meta line that wraps between its parts on narrow screens
+// ("Paid by You · 8 Sep · split 4 ways"). A part is a string, or
+// { text, phone: false } to hide it below `sm`. Each separator stays at the
+// end of the part before it (so a wrapped line never starts with one) and
+// shows only where the part after it does.
+function RowMeta({ parts }) {
+  const list = parts.map((p) => (typeof p === 'string' ? { text: p, phone: true } : p))
+  const shown = (p) => (p.phone ? undefined : { base: 'none', sm: 'inline' })
+  return (
+    <Flex wrap="wrap" columnGap={1} fontSize="xs" color="text.muted">
+      {list.map((p, i) => (
+        <Text key={i} display={shown(p)} noOfLines={i ? undefined : 1}
+          whiteSpace={i ? 'nowrap' : undefined} maxW="100%">
+          {p.text}
+          {i < list.length - 1 && <Text as="span" display={shown(list[i + 1])}> ·</Text>}
+        </Text>
+      ))}
+    </Flex>
+  )
+}
+
+// The comment icon with its count, in a fixed-width slot after the amount so
+// the amounts of a list line up.
+function CommentButton({ count, onClick }) {
+  return (
+    <HStack spacing={0.5} w="40px" flexShrink={0}>
+      <IconButton aria-label="Comments" size="xs" variant="ghost" color="text.muted"
+        icon={<MessageSquare size={15} />} onClick={onClick} />
+      {count > 0 && <Text fontSize="xs" color="text.muted">{count}</Text>}
+    </HStack>
   )
 }

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
-  Card, CardBody, Stack, HStack, Box, Text, Switch, FormLabel, Divider, Center, Spinner, useToast,
+  Stack, HStack, Box, Text, Switch, FormLabel, Divider, Center, Spinner, useToast,
 } from '@chakra-ui/react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { enablePush } from '../../shared/lib/push.js'
 import { getProfile, updateProfile } from '../profile/profile.js'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
 
 export default function NotificationSettings() {
@@ -44,7 +45,7 @@ export default function NotificationSettings() {
 
   return (
     <SettingsPage title="Notifications">
-      <Card><CardBody>
+      <Panel>
         {prefs === null ? (
           <Center py={4}><Spinner size="sm" color="brand.500" /></Center>
         ) : (
@@ -59,7 +60,7 @@ export default function NotificationSettings() {
               onChange={(e) => setPref('notify_email', e.target.checked)} />
           </Stack>
         )}
-      </CardBody></Card>
+      </Panel>
     </SettingsPage>
   )
 }

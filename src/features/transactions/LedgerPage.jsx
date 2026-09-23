@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Box, Stack, Card, CardBody, useDisclosure, Collapse, Text, Center, Spinner, HStack,
+  Box, Stack, useDisclosure, Collapse, Text, Center, Spinner, HStack,
   IconButton, Input, InputGroup, InputLeftElement, InputRightElement, Select,
   FormControl, FormLabel, SimpleGrid, Button, Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
 import {
-  CalendarDays, FileSpreadsheet, ListFilter, MoreHorizontal, Plus, Search, SlidersHorizontal, X,
+  FileSpreadsheet, MoreHorizontal, Plus, Search, SlidersHorizontal, X,
 } from 'lucide-react'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import TransactionForm from './TransactionForm.jsx'
@@ -25,6 +26,9 @@ import { useProfile } from '../../shared/lib/useProfile.js'
 const TYPES = [['expense', 'Expenses'], ['income', 'Income'], ['all', 'All']]
 const KINDS = [['expense', 'Expense'], ['income', 'Income']]
 const ADD_LABEL = { expense: 'Add expense', income: 'Add income', all: 'Add' }
+const UNCLIP = { enter: { overflow: 'visible' } }
+const CLIP = { overflow: 'hidden' }
+const FORM_TITLE = { expense: 'New expense', income: 'New income' }
 const EMPTY_TEXT = {
   expense: 'Nothing logged yet.',
   income: 'No income logged yet.',
@@ -108,8 +112,11 @@ export default function LedgerPage() {
       <SegmentedControl label="Transaction type" options={TYPES} value={type}
         onChange={switchType} size="sm" isFitted w={{ base: 'full', sm: 'sm' }} />
 
-      <Collapse in={addForm.isOpen} animateOpacity>
-        <Card><CardBody>
+      {/* Unclip once open so the Panel's lifted shadow shows; clip again as
+          soon as it starts closing. */}
+      <Collapse in={addForm.isOpen} animateOpacity transitionEnd={UNCLIP}
+        style={addForm.isOpen ? undefined : CLIP}>
+        <Panel icon={Plus} title={FORM_TITLE[formKind]}>
           <Stack spacing={4}>
             {!kind && (
               <SegmentedControl label="Kind to add" options={KINDS} value={pickedKind}
@@ -118,11 +125,11 @@ export default function LedgerPage() {
             <TransactionForm key={formKind} kind={formKind} baseCurrency={baseCurrency}
               onSaved={() => { reload(); addForm.onClose() }} />
           </Stack>
-        </CardBody></Card>
+        </Panel>
       </Collapse>
 
-      <Card><CardBody>
-        <Box mb={4}>
+      <Panel>
+        <Box mb={5}>
           <HStack spacing={2}>
             <InputGroup>
               <InputLeftElement pointerEvents="none" color="text.muted"><Search size={16} /></InputLeftElement>
@@ -172,32 +179,30 @@ export default function LedgerPage() {
         </Box>
 
         {searching ? (
-          <CardHeader icon={ListFilter}
-            title={loading ? 'Searching…' : `${shown.length} result${shown.length === 1 ? '' : 's'}`}
-            action={<>
-              {!loading && shown.length > 0 && (
-                <Text fontSize="sm" color="text.muted">
-                  Net {net < 0 ? '−' : ''}{formatMoney(Math.abs(net), baseCurrency)}
-                </Text>
-              )}
-              <Button size="xs" variant="ghost" leftIcon={<X size={14} />} onClick={clearAll}>
-                Clear
-              </Button>
-            </>} />
+          <HStack spacing={2} mb={2}>
+            <SectionLabel flex="1" minW={0}
+              aside={!loading && shown.length > 0
+                ? `Net ${net < 0 ? '−' : ''}${formatMoney(Math.abs(net), baseCurrency)}` : undefined}>
+              {loading ? 'Searching…' : `${shown.length} result${shown.length === 1 ? '' : 's'}`}
+            </SectionLabel>
+            <Button size="xs" variant="ghost" leftIcon={<X size={14} />} onClick={clearAll}>
+              Clear
+            </Button>
+          </HStack>
         ) : (
-          <CardHeader icon={CalendarDays} title="This month" />
+          <SectionLabel mb={2}>This month</SectionLabel>
         )}
         {loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : shown.length === 0 ? (
-          <Text color="text.muted">
+          <Text color="text.muted" fontSize="sm">
             {searching ? 'No transactions match this search.' : EMPTY_TEXT[type]}
           </Text>
         ) : (
           <TransactionList rows={shown} kind={formKind} baseCurrency={baseCurrency}
             mutate={mutate} reload={reload} />
         )}
-      </CardBody></Card>
+      </Panel>
     </Stack>
   )
 }

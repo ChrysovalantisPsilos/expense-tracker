@@ -12,6 +12,15 @@ export async function listGroups() {
   return data ?? []
 }
 
+// Attach avatar_url (from the group_member_avatars RPC rows) to member rows.
+function withAvatars(members, avatars) {
+  const byUser = Object.fromEntries((avatars ?? []).map((a) => [a.user_id, a.avatar_url]))
+  return (members ?? []).map((m) => ({ ...m, avatar_url: m.user_id ? byUser[m.user_id] : null }))
+}
+
+// group_balances RPC rows → Map<memberId, net minor>.
+const balanceMap = (rows) => new Map((rows ?? []).map((b) => [b.member_id, Number(b.net_minor)]))
+
 // Full detail for one group: members (+avatars), expenses (+splits), settlements.
 export async function getGroup(groupId) {
   const [g, members, ledger, avs, bal] = await Promise.all([
@@ -28,18 +37,34 @@ export async function getGroup(groupId) {
   if (g.error) throw g.error
   if (ledger.error) throw new Error(ledger.error.message)
 
-  const memberRows = members.data ?? []
-  const avatarByUser = Object.fromEntries((avs.data ?? []).map((a) => [a.user_id, a.avatar_url]))
-  const withAvatars = memberRows.map((m) => ({ ...m, avatar_url: m.user_id ? avatarByUser[m.user_id] : null }))
-  const balances = new Map((bal.data ?? []).map((b) => [b.member_id, Number(b.net_minor)]))
-
   return {
     group: g.data,
-    members: withAvatars,
+    members: withAvatars(members.data, avs.data),
     expenses: ledger.data?.expenses ?? [],
     settlements: ledger.data?.settlements ?? [],
-    balances,
+    balances: balanceMap(bal.data),
   }
+}
+
+// The groups list's per-group extras, for the given group ids: each group's
+// members (+avatars) and server-computed balances. One members query for all
+// groups plus the two existing per-group RPCs, all in parallel. A group whose
+// RPCs fail just comes back without that part.
+// Map<groupId, { members: [...member, avatar_url], balances: Map<memberId, net> }>
+export async function listGroupSummaries(groupIds) {
+  if (!groupIds?.length) return new Map()
+  const [members, ...perGroup] = await Promise.all([
+    supabase.from('group_members').select('*').in('group_id', groupIds).order('created_at'),
+    ...groupIds.flatMap((id) => [
+      supabase.rpc('group_member_avatars', { p_group: id }),
+      supabase.rpc('group_balances', { p_group: id }),
+    ]),
+  ])
+  if (members.error) throw members.error
+  return new Map(groupIds.map((id, i) => [id, {
+    members: withAvatars((members.data ?? []).filter((m) => m.group_id === id), perGroup[2 * i].data),
+    balances: balanceMap(perGroup[2 * i + 1].data),
+  }]))
 }
 
 // ---- Mutations -----------------------------------------------------------

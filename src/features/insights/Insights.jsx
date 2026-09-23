@@ -1,18 +1,27 @@
 import { useMemo, useState } from 'react'
 import {
-  Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Spinner,
-  Box, SimpleGrid, Stat, StatLabel, StatNumber, StatHelpText, StatArrow,
-  Progress, List, ListItem, Divider, IconButton, Select, Input, FormControl,
-  FormLabel, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
-  ModalFooter, useToast, useDisclosure, Tag,
+  Stack, HStack, Text, Button, Center, Spinner, Box, Divider, Select, Input,
+  FormControl, FormLabel, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
+  ModalFooter, useToast, useDisclosure,
 } from '@chakra-ui/react'
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, CartesianGrid,
 } from 'recharts'
-import { Plus, Pencil, Trash2, PiggyBank, TrendingUp, Wallet } from 'lucide-react'
+import {
+  Plus, Pencil, Trash2, PiggyBank, Landmark, CreditCard, ArrowUpRight, ArrowDownRight,
+} from 'lucide-react'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
+import TrendBars from '../../shared/ui/kit/TrendBars.jsx'
+import ConversionRow from '../../shared/ui/kit/ConversionRow.jsx'
+import Figure from '../../shared/ui/kit/Figure.jsx'
+import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
+import { StackedBar, ShareLegend } from '../../shared/ui/kit/ShareBar.jsx'
+import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
+import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { useTransactions } from '../transactions/useData.js'
 import { lastMonths, shortDate } from '../../shared/lib/dates.js'
@@ -23,61 +32,148 @@ import {
   useAccounts, saveAccount, deleteAccount,
   useGoals, saveGoal, deleteGoal,
 } from './insights.js'
-import { buildTrend, spendDelta, netWorth, axisTick } from './insightsMath.js'
+import {
+  buildTrend, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
+} from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
+
+// How many foreign-currency rows "Spending abroad" lists (the total covers all).
+const ABROAD_ROWS = 5
 
 export default function Insights() {
   const { baseCurrency = 'EUR' } = useProfile()
   const months = useMemo(() => lastMonths(6), [])
   const { rows, loading } = useTransactions({ from: months[0].from, to: months[months.length - 1].to })
+  const thisMonth = months[months.length - 1].key
 
+  // Trend values are major units (chart axis); `money` converts back to minor.
   const factor = minorFactor(baseCurrency)
-  // Trend values are major units (chart axis); formatting converts back to minor.
+  const money = (major) => formatMoney(Math.round(major * factor), baseCurrency)
   const trend = useMemo(() => buildTrend(rows, months, baseCurrency), [rows, months, baseCurrency])
-  const delta = spendDelta(trend)
-  const chart = useChartTheme()
+  const shares = useMemo(() => spendingShares(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
+  const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
 
   return (
     <Stack spacing={5}>
       <PageHeader title="Insights" />
-
-      <Card><CardBody>
-        <CardHeader icon={TrendingUp} title="6-month trend" action={delta != null && (
-          <Stat textAlign="right" size="sm">
-            <StatHelpText mb={0}>
-              {/* Spending: up is the bad direction, so it takes the negative tone. */}
-              <StatArrow type={delta > 0 ? 'increase' : 'decrease'}
-                color={delta > 0 ? 'status.negative' : 'status.positive'} />
-              {Math.abs(delta)}%
-              {/* The comparison words drop on phones so the title keeps its room. */}
-              <Box as="span" display={{ base: 'none', sm: 'inline' }}> vs last month</Box>
-            </StatHelpText>
-          </Stat>
-        )} />
-        {loading ? (
-          <Center py={10}><Spinner color="brand.500" /></Center>
-        ) : (
-          <Box h="260px">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trend} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chart.grid} />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} tick={chart.tick} />
-                <YAxis tickLine={false} axisLine={false} fontSize={11} tick={chart.tick}
-                  tickFormatter={axisTick} width={44} />
-                <Tooltip formatter={(v) => formatMoney(Math.round(v * factor), baseCurrency)} {...chart.tooltip} />
-                <Legend formatter={chart.legendFormatter} />
-                <Bar dataKey="income" name="Income" fill={chart.positive} radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expense" name="Expenses" fill={chart.series[0]} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Box>
-        )}
-      </CardBody></Card>
-
+      <SpendingCard loading={loading} shares={shares} trend={trend} money={money} />
+      {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}
+      <IncomeCard loading={loading} trend={trend} money={money} />
       <NetWorthCard baseCurrency={baseCurrency} />
       <GoalsCard baseCurrency={baseCurrency} />
       <ReportsCard />
     </Stack>
+  )
+}
+
+const Loading = () => <Center py={10}><Spinner color="brand.500" /></Center>
+
+// ── Where your money went ───────────────────────────────────────────────────
+// This month's spending split by category, then six months of spending.
+function SpendingCard({ loading, shares, trend, money }) {
+  const latest = trend[trend.length - 1]
+  return (
+    <Panel title="Where your money went" subtitle="This month">
+      {loading ? <Loading /> : (
+        <Stack spacing={5}>
+          {shares.length === 0 ? (
+            <Text color="text.muted" fontSize="sm">No spending yet this month.</Text>
+          ) : (
+            <Box>
+              <StackedBar items={shares} />
+              <ShareLegend items={shares} mt={3} />
+            </Box>
+          )}
+          <Box>
+            <SectionLabel mb={3} aside={`${latest.label}: ${money(latest.expense)}`}>
+              Last 6 months
+            </SectionLabel>
+            <TrendBars bars={trend.map((t) => ({ label: t.label, value: t.expense }))} />
+          </Box>
+        </Stack>
+      )}
+    </Panel>
+  )
+}
+
+// ── Spending abroad ─────────────────────────────────────────────────────────
+// This month's foreign-currency expenses at the rate captured when each was
+// added, and what they came to in the base currency.
+function AbroadCard({ abroad, baseCurrency }) {
+  const more = abroad.items.length - ABROAD_ROWS
+  return (
+    <Panel title="Spending abroad" subtitle={`This month, in ${baseCurrency}`}>
+      <Stack spacing={3}>
+        {abroad.items.slice(0, ABROAD_ROWS).map((i) => (
+          <ConversionRow key={i.id} label={i.label} rate={i.rate}
+            from={formatMoney(i.minor, i.currency)} to={formatMoney(i.baseMinor, baseCurrency)} />
+        ))}
+        {more > 0 && (
+          <Text fontSize="xs" color="text.muted">
+            and {more} more, included in the total
+          </Text>
+        )}
+        <Divider borderColor="border.default" />
+        <Figure layout="inline" label="Total" value={formatMoney(abroad.totalBaseMinor, baseCurrency)} />
+      </Stack>
+    </Panel>
+  )
+}
+
+// ── Income vs expenses ──────────────────────────────────────────────────────
+function IncomeCard({ loading, trend, money }) {
+  const chart = useChartTheme()
+  const delta = spendDelta(trend)
+  const latest = trend[trend.length - 1]
+  const net = signedAmount(latest.income - latest.expense, money)
+  return (
+    <Panel title="Income vs expenses" action={delta != null && <SpendDelta delta={delta} />}>
+      {loading ? <Loading /> : (
+        <Stack spacing={5}>
+          <Box>
+            <SectionLabel mb={3}>This month</SectionLabel>
+            <BalanceGrid>
+              <BalanceTile label="Income" value={money(latest.income)} tone="positive" />
+              <BalanceTile label="Spent" value={money(latest.expense)} />
+            </BalanceGrid>
+            <Figure layout="inline" label="Left over" value={net.text} tone={net.tone} mt={3} />
+          </Box>
+          <Box>
+            <SectionLabel mb={3}>Last 6 months</SectionLabel>
+            <Box h="220px">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={trend} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chart.grid} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} tick={chart.tick} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={11} tick={chart.tick}
+                    tickFormatter={axisTick} width={44} />
+                  <Tooltip formatter={money} {...chart.tooltip} />
+                  <Legend formatter={chart.legendFormatter} />
+                  <Bar dataKey="income" name="Income" fill={chart.positive} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expense" name="Expenses" fill={chart.series[0]} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+          </Box>
+        </Stack>
+      )}
+    </Panel>
+  )
+}
+
+// Spending change vs last month. Up is the bad direction for spending, so it
+// takes the negative tone; the comparison words drop on phones.
+function SpendDelta({ delta }) {
+  const up = delta > 0
+  const Arrow = up ? ArrowUpRight : ArrowDownRight
+  return (
+    <HStack spacing={1} fontSize="sm" fontWeight="700" color={up ? 'status.negative' : 'status.positive'}>
+      <Arrow size={16} />
+      <Text>{Math.abs(delta)}%</Text>
+      <Text as="span" fontWeight="500" color="text.muted" display={{ base: 'none', sm: 'inline' }}>
+        vs last month
+      </Text>
+    </HStack>
   )
 }
 
@@ -96,61 +192,52 @@ function NetWorthCard({ baseCurrency }) {
   }
 
   return (
-    <Card><CardBody>
-      <CardHeader icon={Wallet} title="Net worth" action={
-        <Button size="xs" leftIcon={<Plus size={14} />}
-          onClick={() => { setEditing(null); modal.onOpen() }}>Account</Button>
-      } />
-
-      {loading ? (
-        <Center py={6}><Spinner color="brand.500" /></Center>
-      ) : (
-        <>
-          <SimpleGrid columns={3} spacing={3} mb={accounts.length ? 4 : 0}>
-            <Stat size="sm"><StatLabel>Assets</StatLabel>
-              <StatNumber fontSize="lg" color="status.positive">{formatMoney(assets, baseCurrency)}</StatNumber></Stat>
-            <Stat size="sm"><StatLabel>Debts</StatLabel>
-              <StatNumber fontSize="lg" color="status.negative">{formatMoney(liabilities, baseCurrency)}</StatNumber></Stat>
-            <Stat size="sm"><StatLabel>Net</StatLabel>
-              <StatNumber fontSize="lg" color={net >= 0 ? 'text.primary' : 'status.negative'}>
-                {formatMoney(net, baseCurrency)}</StatNumber></Stat>
-          </SimpleGrid>
+    <Panel title="Net worth" action={
+      <Button size="xs" leftIcon={<Plus size={14} />}
+        onClick={() => { setEditing(null); modal.onOpen() }}>Account</Button>
+    }>
+      {loading ? <Loading /> : (
+        <Stack spacing={4}>
+          <BalanceGrid>
+            <BalanceTile label="Assets" value={formatMoney(assets, baseCurrency)} tone="positive" />
+            <BalanceTile label="Debts" value={formatMoney(liabilities, baseCurrency)}
+              tone={liabilities > 0 ? 'negative' : 'muted'} />
+          </BalanceGrid>
 
           {accounts.length === 0 ? (
             <Text color="text.muted" fontSize="sm">
               Add your account balances (bank, savings, card, loan) to track net worth.
             </Text>
           ) : (
-            <List spacing={0}>
-              {accounts.map((acc, i) => (
-                <ListItem key={acc.id}>
-                  {i > 0 && <Divider />}
-                  <HStack py={2.5} spacing={3}>
-                    <Text fontWeight="600" noOfLines={1} flex="1">{acc.name}</Text>
-                    <Tag size="sm" bg="bg.subtle"
-                      color={acc.type === 'liability' ? 'status.negative' : 'status.positive'}>
-                      {acc.type === 'liability' ? 'Debt' : 'Asset'}
-                    </Tag>
-                    <Text fontWeight="600" color={acc.type === 'liability' ? 'status.negative' : 'text.primary'}>
-                      {acc.type === 'liability' ? '−' : ''}{formatMoney(acc.balance_minor, acc.currency)}
-                    </Text>
-                    <IconButton aria-label="Edit" size="xs" variant="ghost" icon={<Pencil size={14} />}
-                      onClick={() => { setEditing(acc); modal.onOpen() }} />
-                    <IconButton aria-label="Delete" size="xs" variant="ghost" color="status.negative"
-                      icon={<Trash2 size={14} />} onClick={() => remove(acc)} />
-                  </HStack>
-                </ListItem>
-              ))}
-            </List>
+            <Box>
+              <SectionLabel mb={1}>Accounts</SectionLabel>
+              {accounts.map((acc) => {
+                const debt = acc.type === 'liability'
+                return (
+                  <ItemRow key={acc.id} icon={debt ? CreditCard : Landmark} title={acc.name}
+                    meta={debt ? 'Debt' : 'Asset'}
+                    amount={`${debt ? '−' : ''}${formatMoney(acc.balance_minor, acc.currency)}`}
+                    amountTone={debt ? 'negative' : 'default'}
+                    actions={[
+                      { label: 'Edit', icon: Pencil, onClick: () => { setEditing(acc); modal.onOpen() } },
+                      { label: 'Delete', icon: Trash2, onClick: () => remove(acc), danger: true },
+                    ]} />
+                )
+              })}
+            </Box>
           )}
-        </>
+
+          <Divider borderColor="border.default" />
+          <Figure layout="inline" label="Net worth" value={formatMoney(net, baseCurrency)}
+            tone={net < 0 ? 'negative' : 'default'} />
+        </Stack>
       )}
 
       {modal.isOpen && (
         <AccountModal account={editing} baseCurrency={baseCurrency}
           onClose={modal.onClose} onSaved={() => { modal.onClose(); reload() }} />
       )}
-    </CardBody></Card>
+    </Panel>
   )
 }
 
@@ -229,40 +316,31 @@ function GoalsCard({ baseCurrency }) {
   }
 
   return (
-    <Card><CardBody>
-      <CardHeader icon={PiggyBank} title="Savings goals" action={
-        <Button size="xs" leftIcon={<Plus size={14} />}
-          onClick={() => { setEditing(null); modal.onOpen() }}>Goal</Button>
-      } />
-
-      {loading ? (
-        <Center py={6}><Spinner color="brand.500" /></Center>
-      ) : goals.length === 0 ? (
+    <Panel title="Savings goals" action={
+      <Button size="xs" leftIcon={<Plus size={14} />}
+        onClick={() => { setEditing(null); modal.onOpen() }}>Goal</Button>
+    }>
+      {loading ? <Loading /> : goals.length === 0 ? (
         <Text color="text.muted" fontSize="sm">No goals yet — set one to start saving toward it.</Text>
       ) : (
-        <Stack spacing={4} divider={<Divider />}>
+        <Stack spacing={5}>
           {goals.map((g) => {
             const pct = g.target_minor > 0 ? Math.min(100, Math.round((g.saved_minor / g.target_minor) * 100)) : 0
             const done = g.saved_minor >= g.target_minor && g.target_minor > 0
             const step = Math.max(1, Math.round(g.target_minor / 10))
+            const by = g.target_date ? ` · by ${shortDate(g.target_date)}` : ''
             return (
               <Box key={g.id}>
-                <HStack mb={1}>
-                  <Text fontWeight="600" noOfLines={1} flex="1">{g.name}</Text>
-                  {done && <Tag size="sm" bg="bg.subtle" color="status.positive">Reached 🎉</Tag>}
-                  <IconButton aria-label="Edit" size="xs" variant="ghost" icon={<Pencil size={13} />}
-                    onClick={() => { setEditing(g); modal.onOpen() }} />
-                  <IconButton aria-label="Delete" size="xs" variant="ghost" color="status.negative"
-                    icon={<Trash2 size={13} />} onClick={() => remove(g)} />
-                </HStack>
-                <Progress value={pct} variant={done ? 'positive' : undefined} size="sm" mb={1} />
-                <HStack fontSize="sm" color="text.muted">
-                  <Text>{formatMoney(g.saved_minor, g.currency)} of {formatMoney(g.target_minor, g.currency)}</Text>
-                  <Spacer />
-                  <Text>{pct}%{g.target_date ? ` · by ${shortDate(g.target_date)}` : ''}</Text>
-                </HStack>
+                <ProgressRow icon={PiggyBank} title={g.name}
+                  meta={`${formatMoney(g.saved_minor, g.currency)} of ${formatMoney(g.target_minor, g.currency)}${by}`}
+                  percent={pct} over={false} tone={done ? 'positive' : undefined}
+                  valueLabel={done ? 'Reached 🎉' : `${pct}%`}
+                  actions={[
+                    { label: 'Edit', icon: Pencil, onClick: () => { setEditing(g); modal.onOpen() } },
+                    { label: 'Delete', icon: Trash2, onClick: () => remove(g), danger: true },
+                  ]} />
                 {!done && (
-                  <HStack mt={2} spacing={2}>
+                  <HStack mt={3} spacing={2}>
                     <Button size="xs" variant="outline" onClick={() => addTo(g, step)}>
                       + {formatMoney(step, g.currency)}
                     </Button>
@@ -281,7 +359,7 @@ function GoalsCard({ baseCurrency }) {
         <GoalModal goal={editing} baseCurrency={baseCurrency}
           onClose={modal.onClose} onSaved={() => { modal.onClose(); reload() }} />
       )}
-    </CardBody></Card>
+    </Panel>
   )
 }
 

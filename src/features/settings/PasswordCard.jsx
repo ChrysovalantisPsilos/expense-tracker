@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import {
-  Card, CardBody, Stack, FormControl, FormLabel, Input, Text, Button, useToast,
+  Stack, FormControl, FormLabel, Input, Text, Button, useToast,
 } from '@chakra-ui/react'
 import { KeyRound } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabase.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { validatePassword } from '../../shared/lib/password.js'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 import { hasPasswordIdentity } from './authMethods.js'
 
 // Change password for accounts that already have a password (email identity).
@@ -47,8 +47,7 @@ export default function PasswordCard({ user }) {
   }
 
   return (
-    <Card><CardBody>
-      <CardHeader icon={KeyRound} title="Password" />
+    <Panel title="Password" icon={KeyRound}>
       <form onSubmit={submit}>
         <Stack spacing={3} maxW="sm">
           <FormControl isRequired>
@@ -75,6 +74,6 @@ export default function PasswordCard({ user }) {
           </Button>
         </Stack>
       </form>
-    </CardBody></Card>
+    </Panel>
   )
 }

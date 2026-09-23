@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Stack, Card, CardBody, HStack, Button, FormControl, SimpleGrid, FormLabel,
+  Stack, HStack, Button, FormControl, SimpleGrid, FormLabel,
   Input, Select, useToast, Center, Spinner, Text, IconButton, Box,
 } from '@chakra-ui/react'
-import { Camera } from 'lucide-react'
+import { Camera, UserRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { getProfile, updateProfile, uploadAvatar } from '../profile/profile.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
 import PaymentCard from './PaymentCard.jsx'
 
@@ -74,11 +75,11 @@ function IdentityCard({ user }) {
   }
 
   if (loading) {
-    return <Card><CardBody><Center py={10}><Spinner color="brand.500" /></Center></CardBody></Card>
+    return <Panel title="Profile" icon={UserRound}><Center py={10}><Spinner color="brand.500" /></Center></Panel>
   }
 
   return (
-    <Card><CardBody>
+    <Panel title="Profile" icon={UserRound}>
       <Stack spacing={5} as="form" onSubmit={save}>
         <HStack spacing={4} minW={0}>
           <Box position="relative" flexShrink={0}>
@@ -111,6 +112,6 @@ function IdentityCard({ user }) {
 
         <Button type="submit" alignSelf="start" isLoading={busy}>Save changes</Button>
       </Stack>
-    </CardBody></Card>
+    </Panel>
   )
 }

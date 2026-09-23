@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Heading, Stack, Card, CardBody, HStack, Text, Button, Box, Spacer, Select,
-  FormControl, FormLabel, Table, Thead, Tbody, Tr, Th, Td, useToast,
-  IconButton, TableContainer,
+  Heading, Stack, HStack, Text, Button, Spacer, Select,
+  FormControl, FormLabel, useToast, IconButton,
 } from '@chakra-ui/react'
 import { ArrowLeft, UploadCloud, FileSpreadsheet, Check, Eye, Store } from 'lucide-react'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import IconTile from '../../shared/ui/kit/IconTile.jsx'
+import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import Tile from '../../shared/ui/kit/Tile.jsx'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
@@ -125,9 +127,9 @@ export default function ImportExpenses() {
       } />
 
       {step === 'upload' && (
-        <Card><CardBody>
+        <Panel>
           <Stack spacing={4} align="center" py={8} textAlign="center">
-            <Box color="accent.fg"><UploadCloud size={40} /></Box>
+            <IconTile icon={UploadCloud} size={64} radius="2xl" />
             <Text fontWeight="600">Upload a spreadsheet</Text>
             <Text fontSize="sm" color="text.muted" maxW="sm">
               Any .xlsx or .csv with a header row. Columns are detected
@@ -138,14 +140,13 @@ export default function ImportExpenses() {
               <input type="file" accept=".xlsx,.xls,.csv" hidden onChange={onFile} />
             </Button>
           </Stack>
-        </CardBody></Card>
+        </Panel>
       )}
 
       {step === 'map' && (
         <>
-          <Card><CardBody>
-            <CardHeader icon={FileSpreadsheet} title={fileName} subtitle={`${rows.length} rows`}
-              action={<Button size="xs" variant="ghost" onClick={() => setStep('upload')}>Change file</Button>} />
+          <Panel icon={FileSpreadsheet} title={fileName} subtitle={`${rows.length} rows`}
+            action={<Button size="xs" variant="ghost" onClick={() => setStep('upload')}>Change file</Button>}>
             <Text fontSize="sm" color="text.muted" mb={3}>
               Match your columns to Budgeer fields. Date and Amount are required.
             </Text>
@@ -163,32 +164,18 @@ export default function ImportExpenses() {
                 </FormControl>
               ))}
             </Stack>
-          </CardBody></Card>
+          </Panel>
 
-          <Card><CardBody>
-            <CardHeader icon={Eye} title="Preview" mb={3} />
+          <Panel icon={Eye} title="Preview" subtitle="The first rows, as they’ll be saved">
             {previewTx.length === 0 ? (
               <Text fontSize="sm" color="text.muted">
                 Map Date and Amount to preview rows.
               </Text>
             ) : (
-              <TableContainer>
-                <Table size="sm" variant="simple">
-                  <Thead><Tr>
-                    <Th>Date</Th><Th>Description</Th><Th>Type</Th><Th isNumeric>Amount</Th>
-                  </Tr></Thead>
-                  <Tbody>
-                    {previewTx.map((t, i) => (
-                      <Tr key={i}>
-                        <Td>{t.spent_at}</Td>
-                        <Td>{t.description || <Text as="span" color="text.muted">—</Text>}</Td>
-                        <Td>{t.kind}</Td>
-                        <Td isNumeric fontWeight="600">{formatMoney(t.amount_minor, t.currency)}</Td>
-                      </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
-              </TableContainer>
+              previewTx.map((t, i) => (
+                <ItemRow key={i} title={t.description || '—'} meta={`${t.spent_at} · ${t.kind}`}
+                  amount={formatMoney(t.amount_minor, t.currency)} />
+              ))
             )}
             <HStack mt={4}>
               <Spacer />
@@ -197,13 +184,12 @@ export default function ImportExpenses() {
                 Import {rows.length} rows
               </Button>
             </HStack>
-          </CardBody></Card>
+          </Panel>
         </>
       )}
 
       {step === 'review' && pending && (
-        <Card><CardBody>
-          <CardHeader icon={Store} title="New merchants" mb={2} />
+        <Panel icon={Store} title="New merchants">
           <Text fontSize="sm" color="text.muted" mb={4}>
             Pick categories for merchants Budgeer hasn’t seen before — each choice
             is remembered as a rule and applied automatically on every future
@@ -211,17 +197,19 @@ export default function ImportExpenses() {
           </Text>
           <Stack spacing={2}>
             {pending.groups.map((g) => (
-              <HStack key={g.pattern} spacing={3}>
-                <Text fontSize="sm" fontWeight="600" flex="1" noOfLines={1}>
-                  {g.pattern}
-                  <Text as="span" color="text.muted" fontWeight="400"> · {g.count} row{g.count === 1 ? '' : 's'}</Text>
-                </Text>
-                <Select size="sm" maxW="200px" placeholder="Uncategorized"
-                  value={assign[g.pattern] || ''}
-                  onChange={(e) => setAssign((a) => ({ ...a, [g.pattern]: e.target.value }))}>
-                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </Select>
-              </HStack>
+              <Tile key={g.pattern}>
+                <HStack spacing={3}>
+                  <Text fontSize="sm" fontWeight="600" flex="1" noOfLines={1}>
+                    {g.pattern}
+                    <Text as="span" color="text.muted" fontWeight="400"> · {g.count} row{g.count === 1 ? '' : 's'}</Text>
+                  </Text>
+                  <Select size="sm" maxW="200px" bg="bg.surface" placeholder="Uncategorized"
+                    value={assign[g.pattern] || ''}
+                    onChange={(e) => setAssign((a) => ({ ...a, [g.pattern]: e.target.value }))}>
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </Select>
+                </HStack>
+              </Tile>
             ))}
           </Stack>
           <HStack mt={5}>
@@ -232,13 +220,13 @@ export default function ImportExpenses() {
               Import {pending.valid.length} rows
             </Button>
           </HStack>
-        </CardBody></Card>
+        </Panel>
       )}
 
       {step === 'done' && result && (
-        <Card><CardBody>
+        <Panel>
           <Stack spacing={3} align="center" py={6} textAlign="center">
-            <Box color="status.positive"><Check size={40} /></Box>
+            <IconTile icon={Check} size={64} radius="2xl" tone="positive" />
             <Heading size="md">Imported {result.inserted} transactions</Heading>
             {result.duplicates > 0 && (
               <Text fontSize="sm" color="text.muted">
@@ -257,7 +245,7 @@ export default function ImportExpenses() {
               <Button onClick={() => navigate('/transactions?type=all')}>View transactions</Button>
             </HStack>
           </Stack>
-        </CardBody></Card>
+        </Panel>
       )}
     </Stack>
   )

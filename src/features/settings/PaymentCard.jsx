@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import {
-  Card, CardBody, Stack, SimpleGrid, Button, FormControl, FormLabel, Input, useToast,
+  Stack, SimpleGrid, Button, FormControl, FormLabel, Input, useToast,
   Center, Spinner, Text,
 } from '@chakra-ui/react'
 import { Landmark } from 'lucide-react'
 import { getMyPaymentInfo, savePaymentInfo } from '../profile/profile.js'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 
 // "Getting paid": the IBAN / Revolut tag friends see when settling up.
 export default function PaymentCard({ user }) {
@@ -40,8 +40,7 @@ export default function PaymentCard({ user }) {
   }
 
   return (
-    <Card><CardBody>
-      <CardHeader icon={Landmark} title="Getting paid" mb={2} />
+    <Panel title="Getting paid" icon={Landmark}>
       <Text fontSize="sm" color="text.muted" mb={4}>
         Friends settling up with you see these as one-tap payment options —
         a bank QR for your IBAN and a Revolut link.
@@ -65,6 +64,6 @@ export default function PaymentCard({ user }) {
           <Button type="submit" size="sm" alignSelf="start" isLoading={busy}>Save</Button>
         </Stack>
       )}
-    </CardBody></Card>
+    </Panel>
   )
 }

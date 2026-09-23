@@ -1,15 +1,16 @@
 import { useMemo, useState } from 'react'
 import {
-  Stack, Card, CardBody, HStack, Text, Button, Center, Spinner,
-  List, ListItem, Divider, Switch, Tag, SimpleGrid, Stat, StatLabel, Flex, Box,
-  StatNumber, StatHelpText, Modal, ModalOverlay, ModalContent, ModalHeader,
+  Stack, HStack, Text, Button, Center, Spinner,
+  List, ListItem, Switch, Tag, SimpleGrid, Flex, Box, Modal, ModalOverlay, ModalContent, ModalHeader,
   ModalBody, ModalFooter, FormControl, FormLabel, Input, Select, useToast,
   useDisclosure, NumberInput, NumberInputField,
 } from '@chakra-ui/react'
 import { Plus, Pencil, Trash2, Repeat, Bell, Pause, Play } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import RowActions from '../../shared/ui/RowActions.jsx'
-import RowAmount from '../../shared/ui/RowAmount.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import Figure from '../../shared/ui/kit/Figure.jsx'
+import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
@@ -62,24 +63,21 @@ export default function Recurring() {
       <PageHeader title="Recurring"
         action={<PageAction icon={<Plus size={16} />} label="Add" onClick={openNew} />} />
 
-      <SimpleGrid columns={{ base: 2, sm: 2 }} spacing={4}>
-        <Card><CardBody>
-          <Stat>
-            <StatLabel>Subscriptions</StatLabel>
-            <StatNumber>{formatMoney(expenseMonthly, baseCurrency)}</StatNumber>
-            <StatHelpText>per month</StatHelpText>
-          </Stat>
-        </CardBody></Card>
-        <Card><CardBody>
-          <Stat>
-            <StatLabel>Recurring income</StatLabel>
-            <StatNumber color="status.positive">{formatMoney(incomeMonthly, baseCurrency)}</StatNumber>
-            <StatHelpText>per month</StatHelpText>
-          </Stat>
-        </CardBody></Card>
-      </SimpleGrid>
+      <Panel>
+        <SimpleGrid columns={2} spacing={4}>
+          <Box>
+            <Figure label="Subscriptions" size="lg" value={formatMoney(expenseMonthly, baseCurrency)} />
+            <Text fontSize="xs" color="text.muted">per month</Text>
+          </Box>
+          <Box textAlign="right">
+            <Figure label="Recurring income" size="lg" align="right" tone="positive"
+              value={formatMoney(incomeMonthly, baseCurrency)} />
+            <Text fontSize="xs" color="text.muted">per month</Text>
+          </Box>
+        </SimpleGrid>
+      </Panel>
 
-      <Card><CardBody>
+      <Panel>
         {loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : rules.length === 0 ? (
@@ -90,32 +88,15 @@ export default function Recurring() {
           </Stack>
         ) : (
           <List spacing={0}>
-            {rules.map((r, i) => (
+            {rules.map((r) => (
               <ListItem key={r.id}>
-                {i > 0 && <Divider />}
-                <HStack py={3} spacing={3} align="center">
-                  <HStack spacing={3} flex="1" minW={0} opacity={r.is_active ? 1 : 0.55}>
-                    <CategoryBadge category={r.categories} kind={r.kind} />
-                    <Stack spacing={0.5} flex="1" minW={0}>
-                      <Text fontWeight="600" noOfLines={1}>
-                        {r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
-                      </Text>
-                      <Flex wrap="wrap" align="center" columnGap={2} rowGap={1}
-                        fontSize="xs" color="text.muted">
-                        <Text whiteSpace="nowrap">{frequencyLabel(r)}</Text>
-                        <Text whiteSpace="nowrap">next {shortDate(r.next_run)}</Text>
-                        {r.remind_days_before != null && (
-                          <Tag size="sm" colorScheme="brand" px={1.5}>
-                            <Bell size={10} style={{ marginRight: 3 }} /> {r.remind_days_before}d
-                          </Tag>
-                        )}
-                        {!r.is_active && <Tag size="sm">Paused</Tag>}
-                      </Flex>
-                    </Stack>
-                    <RowAmount color={r.kind === 'income' ? 'status.positive' : 'text.primary'}>
-                      {formatMoney(r.amount_minor, r.currency)}
-                    </RowAmount>
-                  </HStack>
+                <HStack spacing={3} align="center">
+                  <ItemRow flex="1" py={2.5} opacity={r.is_active ? 1 : 0.55}
+                    media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
+                    title={r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
+                    meta={<RuleMeta rule={r} />}
+                    amount={formatMoney(r.amount_minor, r.currency)}
+                    amountTone={r.kind === 'income' ? 'positive' : 'default'} />
                   <Box display={{ base: 'none', sm: 'block' }} flexShrink={0}>
                     <Switch isChecked={r.is_active} onChange={() => toggle(r)}
                       aria-label={r.is_active ? 'Pause' : 'Resume'} />
@@ -131,7 +112,7 @@ export default function Recurring() {
             ))}
           </List>
         )}
-      </CardBody></Card>
+      </Panel>
 
       {form.isOpen && (
         <RecurringForm rule={editing} baseCurrency={baseCurrency}
@@ -155,6 +136,23 @@ export default function Recurring() {
         </ModalContent>
       </Modal>
     </Stack>
+  )
+}
+
+// The muted line under a rule's title: frequency · next date, plus its
+// reminder and paused tags.
+function RuleMeta({ rule: r }) {
+  return (
+    <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted">
+      <Text whiteSpace="nowrap">{frequencyLabel(r)}</Text>
+      <Text whiteSpace="nowrap">· next {shortDate(r.next_run)}</Text>
+      {r.remind_days_before != null && (
+        <Tag size="sm" colorScheme="brand" borderRadius="full" px={2}>
+          <Bell size={10} style={{ marginRight: 3 }} /> {r.remind_days_before}d
+        </Tag>
+      )}
+      {!r.is_active && <Tag size="sm" borderRadius="full">Paused</Tag>}
+    </Flex>
   )
 }
 

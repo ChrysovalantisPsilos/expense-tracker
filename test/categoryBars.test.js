@@ -25,3 +25,9 @@ test('categoryBars: an existing Other absorbs the tail; zero/empty input', () =>
   assert.deepEqual(categoryBars([]), [])
   assert.deepEqual(categoryBars([{ name: 'X', value: 0 }]), [])
 })
+
+test('categoryBars: Other is always last, even when it outranks named categories', () => {
+  const rows = categoryBars([{ name: 'Other', value: 500 }, { name: 'Rent', value: 900 }, { name: 'Food', value: 100 }])
+  assert.deepEqual(rows.map((r) => r.name), ['Rent', 'Food', 'Other'])
+  assert.equal(rows.reduce((s, r) => s + r.share, 0), 100)
+})

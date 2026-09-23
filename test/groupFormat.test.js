@@ -2,6 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   memberName, pluralise, splitLabel, settlePlan, sortMembers, avatarStack,
+  paidByLabel, groupTotal, memberBalances, balanceHighlight, isEveryoneEqualSplit,
+  myGroupBalance,
 } from '../src/features/groups/groupFormat.js'
 
 const members = [{ id: 'a', display_name: 'Alice' }, { id: 'b', display_name: 'Bob' }]
@@ -61,8 +63,11 @@ test('settlePlan: fewest payments, named, viewer shown as You and flagged', () =
   const ms = [{ id: 'y', display_name: 'Alex' }, { id: 'a', display_name: 'Anna' }, { id: 's', display_name: 'Sofia' }]
   const plan = settlePlan(new Map([['y', 1500], ['a', -500], ['s', -1000]]), ms, 'y')
   assert.equal(plan.length, 2)
-  assert.deepEqual(plan.map((t) => `${t.fromName}->${t.toName}:${t.amount}:${t.mine}`).sort(),
-    ['Anna->You:500:true', 'Sofia->You:1000:true'])
+  assert.deepEqual(plan.map((t) => `${t.fromName}->${t.toName}:${t.amount}:${t.mine}:${t.tone}`).sort(),
+    ['Anna->You:500:true:positive', 'Sofia->You:1000:true:positive'])
+  // Seen by Sofia: she pays, so her row is negative.
+  const [s] = settlePlan(new Map([['y', 1000], ['s', -1000]]), ms, 's')
+  assert.equal(`${s.fromName}->${s.toName}:${s.tone}`, 'You->Alex:negative')
 })
 
 test('settlePlan: empty when everyone is settled; others marked not mine', () => {
@@ -71,4 +76,87 @@ test('settlePlan: empty when everyone is settled; others marked not mine', () =>
   const [t] = settlePlan(new Map([['y', 0], ['a', 300], ['b', -300]]), ms, 'y')
   assert.equal(`${t.fromName}->${t.toName}`, 'Ben->Anna')
   assert.equal(t.mine, false)
+  assert.equal(t.tone, 'default')
+})
+
+test('paidByLabel: "You" for the viewer, the name otherwise', () => {
+  assert.equal(paidByLabel(members, 'a', 'a'), 'Paid by You')
+  assert.equal(paidByLabel(members, 'b', 'a'), 'Paid by Bob')
+  assert.equal(paidByLabel(members, 'zzz', 'a'), 'Paid by —')
+})
+
+test('groupTotal: sums the group-currency expenses in minor units', () => {
+  const ex = [
+    { amount_minor: 24000, currency: 'EUR' }, { amount_minor: 8640, currency: 'EUR' },
+    { amount_minor: 1860, currency: 'EUR' }, { amount_minor: 1200, currency: 'EUR' },
+  ]
+  assert.equal(groupTotal(ex, 'EUR'), 35700)
+  // A stray other-currency row is left out; a row without a currency counts.
+  assert.equal(groupTotal([...ex, { amount_minor: 500, currency: 'GBP' }, { amount_minor: '100' }], 'EUR'), 35800)
+  assert.equal(groupTotal([], 'EUR'), 0)
+  assert.equal(groupTotal(null, 'EUR'), 0)
+})
+
+test('memberBalances: every member, you first as "You", missing rows settled', () => {
+  const ms = [
+    { id: 'm1', user_id: 'u1', role: 'owner', display_name: 'Alex' },
+    { id: 'm2', user_id: 'u2', role: 'member', display_name: 'Anna' },
+    { id: 'm3', user_id: 'u3', role: 'member', display_name: 'Marco' },
+    { id: 'm4', user_id: 'u4', role: 'member', display_name: 'Sofia' },
+  ]
+  const bal = new Map([['m1', 16275], ['m2', -285], ['m3', -7065], ['m4', -8925]])
+  assert.deepEqual(memberBalances(bal, ms, 'u1').map((b) => `${b.label}:${b.net}:${b.mine}`),
+    ['You:16275:true', 'Anna:-285:false', 'Marco:-7065:false', 'Sofia:-8925:false'])
+  // Sofia's view: her first, then the owner, then join order.
+  assert.deepEqual(memberBalances(bal, ms, 'u4').map((b) => `${b.label}:${b.net}`),
+    ['You:-8925', 'Alex:16275', 'Anna:-285', 'Marco:-7065'])
+  assert.deepEqual(memberBalances(new Map(), ms.slice(0, 1), 'u1'), [{ id: 'm1', label: 'You', net: 0, mine: true }])
+  assert.deepEqual(memberBalances(null, null, 'u1'), [])
+})
+
+test('balanceHighlight: the biggest payment you receive or make', () => {
+  const ms = [
+    { id: 'y', display_name: 'Alex' }, { id: 'a', display_name: 'Anna' },
+    { id: 'm', display_name: 'Marco' }, { id: 's', display_name: 'Sofia' },
+  ]
+  const bal = new Map([['y', 16275], ['a', -285], ['m', -7065], ['s', -8925]])
+  assert.deepEqual(balanceHighlight(settlePlan(bal, ms, 'y')),
+    { text: 'Sofia owes you', amount: 8925, tone: 'positive' })
+  assert.deepEqual(balanceHighlight(settlePlan(bal, ms, 's')),
+    { text: 'You owe Alex', amount: 8925, tone: 'negative' })
+  // Someone else's debts only → nothing for you.
+  assert.equal(balanceHighlight(settlePlan(new Map([['y', 0], ['a', 300], ['m', -300]]), ms, 'y')), null)
+  assert.equal(balanceHighlight([]), null)
+  assert.equal(balanceHighlight(null), null)
+  // A tie between receiving and paying favours what you're owed.
+  const tie = [
+    { mine: true, amount: 500, tone: 'negative', fromName: 'You', toName: 'Anna' },
+    { mine: true, amount: 500, tone: 'positive', fromName: 'Marco', toName: 'You' },
+  ]
+  assert.equal(balanceHighlight(tie).text, 'Marco owes you')
+})
+
+test('isEveryoneEqualSplit: only an equal split over exactly the current members', () => {
+  const ms = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
+  const sp = (...ids) => ids.map((member_id) => ({ member_id }))
+  assert.equal(isEveryoneEqualSplit({ split_type: 'equal', expense_splits: sp('a', 'b', 'c') }, ms), true)
+  assert.equal(isEveryoneEqualSplit({ expense_splits: sp('c', 'a', 'b') }, ms), true) // no type = equal
+  assert.equal(isEveryoneEqualSplit({ split_type: 'equal', expense_splits: sp('a', 'b') }, ms), false) // someone left out
+  assert.equal(isEveryoneEqualSplit({ split_type: 'equal', expense_splits: sp('a', 'b', 'x') }, ms), false) // a former member
+  assert.equal(isEveryoneEqualSplit({ split_type: 'equal', expense_splits: sp('a', 'b', 'c', 'x') }, ms), false)
+  assert.equal(isEveryoneEqualSplit({ split_type: 'shares', expense_splits: sp('a', 'b', 'c') }, ms), false) // custom
+  assert.equal(isEveryoneEqualSplit({ split_type: 'equal', expense_splits: [] }, []), false)
+  assert.equal(isEveryoneEqualSplit(null, ms), false)
+})
+
+test('myGroupBalance: owed / owe / settled for the viewer', () => {
+  const ms = [{ id: 'm1', user_id: 'u1' }, { id: 'm2', user_id: 'u2' }]
+  const bal = new Map([['m1', 16275], ['m2', -16275]])
+  assert.deepEqual(myGroupBalance(bal, ms, 'u1'), { label: 'You’re owed', amount: 16275, tone: 'positive' })
+  assert.deepEqual(myGroupBalance(bal, ms, 'u2'), { label: 'You owe', amount: 16275, tone: 'negative' })
+  const settled = { label: 'Settled up', amount: null, tone: 'muted' }
+  assert.deepEqual(myGroupBalance(new Map([['m1', 0]]), ms, 'u1'), settled)
+  assert.deepEqual(myGroupBalance(new Map(), ms, 'u1'), settled) // no balance row
+  assert.deepEqual(myGroupBalance(bal, ms, 'nobody'), settled)
+  assert.deepEqual(myGroupBalance(null, null, 'u1'), settled)
 })

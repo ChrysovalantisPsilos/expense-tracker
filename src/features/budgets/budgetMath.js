@@ -8,3 +8,10 @@ export function budgetTone(spent, limit) {
   if (limit > 0 && spent >= limit * 0.8) return 'warning'
   return undefined
 }
+
+// Spend as a whole percent of the cap, for a budget row's label and bar
+// ("78%"). Not clamped (the bar clamps itself); a zero cap reads 0% — the
+// row's over-budget state comes from budgetTone, not from this number.
+export function budgetPercent(spent, limit) {
+  return limit > 0 ? Math.round((spent / limit) * 100) : 0
+}

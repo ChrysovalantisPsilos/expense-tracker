@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Card, CardBody, Stack, Text, Button, FormControl, FormLabel, FormHelperText,
+  Stack, Text, Button, FormControl, FormLabel, FormHelperText,
   FormErrorMessage, Input, HStack, Spinner, useDisclosure, useToast, Modal, ModalOverlay,
   ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton,
 } from '@chakra-ui/react'
@@ -8,7 +8,7 @@ import { Download, Info, Eye, KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { validatePassword } from '../../shared/lib/password.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 import { downloadBackup } from './backup.js'
 import Note from './Note.jsx'
 
@@ -17,8 +17,7 @@ import Note from './Note.jsx'
 export default function ExportBackup() {
   const dialog = useDisclosure()
   return (
-    <Card><CardBody>
-      <CardHeader icon={Download} title="Export backup" mb={2} />
+    <Panel title="Export backup" icon={Download}>
       <Text fontSize="sm" color="text.muted" mb={4}>
         Download one file with your expenses and income, categories and rules,
         budgets, recurring entries, accounts, savings goals, settings and payment
@@ -26,7 +25,7 @@ export default function ExportBackup() {
       </Text>
       <Button leftIcon={<Download size={16} />} onClick={dialog.onOpen}>Export backup</Button>
       {dialog.isOpen && <ExportDialog onClose={dialog.onClose} />}
-    </CardBody></Card>
+    </Panel>
   )
 }
 

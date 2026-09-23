@@ -1,6 +1,7 @@
-import { Card, CardBody, SimpleGrid, Button, Text } from '@chakra-ui/react'
+import { SimpleGrid, Button, Text } from '@chakra-ui/react'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { useAppearance } from '../../shared/lib/appearance.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
 
 const APPEARANCE_OPTIONS = [
@@ -14,7 +15,7 @@ export default function AppearanceSettings() {
   return (
     <SettingsPage title="Appearance"
       description="Choose your theme. “System” follows your device and switches automatically.">
-      <Card><CardBody>
+      <Panel>
         <SimpleGrid columns={3} spacing={{ base: 2, md: 3 }}>
           {APPEARANCE_OPTIONS.map(({ value, label, icon: Icon }) => {
             const active = pref === value
@@ -33,7 +34,7 @@ export default function AppearanceSettings() {
             )
           })}
         </SimpleGrid>
-      </CardBody></Card>
+      </Panel>
     </SettingsPage>
   )
 }

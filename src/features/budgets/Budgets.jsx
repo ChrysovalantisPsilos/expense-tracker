@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import {
-  Stack, Card, CardBody, HStack, Text, Spacer, Progress, Button,
-  FormControl, FormLabel, Select, useToast, Center, Spinner, Box,
+  Stack, HStack, Text, Button, FormControl, FormLabel, Select, useToast, Center, Spinner,
 } from '@chakra-ui/react'
-import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
+import { Target, CalendarDays } from 'lucide-react'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useCategories, monthRange } from '../transactions/useData.js'
 import { useProfile } from '../../shared/lib/useProfile.js'
-import { formatMoney, toMinor } from '../../shared/lib/currency.js'
+import { toMinor } from '../../shared/lib/currency.js'
 import { monthTitle } from '../../shared/lib/dates.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import { saveBudget } from './budgets.js'
 import { useBudgetProgress } from './useBudgetProgress.js'
+import BudgetRow from './BudgetRow.jsx'
 
 export default function Budgets() {
   const { baseCurrency } = useProfile()
@@ -46,7 +47,7 @@ export default function Budgets() {
     <Stack spacing={5}>
       <PageHeader eyebrow={monthTitle()} title="Budgets" />
 
-      <Card><CardBody>
+      <Panel icon={Target} title="Set a monthly cap">
         <form onSubmit={addBudget}>
           <HStack align="end" spacing={3}>
             <FormControl>
@@ -62,34 +63,19 @@ export default function Budgets() {
             <Button type="submit">Set</Button>
           </HStack>
         </form>
-      </CardBody></Card>
+      </Panel>
 
-      {loading ? (
-        <Center py={8}><Spinner color="brand.500" /></Center>
-      ) : items.length === 0 ? (
-        <Text color="text.muted">No budgets set for this month yet.</Text>
-      ) : (
-        <Stack spacing={3}>
-          {items.map((b) => {
-            const pct = b.limit > 0 ? Math.min(100, Math.round((b.spent / b.limit) * 100)) : 0
-            const over = b.tone === 'negative'
-            return (
-              <Card key={b.id}><CardBody>
-                <HStack mb={3} spacing={3}>
-                  <CategoryBadge category={b.category} size={32} />
-                  <Text fontWeight="600">{b.name}</Text>
-                  <Spacer />
-                  <Text fontSize="sm" color={over ? 'status.negative' : 'text.muted'}>
-                    {formatMoney(b.spent, baseCurrency)} / {formatMoney(b.limit, baseCurrency)}
-                  </Text>
-                </HStack>
-                <Progress value={pct} variant={b.tone} />
-                {over && <Box mt={1}><Text fontSize="xs" color="status.negative">Over budget</Text></Box>}
-              </CardBody></Card>
-            )
-          })}
-        </Stack>
-      )}
+      <Panel icon={CalendarDays} title="This month">
+        {loading ? (
+          <Center py={8}><Spinner color="brand.500" /></Center>
+        ) : items.length === 0 ? (
+          <Text color="text.muted" fontSize="sm">No budgets set for this month yet.</Text>
+        ) : (
+          <Stack spacing={5} role="list" aria-label="Budgets">
+            {items.map((b) => <BudgetRow key={b.id} item={b} currency={baseCurrency} />)}
+          </Stack>
+        )}
+      </Panel>
     </Stack>
   )
 }

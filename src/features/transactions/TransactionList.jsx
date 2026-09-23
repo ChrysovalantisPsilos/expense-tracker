@@ -1,13 +1,12 @@
 import { useState } from 'react'
 import {
-  Box, List, ListItem, HStack, Stack, Text, Divider, Tag, TagLabel, useToast,
+  Box, List, ListItem, Text, Tag, TagLabel, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
   ModalFooter, Button, Flex,
 } from '@chakra-ui/react'
 import { Pencil, Trash2 } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
-import RowActions from '../../shared/ui/RowActions.jsx'
-import RowAmount from '../../shared/ui/RowAmount.jsx'
+import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import TransactionForm from './TransactionForm.jsx'
 import { formatMoney, baseEquivalent } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
@@ -57,52 +56,28 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
   return (
     <>
       <List spacing={0}>
-        {rows.map((r, i) => {
+        {rows.map((r) => {
           const shared = !!r.group_expense_id
           const rk = kindOf(r, kind)
           const conv = baseEquivalent(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
           return (
             <ListItem key={r.id}>
-              {i > 0 && <Divider />}
-              <HStack py={3} spacing={3} align="center">
-                <CategoryBadge category={r.categories} kind={rk} />
-                <Stack spacing={0.5} flex="1" minW={0}>
-                  <Text fontWeight="600" noOfLines={1}>
-                    {r.description || r.categories?.name || (rk === 'income' ? 'Income' : 'Expense')}
-                  </Text>
-                  <Flex wrap="wrap" align="center" columnGap={2} rowGap={1}>
-                    <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
-                    {r.description && r.categories?.name && (
-                      <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">· {r.categories.name}</Text>
-                    )}
-                    {r.notes && (
-                      <Text fontSize="xs" color="text.muted" fontStyle="italic" noOfLines={1} minW={0} title={r.notes}>
-                        · {r.notes}
-                      </Text>
-                    )}
-                    {shared && (
-                      <Tag size="sm" colorScheme="brand" maxW="100%">
-                        <TagLabel noOfLines={1}>{groupLabel(r)}</TagLabel>
-                      </Tag>
-                    )}
-                  </Flex>
-                </Stack>
-                <Stack spacing={0} align="flex-end" flexShrink={0}>
-                  <RowAmount color={rk === 'income' ? 'status.positive' : 'text.primary'}>
-                    {rk === 'income' ? '+' : ''}{formatMoney(r.amount_minor, r.currency)}
-                  </RowAmount>
-                  {conv && (
-                    <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">
-                      ≈ {formatMoney(conv.baseMinor, baseCurrency)}
-                      <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {conv.rate}</Box>
-                    </Text>
-                  )}
-                </Stack>
-                <RowActions slots={2} actions={shared ? [] : [
+              <ItemRow py={2.5}
+                media={<CategoryBadge category={r.categories} kind={rk} size={32} />}
+                title={r.description || r.categories?.name || (rk === 'income' ? 'Income' : 'Expense')}
+                meta={<RowMeta row={r} shared={shared} />}
+                amount={`${rk === 'income' ? '+' : ''}${formatMoney(r.amount_minor, r.currency)}`}
+                amountTone={rk === 'income' ? 'positive' : 'default'}
+                amountMeta={conv && (
+                  <>
+                    ≈ {formatMoney(conv.baseMinor, baseCurrency)}
+                    <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {conv.rate}</Box>
+                  </>
+                )}
+                actionSlots={2} actions={shared ? [] : [
                   { label: 'Edit', icon: Pencil, onClick: () => { setEditing(r); editModal.onOpen() } },
                   { label: 'Delete', icon: Trash2, danger: true, onClick: () => setRemoving(r) },
                 ]} />
-              </HStack>
             </ListItem>
           )
         })}
@@ -139,5 +114,26 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
         </ModalContent>
       </Modal>
     </>
+  )
+}
+
+// The muted line under a row's title: date · category · note, then the
+// group's tag on group-share rows.
+function RowMeta({ row: r, shared }) {
+  return (
+    <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted">
+      <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
+      {r.description && r.categories?.name && (
+        <Text whiteSpace="nowrap">· {r.categories.name}</Text>
+      )}
+      {r.notes && (
+        <Text fontStyle="italic" noOfLines={1} minW={0} title={r.notes}>· {r.notes}</Text>
+      )}
+      {shared && (
+        <Tag size="sm" colorScheme="brand" borderRadius="full" maxW="100%">
+          <TagLabel noOfLines={1}>{groupLabel(r)}</TagLabel>
+        </Tag>
+      )}
+    </Flex>
   )
 }

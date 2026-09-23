@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import {
-  Card, CardBody, Button, FormControl, FormLabel, Input, Text, useToast, SimpleGrid,
+  Button, FormControl, FormLabel, Input, Text, useToast, SimpleGrid,
 } from '@chakra-ui/react'
-import { FileDown, FileSpreadsheet, FileText } from 'lucide-react'
-import CardHeader from '../../shared/ui/CardHeader.jsx'
+import { FileSpreadsheet, FileText } from 'lucide-react'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 import { monthRange } from '../../shared/lib/dates.js'
 import { downloadStatement } from './reports.js'
 
@@ -27,9 +27,8 @@ export default function ReportsCard() {
   }
 
   return (
-    <Card><CardBody>
-      <CardHeader icon={FileDown} title="Export statement" mb={3} />
-      <Text color="text.muted" fontSize="sm" mb={4}>
+    <Panel title="Export statement">
+      <Text color="text.muted" fontSize="sm" mb={4} mt={-1}>
         A full financial statement — summary, transactions, income vs. expenses
         and category breakdown — for a date range.
       </Text>
@@ -53,6 +52,6 @@ export default function ReportsCard() {
           Export Excel
         </Button>
       </SimpleGrid>
-    </CardBody></Card>
+    </Panel>
   )
 }

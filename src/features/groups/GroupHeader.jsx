@@ -1,21 +1,26 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Avatar, Box, Flex, HStack, IconButton, Text, useToast,
+  Box, Grid, Heading, HStack, IconButton, Text, useToast,
   Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
 import { ArrowLeft, Plus, MoreVertical, LogOut, Trash2, Pencil, Camera, FileDown } from 'lucide-react'
 import { uploadGroupImage } from './groups.js'
-import { avatarStack, pluralise, sortMembers } from './groupFormat.js'
-import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
-import UserAvatar from '../../shared/ui/UserAvatar.jsx'
+import { pluralise } from './groupFormat.js'
+import { PageAction } from '../../shared/ui/PageHeader.jsx'
+import Figure from '../../shared/ui/kit/Figure.jsx'
+import GroupMark from './GroupMark.jsx'
+import AvatarStack from './AvatarStack.jsx'
 
-// The group page's title row: back, the group photo (owner can replace it),
-// the name, a tappable member stack that opens the Members sheet, "Add
-// expense", and the ⋯ menu. Menu actions are callbacks; `onLeave` is omitted
-// when the viewer isn't a member.
+// The group page's header, styled after the landing's trip card: the group
+// photo (owner can replace it) or a solid brand tile, the name over a
+// tappable member stack that opens the Members sheet, and the group's
+// "Total" on the right. Back, "Add expense" and the ⋯ menu sit on the same
+// row from `md` up; on phones they form a toolbar above it so the name and
+// total keep their room. Menu actions are callbacks; `onLeave` is omitted
+// when the viewer isn't a member. `total` is a formatted string.
 export default function GroupHeader({
-  group, members, myUserId, isOwner, onPhotoChanged,
+  group, members, myUserId, isOwner, total, onPhotoChanged,
   onAdd, onMembers, onReport, onRename, onLeave, onDelete,
 }) {
   const navigate = useNavigate()
@@ -37,14 +42,15 @@ export default function GroupHeader({
   }
 
   return (
-    <PageHeader eyebrow="Group" title={group.name}
-      meta={<MemberStack members={members} myUserId={myUserId} onClick={onMembers} />}
-      leading={<>
-        <IconButton aria-label="Back" variant="ghost" size="sm" ml={-2} flexShrink={0}
-          icon={<ArrowLeft size={18} />} onClick={() => navigate('/groups')} />
+    <Grid alignItems="center" columnGap={3} rowGap={2}
+      templateColumns={{ base: '1fr auto', md: 'auto 1fr auto' }}
+      templateAreas={{ base: '"back actions" "hero hero"', md: '"back hero actions"' }}>
+      <IconButton gridArea="back" justifySelf="start" aria-label="Back" variant="ghost" size="sm" ml={-2}
+        icon={<ArrowLeft size={18} />} onClick={() => navigate('/groups')} />
+
+      <HStack gridArea="hero" spacing={3} minW={0}>
         <Box position="relative" flexShrink={0}>
-          <Avatar borderRadius="lg" size="md" name={group.name} src={group.image_url}
-            bg="bg.subtle" color="accent.fg" />
+          <GroupMark name={group.name} src={group.image_url} size={48} />
           {isOwner && (
             <>
               <IconButton aria-label="Change group photo" icon={<Camera size={12} />}
@@ -54,8 +60,19 @@ export default function GroupHeader({
             </>
           )}
         </Box>
-      </>}
-      action={<>
+        <Box flex="1" minW={0}>
+          <Heading as="h1" fontSize={{ base: 'xl', md: '2xl' }} letterSpacing="-0.02em"
+            lineHeight="1.25" noOfLines={1} wordBreak="break-all">
+            {group.name}
+          </Heading>
+          <Box mt={1}>
+            <MemberStack members={members} myUserId={myUserId} onClick={onMembers} />
+          </Box>
+        </Box>
+        <Figure label="Total" value={total} size="lg" align="right" flexShrink={0} />
+      </HStack>
+
+      <HStack gridArea="actions" spacing={2}>
         <PageAction icon={<Plus size={16} />} label="Add expense" onClick={onAdd} />
         <Menu>
           <MenuButton as={IconButton} aria-label="Group options" size="sm" mr={-2}
@@ -77,32 +94,19 @@ export default function GroupHeader({
             )}
           </MenuList>
         </Menu>
-      </>} />
+      </HStack>
+    </Grid>
   )
 }
 
-// Overlapping avatars (you and the owner first), a "+N" chip past four, and
-// the member count — one button that opens the Members sheet.
+// The avatar stack and member count — one button that opens the Members sheet.
 function MemberStack({ members, myUserId, onClick }) {
-  const { shown, overflow } = avatarStack(sortMembers(members, myUserId))
-  const ring = { borderWidth: '2px', borderColor: 'bg.canvas' }
   return (
     <HStack as="button" type="button" onClick={onClick} spacing={2} maxW="100%"
       aria-label={`${pluralise(members.length, 'member')} — show members`}
       borderRadius="full" pr={2} ml={-0.5} _hover={{ bg: 'bg.subtle' }}
       _focusVisible={{ boxShadow: 'outline' }} transition="background 0.1s">
-      <Flex as="span" flexShrink={0}>
-        {shown.map((m, i) => (
-          <UserAvatar key={m.id} size="xs" name={m.display_name} src={m.avatar_url}
-            highlight={m.user_id === myUserId} {...ring} ml={i ? -2 : 0} zIndex={shown.length - i} />
-        ))}
-        {overflow > 0 && (
-          <Flex as="span" boxSize="24px" {...ring} ml={-2} borderRadius="full" bg="bg.subtle"
-            color="text.muted" fontSize="2xs" fontWeight="700" align="center" justify="center">
-            +{overflow}
-          </Flex>
-        )}
-      </Flex>
+      <AvatarStack members={members} myUserId={myUserId} />
       <Text as="span" fontSize="sm" color="text.muted" fontWeight="500" noOfLines={1}>
         {pluralise(members.length, 'member')}
       </Text>
