@@ -4,6 +4,7 @@
 // paragraph). Every answer must stay true to the app — update it alongside any
 // change to the feature it describes.
 import { SUPPORT_EMAIL, PRIVACY_EMAIL } from '../../shared/lib/contact.js'
+import { COMPARISON_TITLE, comparisonFaqAnswer } from '../landing/comparison.js'
 
 export const FAQ_SECTIONS = [
   {
@@ -22,6 +23,11 @@ export const FAQ_SECTIONS = [
         id: 'is-it-free',
         q: 'Does Budgeer cost anything?',
         a: ['No. Budgeer is free, with no limits on how much you track and no ads.'],
+      },
+      {
+        id: 'compared-to-others',
+        q: COMPARISON_TITLE,
+        a: comparisonFaqAnswer(),
       },
       {
         id: 'financial-advice',

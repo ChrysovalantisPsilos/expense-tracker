@@ -7,7 +7,6 @@ import {
   Percent, Repeat, ReceiptText, ScanLine,
 } from 'lucide-react'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
-import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import ThemeToggle from '../../shared/ui/ThemeToggle.jsx'
@@ -17,6 +16,8 @@ import BudgetsMock from './BudgetsMock.jsx'
 import InsightsMock from './InsightsMock.jsx'
 import { SUPPORT_EMAIL } from '../../shared/lib/contact.js'
 import CurrencyMock from './CurrencyMock.jsx'
+import SectionHeading from './SectionHeading.jsx'
+import Comparison from './Comparison.jsx'
 
 const STEPS = [
   {
@@ -69,18 +70,6 @@ const ALSO_INCLUDED = [
   { icon: ArchiveRestore, label: 'Encrypted backups' },
   { icon: LockKeyhole, label: 'Encrypted at rest' },
 ]
-
-function SectionHeading({ eyebrow, title, children }) {
-  return (
-    <Stack spacing={3} maxW="xl">
-      <Eyebrow fontSize="sm" lineHeight="base">{eyebrow}</Eyebrow>
-      <Heading as="h2" fontSize={{ base: '2xl', md: '3xl' }} letterSpacing="-0.02em" lineHeight="1.15">
-        {title}
-      </Heading>
-      {children && <Text color="text.muted" fontSize={{ base: 'md', md: 'lg' }}>{children}</Text>}
-    </Stack>
-  )
-}
 
 function Hero({ onLogin, onSignup }) {
   return (
@@ -220,6 +209,7 @@ export default function Landing() {
         <HowItWorks />
         <Showcase />
         <AlsoIncluded />
+        <Comparison />
         <ClosingCta onSignup={onSignup} />
       </main>
       <Box as="footer" borderTopWidth="1px" borderColor="border.default">
