@@ -88,7 +88,7 @@ export default function Recurring() {
                   media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
                   title={r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
                   meta={<RuleMeta rule={r} />}
-                  amount={formatMoney(r.amount_minor, r.currency)}
+                  amount={ruleAmount(r)}
                   amountTone={r.kind === 'income' ? 'positive' : 'default'}
                   trailing={
                     <Box display={{ base: 'none', sm: 'block' }} flexShrink={0}>
@@ -133,19 +133,25 @@ export default function Recurring() {
   )
 }
 
-// The muted line under a rule's title: frequency · next date · a yearly
-// expense's monthly budget share, plus its reminder and paused tags.
+// A rule's headline amount: a yearly expense shows what it costs per month
+// (the share budgets count), everything else its charge.
+function ruleAmount(r) {
+  const share = monthlyBudgetShare(r)
+  return share
+    ? `${share.exact ? '' : '≈ '}${formatMoney(share.perMonth, r.currency)}/mo`
+    : formatMoney(r.amount_minor, r.currency)
+}
+
+// The muted line under a rule's title: frequency (with the full charge when
+// the headline is its monthly cost) · next date, plus reminder/paused tags.
 function RuleMeta({ rule: r }) {
   const share = monthlyBudgetShare(r)
   return (
     <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted">
-      <Text whiteSpace="nowrap">{frequencyLabel(r)}</Text>
+      <Text whiteSpace="nowrap">
+        {share ? `${formatMoney(r.amount_minor, r.currency)} ` : ''}{frequencyLabel(r)}
+      </Text>
       <Text whiteSpace="nowrap">· next {shortDate(r.next_run)}</Text>
-      {share && (
-        <Text whiteSpace="nowrap">
-          · {share.exact ? '' : '≈ '}{formatMoney(share.perMonth, r.currency)}/month in budgets
-        </Text>
-      )}
       {r.remind_days_before != null && (
         <Tag size="sm" colorScheme="brand" borderRadius="full" px={2}>
           <Bell size={10} style={{ marginRight: 3 }} /> {r.remind_days_before}d

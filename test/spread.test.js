@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  ruleSpreadMonths, spreadPart, spreadDates, spendRows, paidInWindow, spreadLabel,
+  ruleSpreadMonths, spreadPart, spreadDates, spendRows, paidInWindow, monthlyShare,
 } from '../src/shared/lib/spread.js'
 
 // The JS half of a JS↔SQL pair (0067 spread_part / month_share); the DB suite
@@ -89,9 +89,10 @@ test('spendRows: other rows pass through when paid in the window; income is neve
   assert.deepEqual(paidInWindow([yearly, plain], null, null), [yearly, plain])
 })
 
-test('spreadLabel: only spread expenses', () => {
-  assert.equal(spreadLabel(yearly), 'Spread over 12 months')
-  assert.equal(spreadLabel({ ...yearly, spread_months: 24 }), 'Spread over 24 months')
-  assert.equal(spreadLabel(plain), null)
-  assert.equal(spreadLabel({ ...yearly, kind: 'income' }), null)
+test('monthlyShare: per-month cost of spread expenses only', () => {
+  assert.deepEqual(monthlyShare({ ...yearly, amount_minor: 12000 }), { perMonth: 1000, months: 12, exact: true })
+  assert.deepEqual(monthlyShare({ ...yearly, amount_minor: 1000 }), { perMonth: 84, months: 12, exact: false })
+  assert.deepEqual(monthlyShare({ ...yearly, amount_minor: 24000, spread_months: 24 }), { perMonth: 1000, months: 24, exact: true })
+  assert.equal(monthlyShare(plain), null)
+  assert.equal(monthlyShare({ ...yearly, kind: 'income' }), null)
 })

@@ -11,7 +11,7 @@ import TransactionForm from './TransactionForm.jsx'
 import { formatMoney, baseEquivalent } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
-import { spreadLabel } from '../../shared/lib/spread.js'
+import { monthlyShare } from '../../shared/lib/spread.js'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import RecurringForm from '../recurring/RecurringForm.jsx'
@@ -138,6 +138,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
 // The muted line under a row's title: date · category · note, then the
 // group's tag on group-share rows.
 function RowMeta({ row: r, shared }) {
+  const share = monthlyShare(r)
   return (
     <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted">
       <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
@@ -158,7 +159,11 @@ function RowMeta({ row: r, shared }) {
           {!r.recurring.is_active && ' (paused)'}
         </Text>
       )}
-      {spreadLabel(r) && <Text whiteSpace="nowrap">· {spreadLabel(r)}</Text>}
+      {share && (
+        <Text whiteSpace="nowrap">
+          · {share.exact ? '' : '≈ '}{formatMoney(share.perMonth, r.currency)}/month over {share.months} months
+        </Text>
+      )}
     </Flex>
   )
 }

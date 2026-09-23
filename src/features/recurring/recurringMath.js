@@ -1,5 +1,5 @@
 // Pure recurring-rule math (no React/supabase imports — unit-testable).
-import { ruleSpreadMonths, spreadDates, spreadPart } from '../../shared/lib/spread.js'
+import { monthlyShare, ruleSpreadMonths, spreadDates, spreadPart } from '../../shared/lib/spread.js'
 
 export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly']
 
@@ -68,10 +68,7 @@ export function ruleFromTransaction(t, { frequency = 'monthly', interval_n: n = 
 // every month gets the same), or null for rules that aren't spread.
 export function monthlyBudgetShare(rule) {
   const n = ruleSpreadMonths(rule)
-  if (!n) return null
-  const total = Number(rule.amount_minor) || 0
-  const perMonth = spreadPart(total, n, 0)
-  return { perMonth, months: n, exact: perMonth === spreadPart(total, n, n - 1) }
+  return n ? monthlyShare({ kind: 'expense', amount_minor: rule.amount_minor, spread_months: n }) : null
 }
 
 // Can this transaction be made recurring? Not a mirrored group share (it's

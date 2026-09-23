@@ -86,5 +86,13 @@ export function spendRows(rows, baseCurrency, from = null, to = null) {
   return out
 }
 
-// A row's meta label: "Spread over 12 months" (null when it isn't spread).
-export const spreadLabel = (row) => (isSpread(row) ? `Spread over ${row.spread_months} months` : null)
+// What a spread expense costs per month, in its own currency:
+// { perMonth, months, exact } (exact: every month's part is the same, so the
+// UI can drop its "≈"), or null when the row isn't spread.
+export function monthlyShare(row) {
+  if (!isSpread(row)) return null
+  const n = row.spread_months
+  const total = Number(row.amount_minor) || 0
+  const perMonth = spreadPart(total, n, 0)
+  return { perMonth, months: n, exact: perMonth === spreadPart(total, n, n - 1) }
+}
