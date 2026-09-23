@@ -3,7 +3,7 @@
 // unique across the page), a question `q` and an answer `a` (one string per
 // paragraph); optionally numbered `steps` and a `media` illustration — an
 // install guide ({ type: 'install', platform }) or a short clip from the app
-// ({ type: 'clip', name, alt }: public/help/<name>.webm + .jpg poster). Every
+// ({ type: 'clip', name, alt }: public/faq-media/<name>.webm + .mp4, .jpg poster). Every
 // answer must stay true to the app — update it alongside any change to the
 // feature it describes (and re-record its clip).
 import { SUPPORT_EMAIL, PRIVACY_EMAIL } from '../../shared/lib/contact.js'

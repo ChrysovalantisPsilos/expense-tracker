@@ -84,7 +84,9 @@ test('search also finds a question by its steps and its clip description', () =>
 })
 
 test('clipSources points at the WebM and its poster frame under /help', () => {
-  assert.deepEqual(clipSources('settle-up'), { video: '/help/settle-up.webm', poster: '/help/settle-up.jpg' })
+  assert.deepEqual(clipSources('settle-up'), {
+    video: '/faq-media/settle-up.webm', mp4: '/faq-media/settle-up.mp4', poster: '/faq-media/settle-up.jpg',
+  })
 })
 
 test('the FAQ content is well formed: unique anchor ids, non-empty questions and answers', () => {

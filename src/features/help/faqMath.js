@@ -81,9 +81,13 @@ export function questionLink(origin, path, id) {
   return `${origin}${path}#${id}`
 }
 
-// Where a FAQ clip's files live: public/help/<name>.webm, with a .jpg poster
+// Where a FAQ clip's files live: public/faq-media/<name>.webm and .mp4, with a .jpg poster
 // frame shown before it plays (and instead of it with reduced motion).
-const CLIP_DIR = '/help'
+const CLIP_DIR = '/faq-media'
 export function clipSources(name) {
-  return { video: `${CLIP_DIR}/${name}.webm`, poster: `${CLIP_DIR}/${name}.jpg` }
+  return {
+    video: `${CLIP_DIR}/${name}.webm`, // VP8: Chrome, Firefox, Android, newer Safari
+    mp4: `${CLIP_DIR}/${name}.mp4`, // H.264: every iPhone and older Safari
+    poster: `${CLIP_DIR}/${name}.jpg`,
+  }
 }

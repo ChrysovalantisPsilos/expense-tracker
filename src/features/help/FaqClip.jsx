@@ -23,7 +23,7 @@ export default function FaqClip({ name, alt }) {
   const [choice, setChoice] = useState(null)
   const [started, setStarted] = useState(false)
   const videoRef = useRef(null)
-  const { video, poster } = clipSources(name)
+  const { video, mp4, poster } = clipSources(name)
   const playing = inView && (choice ?? !reduce)
 
   useEffect(() => { if (playing) setStarted(true) }, [playing])
@@ -44,8 +44,11 @@ export default function FaqClip({ name, alt }) {
           position="absolute" inset={0} w="full" h="full" objectFit="cover" />
       )}
       {started && (
-        <Box as="video" ref={videoRef} src={video} aria-label={alt} muted loop playsInline preload="none"
-          disablePictureInPicture position="absolute" inset={0} w="full" h="full" objectFit="cover" />
+        <Box as="video" ref={videoRef} aria-label={alt} muted loop playsInline preload="none"
+          disablePictureInPicture position="absolute" inset={0} w="full" h="full" objectFit="cover">
+          <source src={mp4} type="video/mp4" />
+          <source src={video} type="video/webm" />
+        </Box>
       )}
       <IconButton aria-label={playing ? 'Pause the clip' : 'Play the clip'} size="sm" isRound
         position="absolute" right={2} bottom={2} bg="blackAlpha.600" color="white"
