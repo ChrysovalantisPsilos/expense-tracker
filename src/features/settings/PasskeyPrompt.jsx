@@ -8,46 +8,47 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
 import { claimPromptSlot, releasePromptSlot } from '../../shared/lib/promptGate.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { getProfile, updateProfile } from '../profile/profile.js'
 import { toPasskeyList } from './authMethods.js'
 
-// Storage can be unavailable (private mode, blocked site data): treat that as
-// "not set" and never let it break the prompt.
-function readFlag(store, key) {
-  try { return !!store.getItem(key) } catch { return false }
+// sessionStorage can be unavailable (private mode, blocked site data): treat
+// that as "not shown yet" and never let it break the prompt.
+function shownThisSession() {
+  try { return !!sessionStorage.getItem(STORAGE_KEYS.passkeyPrompted) } catch { return false }
 }
-function writeFlag(store, key) {
-  try { store.setItem(key, '1') } catch { /* ignore */ }
+function markShown() {
+  try { sessionStorage.setItem(STORAGE_KEYS.passkeyPrompted, '1') } catch { /* ignore */ }
 }
 
 // Shown once per session, right after login, if the user has no passkey yet
-// and hasn't asked not to be reminded on this device. Silently does nothing
-// when passkeys aren't supported or aren't enabled server-side (listPasskeys
-// errors), so it never nags in unsupported setups.
+// and hasn't turned the reminder off (a profile flag, so it follows them to
+// every device). Silently does nothing when passkeys aren't supported or
+// aren't enabled server-side (listPasskeys errors), so it never nags in
+// unsupported setups.
 export default function PasskeyPrompt() {
   const { user, listPasskeys, registerPasskey } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [never, setNever] = useState(false)
   const toast = useToast()
-  const neverKey = `${STORAGE_KEYS.passkeyNever}:${user?.id}`
 
   useEffect(() => {
     if (!passkeysSupported) return
-    if (readFlag(sessionStorage, STORAGE_KEYS.passkeyPrompted)) return
-    if (readFlag(localStorage, neverKey)) return
+    if (!user?.id || shownThisSession()) return
     let active = true
-    listPasskeys()
-      .then(({ data, error }) => {
-        if (!active || error) return
-        if (toPasskeyList(data).length === 0) {
-          writeFlag(sessionStorage, STORAGE_KEYS.passkeyPrompted)
+    getProfile(user.id, 'passkey_reminder_off')
+      .then((p) => (p?.passkey_reminder_off ? null : listPasskeys()))
+      .then((res) => {
+        if (!active || !res || res.error) return
+        if (toPasskeyList(res.data).length === 0) {
+          markShown()
           claimPromptSlot() // NotificationPrompt waits its turn
           setOpen(true)
         }
       })
       .catch(() => { /* passkeys not enabled — skip */ })
     return () => { active = false }
-  }, [listPasskeys, neverKey])
+  }, [listPasskeys, user?.id])
 
   async function create() {
     setBusy(true)
@@ -62,7 +63,7 @@ export default function PasskeyPrompt() {
   }
 
   function close() {
-    if (never) writeFlag(localStorage, neverKey)
+    if (never) updateProfile(user.id, { passkey_reminder_off: true }).catch(() => { /* retried next session */ })
     setOpen(false)
     releasePromptSlot()
   }

@@ -1364,6 +1364,37 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 30. passkey_reminder_off: the owner can set it; another user cannot touch it.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; v boolean; n int;
+begin
+  begin
+    select id into u1 from auth.users order by created_at limit 1;
+    -- A fresh second user (rolled back), so the test needs only one real account.
+    insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
+    values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
+            'authenticated', 'zzt-pk-' || md5(random()::text) || '@example.com', now(), now())
+    returning id into u2;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set passkey_reminder_off = true where id = u1;
+    update public.profiles set passkey_reminder_off = true where id = u2;  -- RLS: 0 rows
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if n <> 0 then raise exception 'updated another user''s profile'; end if;
+    select passkey_reminder_off into v from public.profiles where id = u1;
+    if v is distinct from true then raise exception 'owner could not set the flag'; end if;
+    select passkey_reminder_off into v from public.profiles where id = u2;
+    if v then raise exception 'flag leaked onto another user'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: passkey_reminder_off owner-only';
+    else update _t set fails = fails + 1; raise notice 'FAIL: passkey_reminder_off — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed (so CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
