@@ -86,8 +86,8 @@ export default function Groups() {
               <HStack spacing={3} flexWrap="wrap">
                 <GroupMark name={inv.group_name} size={40} />
                 <Stack spacing={0} flex="1" minW={0}>
-                  <Text fontWeight="600" noOfLines={1}>{inv.group_name}</Text>
-                  <Text fontSize="xs" color="text.muted" noOfLines={1}>{inv.invited_by} invited you</Text>
+                  <Text fontWeight="600" overflowWrap="anywhere">{inv.group_name}</Text>
+                  <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{inv.invited_by} invited you</Text>
                 </Stack>
                 <HStack spacing={2} ml="auto">
                   <Button size="sm" leftIcon={<Check size={16} />} onClick={() => respond(inv.invite_id, true)}>
@@ -133,10 +133,10 @@ export default function Groups() {
                 <HStack spacing={3}>
                   <GroupMark name={g.name} src={g.image_url} size={44} />
                   <Box flex="1" minW={0}>
-                    <Text fontFamily="heading" fontWeight="700" noOfLines={1}>{g.name}</Text>
+                    <Text fontFamily="heading" fontWeight="700" overflowWrap="anywhere">{g.name}</Text>
                     <HStack spacing={2} mt={1} minW={0}>
                       {sum && <AvatarStack members={sum.members} myUserId={user.id} ring="bg.surface" />}
-                      <Text fontSize="xs" color="text.muted" noOfLines={1}>
+                      <Text fontSize="xs" color="text.muted">
                         {pluralise(count, 'member')}
                         {/* the currency is desktop-only when the avatars take the room */}
                         <Box as="span" display={sum ? { base: 'none', sm: 'inline' } : 'inline'}> · {g.currency}</Box>

@@ -42,9 +42,9 @@ export default function ItemRow({
     <>
       {media ?? (icon && <IconTile icon={icon} />)}
       <Box flex="1" minW={0}>
-        <Text fontSize="sm" fontWeight="600" noOfLines={1}>{title}</Text>
+        <Text fontSize="sm" fontWeight="600" overflowWrap="anywhere">{title}</Text>
         {meta && (typeof meta === 'string'
-          ? <Text fontSize="xs" color="text.muted" noOfLines={1}>{meta}</Text>
+          ? <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{meta}</Text>
           : meta)}
       </Box>
       {amount !== undefined && (

@@ -35,7 +35,7 @@ export default function MembersSheet({
                   {i > 0 && <Divider />}
                   <HStack py={2.5} spacing={3}>
                     <UserAvatar size="sm" name={m.display_name} src={m.avatar_url} highlight={isMe} />
-                    <Text fontWeight={isMe ? '700' : '500'} noOfLines={1} minW={0}>
+                    <Text fontWeight={isMe ? '700' : '500'} minW={0} overflowWrap="anywhere">
                       {m.display_name}{isMe ? ' (you)' : ''}
                     </Text>
                     {m.role === 'owner' && <Badge colorScheme="brand" flexShrink={0}>Owner</Badge>}

@@ -1,7 +1,7 @@
 // Date helpers. All app dates are YYYY-MM-DD strings in the user's LOCAL
 // calendar. Never format a local date with toISOString(): that converts to UTC,
-// which is the previous day east of UTC (e.g. local midnight 1 Sep in Cyprus is
-// 31 Aug 21:00 UTC), shifting month ranges and budget keys by a day.
+// which is the previous day east of UTC (e.g. local midnight 1 Sep in Belgium is
+// 31 Aug 22:00 UTC), shifting month ranges and budget keys by a day.
 
 const pad2 = (n) => String(n).padStart(2, '0')
 

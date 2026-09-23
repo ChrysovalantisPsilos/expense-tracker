@@ -51,14 +51,14 @@ export default function ProgressRow({
       <HStack spacing={3} mb={2}>
         {media ?? (icon && <IconTile icon={icon} />)}
         <Box flex="1" minW={0}>
-          <Text fontSize="sm" fontWeight="600" noOfLines={1}>
+          <Text fontSize="sm" fontWeight="600" overflowWrap="anywhere">
             {to ? (
               <LinkOverlay as={RouterLink} to={to} aria-label={linkLabel} {...OVERLAY_FOCUS}>
                 {title}
               </LinkOverlay>
             ) : title}
           </Text>
-          {meta && <Text fontSize="xs" color="text.muted" noOfLines={1}>{meta}</Text>}
+          {meta && <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{meta}</Text>}
         </Box>
         {over ? (
           <Tag size="sm" colorScheme="red" borderRadius="full" flexShrink={0}>{overLabel}</Tag>

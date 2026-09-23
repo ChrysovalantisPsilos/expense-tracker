@@ -11,7 +11,7 @@
     "lint": "eslint . --max-warnings=0",
     "test": "npm run test:utc && npm run test:tz",
     "test:utc": "TZ=UTC node --test test/*.test.js",
-    "test:tz": "TZ=Europe/Nicosia node --test test/*.test.js",
+    "test:tz": "TZ=Europe/Brussels node --test test/*.test.js",
     "functions:serve": "supabase functions serve"
   },
   "dependencies": {

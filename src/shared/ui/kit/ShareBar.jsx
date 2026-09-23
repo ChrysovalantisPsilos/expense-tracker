@@ -45,7 +45,7 @@ export function ShareLegend({ items, columns = 2, ...props }) {
         <HStack key={item.label} spacing={2} minW={0}
           {...(item.to && { ...LINKED, to: item.to, 'aria-label': item.linkLabel })}>
           <Box boxSize="8px" borderRadius="full" bg={colorOf(item, i)} flexShrink={0} />
-          <Text fontSize="xs" color="text.muted" noOfLines={1} flex="1">{item.label}</Text>
+          <Text fontSize="xs" color="text.muted" flex="1" minW={0} overflowWrap="anywhere">{item.label}</Text>
           <Text fontSize="xs" fontWeight="700">{item.share}%</Text>
           {item.to
             ? <Box color="text.muted" flexShrink={0} aria-hidden><ChevronRight size={14} /></Box>

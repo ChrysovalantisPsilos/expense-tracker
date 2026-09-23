@@ -7,7 +7,7 @@ Four layers:
    dashboard periods, statement import, backup validation and crypto, offline
    cache rules, and the edge-function shared helpers. They use Node's built-in
    test runner, with no framework. `npm test` runs the suite twice, in
-   `TZ=UTC` and in `TZ=Europe/Nicosia` (`test:utc` / `test:tz`), because
+   `TZ=UTC` and in `TZ=Europe/Brussels` (`test:utc` / `test:tz`), because
    date bugs hide in UTC.
 2. **Lint** (`npm run lint`, ESLint 9, `eslint.config.js`): React, hooks,
    a11y, unused imports (an error), and the ban on `shared/` importing from
@@ -27,7 +27,7 @@ Four layers:
    second signed-in user, for example in a private browser window.
 
 **CI** (`.github/workflows/test.yml`) runs these steps on every push and PR:
-`npm ci`, then `npm test` (UTC and `Europe/Nicosia`), then lint, then
+`npm ci`, then `npm test` (UTC and `Europe/Brussels`), then lint, then
 `npm run build`, then `npm audit --omit=dev --audit-level=high`. The audit
 only reports for now and doesn't fail the build.
 

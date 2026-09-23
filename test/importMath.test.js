@@ -3,11 +3,17 @@ import assert from 'node:assert/strict'
 import { merchantKey, parseAmount, parseDate, deterministicUuid } from '../src/features/import/importMath.js'
 
 test('merchantKey: strips bank noise, numbers, dates, branches', () => {
-  assert.equal(merchantKey('POS LIDL 1234 NICOSIA 19/07'), 'LIDL')
-  assert.equal(merchantKey('LIDL 992 LARNACA'), 'LIDL')
+  assert.equal(merchantKey('BANCONTACT LIDL 1234 BRUXELLES 19/07'), 'LIDL')
+  assert.equal(merchantKey('LIDL 992 GENT'), 'LIDL')
   assert.equal(merchantKey('Netflix.com 12.99'), 'NETFLIX')
   assert.equal(merchantKey('CARD PAYMENT TO IKEA'), 'IKEA')
   assert.equal(merchantKey('ΣΟΥΠΕΡΜΑΡΚΕΤ ΑΛΦΑ 55'), 'ΣΟΥΠΕΡΜΑΡΚΕΤ')
+})
+
+test('merchantKey: Belgian card and app payment prefixes are noise', () => {
+  assert.equal(merchantKey('MAESTRO LIDL 1234 BRUXELLES'), 'LIDL')
+  assert.equal(merchantKey('PAYCONIQ BY BANCONTACT DELHAIZE 5678 GENT'), 'DELHAIZE')
+  assert.equal(merchantKey('BETALING MET BANCONTACT COLRUYT 0412 ANTWERPEN'), 'COLRUYT')
 })
 
 test('merchantKey: empty inputs', () => {

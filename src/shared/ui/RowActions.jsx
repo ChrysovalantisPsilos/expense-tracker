@@ -32,7 +32,10 @@ export default function RowActions({ actions, slots = actions.length, size = 'xs
       </HStack>
       <Box display={{ base: 'block', sm: 'none' }} w={`${s.px}px`} flexShrink={0}>
         {actions.length > 0 && (
-          <Menu placement="bottom-end" isLazy>
+          // `fixed`: the unopened list sits at its anchor's corner, and inside
+          // a positioned row (a linked ProgressRow) an absolute one would
+          // widen the page past the screen edge.
+          <Menu placement="bottom-end" isLazy strategy="fixed">
             <MenuButton as={IconButton} aria-label="More actions" {...s.button} variant="ghost"
               color="text.muted" icon={<MoreVertical size={s.menuIcon} />} />
             <MenuList minW="170px">

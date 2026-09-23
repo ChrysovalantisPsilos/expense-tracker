@@ -161,7 +161,7 @@ units.
 | Layer | How | What |
 | --- | --- | --- |
 | Unit | `npm test` (Node's built-in `node:test`, no framework) | Every pure module: split maths, currency and FX, dates, budgets, recurring, import parsing, backup validation and crypto, offline cache rules, edge-function shared helpers |
-| Time zones | `npm test` runs the unit suite in UTC **and** `Europe/Nicosia` | Catches local-vs-UTC date bugs that only show up east of UTC |
+| Time zones | `npm test` runs the unit suite in UTC **and** `Europe/Brussels` | Catches local-vs-UTC date bugs that only show up east of UTC |
 | Database | `supabase/tests/db_tests.sql` | RLS isolation, definer functions, triggers, rate limits and encryption guards. Each test creates its own throwaway users in a subtransaction and rolls back, so it's safe on a live project. It must end with `ALL DATABASE TESTS PASSED` |
 | Lint | `npm run lint` (ESLint 9 flat config) | React, hooks, a11y, unused imports, and the `shared/` → `features/` import ban |
 | CI | `.github/workflows/test.yml` | `npm ci` → `npm test` (both time zones) → lint → build → `npm audit` (report) |

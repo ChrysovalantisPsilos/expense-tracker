@@ -95,7 +95,7 @@ export default function CategoryPage() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader title={name || '…'} titleLines={2}
+      <PageHeader title={name || '…'}
         eyebrow={category?.is_archived ? 'Archived category' : kind === 'income' ? 'Income category' : 'Category'}
         leading={(
           <HStack spacing={3} flexShrink={0}>

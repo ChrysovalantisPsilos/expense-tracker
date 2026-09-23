@@ -14,10 +14,10 @@ test('monthRange spans first to last day', () => {
   assert.equal(to, '2026-02-28')
 })
 
-// The suite also runs under TZ=Europe/Nicosia (npm test), but this pins the
+// The suite also runs under TZ=Europe/Brussels (npm test), but this pins the
 // behaviour in any single run: switch the process zone and check that local
 // dates never shift. Node re-reads process.env.TZ on assignment.
-const ZONES = ['UTC', 'Europe/Nicosia', 'Pacific/Kiritimati', 'America/Los_Angeles', 'Asia/Tokyo']
+const ZONES = ['UTC', 'Europe/Brussels', 'Europe/Nicosia', 'Pacific/Kiritimati', 'America/Los_Angeles', 'Asia/Tokyo']
 function inZones(fn) {
   const saved = process.env.TZ
   try {
@@ -43,8 +43,10 @@ test('monthRange/isoDate/today use the local calendar in every timezone', () => 
 })
 
 test('the suite really is exercising a non-UTC zone when TZ says so', () => {
-  if (process.env.TZ === 'Europe/Nicosia') {
-    assert.notEqual(new Date(2026, 8, 1).getTimezoneOffset(), 0)
+  if (process.env.TZ === 'Europe/Brussels') {
+    // East of UTC (UTC+1/+2), so local midnight is still the previous UTC day.
+    assert.ok(new Date(2026, 8, 1).getTimezoneOffset() < 0)
+    assert.ok(new Date(2026, 0, 1).getTimezoneOffset() < 0)
   }
 })
 

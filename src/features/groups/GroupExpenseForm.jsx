@@ -241,7 +241,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
               return (
                 <HStack key={m.id} spacing={3}>
                   <Checkbox isChecked={on} onChange={() => toggle(m.id)} flex="1" minW={0}>
-                    <Text noOfLines={1}>{m.display_name}</Text>
+                    <Text overflowWrap="anywhere">{m.display_name}</Text>
                   </Checkbox>
                   {on && mode !== 'equal' && (
                     <InputGroup size="sm" maxW="130px">

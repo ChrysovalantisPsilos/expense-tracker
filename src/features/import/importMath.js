@@ -5,13 +5,13 @@ import { isoDate } from '../../shared/lib/dates.js'
 import { parseLocaleAmount, parseDateText, ymd, foldText } from '../../shared/lib/localeParse.js'
 
 // A merchant key for rules: strip numbers/dates/punctuation and generic bank
-// prefixes, keep the first meaningful word — so "POS LIDL 1234 NICOSIA" and
-// "LIDL 992 LARNACA" both become "LIDL" and share one rule. The noise words
+// prefixes, keep the first meaningful word — so "BANCONTACT LIDL 1234 BRUXELLES"
+// and "LIDL 992 GENT" both become "LIDL" and share one rule. The noise words
 // cover the EN/FR/NL/EL boilerplate banks put in front of the merchant.
 const BANK_NOISE = new Set([
   'POS', 'CARD', 'PAYMENT', 'PURCHASE', 'VISA', 'MASTERCARD', 'DEBIT',
   'CREDIT', 'TRANSFER', 'TO', 'FROM', 'THE',
-  'BETALING', 'MET', 'DEBETKAART', 'BANCONTACT', 'MAESTRO', 'OVERSCHRIJVING',
+  'BETALING', 'MET', 'DEBETKAART', 'BANCONTACT', 'MAESTRO', 'PAYCONIQ', 'BY', 'OVERSCHRIJVING',
   'NAAR', 'VAN', 'AANKOOP', 'PAIEMENT', 'AVEC', 'CARTE', 'VIREMENT', 'VERS',
   'ACHAT', 'ΑΓΟΡΑ', 'ΚΑΡΤΑ', 'ΜΕ', 'ΣΕ', 'ΑΠΟ', 'ΠΛΗΡΩΜΗ', 'ΜΕΤΑΦΟΡΑ',
 ])

@@ -222,7 +222,7 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
                   const iPay = t.from === myMember.id
                   return (
                     <HStack key={i} fontSize="sm">
-                      <Text noOfLines={1} flex="1">
+                      <Text flex="1" minW={0} overflowWrap="anywhere">
                         {iPay
                           ? <>Pay <b>{nameOf(t.to)}</b> {formatMoney(t.amount, group.currency)}</>
                           : <><b>{nameOf(t.from)}</b> pays you {formatMoney(t.amount, group.currency)}</>}

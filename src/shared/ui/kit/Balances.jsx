@@ -18,11 +18,11 @@ export function BalanceTile({ label, value, tone = 'default', note, size = 'sm',
     <Tile py={md ? 2.5 : 2} minW={0} {...props}>
       {md ? <Figure label={label} value={value} tone={tone} /> : (
         <>
-          <Text fontSize="xs" color="text.muted" noOfLines={1}>{label}</Text>
+          <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{label}</Text>
           <Text fontSize="sm" fontWeight="700" color={textColor(tone)} whiteSpace="nowrap">{value}</Text>
         </>
       )}
-      {note && <Text fontSize="xs" color="text.muted" noOfLines={1}>{note}</Text>}
+      {note && <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{note}</Text>}
     </Tile>
   )
 }

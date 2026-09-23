@@ -37,10 +37,9 @@ export function NavRow({ to, href, onClick, icon, media, label, description, ...
       transition="background 0.15s">
       {media ?? <IconTile icon={icon} size={40} radius="xl" />}
       <Box flex="1" minW={0}>
-        <Text fontWeight="600" noOfLines={1}>{label}</Text>
+        <Text fontWeight="600" overflowWrap="anywhere">{label}</Text>
         {description && (
-          <Text fontSize="sm" color="text.muted" whiteSpace="nowrap" overflow="hidden"
-            textOverflow="ellipsis">{description}</Text>
+          <Text fontSize="sm" color="text.muted" overflowWrap="anywhere">{description}</Text>
         )}
       </Box>
       {to && <Box color="text.muted" flexShrink={0}><ChevronRight size={18} /></Box>}

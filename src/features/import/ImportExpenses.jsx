@@ -273,7 +273,7 @@ export default function ImportExpenses() {
             {pending.groups.map((g) => (
               <Tile key={g.pattern}>
                 <HStack spacing={3}>
-                  <Text fontSize="sm" fontWeight="600" flex="1" noOfLines={1}>
+                  <Text fontSize="sm" fontWeight="600" flex="1" minW={0} overflowWrap="anywhere">
                     {g.pattern}
                     <Text as="span" color="text.muted" fontWeight="400"> · {g.count} row{g.count === 1 ? '' : 's'}</Text>
                   </Text>

@@ -134,7 +134,7 @@ function PasswordStep({ envelope, setFlow, onClose, inputRef }) {
 
 const CONTENT_ROWS = [
   ['expenses', 'Expenses'], ['income', 'Income'], ['categories', 'Categories'],
-  ['rules', 'Auto-category rules'], ['budgets', 'Budgets'], ['recurring', 'Recurring'],
+  ['rules', 'Category rules'], ['budgets', 'Budgets'], ['recurring', 'Recurring'],
   ['accounts', 'Accounts'], ['goals', 'Savings goals'], ['groups', 'Groups (record only)'],
 ]
 
@@ -167,7 +167,7 @@ function ReviewStep({ backup, setFlow, onClose, running }) {
           {running && (
             <Box aria-live="polite">
               <Flex justify="space-between" fontSize="sm" mb={1.5} gap={2}>
-                <Text noOfLines={1}>{progress.label}…</Text>
+                <Text minW={0} overflowWrap="anywhere">{progress.label}…</Text>
                 {progress.total > 0 && (
                   <Text color="text.muted" flexShrink={0}>{progress.done} / {progress.total}</Text>
                 )}

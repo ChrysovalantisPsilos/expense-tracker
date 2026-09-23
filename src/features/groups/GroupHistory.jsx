@@ -77,7 +77,7 @@ export default function GroupHistory({
           {auditLog.slice(0, 25).map((a) => (
             <HStack key={a.id} py={2} align="start" spacing={3}>
               <Stack spacing={0} flex="1" minW={0}>
-                <Text fontSize="sm">{a.summary}</Text>
+                <Text fontSize="sm" overflowWrap="anywhere">{a.summary}</Text>
                 <Text fontSize="xs" color="text.muted">{shortDateTime(a.created_at)}</Text>
               </Stack>
               {a.amount_minor != null && (
@@ -104,8 +104,7 @@ function RowMeta({ parts }) {
   return (
     <Flex wrap="wrap" columnGap={1} fontSize="xs" color="text.muted">
       {list.map((p, i) => (
-        <Text key={i} display={shown(p)} noOfLines={i ? undefined : 1}
-          whiteSpace={i ? 'nowrap' : undefined} maxW="100%">
+        <Text key={i} display={shown(p)} overflowWrap="anywhere" maxW="100%">
           {p.text}
           {i < list.length - 1 && <Text as="span" display={shown(list[i + 1])}> ·</Text>}
         </Text>

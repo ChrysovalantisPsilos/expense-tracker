@@ -102,7 +102,7 @@ export default function TripSplitMock() {
           <HStack px={4} pt={3} pb={3} spacing={3}>
             <IconTile icon={Plane} size={40} variant="solid" radius="xl" />
             <Box flex="1" minW={0}>
-              <Text fontFamily="heading" fontWeight="700" noOfLines={1}>{TRIP.groupName}</Text>
+              <Text fontFamily="heading" fontWeight="700">{TRIP.groupName}</Text>
               <AvatarGroup size="xs" max={4} spacing={-2} mt={1}>
                 {TRIP.members.map((m) => (
                   <UserAvatar key={m.id} name={m.name} highlight={m.id === 'you'} />

@@ -114,7 +114,7 @@ export default function AppShell() {
                 bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
                 <UserAvatar size="xs" name={profile?.display_name}
                   src={profile?.avatar_url} highlight />
-                <Text fontSize="sm" fontWeight="500" noOfLines={1} flex="1">
+                <Text fontSize="sm" fontWeight="500" flex="1" minW={0} overflowWrap="anywhere">
                   {profile?.display_name || 'Settings'}
                 </Text>
                 <Box as="span" color={isActive ? 'accent.fg' : 'text.muted'} flexShrink={0}>

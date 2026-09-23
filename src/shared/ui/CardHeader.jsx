@@ -12,9 +12,9 @@ export default function CardHeader({ icon, iconTone, title, eyebrow, subtitle, a
     <HStack spacing={3} mb={4} {...props}>
       {icon && <IconTile icon={icon} tone={iconTone} />}
       <Box flex="1" minW={0}>
-        {eyebrow && <Eyebrow noOfLines={1} mb={0.5}>{eyebrow}</Eyebrow>}
-        {title && <Heading as="h2" size="sm" lineHeight="1.5" noOfLines={1}>{title}</Heading>}
-        {subtitle && <Text fontSize="xs" color="text.muted" noOfLines={1}>{subtitle}</Text>}
+        {eyebrow && <Eyebrow overflowWrap="anywhere" mb={0.5}>{eyebrow}</Eyebrow>}
+        {title && <Heading as="h2" size="sm" lineHeight="1.5" overflowWrap="anywhere">{title}</Heading>}
+        {subtitle && <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{subtitle}</Text>}
       </Box>
       {action && <HStack spacing={1} flexShrink={0}>{action}</HStack>}
     </HStack>

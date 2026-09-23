@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, List, ListItem, Text, Tag, TagLabel, useToast, Flex } from '@chakra-ui/react'
+import { Box, List, ListItem, Text, Tag, useToast, Flex } from '@chakra-ui/react'
 import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
@@ -96,14 +96,15 @@ function RowMeta({ row: r, shared }) {
     <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted">
       <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
       {r.description && r.categories?.name && (
-        <Text whiteSpace="nowrap">· {r.categories.name}</Text>
+        <Text overflowWrap="anywhere">· {r.categories.name}</Text>
       )}
       {r.notes && (
-        <Text fontStyle="italic" noOfLines={1} minW={0} title={r.notes}>· {r.notes}</Text>
+        <Text fontStyle="italic" minW={0} overflowWrap="anywhere">· {r.notes}</Text>
       )}
       {shared && (
-        <Tag size="sm" colorScheme="brand" borderRadius="full" maxW="100%">
-          <TagLabel noOfLines={1}>{groupLabel(r)}</TagLabel>
+        <Tag size="sm" colorScheme="brand" borderRadius="md" maxW="100%" py={0.5}>
+          {/* not TagLabel: that clamps to one line */}
+          <Text as="span" lineHeight="1.2" overflowWrap="anywhere">{groupLabel(r)}</Text>
         </Tag>
       )}
       {r.recurring && (

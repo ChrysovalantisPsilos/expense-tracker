@@ -12,7 +12,7 @@ export default function ConversionRow({ label, rate, from, to, playback, delay, 
   return (
     <Tile {...props}>
       <HStack justify="space-between" spacing={2}>
-        <Text fontSize="sm" fontWeight="600" noOfLines={1}>{label}</Text>
+        <Text fontSize="sm" fontWeight="600" overflowWrap="anywhere">{label}</Text>
         {rate !== undefined && <Text fontSize="xs" color="text.muted" flexShrink={0}>@ {rate}</Text>}
       </HStack>
       <HStack spacing={2} mt={1}>

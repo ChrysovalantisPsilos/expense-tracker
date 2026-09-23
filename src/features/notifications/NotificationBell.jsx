@@ -77,7 +77,7 @@ export default function NotificationBell({ feed }) {
                       _hover={{ bg: 'bg.subtle' }} onClick={() => go(n)}>
                       <Flex boxSize="32px" flexShrink={0} align="center" justify="center"
                         borderRadius="lg" bg="bg.subtle" color="accent.fg"><Icon size={16} /></Flex>
-                      <Stack spacing={0}>
+                      <Stack spacing={0} flex="1" minW={0} overflowWrap="anywhere">
                         <Text fontSize="sm" fontWeight={n.read_at ? '500' : '700'}>{n.title}</Text>
                         {n.body && <Text fontSize="xs" color="text.muted">{n.body}</Text>}
                       </Stack>

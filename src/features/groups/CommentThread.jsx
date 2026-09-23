@@ -61,7 +61,7 @@ export default function CommentThread({ group, target, myMember, isOpen, onClose
         <ModalHeader>
           Comments
           {target?.label && (
-            <Text fontSize="sm" fontWeight="400" color="text.muted" noOfLines={1}>{target.label}</Text>
+            <Text fontSize="sm" fontWeight="400" color="text.muted" overflowWrap="anywhere">{target.label}</Text>
           )}
         </ModalHeader>
         <ModalBody>
@@ -77,8 +77,8 @@ export default function CommentThread({ group, target, myMember, isOpen, onClose
                 <HStack key={cm.id} align="start" spacing={3}>
                   <UserAvatar size="xs" name={cm.author?.display_name} />
                   <Box flex="1" minW={0}>
-                    <HStack spacing={2} mb={0.5}>
-                      <Text fontSize="sm" fontWeight="600" noOfLines={1}>
+                    <HStack spacing={2} mb={0.5} align="start">
+                      <Text fontSize="sm" fontWeight="600" minW={0} overflowWrap="anywhere">
                         {cm.author?.display_name || 'Member'}
                       </Text>
                       <Text fontSize="xs" color="text.muted">

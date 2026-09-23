@@ -23,8 +23,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # `npm test` runs the suite twice: TZ=UTC and TZ=Europe/Nicosia.
-      - name: Unit tests (UTC + Europe/Nicosia)
+      # `npm test` runs the suite twice: TZ=UTC and TZ=Europe/Brussels.
+      - name: Unit tests (UTC + Europe/Brussels)
         run: npm test
       - name: Lint
         run: npm run lint

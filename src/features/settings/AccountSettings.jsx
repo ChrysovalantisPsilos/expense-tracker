@@ -89,9 +89,8 @@ function IdentityCard({ user }) {
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={onAvatar} />
           </Box>
           <Stack spacing={0} flex="1" minW={0}>
-            <Text fontWeight="700" noOfLines={1}>{displayName || 'Your name'}</Text>
-            <Text fontSize="sm" color="text.muted" whiteSpace="nowrap" overflow="hidden"
-              textOverflow="ellipsis">{user.email}</Text>
+            <Text fontWeight="700" overflowWrap="anywhere">{displayName || 'Your name'}</Text>
+            <Text fontSize="sm" color="text.muted" overflowWrap="anywhere">{user.email}</Text>
           </Stack>
         </HStack>
 

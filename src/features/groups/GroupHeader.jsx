@@ -62,7 +62,7 @@ export default function GroupHeader({
         </Box>
         <Box flex="1" minW={0}>
           <Heading as="h1" fontSize={{ base: 'xl', md: '2xl' }} letterSpacing="-0.02em"
-            lineHeight="1.25" noOfLines={1} wordBreak="break-all">
+            lineHeight="1.25" overflowWrap="anywhere">
             {group.name}
           </Heading>
           <Box mt={1}>
@@ -108,7 +108,7 @@ function MemberStack({ members, myUserId, onClick }) {
       borderRadius="full" pr={2} ml={-0.5} _hover={{ bg: 'bg.subtle' }}
       _focusVisible={{ boxShadow: 'outline' }} transition="background 0.1s">
       <AvatarStack members={members} myUserId={myUserId} />
-      <Text as="span" fontSize="sm" color="text.muted" fontWeight="500" noOfLines={1}>
+      <Text as="span" fontSize="sm" color="text.muted" fontWeight="500" whiteSpace="nowrap">
         {pluralise(members.length, 'member')}
       </Text>
     </HStack>
