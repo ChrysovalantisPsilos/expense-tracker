@@ -2817,10 +2817,15 @@ begin
     execute 'reset role';
     select spread_months into n from public.transactions where id = t1 and recurring_rule_id is null;
     if n is distinct from 24 then raise exception 'unlinked row lost its spread (%)', n; end if;
-    update public.transactions set kind = 'income' where id = t1;
-    if (select spread_months from public.transactions where id = t1) is not null then
-      raise exception 'an income row stayed spread';
-    end if;
+    -- An entry's kind is fixed once saved (0077), so check income directly: a
+    -- yearly INCOME rule's charge is never spread.
+    execute 'set local role authenticated';
+    rc := public.save_recurring_rule(null, jsonb_build_object('kind', 'income', 'amount_minor', 120000,
+      'currency', 'EUR', 'frequency', 'yearly', 'next_run', current_date - 1));
+    execute 'reset role';
+    perform public.materialize_recurring_rules();
+    select count(*) into n from public.transactions where recurring_rule_id = rc and spread_months is null;
+    if n <> 1 then raise exception 'yearly income row missing or spread (%)', n; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: yearly subscriptions spread over their months (rows, split, alerts, reads)';
