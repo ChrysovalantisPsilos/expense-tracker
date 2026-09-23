@@ -82,7 +82,9 @@ export default defineConfig({
         // engine (~7 MB) only when someone scans — don't ship either to every
         // installed client's precache.
         // The xlsx parser worker (~500 KB) is only needed when importing a file.
-        globIgnores: ['og-image.png', 'email-mark.png', `${OCR_ASSET_DIR}/**`, 'assets/sheetWorker-*.js'],
+        // The FAQ's how-to clips and posters (public/help/) load only when an
+        // answer is opened, online.
+        globIgnores: ['og-image.png', 'email-mark.png', `${OCR_ASSET_DIR}/**`, 'assets/sheetWorker-*.js', 'help/**'],
       },
     }),
   ],

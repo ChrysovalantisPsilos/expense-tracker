@@ -222,3 +222,22 @@ only reports for now and doesn't fail the build.
     co-members see "Former member" in the group and its change log.
 43. Footer / Settings links: Help, Privacy, Terms, Contact (support@) on the
     landing page; Privacy, Privacy Notice and Terms of Use in Settings.
+44. /privacy and /terms: the "A free hobby project" notice sits under the
+    intro. Signed out, ← goes back to the previous page (the landing page when
+    opened directly); signed in, they open inside the app (More is lit) and ←
+    goes back, or to Settings when opened directly.
+
+### M. Landing & Help
+
+45. Landing "How it works": the three cards fade in as they scroll into view
+    and each loops a small illustration (link copied → friends join; an
+    expense split → your share; payments → all balances €0.00). With reduced
+    motion they show the final state, still. No layout shift, no sideways
+    scroll at 390px; check light and dark.
+46. Help & FAQ: the hobby-project notice is at the top; "Install Budgeer on
+    your phone" has steps and a sketch per browser (the landing footer's
+    "Install the app" opens it). Opening an answer with a clip loads only
+    that clip: it plays muted and looped while in view, pauses with its
+    button, and with reduced motion shows the still with a play button.
+    "Copy link to this answer" on the live site copies a
+    https://www.budgeer.com/help#… link.

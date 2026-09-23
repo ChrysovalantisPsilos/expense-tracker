@@ -178,6 +178,11 @@ export const FAQ_SECTIONS = [
         a: [
           'When you add or edit an expense, use its Repeat section: choose weekly, monthly, quarterly or yearly, and how often (every 1, 2, 3… of those). Then set the next date, an optional end date, and an optional reminder a few days before it’s due.',
         ],
+        media: {
+          type: 'clip',
+          name: 'repeat-expense',
+          alt: 'Screen recording: on the new expense page, entering 12.99 for a gym membership, switching on Repeat — monthly by default, with the next charge date filled in — then saving it.',
+        },
       },
       {
         id: 'recurring-page',
@@ -194,6 +199,11 @@ export const FAQ_SECTIONS = [
           'By default a yearly payment is spread evenly over the 12 months it covers, so a €120 subscription counts as €10 a month in your totals and budgets.',
           'If you’d rather keep them separate, turn that off in Settings → Monthly spending. Yearly subscriptions then stay out of your monthly totals and budgets and are shown in their own card on Home.',
         ],
+        media: {
+          type: 'clip',
+          name: 'yearly-subscription',
+          alt: 'Screen recording: adding a car insurance of 480 euros that repeats yearly; the form shows it counts as 40 euros a month in budgets. Then Home’s Subscriptions card is switched to its Yearly tab.',
+        },
       },
       {
         id: 'payment-reminders',
@@ -215,6 +225,11 @@ export const FAQ_SECTIONS = [
           'Set a monthly limit for a category on the Budgets page. A budget carries on from month to month until you delete it, so you only set it up once.',
           'You’ll get a notification when a category is nearly at its budget and when it goes over. Tap a budget to see its expenses and edit it.',
         ],
+        media: {
+          type: 'clip',
+          name: 'category-budget',
+          alt: 'Screen recording: on the Budgets page, tapping the Food & Dining budget opens the category’s page with its budget and expenses; tapping Edit, the monthly budget is changed to 300 euros and saved.',
+        },
       },
       {
         id: 'manage-categories',
@@ -233,9 +248,14 @@ export const FAQ_SECTIONS = [
         id: 'invite-friends',
         q: 'How do I invite friends to a group?',
         a: [
-          'Open the group and share its invite link, or invite someone by email. A link works for at most 24 hours, so share it only with people you want in the group.',
+          'Open the group and tap its members, then Copy link under Invite people, or Email to send an invite by email. A link works for at most 24 hours, so share it only with people you want in the group.',
           'Friends without an account can create one for free from the link and join straight away.',
         ],
+        media: {
+          type: 'clip',
+          name: 'invite-friends',
+          alt: 'Screen recording: opening the Lisbon weekend group, tapping its members, and tapping Copy link under Invite people; the invite link is copied, ready to paste into a chat.',
+        },
       },
       {
         id: 'split-options',
@@ -251,6 +271,11 @@ export const FAQ_SECTIONS = [
           'Tap Settle up in the group. Budgeer suggests the fewest payments that clear everyone’s balance. If the person you’re paying has added payment details, you’ll see their IBAN, or a Revolut or PayPal link that opens with the amount filled in. Record the payment in Budgeer once it’s sent.',
           'You can add your own details in Settings → Account → Getting paid.',
         ],
+        media: {
+          type: 'clip',
+          name: 'settle-up',
+          alt: 'Screen recording: in the Lisbon weekend group, the balances show who is owed; Who owes whom lists the fewest payments that clear everyone, and Settle up fills in a suggested payment to record once it’s paid.',
+        },
       },
       {
         id: 'group-reminders',
@@ -291,6 +316,11 @@ export const FAQ_SECTIONS = [
           'Yes. On Transactions, open the ⋯ menu and choose Import. Upload a CSV or Excel file exported from your bank. Budgeer recognises exports from BNP Paribas Fortis, ING, KBC, Crelan, Piraeus, Alpha Bank, Eurobank (Hellenic) and Revolut automatically.',
           'The file is read on your device, and only the transactions you import are saved. Importing the same file twice doesn’t create duplicates.',
         ],
+        media: {
+          type: 'clip',
+          name: 'bank-import',
+          alt: 'Screen recording: on the Import page, choosing a CSV bank statement; Budgeer recognises the columns and shows a preview of the transactions before importing them.',
+        },
       },
       {
         id: 'receipt-scan',
@@ -386,6 +416,11 @@ export const FAQ_SECTIONS = [
         a: [
           'Settings → Privacy → Download my data saves everything we hold about you as one file. To delete your account, go to Settings → Security → Delete account (Settings → Privacy links there too).',
         ],
+        media: {
+          type: 'clip',
+          name: 'download-data',
+          alt: 'Screen recording: in Settings, opening Privacy and tapping Download my data, which saves everything Budgeer holds about you as one file.',
+        },
       },
       {
         id: 'privacy-requests',
