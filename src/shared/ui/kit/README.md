@@ -21,7 +21,8 @@ put `ref={playback.ref}` on the container (Panel forwards it), and pass
 
 ## Panel
 The white rounded-2xl card with the soft lifted shadow. Every screen block.
-`title`, `eyebrow`, `icon` (Lucide), `subtitle`, `action` (node) → header
+`title`, `eyebrow`, `icon` (Lucide), `iconTone` (the icon tile's `tone`;
+`'negative'` = pale red danger tile), `subtitle`, `action` (node) → header
 (it's CardHeader: h2 title). `elevation` `'lifted'` (default) | `'soft'` |
 `'none'` (a card nested inside another surface). `p` replaces the default
 padding. `label` turns the whole card into one decorative `role="img"` (landing
@@ -35,7 +36,8 @@ The sand (`bg.subtle`) inner tile inside a Panel. Children + Box props
 Square rounded tile with a Lucide icon at half its size. `icon`, `size` (px,
 default 32), `variant` `'subtle'` (sand, accent icon) | `'solid'` (brand fill,
 white icon — a group's hero tile), `tone` (icon colour on subtle, e.g.
-`'positive'` for income), `radius` (default `'lg'`; use `'xl'` from 40px).
+`'positive'` for income; `'negative'` also tints the tile pale red for
+danger — `tileColor()`), `radius` (default `'lg'`; use `'xl'` from 40px).
 `CategoryBadge` is IconTile with a category's icon.
 
 ## Figure
@@ -51,14 +53,17 @@ props (e.g. `mb`) pass through.
 
 ## BalanceGrid / BalanceTile (`Balances.jsx`)
 `BalanceGrid` = 2-column grid (`columns` to change). `BalanceTile` = sand tile
-with muted `label` over a bold `value` in `tone`. For signed money use
+with muted `label` over a bold `value` in `tone`, and an optional small muted
+`note` under it ("incl. €40.00 upcoming"). `size="md"` shows the value as a
+Poppins Figure (Home's Income / Net tiles); default `'sm'`. For signed money use
 `signedAmount(minor, format)` from `kitMath.js` → `{ text, tone }`
 ("+€162.75" positive, "−€2.85" negative, "€0.00" muted).
 
 ## HighlightPill
 The pale-brand callout: `<HighlightPill amount="€89.25">Sofia owes you</HighlightPill>`.
-`amount` optional (accent, extra bold). Use once per card, for the line that
-matters most.
+`amount` optional (extra bold, accent by default; `amountTone` recolours it —
+pass `balanceHighlight().tone` so "You owe Alex €89.25" is red). Use once per
+card, for the line that matters most.
 
 ## ItemRow
 Generic list row: icon tile · title over a muted meta line · bold amount right.
@@ -66,8 +71,12 @@ Expense, transaction, recurring and payment rows.
 `icon` (Lucide → 32px IconTile) or `media` (any node: CategoryBadge,
 UserAvatar), `title`, `meta` (string, or a node for date · category · tags),
 `amount`, `amountTone`, `amountMeta` (muted line under the amount, e.g.
-"≈ €3.74"), `actions` (RowActions items `[{ label, icon, onClick, danger? }]`)
-+ `actionSlots`, `onClick` (whole row becomes a button). Passing `actions`
+"≈ €3.74"), `trailing` (any node between the amount and the actions — a
+Switch, a comment button; give it a fixed width so amounts line up),
+`actions` (RowActions items `[{ label, icon, onClick, danger? }]`) +
+`actionSlots`, `dimmed` (fades the content, not the controls — a paused rule),
+`onClick` (the row becomes a button; `trailing` and `actions` always stay
+outside it, so buttons never nest), `py` (default 2). Passing `actions`
 (even `[]`) gives the amount a fixed-width column so figures line up — do it
 for every row of a list or none.
 
@@ -77,7 +86,8 @@ right or an "Over budget" pill, and a bar underneath. `percent` (number; bar
 clamps at 100%), `tone` (fill; `budgetTone()` output fits; defaults to
 `'negative'` when over), `over` (default `percent > 100`), `overLabel`,
 `valueLabel` (replaces "78%"), `icon`/`media`, `actions`/`actionSlots`,
-`playback`/`delay`.
+`tooltip` (native hover tooltip — the row's HTML `title`, since `title` is the
+heading; e.g. "Housing: €850.00 (48%)"), `playback`/`delay`.
 
 ## StackedBar / ShareLegend (`ShareBar.jsx`)
 One bar split into segments (2px gaps) + its legend (dot, muted name, bold %,
@@ -101,13 +111,22 @@ Settle-up payment on a sand tile: avatar name → avatar name, `amount` right
 (`amountTone`, default accent). `from` / `to`: `{ name, src?, highlight? }`
 (`highlight` = current user). `action`: optional node (e.g. "Mark paid").
 
+## Unfold
+Chakra `Collapse` for a block with a shadow (a Panel that folds open, e.g.
+Transactions' add form). Collapse clips its content, cutting the Panel's
+shadow; Unfold unclips once fully open and clips again as it starts closing.
+`in` opens it; other Collapse props (`animateOpacity`) pass through. A plain
+Collapse is still right for shadowless content (e.g. a filters row).
+
 ## Also reused (in `shared/ui/`)
-`CardHeader` (Panel's header; use directly only outside a Panel), `RowActions`,
-`RowAmount` (ItemRow uses both), `CategoryBadge`, `UserAvatar`, `Eyebrow`,
-`PageHeader`, `SegmentedControl`, `NavList`.
+`CardHeader` (Panel's header; use directly only outside a Panel; takes
+`iconTone` too), `RowActions`, `RowAmount` (ItemRow uses both),
+`CategoryBadge`, `UserAvatar`, `Eyebrow`, `PageHeader`, `SegmentedControl`.
+`NavList` / `NavRow`: the iOS-style grouped list (Settings, More) — NavList is
+a lifted Panel with hairline-split rows; `label` puts a SectionLabel above it.
 
 ## Helpers
 `kitMath.js` (pure, tested in `test/kitMath.test.js`): `textColor`,
-`fillColor`, `shareSwatch`, `barWidth`, `trendHeights`, `signedAmount`,
+`fillColor`, `tileColor`, `shareSwatch`, `barWidth`, `trendHeights`, `signedAmount`,
 `playProps`. `motion.jsx`: `usePlayback`, `MotionBox`, `Reveal` (fade/slide a
 block in with `playback`/`delay`).

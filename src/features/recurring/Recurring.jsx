@@ -7,7 +7,6 @@ import {
 } from '@chakra-ui/react'
 import { Plus, Pencil, Trash2, Repeat, Bell, Pause, Play } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
-import RowActions from '../../shared/ui/RowActions.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
@@ -90,24 +89,24 @@ export default function Recurring() {
           <List spacing={0}>
             {rules.map((r) => (
               <ListItem key={r.id}>
-                <HStack spacing={3} align="center">
-                  <ItemRow flex="1" py={2.5} opacity={r.is_active ? 1 : 0.55}
-                    media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-                    title={r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
-                    meta={<RuleMeta rule={r} />}
-                    amount={formatMoney(r.amount_minor, r.currency)}
-                    amountTone={r.kind === 'income' ? 'positive' : 'default'} />
-                  <Box display={{ base: 'none', sm: 'block' }} flexShrink={0}>
-                    <Switch isChecked={r.is_active} onChange={() => toggle(r)}
-                      aria-label={r.is_active ? 'Pause' : 'Resume'} />
-                  </Box>
-                  <RowActions slots={2} actions={[
+                <ItemRow py={2.5} dimmed={!r.is_active}
+                  media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
+                  title={r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
+                  meta={<RuleMeta rule={r} />}
+                  amount={formatMoney(r.amount_minor, r.currency)}
+                  amountTone={r.kind === 'income' ? 'positive' : 'default'}
+                  trailing={
+                    <Box display={{ base: 'none', sm: 'block' }} flexShrink={0}>
+                      <Switch isChecked={r.is_active} onChange={() => toggle(r)}
+                        aria-label={r.is_active ? 'Pause' : 'Resume'} />
+                    </Box>
+                  }
+                  actionSlots={2} actions={[
                     { label: r.is_active ? 'Pause' : 'Resume', icon: r.is_active ? Pause : Play,
                       menuOnly: true, onClick: () => toggle(r) },
                     { label: 'Edit', icon: Pencil, onClick: () => openEdit(r) },
                     { label: 'Delete', icon: Trash2, danger: true, onClick: () => setRemoving(r) },
                   ]} />
-                </HStack>
               </ListItem>
             ))}
           </List>

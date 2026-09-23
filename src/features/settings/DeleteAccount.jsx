@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  Box, Heading, HStack, Stack, Text, Button, FormControl,
+  Box, Stack, Text, Button, FormControl,
   FormLabel, Input, useDisclosure, useToast, Modal, ModalOverlay, ModalContent,
   ModalHeader, ModalBody, ModalFooter,
 } from '@chakra-ui/react'
@@ -9,7 +9,6 @@ import { supabase, edgeFunctionError } from '../../shared/lib/supabase.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { hasPasswordIdentity } from './authMethods.js'
 
 // The danger zone at the foot of Security: set apart by space and a red
@@ -20,12 +19,8 @@ export default function DeleteAccount({ user }) {
   return (
     <Box pt={6}>
       <Eyebrow color="status.negative" mb={2}>Danger zone</Eyebrow>
-      <Panel borderColor="status.negativeBorder">
-        {/* CardHeader's layout with a red icon tile (CardHeader's is always sand). */}
-        <HStack spacing={3} mb={2}>
-          <IconTile icon={AlertTriangle} tone="negative" bg="status.negativeSubtle" />
-          <Heading as="h2" size="sm" lineHeight="1.5">Delete account</Heading>
-        </HStack>
+      <Panel borderColor="status.negativeBorder" icon={AlertTriangle} iconTone="negative"
+        title="Delete account">
         <Text fontSize="sm" color="text.muted" mb={4}>
           Permanently deletes your account and personal data. Groups you own pass
           to another member; your expense history stays for them. This can’t be undone.

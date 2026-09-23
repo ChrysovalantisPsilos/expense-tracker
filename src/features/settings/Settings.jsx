@@ -1,4 +1,4 @@
-import { Box, Stack } from '@chakra-ui/react'
+import { Stack } from '@chakra-ui/react'
 import {
   BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut,
 } from 'lucide-react'
@@ -7,7 +7,6 @@ import { useProfile } from '../../shared/lib/useProfile.js'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { NavList, NavRow } from '../../shared/ui/NavList.jsx'
-import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 
 const PREFERENCES = [
   { to: '/settings/notifications', label: 'Notifications', desc: 'Push and email alerts', icon: BellRing },
@@ -19,15 +18,6 @@ const PRIVACY = [
   { to: '/privacy', label: 'Privacy', desc: 'What we store and how it’s protected', icon: FileText },
 ]
 
-// One labelled group of rows.
-function Section({ label, children }) {
-  return (
-    <Box>
-      <SectionLabel mb={2} px={1}>{label}</SectionLabel>
-      <NavList>{children}</NavList>
-    </Box>
-  )
-}
 const rows = (items) => items.map(({ to, label, desc, icon }) => (
   <NavRow key={to} to={to} icon={icon} label={label} description={desc} />
 ))
@@ -42,14 +32,14 @@ export default function Settings() {
     <Stack spacing={5}>
       <PageHeader title="Settings" />
 
-      <Section label="Profile">
+      <NavList label="Profile">
         <NavRow to="/settings/account" label={profile?.display_name || 'Your name'}
           description={user.email}
           media={<UserAvatar size="md" name={profile?.display_name} src={profile?.avatar_url}
             highlight flexShrink={0} />} />
-      </Section>
-      <Section label="Preferences">{rows(PREFERENCES)}</Section>
-      <Section label="Privacy & security">{rows(PRIVACY)}</Section>
+      </NavList>
+      <NavList label="Preferences">{rows(PREFERENCES)}</NavList>
+      <NavList label="Privacy & security">{rows(PRIVACY)}</NavList>
       <NavList>
         <NavRow onClick={signOut} icon={LogOut} label="Sign out" />
       </NavList>

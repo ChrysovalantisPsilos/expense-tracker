@@ -13,15 +13,17 @@ import { barWidth, fillColor, playProps } from './kitMath.js'
 //   over     defaults to percent > 100; shows `overLabel` as a red pill
 //   valueLabel overrides the "78%" text
 //   icon / media, actions / actionSlots as in ItemRow
+//   tooltip  native hover tooltip for the whole row (its HTML `title`; the
+//            `title` prop is the row's heading)
 //   playback / delay: optional usePlayback() gate to grow the bar in
 export default function ProgressRow({
   icon, media, title, meta, percent, tone, over = percent > 100, overLabel = 'Over budget',
-  valueLabel = `${percent}%`, actions, actionSlots, playback, delay = 0, ...props
+  valueLabel = `${percent}%`, actions, actionSlots, tooltip, playback, delay = 0, ...props
 }) {
   const fill = fillColor(tone ?? (over ? 'negative' : 'brand'))
   const width = barWidth(percent)
   return (
-    <Box {...props}>
+    <Box title={tooltip} {...props}>
       <HStack spacing={3} mb={2}>
         {media ?? (icon && <IconTile icon={icon} />)}
         <Box flex="1" minW={0}>

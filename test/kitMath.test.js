@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  textColor, fillColor, shareSwatch, barWidth, trendHeights, signedAmount, playProps,
+  textColor, fillColor, tileColor, shareSwatch, barWidth, trendHeights, signedAmount, playProps,
 } from '../src/shared/ui/kit/kitMath.js'
 
 test('textColor / fillColor: known tones map to theme tokens, unknown fall back', () => {
@@ -12,6 +12,13 @@ test('textColor / fillColor: known tones map to theme tokens, unknown fall back'
   assert.equal(fillColor('negative'), 'red.400')
   assert.equal(fillColor('warning'), 'status.warning')
   assert.equal(fillColor(undefined), 'brand.500')
+})
+
+test('tileColor: sand for every tone except a pale red danger tile', () => {
+  assert.equal(tileColor('negative'), 'status.negativeSubtle')
+  assert.equal(tileColor('accent'), 'bg.subtle')
+  assert.equal(tileColor('positive'), 'bg.subtle')
+  assert.equal(tileColor(undefined), 'bg.subtle')
 })
 
 test('shareSwatch: coral/amber by position, wraps, and Other is always muted', () => {

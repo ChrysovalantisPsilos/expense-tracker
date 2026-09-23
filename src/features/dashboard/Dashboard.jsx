@@ -18,10 +18,10 @@ import Paginator from '../../shared/ui/Paginator.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import Tile from '../../shared/ui/kit/Tile.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import { BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
@@ -114,9 +114,9 @@ export default function Dashboard() {
             )}
           </Box>
           <SimpleGrid columns={2} spacing={2}>
-            <SummaryTile label="Income" value={formatMoney(earnedTotal, baseCurrency)} tone="positive"
+            <BalanceTile size="md" label="Income" value={formatMoney(earnedTotal, baseCurrency)} tone="positive"
               note={proj.income > 0 ? `incl. ${formatMoney(proj.income, baseCurrency)} upcoming` : undefined} />
-            <SummaryTile label="Net" value={net.text} tone={net.tone}
+            <BalanceTile size="md" label="Net" value={net.text} tone={net.tone}
               note={proj.expense > 0 || proj.income > 0 ? 'incl. upcoming recurring' : 'income − expenses'} />
           </SimpleGrid>
         </SimpleGrid>
@@ -168,6 +168,7 @@ export default function Dashboard() {
             {bars.map((c) => (
               <ProgressRow key={c.name} role="listitem"
                 title={c.name} meta={formatMoney(c.value, baseCurrency)}
+                tooltip={`${c.name}: ${formatMoney(c.value, baseCurrency)} (${c.share}%)`}
                 media={<BucketIcon row={bucketRow.get(c.name)} />}
                 percent={Math.max(c.ratio * 100, 2)} valueLabel={`${c.share}%`} />
             ))}
@@ -215,16 +216,6 @@ export default function Dashboard() {
         )}
       </Panel>
     </Stack>
-  )
-}
-
-// A sand tile with a muted label, a bold figure in its tone and a muted note.
-function SummaryTile({ label, value, tone, note }) {
-  return (
-    <Tile minW={0}>
-      <Figure label={label} value={value} tone={tone} />
-      {note && <Text fontSize="xs" color="text.muted" noOfLines={1}>{note}</Text>}
-    </Tile>
   )
 }
 

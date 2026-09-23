@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import Unfold from '../../shared/ui/kit/Unfold.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
@@ -26,8 +27,6 @@ import { useProfile } from '../../shared/lib/useProfile.js'
 const TYPES = [['expense', 'Expenses'], ['income', 'Income'], ['all', 'All']]
 const KINDS = [['expense', 'Expense'], ['income', 'Income']]
 const ADD_LABEL = { expense: 'Add expense', income: 'Add income', all: 'Add' }
-const UNCLIP = { enter: { overflow: 'visible' } }
-const CLIP = { overflow: 'hidden' }
 const FORM_TITLE = { expense: 'New expense', income: 'New income' }
 const EMPTY_TEXT = {
   expense: 'Nothing logged yet.',
@@ -112,10 +111,7 @@ export default function LedgerPage() {
       <SegmentedControl label="Transaction type" options={TYPES} value={type}
         onChange={switchType} size="sm" isFitted w={{ base: 'full', sm: 'sm' }} />
 
-      {/* Unclip once open so the Panel's lifted shadow shows; clip again as
-          soon as it starts closing. */}
-      <Collapse in={addForm.isOpen} animateOpacity transitionEnd={UNCLIP}
-        style={addForm.isOpen ? undefined : CLIP}>
+      <Unfold in={addForm.isOpen} animateOpacity>
         <Panel icon={Plus} title={FORM_TITLE[formKind]}>
           <Stack spacing={4}>
             {!kind && (
@@ -126,7 +122,7 @@ export default function LedgerPage() {
               onSaved={() => { reload(); addForm.onClose() }} />
           </Stack>
         </Panel>
-      </Collapse>
+      </Unfold>
 
       <Panel>
         <Box mb={5}>

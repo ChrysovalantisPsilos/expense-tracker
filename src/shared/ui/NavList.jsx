@@ -1,15 +1,25 @@
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Card, Divider, HStack, Stack, Text } from '@chakra-ui/react'
+import { Box, Divider, HStack, Stack, Text } from '@chakra-ui/react'
 import { ChevronRight } from 'lucide-react'
 import IconTile from './kit/IconTile.jsx'
+import Panel from './kit/Panel.jsx'
+import SectionLabel from './kit/SectionLabel.jsx'
 
-// An iOS-style grouped list: one card, rows split by hairlines. Used by the
-// More tab and the Settings page.
-export function NavList({ children }) {
-  return (
-    <Card overflow="hidden">
+// An iOS-style grouped list: one lifted Panel, rows split by hairlines, with
+// an optional SectionLabel `label` above it ("PREFERENCES"). Used by the More
+// tab and the Settings page.
+export function NavList({ label, children }) {
+  const list = (
+    <Panel p={0} overflow="hidden">
       <Stack spacing={0} divider={<Divider />}>{children}</Stack>
-    </Card>
+    </Panel>
+  )
+  if (!label) return list
+  return (
+    <Box>
+      <SectionLabel mb={2} px={1}>{label}</SectionLabel>
+      {list}
+    </Box>
   )
 }
 

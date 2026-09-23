@@ -1,6 +1,6 @@
-import { Box, Button, Container, Divider, Heading, HStack, SimpleGrid, Stack, Text } from '@chakra-ui/react'
+import { Box, Button, Container, Divider, Heading, HStack, SimpleGrid, Stack, Switch, Text } from '@chakra-ui/react'
 import {
-  Coffee, Pencil, Plane, Receipt, ShoppingCart, Trash2, TrendingUp, UtensilsCrossed, Wallet,
+  AlertTriangle, Coffee, MessageSquare, Pencil, Plane, Receipt, ShoppingCart, Trash2, TrendingUp, UtensilsCrossed, Wallet,
 } from 'lucide-react'
 import ThemeToggle from '../ThemeToggle.jsx'
 import Panel from './Panel.jsx'
@@ -76,10 +76,15 @@ export default function KitGallery() {
               <Spec name="Tile">
                 <Tile><Text fontSize="sm">Sand inner tile</Text></Tile>
               </Spec>
-              <Spec name="IconTile — subtle 32 · positive 32 · 40 xl · solid 40">
+              <Spec name="Panel — iconTone=negative (danger)">
+                <Panel title="Delete account" icon={AlertTriangle} iconTone="negative" elevation="none" p={4}
+                  borderColor="status.negativeBorder" />
+              </Spec>
+              <Spec name="IconTile — subtle 32 · positive 32 · negative 32 · 40 xl · solid 40">
                 <HStack spacing={3}>
                   <IconTile icon={Receipt} />
                   <IconTile icon={TrendingUp} tone="positive" />
+                  <IconTile icon={AlertTriangle} tone="negative" />
                   <IconTile icon={Coffee} size={40} radius="xl" />
                   <IconTile icon={Plane} size={40} radius="xl" variant="solid" />
                 </HStack>
@@ -110,7 +115,12 @@ export default function KitGallery() {
                 })}
               </BalanceGrid>
               <HighlightPill amount="€89.25">Sofia owes you</HighlightPill>
+              <HighlightPill amount="€89.25" amountTone="negative">You owe Alex</HighlightPill>
               <HighlightPill>You’re all settled up</HighlightPill>
+              <BalanceGrid>
+                <BalanceTile size="md" label="Income" value="€2,400.00" tone="positive" note="incl. €40.00 upcoming" />
+                <BalanceTile size="md" label="Net" value="+€765.00" tone="positive" note="income − expenses" />
+              </BalanceGrid>
             </Stack>
           </Panel>
 
@@ -121,11 +131,16 @@ export default function KitGallery() {
             <ItemRow icon={Coffee} title="Coffee in London" meta="2 Sep · Dining out" amount="£3.20"
               amountMeta="≈ €3.74" actions={ACTIONS} actionSlots={2} />
             <ItemRow icon={Receipt} title="Clickable row" meta="onClick makes it a button" amount="€12.00" onClick={noop} />
+            <ItemRow icon={Receipt} title="Clickable + trailing" meta="trailing sits outside the button" amount="€18.50"
+              onClick={noop} trailing={<Button size="xs" variant="ghost" aria-label="Comments"><MessageSquare size={14} /></Button>} />
+            <ItemRow icon={Wallet} title="Paused rule" meta="dimmed + trailing Switch" amount="€9.99" dimmed
+              trailing={<Switch aria-label="Resume" />} actions={ACTIONS} actionSlots={2} />
           </Panel>
 
           <Panel title="ProgressRow">
             <Stack spacing={4}>
-              <ProgressRow icon={ShoppingCart} title="Groceries" meta="€312.40 of €400.00" percent={78} />
+              <ProgressRow icon={ShoppingCart} title="Groceries" meta="€312.40 of €400.00" percent={78}
+                tooltip="Groceries: €312.40 (78%)" />
               <ProgressRow icon={Coffee} title="Coffee" meta="€41.00 of €50.00" percent={82} tone="warning" />
               <ProgressRow icon={UtensilsCrossed} title="Dining out" meta="€186.90 of €150.00" percent={125} />
               <ProgressRow icon={TrendingUp} title="Emergency fund" meta="€3,000 of €3,000" percent={100}

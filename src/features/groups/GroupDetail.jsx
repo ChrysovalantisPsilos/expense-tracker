@@ -184,7 +184,8 @@ export default function GroupDetail() {
             </BalanceGrid>
           </>
         )}
-        <HighlightPill mt={3} amount={highlight ? money(highlight.amount) : undefined}>
+        <HighlightPill mt={3} amount={highlight ? money(highlight.amount) : undefined}
+          amountTone={highlight?.tone}>
           {highlight ? highlight.text : 'You’re all settled up'}
         </HighlightPill>
       </Panel>
@@ -223,15 +224,13 @@ export default function GroupDetail() {
               const canEdit = e.created_by === user.id || isOwner
               const label = e.description || 'Expense'
               return (
-                <HStack key={e.id} spacing={1}>
-                  <ItemRow flex="1" icon={Receipt} title={label}
-                    meta={<RowMeta parts={[paidByLabel(members, e.paid_by, myMember?.id), shortDate(e.spent_at),
-                      { text: splitLabel(e), phone: !isEveryoneEqualSplit(e, members) }]} />}
-                    amount={formatMoney(e.amount_minor, e.currency)}
-                    onClick={canEdit ? () => openEdit(e) : undefined} px={canEdit ? 1 : 0} mx={canEdit ? -1 : 0} />
-                  <CommentButton count={counts.get(e.id)}
-                    onClick={() => setThread({ type: 'expense', id: e.id, label })} />
-                </HStack>
+                <ItemRow key={e.id} icon={Receipt} title={label}
+                  meta={<RowMeta parts={[paidByLabel(members, e.paid_by, myMember?.id), shortDate(e.spent_at),
+                    { text: splitLabel(e), phone: !isEveryoneEqualSplit(e, members) }]} />}
+                  amount={formatMoney(e.amount_minor, e.currency)}
+                  onClick={canEdit ? () => openEdit(e) : undefined}
+                  trailing={<CommentButton count={counts.get(e.id)}
+                    onClick={() => setThread({ type: 'expense', id: e.id, label })} />} />
               )
             })}
           </Stack>
@@ -244,12 +243,10 @@ export default function GroupDetail() {
             {settlements.map((s) => {
               const label = `${nameOf(s.from_member)} → ${nameOf(s.to_member)}`
               return (
-                <HStack key={s.id} spacing={1}>
-                  <ItemRow flex="1" icon={HandCoins} title={label} meta={shortDate(s.settled_at)}
-                    amount={formatMoney(s.amount_minor, s.currency)} />
-                  <CommentButton count={counts.get(s.id)}
-                    onClick={() => setThread({ type: 'settlement', id: s.id, label })} />
-                </HStack>
+                <ItemRow key={s.id} icon={HandCoins} title={label} meta={shortDate(s.settled_at)}
+                  amount={formatMoney(s.amount_minor, s.currency)}
+                  trailing={<CommentButton count={counts.get(s.id)}
+                    onClick={() => setThread({ type: 'settlement', id: s.id, label })} />} />
               )
             })}
           </Stack>
@@ -368,8 +365,8 @@ function RowMeta({ parts }) {
   )
 }
 
-// The comment icon with its count, in a fixed-width slot after the amount so
-// the amounts of a list line up.
+// A row's trailing comment icon with its count, in a fixed-width slot so the
+// amounts of a list line up.
 function CommentButton({ count, onClick }) {
   return (
     <HStack spacing={0.5} w="40px" flexShrink={0}>

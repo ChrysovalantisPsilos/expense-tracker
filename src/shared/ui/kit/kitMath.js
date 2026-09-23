@@ -20,8 +20,13 @@ const FILL_TONE = {
   positive: 'status.positive',
 }
 
+// Background of a subtle IconTile per tone: sand, except a pale red tile
+// for danger ('negative', e.g. Delete account).
+const TILE_TONE = { negative: 'status.negativeSubtle' }
+
 export const textColor = (tone) => TEXT_TONE[tone] ?? TEXT_TONE.default
 export const fillColor = (tone) => FILL_TONE[tone] ?? FILL_TONE.brand
+export const tileColor = (tone) => TILE_TONE[tone] ?? 'bg.subtle'
 
 // Series swatches for share breakdowns, coral/amber first; "Other" is always
 // the muted sand so the tail never competes with real categories.
