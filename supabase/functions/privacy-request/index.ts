@@ -3,19 +3,22 @@
 // data-protection request). Forwards the signed-in user's request to the
 // privacy inbox through the existing email processor (Resend) — nowhere else —
 // with Reply-To set to the account's own address, so the answer goes to the
-// verified email on file, not to anything typed in the form.
+// verified email on file, not to anything typed in the form. Once the inbox
+// has it, the user gets a receipt (_shared/gdprEmails.ts) with the one-month
+// deadline and a copy of what they wrote.
 //
 // verify_jwt = true. Rate-limited to 3 requests a day per user (consume_quota
 // 'privacy-request', 0074). Nothing is stored: the email is the record.
 
 import { withCors, json, callerClient } from '../_shared/http.ts'
 import { brandEmail } from '../_shared/email.ts'
+import { PRIVACY_EMAIL } from '../_shared/contact.ts'
+import { privacyReceiptEmail } from '../_shared/gdprEmails.ts'
+import { appOrigin, inviteSender, noticeSender, privacyInbox, sendEmail } from '../_shared/sendEmail.ts'
 import { REQUEST_KINDS, validatePrivacyRequest } from '../_shared/privacyRequest.ts'
 
 Deno.serve(withCors(async (req) => {
-  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-  const FROM = Deno.env.get('INVITE_FROM') || 'Budgeer <onboarding@resend.dev>'
-  const INBOX = Deno.env.get('PRIVACY_INBOX') || 'privacy@budgeer.com'
+  const INBOX = privacyInbox()
 
   try {
     const asUser = callerClient(req)
@@ -25,7 +28,8 @@ Deno.serve(withCors(async (req) => {
     const parsed = validatePrivacyRequest(await req.json().catch(() => ({})))
     if ('error' in parsed) return json({ error: parsed.error }, 400)
 
-    if (!RESEND_API_KEY) {
+    const sender = inviteSender()
+    if (!sender) {
       return json({ error: `The form isn’t available right now — please email ${INBOX}.` }, 503)
     }
     const { data: allowed, error: quotaErr } = await asUser.rpc('consume_quota', { p_scope: 'privacy-request' })
@@ -35,28 +39,31 @@ Deno.serve(withCors(async (req) => {
     }
 
     const label = REQUEST_KINDS[parsed.kind]
-    const APP_ORIGIN = (Deno.env.get('APP_ORIGIN') || 'https://budgeer.com').replace(/\/+$/, '')
+    const origin = appOrigin()
+    const receivedAt = new Date()
     const { html, text } = brandEmail({
-      origin: APP_ORIGIN,
+      origin,
       heading: `Privacy request: ${label}`,
       paragraphs: [
         `From account ${user.email} (user id ${user.id}).`,
-        `Received ${new Date().toISOString()} — answer within one month (GDPR Art. 12(3)).`,
+        `Received ${receivedAt.toISOString()} — answer within one month (GDPR Art. 12(3)).`,
         parsed.message,
       ],
       footer: ['Sent from the Budgeer privacy request form. Reply to answer the user.'],
     })
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        from: FROM, to: [INBOX], reply_to: user.email,
-        subject: `Privacy request: ${label}`, html, text,
-      }),
+    const forwarded = await sendEmail(sender, {
+      to: INBOX, replyTo: user.email, subject: `Privacy request: ${label}`, html, text,
     })
-    if (!res.ok) {
-      console.error('resend error', res.status, await res.text().catch(() => ''))
+    if (!forwarded.ok) {
       return json({ error: `Could not send your request — please email ${INBOX}.` }, 502)
+    }
+
+    // The receipt is a courtesy: the request stands even if it can't be sent.
+    const notices = noticeSender()
+    if (notices) {
+      const receipt = privacyReceiptEmail({ origin, privacyEmail: PRIVACY_EMAIL },
+        { kindLabel: label, receivedAt, message: parsed.message })
+      await sendEmail(notices, { to: user.email, ...receipt })
     }
     return json({ ok: true })
   } catch (e) {

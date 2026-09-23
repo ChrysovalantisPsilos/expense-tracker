@@ -3,35 +3,21 @@
 // test/legal.test.js).
 //
 // LOCKSTEP pairs, checked by the tests:
-//   LEGAL_VERSIONS ≡ public.current_legal_versions() (the newest migration
-//     defining it). Bump both when the Privacy Notice or Terms change, and add
-//     a LEGAL_CHANGES entry: signed-in users are asked to accept the new
-//     version (LegalGate) before they carry on.
+//   LEGAL_VERSIONS ≡ public.current_legal_versions() — the versions and
+//     LEGAL_CHANGES live in supabase/functions/_shared/legal.ts, shared with
+//     the update emails; see there for how to bump them.
 //   RETENTION ≡ the intervals in public.purge_expired_personal_data() and
 //     public.inactive_accounts() (0073), and INACTIVITY in
 //     supabase/functions/_shared/inactivity.ts.
+import { CONSENT_LABELS, LEGAL_CHANGES, LEGAL_VERSIONS } from '../../../supabase/functions/_shared/legal.ts'
+
 export {
   REQUEST_KINDS, MESSAGE_MAX, validatePrivacyRequest,
 } from '../../../supabase/functions/_shared/privacyRequest.ts'
-
-export const LEGAL_VERSIONS = { privacy: '2026-09-23', terms: '2026-09-23' }
+export { LEGAL_VERSIONS, LEGAL_CHANGES } from '../../../supabase/functions/_shared/legal.ts'
+export { DELETION_SCOPE } from '../../../supabase/functions/_shared/accountDeletion.ts'
 
 export const CONTROLLER = 'Budgeer (Belgium)'
-
-// What changed in each version, newest first — the update prompt lists every
-// entry newer than what the user last accepted.
-export const LEGAL_CHANGES = [
-  {
-    version: '2026-09-23',
-    items: [
-      'A full Privacy Notice: who is responsible for your data, why we use it and on what legal basis, who processes it and where, and how long we keep it.',
-      'New Terms of Use for the app, including that Budgeer is a hobby project and does not provide financial advice.',
-      'Your rights, with a way to exercise each one in Settings → Privacy.',
-      'Automatic clean-up: notifications after 90 days, group change logs after 2 years, and accounts unused for 2 years (after an email warning).',
-      'The weekly summary is now optional and off for new accounts.',
-    ],
-  },
-]
 
 export const RETENTION = {
   notificationsDays: 90,
@@ -64,13 +50,6 @@ export function signupConsentMetadata() {
   return { accepted_privacy: LEGAL_VERSIONS.privacy, accepted_terms: LEGAL_VERSIONS.terms }
 }
 
-const PURPOSE_LABELS = {
-  privacy_notice: 'Privacy Notice',
-  terms: 'Terms of Use',
-  weekly_digest: 'Weekly summary',
-  email_notifications: 'Email notifications',
-  push_notifications: 'Push notifications',
-}
 const SOURCE_LABELS = {
   signup: 'when you signed up',
   prompt: 'after an update',
@@ -81,7 +60,7 @@ const SOURCE_LABELS = {
 // (version 23 September 2026) when you signed up", "Weekly summary turned off
 // in Settings".
 export function describeConsent(row) {
-  const what = PURPOSE_LABELS[row?.purpose] ?? String(row?.purpose ?? 'Unknown')
+  const what = CONSENT_LABELS[row?.purpose] ?? String(row?.purpose ?? 'Unknown')
   const where = SOURCE_LABELS[row?.source] ?? ''
   const tail = where ? ` ${where}` : ''
   if (row?.purpose === 'privacy_notice' || row?.purpose === 'terms') {

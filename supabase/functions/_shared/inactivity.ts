@@ -11,7 +11,7 @@ export const INACTIVITY = {
 
 // Calendar months, clamped to the target month's length (31 Jan + 1 → 28/29
 // Feb), in UTC — Postgres' `timestamptz + interval 'n months'` does the same.
-function addMonthsUTC(d: Date, months: number): Date {
+export function addMonthsUTC(d: Date, months: number): Date {
   const y = d.getUTCFullYear()
   const m = d.getUTCMonth() + months
   const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate()

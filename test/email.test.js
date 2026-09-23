@@ -42,6 +42,21 @@ test('the plain-text alternative carries the same content, unescaped', () => {
   assert.doesNotMatch(text, /&amp;|<br>/)
 })
 
+test('bulleted lists and labelled links are escaped too, and read as lines in the text', () => {
+  const { html, text } = brandEmail({
+    origin: 'https://dev.budgeer.com',
+    heading: 'H',
+    paragraphs: ['Intro', [`One ${EVIL}`, 'Two']],
+    links: [{ label: `Doc ${EVIL}`, url: 'https://dev.budgeer.com/privacy?x="><b>' }],
+  })
+  assert.doesNotMatch(html, /<script>|"><b>/)
+  assert.match(html, /<ul class="bb-body"[^>]*><li[^>]*>One &lt;script&gt;/)
+  assert.match(html, /Doc &lt;script&gt;.*href="https:\/\/dev\.budgeer\.com\/privacy\?x=&quot;&gt;&lt;b&gt;"/)
+  assert.ok(text.includes(`Intro\n\n- One ${EVIL}\n- Two\n\nDoc ${EVIL}: https://dev.budgeer.com/privacy?x="><b>`))
+  // The inbox preview is the first paragraph, never a list.
+  assert.match(html, /opacity:0;">Intro<\/div>/)
+})
+
 test('header mark comes from the app origin and exists in public/', () => {
   const { html } = sample()
   assert.match(html, /<img src="https:\/\/dev\.budgeer\.com\/email-mark\.png" width="32" height="32" alt=""/)

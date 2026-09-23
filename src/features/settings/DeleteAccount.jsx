@@ -11,6 +11,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import FormModal from '../../shared/ui/FormModal.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { hasPasswordIdentity } from './authMethods.js'
+import { DELETION_SCOPE } from '../privacy/legal.js'
 
 // The danger zone at the foot of Security: set apart by space and a red
 // label, with the confirm-to-delete modal behind its button.
@@ -81,22 +82,18 @@ export function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
   )
 }
 
-// What deletion erases and what stays — must match _shared/accountDeletion.ts,
-// the auth.users cascades and the 0072 anonymise trigger (and the Privacy
-// Notice's "Erasure").
+// What deletion erases and what stays — DELETION_SCOPE, the same words the
+// deletion confirmation email uses (_shared/accountDeletion.ts).
 function DeletionScope() {
   return (
     <Stack spacing={2} fontSize="sm" color="text.muted">
       <Text fontWeight="600" color="text.primary">Deleted</Text>
       <UnorderedList spacing={1} pl={1}>
-        <ListItem>Your sign-in, passkeys, profile, picture and payment details</ListItem>
-        <ListItem>Your expenses and income, categories and rules, accounts, budgets, goals and recurring payments</ListItem>
-        <ListItem>Your notifications, push subscriptions, consent history and the group comments you wrote</ListItem>
-        <ListItem>Groups you own that have no other members (the rest pass to another member)</ListItem>
+        {DELETION_SCOPE.deleted.map((line) => <ListItem key={line}>{line}</ListItem>)}
       </UnorderedList>
       <Text fontWeight="600" color="text.primary">Stays for your groups</Text>
       <UnorderedList spacing={1} pl={1}>
-        <ListItem>Group expenses, splits and settlements you were part of, so others’ balances stay right — shown as “Former member”, with no link to you</ListItem>
+        {DELETION_SCOPE.stays.map((line) => <ListItem key={line}>{line}</ListItem>)}
       </UnorderedList>
     </Stack>
   )

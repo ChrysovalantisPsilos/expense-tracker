@@ -18,16 +18,14 @@
 
 import { withCors, json, callerClient } from '../_shared/http.ts'
 import { brandEmail } from '../_shared/email.ts'
+import { appOrigin, inviteSender, sendEmail } from '../_shared/sendEmail.ts'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const SUBJECT = 'You’re invited to a group on Budgeer'
 
 Deno.serve(withCors(async (req) => {
-  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-  const FROM = Deno.env.get('INVITE_FROM') || 'Budgeer <onboarding@resend.dev>'
-  // Fallback = production origin; the TEST project sets APP_ORIGIN to
-  // https://dev.budgeer.com in its function secrets.
-  const APP_ORIGIN = (Deno.env.get('APP_ORIGIN') || 'https://budgeer.com').replace(/\/+$/, '')
+  const sender = inviteSender()
+  const APP_ORIGIN = appOrigin()
 
   try {
     const { to, token } = await req.json()
@@ -65,7 +63,7 @@ Deno.serve(withCors(async (req) => {
     const { data: prof } = await asUser
       .from('profiles').select('display_name').eq('id', user.id).maybeSingle()
 
-    if (!RESEND_API_KEY) {
+    if (!sender) {
       return json({ error: 'Email invites are not configured yet (missing RESEND_API_KEY). Use the share link instead.' }, 503)
     }
 
@@ -87,17 +85,9 @@ Deno.serve(withCors(async (req) => {
       showLink: true,
     })
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [recipient], subject: SUBJECT, html, text }),
-    })
-    if (!res.ok) {
-      console.error('resend error', res.status, await res.text().catch(() => ''))
-      return json({ error: 'Could not send the invite email.' }, 502)
-    }
-    const data = await res.json()
-    return json({ ok: true, id: data?.id })
+    const sent = await sendEmail(sender, { to: recipient, subject: SUBJECT, html, text })
+    if (!sent.ok) return json({ error: 'Could not send the invite email.' }, 502)
+    return json({ ok: true, id: sent.id })
   } catch (e) {
     console.error('send-invite error', e)
     return json({ error: 'Something went wrong.' }, 500)

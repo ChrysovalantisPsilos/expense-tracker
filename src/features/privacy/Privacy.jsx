@@ -41,6 +41,10 @@ const PURPOSES = [
     ['What', 'In-app notifications, and — if you turn them on — push notifications and emails about group invites and members joining or leaving, payment reminders and budget alerts.'],
     ['Legal basis', 'Contract. Push also needs your device’s permission; both switch off in Settings → Notifications.'],
   ] },
+  { name: 'Emails about your account and your data', lines: [
+    ['What', 'Sent whatever your notification settings, and never with amounts or other records: a notice when this Privacy Notice or the Terms change; a confirmation when your account is deleted (by you, or after 2 years without use, following the warning); a security notice when a copy of your data is downloaded (at most one an hour) or your notification choices change (one summary per 15 minutes); and a receipt for a request sent with the privacy request form.'],
+    ['Legal basis', 'Legal obligation to inform you about your data and your requests (Art. 6(1)(c), with Art. 12, 13 and 19 GDPR), and our legitimate interest in keeping your account secure (Art. 6(1)(f)).'],
+  ] },
   { name: 'Weekly summary', lines: [
     ['What', 'A weekly notification with how many expenses you logged and your top category.'],
     ['Legal basis', 'Consent (Art. 6(1)(a)). Off for new accounts; turn it on or off at any time in Settings → Notifications. Accounts created before 23 September 2026 keep their earlier setting and can switch it off the same way.'],
@@ -67,7 +71,7 @@ const RECIPIENTS = [
     ['Safeguard', 'Vercel’s Data Processing Addendum with the EU Standard Contractual Clauses (and the EU–US Data Privacy Framework where Vercel is certified).'],
   ] },
   { name: 'Resend (Plus Five Five, Inc.)', lines: [
-    ['Role', 'Processor: delivers our emails. It receives the recipient’s address and the email: invites (your name and the group’s name), group event emails if you turned them on, inactive-account warnings, and privacy requests you send through the form (with what you wrote). Our emails never contain your amounts or expense descriptions, and we don’t use open or click tracking.'],
+    ['Role', 'Processor: delivers our emails. It receives the recipient’s address and the email: invites (your name and the group’s name), group event emails if you turned them on, the emails about your account and your data described above (inactivity warnings, deletion confirmations, security and update notices, privacy request receipts), and privacy requests you send through the form (with what you wrote). Our emails never contain your amounts or expense descriptions, and we don’t use open or click tracking.'],
     ['Where', 'Sent from the EU region eu-west-1 (Ireland); Resend is a US company.'],
     ['Safeguard', 'Resend’s Data Processing Addendum with the EU Standard Contractual Clauses.'],
   ] },

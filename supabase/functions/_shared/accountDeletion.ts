@@ -15,6 +15,24 @@
 // cascade-delete with them. If that fails we stop before deleting the
 // account, so a retry never leaves orphaned files behind.
 
+// What deletion erases and what stays, in the words the delete dialog
+// (settings/DeleteAccount.jsx) and the deletion confirmation emails
+// (_shared/gdprEmails.ts) both use. Must stay true to deleteAccount below, the
+// auth.users cascades and the 0072 anonymise trigger (and the Privacy
+// Notice's "Erasure" and "Backups").
+export const DELETION_SCOPE = {
+  deleted: [
+    'Your sign-in, passkeys, profile, picture and payment details',
+    'Your expenses and income, categories and rules, accounts, budgets, goals and recurring payments',
+    'Your notifications, push subscriptions, consent history and the group comments you wrote',
+    'Groups you own that have no other members (the rest pass to another member)',
+  ],
+  stays: [
+    'Group expenses, splits and settlements you were part of, so others’ balances stay right — shown as “Former member”, with no link to you',
+  ],
+  backups: 'Our database host keeps encrypted backups for a limited period, so deleted data disappears from them when they roll over.',
+}
+
 // deno-lint-ignore no-explicit-any
 export async function deleteAccount(admin: any, uid: string): Promise<void> {
   const doomedGroups: string[] = []

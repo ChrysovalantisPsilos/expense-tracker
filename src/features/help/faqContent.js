@@ -266,6 +266,7 @@ export const FAQ_SECTIONS = [
         a: [
           'Push notifications for group activity, bill reminders and budget alerts, and emails for bigger events such as group invites. There’s also an optional weekly summary; new accounts need to turn it on.',
           'Notifications and emails say what happened, never the amounts or descriptions. Choose what you get in Settings → Notifications.',
+          `A few emails about your account and your data are always sent, whatever those switches say: when the Privacy Notice or Terms change, when your account is deleted, when a copy of your data is downloaded or your notification choices change (so you’d notice if it wasn’t you), and a receipt when you send a privacy request. Replying to one reaches ${PRIVACY_EMAIL}.`,
         ],
       },
       {

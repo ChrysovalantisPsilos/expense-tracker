@@ -1,6 +1,6 @@
 // The one branded layout for every email the edge functions send (group
-// invites, notification emails). Supabase Auth's own emails are separate
-// (supabase/email-templates).
+// invites, notification emails, the GDPR notices in gdprEmails.ts). Supabase
+// Auth's own emails are separate (supabase/email-templates).
 //
 // Callers pass plain text only: every value is HTML-escaped here, so nothing
 // a user typed (a group or display name) can inject markup. The result has an
@@ -39,7 +39,10 @@ export interface BrandEmail {
   // Absolute app origin (APP_ORIGIN); the header mark is served from it.
   origin: string
   heading: string
-  paragraphs: string[]
+  // Each entry is a paragraph, or — as an array — a bulleted list.
+  paragraphs: (string | string[])[]
+  // Labelled links listed under the paragraphs (e.g. the legal documents).
+  links?: { label: string; url: string }[]
   cta?: { label: string; url: string }
   // Also print the CTA's URL under the button (for clients that block links).
   showLink?: boolean
@@ -52,8 +55,13 @@ export function brandEmail(opts: BrandEmail): { html: string; text: string } {
   const D = Object.fromEntries(Object.entries(EMAIL_COLORS).map(([k, v]) => [k, v[1]])) as Record<keyof typeof EMAIL_COLORS, string>
   const origin = opts.origin.replace(/\/+$/, '')
   const footer = [TAGLINE, ...(opts.footer ?? [])]
-  const paras = opts.paragraphs.map((p) =>
-    `<p class="bb-body" style="margin:0 0 16px;font-family:${BODY_FONT};font-size:15px;line-height:1.6;color:${C.body};">${esc(p)}</p>`).join('')
+  const paras = opts.paragraphs.map((p) => Array.isArray(p)
+    ? `<ul class="bb-body" style="margin:0 0 16px;padding:0 0 0 20px;font-family:${BODY_FONT};font-size:15px;line-height:1.6;color:${C.body};">${p.map((li) => `<li style="margin:0 0 6px;">${esc(li)}</li>`).join('')}</ul>`
+    : `<p class="bb-body" style="margin:0 0 16px;font-family:${BODY_FONT};font-size:15px;line-height:1.6;color:${C.body};">${esc(p)}</p>`).join('')
+  const links = opts.links?.length
+    ? `<div style="margin:0 0 16px;">${opts.links.map((l) =>
+      `<p class="bb-body" style="margin:0 0 6px;font-family:${BODY_FONT};font-size:15px;line-height:1.6;color:${C.body};">${esc(l.label)}: <a class="bb-link" href="${esc(l.url)}" style="color:${C.link};word-break:break-all;">${esc(l.url)}</a></p>`).join('')}</div>`
+    : ''
   const cta = opts.cta && `
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 0;"><tr>
             <td style="border-radius:10px;background:${C.button};">
@@ -84,7 +92,7 @@ export function brandEmail(opts: BrandEmail): { html: string; text: string } {
 </style>
 </head>
 <body class="bb-canvas" style="margin:0;padding:0;background:${C.canvas};">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(opts.paragraphs[0] ?? opts.heading)}</div>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(opts.paragraphs.find((p) => typeof p === 'string') ?? opts.heading)}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="bb-canvas" style="background:${C.canvas};">
     <tr><td align="center" style="padding:28px 12px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
@@ -96,7 +104,7 @@ export function brandEmail(opts: BrandEmail): { html: string; text: string } {
         </td></tr>
         <tr><td class="bb-card" style="background:${C.card};border:1px solid ${C.border};border-radius:16px;padding:32px;">
           <h1 class="bb-heading" style="margin:0 0 12px;font-family:${HEAD_FONT};font-size:21px;line-height:1.3;font-weight:600;color:${C.heading};">${esc(opts.heading)}</h1>
-          ${paras}${cta ?? ''}${link}
+          ${paras}${links}${cta ?? ''}${link}
         </td></tr>
         <tr><td class="bb-muted" style="padding:20px 8px;text-align:center;font-family:${BODY_FONT};font-size:12px;line-height:1.6;color:${C.muted};">${footer.map(esc).join('<br>')}</td></tr>
       </table>
@@ -106,7 +114,8 @@ export function brandEmail(opts: BrandEmail): { html: string; text: string } {
 
   const text = [
     opts.heading,
-    ...opts.paragraphs,
+    ...opts.paragraphs.map((p) => (Array.isArray(p) ? p.map((li) => `- ${li}`).join('\n') : p)),
+    ...(opts.links ?? []).map((l) => `${l.label}: ${l.url}`),
     ...(opts.cta ? [`${opts.cta.label}: ${opts.cta.url}`] : []),
     `--\n${footer.join('\n')}`,
   ].join('\n\n')

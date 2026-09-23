@@ -51,6 +51,8 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | `notifications` | title/body (names, never amounts), actor | In-app notices; push/email fan-out | (b); digest (a) | 90 days (0073) | recipient |
 | `push_subscriptions` | endpoint, keys | Web push delivery | (b) + browser permission | until unsubscribed/expired/account deletion | owner (own rows), server |
 | `inactivity_notices` (0073) | warned_at | Avoid repeat warnings; notice before deletion | (c) Art. 5(1)(e) | until the account is used again or deleted | owner (read), server |
+| `privacy_email_queue` (0076) | kind (consent change / data export), event and send timestamps, pending count | Coalesce the security notices (§ 6a) | (f) security; (c) | row kept per kind while the account exists (holds only timestamps) | server only (exported to the owner) |
+| `legal_update_notices` (0076) | Privacy/Terms versions last emailed about, when | Email each user once per legal-document update | (c) Art. 12–13 | account | server only (exported to the owner) |
 | `rate_limits` | key (uid or email hash), counters | Abuse prevention | (f) | ≤ 2 days (0058), backstop 30 days (0073) | server only |
 | `fx_rates`, `fx_fetches` | none (currency rates) | Currency conversion | — | — | server |
 | Storage `avatars/<uid>/`, `group-images/<gid>/` | profile and group pictures (public URLs) | Display | (b) | removed on account/group deletion | anyone with the link |
@@ -62,7 +64,7 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | --- | --- | --- | --- | --- |
 | Supabase, Inc. | Processor (DB, Auth, Storage, Edge Functions, Vault) | everything above | AWS eu-west-3 (Paris) for both TEST and PROD; US company (support access) | Supabase DPA + SCCs |
 | Vercel Inc. | Processor (static hosting, CDN) | IP, request logs | global edge incl. US | Vercel DPA + SCCs (DPF if certified — verify) |
-| Resend (Plus Five Five, Inc.) | Processor (email) | recipient address, email content (invites, group event emails, inactivity warnings, privacy-request form) | sending region eu-west-1 (Ireland); US company; open/click tracking off | Resend DPA + SCCs |
+| Resend (Plus Five Five, Inc.) | Processor (email) | recipient address, email content (invites, group event emails, the service notices of § 6a, privacy-request form) | sending region eu-west-1 (Ireland); US company; open/click tracking off | Resend DPA + SCCs |
 | Google | Independent controller (OAuth sign-in; avatar images on googleusercontent.com) | identity, IP when avatar loads | global | Google's terms; DPF |
 | Browser push services (FCM, Mozilla, Apple, Microsoft) | Deliver encrypted push payloads | endpoint, timing | global | payload end-to-end encrypted (RFC 8291) |
 | Frankfurter (frankfurter.dev) | Independent service (ECB rates) | currency codes, date, user's IP (browser call) | unknown | no contract; no user identifiers sent |
@@ -74,6 +76,8 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | --- | --- | --- |
 | `gdpr-retention` | 04:15 daily | `purge_expired_personal_data()`: notifications > 90 days, audit log > 2 years, rate limits > 30 days, auth audit log > 30 days, spent inactivity warnings |
 | `inactive-accounts` | 04:45 daily | `run_inactivity_sweep()` → edge function `purge-inactive`: warns at 23 months without use (one email, recorded), deletes at 24 months and ≥ 28 days after the warning, via the same code as delete-account |
+| `privacy-email-queue` | every 5 min | `run_privacy_email_queue()` → edge function `privacy-emails` (mode `queue`), only when a notice is due |
+| `legal-update-emails` | hourly at :20 | `run_legal_update_sweep()` → edge function `privacy-emails` (mode `legal`), only when someone still needs the update email |
 | `purge-expired-invites` | 03:30 daily | invites 7 days after expiry |
 | `purge-rate-limits` | 03:45 daily | rate-limit rows > 2 days; cron run history > 30 days |
 
@@ -84,12 +88,32 @@ creation/refresh (an installed PWA refreshes its session when opened).
 
 | Right | In the app | Server path |
 | --- | --- | --- |
-| Access / portability (15/20) | Settings → Privacy → Download my data | `export_my_data()` (0074; caller only, decrypted, rate-limited 10/h) |
+| Access / portability (15/20) | Settings → Privacy → Download my data | `export_my_data()` (0074/0076; caller only, decrypted, rate-limited 10/h; each download emails a security notice) |
 | Rectification (16) | Settings → Account; edit any record | normal RLS writes |
 | Erasure (17) | Settings → Security → Delete account | edge `delete-account` → `_shared/accountDeletion.ts` + `anonymise_departing_user` trigger |
 | Restriction / objection (18/21), other | Settings → Privacy → Send a request, or email | edge `privacy-request` → privacy@ via Resend (3/day) |
 | Withdraw consent (7(3)) | Settings → Notifications or Privacy (switches) | `log_preference_consent` trigger records history |
 | Consent history | Settings → Privacy | `consents` (RLS select own) |
+
+## 6a. Service emails about the account and its data
+
+Sent regardless of the notification switches (they inform the user about their
+data and account security; nothing to opt out of), from `NOTICE_FROM`
+(default `Budgeer <no-reply@budgeer.com>`) with Reply-To privacy@budgeer.com.
+Plain: no amounts, descriptions, group names or other records. Every one says
+why it was sent and names privacy@. Templates:
+`supabase/functions/_shared/gdprEmails.ts` (unit-tested in
+`test/gdprEmails.test.js`); sending: `_shared/sendEmail.ts`.
+
+| Email | Trigger (server-side) | Coalescing / idempotency | Why (basis) |
+| --- | --- | --- | --- |
+| Privacy Notice / Terms updated | New `current_legal_versions()` (with `LEGAL_VERSIONS` + a `LEGAL_CHANGES` summary in `_shared/legal.ts`); hourly sweep `legal_update_recipients()` | Once per user per version pair (`legal_update_notices`, stamped only after Resend accepted it); only users who signed up before the version and haven't accepted it; ≤ 100 per run, paced | Art. 12–13 (inform of changes) |
+| Account deleted (by the user) | `delete-account`, after the deletion succeeded (address captured first) | One per deletion | Art. 12(3), 19 (confirm erasure) |
+| Account deleted (inactivity) | `purge-inactive`, after the deletion succeeded | One per deletion; always preceded by the warning | Art. 5(1)(e), 12(3) |
+| Inactivity warning | `purge-inactive`, 23 months without use | Once per idle stretch (`inactivity_notices`) | Art. 5(1)(e) |
+| Data downloaded | Every `export_my_data()` (same transaction) | ≤ 1 per user per hour; counts the downloads it covers | Art. 32 (security) |
+| Notification choices changed | Every consent-switch change (`consents` row, source `settings`) | One per user per 15 minutes, with the switches' final state | Art. 7, 32 |
+| Privacy request receipt | `privacy-request`, after the inbox accepted the request | Under the 3/day request quota | Art. 12(3) (deadline) |
 
 Deadline: one month from receipt (extendable by two months with notice,
 Art. 12(3)). Keep a simple log of requests and answers (date received, type,
@@ -138,7 +162,8 @@ security suite (`supabase/tests/db_tests.sql`).
   each one's SCC module and sub-processor list; verify Vercel's DPF status.
 - Set `PRIVACY_INBOX` (optional; defaults to privacy@budgeer.com) and confirm
   `RESEND_API_KEY`, `INVITE_FROM`, `APP_ORIGIN` in both projects' function
-  secrets.
+  secrets; `NOTICE_FROM` is optional (defaults to `Budgeer <no-reply@budgeer.com>`,
+  which needs budgeer.com verified as a sending domain in Resend).
 - Consider shortening Supabase Auth session lifetime / enabling inactivity
   timeout; check that auth audit logs are not kept longer than needed.
 - Keep this record and a request/breach log up to date.

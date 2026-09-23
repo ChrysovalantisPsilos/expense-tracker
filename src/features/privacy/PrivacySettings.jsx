@@ -132,7 +132,7 @@ function RequestDialog({ onClose }) {
       await sendPrivacyRequest(checked)
       const by = responseDeadline().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
       toast({ title: 'Request sent', status: 'success',
-        description: `We’ll reply to your account’s email address by ${by}.` })
+        description: `We’ve emailed you a receipt, and we’ll reply to your account’s email address by ${by}.` })
       onClose()
     }, { errorTitle: 'Couldn’t send your request' })
   }

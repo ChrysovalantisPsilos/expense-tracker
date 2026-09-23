@@ -12,6 +12,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { brandEmail } from '../_shared/email.ts'
+import { appOrigin, inviteSender, sendEmail } from '../_shared/sendEmail.ts'
 import { requireCronSecret } from '../_shared/cron.ts'
 import { eachLimited, isAllowedPushEndpoint } from '../_shared/push.ts'
 
@@ -86,8 +87,8 @@ Deno.serve(async (req) => {
   }
 
   // -- Email (big events only) ------------------------------------------------
-  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-  if ((prefs?.notify_email ?? true) && EMAIL_TYPES.has(n.type) && RESEND_API_KEY) {
+  const sender = inviteSender()
+  if ((prefs?.notify_email ?? true) && EMAIL_TYPES.has(n.type) && sender) {
     // Email invites were already emailed by send-invite — don't double up.
     let skip = false
     if (n.type === 'invite' && n.invite_id) {
@@ -99,25 +100,16 @@ Deno.serve(async (req) => {
       const { data: userData } = await admin.auth.admin.getUserById(n.user_id)
       const to = userData?.user?.email
       if (to) {
-        const FROM = Deno.env.get('INVITE_FROM') || 'Budgeer <onboarding@resend.dev>'
-        // Fallback = production origin; the TEST project sets APP_ORIGIN to
-        // https://dev.budgeer.com in its function secrets.
-        const APP_ORIGIN = (Deno.env.get('APP_ORIGIN') || 'https://budgeer.com').replace(/\/+$/, '')
+        const origin = appOrigin()
         // Same branded layout as send-invite's email.
         const { html, text } = brandEmail({
-          origin: APP_ORIGIN,
+          origin,
           heading: n.title,
           paragraphs: n.body ? [n.body] : [],
-          cta: { label: 'Open Budgeer', url: `${APP_ORIGIN}${urlFor(n)}` },
+          cta: { label: 'Open Budgeer', url: `${origin}${urlFor(n)}` },
           footer: ['You can turn these emails off in Settings → Notifications.'],
         })
-        const res = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from: FROM, to: [to], subject: n.title, html, text }),
-        })
-        emailed = res.ok
-        if (!res.ok) console.error('resend error', res.status, await res.text().catch(() => ''))
+        emailed = (await sendEmail(sender, { to, subject: n.title, html, text })).ok
       }
     }
   }

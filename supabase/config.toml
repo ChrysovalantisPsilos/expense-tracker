@@ -31,3 +31,6 @@ verify_jwt = false
 
 [functions.purge-inactive]
 verify_jwt = false
+
+[functions.privacy-emails]
+verify_jwt = false

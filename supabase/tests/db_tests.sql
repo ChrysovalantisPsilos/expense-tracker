@@ -3503,11 +3503,253 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 60. 0076: consent-switch changes queue ONE coalesced email per user — due 15
+--     minutes after the first change, carrying the switches' final state;
+--     legal acceptance and other profile edits don't count. Claiming leases the
+--     row; finishing clears it, or re-arms it after the window when a newer
+--     change came in meanwhile; failures back off and give up after 5.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; r record; q record; n int;
+begin
+  begin
+    u := pg_temp.zz_user('pe-consent');
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set notify_digest = true where id = u;
+    update public.profiles set notify_push = false where id = u;
+    update public.profiles set notify_digest = false where id = u;
+    update public.profiles set display_name = 'ZZ PE' where id = u;   -- not a switch
+    perform public.accept_legal_documents();                           -- not a switch
+    execute 'reset role';
+
+    select count(*) into n from public.privacy_email_queue where user_id = u;
+    if n <> 1 then raise exception 'expected one coalesced row, got %', n; end if;
+    select * into q from public.privacy_email_queue where user_id = u;
+    if q.kind <> 'consent_change' or q.due_at <> now() + interval '15 minutes' or q.pending_events <> 3 then
+      raise exception 'queue row wrong: %', row_to_json(q);
+    end if;
+    if exists (select 1 from public.claim_privacy_emails(100000) c where c.user_id = u) then
+      raise exception 'claimed before the 15 minutes were up';
+    end if;
+
+    update public.privacy_email_queue set due_at = now() - interval '1 second' where user_id = u;
+    select * into r from public.claim_privacy_emails(100000) c where c.user_id = u;
+    if r.user_id is null then raise exception 'due row not claimed'; end if;
+    if r.email is null or r.notify_digest or r.notify_push or not r.notify_email then
+      raise exception 'claim did not carry the final state: %', row_to_json(r);
+    end if;
+    if (select due_at from public.privacy_email_queue where user_id = u) <> now() + interval '10 minutes' then
+      raise exception 'claimed row not leased';
+    end if;
+
+    -- A newer change arrived while the email was out → due again, after the window.
+    perform public.finish_privacy_email(u, 'consent_change', now() - interval '1 minute', 3, true);
+    select * into q from public.privacy_email_queue where user_id = u;
+    if q.due_at <> now() + interval '15 minutes' or q.last_sent_at <> now() or q.pending_events <> 0 then
+      raise exception 'newer change not re-armed: %', row_to_json(q);
+    end if;
+    -- Nothing newer → cleared.
+    perform public.finish_privacy_email(u, 'consent_change', q.last_event_at, 0, true);
+    if (select due_at from public.privacy_email_queue where user_id = u) is not null then
+      raise exception 'sent row still due';
+    end if;
+
+    -- Failures back off, then give up after 5.
+    perform public.enqueue_privacy_email(u, 'consent_change');
+    for i in 1..4 loop
+      perform public.finish_privacy_email(u, 'consent_change', now(), 1, false);
+    end loop;
+    select * into q from public.privacy_email_queue where user_id = u;
+    if q.attempts <> 4 or q.due_at <> now() + interval '120 minutes' then
+      raise exception 'back-off wrong: %', row_to_json(q);
+    end if;
+    perform public.finish_privacy_email(u, 'consent_change', now(), 1, false);
+    if (select due_at from public.privacy_email_queue where user_id = u) is not null then
+      raise exception 'did not give up after 5 failures';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: consent-switch changes queue one coalesced email (15 min), lease/finish/back-off';
+    else update _t set fails = fails + 1; raise notice 'FAIL: consent email queue — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 61. 0076: every export_my_data() queues the "data downloaded" email in the
+--     same transaction — due at once, coalesced (the count covers repeats), and
+--     never sooner than an hour after the previous one. The export lists the
+--     user's own queue rows.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; q record; doc jsonb;
+begin
+  begin
+    u := pg_temp.zz_user('pe-export');
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.export_my_data();
+    doc := public.export_my_data();
+    execute 'reset role';
+
+    select * into q from public.privacy_email_queue where user_id = u and kind = 'data_export';
+    if q.user_id is null then raise exception 'export not queued'; end if;
+    if q.due_at <> now() or q.pending_events <> 2 then raise exception 'export row wrong: %', row_to_json(q); end if;
+    if (select count(*) from public.privacy_email_queue where user_id = u) <> 1 then
+      raise exception 'exports not coalesced into one row';
+    end if;
+    if not (doc ? 'privacy_emails' and doc ? 'legal_update_emails' and doc ? 'transactions') then
+      raise exception 'export document incomplete';
+    end if;
+    if jsonb_array_length(doc->'privacy_emails') <> 1 then raise exception 'own queue row not exported'; end if;
+
+    perform public.finish_privacy_email(u, 'data_export', q.last_event_at, 2, true);
+    update public.privacy_email_queue set last_sent_at = now() - interval '20 minutes' where user_id = u;
+    execute 'set local role authenticated';
+    perform public.export_my_data();
+    execute 'reset role';
+    select * into q from public.privacy_email_queue where user_id = u;
+    if q.due_at <> now() + interval '40 minutes' or q.pending_events <> 1 then
+      raise exception 'hourly window not respected: %', row_to_json(q);
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: data export queues a coalesced security email (at most hourly)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: export email queue — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 62. 0076 legal_update_recipients(): only accounts created before the
+--     versions in force that haven't accepted them and haven't been emailed
+--     about them; says which documents are unaccepted; once stamped, never
+--     selected again for the same versions.
+-- ---------------------------------------------------------------------------
+do $$
+declare a uuid; b uuid; c uuid; d uuid; e uuid; f uuid; v jsonb := public.current_legal_versions();
+        r record; sel text;
+begin
+  begin
+    a := pg_temp.zz_user('lg-none');      -- old, nothing accepted        → selected
+    b := pg_temp.zz_user('lg-acc');       -- old, accepted both           → not
+    c := pg_temp.zz_user('lg-new');       -- signed up after the versions → not
+    d := pg_temp.zz_user('lg-mailed');    -- old, emailed for these       → not
+    e := pg_temp.zz_user('lg-half');      -- old, privacy accepted, emailed for an older version → terms only
+    f := pg_temp.zz_user('lg-oldacc');    -- old, accepted older versions → selected
+    update auth.users set created_at = now() - interval '2 years' where id in (a, b, d, e, f);
+    update auth.users set created_at = greatest(v->>'privacy', v->>'terms')::date + interval '1 hour' where id = c;
+    insert into public.consents (user_id, purpose, version, granted, source) values
+      (b, 'privacy_notice', v->>'privacy', true, 'prompt'), (b, 'terms', v->>'terms', true, 'prompt'),
+      (e, 'privacy_notice', v->>'privacy', true, 'prompt'),
+      (f, 'privacy_notice', '2000-01-01', true, 'signup'), (f, 'terms', '2000-01-01', true, 'signup');
+    insert into public.legal_update_notices (user_id, privacy_version, terms_version) values
+      (d, v->>'privacy', v->>'terms'), (e, '2000-01-01', '2000-01-01');
+
+    select string_agg(x.email, ',') into sel from public.legal_update_recipients(1000000) x
+     where x.user_id in (a, b, c, d, e, f);
+    if exists (select 1 from public.legal_update_recipients(1000000) x where x.user_id in (b, c, d)) then
+      raise exception 'selected an account it must not: %', sel;
+    end if;
+    select * into r from public.legal_update_recipients(1000000) x where x.user_id = a;
+    if r.user_id is null or not r.privacy_changed or not r.terms_changed
+       or r.privacy_version is distinct from v->>'privacy' or r.terms_version is distinct from v->>'terms' then
+      raise exception 'never-accepted account wrong: %', row_to_json(r);
+    end if;
+    select * into r from public.legal_update_recipients(1000000) x where x.user_id = e;
+    if r.user_id is null or r.privacy_changed or not r.terms_changed then
+      raise exception 'half-accepted account wrong: %', row_to_json(r);
+    end if;
+    if not exists (select 1 from public.legal_update_recipients(1000000) x where x.user_id = f) then
+      raise exception 'account on older versions not selected';
+    end if;
+
+    perform public.mark_legal_update_emailed(a, v->>'privacy', v->>'terms');
+    perform public.mark_legal_update_emailed(e, v->>'privacy', v->>'terms');
+    if exists (select 1 from public.legal_update_recipients(1000000) x where x.user_id in (a, e)) then
+      raise exception 'stamped account selected again';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: legal update sweep selects only users not yet emailed for the versions in force';
+    else update _t set fails = fails + 1; raise notice 'FAIL: legal update selection — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 63. 0076: the email queue and the legal-notice stamps are server-only (RLS
+--     on, no policies, no client grants — clients can neither read nor write
+--     them), the sweep functions are service_role/cron only, and the cron jobs
+--     are scheduled.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; n int; t text; fn text;
+begin
+  begin
+    u := pg_temp.zz_user('pe-sec');
+    perform public.enqueue_privacy_email(u, 'data_export');
+    insert into public.legal_update_notices (user_id, privacy_version, terms_version) values (u, 'x', 'x');
+    foreach t in array array['public.privacy_email_queue', 'public.legal_update_notices'] loop
+      if not (select relrowsecurity from pg_class where oid = t::regclass) then raise exception 'RLS off on %', t; end if;
+      select count(*) into n from pg_policies where schemaname = 'public' and tablename = split_part(t, '.', 2);
+      if n <> 0 then raise exception '% has client policies', t; end if;
+      if has_table_privilege('authenticated', t, 'select') or has_table_privilege('authenticated', t, 'insert')
+         or has_table_privilege('authenticated', t, 'update') or has_table_privilege('authenticated', t, 'delete')
+         or has_table_privilege('anon', t, 'select') or has_table_privilege('anon', t, 'insert') then
+        raise exception 'clients have privileges on %', t;
+      end if;
+    end loop;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    begin
+      execute 'set local role authenticated';
+      select count(*) into n from public.privacy_email_queue;
+      raise exception 'GUARD_MISSED: owner read the queue';
+    exception when insufficient_privilege then null; end;
+    execute 'reset role';
+    begin
+      execute 'set local role authenticated';
+      insert into public.privacy_email_queue (user_id, kind, last_event_at) values (u, 'consent_change', now());
+      raise exception 'GUARD_MISSED: owner wrote the queue';
+    exception when insufficient_privilege then null; end;
+    execute 'reset role';
+    begin
+      execute 'set local role authenticated';
+      delete from public.legal_update_notices where user_id = u;
+      raise exception 'GUARD_MISSED: owner deleted a legal stamp';
+    exception when insufficient_privilege then null; end;
+    execute 'reset role';
+
+    foreach fn in array array['public.enqueue_privacy_email(uuid,text)', 'public.claim_privacy_emails(integer)',
+        'public.finish_privacy_email(uuid,text,timestamptz,integer,boolean)', 'public.legal_update_recipients(integer)',
+        'public.mark_legal_update_emailed(uuid,text,text)', 'public.call_privacy_emails(text)',
+        'public.run_privacy_email_queue()', 'public.run_legal_update_sweep()', 'public.build_my_data_export()',
+        'public.enqueue_consent_email()'] loop
+      if has_function_privilege('authenticated', fn, 'execute') or has_function_privilege('anon', fn, 'execute') then
+        raise exception '% callable by clients', fn;
+      end if;
+    end loop;
+    if not (has_function_privilege('service_role', 'public.claim_privacy_emails(integer)', 'execute')
+            and has_function_privilege('service_role', 'public.legal_update_recipients(integer)', 'execute')
+            and has_function_privilege('authenticated', 'public.export_my_data()', 'execute')) then
+      raise exception 'deliberate grants missing';
+    end if;
+    select count(*) into n from cron.job
+     where (jobname = 'privacy-email-queue' and command like '%run_privacy_email_queue%')
+        or (jobname = 'legal-update-emails' and command like '%run_legal_update_sweep%');
+    if n <> 2 then raise exception 'privacy email cron jobs missing (% of 2)', n; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: privacy email queue and legal stamps are server-only; sweep functions not client-callable';
+    else update _t set fails = fails + 1; raise notice 'FAIL: privacy email lockdown — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 60; f int; p int;  -- tests 1–59 + B-0059
+declare expected_tests constant int := 64; f int; p int;  -- tests 1–63 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;
