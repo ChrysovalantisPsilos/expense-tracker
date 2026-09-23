@@ -21,6 +21,7 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 
 const KINDS = [['expense', 'Expense'], ['income', 'Income']]
+const KIND_LABEL = Object.fromEntries(KINDS)
 
 // The body of the transaction page: one expense or income, new or
 // (`transaction`) existing, and its Repeat section. `rule` is the recurring
@@ -28,12 +29,14 @@ const KINDS = [['expense', 'Expense'], ['income', 'Income']]
 // the Repeat section then edits; switching Repeat on for an entry without one
 // makes a rule whose first occurrence is this entry. Saving writes the entry,
 // then creates/updates/removes the rule (planRepeat). `onDelete` (existing
-// entries) shows a Delete button; the page confirms it.
+// entries) shows a Delete button; the page confirms it. A saved entry's kind
+// is fixed (the server rejects a change, 0077), so editing shows it as a
+// label and never sends it.
 export default function TransactionForm({
   kind: initialKind = 'expense', baseCurrency = 'EUR', transaction = null, rule = null, onSaved, onDelete,
 }) {
   const isEdit = !!transaction
-  const [kind, setKind] = useState(transaction?.kind ?? initialKind)
+  const [kind, setKind] = useState(transaction?.kind ?? initialKind) // fixed once saved
   const { categories } = useCategories(kind)
   const toast = useToast()
   const [amount, setAmount] = useState(
@@ -117,7 +120,6 @@ export default function TransactionForm({
     }
     // Capture the FX rate at entry time so historical balances never shift.
     const fields = {
-      kind,
       category_id: categoryId || null,
       amount_minor: toMinor(amount, currency),
       currency,
@@ -129,7 +131,7 @@ export default function TransactionForm({
     setBusy(true)
     try {
       if (isEdit) await updateTransaction(transaction.id, fields)
-      else await insertTransaction({ ...fields, client_uuid: clientUuid.current })
+      else await insertTransaction({ ...fields, kind, client_uuid: clientUuid.current })
     } catch (err) {
       setBusy(false)
       toast(saveErrorToast(err))
@@ -137,8 +139,8 @@ export default function TransactionForm({
     }
     // A new entry is linked to its rule through its client_uuid.
     await saveRepeat(isEdit
-      ? { ...fields, id: transaction.id, account_id: transaction.account_id }
-      : { ...fields, client_uuid: clientUuid.current })
+      ? { ...fields, kind, id: transaction.id, account_id: transaction.account_id }
+      : { ...fields, kind, client_uuid: clientUuid.current })
     setBusy(false)
     toast({ title: isEdit ? 'Saved' : `${kind === 'income' ? 'Income' : 'Expense'} saved`, status: 'success' })
     onSaved?.()
@@ -154,8 +156,19 @@ export default function TransactionForm({
     <Stack as="form" spacing={5} onSubmit={submit}>
       <Panel>
         <Stack spacing={4}>
-          <SegmentedControl label="Kind" options={KINDS} value={kind} onChange={pickKind}
-            size="sm" isFitted />
+          {isEdit ? (
+            <FormControl>
+              <FormLabel>Type</FormLabel>
+              <Text fontWeight="600">{KIND_LABEL[kind]}</Text>
+              <FormHelperText>
+                A saved entry keeps its type. To record it as {kind === 'income' ? 'an expense' : 'income'},
+                delete it and add a new one.
+              </FormHelperText>
+            </FormControl>
+          ) : (
+            <SegmentedControl label="Kind" options={KINDS} value={kind} onChange={pickKind}
+              size="sm" isFitted />
+          )}
           {kind === 'expense' && !isEdit && <ReceiptScanner onScan={handleScan} />}
 
           <HStack align="start">

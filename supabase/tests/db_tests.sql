@@ -3745,11 +3745,69 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 64. 0077: a saved entry's kind is fixed. update_transaction refuses a kind
+--     change (and a same-kind patch still edits), a retried save_transactions
+--     upsert can't flip it, nor can a definer-side UPDATE; new rows of either
+--     kind still save.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; tid uuid; cu uuid := gen_random_uuid(); r record; n int;
+begin
+  begin
+    u := pg_temp.zz_user('kind');
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    n := public.save_transactions(jsonb_build_array(
+      jsonb_build_object('client_uuid', cu, 'kind', 'expense', 'amount_minor', 1250, 'currency', 'EUR'),
+      jsonb_build_object('kind', 'income', 'amount_minor', 300000, 'currency', 'EUR')));
+    if n <> 2 then raise exception 'new rows of both kinds not saved (%)', n; end if;
+    select t.id into tid from public.my_transactions() t where t.kind = 'expense';
+    begin
+      perform public.update_transaction(tid, '{"kind": "income"}'::jsonb);
+      raise exception 'GUARD_MISSED: update_transaction changed the kind';
+    exception when others then
+      if sqlerrm not like '%type can’t be changed%' then raise; end if;
+    end;
+    begin
+      perform public.save_transactions(jsonb_build_array(
+        jsonb_build_object('client_uuid', cu, 'kind', 'income', 'amount_minor', 1250, 'currency', 'EUR')));
+      raise exception 'GUARD_MISSED: upsert changed the kind';
+    exception when others then
+      if sqlerrm not like '%type can’t be changed%' then raise; end if;
+    end;
+    -- Other edits still work, with or without the (unchanged) kind in the patch.
+    perform public.update_transaction(tid, '{"amount_minor": 1999, "description": "ZZ kind edit"}'::jsonb);
+    perform public.update_transaction(tid, '{"kind": "expense", "notes": "ZZ same kind"}'::jsonb);
+    select * into r from public.my_transactions() t where t.id = tid;
+    execute 'reset role';
+    if r.kind <> 'expense' or r.amount_minor <> 1999 or r.description <> 'ZZ kind edit'
+       or r.notes <> 'ZZ same kind' then
+      raise exception 'edit result: % % % %', r.kind, r.amount_minor, r.description, r.notes;
+    end if;
+    -- Server-side writers can't flip it either.
+    begin
+      update public.transactions set kind = 'income' where id = tid;
+      raise exception 'GUARD_MISSED: table owner changed the kind';
+    exception when others then
+      if sqlerrm not like '%type can’t be changed%' then raise; end if;
+    end;
+    if has_function_privilege('authenticated', 'public.transactions_kind_fixed()', 'execute')
+       or has_function_privilege('anon', 'public.transactions_kind_fixed()', 'execute') then
+      raise exception 'trigger function callable by clients';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: a saved entry keeps its kind; other edits still work';
+    else update _t set fails = fails + 1; raise notice 'FAIL: transaction kind fixed — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 64; f int; p int;  -- tests 1–63 + B-0059
+declare expected_tests constant int := 65; f int; p int;  -- tests 1–64 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;
