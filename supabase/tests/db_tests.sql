@@ -1337,9 +1337,28 @@ begin
     execute 'reset role';
     select count(*) into left_rows from public.groups where id = gid;
     if left_rows <> 0 then raise exception 'group not deleted'; end if;
+
+    -- Deleting the account of a sole owner of a group with expenses also works
+    -- (its cascade SET NULLs created_by: an UPDATE that runs after the group
+    -- row is gone).
+    insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
+    values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
+            'authenticated', 'zzt-owner-' || md5(random()::text) || '@example.com', now(), now())
+    returning id into u1;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    gid := public.create_group('ZZT owner delete', 'EUR');
+    execute 'reset role';
+    select id into m1 from public.group_members where group_id = gid and user_id = u1;
+    execute 'set local role authenticated';
+    perform public.create_group_expense_v2(gid, 'zz taxi', 1500, 'EUR', m1, current_date, array[m1], null, 'equal');
+    execute 'reset role';
+    delete from auth.users where id = u1;
+    select count(*) into left_rows from public.groups where id = gid;
+    if left_rows <> 0 then raise exception 'owner deletion left the group behind'; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: delete_group works on a group with expenses';
+    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: groups with expenses can be deleted (delete_group + owner account deletion)';
     else update _t set fails = fails + 1; raise notice 'FAIL: delete_group with expenses — %', sqlerrm; end if;
   end;
 end $$;
