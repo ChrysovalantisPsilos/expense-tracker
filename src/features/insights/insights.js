@@ -14,8 +14,8 @@ async function rpcRows(name, args) {
 
 // ── Net-worth accounts (manually maintained balances) ───────────────────────
 export function useAccounts() {
-  const { rows: accounts, loading, reload } = useOwnedQuery('accounts', { fetch: listAccounts })
-  return { accounts, loading, reload }
+  const { rows: accounts, loading, error, reload } = useOwnedQuery('accounts', { fetch: listAccounts })
+  return { accounts, loading, error, reload }
 }
 
 export const listAccounts = () => rpcRows('my_accounts')
@@ -31,8 +31,8 @@ export const deleteAccount = (id) => removeRow('accounts', id)
 
 // ── Savings goals ───────────────────────────────────────────────────────────
 export function useGoals() {
-  const { rows: goals, loading, reload } = useOwnedQuery('savings_goals', { fetch: listGoals })
-  return { goals, loading, reload }
+  const { rows: goals, loading, error, reload } = useOwnedQuery('savings_goals', { fetch: listGoals })
+  return { goals, loading, error, reload }
 }
 
 export const listGoals = () => rpcRows('my_goals')

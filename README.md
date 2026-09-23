@@ -1,89 +1,226 @@
-# Expense Tracker
+# Budgeer
 
-A responsive **PWA** for personal expense tracking — log expenses and income,
-set budgets, track recurring bills, and generate full financial-statement
-reports (Excel + PDF). Built to grow into a friend-to-friend bill splitter.
+**Track your money. Split with friends.** Budgeer is an installable web app
+(PWA) that combines a personal expense and income tracker with a bill
+splitter for trips, flats and nights out.
 
-> **Status:** v1 scaffold — the personal tracker. The friend-splitting layer
-> (groups, itemized splits, balances) is designed into the schema but not yet
-> built. See _Roadmap_ below.
+- Live: [budgeer.com](https://budgeer.com) (production) ·
+  [dev.budgeer.com](https://dev.budgeer.com) (test)
+- Stack: React 18, Vite, Chakra UI · Supabase (Postgres, Row Level Security,
+  Auth, Realtime, Edge Functions, Vault, pg_cron) · Vercel
 
-## Stack
+It's a portfolio project, built as a production app with real users in mind.
+It has a written quality bar ([`CLAUDE.md`](CLAUDE.md)), security reviews, and
+tests for the database as well as the client.
 
-| Layer | Choice |
-| --- | --- |
-| Frontend | React + Vite, Chakra UI (clean/minimal, light + dark) |
-| PWA | `vite-plugin-pwa` (installable, offline app shell) |
-| Backend | Supabase — Postgres + Auth + Row Level Security + Edge Functions |
-| Auth | Email/password + Google (+ Apple, once a dev account is configured) |
-| Reports | Supabase Edge Function → SheetJS (xlsx) + pdf-lib (pdf) |
-| Offline | IndexedDB write queue, idempotent sync on reconnect |
-| Hosting | Vercel (frontend, `budgeer.com` (prod) / `dev.budgeer.com` (test)); Supabase (backend) |
+---
 
-## Getting started
+## Features
 
-```bash
-npm install
-cp .env.example .env      # fill in your Supabase URL + anon key
-npm run dev
-```
+**Personal finance**
+- Expenses and income with categories and notes. One Transactions page with
+  search and filters across all history.
+- Multi-currency: each entry keeps the currency you paid in, plus the exchange
+  rate captured when it was logged (ECB reference rates), so past totals never
+  shift. Zero-decimal currencies (JPY, KRW, …) are handled exactly.
+- Monthly budgets per category. Bars turn amber at 80% and red when you're
+  over, with a notification at each threshold.
+- Recurring payments (rent, subscriptions, salary) are booked automatically,
+  with optional reminders before each charge.
+- Savings goals, accounts and net worth, and insights: spending by category
+  and a six-month trend.
+- On-device receipt scanning: OCR (Tesseract, self-hosted) fills in the amount
+  and date. The photo is never uploaded.
+- Smart import from CSV or Excel: columns are detected automatically,
+  re-imports are duplicate-proof, and merchant-to-category rules are learned.
+- Branded PDF and Excel statements.
+- Backup and restore as one JSON file, optionally password-encrypted in the
+  browser (PBKDF2 + AES-GCM). Restore merges and skips duplicates.
 
-### Backend setup (Supabase)
+**Groups**
+- Invite friends by link, email or in-app. Friends join with a free account.
+- Split equally, by exact amount, by percentage or by shares.
+- Live balances and a "fewest payments" settle-up plan. Payments are recorded
+  as settlements.
+- Pay-back shortcuts: Revolut link, SEPA/EPC QR code with the exact amount,
+  copy IBAN, and friendly nudges.
+- Your share of each group expense is mirrored into your personal spending
+  and budgets automatically.
+- Comments on expenses and settlements, an immutable audit log, and a group
+  PDF statement.
 
-1. Create a Supabase project.
-2. Apply the schema: run `supabase/migrations/0001_init.sql` (via the SQL
-   editor, or `supabase db push` with the CLI linked to your project).
-3. In **Authentication → Providers**, enable Email and Google (add your Google
-   OAuth client). Apple can be added later — it needs a paid Apple Developer
-   account.
-4. Deploy the report function: `supabase functions deploy generate-report`.
-5. Put your project URL + anon key into `.env`.
+**Platform**
+- Installable PWA with an offline app shell and offline reading of your
+  last-synced data.
+- Realtime updates everywhere, with no polling.
+- Updates install automatically when you're not mid-task.
+- Notification bell, web push and email (big events only), each with its own
+  switch. There's also a weekly digest.
+- Sign in with email and password, Google, or a passkey. Light, dark or
+  system theme.
+- Account deletion that hands group data over to the remaining members.
 
-Money is stored as **integer minor units** (cents) with the currency and the
-FX rate captured at entry time, so multi-currency history never shifts when
-rates change.
+---
 
-## Project layout
+## Architecture
 
 ```
 src/
-  auth/          AuthProvider + session handling
-  components/    AppShell (nav), TransactionForm
-  lib/           supabase client, currency, offline queue, data hooks
-  pages/         Login, Dashboard, Transactions (expenses + income + search), Budgets, Reports
+  app/           shell, routing, providers, theme (no data access)
+  features/      one folder per feature: components (*.jsx), a data module
+                 (*.js, wraps Supabase) and a pure, unit-tested math module
+    auth  backup  budgets  dashboard  groups  import  insights  landing
+    notifications  onboarding  privacy  recurring  settings  transactions
+  shared/
+    lib/         cross-feature data (db.js, supabase.js, realtime.js, …) and
+                 pure helpers (currency, dates, moneyParse, paginate, …)
+    ui/          cross-feature components
+    ui/kit/      the design-system kit (panels, tiles, figures, rows, bars)
+    auth/        the auth context
+  sw.js          service worker: precache, offline reads, web push
 supabase/
-  migrations/    0001_init.sql  (schema + RLS + seed)
-  functions/     generate-report (xlsx + pdf edge function)
+  migrations/    NNNN_*.sql, append-only and ordered
+  functions/     Edge Functions (+ _shared/ for CORS, auth, money, email, PDF)
+  tests/         db_tests.sql, a rolled-back security and behaviour suite
+test/            node:test unit tests for every pure module
 ```
 
-## Roadmap
+**Feature-first layout.** Each feature owns its UI, its data access and its
+maths. Code moves into `shared/` only when two or more features need it, and
+`shared/` never imports from `features/` (lint enforces this).
 
-- **v2 (shipped, first slice):** groups (trips/households), hybrid members
-  (phantom → linked via shareable invite link), equal-split shared expenses,
-  pairwise balances, and settle-up. Track-only. Membership-based RLS with
-  `SECURITY DEFINER` helpers; `create_group` / `accept_group_invite` RPCs.
-  See `migrations/0005`–`0006`. Next: exact/%/itemized splits and debt
-  simplification.
-  - **Email invites** via the `send-invite` Resend edge function (dormant until
-    `RESEND_API_KEY` is set; the UI falls back to copying the share link).
-  - **Group share auto-mirrors** into your personal tracker: when a group
-    expense includes you, a linked personal expense for your split is created
-    and kept in sync by DB triggers (`migrations/0008`), so group spending
-    flows into your dashboard/budgets/reports. Marked with a “Group” tag.
-  - **Settings** (name, nickname, avatar in a public `avatars` bucket, default
-    currency) and a **landing splash** for logged-out visitors. Default
-    currency is **EUR**.
-- **v1 (this scaffold):** personal expenses, income, categories, budgets,
-  recurring rules, multi-currency, dashboard, Excel/PDF reports, offline sync.
-  Recurring rules are materialized daily by a `pg_cron` job (see
-  `migrations/0003`) that turns due rules into transactions.
-- **Receipt scanner:** photograph a receipt (native camera) → on-device OCR
-  (Tesseract.js, lazy-loaded) extracts total + date → prefills the expense
-  form. The image is stored in a private `receipts` Storage bucket (RLS-scoped)
-  and linked to the transaction.
-- **Brand/design:** "Budgeer" — warm coral/amber design system, Lucide icons,
-  Poppins/Nunito, desktop sidebar + mobile bottom nav, light/dark.
-- **v2 (schema-ready):** groups (trips/households), shared & itemized splits,
-  hybrid identity (phantom contacts that upgrade to accounts), balances +
-  manual settle-up. The `transactions` table already carries `group_id` /
-  `is_shared` so this lands without a destructive migration.
+**Separation of concerns.** Components never call Supabase directly: reads
+and writes go through the feature's data module or `shared/lib/db.js`. Money
+maths (splits, currency conversion, budgets, recurring projections, import
+parsing) lives in pure modules with unit tests. Money is always integer minor
+units.
+
+**Supabase back end.**
+- **Row Level Security on every table.** Policies are split per verb
+  (select/insert/update/delete), never a blanket `FOR ALL`.
+- **SECURITY DEFINER RPCs** for anything that crosses users (group ledgers,
+  balances, invites, settlements). Each one pins `search_path` and has
+  `EXECUTE` revoked from roles that shouldn't call it.
+- **Server-authoritative columns** (`created_by`, ownership, invite tokens and
+  expiry) are forced by BEFORE triggers, never trusted from the client.
+- **Encryption at rest.** Amounts, descriptions, notes, comments, balances,
+  budgets, goals and payment details are encrypted with pgcrypto. The key is
+  kept in Supabase Vault. API roles can't write those columns directly: reads
+  go through decrypting RPCs and writes through encrypting ones. This protects
+  a leaked dump or backup. It is *not* end-to-end encryption, because the
+  running project can still decrypt.
+- **Rate limits** on every mutation that fans out to push or email
+  (invites, joins, nudges, notifications).
+- **Edge Functions:**
+  - `generate-report` and `group-report` build PDF and Excel statements with
+    the caller's own JWT, so RLS still applies.
+  - `send-invite` sends invite emails.
+  - `delete-account` deletes the caller's account.
+  - `notify-user` handles push and email fan-out.
+  - `send-reminders` is called by cron.
+
+  The two that database triggers or cron call authenticate with a shared
+  secret held in Vault.
+- **pg_cron jobs** book recurring rules, send payment reminders and the
+  weekly digest, and purge expired invites and old rate-limit rows.
+
+**Realtime and offline.**
+- Screens subscribe to `postgres_changes` through one `useLiveRefetch`
+  primitive. It debounces the refetch and catches up after a reconnect and
+  when the tab becomes visible.
+- The custom Workbox service worker precaches the app shell. It serves an
+  allowlist of read-only RPCs network-first, cached per user, so the app
+  opens offline with your last data.
+- A new deploy reloads the app on its own once you're not typing or inside
+  a dialog.
+
+---
+
+## Security highlights
+
+- Per-user data isolation through RLS, verified by rolled-back DB tests.
+- Encryption at rest with a key in Vault, and no direct writes to encrypted
+  columns, so the database can't be used as a decryption oracle.
+- No secrets in the repo. Client config is injected at build time. Server
+  secrets (encryption keys, cron secret, VAPID keys, project URL) live in
+  Supabase Vault or function secrets.
+- Invite emails are built server-side from the token, and all HTML in emails
+  and reports is escaped. Push endpoints are restricted to known browser push
+  services.
+- HTTP security headers are set in `vercel.json`: HSTS, `nosniff`,
+  `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and a
+  Content-Security-Policy that is currently in Report-Only mode.
+- Receipt OCR runs on the device, and its engine is served from our own
+  origin, not a CDN.
+- `package-lock.json` is committed, and CI audits production dependencies.
+
+---
+
+## Testing
+
+| Layer | How | What |
+| --- | --- | --- |
+| Unit | `npm test` (Node's built-in `node:test`, no framework) | Every pure module: split maths, currency and FX, dates, budgets, recurring, import parsing, backup validation and crypto, offline cache rules, edge-function shared helpers |
+| Time zones | `npm test` runs the unit suite in UTC **and** `Europe/Nicosia` | Catches local-vs-UTC date bugs that only show up east of UTC |
+| Database | `supabase/tests/db_tests.sql` | RLS isolation, definer functions, triggers, rate limits and encryption guards. Each test creates its own throwaway users in a subtransaction and rolls back, so it's safe on a live project. It must end with `ALL DATABASE TESTS PASSED` |
+| Lint | `npm run lint` (ESLint 9 flat config) | React, hooks, a11y, unused imports, and the `shared/` → `features/` import ban |
+| CI | `.github/workflows/test.yml` | `npm ci` → `npm test` (both time zones) → lint → build → `npm audit` (report) |
+| Manual | [`docs/TESTING.md`](docs/TESTING.md) | End-to-end checklist for flows that need a browser and two accounts |
+
+---
+
+## Local setup
+
+Requirements: Node 22 and a Supabase project (the free tier is enough).
+
+```bash
+npm ci
+cp .env.example .env.local   # fill in your TEST project's URL + anon key
+npm run dev
+```
+
+Environment variables (build-time, public by design):
+
+| Variable | Purpose |
+| --- | --- |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Supabase project URL and anon (publishable) key |
+| `VITE_SUPABASE_URL_DEV` / `VITE_SUPABASE_ANON_KEY_DEV` | The same for the DEV Vercel environment. The client uses whichever pair is set |
+
+The anon key is safe in the browser because RLS protects the data. Never put
+the service-role key in a `VITE_` variable.
+
+Scripts: `npm run dev` · `npm test` · `npm run lint` (`lint:strict` fails on
+warnings too) · `npm run build` · `npm run preview`.
+
+### Back end
+
+1. **Apply the migrations one at a time, in order.** Run each file in
+   `supabase/migrations/` (for example with the Supabase MCP `apply_migration`
+   under its `NNNN_name`, or in the SQL editor), then check that it's recorded
+   before moving to the next.
+   **Don't use `supabase db push`:** the hosted projects' migration history
+   uses timestamp versions, so a push would try to re-apply everything.
+2. **Create the Vault secrets** the migrations read: `app_enc_key`,
+   `payment_enc_key`, `project_url`, `reminder_cron_secret`, and the VAPID
+   keys used for web push.
+3. **Deploy the Edge Functions right after the migrations,** because the
+   functions and the schema change together. Use the `verify_jwt` settings in
+   `supabase/config.toml`: on for the user-called functions, off for
+   `notify-user` and `send-reminders`, which check the cron secret instead.
+   Function secrets: `RESEND_API_KEY` (email is dormant without it),
+   `INVITE_FROM`, `APP_ORIGIN` and `CORS_ORIGINS`.
+4. **Configure Auth:** enable Email, Google and passkeys, and turn on
+   leaked-password protection.
+5. **Run `supabase/tests/db_tests.sql`** against the project and confirm it
+   ends with `ALL DATABASE TESTS PASSED`.
+
+There are two projects: TEST (dev.budgeer.com) and PROD (budgeer.com). Every
+schema change and function deploy goes to TEST first, is verified there, and
+then goes to PROD.
+
+### Deploy
+
+Vercel builds the Vite app (`npm run build` → `dist/`) and serves it with the
+SPA rewrite and security headers in `vercel.json`. The `develop` branch
+deploys to dev.budgeer.com and `main` deploys to budgeer.com. Installed PWAs
+pick up the new build on their own.

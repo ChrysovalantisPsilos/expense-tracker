@@ -9,7 +9,7 @@ import {
 import { listRecurring, saveRecurring } from '../recurring/recurring.js'
 import { listBudgets, budgetPeriods, saveBudget } from '../budgets/budgets.js'
 import { listAccounts, saveAccount, listGoals, saveGoal } from '../insights/insights.js'
-import { getProfile, updateProfile, getMyPaymentInfo, savePaymentInfo } from '../profile/profile.js'
+import { getProfile, updateProfile, getMyPaymentInfo, savePaymentInfo } from '../../shared/lib/profile.js'
 import { listGroups, getGroup } from '../groups/groups.js'
 import { listComments, commentCounts } from '../groups/comments.js'
 import { listRules, saveRule, importTransactions } from '../import/importExpenses.js'

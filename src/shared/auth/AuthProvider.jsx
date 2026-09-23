@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
 
 const AuthContext = createContext(null)
@@ -116,6 +116,20 @@ export function AuthProvider({ children }) {
     [],
   )
 
+  // Change the password of a signed-in password user, re-verifying the
+  // current one first so a left-open session can't silently swap it. (A
+  // re-sign-in for the same user only re-issues a token; nobody is signed
+  // out.) Returns { error } with a user-facing message, or { error: null }.
+  // Server-side enforcement is Supabase Auth's "Secure password change".
+  const changePassword = useCallback(async (current, next) => {
+    const email = session?.user?.email
+    if (!email) return { error: new Error('You need to be signed in.') }
+    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: current })
+    if (authErr) return { error: new Error('Current password is incorrect.') }
+    const { error } = await supabase.auth.updateUser({ password: next })
+    return { error: error ?? null }
+  }, [session?.user?.email])
+
   const clearRecovery = useCallback(() => setRecovering(false), [])
 
   // Passkeys (WebAuthn). These no-op-guard so callers can rely on them even if
@@ -128,7 +142,10 @@ export function AuthProvider({ children }) {
     [],
   )
 
-  const value = {
+  // Memoised so consumers only re-render when something they read changes.
+  // (A token refresh still yields a new session object; data hooks key on
+  // user.id, so it doesn't refetch anything.)
+  const value = useMemo(() => ({
     session,
     user: session?.user ?? null,
     loading,
@@ -140,12 +157,17 @@ export function AuthProvider({ children }) {
     resendConfirmation,
     sendPasswordReset,
     updatePassword,
+    changePassword,
     clearRecovery,
     signInWithPasskey,
     registerPasskey,
     listPasskeys,
     deletePasskey,
-  }
+  }), [
+    session, loading, recovering, signInWithPassword, signUp, signInWithProvider, signOut,
+    resendConfirmation, sendPasswordReset, updatePassword, changePassword, clearRecovery,
+    signInWithPasskey, registerPasskey, listPasskeys, deletePasskey,
+  ])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

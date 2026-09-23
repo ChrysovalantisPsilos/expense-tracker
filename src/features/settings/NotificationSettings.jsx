@@ -4,7 +4,7 @@ import {
 } from '@chakra-ui/react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { enablePush } from '../../shared/lib/push.js'
-import { getProfile, updateProfile } from '../profile/profile.js'
+import { getProfile, updateProfile } from '../../shared/lib/profile.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
 

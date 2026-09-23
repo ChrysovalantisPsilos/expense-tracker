@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  isoDate, monthRange, monthTitle, lastMonths, shortDate, shortDateTime,
+  isoDate, today, monthRange, monthTitle, lastMonths, shortDate, shortDateTime,
 } from '../src/shared/lib/dates.js'
 
 test('isoDate: YYYY-MM-DD', () => {
@@ -10,8 +10,42 @@ test('isoDate: YYYY-MM-DD', () => {
 
 test('monthRange spans first to last day', () => {
   const { from, to } = monthRange(new Date(2026, 1, 10)) // February 2026
-  assert.equal(from.slice(0, 7), '2026-02')
-  assert.ok(to === '2026-02-28' || to === '2026-02-27') // TZ-safe: toISOString may shift a day
+  assert.equal(from, '2026-02-01')
+  assert.equal(to, '2026-02-28')
+})
+
+// The suite also runs under TZ=Europe/Nicosia (npm test), but this pins the
+// behaviour in any single run: switch the process zone and check that local
+// dates never shift. Node re-reads process.env.TZ on assignment.
+const ZONES = ['UTC', 'Europe/Nicosia', 'Pacific/Kiritimati', 'America/Los_Angeles', 'Asia/Tokyo']
+function inZones(fn) {
+  const saved = process.env.TZ
+  try {
+    for (const tz of ZONES) { process.env.TZ = tz; fn(tz) }
+  } finally {
+    if (saved === undefined) delete process.env.TZ
+    else process.env.TZ = saved
+  }
+}
+
+test('monthRange/isoDate/today use the local calendar in every timezone', () => {
+  inZones((tz) => {
+    assert.deepEqual(monthRange(new Date(2026, 8, 15)), { from: '2026-09-01', to: '2026-09-30' }, tz)
+    assert.deepEqual(monthRange(new Date(2026, 8, 1, 0, 5)), { from: '2026-09-01', to: '2026-09-30' }, tz)
+    assert.equal(isoDate(new Date(2026, 8, 1, 0, 30)), '2026-09-01', tz)
+    assert.equal(isoDate(new Date(2026, 11, 31, 23, 59)), '2026-12-31', tz)
+    const n = new Date()
+    assert.equal(today(), `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`, tz)
+    const months = lastMonths(2, new Date(2026, 9, 1))
+    assert.deepEqual(months.map((m) => [m.key, m.from, m.to]),
+      [['2026-09', '2026-09-01', '2026-09-30'], ['2026-10', '2026-10-01', '2026-10-31']], tz)
+  })
+})
+
+test('the suite really is exercising a non-UTC zone when TZ says so', () => {
+  if (process.env.TZ === 'Europe/Nicosia') {
+    assert.notEqual(new Date(2026, 8, 1).getTimezoneOffset(), 0)
+  }
 })
 
 test('lastMonths: n entries, oldest first, contiguous keys', () => {

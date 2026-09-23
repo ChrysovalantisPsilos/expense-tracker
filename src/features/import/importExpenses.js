@@ -1,9 +1,10 @@
 // Import personal transactions from an Excel/CSV file. Parsing + normalisation
 // live here; the page just drives the wizard. Columns are auto-detected and the
 // user confirms/overrides the mapping before importing.
-import * as XLSX from 'xlsx'
 import { supabase } from '../../shared/lib/supabase.js'
-import { getRate } from '../../shared/lib/currency.js'
+import { rateOnOrBefore } from '../../shared/lib/currency.js'
+import { getRateSeries } from '../../shared/lib/fx.js'
+import { importFileProblem, rowsToObjects } from './sheetParse.js'
 
 export const IMPORT_FIELDS = [
   { key: 'date', label: 'Date', required: true },
@@ -23,48 +24,25 @@ const GUESS = {
   type: ['type', 'kind', 'direction'],
 }
 
-const EXPORT_HINT =
-  'Re-export it as CSV (in Numbers/Excel: File → Export To → CSV) and upload that.'
-
-// Parse the first sheet into { headers, rows } (rows keyed by header).
-// Hardened against files SheetJS chokes on — notably Apple Numbers exports,
-// which can embed metadata (e.g. hyperlink cells) that crashes the default
-// reader with a cryptic internal error. We retry with the extra parsing
-// switched off, and on real failure throw a clear, actionable message instead.
+// Parse the first sheet into { headers, rows } (rows keyed by header). The
+// file is size-checked first, then parsed by SheetJS in a Web Worker (loaded
+// only now, so it isn't in the main bundle and a heavy file can't freeze the
+// page). Errors come back as clear, actionable messages.
 export async function parseWorkbook(file) {
-  const name = (file.name || '').toLowerCase()
-  // .numbers is an Apple package format SheetJS cannot read at all.
-  if (name.endsWith('.numbers')) {
-    throw new Error(`Numbers documents can’t be imported directly. ${EXPORT_HINT}`)
-  }
-
+  const problem = importFileProblem(file)
+  if (problem) throw new Error(problem)
   const buf = await file.arrayBuffer()
-
-  let wb
+  const worker = new Worker(new URL('./sheetWorker.js', import.meta.url), { type: 'module' })
   try {
-    wb = XLSX.read(buf, { cellDates: true })
-  } catch {
-    try {
-      // Drop styles/HTML/number-format/VBA parsing — smaller surface, avoids
-      // several export-quirk crashes.
-      wb = XLSX.read(buf, {
-        cellDates: true, cellStyles: false, cellHTML: false, cellNF: false, bookVBA: false,
-      })
-    } catch {
-      throw new Error(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
-    }
-  }
-
-  const ws = wb.Sheets[wb.SheetNames[0]]
-  if (!ws) return { headers: [], rows: [] }
-
-  try {
-    const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false })
-    const headers = (aoa[0] || []).map((h) => String(h ?? '').trim())
-    const rows = XLSX.utils.sheet_to_json(ws, { defval: null })
-    return { headers, rows }
-  } catch {
-    throw new Error(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
+    const res = await new Promise((resolve, reject) => {
+      worker.onmessage = (e) => resolve(e.data)
+      worker.onerror = () => reject(new Error('The spreadsheet reader failed to start. Reload the page and try again.'))
+      worker.postMessage(buf, [buf])
+    })
+    if (!res.ok) throw new Error(res.message)
+    return { headers: res.headers, rows: rowsToObjects(res.headers, res.rows) }
+  } finally {
+    worker.terminate()
   }
 }
 
@@ -106,13 +84,15 @@ export async function saveRule(userId, pattern, categoryId) {
 //   are expenses and positive rows income (the near-universal export format).
 // - Rules: uncategorized rows are matched against the user's saved
 //   "contains → category" rules (longest pattern wins).
-export async function buildTransactions({ rows, mapping, userId, baseCurrency, categories, rules = [] }) {
+// - Currency: each foreign row is converted at the ECB rate for ITS date (one
+//   range request per currency). Where no rate exists (offline, pre-1999, API
+//   down) `manualRates[currency]` fills in; without one the row is listed in
+//   `missingRates` ([{ currency, count }]) and the caller must ask the user —
+//   a foreign amount is never booked at 1:1.
+export async function buildTransactions({
+  rows, mapping, userId, baseCurrency, categories, rules = [], manualRates = {},
+}) {
   const catByName = new Map((categories || []).map((c) => [c.name.toLowerCase(), c.id]))
-  const rateCache = new Map()
-  const rateFor = async (cur) => {
-    if (!rateCache.has(cur)) rateCache.set(cur, await getRate(cur, baseCurrency))
-    return rateCache.get(cur)
-  }
   const sortedRules = [...rules].sort((a, b) => b.pattern.length - a.pattern.length)
   const ruleFor = (desc) => {
     if (!desc) return null
@@ -124,14 +104,22 @@ export async function buildTransactions({ rows, mapping, userId, baseCurrency, c
   const signed = !mapping.type && rows.some((r) => parseAmount(r[mapping.amount]) < 0)
     && rows.some((r) => parseAmount(r[mapping.amount]) > 0)
 
+  const drafts = rows.map((r) => rowToDraft(r, mapping, baseCurrency, { signed }))
+  const seriesByCurrency = await fetchSeries(drafts, baseCurrency)
+  const missing = new Map() // currency -> rows without a rate
+
   const valid = []
   const errors = []
   const seen = new Map() // identity key -> occurrence count
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i]
-    const draft = rowToDraft(r, mapping, baseCurrency, { signed })
+    const draft = drafts[i]
     if (draft.error) { errors.push({ row: i + 2, reason: draft.error }); continue }
     const { spent_at, kind, currency, amount_minor, description } = draft
+
+    const exchange_rate = currency === baseCurrency ? 1
+      : rateOnOrBefore(seriesByCurrency.get(currency) ?? [], spent_at)?.rate ?? manualRates[currency] ?? null
+    if (!exchange_rate) { missing.set(currency, (missing.get(currency) ?? 0) + 1); continue }
 
     const catName = mapping.category ? String(r[mapping.category] ?? '').toLowerCase().trim() : ''
     const category_id = (catName ? (catByName.get(catName) ?? null) : null) ?? ruleFor(description)
@@ -146,13 +134,29 @@ export async function buildTransactions({ rows, mapping, userId, baseCurrency, c
       category_id,
       amount_minor,
       currency,
-      exchange_rate: await rateFor(currency),
+      exchange_rate,
       description,
       spent_at,
       client_uuid: await deterministicUuid(['import', userId, key, occurrence]),
     })
   }
-  return { valid, errors }
+  const missingRates = [...missing].map(([currency, count]) => ({ currency, count }))
+  return { valid, errors, missingRates }
+}
+
+// One ECB series per foreign currency, spanning that currency's row dates.
+async function fetchSeries(drafts, baseCurrency) {
+  const spans = new Map() // currency -> [first, last]
+  for (const d of drafts) {
+    if (d.error || d.currency === baseCurrency) continue
+    const [a, b] = spans.get(d.currency) ?? [d.spent_at, d.spent_at]
+    spans.set(d.currency, [d.spent_at < a ? d.spent_at : a, d.spent_at > b ? d.spent_at : b])
+  }
+  const out = new Map()
+  await Promise.all([...spans].map(async ([cur, [first, last]]) => {
+    out.set(cur, await getRateSeries(cur, baseCurrency, first, last))
+  }))
+  return out
 }
 
 // Insert in chunks through the encrypting RPC, skipping rows whose

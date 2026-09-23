@@ -4,7 +4,7 @@ import {
   Center, Spinner, Text,
 } from '@chakra-ui/react'
 import { Landmark } from 'lucide-react'
-import { getMyPaymentInfo, savePaymentInfo } from '../profile/profile.js'
+import { getMyPaymentInfo, savePaymentInfo } from '../../shared/lib/profile.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 
 // "Getting paid": the IBAN / Revolut tag friends see when settling up.

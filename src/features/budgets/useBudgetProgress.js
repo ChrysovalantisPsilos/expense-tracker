@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useMonthBudgets } from './budgets.js'
 import { useTransactions } from '../transactions/useData.js'
 import { monthRange } from '../../shared/lib/dates.js'
-import { useProfile } from '../../shared/lib/useProfile.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { budgetTone } from './budgetMath.js'
 
@@ -13,8 +13,10 @@ export function useBudgetProgress() {
   const { baseCurrency } = useProfile()
   const { from, to } = monthRange()
 
-  const { rows: budgets, loading: bLoading } = useMonthBudgets()
-  const { rows: txns, loading: tLoading } = useTransactions({ kind: 'expense', from, to })
+  const b = useMonthBudgets()
+  const t = useTransactions({ kind: 'expense', from, to })
+  const budgets = b.rows
+  const txns = t.rows
 
   const items = useMemo(() => {
     const spentByCat = sumToBaseByKey(txns, baseCurrency, (r) => r.category_id ?? null)
@@ -35,5 +37,6 @@ export function useBudgetProgress() {
       .sort((a, b) => (b.spent / (b.limit || 1)) - (a.spent / (a.limit || 1)))
   }, [budgets, txns, baseCurrency])
 
-  return { items, loading: bLoading || tLoading }
+  const reload = () => Promise.all([b.reload(), t.reload()])
+  return { items, loading: b.loading || t.loading, error: b.error ?? t.error, reload }
 }

@@ -1,7 +1,12 @@
-// Date helpers. All app dates are YYYY-MM-DD strings.
-// (Uses toISOString like the original call sites, so behaviour is unchanged.)
+// Date helpers. All app dates are YYYY-MM-DD strings in the user's LOCAL
+// calendar. Never format a local date with toISOString(): that converts to UTC,
+// which is the previous day east of UTC (e.g. local midnight 1 Sep in Cyprus is
+// 31 Aug 21:00 UTC), shifting month ranges and budget keys by a day.
 
-export const isoDate = (d = new Date()) => d.toISOString().slice(0, 10)
+const pad2 = (n) => String(n).padStart(2, '0')
+
+export const isoDate = (d = new Date()) =>
+  `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
 
 export const today = () => isoDate(new Date())
 
@@ -24,7 +29,7 @@ export function lastMonths(n, d = new Date()) {
     const start = new Date(d.getFullYear(), d.getMonth() - i, 1)
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 0)
     out.push({
-      key: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`,
+      key: isoDate(start).slice(0, 7),
       label: start.toLocaleDateString('en-US', { month: 'short' }),
       from: isoDate(start), to: isoDate(end),
     })

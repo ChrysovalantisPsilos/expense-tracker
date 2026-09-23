@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Stack, HStack, Text, Spacer, Button, Center,
@@ -8,7 +8,8 @@ import {
 } from '@chakra-ui/react'
 import { ArrowRightLeft, HandCoins, FileDown, MessageSquare, Receipt } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { useLiveRefetch } from '../../shared/lib/realtime.js'
+import { useLiveQuery } from '../../shared/lib/db.js'
+import QueryError from '../../shared/ui/QueryError.jsx'
 import {
   getGroup, createInviteLink, removeMember, deleteGroup, listAuditLog, downloadGroupReport,
 } from './groups.js'
@@ -41,8 +42,25 @@ export default function GroupDetail() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const toast = useToast()
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Live: when anyone in the group adds/edits expenses, settles up,
+  // joins/leaves, or comments, refetch — no manual refresh. The hook also
+  // catches up after reconnects and when the tab becomes visible again.
+  const { data: bundle, loading, error, reload: load, mutate } = useLiveQuery(async () => {
+    const [group, auditLog, counts] = await Promise.all([getGroup(id), listAuditLog(id), commentCounts(id)])
+    return { group, auditLog, counts }
+  }, {
+    key: `group:${id}`,
+    specs: [
+      { table: 'group_expenses', filter: `group_id=eq.${id}` },
+      { table: 'settlements', filter: `group_id=eq.${id}` },
+      { table: 'group_members', filter: `group_id=eq.${id}` },
+      { table: 'group_comments', filter: `group_id=eq.${id}` },
+    ],
+    deps: [id],
+  })
+  const data = bundle?.group ?? null
+  const auditLog = bundle?.auditLog ?? []
+  const counts = bundle?.counts ?? new Map()
   const expenseModal = useDisclosure()
   const settleModal = useDisclosure()
   const inviteModal = useDisclosure()
@@ -53,9 +71,7 @@ export default function GroupDetail() {
   const [removeTarget, setRemoveTarget] = useState(null)
   const [actionBusy, setActionBusy] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
-  const [auditLog, setAuditLog] = useState([])
   const [reportBusy, setReportBusy] = useState(false)
-  const [counts, setCounts] = useState(new Map())
   const [thread, setThread] = useState(null) // { type, id, label }
   const [tab, setTab] = useState('expenses') // expenses | settlements | activity
   const [leaveSilently, setLeaveSilently] = useState(false)
@@ -64,19 +80,11 @@ export default function GroupDetail() {
   function openEdit(exp) { setEditingExpense(exp); expenseModal.onOpen() }
   function closeExpense() { expenseModal.onClose(); setEditingExpense(null) }
 
-  async function load() {
-    try {
-      const [g, al, cc] = await Promise.all([getGroup(id), listAuditLog(id), commentCounts(id)])
-      setData(g)
-      setAuditLog(al)
-      setCounts(cc)
-    }
-    catch (e) { toast({ title: e.message, status: 'error' }) }
-    finally { setLoading(false) }
-  }
-
   async function refreshCounts() {
-    try { setCounts(await commentCounts(id)) } catch { /* ignore */ }
+    try {
+      const cc = await commentCounts(id)
+      mutate((b) => (b ? { ...b, counts: cc } : b))
+    } catch { /* ignore */ }
   }
 
   async function downloadReport() {
@@ -86,17 +94,6 @@ export default function GroupDetail() {
     } catch (e) { toast({ title: 'Couldn’t generate the report', description: e.message, status: 'error' }) }
     finally { setReportBusy(false) }
   }
-  useEffect(() => { load() /* eslint-disable-next-line */ }, [id])
-
-  // Live updates: when anyone in the group adds/edits expenses, settles up,
-  // joins/leaves, or comments, refetch — no manual refresh. The hook also
-  // catches up after reconnects and when the tab becomes visible again.
-  useLiveRefetch(`group:${id}`, [
-    { table: 'group_expenses', filter: `group_id=eq.${id}` },
-    { table: 'settlements', filter: `group_id=eq.${id}` },
-    { table: 'group_members', filter: `group_id=eq.${id}` },
-    { table: 'group_comments', filter: `group_id=eq.${id}` },
-  ], () => { load(); refreshCounts() })
 
   const balances = data?.balances ?? new Map()
   const nameOf = (mid) => memberName(data?.members, mid)
@@ -145,6 +142,7 @@ export default function GroupDetail() {
     finally { setActionBusy(false) }
   }
 
+  if (error) return <QueryError error={error} onRetry={load} what="this group" py={20} />
   if (loading) return <Center py={20}><Spinner color="brand.500" /></Center>
   if (!data) return <Text color="text.muted">Group not found.</Text>
 

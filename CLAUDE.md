@@ -42,13 +42,15 @@ aspirations — if a change would break one, fix the cause, don't paper over it.
 | Concern | Where |
 | --- | --- |
 | App shell, routing, providers | `src/app/`, `src/main.jsx` (zero data access) |
-| Cross-feature utilities | `src/shared/lib/` (data: `db.js`, `supabase.js`; pure: `currency.js`, `dates.js`, `moneyParse.js`, `paginate.js`) |
-| Cross-feature UI | `src/shared/ui/` |
+| Cross-feature utilities | `src/shared/lib/` (data: `db.js`, `supabase.js`, `realtime.js`, `fx.js`, `profile.js`, `push.js`; pure: `currency.js`, `dates.js`, `moneyParse.js`, `paginate.js`, `offlineReads.js`, `txnRollup.js`) |
+| Cross-feature UI | `src/shared/ui/` (design-system kit in `src/shared/ui/kit/`) |
 | Auth context | `src/shared/auth/` |
-| Features | `src/features/{auth,budgets,dashboard,groups,import,insights,landing,notifications,onboarding,privacy,profile,recurring,settings,transactions}/` |
+| Features | `src/features/{auth,backup,budgets,dashboard,groups,import,insights,landing,notifications,onboarding,privacy,recurring,settings,transactions}/` |
 | DB schema & policies | `supabase/migrations/NNNN_*.sql` (append-only, ordered) |
 | Server logic | `supabase/functions/*` (+ shared code in `functions/_shared/`) |
 | DB config (JWT verify per function) | `supabase/config.toml` |
+| Service worker (precache, offline reads, push) | `src/sw.js` |
+| Lint / CI | `eslint.config.js`, `.github/workflows/test.yml` |
 
 Each feature folder holds its components (`*.jsx`), its data module (`*.js`
 wrapping Supabase calls), and its pure math module where applicable.

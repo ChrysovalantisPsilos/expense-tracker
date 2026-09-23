@@ -6,13 +6,14 @@ import { Target, CalendarDays } from 'lucide-react'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useCategories, monthRange } from '../transactions/useData.js'
-import { useProfile } from '../../shared/lib/useProfile.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { toMinor } from '../../shared/lib/currency.js'
 import { monthTitle } from '../../shared/lib/dates.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import { saveBudget } from './budgets.js'
 import { useBudgetProgress } from './useBudgetProgress.js'
 import BudgetRow from './BudgetRow.jsx'
+import QueryError from '../../shared/ui/QueryError.jsx'
 
 export default function Budgets() {
   const { baseCurrency } = useProfile()
@@ -20,7 +21,7 @@ export default function Budgets() {
   const { from: periodStart } = monthRange()
   // Progress (budgets + their spend) is the single source, shared with the
   // dashboard card; the page only owns the "set a cap" form.
-  const { items, loading } = useBudgetProgress()
+  const { items, loading, error, reload } = useBudgetProgress()
   const [catId, setCatId] = useState('')
   const [amount, setAmount] = useState('')
   const toast = useToast()
@@ -66,7 +67,7 @@ export default function Budgets() {
       </Panel>
 
       <Panel icon={CalendarDays} title="This month">
-        {loading ? (
+        {error ? <QueryError error={error} onRetry={reload} what="budgets" /> : loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : items.length === 0 ? (
           <Text color="text.muted" fontSize="sm">No budgets set for this month yet.</Text>

@@ -22,7 +22,8 @@ import {
 } from './txnFilter.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { formatMoney } from '../../shared/lib/currency.js'
-import { useProfile } from '../../shared/lib/useProfile.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
+import QueryError from '../../shared/ui/QueryError.jsx'
 
 const TYPES = [['expense', 'Expenses'], ['income', 'Income'], ['all', 'All']]
 const KINDS = [['expense', 'Expense'], ['income', 'Income']]
@@ -62,7 +63,7 @@ export default function LedgerPage() {
 
   const searching = isFiltering(text, filters)
   const month = monthRange()
-  const { rows, loading, reload, mutate } = useTransactions(searching ? {
+  const { rows, loading, error, reload, mutate } = useTransactions(searching ? {
     kind,
     from: filters.from || undefined,
     to: filters.to || undefined,
@@ -188,7 +189,7 @@ export default function LedgerPage() {
         ) : (
           <SectionLabel mb={2}>This month</SectionLabel>
         )}
-        {loading ? (
+        {error ? <QueryError error={error} onRetry={reload} what="your transactions" /> : loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : shown.length === 0 ? (
           <Text color="text.muted" fontSize="sm">

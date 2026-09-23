@@ -26,7 +26,7 @@ import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { useTransactions } from '../transactions/useData.js'
 import { lastMonths, shortDate } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { useProfile } from '../../shared/lib/useProfile.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, toMinor, fromMinor, minorFactor } from '../../shared/lib/currency.js'
 import {
   useAccounts, saveAccount, deleteAccount,
@@ -36,6 +36,7 @@ import {
   buildTrend, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
+import QueryError from '../../shared/ui/QueryError.jsx'
 
 // How many foreign-currency rows "Spending abroad" lists (the total covers all).
 const ABROAD_ROWS = 5
@@ -43,7 +44,8 @@ const ABROAD_ROWS = 5
 export default function Insights() {
   const { baseCurrency = 'EUR' } = useProfile()
   const months = useMemo(() => lastMonths(6), [])
-  const { rows, loading } = useTransactions({ from: months[0].from, to: months[months.length - 1].to })
+  const { rows, loading, error, reload } = useTransactions({ from: months[0].from, to: months[months.length - 1].to })
+  const failed = error ? <QueryError error={error} onRetry={reload} what="your transactions" /> : null
   const thisMonth = months[months.length - 1].key
 
   // Trend values are major units (chart axis); `money` converts back to minor.
@@ -56,9 +58,9 @@ export default function Insights() {
   return (
     <Stack spacing={5}>
       <PageHeader title="Insights" />
-      <SpendingCard loading={loading} shares={shares} trend={trend} money={money} />
+      <SpendingCard loading={loading} failed={failed} shares={shares} trend={trend} money={money} />
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}
-      <IncomeCard loading={loading} trend={trend} money={money} />
+      <IncomeCard loading={loading} failed={failed} trend={trend} money={money} />
       <NetWorthCard baseCurrency={baseCurrency} />
       <GoalsCard baseCurrency={baseCurrency} />
       <ReportsCard />
@@ -70,11 +72,11 @@ const Loading = () => <Center py={10}><Spinner color="brand.500" /></Center>
 
 // ── Where your money went ───────────────────────────────────────────────────
 // This month's spending split by category, then six months of spending.
-function SpendingCard({ loading, shares, trend, money }) {
+function SpendingCard({ loading, failed, shares, trend, money }) {
   const latest = trend[trend.length - 1]
   return (
     <Panel title="Where your money went" subtitle="This month">
-      {loading ? <Loading /> : (
+      {failed ? failed : loading ? <Loading /> : (
         <Stack spacing={5}>
           {shares.length === 0 ? (
             <Text color="text.muted" fontSize="sm">No spending yet this month.</Text>
@@ -121,14 +123,14 @@ function AbroadCard({ abroad, baseCurrency }) {
 }
 
 // ── Income vs expenses ──────────────────────────────────────────────────────
-function IncomeCard({ loading, trend, money }) {
+function IncomeCard({ loading, failed, trend, money }) {
   const chart = useChartTheme()
   const delta = spendDelta(trend)
   const latest = trend[trend.length - 1]
   const net = signedAmount(latest.income - latest.expense, money)
   return (
     <Panel title="Income vs expenses" action={delta != null && <SpendDelta delta={delta} />}>
-      {loading ? <Loading /> : (
+      {failed ? failed : loading ? <Loading /> : (
         <Stack spacing={5}>
           <Box>
             <SectionLabel mb={3}>This month</SectionLabel>
@@ -179,7 +181,7 @@ function SpendDelta({ delta }) {
 
 // ── Net worth ───────────────────────────────────────────────────────────────
 function NetWorthCard({ baseCurrency }) {
-  const { accounts, loading, reload } = useAccounts()
+  const { accounts, loading, error, reload } = useAccounts()
   const toast = useToast()
   const modal = useDisclosure()
   const [editing, setEditing] = useState(null)
@@ -196,7 +198,7 @@ function NetWorthCard({ baseCurrency }) {
       <Button size="xs" leftIcon={<Plus size={14} />}
         onClick={() => { setEditing(null); modal.onOpen() }}>Account</Button>
     }>
-      {loading ? <Loading /> : (
+      {error ? <QueryError error={error} onRetry={reload} what="your accounts" /> : loading ? <Loading /> : (
         <Stack spacing={4}>
           <BalanceGrid>
             <BalanceTile label="Assets" value={formatMoney(assets, baseCurrency)} tone="positive" />
@@ -298,7 +300,7 @@ function AccountModal({ account, baseCurrency, onClose, onSaved }) {
 
 // ── Goals ───────────────────────────────────────────────────────────────────
 function GoalsCard({ baseCurrency }) {
-  const { goals, loading, reload } = useGoals()
+  const { goals, loading, error, reload } = useGoals()
   const toast = useToast()
   const modal = useDisclosure()
   const [editing, setEditing] = useState(null)
@@ -320,7 +322,7 @@ function GoalsCard({ baseCurrency }) {
       <Button size="xs" leftIcon={<Plus size={14} />}
         onClick={() => { setEditing(null); modal.onOpen() }}>Goal</Button>
     }>
-      {loading ? <Loading /> : goals.length === 0 ? (
+      {error ? <QueryError error={error} onRetry={reload} what="your goals" /> : loading ? <Loading /> : goals.length === 0 ? (
         <Text color="text.muted" fontSize="sm">No goals yet — set one to start saving toward it.</Text>
       ) : (
         <Stack spacing={5}>

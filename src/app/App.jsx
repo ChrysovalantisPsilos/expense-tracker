@@ -29,8 +29,8 @@ import YourData from '../features/backup/YourData.jsx'
 import Privacy from '../features/privacy/Privacy.jsx'
 import NotificationPrompt from '../features/notifications/NotificationPrompt.jsx'
 import OnboardingWizard from '../features/onboarding/OnboardingWizard.jsx'
-import { useProfile } from '../shared/lib/useProfile.js'
-import { ensureSeeded } from '../features/transactions/useData.js'
+import { useProfile } from '../shared/lib/ProfileProvider.jsx'
+import { useEnsureDefaultCategories } from '../features/transactions/useData.js'
 import { STORAGE_KEYS } from '../shared/lib/keys.js'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
@@ -68,9 +68,9 @@ function AuthedRoutes() {
   // until onboarding is done to avoid stacking.
   const needsOnboarding = !profileLoading && profile && !profile.onboarded_at
 
-  // First-login default-category seed. Lives here (app bootstrap) rather than
-  // in useProfile so the shared hook never has to reach into a feature.
-  useEffect(() => { ensureSeeded().catch(() => {}) }, [])
+  // First-login default-category seed (a data hook owned by transactions, so
+  // the shared profile code never reaches into a feature).
+  useEnsureDefaultCategories()
 
   useEffect(() => {
     const token = localStorage.getItem(PENDING_INVITE)

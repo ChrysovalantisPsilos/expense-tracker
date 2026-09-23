@@ -1,18 +1,36 @@
-# Budge — Testing Guide
+# Budgeer — Testing Guide
 
-Three layers:
+Four layers:
 
-1. **Unit tests** (`npm test`) — pure logic: split math, money parsing,
-   currency conversion, recurring projections, dashboard periods, statement
-   import. Zero dependencies (Node's built-in test runner); CI runs them on
-   every push (`.github/workflows/test.yml`).
-2. **Database tests** (`supabase/tests/db_tests.sql`) — triggers, RLS,
-   notifications, guards. Paste into the Supabase SQL editor or run
-   `psql "$DATABASE_URL" -f supabase/tests/db_tests.sql`. Every test rolls
-   itself back — safe against the live project.
-3. **Manual test plan** (below) — end-to-end flows a human should click
+1. **Unit tests** (`npm test`): pure logic, including split maths, money
+   parsing, currency conversion and FX parsing, dates, recurring projections,
+   dashboard periods, statement import, backup validation and crypto, offline
+   cache rules, and the edge-function shared helpers. They use Node's built-in
+   test runner, with no framework. `npm test` runs the suite twice, in
+   `TZ=UTC` and in `TZ=Europe/Nicosia` (`test:utc` / `test:tz`), because
+   date bugs hide in UTC.
+2. **Lint** (`npm run lint`, ESLint 9, `eslint.config.js`): React, hooks,
+   a11y, unused imports (an error), and the ban on `shared/` importing from
+   `features/`. It fails on errors and lets warnings through;
+   `npm run lint:strict` also fails on warnings, and is the target once the
+   backlog is clear.
+3. **Database tests** (`supabase/tests/db_tests.sql`): triggers, RLS,
+   definer functions, rate limits, encryption guards and notifications.
+   Paste the file into the Supabase SQL editor, or run
+   `psql "$DATABASE_URL" -f supabase/tests/db_tests.sql`.
+   - Every test creates its own throwaway users and rolls itself back. That
+     makes it safe on the live TEST or PROD project, including one with no
+     users.
+   - It must end with `ALL DATABASE TESTS PASSED`.
+   - Any schema or policy change adds a matching test in the same change.
+4. **Manual test plan** (below): end-to-end flows a person should click
    through after significant changes. Items marked **[2 accounts]** need a
-   second signed-in user (e.g. a private browser window).
+   second signed-in user, for example in a private browser window.
+
+**CI** (`.github/workflows/test.yml`) runs these steps on every push and PR:
+`npm ci`, then `npm test` (UTC and `Europe/Nicosia`), then lint, then
+`npm run build`, then `npm audit --omit=dev --audit-level=high`. The audit
+only reports for now and doesn't fail the build.
 
 ---
 
@@ -20,13 +38,13 @@ Three layers:
 
 **Personal finance**
 - Expenses & income with categories and notes; scanning a receipt pre-fills amount/date on-device (the photo is never uploaded or stored)
-- Multi-currency with the FX rate captured at entry (history never shifts)
+- Multi-currency: the ECB rate for the expense's date is shown before saving and captured with the entry, so history never shifts. A failed lookup asks for a rate and never saves 1:1
 - Budgets per category/month, with 80% / 100% push alerts
 - Recurring rules (subscriptions, salary) auto-logged nightly, with per-rule payment reminders
 - Savings goals, net worth (accounts), insights & 6-month trends
 - One Transactions page (Expenses / Income / All switch) with search & filters across all history
 - Smart statement import (CSV/XLSX): auto-mapped columns, duplicate-proof re-imports, learned merchant→category rules
-- Branded PDF statements (personal + per-group)
+- Branded PDF statements (personal + per-group) and an Excel export of your own statement
 - Backup & restore (Settings → Your data): one JSON file, optionally password-encrypted in the browser; restore merges and skips duplicates
 
 **Groups**
@@ -57,8 +75,10 @@ Three layers:
    gone; check the dashboard totals moved.
 4. **Receipt scan**: add expense → scan a photo → amount/date pre-fill; after
    saving, the row has no attachment (receipts are not stored).
-5. **Multi-currency**: add a USD expense with EUR base → dashboard converts
-   it using the captured rate.
+5. **Multi-currency**: add a USD expense dated last month with EUR as the
+   base currency. The form shows "$x ≈ €y @ rate on <date>" before you save,
+   and the dashboard uses that captured rate. Then block the FX host in
+   DevTools and try again: the form asks for a rate and won't save at 1:1.
 
 ### B. Dashboard
 6. Spent/Income/Net tiles include upcoming recurring ("incl. … upcoming"
@@ -120,44 +140,53 @@ Three layers:
     offline — reconnect to save".
 25. Appearance: Light/Dark/System each apply immediately; System follows the
     OS. The header moon/sun quick-toggle stays in sync with Settings → Appearance.
-26. Deploy update: with the app open and idle, a new deploy installs and the
+26. **Icons**: on iOS, use Share → Add to Home Screen. The icon is the
+    coral coin on cream (`apple-touch-icon.png`), not a screenshot. On
+    Android, the installed icon fills the adaptive mask without clipping
+    (`pwa-512.png`, maskable).
+27. **Security headers**: on a Vercel preview, open DevTools → Console, then
+    click through the landing page, login, Home, a group, Insights and a
+    receipt scan. There should be no `[Report Only] Refused to …` CSP
+    messages. Any new third-party host (API, image or font) must be added to
+    the CSP in `vercel.json`.
+28. Deploy update: with the app open and idle, a new deploy installs and the
     page reloads on its own within ~1 min (no button). While typing in a field
     or with a dialog open it waits, then updates once you finish or switch away.
 
 ### I. Reports
-27. Insights → Statement export: personal PDF downloads with brand styling.
+29. Insights → Statement export: personal PDF downloads with brand styling.
     Group page → Download statement: per-member balances match the app.
 
 ### J. Backup & restore **[2 accounts]**
-28. Settings → Your data → Export backup, once with no password and once
+30. Settings → Your data → Export backup, once with no password and once
     with a password → `budgeer-backup-YYYY-MM-DD.json` downloads. The plain
     file is readable JSON (`format: "budgeer-backup"`, `version: 1`); the
     protected one shows only `kdf`, `iv` and `ciphertext`.
-29. On a second (empty) account, Restore from backup → pick the protected
+31. On a second (empty) account, Restore from backup → pick the protected
     file → a wrong password says "Wrong password or damaged file." → the right
     one shows the contents → Restore → progress, then "Added N expenses, …".
     Expenses, income, categories, budgets, recurring entries, accounts and
     goals match the first account; group shares are plain expenses whose
     notes say "Group: <name>". No budget alerts fire for past months.
-30. Restore the same file again → "Nothing new to add"; no counts change.
-31. A damaged file (edit an amount to `-1`, or truncate it) is refused with a
+32. Restore the same file again → "Nothing new to add"; no counts change.
+33. A damaged file (edit an amount to `-1`, or truncate it) is refused with a
     clear message and nothing is saved. Name/currency/notification/payment
     settings already set on the account are kept and listed in the summary.
 
 ### K. Navigation
-32. Phone width: the bottom bar is exactly Home · Transactions · Groups ·
+34. Phone width: the bottom bar is exactly Home · Transactions · Groups ·
     Budgets · More; the top bar is bell, theme toggle, avatar (plus the
     offline badge when offline). Transactions stays lit on `/import`; More
     stays lit on Insights, Recurring and every Settings page; Groups stays lit
     inside a group.
-33. Desktop: the sidebar is Home, Transactions, Groups, Budgets, a divider,
+35. Desktop: the sidebar is Home, Transactions, Groups, Budgets, a divider,
     Insights, Recurring, then the user row (→ Settings), theme toggle and sign
     out. No More or Search entries.
-34. Transactions: the Expenses / Income / All switch and the search text are
+36. Transactions: the Expenses / Income / All switch and the search text are
     in the URL (`?type=…&q=…`) and survive a reload. With no search the list is
     this month; typing searches all history and shows the result count and
     net. The Filters button adds category, amount and date filters. "Add"
     follows the switch; under All the form asks Expense or Income first.
-35. Old links: `/expenses` → Transactions (Expenses), `/income` →
+37. Old links: `/expenses` → Transactions (Expenses), `/income` →
     Transactions (Income), `/search` → Transactions (All) with the search
     field focused.

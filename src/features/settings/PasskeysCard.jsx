@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Text, Button, useToast } from '@chakra-ui/react'
 import { Fingerprint, KeyRound, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
+import { useLiveQuery } from '../../shared/lib/db.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import { toPasskeyList } from './authMethods.js'
@@ -13,16 +14,15 @@ import { toPasskeyList } from './authMethods.js'
 export default function PasskeysCard() {
   const { listPasskeys, registerPasskey, deletePasskey } = useAuth()
   const toast = useToast()
-  const [passkeys, setPasskeys] = useState(null) // null = not loaded / unsupported
   const [pkBusy, setPkBusy] = useState(false)
 
-  async function loadPasskeys() {
-    if (!passkeysSupported) return
-    const { data, error } = await listPasskeys()
-    if (error) { setPasskeys(null); return } // not enabled server-side
-    setPasskeys(toPasskeyList(data))
-  }
-  useEffect(() => { loadPasskeys() /* eslint-disable-next-line */ }, [])
+  // One-shot read (no realtime: passkeys aren't a table we can watch). An
+  // error means passkeys aren't enabled server-side, so the card hides.
+  const { data: passkeys, error, reload: loadPasskeys } = useLiveQuery(async () => {
+    const { data, error: e } = await listPasskeys()
+    if (e) throw e
+    return toPasskeyList(data)
+  }, { enabled: passkeysSupported, initial: null })
 
   async function addPasskey() {
     setPkBusy(true)
@@ -39,7 +39,7 @@ export default function PasskeysCard() {
     loadPasskeys()
   }
 
-  if (passkeys === null) return null
+  if (error || passkeys === null) return null
 
   return (
     <Panel title="Passkeys" icon={Fingerprint} action={

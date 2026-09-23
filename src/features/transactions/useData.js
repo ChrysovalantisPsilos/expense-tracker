@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { supabase } from '../../shared/lib/supabase.js'
 import { useOwnedQuery } from '../../shared/lib/db.js'
+import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 
 // Categories for the current user (optionally filtered by kind).
 export function useCategories(kind) {
@@ -82,11 +84,24 @@ export async function createCategories(userId, rows) {
 }
 
 // One-time default-category seed after first login.
-export async function ensureSeeded() {
-  const { count } = await supabase
+async function ensureSeeded() {
+  const { count, error } = await supabase
     .from('categories')
     .select('id', { count: 'exact', head: true })
+  if (error) throw new Error(error.message)
   if ((count ?? 0) === 0) {
-    await supabase.rpc('seed_default_categories')
+    const { error: seedErr } = await supabase.rpc('seed_default_categories')
+    if (seedErr) throw new Error(seedErr.message)
   }
+}
+
+// App-bootstrap hook: make sure the signed-in user has the default categories
+// (once per user id). Best effort — a failure just means no defaults yet, and
+// the next app load tries again.
+export function useEnsureDefaultCategories() {
+  const { user } = useAuth()
+  const uid = user?.id
+  useEffect(() => {
+    if (uid) ensureSeeded().catch((e) => console.warn('[categories] seeding failed', e))
+  }, [uid])
 }

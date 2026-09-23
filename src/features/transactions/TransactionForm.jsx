@@ -3,11 +3,14 @@ import {
   Button, Divider, FormControl, FormLabel, HStack, Input, Select, Stack, Textarea, useToast,
 } from '@chakra-ui/react'
 import { useCategories } from './useData.js'
-import { toMinor, fromMinor, getRate, CURRENCIES } from '../../shared/lib/currency.js'
+import { toMinor, fromMinor, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
+import { useFxRate } from '../../shared/lib/fx.js'
+import { today } from '../../shared/lib/dates.js'
 import { insertTransaction, updateTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
+import FxPreview from './FxPreview.jsx'
 
 // Fast-path entry for a single expense or income. Writes go through the
 // offline queue so logging works with no connection. Pass `transaction` to
@@ -22,9 +25,23 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
   const [currency, setCurrency] = useState(transaction?.currency ?? baseCurrency)
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
   const [description, setDescription] = useState(transaction?.description ?? '')
-  const [spentAt, setSpentAt] = useState(transaction?.spent_at ?? (() => new Date().toISOString().slice(0, 10)))
+  const [spentAt, setSpentAt] = useState(transaction?.spent_at ?? today)
   const [notes, setNotes] = useState(transaction?.notes ?? '')
   const [busy, setBusy] = useState(false)
+  const [manualRate, setManualRate] = useState('')
+
+  // Exchange rate: the ECB rate for the expense's date. Editing keeps the rate
+  // the row was saved with unless its currency or date changes — except a
+  // foreign row stored at exactly 1, which is the old broken lookup's fallback.
+  const needsFx = currency !== baseCurrency
+  const captured = Number(transaction?.exchange_rate)
+  const keepCaptured = isEdit && needsFx && currency === transaction.currency &&
+    spentAt === transaction.spent_at && captured > 0 && captured !== 1
+  const fx = useFxRate(currency, baseCurrency, spentAt, { skip: keepCaptured })
+  const rate = !needsFx ? 1
+    : keepCaptured ? captured
+      : fx.status === 'ok' ? fx.rate
+        : fx.status === 'missing' ? parseManualRate(manualRate) : null
   // Stable across retries of one submit so a lost-response retry can't
   // duplicate; rotated after a successful insert for the next entry.
   const clientUuid = useRef(crypto.randomUUID())
@@ -40,13 +57,16 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
       toast({ title: 'Enter an amount', status: 'warning' })
       return
     }
+    // Never save a foreign amount without a real rate (no silent 1:1).
+    if (!rate) {
+      toast({
+        title: fx.status === 'loading' ? 'Still fetching the exchange rate…' : 'Enter the exchange rate',
+        status: 'warning',
+      })
+      return
+    }
     setBusy(true)
-
-    // Keep the original FX rate unless the currency changed (editing shouldn't
-    // silently rewrite history); capture a fresh rate otherwise.
-    const exchange_rate = isEdit && currency === transaction.currency
-      ? transaction.exchange_rate
-      : await getRate(currency, baseCurrency)
+    const exchange_rate = rate
 
     if (isEdit) {
       const fields = {
@@ -120,6 +140,11 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
             </Select>
           </FormControl>
         </HStack>
+        {needsFx && (
+          <FxPreview from={currency} to={baseCurrency} amountMinor={amount ? toMinor(amount, currency) : 0}
+            fx={fx} captured={keepCaptured ? captured : null} rate={rate}
+            manual={manualRate} onManual={setManualRate} />
+        )}
 
         <FormControl>
           <FormLabel>Category</FormLabel>
@@ -148,7 +173,7 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
           <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </FormControl>
 
-        <Button type="submit" isLoading={busy}>
+        <Button type="submit" isLoading={busy} isDisabled={!rate}>
           {isEdit ? 'Save changes' : `Add ${kindEff === 'income' ? 'income' : 'expense'}`}
         </Button>
       </Stack>

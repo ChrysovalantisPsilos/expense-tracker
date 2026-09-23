@@ -1,10 +1,20 @@
 // Currency helpers. Money is stored as integer minor units (cents).
 
-// Supported currencies (EUR first — it's the app default).
-export const CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY', 'CHF', 'CAD', 'AUD']
+// Supported currencies: every currency the ECB publishes a daily reference
+// rate for (so each one can be converted to any other), EUR first — it's the
+// app default — then the most common travel currencies, then A–Z.
+export const CURRENCIES = [
+  'EUR', 'USD', 'GBP', 'CHF', 'JPY',
+  'AUD', 'BRL', 'CAD', 'CNY', 'CZK', 'DKK', 'HKD', 'HUF', 'IDR', 'ILS',
+  'INR', 'ISK', 'KRW', 'MXN', 'MYR', 'NOK', 'NZD', 'PHP', 'PLN', 'RON',
+  'SEK', 'SGD', 'THB', 'TRY', 'ZAR',
+]
 
-// Most currencies have 2 decimal places; a few (JPY, KRW…) have 0.
-const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'VND', 'CLP'])
+// Minor units per ISO 4217: most currencies have 2 decimal places; these have
+// 0. (HUF and IDR are 2 in ISO even though cash rounds to whole units.)
+// VND/CLP aren't selectable but may appear in old rows. Keep in lockstep with
+// supabase/functions/_shared/money.ts and the SQL minor-unit helper.
+const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'ISK', 'VND', 'CLP'])
 export function minorFactor(currency = 'EUR') {
   return ZERO_DECIMAL.has(currency) ? 1 : 100
 }
@@ -17,10 +27,14 @@ export function fromMinor(minor, currency = 'EUR') {
   return Number(minor) / minorFactor(currency)
 }
 
+// Decimals come from our minor units, not ICU's defaults: ICU shows HUF and
+// IDR with 0 decimals although ISO 4217 (and our storage) has 2, which would
+// round 12.50 to "13" on screen.
 export function formatMoney(minor, currency = 'EUR', locale = undefined) {
-  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(
-    fromMinor(minor, currency),
-  )
+  const digits = Math.log10(minorFactor(currency))
+  return new Intl.NumberFormat(locale, {
+    style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits,
+  }).format(fromMinor(minor, currency))
 }
 
 // Convert a minor amount to the user's base currency using the rate captured
@@ -42,25 +56,102 @@ export function baseEquivalent(minor, exchangeRate, fromCurrency, baseCurrency) 
   return { baseMinor: toBaseMinor(minor, rate, fromCurrency, baseCurrency), rate }
 }
 
-// Fetch a daily FX rate from base->quote. Cached in localStorage per day so we
-// don't hammer the API. Returns 1 on failure (caller can flag as unconverted).
-// Optional chaining: import.meta.env only exists under Vite — this module is
-// also imported by the plain-node unit tests.
-const FX_BASE = import.meta.env?.VITE_FX_API_URL || 'https://api.exchangerate.host'
+// ---------------------------------------------------------------------------
+// Exchange rates (pure parts). The network/cache side lives in fx.js.
+//
+// Source: Frankfurter (ECB daily reference rates, keyless, CORS-enabled, with
+// history back to 1999-01-04). We always ask for EUR-based rates and derive the
+// cross rate ourselves: the ECB publishes EUR→X, so X→Y = (EUR→Y) / (EUR→X)
+// keeps full precision (Frankfurter's own cross rates are rounded to 5 places,
+// which is 0.2% off for JPY→EUR).
+// ---------------------------------------------------------------------------
+export const FX_API = 'https://api.frankfurter.dev/v1'
 
-export async function getRate(from, to) {
-  if (from === to) return 1
-  const today = new Date().toISOString().slice(0, 10)
-  const key = `fx:${from}:${to}:${today}`
-  const cached = localStorage.getItem(key)
-  if (cached) return Number(cached)
-  try {
-    const res = await fetch(`${FX_BASE}/convert?from=${from}&to=${to}&amount=1`)
-    const json = await res.json()
-    const rate = json?.result ?? json?.info?.rate ?? 1
-    localStorage.setItem(key, String(rate))
-    return Number(rate)
-  } catch {
-    return 1
+// The date to ask the rate for: the expense's date, but never the future (no
+// rate exists yet) — a future-dated expense uses today's.
+export function fxQueryDate(date, todayIso) {
+  return !date || date > todayIso ? todayIso : date
+}
+
+const symbolsFor = (from, to) => [from, to].filter((c) => c !== 'EUR').join(',')
+
+// URL for one day's rate. ECB doesn't publish at weekends/holidays; the API
+// then answers with the previous business day (its `date` says which).
+export function fxUrl(from, to, date) {
+  return `${FX_API}/${date}?base=EUR&symbols=${symbolsFor(from, to)}`
+}
+
+// URL for a date range (one request covers a whole import). Starts a week
+// early so a range that opens on a weekend/holiday still has a prior rate.
+export function fxRangeUrl(from, to, firstDate, lastDate) {
+  const d = new Date(`${firstDate}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() - 7)
+  const start = d.toISOString().slice(0, 10) // UTC arithmetic on a UTC date: no shift
+  return `${FX_API}/${start}..${lastDate}?base=EUR&symbols=${symbolsFor(from, to)}`
+}
+
+// Rates are stored as numeric(18, 8).
+const round8 = (x) => Math.round(x * 1e8) / 1e8
+
+// from→to rate out of one EUR-based `rates` object, or null if either side is
+// missing or not a positive finite number. Never 1 as a fallback.
+function crossRate(rates, from, to) {
+  const r = { ...rates, EUR: 1 }
+  const a = Number(r[from])
+  const b = Number(r[to])
+  if (!(a > 0) || !(b > 0) || !Number.isFinite(a) || !Number.isFinite(b)) return null
+  const rate = round8(b / a)
+  return rate > 0 ? rate : null
+}
+
+// Parse a one-day answer into { rate, date } (date = the ECB day it's from),
+// or null for an error body / missing currency / garbage.
+export function parseFxResponse(json, from, to) {
+  if (!json || typeof json !== 'object' || !json.rates || typeof json.date !== 'string') return null
+  const rate = crossRate(json.rates, from, to)
+  return rate ? { rate, date: json.date } : null
+}
+
+// Parse a range answer into a sorted [[date, rate]] list (bad days skipped).
+export function parseFxSeries(json, from, to) {
+  if (!json || typeof json !== 'object' || !json.rates || typeof json.rates !== 'object') return []
+  return Object.keys(json.rates).sort()
+    .map((d) => [d, crossRate(json.rates[d], from, to)])
+    .filter(([, rate]) => rate)
+}
+
+// The rate in effect on `date`: that day's, else the latest earlier one
+// (weekends/holidays). null when the series has nothing on or before it.
+export function rateOnOrBefore(series, date) {
+  let hit = null
+  for (const [d, rate] of series) {
+    if (d > date) break
+    hit = { rate, date: d }
   }
+  return hit
+}
+
+// localStorage key for a cached rate. Versioned so the old v1 cache (which
+// could hold a fake 1 from the broken provider) is never read.
+export function fxCacheKey(from, to, date) {
+  return `fx2:${from}:${to}:${date}`
+}
+
+// Is an answer final, i.e. safe to cache under the date we asked for? A past
+// date's answer never changes. Today's does once the ECB publishes (~16:00
+// CET), so it's only final when it's actually today's rate.
+export function isFinalFx(askedDate, answer, todayIso) {
+  return !!answer && (askedDate < todayIso || answer.date === askedDate)
+}
+
+// A user-typed rate: a positive finite number (comma decimals allowed), else null.
+export function parseManualRate(raw) {
+  const n = Number(String(raw ?? '').trim().replace(',', '.'))
+  return Number.isFinite(n) && n > 0 ? round8(n) : null
+}
+
+// A rate for display: 5 significant digits, no trailing zeros (1.1699,
+// 0.0053862, 185.66).
+export function formatRate(rate) {
+  return String(Number(Number(rate).toPrecision(5)))
 }

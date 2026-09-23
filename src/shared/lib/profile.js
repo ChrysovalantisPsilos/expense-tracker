@@ -1,10 +1,20 @@
-import { supabase } from '../../shared/lib/supabase.js'
+import { supabase, edgeFunctionError } from './supabase.js'
+
+// Profile and account data access (shared: settings, onboarding, backup and
+// the ProfileProvider all use it).
 
 // Read a profile row for a user. `columns` narrows the select to just the
-// fields a caller needs (defaults to the whole row). Returns null if missing.
-export async function getProfile(userId, columns = '*') {
-  const { data } = await supabase.from('profiles').select(columns).eq('id', userId).single()
+// fields a caller needs (defaults to the whole row). Null if missing; throws
+// on a failed read (the ProfileProvider shows an error for that).
+export async function fetchProfile(userId, columns = '*') {
+  const { data, error } = await supabase.from('profiles').select(columns).eq('id', userId).maybeSingle()
+  if (error) throw new Error(error.message)
   return data ?? null
+}
+
+// Best-effort variant for screens that just prefill a form: null on any failure.
+export async function getProfile(userId, columns = '*') {
+  try { return await fetchProfile(userId, columns) } catch { return null }
 }
 
 // Payment details (IBAN/Revolut) are stored ENCRYPTED at rest (pgcrypto + a key
@@ -51,4 +61,12 @@ export async function uploadAvatar(userId, file) {
   const url = `${data.publicUrl}?t=${file.size}`
   await updateProfile(userId, { avatar_url: url })
   return url
+}
+
+// Permanently delete the signed-in account (the edge function deletes only the
+// caller). Password users must pass their password: the server re-verifies it.
+export async function deleteMyAccount({ password } = {}) {
+  const body = password != null ? { password } : {}
+  const { error } = await supabase.functions.invoke('delete-account', { body })
+  if (error) throw new Error(await edgeFunctionError(error))
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Stack, HStack, Text, Textarea, IconButton, Center, Spinner, Box,
@@ -6,7 +6,8 @@ import {
 import { Trash2, Send } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { useLiveRefetch } from '../../shared/lib/realtime.js'
+import { useLiveQuery } from '../../shared/lib/db.js'
+import QueryError from '../../shared/ui/QueryError.jsx'
 import { shortDateTime } from '../../shared/lib/dates.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { listComments, addComment, deleteComment } from './comments.js'
@@ -15,27 +16,21 @@ import { listComments, addComment, deleteComment } from './comments.js'
 // open — new comments from other members appear as they're posted.
 export default function CommentThread({ group, target, myMember, isOpen, onClose, onChanged }) {
   const { user } = useAuth()
-  const [comments, setComments] = useState([])
-  const [loading, setLoading] = useState(true)
   const [body, setBody] = useState('')
   const { busy, run } = useAsyncSubmit()
 
-  async function load(initial = false) {
-    if (initial) setLoading(true) // live refetches swap in place, no spinner
-    try { setComments(await listComments(group.id, target.id)) }
-    catch { /* surfaced on send */ }
-    finally { setLoading(false) }
-  }
-  useEffect(() => {
-    if (isOpen && target) load(true)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, target?.id])
-
-  useLiveRefetch(
-    isOpen && target ? `thread:${target.id}` : null,
-    [{ table: 'group_comments', filter: `target_id=eq.${target?.id}` }],
-    () => { load(); onChanged?.() },
-  )
+  // Opening a thread (or switching to another) shows a spinner; live
+  // refetches while it's open swap comments in place.
+  const open = !!(isOpen && target)
+  // (The parent's comment counts follow via its own live group query.)
+  const { data: comments, loading, error, reload } = useLiveQuery(() => listComments(group.id, target.id), {
+    key: open ? `thread:${target.id}` : null,
+    specs: [{ table: 'group_comments', filter: `target_id=eq.${target?.id}` }],
+    deps: [group.id, target?.id, open],
+    enabled: open,
+    initial: [],
+    keepPrevious: false,
+  })
 
   async function send(e) {
     e.preventDefault()
@@ -46,7 +41,7 @@ export default function CommentThread({ group, target, myMember, isOpen, onClose
         authorMemberId: myMember.id, body: body.trim(),
       })
       setBody('')
-      await load()
+      await reload()
       onChanged?.()
     })
   }
@@ -54,7 +49,7 @@ export default function CommentThread({ group, target, myMember, isOpen, onClose
   async function remove(id) {
     await run(async () => {
       await deleteComment(id)
-      await load()
+      await reload()
       onChanged?.()
     })
   }
@@ -70,7 +65,9 @@ export default function CommentThread({ group, target, myMember, isOpen, onClose
           )}
         </ModalHeader>
         <ModalBody>
-          {loading ? (
+          {error ? (
+            <QueryError error={error} onRetry={reload} what="comments" py={4} />
+          ) : loading ? (
             <Center py={8}><Spinner color="brand.500" /></Center>
           ) : comments.length === 0 ? (
             <Text color="text.muted" fontSize="sm" py={2}>No comments yet. Start the thread.</Text>

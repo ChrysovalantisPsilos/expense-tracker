@@ -13,7 +13,7 @@ import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
-import { useProfile } from '../../shared/lib/useProfile.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
@@ -23,10 +23,11 @@ import {
   useRecurring, monthlyMinor, frequencyLabel, FREQUENCIES,
   saveRecurring, setRecurringActive, deleteRecurring,
 } from './recurring.js'
+import QueryError from '../../shared/ui/QueryError.jsx'
 
 export default function Recurring() {
   const { baseCurrency = 'EUR' } = useProfile()
-  const { rules, loading, reload } = useRecurring()
+  const { rules, loading, error, reload } = useRecurring()
   const toast = useToast()
   const form = useDisclosure()
   const [editing, setEditing] = useState(null)
@@ -77,7 +78,7 @@ export default function Recurring() {
       </Panel>
 
       <Panel>
-        {loading ? (
+        {error ? <QueryError error={error} onRetry={reload} what="recurring payments" /> : loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : rules.length === 0 ? (
           <Stack align="center" py={8} spacing={3} color="text.muted">

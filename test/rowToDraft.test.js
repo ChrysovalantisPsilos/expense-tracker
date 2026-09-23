@@ -30,9 +30,22 @@ test('rowToDraft: signed mode treats a positive amount as income', () => {
   assert.equal(rowToDraft({ D: '2026-01-15', A: '-9.99' }, M, 'EUR', { signed: true }).kind, 'expense')
 })
 
-test('rowToDraft: unknown currency clamps to the base currency; amount uses abs', () => {
+test('rowToDraft: a blank currency cell means base; amount uses abs', () => {
   const m = { ...M, currency: 'C' }
-  const d = rowToDraft({ D: '2026-01-15', A: '-4.00', C: 'XXX' }, m, 'EUR')
+  const d = rowToDraft({ D: '2026-01-15', A: '-4.00', C: ' ' }, m, 'EUR')
   assert.equal(d.currency, 'EUR')
   assert.equal(d.amount_minor, 400)
+})
+
+test('rowToDraft: an unknown currency is a row error, never booked as base', () => {
+  const m = { ...M, currency: 'C' }
+  assert.deepEqual(rowToDraft({ D: '2026-01-15', A: '4.00', C: 'XXX' }, m, 'EUR'),
+    { error: 'unsupported currency XXX' })
+})
+
+test('rowToDraft: zero-decimal currencies (JPY, ISK) have no fractional part', () => {
+  const m = { ...M, currency: 'C' }
+  assert.equal(rowToDraft({ D: '2026-01-15', A: '1800', C: 'jpy' }, m, 'EUR').amount_minor, 1800)
+  assert.equal(rowToDraft({ D: '2026-01-15', A: '2500', C: 'ISK' }, m, 'EUR').amount_minor, 2500)
+  assert.equal(rowToDraft({ D: '2026-01-15', A: '12.5', C: 'HUF' }, m, 'EUR').amount_minor, 1250)
 })

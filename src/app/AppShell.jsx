@@ -9,7 +9,7 @@ import {
   LogOut, Repeat, TrendingUp, MoreHorizontal, Settings,
 } from 'lucide-react'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
-import { useProfile } from '../shared/lib/useProfile.js'
+import { useProfile } from '../shared/lib/ProfileProvider.jsx'
 import Logo from '../shared/ui/Logo.jsx'
 import OfflineIndicator from '../shared/ui/OfflineIndicator.jsx'
 import ThemeToggle from '../shared/ui/ThemeToggle.jsx'

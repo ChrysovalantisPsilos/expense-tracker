@@ -8,7 +8,7 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
 import { claimPromptSlot, releasePromptSlot } from '../../shared/lib/promptGate.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
-import { getProfile, updateProfile } from '../profile/profile.js'
+import { getProfile, updateProfile } from '../../shared/lib/profile.js'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { toPasskeyList } from './authMethods.js'
 

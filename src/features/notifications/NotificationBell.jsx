@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Box, Popover, PopoverTrigger, PopoverContent, PopoverBody, PopoverHeader,
@@ -9,7 +8,8 @@ import {
   UserCheck, UserMinus, PiggyBank, BarChart3, BellRing,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { useLiveRefetch } from '../../shared/lib/realtime.js'
+import { useLiveQuery } from '../../shared/lib/db.js'
+import QueryError from '../../shared/ui/QueryError.jsx'
 import { listNotifications, markAllRead } from './notifications.js'
 
 const ICON = {
@@ -23,17 +23,13 @@ export default function NotificationBell() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { isOpen, onOpen, onClose } = useDisclosure()
-  const [items, setItems] = useState([])
-
-  async function load() {
-    try { setItems(await listNotifications()) } catch { /* ignore */ }
-  }
-
-  useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // Live: new notifications appear instantly; reconnect/visibility catch up.
-  useLiveRefetch('bell', [
-    { table: 'notifications', filter: `user_id=eq.${user.id}` },
-  ], load)
+  const { data: items, error, reload, mutate: setItems } = useLiveQuery(listNotifications, {
+    key: 'bell',
+    specs: [{ table: 'notifications', filter: `user_id=eq.${user.id}` }],
+    deps: [user.id],
+    initial: [],
+  })
 
   const unread = items.filter((n) => !n.read_at).length
 
@@ -71,7 +67,9 @@ export default function NotificationBell() {
       <PopoverContent w="320px">
         <PopoverHeader>Notifications</PopoverHeader>
         <PopoverBody px={0} maxH="380px" overflowY="auto">
-          {items.length === 0 ? (
+          {error ? (
+            <QueryError error={error} onRetry={reload} what="notifications" py={4} />
+          ) : items.length === 0 ? (
             <Text px={4} py={6} color="text.muted" fontSize="sm" textAlign="center">
               You’re all caught up.
             </Text>

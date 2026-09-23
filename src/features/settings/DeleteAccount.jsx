@@ -5,7 +5,7 @@ import {
   ModalHeader, ModalBody, ModalFooter,
 } from '@chakra-ui/react'
 import { AlertTriangle, Trash2 } from 'lucide-react'
-import { supabase, edgeFunctionError } from '../../shared/lib/supabase.js'
+import { deleteMyAccount } from '../../shared/lib/profile.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
@@ -49,9 +49,7 @@ function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
     setBusy(true)
     try {
       // The server re-verifies the password for password users, so pass it along.
-      const body = isPasswordUser ? { password: value } : {}
-      const { error } = await supabase.functions.invoke('delete-account', { body })
-      if (error) throw new Error(await edgeFunctionError(error))
+      await deleteMyAccount(isPasswordUser ? { password: value } : {})
       toast({ title: 'Your account has been deleted', status: 'success' })
       await signOut() // App flips to the logged-out landing
     } catch (e) {

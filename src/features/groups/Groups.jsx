@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
   Box, Stack, HStack, Text, Button, Center, Spinner,
@@ -12,59 +12,52 @@ import {
 import { myGroupBalance, pluralise } from './groupFormat.js'
 import { CURRENCIES, formatMoney } from '../../shared/lib/currency.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { useProfile } from '../../shared/lib/useProfile.js'
-import { useLiveRefetch } from '../../shared/lib/realtime.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
+import { useLiveQuery } from '../../shared/lib/db.js'
+import QueryError from '../../shared/ui/QueryError.jsx'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import GroupMark from './GroupMark.jsx'
 import AvatarStack from './AvatarStack.jsx'
 import { textColor } from '../../shared/ui/kit/kitMath.js'
 
+const NO_GROUPS = { groups: [], summaries: new Map(), invites: [] }
+
 export default function Groups() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { baseCurrency } = useProfile()
-  const [groups, setGroups] = useState([])
-  const [summaries, setSummaries] = useState(new Map()) // groupId → { members, balances }
-  const [invites, setInvites] = useState([])
-  const [loading, setLoading] = useState(true)
   const { isOpen, onOpen, onClose } = useDisclosure()
   const [name, setName] = useState('')
   const [currency, setCurrency] = useState(baseCurrency)
   const [busy, setBusy] = useState(false)
   const toast = useToast()
 
-  async function load() {
-    // Quiet reloads: live updates swap data in place; the initial `loading`
-    // state covers first paint.
-    try {
-      const [gs, inv] = await Promise.all([listGroups(), listMyInvites()])
-      // Avatars + balances are extras: if they fail, the list still shows.
-      const sums = await listGroupSummaries(gs.map((g) => g.id)).catch(() => new Map())
-      setGroups(gs)
-      setSummaries(sums)
-      setInvites(inv)
-    }
-    catch (e) { toast({ title: e.message, status: 'error' }) }
-    finally { setLoading(false) }
-  }
-  useEffect(() => { load() /* eslint-disable-next-line */ }, [])
-
   // Live overview: balances, memberships, and the invite inbox update as they
   // change. No filters — RLS already scopes events to groups you belong to
   // (and invites addressed to you).
-  useLiveRefetch('groups-list', [
-    { table: 'groups' },
-    { table: 'group_members' },
-    { table: 'group_invites' },
-    { table: 'group_expenses' },
-    { table: 'settlements' },
-  ], load)
+  const { data, loading, error, reload: load, mutate } = useLiveQuery(async () => {
+    const [groups, invites] = await Promise.all([listGroups(), listMyInvites()])
+    // Avatars + balances are extras: if they fail, the list still shows.
+    const summaries = await listGroupSummaries(groups.map((g) => g.id)).catch(() => new Map())
+    return { groups, summaries, invites }
+  }, {
+    key: 'groups-list',
+    specs: [
+      { table: 'groups' },
+      { table: 'group_members' },
+      { table: 'group_invites' },
+      { table: 'group_expenses' },
+      { table: 'settlements' },
+    ],
+    initial: NO_GROUPS,
+  })
+  const { groups, summaries, invites } = data // summaries: groupId → { members, balances }
 
   async function respond(inviteId, accept) {
     try {
       const gid = await respondToInvite(inviteId, accept)
-      setInvites((prev) => prev.filter((i) => i.invite_id !== inviteId))
+      mutate((d) => ({ ...d, invites: d.invites.filter((i) => i.invite_id !== inviteId) }))
       if (accept && gid) navigate(`/groups/${gid}`)
       else load()
     } catch (e) { toast({ title: e.message, status: 'error' }) }
@@ -113,7 +106,9 @@ export default function Groups() {
         </Stack>
       )}
 
-      {loading ? (
+      {error ? (
+        <QueryError error={error} onRetry={load} what="your groups" py={16} />
+      ) : loading ? (
         <Center py={16}><Spinner color="brand.500" /></Center>
       ) : groups.length === 0 ? (
         <Panel>

@@ -8,7 +8,7 @@ import { ChartBarDecreasing, Table as TableIcon, Repeat, ReceiptText, Users } fr
 import TransactionList from '../transactions/TransactionList.jsx'
 import { useTransactions, buildPeriods, oldestTransactionDate } from '../transactions/useData.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
-import { useProfile } from '../../shared/lib/useProfile.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring, monthlyMinor, frequencyLabel, expectedInWindow } from '../recurring/recurring.js'
 import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
 import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
@@ -26,8 +26,11 @@ import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
+import QueryError from '../../shared/ui/QueryError.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
+
+const UNAVAILABLE = 'Not available until your transactions load.'
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -39,7 +42,7 @@ export default function Dashboard() {
   const [periodValue, setPeriodValue] = useState(() => buildPeriods(null)[0].value)
   const period = periods.find((p) => p.value === periodValue) ?? periods[0]
 
-  const { rows, loading, reload, mutate } = useTransactions({
+  const { rows, loading, error, reload, mutate } = useTransactions({
     from: period.from ?? undefined, to: period.to ?? undefined,
   })
   // Recheck whenever the (live) transaction rows change, so importing older
@@ -103,6 +106,11 @@ export default function Dashboard() {
         </Select>
       } />
 
+      {error ? (
+        // One error (with Retry) for the transactions every card below needs,
+        // instead of €0.00 totals that look real.
+        <Panel><QueryError error={error} onRetry={reload} what="your transactions" /></Panel>
+      ) : (
       <Panel>
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} alignItems="center">
           <Box>
@@ -121,6 +129,7 @@ export default function Dashboard() {
           </SimpleGrid>
         </SimpleGrid>
       </Panel>
+      )}
 
       <Panel icon={ChartBarDecreasing} title="Spending by category" action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
@@ -138,7 +147,7 @@ export default function Dashboard() {
             </CkTooltip>
           </HStack>
         }>
-        {loading ? (
+        {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : byCategory.length === 0 ? (
           <Text color="text.muted" fontSize="sm">No expenses in this period.</Text>
@@ -179,7 +188,7 @@ export default function Dashboard() {
       <BudgetsCard />
 
       <Panel icon={ReceiptText} title="Expenses">
-        {loading ? (
+        {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : expenses.length === 0 ? (
           <Text color="text.muted" fontSize="sm">No expenses in this period.</Text>

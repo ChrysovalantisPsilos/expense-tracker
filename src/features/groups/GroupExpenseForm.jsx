@@ -7,6 +7,7 @@ import {
 } from '@chakra-ui/react'
 import { Trash2 } from 'lucide-react'
 import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
+import { today } from '../../shared/lib/dates.js'
 import { distributeByWeights, splitEqually } from './splitMath.js'
 import { addSharedExpense, updateSharedExpense, deleteSharedExpense } from './groups.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
@@ -46,7 +47,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
   const [amount, setAmount] = useState(
     expense ? String(fromMinor(expense.amount_minor, cur)) : '')
   const [paidBy, setPaidBy] = useState(expense?.paid_by ?? defaultPayer ?? members[0]?.id ?? '')
-  const [spentAt, setSpentAt] = useState(expense?.spent_at ?? new Date().toISOString().slice(0, 10))
+  const [spentAt, setSpentAt] = useState(expense?.spent_at ?? today)
   const [splitWith, setSplitWith] = useState(
     expense ? (expense.expense_splits ?? []).map((s) => s.member_id) : members.map((m) => m.id))
   const [mode, setMode] = useState(initialMode)

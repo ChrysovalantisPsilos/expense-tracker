@@ -1,17 +1,36 @@
-# Unit tests on every push/PR. The suite is zero-dependency (node:test over
-# pure modules), so there is no install step — a red X lands in seconds,
-# before Vercel ships the commit.
-name: test
+# CI on every push/PR, before Vercel ships the commit:
+#   unit tests (in UTC and in an east-of-UTC zone, so date bugs that only
+#   show up away from UTC can't hide — see the test:* scripts), lint,
+#   production build, and a dependency audit.
+#
+# Lint policy: `npm run lint` fails on errors and lets warnings through, so
+# known debt doesn't block merges. Once the warning count is 0, switch that
+# step to `npm run lint:strict` (--max-warnings=0) to make warnings blocking.
+name: ci
 on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  unit:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm test
+          cache: npm
+      - run: npm ci
+      # `npm test` runs the suite twice: TZ=UTC and TZ=Europe/Nicosia.
+      - name: Unit tests (UTC + Europe/Nicosia)
+        run: npm test
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      # Blocking at high severity (production dependencies only).
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high

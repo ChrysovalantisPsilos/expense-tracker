@@ -2,9 +2,9 @@ import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Heading, Stack, HStack, Text, Button, Spacer, Select,
-  FormControl, FormLabel, useToast, IconButton,
+  FormControl, FormLabel, useToast, IconButton, Input,
 } from '@chakra-ui/react'
-import { ArrowLeft, UploadCloud, FileSpreadsheet, Check, Eye, Store } from 'lucide-react'
+import { ArrowLeft, UploadCloud, FileSpreadsheet, Check, Eye, Store, ArrowRightLeft } from 'lucide-react'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
@@ -12,8 +12,8 @@ import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import Tile from '../../shared/ui/kit/Tile.jsx'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useCategories } from '../transactions/useData.js'
-import { useProfile } from '../../shared/lib/useProfile.js'
-import { formatMoney } from '../../shared/lib/currency.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
+import { formatMoney, parseManualRate } from '../../shared/lib/currency.js'
 import {
   IMPORT_FIELDS, parseWorkbook, guessMapping, buildTransactions, importTransactions,
   listRules, saveRule, merchantKey,
@@ -27,7 +27,7 @@ export default function ImportExpenses() {
   const { baseCurrency } = useProfile()
   const { categories } = useCategories() // all kinds — rules can target either
 
-  const [step, setStep] = useState('upload') // upload | map | review | done
+  const [step, setStep] = useState('upload') // upload | map | rates | review | done
   const [fileName, setFileName] = useState('')
   const [headers, setHeaders] = useState([])
   const [rows, setRows] = useState([])
@@ -36,6 +36,8 @@ export default function ImportExpenses() {
   const [result, setResult] = useState(null)
   const [pending, setPending] = useState(null)   // { valid, errors, groups }
   const [assign, setAssign] = useState({})       // merchant pattern -> category id
+  const [missingRates, setMissingRates] = useState([]) // [{ currency, count }]
+  const [rateInput, setRateInput] = useState({})  // currency -> typed rate
 
   async function onFile(e) {
     const file = e.target.files?.[0]
@@ -59,16 +61,23 @@ export default function ImportExpenses() {
 
   // Build rows (saved rules pre-categorize known merchants), then either go
   // straight to import or stop at the review step for unknown merchants.
-  async function prepare() {
+  // `manualRates` fills in currencies the ECB lookup couldn't cover; while any
+  // are still missing the import stops at the 'rates' step (never 1:1).
+  async function prepare(manualRates = {}) {
     if (!mapping.date || !mapping.amount) {
       toast({ title: 'Map both Date and Amount first', status: 'warning' }); return
     }
     setBusy(true)
     try {
       const rules = await listRules().catch(() => [])
-      const { valid, errors } = await buildTransactions({
-        rows, mapping, userId: user.id, baseCurrency, categories, rules,
+      const { valid, errors, missingRates: missing } = await buildTransactions({
+        rows, mapping, userId: user.id, baseCurrency, categories, rules, manualRates,
       })
+      if (missing.length) {
+        setMissingRates(missing)
+        setStep('rates')
+        setBusy(false); return
+      }
       if (!valid.length) {
         toast({ title: 'Nothing to import', description: 'No rows had a valid date + amount.', status: 'warning' })
         setBusy(false); return
@@ -132,8 +141,9 @@ export default function ImportExpenses() {
             <IconTile icon={UploadCloud} size={64} radius="2xl" />
             <Text fontWeight="600">Upload a spreadsheet</Text>
             <Text fontSize="sm" color="text.muted" maxW="sm">
-              Any .xlsx or .csv with a header row. Columns are detected
-              automatically and you confirm the mapping before anything is saved.
+              Any .xlsx or .csv (up to 5 MB) with a header row. Columns are
+              detected automatically and you confirm the mapping before anything
+              is saved. Foreign-currency rows convert at the ECB rate for their date.
             </Text>
             <Button as="label" leftIcon={<FileSpreadsheet size={16} />} cursor="pointer">
               Choose file
@@ -180,12 +190,45 @@ export default function ImportExpenses() {
             <HStack mt={4}>
               <Spacer />
               <Button leftIcon={<Check size={16} />} isLoading={busy}
-                isDisabled={!mapping.date || !mapping.amount} onClick={prepare}>
+                isDisabled={!mapping.date || !mapping.amount} onClick={() => prepare()}>
                 Import {rows.length} rows
               </Button>
             </HStack>
           </Panel>
         </>
+      )}
+
+      {step === 'rates' && (
+        <Panel icon={ArrowRightLeft} title="Exchange rates needed">
+          <Text fontSize="sm" color="text.muted" mb={4}>
+            Budgeer couldn’t fetch the ECB rate for some rows (you may be offline,
+            or the dates are before 1999). Enter the rate to use for them — rows
+            that do have an ECB rate keep it.
+          </Text>
+          <Stack spacing={3}>
+            {missingRates.map(({ currency, count }) => (
+              <FormControl key={currency} isRequired>
+                <FormLabel fontSize="sm" mb={1}>
+                  1 {currency} = ? {baseCurrency}
+                  <Text as="span" color="text.muted" fontWeight="400"> · {count} row{count === 1 ? '' : 's'}</Text>
+                </FormLabel>
+                <Input size="sm" maxW="180px" inputMode="decimal" autoComplete="off"
+                  value={rateInput[currency] ?? ''} placeholder="e.g. 1.17"
+                  onChange={(e) => setRateInput((m) => ({ ...m, [currency]: e.target.value }))} />
+              </FormControl>
+            ))}
+          </Stack>
+          <HStack mt={5}>
+            <Button variant="ghost" onClick={() => setStep('map')}>Back</Button>
+            <Spacer />
+            <Button leftIcon={<Check size={16} />} isLoading={busy}
+              isDisabled={missingRates.some(({ currency }) => !parseManualRate(rateInput[currency]))}
+              onClick={() => prepare(Object.fromEntries(missingRates.map(({ currency }) =>
+                [currency, parseManualRate(rateInput[currency])])))}>
+              Continue
+            </Button>
+          </HStack>
+        </Panel>
       )}
 
       {step === 'review' && pending && (

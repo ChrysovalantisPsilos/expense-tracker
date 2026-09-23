@@ -3,7 +3,7 @@ import {
   BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { useProfile } from '../../shared/lib/useProfile.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { NavList, NavRow } from '../../shared/ui/NavList.jsx'

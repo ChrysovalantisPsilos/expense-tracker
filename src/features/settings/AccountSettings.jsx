@@ -5,7 +5,7 @@ import {
 } from '@chakra-ui/react'
 import { Camera, UserRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { getProfile, updateProfile, uploadAvatar } from '../profile/profile.js'
+import { getProfile, updateProfile, uploadAvatar } from '../../shared/lib/profile.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'

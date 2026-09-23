@@ -3,7 +3,6 @@ import {
   Stack, FormControl, FormLabel, Input, Text, Button, useToast,
 } from '@chakra-ui/react'
 import { KeyRound } from 'lucide-react'
-import { supabase } from '../../shared/lib/supabase.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { validatePassword } from '../../shared/lib/password.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
@@ -13,7 +12,7 @@ import { hasPasswordIdentity } from './authMethods.js'
 // Google/passkey-only accounts have no password to change, so this hides itself.
 export default function PasswordCard({ user }) {
   const toast = useToast()
-  const { updatePassword } = useAuth()
+  const { changePassword } = useAuth()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -28,15 +27,8 @@ export default function PasswordCard({ user }) {
     if (next !== confirm) { toast({ title: 'New passwords don’t match.', status: 'warning' }); return }
     setBusy(true)
     try {
-      // Re-verify the current password before changing it, so a left-open
-      // session can't silently swap the password. signInWithPassword only
-      // re-issues a token for the same user — it doesn't sign anyone out.
-      const { error: authErr } = await supabase.auth.signInWithPassword({
-        email: user.email, password: current,
-      })
-      if (authErr) { toast({ title: 'Current password is incorrect.', status: 'error' }); return }
-
-      const { error } = await updatePassword(next)
+      // AuthProvider re-verifies the current password before changing it.
+      const { error } = await changePassword(current, next)
       if (error) { toast({ title: error.message, status: 'error' }); return }
 
       setCurrent(''); setNext(''); setConfirm('')

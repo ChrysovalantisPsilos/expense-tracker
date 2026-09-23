@@ -52,6 +52,7 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.js',
       registerType: 'prompt',
+      // iOS ignores SVG touch icons, so the home-screen icon is a 180px PNG.
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Budgeer',
@@ -61,10 +62,15 @@ export default defineConfig({
         background_color: '#faf8f4',
         display: 'standalone',
         start_url: '/',
+        // PNGs are rendered from pwa-icon.svg (full-bleed cream, artwork inside
+        // the maskable safe zone, so one 512 serves both purposes). Installers
+        // that need raster sizes (Android splash, older Chromium) use the
+        // PNGs; the SVG covers everything else.
         icons: [
-          // SVG icon scales to any size; used by Chromium/Android installs.
+          { src: 'pwa-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
           { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
         ],
       },
       injectManifest: {
@@ -72,7 +78,8 @@ export default defineConfig({
         // Social-preview card is only fetched by link scrapers, and the OCR
         // engine (~7 MB) only when someone scans — don't ship either to every
         // installed client's precache.
-        globIgnores: ['og-image.png', `${OCR_ASSET_DIR}/**`],
+        // The xlsx parser worker (~500 KB) is only needed when importing a file.
+        globIgnores: ['og-image.png', `${OCR_ASSET_DIR}/**`, 'assets/sheetWorker-*.js'],
       },
     }),
   ],

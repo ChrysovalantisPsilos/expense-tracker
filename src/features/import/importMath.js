@@ -1,6 +1,7 @@
 // Pure statement-import helpers (no xlsx/supabase — unit-testable). Only depends
 // on the pure money helpers in currency.js.
 import { toMinor, CURRENCIES } from '../../shared/lib/currency.js'
+import { isoDate } from '../../shared/lib/dates.js'
 
 // A merchant key for rules: strip numbers/dates/punctuation and generic bank
 // prefixes, keep the first meaningful word — so "POS LIDL 1234 NICOSIA" and
@@ -29,15 +30,21 @@ export function parseAmount(v) {
   return Number(s)
 }
 
+// A statement date as local YYYY-MM-DD. ISO text ("2026-09-21", optionally
+// with a time) is taken literally: new Date('2026-09-21') is UTC midnight,
+// which is the 20th west of UTC. Other text and Date cells use the local
+// calendar day (never toISOString, which shifts a day east of UTC).
 export function parseDate(v) {
-  if (v instanceof Date && !isNaN(v)) {
-    // Local Y-M-D (avoid a UTC shift moving the day).
-    return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`
-  }
+  if (v instanceof Date) return isNaN(v) ? null : isoDate(v)
   if (v == null || v === '') return null
+  const iso = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T ])/.exec(String(v).trim())
+  if (iso) {
+    const [, y, m, d] = iso.map(Number)
+    const check = new Date(y, m - 1, d)
+    return check.getMonth() === m - 1 && check.getDate() === d ? iso[0].slice(0, 10) : null
+  }
   const d = new Date(v)
-  if (!isNaN(d)) return d.toISOString().slice(0, 10)
-  return null
+  return isNaN(d) ? null : isoDate(d)
 }
 
 // Deterministic row identity: the same statement line always maps to the same
@@ -64,8 +71,11 @@ export function rowToDraft(row, mapping, baseCurrency, { signed = false } = {}) 
   if (!spent_at) return { error: 'missing/invalid date' }
   if (!isFinite(amountRaw) || amountRaw === 0) return { error: 'missing/invalid amount' }
 
-  let currency = mapping.currency ? String(row[mapping.currency] ?? '').toUpperCase().trim() : baseCurrency
-  if (!CURRENCIES.includes(currency)) currency = baseCurrency
+  // A blank currency cell means the base currency. An unknown code is an
+  // error, not "base": booking ฿500 as €500 would silently corrupt totals.
+  const rawCurrency = mapping.currency ? String(row[mapping.currency] ?? '').toUpperCase().trim() : ''
+  const currency = rawCurrency || baseCurrency
+  if (!CURRENCIES.includes(currency)) return { error: `unsupported currency ${rawCurrency}` }
 
   let kind = 'expense'
   if (mapping.type) {

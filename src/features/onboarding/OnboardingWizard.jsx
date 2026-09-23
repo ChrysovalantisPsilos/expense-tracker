@@ -12,7 +12,7 @@ import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS, STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { enablePush, pushSupported } from '../../shared/lib/push.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { updateProfile, savePaymentInfo } from '../profile/profile.js'
+import { updateProfile, savePaymentInfo } from '../../shared/lib/profile.js'
 import { createGroup } from '../groups/groups.js'
 import Logo from '../../shared/ui/Logo.jsx'
 
