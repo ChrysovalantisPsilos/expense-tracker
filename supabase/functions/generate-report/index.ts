@@ -17,11 +17,13 @@
 // the period); kept separate, they're left out of the totals and get their own
 // section, with the active yearly rules' cost (my_recurring_rules).
 //
-// Excel is SheetJS (the same 0.20.3 build as the app); the PDF uses the shared
+// Excel is SheetJS (0.18.5: the edge bundler only fetches allow-listed hosts,
+// and the app's 0.20.3 build is served from cdn.sheetjs.com alone, so it can't
+// be imported here; writing a workbook is unaffected); the PDF uses the shared
 // brand toolkit (_shared/pdf.ts). The file goes back through fileResponse
 // (_shared/files.ts), whose Content-Type keeps it binary in the app.
 
-import * as XLSX from 'https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs'
+import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { loadBrandFonts, money, Statement } from '../_shared/pdf.ts'
 import { withCors, json, callerClient } from '../_shared/http.ts'

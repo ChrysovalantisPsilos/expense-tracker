@@ -420,19 +420,6 @@ export class Statement {
     this.y += 14
   }
 
-  // Label left, value right (the kit's inline Figure); `strong` rows sit on a
-  // sand tile.
-  rows(items: { left: string; right: string; tone?: Tone; strong?: boolean }[]) {
-    for (const it of items) {
-      this.ensure(24)
-      if (it.strong) this.fill(this.M, this.y, this.CW, 22, BRAND.subtle, 8)
-      this.text(this.truncate(it.left, this.f.body, 10, this.CW - 160), this.M + 10, this.y + 5, { size: 10, color: it.strong ? BRAND.ink : BRAND.muted })
-      this.textRight(it.right, this.M + this.CW - 10, this.y + 5, { size: 10, font: this.f.bodyBold, color: TONE[it.tone ?? 'default'] })
-      this.y += 24
-    }
-    this.y += 8
-  }
-
   muted(str: string) {
     this.ensure(20)
     this.text(str, this.M, this.y, { size: 9.5, color: BRAND.muted })
