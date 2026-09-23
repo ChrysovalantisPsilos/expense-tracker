@@ -1395,6 +1395,43 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 31. Clients cannot create notifications (each one fans out to push/email)
+--     and can only change read_at on their own.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; nid uuid; blocked_insert boolean := false; blocked_title boolean := false; n int;
+begin
+  begin
+    insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
+    values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
+            'authenticated', 'zzt-notif-' || md5(random()::text) || '@example.com', now(), now())
+    returning id into u;
+    insert into public.notifications (user_id, type, title, body)
+      values (u, 'digest', 'zz title', 'zz body') returning id into nid;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      insert into public.notifications (user_id, type, title, body) values (u, 'member_joined', 'x', 'y');
+    exception when insufficient_privilege then blocked_insert := true;
+    end;
+    begin
+      update public.notifications set title = 'changed' where id = nid;
+    exception when insufficient_privilege then blocked_title := true;
+    end;
+    update public.notifications set read_at = now() where id = nid;
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if not blocked_insert then raise exception 'client could insert a notification'; end if;
+    if not blocked_title then raise exception 'client could change a notification title'; end if;
+    if n <> 1 then raise exception 'client could not mark its notification read'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: notifications insert blocked, only read_at updatable';
+    else update _t set fails = fails + 1; raise notice 'FAIL: notifications lockdown — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed (so CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
