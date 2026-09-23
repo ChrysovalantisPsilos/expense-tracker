@@ -1,6 +1,7 @@
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Card, Divider, Flex, HStack, Stack, Text } from '@chakra-ui/react'
+import { Box, Card, Divider, HStack, Stack, Text } from '@chakra-ui/react'
 import { ChevronRight } from 'lucide-react'
+import IconTile from './kit/IconTile.jsx'
 
 // An iOS-style grouped list: one card, rows split by hairlines. Used by the
 // More tab and the Settings page.
@@ -15,16 +16,13 @@ export function NavList({ children }) {
 // One row: a sand icon tile (or custom `media`, e.g. an avatar), a label, an
 // optional muted description, and a chevron when it navigates. Pass `to` for
 // an in-app link or `onClick` for an action (rendered as a button).
-export function NavRow({ to, onClick, icon: Icon, media, label, description }) {
+export function NavRow({ to, onClick, icon, media, label, description }) {
   const target = to ? { as: RouterLink, to } : { as: 'button', type: 'button', onClick }
   return (
     <HStack {...target} textAlign="left" w="full" spacing={3} px={4} py={3.5} minW={0}
       _hover={{ bg: 'bg.subtle' }} _focusVisible={{ bg: 'bg.subtle', boxShadow: 'outline' }}
       transition="background 0.15s">
-      {media ?? (
-        <Flex boxSize="40px" borderRadius="xl" bg="bg.subtle" color="accent.fg"
-          align="center" justify="center" flexShrink={0}><Icon size={20} /></Flex>
-      )}
+      {media ?? <IconTile icon={icon} size={40} radius="xl" />}
       <Box flex="1" minW={0}>
         <Text fontWeight="600" noOfLines={1}>{label}</Text>
         {description && (

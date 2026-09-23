@@ -5,6 +5,7 @@ import {
 import { HandCoins, Link2, ReceiptText } from 'lucide-react'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
+import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import ThemeToggle from '../../shared/ui/ThemeToggle.jsx'
 import TripSplitMock from './TripSplitMock.jsx'
@@ -103,10 +104,7 @@ function HowItWorks() {
             <Stack key={s.title} spacing={3} p={{ base: 5, md: 6 }} bg="bg.canvas"
               borderRadius="2xl" borderWidth="1px" borderColor="border.default">
               <HStack spacing={3}>
-                <Flex boxSize="44px" borderRadius="xl" bg="bg.subtle" color="accent.fg"
-                  align="center" justify="center" flexShrink={0}>
-                  <s.icon size={22} />
-                </Flex>
+                <IconTile icon={s.icon} size={44} radius="xl" />
                 <Text fontFamily="heading" fontWeight="700" color="text.muted" fontSize="sm">
                   Step {i + 1}
                 </Text>
@@ -133,7 +131,9 @@ function Showcase() {
                 <SectionHeading eyebrow={eyebrow} title={title}>{body}</SectionHeading>
               </Box>
               <Box flex="1" w="full">
-                <Mock />
+                <Box maxW="420px" mx="auto">
+                  <Mock />
+                </Box>
               </Box>
             </Flex>
           ))}

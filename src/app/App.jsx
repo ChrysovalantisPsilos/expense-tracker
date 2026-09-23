@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { Center, Spinner } from '@chakra-ui/react'
@@ -35,6 +35,13 @@ import { STORAGE_KEYS } from '../shared/lib/keys.js'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
 
+// Dev-only UI kit gallery at /kit. import.meta.env.DEV is false in production
+// builds, so the route and the gallery chunk are dropped from them entirely.
+const KitGallery = import.meta.env.DEV ? lazy(() => import('../shared/ui/kit/KitGallery.jsx')) : null
+const kitRoute = KitGallery && (
+  <Route path="/kit" element={<Suspense fallback={null}><KitGallery /></Suspense>} />
+)
+
 // Logged-out invite link -> read-only group preview. Its CTAs stash the token
 // (localStorage survives the email-confirmation round-trip in the same browser)
 // and send the visitor to sign up; AuthedRoutes then redeems it.
@@ -47,6 +54,7 @@ function PublicRoutes() {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/join/:token" element={<GroupPreview />} />
       <Route path="/privacy" element={<Privacy />} />
+      {kitRoute}
       <Route path="*" element={<Landing />} />
     </Routes>
   )
@@ -77,6 +85,7 @@ function AuthedRoutes() {
       <Routes>
         <Route path="/join/:token" element={<JoinGroup />} />
         <Route path="/privacy" element={<Privacy />} />
+        {kitRoute}
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
           <Route path="recurring" element={<Recurring />} />

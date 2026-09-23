@@ -1,13 +1,20 @@
 import { useEffect, useState } from 'react'
-import {
-  AvatarGroup, Box, Flex, HStack, SimpleGrid, Stack, Text,
-} from '@chakra-ui/react'
+import { AvatarGroup, Box, Flex, HStack, Stack, Text } from '@chakra-ui/react'
 import { AnimatePresence } from 'framer-motion'
-import { ArrowRight, Plane, Receipt } from 'lucide-react'
+import { Plane, Receipt } from 'lucide-react'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
+import Figure from '../../shared/ui/kit/Figure.jsx'
+import HighlightPill from '../../shared/ui/kit/HighlightPill.jsx'
+import IconTile from '../../shared/ui/kit/IconTile.jsx'
+import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
+import TransferRow from '../../shared/ui/kit/TransferRow.jsx'
+import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
+import { signedAmount } from '../../shared/ui/kit/kitMath.js'
+import { MotionBox, usePlayback } from '../../shared/ui/kit/motion.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { buildTripDemo } from './landingDemo.js'
-import { MotionBox, usePlayback } from './motion.jsx'
 
 const TRIP = buildTripDemo()
 const LAST = TRIP.steps.length // phase index of the settle-up plan
@@ -25,51 +32,19 @@ const pop = {
   transition: { duration: 0.35, ease: 'easeOut' },
 }
 
-function ExpenseRow({ expense }) {
-  return (
-    <HStack spacing={3} py={2}>
-      <Flex boxSize="32px" borderRadius="lg" bg="bg.subtle" color="accent.fg"
-        align="center" justify="center" flexShrink={0}>
-        <Receipt size={16} />
-      </Flex>
-      <Box flex="1" minW={0}>
-        <Text fontSize="sm" fontWeight="600" noOfLines={1}>{expense.label}</Text>
-        <Text fontSize="xs" color="text.muted">Paid by {nameOf[expense.paidBy]}</Text>
-      </Box>
-      <Text fontSize="sm" fontWeight="700">{money(expense.amountMinor)}</Text>
-    </HStack>
-  )
-}
-
 function Balances({ step }) {
   const owedToYou = step.settlements.find((s) => s.to === 'you')
   return (
     <Stack spacing={3}>
-      <Text fontSize="xs" fontWeight="700" color="text.muted" textTransform="uppercase" letterSpacing="0.06em">
-        Balances
-      </Text>
-      <SimpleGrid columns={2} spacing={2}>
+      <SectionLabel>Balances</SectionLabel>
+      <BalanceGrid>
         {step.balances.map((b) => {
-          const up = b.netMinor >= 0
-          return (
-            <Box key={b.id} bg="bg.subtle" borderRadius="lg" px={3} py={2}>
-              <Text fontSize="xs" color="text.muted">{b.name}</Text>
-              <Text fontSize="sm" fontWeight="700"
-                color={up ? 'green.600' : 'red.500'}
-                _dark={{ color: up ? 'green.300' : 'red.300' }}>
-                {up ? '+' : '−'}{money(Math.abs(b.netMinor))}
-              </Text>
-            </Box>
-          )
+          const { text, tone } = signedAmount(b.netMinor, money)
+          return <BalanceTile key={b.id} label={b.name} value={text} tone={tone} />
         })}
-      </SimpleGrid>
+      </BalanceGrid>
       {owedToYou && (
-        <Box borderRadius="lg" px={3} py={2} bg="brand.50" _dark={{ bg: 'whiteAlpha.100' }}>
-          <Text fontSize="sm" fontWeight="600">
-            {owedToYou.fromName} owes you{' '}
-            <Text as="span" color="accent.fg" fontWeight="800">{money(owedToYou.amountMinor)}</Text>
-          </Text>
-        </Box>
+        <HighlightPill amount={money(owedToYou.amountMinor)}>{owedToYou.fromName} owes you</HighlightPill>
       )}
     </Stack>
   )
@@ -78,22 +53,18 @@ function Balances({ step }) {
 function SettlePlan({ step }) {
   return (
     <Stack spacing={3}>
-      <Text fontSize="xs" fontWeight="700" color="text.muted" textTransform="uppercase" letterSpacing="0.06em">
-        Settle up · {step.settlements.length} payments
-      </Text>
+      <SectionLabel>Settle up · {step.settlements.length} payments</SectionLabel>
       {step.settlements.map((s) => (
-        <HStack key={`${s.from}-${s.to}`} spacing={2} bg="bg.subtle" borderRadius="lg" px={3} py={2.5}>
-          <UserAvatar name={s.fromName} size="xs" />
-          <Text fontSize="sm" fontWeight="600">{s.fromName}</Text>
-          <Box color="text.muted"><ArrowRight size={14} /></Box>
-          <UserAvatar name={s.toName} size="xs" highlight={s.to === 'you'} />
-          <Text fontSize="sm" fontWeight="600" flex="1">{s.toName}</Text>
-          <Text fontSize="sm" fontWeight="800" color="accent.fg">{money(s.amountMinor)}</Text>
-        </HStack>
+        <TransferRow key={`${s.from}-${s.to}`} amount={money(s.amountMinor)}
+          from={{ name: s.fromName, highlight: s.from === 'you' }}
+          to={{ name: s.toName, highlight: s.to === 'you' }} />
       ))}
     </Stack>
   )
 }
+
+// Inner cards of the phone screen: white, hairline-bordered, no shadow.
+const SCREEN_CARD = { elevation: 'none', borderRadius: 'xl', mx: 2.5, mb: 2.5 }
 
 // Hero mockup: a phone-style group card where the trip's expenses land one by
 // one, balances update, and it ends on the settle-up plan — then loops.
@@ -129,10 +100,7 @@ export default function TripSplitMock() {
           </Flex>
 
           <HStack px={4} pt={3} pb={3} spacing={3}>
-            <Flex boxSize="40px" borderRadius="xl" bg="brand.500" color="white"
-              align="center" justify="center" flexShrink={0}>
-              <Plane size={20} />
-            </Flex>
+            <IconTile icon={Plane} size={40} variant="solid" radius="xl" />
             <Box flex="1" minW={0}>
               <Text fontFamily="heading" fontWeight="700" noOfLines={1}>{TRIP.groupName}</Text>
               <AvatarGroup size="xs" max={4} spacing={-2} mt={1}>
@@ -141,33 +109,29 @@ export default function TripSplitMock() {
                 ))}
               </AvatarGroup>
             </Box>
-            <Box textAlign="right">
-              <Text fontSize="xs" color="text.muted">Total</Text>
-              <Text fontFamily="heading" fontWeight="700">{money(step.totalMinor)}</Text>
-            </Box>
+            <Figure label="Total" value={money(step.totalMinor)} align="right" />
           </HStack>
 
-          <Box bg="bg.surface" mx={2.5} mb={2.5} borderRadius="xl" px={3.5} py={1}
-            borderWidth="1px" borderColor="border.default">
+          <Panel {...SCREEN_CARD} p={0} px={3.5} py={1}>
             <Box minH="208px">
               <AnimatePresence initial={false}>
                 {step.expenses.map((e) => (
                   <MotionBox key={e.id} {...anim}>
-                    <ExpenseRow expense={e} />
+                    <ItemRow icon={Receipt} title={e.label} meta={`Paid by ${nameOf[e.paidBy]}`}
+                      amount={money(e.amountMinor)} />
                   </MotionBox>
                 ))}
               </AnimatePresence>
             </Box>
-          </Box>
+          </Panel>
 
-          <Box bg="bg.surface" mx={2.5} mb={2.5} borderRadius="xl" p={3.5}
-            borderWidth="1px" borderColor="border.default" minH="196px">
+          <Panel {...SCREEN_CARD} p={3.5} minH="196px">
             <AnimatePresence mode="wait" initial={false}>
               <MotionBox key={settling ? 'settle' : 'balances'} {...anim}>
                 {settling ? <SettlePlan step={step} /> : <Balances step={step} />}
               </MotionBox>
             </AnimatePresence>
-          </Box>
+          </Panel>
         </Box>
       </Box>
     </Box>
