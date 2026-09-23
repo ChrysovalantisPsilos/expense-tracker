@@ -176,7 +176,7 @@ export default function ImportExpenses() {
                 {detection.remembered
                   ? 'Using the columns you confirmed for this layout last time.'
                   : detection.preset
-                    ? `Recognised as a ${detection.preset.name} export.`
+                    ? `Recognised: ${detection.preset.name} export.`
                     : detection.confidence >= CONFIDENCE_THRESHOLD
                       ? 'Columns detected automatically.'
                       : 'We couldn’t be sure which column is which — please check the mapping below.'}
