@@ -3449,11 +3449,65 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 59. 0075: profiles.is_developer (unlocks the live/test site switch). A new
+--     profile starts false; no client can set it — not the owner (no column
+--     grant), not on anyone else's row, not anon — while the owner can still
+--     read it and update their granted columns.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; v boolean; n int;
+begin
+  begin
+    u1 := pg_temp.zz_user('dev');
+    u2 := pg_temp.zz_user('devx');
+    if (select is_developer from public.profiles where id = u1) then
+      raise exception 'is_developer defaults to true';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select is_developer into v from public.profiles where id = u1;
+    if v is distinct from false then raise exception 'owner cannot read is_developer (got %)', v; end if;
+    begin
+      update public.profiles set is_developer = true where id = u1;
+      raise exception 'owner could update is_developer';
+    exception when insufficient_privilege then null;
+    end;
+    begin
+      update public.profiles set is_developer = true where id = u2;
+      raise exception 'could update another user''s is_developer';
+    exception when insufficient_privilege then null;
+    end;
+    update public.profiles set tour_done = true where id = u1;  -- granted columns still work
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if n <> 1 then raise exception 'owner lost their granted profile updates'; end if;
+
+    perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+    begin
+      execute 'set local role anon';
+      update public.profiles set is_developer = true where id = u2;
+      execute 'reset role';
+      raise exception 'anon could update is_developer';
+    exception when insufficient_privilege then
+      execute 'reset role';
+    end;
+    if exists (select 1 from public.profiles where id in (u1, u2) and is_developer) then
+      raise exception 'is_developer was set by a client';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: is_developer defaults false, owner-readable, not client-writable (own row, other rows, anon)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: is_developer — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 59; f int; p int;  -- tests 1–58 + B-0059
+declare expected_tests constant int := 60; f int; p int;  -- tests 1–59 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

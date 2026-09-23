@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Budgeer mark, test-site variant: the same b with a dark corner dot -->
+  <rect x="9.25" y="3.6" width="7.5" height="29.4" rx="3.75" fill="#f95d38"/>
+  <g transform="rotate(-90 24 29.6)" stroke-width="7.5">
+    <circle cx="24" cy="29.6" r="11" stroke="#fbb324" stroke-dasharray="19 50.1"/>
+    <circle cx="24" cy="29.6" r="11" stroke="#f95d38" stroke-dasharray="48.2 20.9" stroke-dashoffset="-21"/>
+  </g>
+  <circle cx="37.5" cy="10.5" r="9" fill="#2b271f" stroke="#ffffff" stroke-width="3"/>
+</svg>

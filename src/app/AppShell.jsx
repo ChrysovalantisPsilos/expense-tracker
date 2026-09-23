@@ -14,6 +14,7 @@ import Logo from '../shared/ui/Logo.jsx'
 import PageSpinner from '../shared/ui/PageSpinner.jsx'
 import OfflineIndicator from '../shared/ui/OfflineIndicator.jsx'
 import ThemeToggle from '../shared/ui/ThemeToggle.jsx'
+import SiteSwitch from '../shared/ui/SiteSwitch.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
 import { useNotificationFeed } from '../features/notifications/notifications.js'
 import { isNavActive } from './navMatch.js'
@@ -108,6 +109,7 @@ export default function AppShell() {
         </Flex>
         <Spacer />
         <Flex direction="column" gap={1} data-tour="account">
+          <SiteSwitch />
           <NavItem to="/settings" title="Settings" style={{ width: '100%' }}>
             {(isActive) => (
               <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
@@ -148,6 +150,7 @@ export default function AppShell() {
           <Spacer />
           <OfflineIndicator />
           <Flex align="center" gap={3} data-tour="account">
+            <SiteSwitch compact />
             <NotificationBell feed={feed} />
             <ThemeToggle />
             <RouterLink to="/settings" aria-label="Settings">

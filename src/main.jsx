@@ -20,6 +20,10 @@ import { AuthProvider } from './shared/auth/AuthProvider.jsx'
 import { ProfileProvider } from './shared/lib/ProfileProvider.jsx'
 import { AppearanceProvider } from './shared/lib/appearance.jsx'
 import AutoUpdate from './app/AutoUpdate.jsx'
+import { markEnvironment } from './shared/lib/environment.js'
+
+// On the test site: "DEV · " tab title and the tagged favicon.
+markEnvironment(document)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

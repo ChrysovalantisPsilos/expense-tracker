@@ -1,7 +1,7 @@
-import { Stack } from '@chakra-ui/react'
+import { Box, Stack, Text } from '@chakra-ui/react'
 import {
   BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass, CircleHelp, Mail,
-  Scale, UserCheck,
+  Scale, UserCheck, ArrowLeftRight,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -9,6 +9,7 @@ import PageHeader from '../../shared/ui/PageHeader.jsx'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { NavList, NavRow } from '../../shared/ui/NavList.jsx'
 import { SUPPORT_EMAIL } from '../../shared/lib/contact.js'
+import { useSiteSwitch } from '../../shared/lib/useSiteSwitch.js'
 import { startTour } from '../onboarding/tour.js'
 
 const PREFERENCES = [
@@ -31,10 +32,11 @@ const rows = (items) => items.map(({ to, label, desc, icon }) => (
 
 // The Settings list: who you are at the top (taps into Account), then the
 // sub-pages in labelled groups, help (the FAQ and replaying the app tour),
-// then sign-out.
+// the live/test site switch for developer accounts, then sign-out.
 export default function Settings() {
   const { user, signOut } = useAuth()
   const { profile } = useProfile()
+  const site = useSiteSwitch()
 
   return (
     <Stack spacing={5}>
@@ -54,6 +56,17 @@ export default function Settings() {
         <NavRow icon={Compass} label="Take the tour again" description="A quick look around the app"
           data-tour="replay" onClick={() => startTour({ returnTo: '/settings', returnFocus: '[data-tour="replay"]' })} />
       </NavList>
+      {site && (
+        <Box>
+          <NavList label="Developer">
+            <NavRow href={site.href} icon={ArrowLeftRight} label={site.label}
+              description={site.host} />
+          </NavList>
+          <Text fontSize="sm" color="text.muted" mt={2} px={1}>
+            The live and test sites have separate accounts and data: you sign in separately on each.
+          </Text>
+        </Box>
+      )}
       <NavList>
         <NavRow onClick={signOut} icon={LogOut} label="Sign out" />
       </NavList>
