@@ -1,30 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   Stack, Card, CardBody, HStack, Text, Spacer, Button, Center, Box,
-  Spinner, Flex, Badge, IconButton, Divider, List, ListItem, useToast,
+  Spinner, Flex, IconButton, Divider, List, ListItem, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
-  ModalFooter, Avatar, Checkbox,
-  Menu, MenuButton, MenuList, MenuItem,
+  ModalFooter, Checkbox,
 } from '@chakra-ui/react'
-import {
-  ArrowLeft, ArrowRight, ArrowRightLeft, Plus, Link2, Users, HandCoins, Mail,
-  MoreVertical, LogOut, Trash2, UserMinus, Pencil, Camera, FileDown, MessageSquare,
-} from 'lucide-react'
+import { ArrowRight, ArrowRightLeft, HandCoins, FileDown, MessageSquare } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useLiveRefetch } from '../../shared/lib/realtime.js'
 import {
-  getGroup, createInviteLink, removeMember, deleteGroup,
-  uploadGroupImage, listAuditLog, downloadGroupReport,
+  getGroup, createInviteLink, removeMember, deleteGroup, listAuditLog, downloadGroupReport,
 } from './groups.js'
 import { commentCounts } from './comments.js'
-import { memberName, describeBalance, splitLabel, settlePlan, pluralise } from './groupFormat.js'
+import { memberName, splitLabel, settlePlan, pluralise } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
-import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import CardHeader from '../../shared/ui/CardHeader.jsx'
 import RowAmount from '../../shared/ui/RowAmount.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
+import GroupHeader from './GroupHeader.jsx'
+import MembersSheet from './MembersSheet.jsx'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
 import CommentThread from './CommentThread.jsx'
 import {
@@ -44,17 +40,16 @@ export default function GroupDetail() {
   const leaveModal = useDisclosure()
   const deleteModal = useDisclosure()
   const renameModal = useDisclosure()
+  const membersSheet = useDisclosure()
   const [removeTarget, setRemoveTarget] = useState(null)
   const [actionBusy, setActionBusy] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
-  const [uploadingImg, setUploadingImg] = useState(false)
   const [auditLog, setAuditLog] = useState([])
   const [reportBusy, setReportBusy] = useState(false)
   const [counts, setCounts] = useState(new Map())
   const [thread, setThread] = useState(null) // { type, id, label }
   const [tab, setTab] = useState('expenses') // expenses | settlements | activity
   const [leaveSilently, setLeaveSilently] = useState(false)
-  const imgRef = useRef(null)
 
   function openAdd() { setEditingExpense(null); expenseModal.onOpen() }
   function openEdit(exp) { setEditingExpense(exp); expenseModal.onOpen() }
@@ -98,19 +93,6 @@ export default function GroupDetail() {
   const nameOf = (mid) => memberName(data?.members, mid)
   const myMember = data?.members.find((m) => m.user_id === user.id)
   const myNet = myMember ? (balances.get(myMember.id) ?? 0) : 0
-
-  async function onGroupImage(e) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setUploadingImg(true)
-    try {
-      await uploadGroupImage(id, file)
-      await load()
-      toast({ title: 'Group photo updated', status: 'success' })
-    } catch (e) { toast({ title: 'Couldn’t update photo', description: e.message, status: 'error' }) }
-    finally { setUploadingImg(false) }
-  }
 
   async function copyInvite() {
     try {
@@ -164,48 +146,10 @@ export default function GroupDetail() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader eyebrow="Group" title={group.name} leading={<>
-        <IconButton aria-label="Back" variant="ghost" size="sm" ml={-2} flexShrink={0}
-          icon={<ArrowLeft size={18} />} onClick={() => navigate('/groups')} />
-        <Box position="relative" flexShrink={0}>
-          <Avatar borderRadius="lg" size="md" name={group.name} src={group.image_url}
-            bg="bg.subtle" color="accent.fg" />
-          {isOwner && (
-            <>
-              <IconButton aria-label="Change group photo" icon={<Camera size={12} />}
-                size="xs" borderRadius="full" position="absolute" bottom="-6px" right="-6px"
-                isLoading={uploadingImg} onClick={() => imgRef.current?.click()} />
-              <input ref={imgRef} type="file" accept="image/*" hidden onChange={onGroupImage} />
-            </>
-          )}
-        </Box>
-      </>} action={<>
-        <PageAction icon={<Plus size={16} />} label="Add expense" onClick={openAdd} />
-        <Menu>
-          <MenuButton as={IconButton} aria-label="Group options" size="sm" mr={-2}
-            variant="ghost" icon={<MoreVertical size={18} />} />
-          <MenuList>
-            <MenuItem icon={<FileDown size={16} />} onClick={downloadReport}>
-              Download statement (PDF)
-            </MenuItem>
-            {isOwner && (
-              <MenuItem icon={<Pencil size={16} />} onClick={renameModal.onOpen}>
-                Rename group
-              </MenuItem>
-            )}
-            {myMember && (
-              <MenuItem icon={<LogOut size={16} />} onClick={leaveModal.onOpen}>
-                Leave group
-              </MenuItem>
-            )}
-            {isOwner && (
-              <MenuItem icon={<Trash2 size={16} />} color="status.negative" onClick={deleteModal.onOpen}>
-                Delete group
-              </MenuItem>
-            )}
-          </MenuList>
-        </Menu>
-      </>} />
+      <GroupHeader group={group} members={members} myUserId={user.id} isOwner={isOwner}
+        onPhotoChanged={load} onAdd={openAdd} onMembers={membersSheet.onOpen}
+        onReport={downloadReport} onRename={renameModal.onOpen}
+        onLeave={myMember ? leaveModal.onOpen : undefined} onDelete={deleteModal.onOpen} />
 
       {/* Your balance summary */}
       <Card>
@@ -252,49 +196,6 @@ export default function GroupDetail() {
           </Stack>
         </CardBody></Card>
       )}
-
-      {/* Members */}
-      <Card><CardBody>
-        <CardHeader icon={Users} title="Members" mb={3} action={<>
-          <Button size="xs" variant="ghost" leftIcon={<Mail size={14} />}
-            onClick={inviteModal.onOpen}>Email</Button>
-          <Button size="xs" variant="ghost" leftIcon={<Link2 size={14} />}
-            onClick={copyInvite}>Link</Button>
-        </>} />
-        <List spacing={0}>
-          {members.map((m, i) => {
-            const net = balances.get(m.id) ?? 0
-            const isMe = m.user_id === user.id
-            return (
-              <ListItem key={m.id}>
-                {i > 0 && <Divider />}
-                <HStack py={2.5}>
-                  <Avatar size="xs" name={m.display_name} src={m.avatar_url}
-                    {...(isMe ? { bg: 'brand.500', color: 'white' } : {})} />
-                  <Text fontWeight={isMe ? '700' : '500'}>
-                    {m.display_name}{isMe ? ' (you)' : ''}
-                  </Text>
-                  {m.role === 'owner' && <Badge colorScheme="brand">owner</Badge>}
-                  <Spacer />
-                  {net !== 0 && (
-                    <Text fontSize="sm" color={net > 0 ? 'status.positive' : 'status.negative'}>
-                      {describeBalance(net, cur)}
-                    </Text>
-                  )}
-                  {isOwner && !isMe && (
-                    <IconButton aria-label={`Remove ${m.display_name}`} size="xs" variant="ghost"
-                      color="status.negative" icon={<UserMinus size={14} />}
-                      onClick={() => setRemoveTarget(m)} />
-                  )}
-                </HStack>
-              </ListItem>
-            )
-          })}
-        </List>
-        <Text fontSize="xs" color="text.muted" mt={3}>
-          Invite people by email or a share link — they join once they accept.
-        </Text>
-      </CardBody></Card>
 
       {/* History — tabbed (Expenses / Settlements / Activity) */}
       <Card><CardBody>
@@ -406,6 +307,11 @@ export default function GroupDetail() {
 
       <RenameGroupModal group={group} isOpen={renameModal.isOpen}
         onClose={renameModal.onClose} onSaved={load} />
+
+      <MembersSheet members={members} myUserId={user.id} isOwner={isOwner}
+        isOpen={membersSheet.isOpen} onClose={membersSheet.onClose}
+        onInviteEmail={inviteModal.onOpen} onInviteLink={copyInvite} onRemove={setRemoveTarget}
+        onLeave={myMember ? () => { membersSheet.onClose(); leaveModal.onOpen() } : undefined} />
 
       <InviteEmailModal group={group}
         isOpen={inviteModal.isOpen} onClose={inviteModal.onClose} />

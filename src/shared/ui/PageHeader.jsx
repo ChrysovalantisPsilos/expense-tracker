@@ -4,9 +4,10 @@ import Eyebrow from './Eyebrow.jsx'
 
 // The page's title row: optional coral eyebrow, the page's single <h1>, an
 // optional muted description, and an `action` slot on the right. `leading`
-// holds anything that sits before the title (a back button, a group photo).
+// holds anything that sits before the title (a back button, a group photo);
+// `meta` is an optional node under the title (e.g. a group's member stack).
 // The title truncates to one line so the action always stays on screen.
-export default function PageHeader({ title, eyebrow, description, action, leading }) {
+export default function PageHeader({ title, eyebrow, description, action, leading, meta }) {
   return (
     <Flex align="center" gap={3} minW={0}>
       {leading}
@@ -17,6 +18,7 @@ export default function PageHeader({ title, eyebrow, description, action, leadin
           {title}
         </Heading>
         {description && <Text color="text.muted" fontSize="sm" mt={1}>{description}</Text>}
+        {meta && <Box mt={1.5}>{meta}</Box>}
       </Box>
       {action && <HStack spacing={2} flexShrink={0}>{action}</HStack>}
     </Flex>

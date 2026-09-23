@@ -1,4 +1,3 @@
-import { formatMoney } from '../../shared/lib/currency.js'
 import { simplifyDebts } from './splitMath.js'
 
 // Display name for a member id within a group's member list. Falls back to an
@@ -8,12 +7,21 @@ export function memberName(members, id) {
   return (members ?? []).find((m) => m.id === id)?.display_name ?? '—'
 }
 
-// Short balance phrasing for a member's net (positive = is owed, negative =
-// owes, zero = settled up). Returns just the text; callers pick the color.
-export function describeBalance(net, currency) {
-  if (net > 0) return `owed ${formatMoney(net, currency)}`
-  if (net < 0) return `owes ${formatMoney(-net, currency)}`
-  return 'settled up'
+// Members in display order: you first, then the owner, then everyone else in
+// join order (the list's existing order). Returns a new array.
+export function sortMembers(members, myUserId) {
+  const rank = (m) => (m.user_id === myUserId ? 0 : m.role === 'owner' ? 1 : 2)
+  return (members ?? []).map((m, i) => [m, i])
+    .sort(([a, i], [b, j]) => rank(a) - rank(b) || i - j)
+    .map(([m]) => m)
+}
+
+// The header's avatar stack: the first `max` members to draw, and how many
+// more sit behind a "+N" chip. { shown, overflow }
+export function avatarStack(members, max = 4) {
+  const list = members ?? []
+  const cap = Math.max(0, max)
+  return { shown: list.slice(0, cap), overflow: Math.max(0, list.length - cap) }
 }
 
 // "1 member" / "3 members". `plural` covers irregular words (person/people).
