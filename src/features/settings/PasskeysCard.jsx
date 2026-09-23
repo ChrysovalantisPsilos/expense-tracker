@@ -2,27 +2,19 @@ import { useState } from 'react'
 import { Text, Button, useToast } from '@chakra-ui/react'
 import { Fingerprint, KeyRound, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { passkeysSupported } from '../../shared/lib/supabase.js'
-import { useLiveQuery } from '../../shared/lib/db.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
-import { toPasskeyList } from './authMethods.js'
 
-// List / add / remove passkeys. Renders nothing when this browser can't do
-// WebAuthn or passkeys aren't enabled for the project (the list call errors),
-// so users never see a dead feature.
-export default function PasskeysCard() {
-  const { listPasskeys, registerPasskey, deletePasskey } = useAuth()
+// List / add / remove passkeys. `passkeys` is SecuritySettings' usePasskeys()
+// (shared with the sign-in methods list). Renders nothing when this browser
+// can't do WebAuthn or passkeys aren't enabled for the project (the list call
+// errors), so users never see a dead feature. Removing a passkey never removes
+// the last way in: every account also has an email or Google identity.
+export default function PasskeysCard({ passkeys: query }) {
+  const { registerPasskey, deletePasskey } = useAuth()
   const toast = useToast()
   const [pkBusy, setPkBusy] = useState(false)
-
-  // One-shot read (no realtime: passkeys aren't a table we can watch). An
-  // error means passkeys aren't enabled server-side, so the card hides.
-  const { data: passkeys, error, reload: loadPasskeys } = useLiveQuery(async () => {
-    const { data, error: e } = await listPasskeys()
-    if (e) throw e
-    return toPasskeyList(data)
-  }, { enabled: passkeysSupported, initial: null })
+  const { data: passkeys, error, reload: loadPasskeys } = query
 
   async function addPasskey() {
     setPkBusy(true)

@@ -6,10 +6,11 @@ import { KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { validatePassword } from '../../shared/lib/password.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import { hasPasswordIdentity } from './authMethods.js'
+import { hasPassword } from './authMethods.js'
 
-// Change password for accounts that already have a password (email identity).
-// Google/passkey-only accounts have no password to change, so this hides itself.
+// Change password for accounts that have one (an email identity, or a Google
+// account that set one). A Google-only account has none to change, so this
+// hides itself; the sign-in methods card offers "Set a password" instead.
 export default function PasswordCard({ user }) {
   const toast = useToast()
   const { changePassword } = useAuth()
@@ -18,7 +19,7 @@ export default function PasswordCard({ user }) {
   const [confirm, setConfirm] = useState('')
   const [busy, setBusy] = useState(false)
 
-  if (!hasPasswordIdentity(user)) return null
+  if (!hasPassword(user)) return null
 
   async function submit(e) {
     e.preventDefault()
@@ -27,7 +28,7 @@ export default function PasswordCard({ user }) {
     if (next !== confirm) { toast({ title: 'New passwords don’t match.', status: 'warning' }); return }
     setBusy(true)
     try {
-      // AuthProvider re-verifies the current password before changing it.
+      // AuthProvider re-verifies the current password (and so does the server).
       const { error } = await changePassword(current, next)
       if (error) { toast({ title: error.message, status: 'error' }); return }
 

@@ -58,7 +58,7 @@ only reports for now and doesn't fail the build.
 **Platform**
 - Installable PWA, offline reading, realtime everywhere (no polling)
 - Notification bell + web push + email (big events only), per-account switches
-- Passkeys, dark/light/system appearance, account deletion with data handover
+- Passkeys, sign-in methods (connect/disconnect Google, set a password on a Google account), dark/light/system appearance, account deletion with data handover
 
 ---
 

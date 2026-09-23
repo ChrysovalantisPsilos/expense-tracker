@@ -56,8 +56,9 @@ tests for the database as well as the client.
 - Updates install automatically when you're not mid-task.
 - Notification bell, web push and email (big events only), each with its own
   switch. There's also a weekly digest.
-- Sign in with email and password, Google, or a passkey. Light, dark or
-  system theme.
+- Sign in with email and password, Google, or a passkey — or several: connect
+  Google to a password account, or set a password on a Google one (Settings →
+  Security). Light, dark or system theme.
 - Account deletion that hands group data over to the remaining members.
 
 ---
@@ -210,7 +211,9 @@ too) · `npm run build` · `npm run preview`.
    Function secrets: `RESEND_API_KEY` (email is dormant without it),
    `INVITE_FROM`, `APP_ORIGIN` and `CORS_ORIGINS`.
 4. **Configure Auth:** enable Email, Google and passkeys, and turn on
-   leaked-password protection.
+   leaked-password protection. Turn on **Allow manual linking** (Settings →
+   Security's "Connect Google" needs it) and add `<origin>/settings/security`
+   to the redirect URLs.
 5. **Run `supabase/tests/db_tests.sql`** against the project and confirm it
    ends with `ALL DATABASE TESTS PASSED`.
 

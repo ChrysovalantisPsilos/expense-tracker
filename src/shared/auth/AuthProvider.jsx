@@ -128,9 +128,47 @@ export function AuthProvider({ children }) {
     if (!email) return { error: new Error('You need to be signed in.') }
     const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: current })
     if (authErr) return { error: new Error('Current password is incorrect.') }
-    const { error } = await supabase.auth.updateUser({ password: next })
+    // The project requires the current password on a change (Auth setting
+    // "require current password"), so the server checks it again.
+    const { error } = await supabase.auth.updateUser({ password: next, current_password: current })
+    if (error?.code === 'current_password_invalid') return { error: new Error('Current password is incorrect.') }
     return { error: error ?? null }
   }, [session?.user?.email])
+
+  // ---- Sign-in methods (Settings → Security) ------------------------------
+  // All of these need the signed-in session: Supabase Auth refuses them
+  // without one, and refuses to unlink a user's last identity.
+  // The identities (email, google…) linked to the signed-in user.
+  const getIdentities = useCallback(async () => {
+    const { data, error } = await supabase.auth.getUserIdentities()
+    if (error) throw error
+    return data?.identities ?? []
+  }, [])
+
+  // Connect a Google account to the signed-in user: Google's consent screen,
+  // then back to `returnTo`. Returns { error } when it can't start (e.g.
+  // manual linking is off for the project: code manual_linking_disabled).
+  const linkGoogle = useCallback(
+    (returnTo) => supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo: returnTo } }),
+    [],
+  )
+
+  const unlinkIdentity = useCallback((identity) => supabase.auth.unlinkIdentity(identity), [])
+
+  // A first password for an account that signs in with Google only (no
+  // current password to give). `password_set` in user_metadata only tells the
+  // UI there's one now (Supabase adds no email identity); it grants nothing —
+  // a later change needs the current password (changePassword), and if the
+  // account turns out to have one already the server refuses this with
+  // current_password_invalid.
+  const setFirstPassword = useCallback(
+    (password) => supabase.auth.updateUser({ password, data: { password_set: true } }),
+    [],
+  )
+  const markPasswordSet = useCallback(
+    () => supabase.auth.updateUser({ data: { password_set: true } }),
+    [],
+  )
 
   const clearRecovery = useCallback(() => setRecovering(false), [])
 
@@ -165,10 +203,16 @@ export function AuthProvider({ children }) {
     registerPasskey,
     listPasskeys,
     deletePasskey,
+    getIdentities,
+    linkGoogle,
+    unlinkIdentity,
+    setFirstPassword,
+    markPasswordSet,
   }), [
     session, loading, recovering, signInWithPassword, signUp, signInWithProvider, signOut,
     resendConfirmation, sendPasswordReset, updatePassword, changePassword, clearRecovery,
     signInWithPasskey, registerPasskey, listPasskeys, deletePasskey,
+    getIdentities, linkGoogle, unlinkIdentity, setFirstPassword, markPasswordSet,
   ])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

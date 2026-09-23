@@ -33,7 +33,8 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 
 | Table | Personal data (columns) | Purpose | Legal basis (Art. 6) | Retention | Who can access |
 | --- | --- | --- | --- | --- | --- |
-| `auth.users` (Supabase Auth) | email, password hash, providers, created/last sign-in, raw_user_meta_data (Google name/picture; `accepted_privacy/terms` versions) | Accounts and sign-in | (b) contract | account | owner (own session), operator (admin) |
+| `auth.users` (Supabase Auth) | email, password hash, providers, created/last sign-in, raw_user_meta_data (Google name/picture; `accepted_privacy/terms` versions; `password_set` when a Google account adds a password) | Accounts and sign-in | (b) contract | account | owner (own session), operator (admin) |
+| `auth.identities` (Supabase Auth) | each sign-in method linked to the account (email; Google: its account id, email, name, picture), when linked/last used; unlinked from Settings → Security | Sign-in with more than one method | (b) contract | account (an unlinked method's row is deleted) | owner (own session), operator |
 | `auth.sessions`, `auth.refresh_tokens` | IP, user agent, timestamps | Keep users signed in, security | (f) security | until sign-out/expiry (Supabase-managed) | Supabase, operator |
 | `auth.webauthn_credentials` | passkey name, public key, last used | Passkey sign-in | (b) | account | owner, operator |
 | `auth.audit_log_entries` | sign-in events, IP | Security | (f) | 30 days (0073 purge, if stored in DB) | operator |
