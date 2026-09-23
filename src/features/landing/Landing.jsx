@@ -2,7 +2,10 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
   Box, Button, Container, Flex, Heading, HStack, Link, SimpleGrid, Stack, Text,
 } from '@chakra-ui/react'
-import { HandCoins, Link2, ReceiptText } from 'lucide-react'
+import {
+  ArchiveRestore, Download, FileSpreadsheet, HandCoins, Landmark, Link2, LockKeyhole, PiggyBank,
+  Percent, Repeat, ReceiptText, ScanLine,
+} from 'lucide-react'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
@@ -17,17 +20,17 @@ const STEPS = [
   {
     icon: Link2,
     title: 'Create a group & invite friends with a link',
-    body: 'Start a group for a trip, your flat or a night out, then share one invite link.',
+    body: 'Create a group for a trip, your flat or a night out, share one invite link, and friends join with a free account.',
   },
   {
     icon: ReceiptText,
     title: 'Add expenses as you go',
-    body: 'Log who paid and what it was for, right when it happens.',
+    body: 'Log who paid, in any currency. Split equally, or by amount, percentage or shares.',
   },
   {
     icon: HandCoins,
     title: 'See who owes what and settle up',
-    body: 'Balances update as you go, and Budgeer works out a simple plan to square up.',
+    body: 'Budgeer works out the fewest payments to square up, and shows each friend’s IBAN, Revolut or PayPal to pay back.',
   },
 ]
 
@@ -35,21 +38,34 @@ const SHOWCASE = [
   {
     eyebrow: 'Budgets & tracking',
     title: 'Know where every euro goes',
-    body: 'Log expenses and income, set a monthly budget for each category, and see at a glance when you’re getting close — or already over.',
+    body: 'Log expenses and income and set a monthly budget for each category — it carries over to the next month. Bars turn amber at 80% and red when you’re over, and Budgeer notifies you when you cross either line.',
     Mock: BudgetsMock,
   },
   {
     eyebrow: 'Insights',
     title: 'Your spending, at a glance',
-    body: 'See what you spend by category and how this month compares with the last six, so changes never sneak up on you.',
+    body: 'See what you spend by category and your last six months side by side, with the change from last month.',
     Mock: InsightsMock,
   },
   {
     eyebrow: 'Multi-currency',
     title: 'Spend abroad, track at home',
-    body: 'Add expenses in the currency you paid in. Budgeer converts them to your home currency at that day’s rate, so your totals stay right.',
+    body: 'Add expenses in the currency you paid in, on your own or in a group. Budgeer converts them at the European Central Bank rate for that day, and each one keeps its rate, so past totals never shift.',
     Mock: CurrencyMock,
   },
+]
+
+// Real features the showcase doesn't have room for.
+const ALSO_INCLUDED = [
+  { icon: Landmark, label: 'Pay back by IBAN, Revolut or PayPal' },
+  { icon: Percent, label: 'Split by amount, percent or shares' },
+  { icon: ScanLine, label: 'Receipt scan on your device' },
+  { icon: FileSpreadsheet, label: 'Import from CSV or Excel' },
+  { icon: Repeat, label: 'Recurring payments' },
+  { icon: PiggyBank, label: 'Savings goals and net worth' },
+  { icon: Download, label: 'PDF and Excel statements' },
+  { icon: ArchiveRestore, label: 'Encrypted backups' },
+  { icon: LockKeyhole, label: 'Encrypted at rest' },
 ]
 
 function SectionHeading({ eyebrow, title, children }) {
@@ -77,8 +93,9 @@ function Hero({ onLogin, onSignup }) {
               <Text as="span" color="accent.fg">Split with friends.</Text>
             </Heading>
             <Text color="text.muted" fontSize={{ base: 'lg', md: 'xl' }} maxW="lg">
-              A free expense tracker and bill splitter. Log what you spend, set
-              budgets, and settle up with friends — all in one app.
+              A free expense tracker and bill splitter. Log spending and income, set
+              budgets, split trips and flats with friends, and pay them back by
+              IBAN, Revolut or PayPal in a tap. No limits, no ads.
             </Text>
             <Stack direction={{ base: 'column', sm: 'row' }} spacing={3} pt={2}>
               <Button size="lg" onClick={onSignup}>Get started — it’s free</Button>
@@ -143,10 +160,29 @@ function Showcase() {
   )
 }
 
+function AlsoIncluded() {
+  return (
+    <Box as="section" bg="bg.surface" borderTopWidth="1px" borderBottomWidth="1px" borderColor="border.default">
+      <Container maxW="6xl" px={{ base: 4, md: 6 }} py={{ base: 12, md: 16 }}>
+        <SectionHeading eyebrow="Also included" title="Everything else, free too" />
+        <SimpleGrid as="ul" listStyleType="none" columns={{ base: 1, sm: 2, lg: 3 }}
+          spacing={{ base: 3, md: 4 }} mt={{ base: 6, md: 10 }}>
+          {ALSO_INCLUDED.map(({ icon, label }) => (
+            <HStack as="li" key={label} spacing={3}>
+              <IconTile icon={icon} size={36} radius="lg" />
+              <Text fontWeight="600">{label}</Text>
+            </HStack>
+          ))}
+        </SimpleGrid>
+      </Container>
+    </Box>
+  )
+}
+
 function ClosingCta({ onSignup }) {
   return (
     <Box as="section">
-      <Container maxW="6xl" px={{ base: 4, md: 6 }} pb={{ base: 14, md: 20 }}>
+      <Container maxW="6xl" px={{ base: 4, md: 6 }} py={{ base: 14, md: 20 }}>
         <Stack align="center" textAlign="center" spacing={6} px={{ base: 6, md: 12 }} py={{ base: 12, md: 16 }}
           borderRadius="2xl" bg="brand.500" color="white" boxShadow="lifted"
           bgGradient="linear(to-br, brand.400, brand.600)">
@@ -154,7 +190,7 @@ function ClosingCta({ onSignup }) {
             Start splitting — it’s free
           </Heading>
           <Text fontSize={{ base: 'md', md: 'lg' }} opacity={0.9} maxW="md">
-            Create your first group and invite friends with a link.
+            Create your first group and invite friends with a link. No limits, no ads.
           </Text>
           <Button size="lg" bg="white" color="brand.700"
             _hover={{ bg: 'brand.50' }} _active={{ bg: 'brand.100' }} onClick={onSignup}>
@@ -181,6 +217,7 @@ export default function Landing() {
         <Hero onLogin={onLogin} onSignup={onSignup} />
         <HowItWorks />
         <Showcase />
+        <AlsoIncluded />
         <ClosingCta onSignup={onSignup} />
       </main>
       <Box as="footer" borderTopWidth="1px" borderColor="border.default">

@@ -5,10 +5,12 @@ import {
 import QRCode from 'qrcode'
 import { ExternalLink, QrCode, Copy } from 'lucide-react'
 import { memberPaymentInfo } from './groups.js'
+import { revolutUrl, paypalUrl } from '../../shared/lib/payLinks.js'
 
 // One-tap ways to actually pay a co-member the settle-up amount, driven by
 // the payment details they saved in Settings → Account → Getting paid (readable to
-// co-members). The SEPA "Bank QR" encodes an EPC069-12 payload — scanning it
+// co-members). Revolut and PayPal links open with the amount filled in. The
+// SEPA "Bank QR" encodes an EPC069-12 payload — scanning it
 // in any EU banking app pre-fills payee, IBAN, and the exact amount (EPC
 // transfers are EUR-only, so it hides for other group currencies).
 export default function PayShortcuts({ member, amountMinor, currency, groupName }) {
@@ -28,8 +30,9 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
   }, [member?.id, member?.user_id])
 
   const iban = info?.payment_iban
-  const revolut = info?.payment_revolut
-  if (!member?.user_id || (!iban && !revolut)) return null
+  const revolut = revolutUrl(info?.payment_revolut, amountMinor, currency)
+  const paypal = paypalUrl(info?.payment_paypal, amountMinor, currency)
+  if (!member?.user_id || (!iban && !revolut && !paypal)) return null
 
   const eur = currency === 'EUR'
   const amountStr = (amountMinor / 100).toFixed(2)
@@ -70,10 +73,15 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
       </Text>
       <HStack spacing={2} flexWrap="wrap">
         {revolut && (
-          <Button as="a" size="sm" target="_blank" rel="noopener"
-            href={`https://revolut.me/${encodeURIComponent(revolut)}`}
+          <Button as="a" size="sm" target="_blank" rel="noopener noreferrer" href={revolut}
             rightIcon={<ExternalLink size={13} />}>
             Revolut
+          </Button>
+        )}
+        {paypal && (
+          <Button as="a" size="sm" target="_blank" rel="noopener noreferrer" href={paypal}
+            rightIcon={<ExternalLink size={13} />}>
+            PayPal
           </Button>
         )}
         {iban && eur && (

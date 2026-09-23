@@ -64,6 +64,9 @@ test('budgetsDemo: pct is integer spent/cap and one is over budget', () => {
     assert.equal(r.pct, Math.round((r.spentMinor * 100) / r.capMinor))
   }
   assert.ok(rows.some((r) => r.pct > 100))
+  // Real category names, the app's order (most used first) and bar colours.
+  assert.deepEqual(rows.map((r) => r.category), ['Food & Dining', 'Groceries', 'Entertainment', 'Transport'])
+  assert.deepEqual(rows.map((r) => r.tone), ['negative', 'warning', undefined, undefined])
 })
 
 test('insightsDemo: shares sum to exactly 100 and trend has 6 months', () => {

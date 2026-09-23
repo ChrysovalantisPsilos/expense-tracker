@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import {
-  Button, Divider, FormControl, FormLabel, HStack, Input, Select, Stack, Textarea, useToast,
+  Button, Divider, FormControl, FormHelperText, FormLabel, HStack, Input, Link, Select, Stack,
+  Textarea, useToast,
 } from '@chakra-ui/react'
 import { useCategories } from './useData.js'
 import { toMinor, fromMinor, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
@@ -10,7 +12,7 @@ import { insertTransaction, updateTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
-import FxPreview from './FxPreview.jsx'
+import FxPreview from '../../shared/ui/FxPreview.jsx'
 
 // Fast-path entry for a single expense or income. Writes go through the
 // offline queue so logging works with no connection. Pass `transaction` to
@@ -154,6 +156,9 @@ export default function TransactionForm({ kind = 'expense', baseCurrency = 'EUR'
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </Select>
+          <FormHelperText>
+            <Link as={RouterLink} to="/settings/categories" color="accent.fg">Manage categories</Link>
+          </FormHelperText>
         </FormControl>
 
         <HStack align="end">

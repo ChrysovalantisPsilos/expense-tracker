@@ -49,12 +49,14 @@ export function paidByLabel(members, payerId, myMemberId) {
 }
 
 // The group's total spend (the header's "Total"), in minor units of the
-// group's currency. Expenses in any other currency are left out rather than
-// summed as if they were the same money.
+// group's currency: a foreign-currency expense counts with its converted
+// group_amount_minor (from group_ledger). A foreign row without one is left
+// out rather than summed as if it were the same money.
 export function groupTotal(expenses, currency) {
-  return (expenses ?? []).reduce((sum, e) => (
-    !e.currency || e.currency === currency ? sum + Number(e.amount_minor || 0) : sum
-  ), 0)
+  return (expenses ?? []).reduce((sum, e) => {
+    if (!e.currency || e.currency === currency) return sum + Number(e.amount_minor || 0)
+    return e.group_amount_minor != null ? sum + Number(e.group_amount_minor) : sum
+  }, 0)
 }
 
 // Every member's net balance for the balance tiles, in display order (you
@@ -117,4 +119,20 @@ export function balanceHighlight(plan) {
   return best.tone === 'positive'
     ? { text: `${best.fromName} owes you`, amount: best.amount, tone: 'positive' }
     : { text: `You owe ${best.toName}`, amount: best.amount, tone: 'negative' }
+}
+
+// The "Share summary" text (WhatsApp, Messages…): the group's name and total,
+// then who owes whom by name — never "You", since friends read it. Text only:
+// no expense descriptions, notes or comments. `format(minor)` formats money in
+// the group currency.
+export function groupSummaryText({ name, total, balances, members, format }) {
+  const plan = settlePlan(balances, members, null)
+  const lines = [`${name}: ${format(total)} spent in total`, '']
+  if (plan.length === 0) lines.push('Everyone is settled up.')
+  else {
+    lines.push(`To settle up (${pluralise(plan.length, 'payment')}):`)
+    for (const t of plan) lines.push(`• ${t.fromName} owes ${t.toName} ${format(t.amount)}`)
+  }
+  lines.push('', 'Shared from Budgeer')
+  return lines.join('\n')
 }

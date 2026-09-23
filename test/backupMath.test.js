@@ -9,9 +9,9 @@ import {
 
 // ---- A small source account, in the shapes the data modules return ----------
 const CATS = [
-  { id: 'cat-food', name: 'Food', kind: 'expense', icon: 'utensils', color: 'orange', is_archived: false },
+  { id: 'cat-food', name: 'Food', kind: 'expense', icon: 'utensils', color: 'amber', is_archived: false },
   { id: 'cat-old', name: 'Old hobby', kind: 'expense', icon: null, color: null, is_archived: true },
-  { id: 'cat-pay', name: 'Salary', kind: 'income', icon: 'briefcase', color: 'green', is_archived: false },
+  { id: 'cat-pay', name: 'Salary', kind: 'income', icon: 'salary', color: 'green', is_archived: false },
 ]
 const ACCOUNTS = [{ id: 'acc-1', name: 'Current account', type: 'asset', balance_minor: 125000, currency: 'EUR' }]
 const TXNS = [
@@ -344,7 +344,7 @@ test('profile: only empty/default values are filled; the rest is reported, never
 
 test('payment: fills an empty IBAN/Revolut, keeps one that is set', () => {
   const { data } = fresh() // IBAN set, no Revolut
-  assert.deepEqual(planPayment(data, {}), { patch: { iban: 'CY17002001280000001200527600', revolut: null }, kept: [] })
+  assert.deepEqual(planPayment(data, {}), { patch: { iban: 'CY17002001280000001200527600', revolut: null, paypal: null }, kept: [] })
   assert.deepEqual(planPayment(data, { payment_iban: 'GB00OTHER', payment_revolut: 'alex' }), { patch: null, kept: ['IBAN'] })
   assert.deepEqual(planPayment(data, { payment_iban: 'CY17002001280000001200527600' }), { patch: null, kept: [] })
 })
@@ -367,4 +367,61 @@ test('splitDateRange: halves an inclusive range; a single day cannot split', () 
   assert.deepEqual(splitDateRange('2026-01-01', '2026-01-02'), [['2026-01-01', '2026-01-01'], ['2026-01-02', '2026-01-02']])
   assert.deepEqual(splitDateRange('2024-02-28', '2024-03-01'), [['2024-02-28', '2024-02-29'], ['2024-03-01', '2024-03-01']])
   assert.equal(splitDateRange('2026-01-01', '2026-01-01'), null)
+})
+
+// ---- Version 2: PayPal.me name, names trimmed to the server's 60 characters --
+import { clipName } from '../src/features/backup/backupMath.js'
+
+test('clipName: control characters become spaces, trimmed, cut to 60 whole characters', () => {
+  assert.equal(clipName('  Alex  '), 'Alex')
+  assert.equal(clipName('Alex\nDemo'), 'Alex Demo')
+  assert.equal(clipName('x'.repeat(75)), 'x'.repeat(60))
+  assert.equal(clipName('🍕'.repeat(61)), '🍕'.repeat(60)) // never half an emoji
+  assert.equal(clipName(`${'a'.repeat(59)} b`), 'a'.repeat(59)) // no trailing space
+  assert.equal(clipName('   '), null)
+  assert.equal(clipName(null), null)
+})
+
+test('restore: over-long display, category and group names are trimmed, not refused', () => {
+  const doc = sourceDoc()
+  doc.data.profile.display_name = 'A'.repeat(300)
+  doc.data.categories[0].name = `${'Long category '.repeat(10)}end`
+  doc.data.transactions.push({ ...doc.data.transactions[0], group: 'G'.repeat(250) })
+  const { backup } = readBackup(JSON.stringify(doc))
+  assert.equal(backup.data.profile.display_name, 'A'.repeat(60))
+  assert.equal([...backup.data.categories[0].name].length <= 60, true)
+  assert.equal(backup.data.transactions.at(-1).group, 'G'.repeat(60))
+})
+
+test('restore: unknown category icons/colours fall back to the default look', () => {
+  const doc = sourceDoc()
+  doc.data.categories[0].icon = '🍔'
+  doc.data.categories[0].color = '#ff0000'
+  const { backup } = readBackup(JSON.stringify(doc))
+  assert.equal(backup.data.categories[0].icon, null)
+  assert.equal(backup.data.categories[0].color, null)
+})
+
+test('version 2 carries the PayPal.me name; a version 1 file still reads', () => {
+  assert.equal(BACKUP_VERSION, 2)
+  const v2 = sourceDoc()
+  v2.data.payment.paypal = 'paypal.me/AlexK'
+  assert.equal(readBackup(JSON.stringify(v2)).backup.data.payment.paypal, 'AlexK')
+  v2.data.payment.paypal = 'not a name!'
+  assert.equal(readBackup(JSON.stringify(v2)).backup.data.payment.paypal, null)
+  const v1 = sourceDoc()
+  v1.version = 1
+  delete v1.data.payment.paypal
+  const { backup } = readBackup(JSON.stringify(v1))
+  assert.equal(backup.version, 1)
+  assert.equal(backup.data.payment.paypal, null)
+})
+
+test('payment: a PayPal.me name fills an empty one and is kept when set', () => {
+  const { data } = fresh()
+  data.payment.paypal = 'AlexK'
+  assert.deepEqual(planPayment(data, { payment_iban: 'CY17002001280000001200527600' }).patch,
+    { iban: 'CY17002001280000001200527600', revolut: null, paypal: 'AlexK' })
+  assert.deepEqual(planPayment(data, { payment_iban: 'CY17002001280000001200527600', payment_paypal: 'Other' }),
+    { patch: null, kept: ['PayPal.me name'] })
 })

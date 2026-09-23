@@ -14,12 +14,12 @@ export default function BudgetsMock() {
   const playback = usePlayback({ once: true })
   return (
     <Panel ref={playback.ref} title="September budgets"
-      label="Example monthly budgets: progress bars per category, with Dining out over budget.">
+      label="Example monthly budgets: progress bars per category, with Food & Dining over budget and Groceries nearly at its cap.">
       <Stack spacing={4}>
         {BUDGETS.map((b, i) => (
           <ProgressRow key={b.category} media={<CategoryBadge category={b.category} size={32} />}
             title={b.category} meta={`${money(b.spentMinor)} of ${money(b.capMinor)}`}
-            percent={b.pct} playback={playback} delay={0.15 * i} />
+            percent={b.pct} tone={b.tone} playback={playback} delay={0.15 * i} />
         ))}
       </Stack>
     </Panel>

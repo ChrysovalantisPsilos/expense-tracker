@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react'
 import {
   fxUrl, fxRangeUrl, fxCacheKey, fxQueryDate, isFinalFx, parseFxResponse, parseFxSeries,
+  pendingRateSpans, withEstimatedRates,
 } from './currency.js'
 import { today } from './dates.js'
 
@@ -71,6 +72,19 @@ export async function getRateSeries(from, to, firstDate, lastDate) {
   } catch {
     return []
   }
+}
+
+// Transactions whose rate the server hasn't filled in yet (exchange_rate null:
+// a mirrored group share or a recurring entry the ECB cache couldn't rate
+// yet) get the ECB rate for their date, flagged `rate_estimated`, so totals
+// are right before the server catches up. One range request per currency;
+// rows still without a rate stay null (sums then leave them out — never 1:1).
+export async function fillPendingRates(rows, baseCurrency) {
+  const spans = pendingRateSpans(rows, baseCurrency)
+  if (spans.size === 0) return rows
+  const series = new Map(await Promise.all([...spans].map(async ([cur, { first, last }]) =>
+    [cur, await getRateSeries(cur, baseCurrency, first, last)])))
+  return withEstimatedRates(rows, baseCurrency, series, today())
 }
 
 // Form helper: the live rate for (from, to, date).

@@ -41,10 +41,59 @@ export function formatMoney(minor, currency = 'EUR', locale = undefined) {
 // at entry time (never today's rate — that would rewrite history). The rate is
 // major-per-major, so we scale by the decimal-factor ratio to stay correct when
 // the source and base currencies have different decimal places (e.g. JPY↔EUR).
+//
+// Exact integer arithmetic, rounding half away from zero — the same answer as
+// SQL public.to_base_minor (numeric round). Floats get ties wrong: ¥275 at
+// 0.0062 is €1.705, which float maths rounds to €1.70 and SQL to €1.71. A group
+// expense's split is checked against the server's number, so they must agree.
+// Rates are stored as numeric(18, 8), i.e. at most 8 decimals.
+const RATE_SCALE = 100000000n
 export function toBaseMinor(minor, exchangeRate, fromCurrency = 'EUR', baseCurrency = 'EUR') {
-  return Math.round(
-    Number(minor) * Number(exchangeRate) * minorFactor(baseCurrency) / minorFactor(fromCurrency),
-  )
+  const m = Number(minor)
+  const r = Math.round(Number(exchangeRate) * 1e8)
+  if (!Number.isSafeInteger(m) || !Number.isSafeInteger(r)) {
+    return Math.round(m * Number(exchangeRate) * minorFactor(baseCurrency) / minorFactor(fromCurrency))
+  }
+  const num = BigInt(Math.abs(m)) * BigInt(Math.abs(r)) * BigInt(minorFactor(baseCurrency))
+  const den = RATE_SCALE * BigInt(minorFactor(fromCurrency))
+  const q = Number((2n * num + den) / (2n * den))
+  return q !== 0 && (m < 0) !== (r < 0) ? -q : q
+}
+
+// ---------------------------------------------------------------------------
+// Pending rates. A row the server wrote without a known rate (a mirrored group
+// share or a recurring entry whose ECB rate isn't cached yet) has
+// exchange_rate = null until the server's rate cache fills it in, usually
+// within minutes. Until then the client converts it at read time with the ECB
+// rate for the row's date (fx.js fillPendingRates) and flags it estimated.
+// ---------------------------------------------------------------------------
+const isPending = (r, base) => r.exchange_rate == null && r.currency && r.currency !== base
+
+// Which ECB series to fetch: Map<currency, { first, last }> (the date span of
+// that currency's pending rows). Empty when nothing is pending.
+export function pendingRateSpans(rows, baseCurrency) {
+  const spans = new Map()
+  for (const r of rows ?? []) {
+    if (!isPending(r, baseCurrency)) continue
+    const s = spans.get(r.currency)
+    if (!s) spans.set(r.currency, { first: r.spent_at, last: r.spent_at })
+    else {
+      if (r.spent_at < s.first) s.first = r.spent_at
+      if (r.spent_at > s.last) s.last = r.spent_at
+    }
+  }
+  return spans
+}
+
+// Rows with each pending rate filled from `seriesByCurrency` (Map<currency,
+// [[date, rate]]>) as { exchange_rate, rate_estimated: true }. A row whose
+// series has no rate on or before its date stays pending (null — never 1).
+export function withEstimatedRates(rows, baseCurrency, seriesByCurrency, todayIso) {
+  return (rows ?? []).map((r) => {
+    if (!isPending(r, baseCurrency)) return r
+    const hit = rateOnOrBefore(seriesByCurrency.get(r.currency) ?? [], fxQueryDate(r.spent_at, todayIso))
+    return hit ? { ...r, exchange_rate: hit.rate, rate_estimated: true } : r
+  })
 }
 
 // A foreign-currency row's value in the user's base currency, for display

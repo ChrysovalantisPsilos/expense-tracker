@@ -30,6 +30,21 @@ test('toBaseMinor applies the captured exchange rate', () => {
   assert.equal(toBaseMinor(10000, 1, 'EUR', 'EUR'), 10000)
 })
 
+// The same vectors as db_tests.sql #45 (public.to_base_minor): the client's
+// split preview and the server's authoritative group amount must agree.
+test('toBaseMinor is exact and matches SQL to_base_minor (half away from zero)', () => {
+  assert.equal(toBaseMinor(4250, 1.1699, 'GBP', 'EUR'), 4972) // 4972.075
+  assert.equal(toBaseMinor(275, 0.0062, 'JPY', 'EUR'), 171) // 170.5 — floats said 170
+  assert.equal(toBaseMinor(50, 1.15, 'USD', 'EUR'), 58) // 57.5 — floats said 57
+  assert.equal(toBaseMinor(1800, 0.0062, 'JPY', 'EUR'), 1116)
+  assert.equal(toBaseMinor(1005, 1.005, 'USD', 'EUR'), 1010)
+  assert.equal(toBaseMinor(12345, 0.85725, 'EUR', 'GBP'), 10583)
+  assert.equal(toBaseMinor(10000, 162.35, 'EUR', 'JPY'), 16235)
+  assert.equal(toBaseMinor(-50, 1.15, 'USD', 'EUR'), -58)
+  assert.equal(toBaseMinor(0, 1.15, 'USD', 'EUR'), 0)
+  assert.equal(toBaseMinor(1000, '0.9', 'USD', 'EUR'), 900) // rates may arrive as strings
+})
+
 test('baseEquivalent: converts foreign rows at the captured rate', () => {
   assert.deepEqual(baseEquivalent(4250, 1.17, 'GBP', 'EUR'), { baseMinor: 4973, rate: 1.17 })
   assert.deepEqual(baseEquivalent(1800, '0.0062', 'JPY', 'EUR'), { baseMinor: 1116, rate: 0.0062 })
@@ -156,4 +171,40 @@ test('formatRate: five significant digits, no trailing zeros', () => {
   assert.equal(formatRate(1.17), '1.17')
   assert.equal(formatRate(0.00538619), '0.0053862')
   assert.equal(formatRate(185.66), '185.66')
+})
+
+// --- Pending rates (server hasn't rated a mirrored/recurring row yet) -------
+import { pendingRateSpans, withEstimatedRates } from '../src/shared/lib/currency.js'
+
+const pend = (o) => ({ exchange_rate: null, amount_minor: 1000, ...o })
+
+test('pendingRateSpans: one date span per foreign currency, only for null rates', () => {
+  const spans = pendingRateSpans([
+    pend({ currency: 'GBP', spent_at: '2026-09-10' }),
+    pend({ currency: 'GBP', spent_at: '2026-08-02' }),
+    pend({ currency: 'USD', spent_at: '2026-09-01' }),
+    pend({ currency: 'EUR', spent_at: '2026-09-01' }), // base currency: nothing to fetch
+    { currency: 'JPY', spent_at: '2026-09-01', exchange_rate: 0.0062 }, // already rated
+  ], 'EUR')
+  assert.deepEqual([...spans], [
+    ['GBP', { first: '2026-08-02', last: '2026-09-10' }],
+    ['USD', { first: '2026-09-01', last: '2026-09-01' }],
+  ])
+  assert.equal(pendingRateSpans([], 'EUR').size, 0)
+})
+
+test('withEstimatedRates: the ECB rate on or before the row date, flagged; never 1', () => {
+  const series = new Map([['GBP', [['2026-09-04', 1.17], ['2026-09-07', 1.18]]]])
+  const rows = [
+    pend({ id: 1, currency: 'GBP', spent_at: '2026-09-06' }), // Sunday → Friday's rate
+    pend({ id: 2, currency: 'GBP', spent_at: '2026-09-30' }), // future → today's (07)
+    pend({ id: 3, currency: 'GBP', spent_at: '2026-09-01' }), // before the series: stays pending
+    pend({ id: 4, currency: 'USD', spent_at: '2026-09-06' }), // no series
+    { id: 5, currency: 'GBP', spent_at: '2026-09-06', exchange_rate: 1.2 },
+  ]
+  const out = withEstimatedRates(rows, 'EUR', series, '2026-09-08')
+  assert.deepEqual(out.map((r) => [r.id, r.exchange_rate, !!r.rate_estimated]), [
+    [1, 1.17, true], [2, 1.18, true], [3, null, false], [4, null, false], [5, 1.2, false],
+  ])
+  assert.equal(rows[0].exchange_rate, null) // input untouched
 })

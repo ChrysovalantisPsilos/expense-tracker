@@ -2,7 +2,7 @@
 // backup document from rows the data layer gathered, read + validate a file,
 // and plan a restore (category/account remap, duplicate detection, what's new).
 //
-// FORMAT (version 1) — one JSON file, budgeer-backup-YYYY-MM-DD.json:
+// FORMAT (version 2) — one JSON file, budgeer-backup-YYYY-MM-DD.json:
 //   { format: 'budgeer-backup', version: 1, exportedAt, app: { name },
 //     data: { profile, payment, categories, categoryRules, accounts, goals,
 //             budgets, recurring, transactions },
@@ -11,12 +11,17 @@
 // account), never server ids, so a restore remaps them onto whatever ids the
 // target account has. Password-protected files are an envelope instead:
 //   { format, version, encrypted: true, kdf, iv, ciphertext }  (backupCrypto.js)
+// Version 2 added payment.paypal (the PayPal.me name); version 1 files still
+// read (no PayPal name). Names the server caps at 60 characters (display
+// name, category names, group names) are trimmed to fit instead of failing.
 import { deterministicUuid } from '../import/importMath.js'
 import { FREQUENCIES } from '../recurring/recurringMath.js'
 import { sealText, openText } from './backupCrypto.js'
+import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
+import { CATEGORY_ICON_KEYS, CATEGORY_COLOR_KEYS } from '../../shared/lib/categoryStyle.js'
 
 export const BACKUP_FORMAT = 'budgeer-backup'
-export const BACKUP_VERSION = 1
+export const BACKUP_VERSION = 2
 
 // The profiles.base_currency column default: a "not chosen yet" currency.
 const DEFAULT_CURRENCY = 'EUR'
@@ -34,6 +39,18 @@ const NEWER = 'This backup was made by a newer version of Budgeer. Update the ap
 export function backupFileName(d = new Date()) {
   const p = (n) => String(n).padStart(2, '0')
   return `${BACKUP_FORMAT}-${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.json`
+}
+
+// A name as the server stores it (display, category and group names: at most
+// 60 characters, no control characters — the same clean-up the signup trigger
+// does): control characters become spaces, then trimmed and cut to 60
+// characters (whole code points, so an emoji is never split). null if empty.
+const NAME_MAX = 60
+export function clipName(v, max = NAME_MAX) {
+  // eslint-disable-next-line no-control-regex
+  const s = String(v ?? '').replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').trim()
+  const cut = [...s].slice(0, max).join('').trim()
+  return cut || null
 }
 
 // ---- Keys used for matching ------------------------------------------------
@@ -84,7 +101,10 @@ export function buildBackup({
         notify_email: profile.notify_email ?? null,
         notify_push: profile.notify_push ?? null,
       },
-      payment: { iban: payment.payment_iban ?? null, revolut: payment.payment_revolut ?? null },
+      payment: {
+        iban: payment.payment_iban ?? null, revolut: payment.payment_revolut ?? null,
+        paypal: payment.payment_paypal ?? null,
+      },
       categories: categories.map((c) => ({
         key: catKey.get(c.id), name: c.name, kind: c.kind,
         icon: c.icon ?? null, color: c.color ?? null, archived: !!c.is_archived,
@@ -142,6 +162,10 @@ function groupRecord({ group, members = [], expenses = [], settlements = [], bal
     balances: members.map((m) => ({ member: who(m.id), net_minor: balances.get(m.id) ?? 0 })),
     expenses: expenses.map((e) => ({
       description: e.description ?? null, amount_minor: Number(e.amount_minor), currency: e.currency,
+      // Paid in another currency: what it counted for in the group's (the splits' unit).
+      ...(e.currency && e.currency !== group.currency && e.group_amount_minor != null ? {
+        exchange_rate: Number(e.exchange_rate), group_amount_minor: Number(e.group_amount_minor),
+      } : {}),
       spent_at: e.spent_at, paid_by: who(e.paid_by), split_type: e.split_type ?? 'equal',
       splits: (e.expense_splits ?? []).map((s) => ({ member: who(s.member_id), share_minor: Number(s.share_minor) })),
       comments: thread(e.id),
@@ -250,24 +274,31 @@ function validateBackup(doc) {
   const p = checker('profile')
   const prof = isObj(data.profile) ? data.profile : {}
   const profile = {
-    display_name: p.text(prof.display_name, 'display name', { max: 200 }),
+    display_name: clipName(p.text(prof.display_name, 'display name', { max: 10000 })),
     base_currency: prof.base_currency == null ? null : p.currency(prof.base_currency, 'currency'),
     notify_email: p.bool(prof.notify_email, 'email switch', { optional: true }),
     notify_push: p.bool(prof.notify_push, 'push switch', { optional: true }),
   }
   const pay = isObj(data.payment) ? data.payment : {}
   const pc = checker('payment details')
-  const payment = { iban: pc.text(pay.iban, 'IBAN', { max: 64 }), revolut: pc.text(pay.revolut, 'Revolut', { max: 64 }) }
+  const payment = {
+    iban: pc.text(pay.iban, 'IBAN', { max: 64 }),
+    revolut: pc.text(pay.revolut, 'Revolut', { max: 64 }),
+    // v2+. Anything that isn't a valid PayPal.me name is dropped, not restored.
+    paypal: normalisePaypalHandle(pc.text(pay.paypal, 'PayPal', { max: 200 })),
+  }
 
   const categories = top.list(data.categories, 'categories', 2000).map((c, i) => {
     const v = checker(`category #${i + 1}`)
     v.obj(c, 'entry')
     return {
       key: v.text(c.key, 'key', { max: 40, required: true }),
-      name: v.text(c.name, 'name', { max: 200, required: true }),
+      name: clipName(v.text(c.name, 'name', { max: 10000, required: true })) ?? fail(`This backup is damaged (category #${i + 1}: name).`),
       kind: v.oneOf(c.kind, KINDS, 'kind'),
-      icon: v.text(c.icon, 'icon', { max: 60 }),
-      color: v.text(c.color, 'colour', { max: 40 }),
+      // Only the app's own icon/colour keys (the server's CHECKs); an old or
+      // unknown value falls back to the default look.
+      icon: CATEGORY_ICON_KEYS.includes(v.text(c.icon, 'icon', { max: 60 })) ? c.icon : null,
+      color: CATEGORY_COLOR_KEYS.includes(v.text(c.color, 'colour', { max: 40 })) ? c.color : null,
       archived: v.bool(c.archived ?? false, 'archived'),
     }
   })
@@ -353,7 +384,7 @@ function validateBackup(doc) {
       description: v.text(t.description, 'description', { max: 10000 }),
       notes: v.text(t.notes, 'notes', { max: 10000 }),
       spent_at: v.date(t.spent_at, 'date'),
-      ...('group' in t ? { group: v.text(t.group, 'group', { max: 200 }) } : {}),
+      ...('group' in t ? { group: clipName(v.text(t.group, 'group', { max: 10000 })) } : {}),
     }
   })
 
@@ -536,7 +567,9 @@ export function planProfile(backup, current, { emailName, emptyAccount }) {
 export function planPayment(backup, current) {
   const patch = {}
   const kept = []
-  for (const [field, cur, label] of [['iban', current.payment_iban, 'IBAN'], ['revolut', current.payment_revolut, 'Revolut tag']]) {
+  for (const [field, cur, label] of [
+    ['iban', current.payment_iban, 'IBAN'], ['revolut', current.payment_revolut, 'Revolut tag'],
+    ['paypal', current.payment_paypal, 'PayPal.me name']]) {
     const v = backup.payment[field]
     if (!v || v === cur) continue
     if (!cur) patch[field] = v
@@ -544,7 +577,11 @@ export function planPayment(backup, current) {
   }
   return {
     patch: Object.keys(patch).length
-      ? { iban: patch.iban ?? current.payment_iban ?? null, revolut: patch.revolut ?? current.payment_revolut ?? null }
+      ? {
+        iban: patch.iban ?? current.payment_iban ?? null,
+        revolut: patch.revolut ?? current.payment_revolut ?? null,
+        paypal: patch.paypal ?? current.payment_paypal ?? null,
+      }
       : null,
     kept,
   }

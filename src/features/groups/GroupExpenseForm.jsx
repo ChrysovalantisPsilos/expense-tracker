@@ -6,12 +6,16 @@ import {
   InputGroup, InputRightAddon,
 } from '@chakra-ui/react'
 import { Trash2 } from 'lucide-react'
-import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
+import {
+  toMinor, fromMinor, formatMoney, parseManualRate, CURRENCIES,
+} from '../../shared/lib/currency.js'
+import { useFxRate } from '../../shared/lib/fx.js'
 import { today } from '../../shared/lib/dates.js'
-import { distributeByWeights, splitEqually } from './splitMath.js'
+import { distributeByWeights, splitEqually, expenseGroupAmount } from './splitMath.js'
 import { addSharedExpense, updateSharedExpense, deleteSharedExpense } from './groups.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
+import FxPreview from '../../shared/ui/FxPreview.jsx'
 
 const MODES = [
   { key: 'equal', label: 'Equally' },
@@ -21,10 +25,11 @@ const MODES = [
 ]
 
 // Reconstruct per-member input values when editing, from the stored shares.
-function prefillValues(expense, mode) {
+// Shares are in the group currency, whatever currency the expense was paid in.
+function prefillValues(expense, mode, groupCurrency) {
   const splits = expense?.expense_splits ?? []
-  const total = expense?.amount_minor ?? 0
-  const cur = expense?.currency
+  const total = expense?.group_amount_minor ?? expense?.amount_minor ?? 0
+  const cur = groupCurrency
   const out = {}
   for (const s of splits) {
     if (mode === 'exact') out[s.member_id] = String(fromMinor(s.share_minor, cur))
@@ -34,29 +39,48 @@ function prefillValues(expense, mode) {
   return out
 }
 
+// An expense can be paid in any currency: the split is always worked out in
+// the group currency, from the ECB rate for the expense's date (or a rate the
+// user types when none can be fetched) — the same rules as a personal expense.
 export default function GroupExpenseForm({ group, members, defaultPayer, expense, isOpen, onClose, onSaved }) {
   const toast = useToast()
   const isEdit = !!expense
-  const cur = group.currency
+  const cur = group.currency // shares and balances
 
   const initialMode = ['exact', 'percent', 'shares'].includes(expense?.split_type)
     ? expense.split_type
     : expense?.split_type === 'items' ? 'exact' : 'equal'
 
   const [description, setDescription] = useState(expense?.description ?? '')
+  const [paidCurrency, setPaidCurrency] = useState(expense?.currency ?? cur)
   const [amount, setAmount] = useState(
-    expense ? String(fromMinor(expense.amount_minor, cur)) : '')
+    expense ? String(fromMinor(expense.amount_minor, expense.currency ?? cur)) : '')
+  const [manualRate, setManualRate] = useState('')
   const [paidBy, setPaidBy] = useState(expense?.paid_by ?? defaultPayer ?? members[0]?.id ?? '')
   const [spentAt, setSpentAt] = useState(expense?.spent_at ?? today)
   const [splitWith, setSplitWith] = useState(
     expense ? (expense.expense_splits ?? []).map((s) => s.member_id) : members.map((m) => m.id))
   const [mode, setMode] = useState(initialMode)
-  const [values, setValues] = useState(() => (isEdit ? prefillValues(expense, initialMode) : {}))
+  const [values, setValues] = useState(() => (isEdit ? prefillValues(expense, initialMode, cur) : {}))
   const [busy, setBusy] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
+  // Rate paid currency → group currency. Editing keeps the saved rate unless
+  // the currency or date changes.
+  const needsFx = paidCurrency !== cur
+  const captured = Number(expense?.exchange_rate)
+  const keepCaptured = isEdit && needsFx && paidCurrency === expense.currency &&
+    spentAt === expense.spent_at && captured > 0
+  const fx = useFxRate(paidCurrency, cur, spentAt, { skip: keepCaptured })
+  const rate = !needsFx ? 1
+    : keepCaptured ? captured
+      : fx.status === 'ok' ? fx.rate
+        : fx.status === 'missing' ? parseManualRate(manualRate) : null
+
   const includedIds = members.filter((m) => splitWith.includes(m.id)).map((m) => m.id)
-  const totalMinor = amount && Number(amount) > 0 ? toMinor(amount, cur) : 0
+  const paidMinor = amount && Number(amount) > 0 ? toMinor(amount, paidCurrency) : 0
+  // What the split must add up to: the amount in the group currency.
+  const totalMinor = expenseGroupAmount(paidMinor, paidCurrency, rate, cur) ?? 0
   const setVal = (id, v) => setValues((s) => ({ ...s, [id]: v }))
 
   function toggle(id) {
@@ -97,6 +121,13 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
   async function submit(e) {
     e.preventDefault()
     if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
+    // Never split a foreign amount without a real rate (no silent 1:1).
+    if (!rate) {
+      return toast({
+        title: fx.status === 'loading' ? 'Still fetching the exchange rate…' : 'Enter the exchange rate',
+        status: 'warning',
+      })
+    }
     if (!paidBy) return toast({ title: 'Who paid?', status: 'warning' })
     if (includedIds.length === 0) return toast({ title: 'Split between at least one person', status: 'warning' })
 
@@ -120,13 +151,15 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
     try {
       if (isEdit) {
         await updateSharedExpense({
-          expenseId: expense.id, description, amountMinor: totalMinor, currency: cur,
+          expenseId: expense.id, description, amountMinor: paidMinor, currency: paidCurrency,
+          exchangeRate: needsFx ? rate : null,
           paidBy, spentAt, memberIds: includedIds, shares, splitType: mode,
         })
         toast({ title: 'Expense updated', status: 'success' })
       } else {
         await addSharedExpense({
-          groupId: group.id, description, amountMinor: totalMinor, currency: cur,
+          groupId: group.id, description, amountMinor: paidMinor, currency: paidCurrency,
+          exchangeRate: needsFx ? rate : null,
           paidBy, spentAt, memberIds: includedIds, shares, splitType: mode,
         })
         toast({ title: 'Expense added', status: 'success' })
@@ -154,6 +187,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
 
   function summary() {
     if (includedIds.length === 0) return 'Pick at least one person.'
+    if (needsFx && paidMinor && !rate) return 'The split needs the exchange rate.'
     if (!totalMinor) return 'Enter an amount to see the split.'
     if (mode === 'equal') return `${formatMoney(splitEqually(totalMinor, includedIds.length)[0], cur)} each`
     if (mode === 'exact') {
@@ -189,16 +223,30 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
               <Input value={description} onChange={(e) => setDescription(e.target.value)}
                 placeholder="Dinner, taxi, groceries…" />
             </FormControl>
-            <HStack>
+            <HStack align="end">
               <FormControl isRequired>
-                <FormLabel>Amount ({cur})</FormLabel>
+                <FormLabel>Amount</FormLabel>
                 <MoneyInput value={amount} onChange={setAmount} />
               </FormControl>
-              <FormControl maxW="160px">
-                <FormLabel>Date</FormLabel>
-                <Input type="date" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} />
+              <FormControl maxW="110px">
+                <FormLabel>Currency</FormLabel>
+                <Select value={paidCurrency} onChange={(e) => setPaidCurrency(e.target.value)}
+                  aria-label="Currency paid in">
+                  {(CURRENCIES.includes(cur) ? CURRENCIES : [cur, ...CURRENCIES]).map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </Select>
               </FormControl>
             </HStack>
+            {needsFx && (
+              <FxPreview from={paidCurrency} to={cur} amountMinor={paidMinor}
+                fx={fx} captured={keepCaptured ? captured : null} rate={rate}
+                manual={manualRate} onManual={setManualRate} />
+            )}
+            <FormControl maxW="200px">
+              <FormLabel>Date</FormLabel>
+              <Input type="date" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} />
+            </FormControl>
             <FormControl isRequired>
               <FormLabel>Paid by</FormLabel>
               <Select value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>

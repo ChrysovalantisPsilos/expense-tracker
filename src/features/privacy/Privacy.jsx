@@ -49,7 +49,7 @@ const ENCRYPTED = [
   'Recurring payment amounts and descriptions',
   'The group change log’s summaries and amounts',
   'Account balances, budget amounts, and savings goal targets and amounts saved',
-  'Payment details you add for settling up (IBAN and Revolut tag)',
+  'Payment details you add for settling up (IBAN, Revolut tag and PayPal.me name)',
 ]
 
 const ENCRYPTED_PLAIN =
@@ -82,8 +82,12 @@ const SERVICES = [
     what: 'If you turn on push notifications, they’re delivered through the push service run by your browser’s maker (for example Google, Apple or Mozilla). Notifications say what happened and who did it, such as “Alex added an expense”, but never include amounts or descriptions. The message is encrypted so only your device can read it.',
   },
   {
-    name: 'An exchange-rate service',
-    what: 'When you enter an amount in another currency, the app looks up that day’s rate. Only the two currency codes are sent, never the amount or what it was for.',
+    name: 'Revolut and PayPal',
+    what: 'Only if you tap a Revolut or PayPal button when settling up. The link opens their website or app with the friend’s Revolut tag or PayPal.me name and the amount and currency to pay; nothing is sent until you tap it.',
+  },
+  {
+    name: 'Frankfurter (European Central Bank rates)',
+    what: 'When you enter an amount in another currency, the app looks up the European Central Bank’s reference rate for that day from Frankfurter (frankfurter.dev), a free service that republishes the ECB’s daily rates. Only the currency codes and the date are sent — never the amount, what it was for, or who you are. Your browser asks directly, so, like any website, Frankfurter sees your IP address. Budgeer’s server also keeps its own copy of the daily rates, fetched the same way, to convert group shares and recurring payments.',
   },
 ]
 

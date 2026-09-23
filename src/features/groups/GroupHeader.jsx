@@ -4,7 +4,7 @@ import {
   Box, Grid, Heading, HStack, IconButton, Text, useToast,
   Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
-import { ArrowLeft, Plus, MoreVertical, LogOut, Trash2, Pencil, Camera, FileDown } from 'lucide-react'
+import { ArrowLeft, Plus, MoreVertical, LogOut, Trash2, Pencil, Camera, FileDown, Share2 } from 'lucide-react'
 import { uploadGroupImage } from './groups.js'
 import { pluralise } from './groupFormat.js'
 import { PageAction } from '../../shared/ui/PageHeader.jsx'
@@ -21,7 +21,7 @@ import AvatarStack from './AvatarStack.jsx'
 // when the viewer isn't a member. `total` is a formatted string.
 export default function GroupHeader({
   group, members, myUserId, isOwner, total, onPhotoChanged,
-  onAdd, onMembers, onReport, onRename, onLeave, onDelete,
+  onAdd, onMembers, onReport, onShare, onRename, onLeave, onDelete,
 }) {
   const navigate = useNavigate()
   const toast = useToast()
@@ -78,6 +78,7 @@ export default function GroupHeader({
           <MenuButton as={IconButton} aria-label="Group options" size="sm" mr={-2}
             variant="ghost" icon={<MoreVertical size={18} />} />
           <MenuList>
+            <MenuItem icon={<Share2 size={16} />} onClick={onShare}>Share summary</MenuItem>
             <MenuItem icon={<FileDown size={16} />} onClick={onReport}>
               Download statement (PDF)
             </MenuItem>

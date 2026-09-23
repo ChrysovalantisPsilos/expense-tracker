@@ -16,7 +16,7 @@ import {
 import { commentCounts } from './comments.js'
 import {
   memberName, splitLabel, settlePlan, pluralise, paidByLabel, groupTotal,
-  memberBalances, balanceHighlight, isEveryoneEqualSplit,
+  memberBalances, balanceHighlight, isEveryoneEqualSplit, groupSummaryText,
 } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
@@ -100,6 +100,30 @@ export default function GroupDetail() {
   const myMember = data?.members.find((m) => m.user_id === user.id)
   const myNet = myMember ? (balances.get(myMember.id) ?? 0) : 0
 
+  // "Share summary": the system share sheet where there is one (phones),
+  // else the clipboard. Text only — total and who owes whom.
+  async function shareSummary() {
+    const { group, members, expenses } = data
+    const text = groupSummaryText({
+      name: group.name, total: groupTotal(expenses, group.currency), balances, members,
+      format: (m) => formatMoney(m, group.currency),
+    })
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: group.name, text })
+        return
+      } catch (e) {
+        if (e?.name === 'AbortError') return // the user closed the share sheet
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(text)
+      toast({ title: 'Summary copied', description: 'Paste it into your group chat.', status: 'success' })
+    } catch {
+      toast({ title: 'Couldn’t share the summary', status: 'error' })
+    }
+  }
+
   async function copyInvite() {
     try {
       const url = await createInviteLink(id)
@@ -161,7 +185,7 @@ export default function GroupDetail() {
       <GroupHeader group={group} members={members} myUserId={user.id} isOwner={isOwner}
         total={money(groupTotal(expenses, cur))}
         onPhotoChanged={load} onAdd={openAdd} onMembers={membersSheet.onOpen}
-        onReport={downloadReport} onRename={renameModal.onOpen}
+        onReport={downloadReport} onShare={shareSummary} onRename={renameModal.onOpen}
         onLeave={myMember ? leaveModal.onOpen : undefined} onDelete={deleteModal.onOpen} />
 
       {/* Your balance: your net, everyone's net, and the line that matters most */}
@@ -226,6 +250,8 @@ export default function GroupDetail() {
                   meta={<RowMeta parts={[paidByLabel(members, e.paid_by, myMember?.id), shortDate(e.spent_at),
                     { text: splitLabel(e), phone: !isEveryoneEqualSplit(e, members) }]} />}
                   amount={formatMoney(e.amount_minor, e.currency)}
+                  amountMeta={e.currency !== cur && e.group_amount_minor != null
+                    ? `≈ ${money(e.group_amount_minor)}` : undefined}
                   onClick={canEdit ? () => openEdit(e) : undefined}
                   trailing={<CommentButton count={counts.get(e.id)}
                     onClick={() => setThread({ type: 'expense', id: e.id, label })} />} />

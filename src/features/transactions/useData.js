@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { supabase } from '../../shared/lib/supabase.js'
 import { useOwnedQuery } from '../../shared/lib/db.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
+import { fillPendingRates } from '../../shared/lib/fx.js'
 
 // Categories for the current user (optionally filtered by kind).
 export function useCategories(kind) {
@@ -24,21 +26,25 @@ export function useCategories(kind) {
 // insertion time). Each row keeps the old select's shape: `categories` and,
 // for mirrored group expenses, `group_expenses.groups.name` (so the dashboard
 // can bucket them under the group). Realtime still watches the base table.
+// A row whose rate the server hasn't filled in yet comes back with the ECB
+// rate for its date and `rate_estimated: true` (see fillPendingRates).
 export function useTransactions({ kind, from, to, categoryId, limit } = {}) {
+  const { baseCurrency } = useProfile()
   return useOwnedQuery('transactions', {
-    fetch: () => listTransactions({ kind, from, to, categoryId, limit }),
-    deps: [kind, from, to, categoryId, limit],
+    fetch: () => listTransactions({ kind, from, to, categoryId, limit, baseCurrency }),
+    deps: [kind, from, to, categoryId, limit, baseCurrency],
   })
 }
 
-// One-shot read behind useTransactions (same filters, same row shape).
-export async function listTransactions({ kind, from, to, categoryId, limit } = {}) {
+// One-shot read behind useTransactions (same filters, same row shape). Pass
+// `baseCurrency` to have pending rates estimated.
+export async function listTransactions({ kind, from, to, categoryId, limit, baseCurrency } = {}) {
   const { data, error } = await supabase.rpc('my_transactions', {
     p_kind: kind ?? null, p_from: from ?? null, p_to: to ?? null,
     p_category: categoryId ?? null, p_limit: limit ?? null,
   })
   if (error) throw new Error(error.message)
-  return data ?? []
+  return baseCurrency ? fillPendingRates(data ?? [], baseCurrency) : data ?? []
 }
 
 // How many transactions the user has in total (a cheap head count).

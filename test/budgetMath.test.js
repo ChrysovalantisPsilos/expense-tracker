@@ -32,3 +32,24 @@ test('budgetPercent: a zero cap reads 0 (over-budget comes from budgetTone)', ()
   assert.equal(budgetPercent(500, 0), 0)
   assert.equal(budgetPercent(0, 0), 0)
 })
+
+// ---- Rollover ---------------------------------------------------------------
+import { previousPeriod, carriedFrom, carriedLabel } from '../src/features/budgets/budgetMath.js'
+
+test('previousPeriod: the month before, across a year boundary', () => {
+  assert.equal(previousPeriod('2026-09-01'), '2026-08-01')
+  assert.equal(previousPeriod('2026-01-01'), '2025-12-01')
+  assert.equal(previousPeriod('2026-10-01'), '2026-09-01')
+})
+
+test('carriedFrom: rows from an earlier month are carried; own rows or none are not', () => {
+  assert.equal(carriedFrom([{ period_start: '2026-08-01' }, { period_start: '2026-08-01' }], '2026-09-01'), '2026-08-01')
+  assert.equal(carriedFrom([{ period_start: '2026-09-01' }], '2026-09-01'), null)
+  assert.equal(carriedFrom([], '2026-09-01'), null)
+  assert.equal(carriedFrom(undefined, '2026-09-01'), null)
+})
+
+test('carriedLabel: month name, with the year only when it differs', () => {
+  assert.equal(carriedLabel('2026-08-01', '2026-09-01', 'en-GB'), 'Carried over from August')
+  assert.equal(carriedLabel('2025-12-01', '2026-01-01', 'en-GB'), 'Carried over from December 2025')
+})

@@ -97,6 +97,14 @@ test('groupTotal: sums the group-currency expenses in minor units', () => {
   assert.equal(groupTotal(null, 'EUR'), 0)
 })
 
+test('groupTotal: a foreign-currency expense counts at its group amount', () => {
+  const ex = [
+    { amount_minor: 1200, currency: 'EUR' },
+    { amount_minor: 4250, currency: 'GBP', exchange_rate: 1.1699, group_amount_minor: 4972 },
+  ]
+  assert.equal(groupTotal(ex, 'EUR'), 6172)
+})
+
 test('memberBalances: every member, you first as "You", missing rows settled', () => {
   const ms = [
     { id: 'm1', user_id: 'u1', role: 'owner', display_name: 'Alex' },
@@ -159,4 +167,28 @@ test('myGroupBalance: owed / owe / settled for the viewer', () => {
   assert.deepEqual(myGroupBalance(new Map(), ms, 'u1'), settled) // no balance row
   assert.deepEqual(myGroupBalance(bal, ms, 'nobody'), settled)
   assert.deepEqual(myGroupBalance(null, null, 'u1'), settled)
+})
+
+import { groupSummaryText } from '../src/features/groups/groupFormat.js'
+
+test('groupSummaryText: total and who owes whom by name, text only', () => {
+  const ms = [
+    { id: 'm1', user_id: 'u1', display_name: 'Alex' }, { id: 'm2', user_id: 'u2', display_name: 'Sofia' },
+    { id: 'm3', user_id: 'u3', display_name: 'Anna' },
+  ]
+  const format = (m) => `€${(m / 100).toFixed(2)}`
+  const text = groupSummaryText({
+    name: 'Lisbon weekend', total: 35700, members: ms, format,
+    balances: new Map([['m1', 16275], ['m2', -8925], ['m3', -7350]]),
+  })
+  assert.equal(text, [
+    'Lisbon weekend: €357.00 spent in total', '',
+    'To settle up (2 payments):',
+    '• Sofia owes Alex €89.25',
+    '• Anna owes Alex €73.50', '',
+    'Shared from Budgeer',
+  ].join('\n'))
+  assert.ok(!/You/.test(text))
+  const settled = groupSummaryText({ name: 'Flat', total: 0, members: ms, format, balances: new Map() })
+  assert.match(settled, /Everyone is settled up\./)
 })

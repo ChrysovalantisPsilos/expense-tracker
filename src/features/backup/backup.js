@@ -25,9 +25,10 @@ const ROW_CAP = 1000
 
 // Every transaction, newest first. One call for most accounts; longer
 // histories are fetched in date windows. The total is checked against a head
-// count so a backup can never be silently incomplete.
-async function allTransactions() {
-  const first = await listTransactions()
+// count so a backup can never be silently incomplete. `baseCurrency` (backup)
+// estimates any rate the server hasn't filled in yet, like the app does.
+async function allTransactions(baseCurrency) {
+  const first = await listTransactions({ baseCurrency })
   let rows = first
   if (first.length >= ROW_CAP) {
     const from = await oldestTransactionDate()
@@ -36,7 +37,7 @@ async function allTransactions() {
     const pending = [[from, to]]
     while (pending.length) {
       const [a, b] = pending.shift()
-      const part = await listTransactions({ from: a, to: b })
+      const part = await listTransactions({ from: a, to: b, baseCurrency })
       const halves = part.length >= ROW_CAP ? splitDateRange(a, b) : null
       if (halves) pending.unshift(...halves)
       else rows.push(...part)
@@ -81,7 +82,7 @@ async function gatherBackup(userId, onStep = () => {}) {
   onStep('Reading budgets and recurring entries')
   const [budgets, recurring] = await Promise.all([allBudgets(), listRecurring()])
   onStep('Reading expenses and income')
-  const transactions = await allTransactions()
+  const transactions = await allTransactions(profile?.base_currency || 'EUR')
   onStep('Reading group history')
   const groupList = await listGroups()
   const groups = await groupLedgers(groupList)

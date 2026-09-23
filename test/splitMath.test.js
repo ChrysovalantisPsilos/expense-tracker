@@ -50,3 +50,23 @@ test('simplifyDebts: transfers settle every balance to zero', () => {
 test('simplifyDebts: settled group needs no transfers', () => {
   assert.deepEqual(simplifyDebts(new Map([['a', 0], ['b', 0]])), [])
 })
+
+// ---- Foreign-currency expenses (lockstep with SQL group_expense_amount) -----
+import { expenseGroupAmount } from '../src/features/groups/splitMath.js'
+
+test('expenseGroupAmount: the split total in the group currency, as the server computes it', () => {
+  assert.equal(expenseGroupAmount(4250, 'EUR', null, 'EUR'), 4250) // group currency: as entered
+  assert.equal(expenseGroupAmount(4250, 'GBP', 1.1699, 'EUR'), 4972) // db_tests #45
+  assert.equal(expenseGroupAmount(275, 'JPY', 0.0062, 'EUR'), 171) // tie: floats said 170
+  assert.equal(expenseGroupAmount(1800, 'JPY', 0.0062, 'EUR'), 1116) // zero-decimal source
+  assert.equal(expenseGroupAmount(1000, 'EUR', 162.35, 'JPY'), 1624) // zero-decimal group
+  assert.equal(expenseGroupAmount(4250, 'GBP', null, 'EUR'), null) // no rate yet: no split
+  assert.equal(expenseGroupAmount(4250, 'GBP', 0, 'EUR'), null)
+})
+
+test('a foreign expense splits its group amount exactly (equal split = SQL split_equally)', () => {
+  const total = expenseGroupAmount(4250, 'GBP', 1.1699, 'EUR')
+  const shares = splitEqually(total, 3)
+  assert.deepEqual(shares, [1658, 1657, 1657]) // db_tests #45: the payer (first) nets 4972 − 1658
+  assert.equal(shares.reduce((a, b) => a + b, 0), total)
+})

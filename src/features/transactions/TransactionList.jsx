@@ -72,6 +72,8 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                   <>
                     ≈ {formatMoney(conv.baseMinor, baseCurrency)}
                     <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {conv.rate}</Box>
+                    {/* Rate estimated on this device until the server records it. */}
+                    {r.rate_estimated && ' · est.'}
                   </>
                 )}
                 actionSlots={2} actions={shared ? [] : [

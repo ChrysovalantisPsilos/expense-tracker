@@ -1,3 +1,4 @@
+import { forwardRef } from 'react'
 import { Input } from '@chakra-ui/react'
 import { sanitizeAmountInput } from '../lib/moneyParse.js'
 
@@ -9,9 +10,11 @@ import { sanitizeAmountInput } from '../lib/moneyParse.js'
 // key. sanitizeAmountInput accepts both separators; no thousands grouping is
 // rendered — grouping commas and decimal commas are indistinguishable on
 // input, and losing the decimal key made amounts like 5,50 silently become 550.
-export default function MoneyInput({ value, onChange, ...props }) {
+// Forwards its ref (e.g. to focus the field).
+export default forwardRef(function MoneyInput({ value, onChange, ...props }, ref) {
   return (
     <Input
+      ref={ref}
       inputMode="decimal"
       value={value ?? ''}
       onChange={(e) => onChange(sanitizeAmountInput(e.target.value))}
@@ -19,4 +22,4 @@ export default function MoneyInput({ value, onChange, ...props }) {
       {...props}
     />
   )
-}
+})

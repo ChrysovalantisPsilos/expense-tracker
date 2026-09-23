@@ -1,6 +1,6 @@
 import { Box, FormControl, FormLabel, HStack, Input, Spinner, Text } from '@chakra-ui/react'
-import { formatMoney, formatRate, toBaseMinor } from '../../shared/lib/currency.js'
-import { shortDate } from '../../shared/lib/dates.js'
+import { formatMoney, formatRate, toBaseMinor } from '../lib/currency.js'
+import { shortDate } from '../lib/dates.js'
 
 // The conversion a foreign-currency entry will be saved with, shown BEFORE
 // saving: "£42.50 ≈ €49.73 @ 1.1699 on 21 Aug". When no rate could be fetched

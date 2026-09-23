@@ -7,17 +7,19 @@ import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
 import { useBudgetProgress } from './useBudgetProgress.js'
 import BudgetRow from './BudgetRow.jsx'
+import { carriedLabel } from './budgetMath.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
 
 // This month's budgets with progress bars, on the Home tab. Paginated 10/page.
 export default function BudgetsCard() {
   const navigate = useNavigate()
   const { baseCurrency } = useProfile()
-  const { items, loading, error, reload } = useBudgetProgress()
+  const { items, carriedFrom, periodStart, loading, error, reload } = useBudgetProgress()
   const { page, setPage, count, pageItems } = usePaged(items, 10)
 
   return (
-    <Panel icon={Target} title="Budgets" subtitle="This month"
+    <Panel icon={Target} title="Budgets"
+      subtitle={carriedFrom ? carriedLabel(carriedFrom, periodStart) : 'This month'}
       action={<Button size="xs" variant="ghost" onClick={() => navigate('/budgets')}>Manage</Button>}>
       {error ? <QueryError error={error} onRetry={reload} what="budgets" py={4} /> : loading ? (
         <Center py={6}><Spinner color="brand.500" /></Center>

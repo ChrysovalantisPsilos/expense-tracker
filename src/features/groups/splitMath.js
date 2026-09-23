@@ -1,5 +1,16 @@
 // Pure helpers for shared-expense splitting and debt simplification.
 // All money is integer minor units.
+import { toBaseMinor } from '../../shared/lib/currency.js'
+
+// What an expense counts for in its group: the amount in the GROUP currency's
+// minor units, which is what the split must add up to. Lockstep with SQL
+// public.group_expense_amount (0062): same currency → the amount itself;
+// otherwise amount × rate (expense → group currency) with toBaseMinor's exact
+// rounding. null when a foreign amount has no usable rate yet.
+export function expenseGroupAmount(amountMinor, currency, rate, groupCurrency) {
+  if (!currency || currency === groupCurrency) return amountMinor
+  return Number(rate) > 0 ? toBaseMinor(amountMinor, rate, currency, groupCurrency) : null
+}
 
 // Distribute `total` minor units across `weights` so the integer parts sum
 // EXACTLY to total (largest-remainder / Hamilton apportionment). Used for

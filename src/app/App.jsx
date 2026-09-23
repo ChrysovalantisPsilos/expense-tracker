@@ -23,6 +23,7 @@ import Settings from '../features/settings/Settings.jsx'
 import AccountSettings from '../features/settings/AccountSettings.jsx'
 import NotificationSettings from '../features/settings/NotificationSettings.jsx'
 import AppearanceSettings from '../features/settings/AppearanceSettings.jsx'
+import Categories from '../features/categories/Categories.jsx'
 import SecuritySettings from '../features/settings/SecuritySettings.jsx'
 import PasskeyPrompt from '../features/settings/PasskeyPrompt.jsx'
 import YourData from '../features/backup/YourData.jsx'
@@ -100,6 +101,7 @@ function AuthedRoutes() {
           <Route path="settings/account" element={<AccountSettings />} />
           <Route path="settings/notifications" element={<NotificationSettings />} />
           <Route path="settings/appearance" element={<AppearanceSettings />} />
+          <Route path="settings/categories" element={<Categories />} />
           <Route path="settings/security" element={<SecuritySettings />} />
           <Route path="settings/data" element={<YourData />} />
           {/* Old name for Settings — keeps bookmarks and old links working. */}

@@ -4,6 +4,7 @@
 // units; no clocks, no randomness, no network (fixed captured FX rates).
 import { distributeByWeights, simplifyDebts, splitEqually } from '../groups/splitMath.js'
 import { toBaseMinor, toMinor } from '../../shared/lib/currency.js'
+import { budgetTone } from '../budgets/budgetMath.js'
 
 export const DEMO_CURRENCY = 'EUR'
 
@@ -64,18 +65,22 @@ export function buildTripDemo() {
   }
 }
 
-// Monthly budgets vs. spend; Dining out is deliberately over its cap.
+// Monthly budgets vs. spend, in the app's order (most used first) and with the
+// app's bar colours (budgetTone): Food & Dining is over its cap (red) and
+// Groceries past 80% of it (amber).
 export function budgetsDemo() {
   return [
-    { category: 'Groceries', spent: 312.4, cap: 400 },
-    { category: 'Dining out', spent: 186.9, cap: 150 },
+    { category: 'Groceries', spent: 352, cap: 400 },
+    { category: 'Food & Dining', spent: 186.9, cap: 150 },
     { category: 'Transport', spent: 64.2, cap: 120 },
     { category: 'Entertainment', spent: 48, cap: 80 },
   ].map(({ category, spent, cap }) => {
     const spentMinor = toMinor(spent, DEMO_CURRENCY)
     const capMinor = toMinor(cap, DEMO_CURRENCY)
-    return { category, spentMinor, capMinor, pct: percent(spentMinor, capMinor) }
-  })
+    return {
+      category, spentMinor, capMinor, pct: percent(spentMinor, capMinor), tone: budgetTone(spentMinor, capMinor),
+    }
+  }).sort((a, b) => b.spentMinor / b.capMinor - a.spentMinor / a.capMinor)
 }
 
 // One month by category (shares apportioned to sum to exactly 100) plus a
@@ -84,7 +89,7 @@ export function insightsDemo() {
   const cats = [
     { category: 'Housing', amount: 950 },
     { category: 'Groceries', amount: 312.4 },
-    { category: 'Dining out', amount: 186.9 },
+    { category: 'Food & Dining', amount: 186.9 },
     { category: 'Transport', amount: 64.2 },
     { category: 'Other', amount: 121.5 },
   ].map(({ category, amount }) => ({ category, minor: toMinor(amount, DEMO_CURRENCY) }))

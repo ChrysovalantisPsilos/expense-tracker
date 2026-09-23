@@ -1036,11 +1036,13 @@ begin
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     insert into public.categories (user_id, name, kind) values (u1, 'ZZT own cat', 'expense') returning id into cid;
-    begin
-      insert into public.categories (user_id, name, kind) values (u2, 'ZZT spoof', 'expense');
-      raise exception 'GUARD_MISSED: inserted a row for another user';
-    exception when insufficient_privilege then null;
-    end;
+    -- A row "for another user" is stamped with the caller instead (0060
+    -- categories_guard); it never lands in u2's account.
+    insert into public.categories (user_id, name, kind) values (u2, 'ZZT spoof', 'expense');
+    execute 'reset role';
+    select count(*) into n from public.categories where user_id = u2 and name = 'ZZT spoof';
+    if n <> 0 then raise exception 'GUARD_MISSED: inserted a row for another user'; end if;
+    execute 'set local role authenticated';
     insert into storage.objects (bucket_id, name) values ('avatars', u1 || '/zzt.png');
     begin
       insert into storage.objects (bucket_id, name) values ('avatars', u2 || '/zzt.png');
@@ -2160,11 +2162,448 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 43. 0060: category management. Server-authoritative ownership (an insert is
+--     stamped with the caller, an update can't move or re-kind a row), the
+--     name/icon/colour rules the client mirrors, and delete_category moving a
+--     category's entries to another of the same kind.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; c1 uuid; c2 uuid; cinc uuid; cother uuid; owner uuid; n int; nm text;
+        rid uuid;
+begin
+  begin
+    u1 := pg_temp.zz_user('cat1');
+    u2 := pg_temp.zz_user('cat2');
+    insert into public.categories (user_id, name, kind) values (u2, 'ZZ theirs', 'expense') returning id into cother;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    -- A client can't create a row for someone else: the guard stamps the caller.
+    insert into public.categories (user_id, name, kind, icon, color)
+      values (u2, '  ZZ Travel  ', 'expense', 'travel', 'teal') returning id, user_id, name into c1, owner, nm;
+    if owner <> u1 then raise exception 'insert kept a foreign user_id'; end if;
+    if nm <> 'ZZ Travel' then raise exception 'name not trimmed (%)', nm; end if;
+    insert into public.categories (name, kind) values ('ZZ Trips', 'expense') returning id into c2;
+    insert into public.categories (name, kind) values ('ZZ Refunds', 'income') returning id into cinc;
+    begin
+      insert into public.categories (name, kind) values (repeat('x', 61), 'expense');
+      raise exception 'GUARD_MISSED: 61-char name';
+    exception when check_violation then null; end;
+    begin
+      insert into public.categories (name, kind) values (E'ZZ bad\nname', 'expense');
+      raise exception 'GUARD_MISSED: control character';
+    exception when check_violation then null; end;
+    begin
+      insert into public.categories (name, kind) values ('   ', 'expense');
+      raise exception 'GUARD_MISSED: blank name';
+    exception when check_violation then null; end;
+    begin
+      update public.categories set icon = 'rocket' where id = c1;
+      raise exception 'GUARD_MISSED: unknown icon';
+    exception when check_violation then null; end;
+    begin
+      update public.categories set color = '#ff0000' where id = c1;
+      raise exception 'GUARD_MISSED: free-form colour';
+    exception when check_violation then null; end;
+    begin
+      update public.categories set kind = 'income' where id = c1;
+      raise exception 'GUARD_MISSED: kind flipped';
+    exception when others then if sqlerrm not like '%can''t change%' then raise; end if; end;
+    begin
+      update public.categories set user_id = u2 where id = c1;
+      raise exception 'GUARD_MISSED: moved to another account';
+    exception when others then if sqlerrm like 'GUARD_MISSED%' then raise; end if; end;
+    update public.categories set name = 'ZZ Travel & trips', icon = 'gifts', color = 'pink', is_archived = true where id = c1;
+    -- Another user's category: invisible, so not renameable or deletable.
+    update public.categories set name = 'ZZ hijack' where id = cother;
+    get diagnostics n = row_count;
+    if n <> 0 then raise exception 'renamed another user''s category'; end if;
+
+    -- delete_category: entries, recurring rules and auto-rules move first.
+    perform public.save_transactions(jsonb_build_array(
+      jsonb_build_object('amount_minor', 100, 'currency', 'EUR', 'category_id', c1),
+      jsonb_build_object('amount_minor', 200, 'currency', 'EUR', 'category_id', c1)));
+    rid := public.save_recurring_rule(null, jsonb_build_object('amount_minor', 300, 'currency', 'EUR',
+             'category_id', c1, 'next_run', current_date + 30));
+    insert into public.category_rules (user_id, pattern, category_id) values (u1, 'zzmerchant', c1);
+    begin
+      perform public.delete_category(c1, cinc);
+      raise exception 'GUARD_MISSED: moved into an income category';
+    exception when others then if sqlerrm not like '%not found%' then raise; end if; end;
+    begin
+      perform public.delete_category(c1, cother);
+      raise exception 'GUARD_MISSED: moved into another user''s category';
+    exception when others then if sqlerrm not like '%not found%' then raise; end if; end;
+    begin
+      perform public.delete_category(cother, null);
+      raise exception 'GUARD_MISSED: deleted another user''s category';
+    exception when others then if sqlerrm not like '%not found%' then raise; end if; end;
+    n := public.delete_category(c1, c2);
+    if n <> 2 then raise exception 'moved % entries, expected 2', n; end if;
+    select count(*) into n from public.my_transactions() where category_id = c2;
+    if n <> 2 then raise exception 'entries not in the target (%)', n; end if;
+    select count(*) into n from public.recurring_rules where id = rid and category_id = c2;
+    if n <> 1 then raise exception 'recurring rule not moved'; end if;
+    select count(*) into n from public.category_rules where pattern = 'zzmerchant' and category_id = c2;
+    if n <> 1 then raise exception 'auto-category rule not moved'; end if;
+    select count(*) into n from public.categories where id = c1;
+    if n <> 0 then raise exception 'category not deleted'; end if;
+    -- Without a target the entries become uncategorised (never deleted).
+    perform public.delete_category(c2, null);
+    select count(*) into n from public.my_transactions() where category_id is null and amount_minor in (100, 200);
+    if n <> 2 then raise exception 'entries lost with the category (%)', n; end if;
+    execute 'reset role';
+    select count(*) into n from public.categories where id = cother;
+    if n <> 1 then raise exception 'other user''s category gone'; end if;
+    if has_function_privilege('anon', 'public.delete_category(uuid, uuid)', 'execute')
+       or has_function_privilege('authenticated', 'public.categories_guard()', 'execute') then
+      raise exception 'category functions over-granted';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: category management (guard, rules, delete with move)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: category management — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 44. 0061: budgets roll forward month by month, an edit/delete in a carried
+--     month materialises that month's own rows, a deleted cap stays deleted,
+--     "copy last month" copies the effective caps, and the alert trigger uses
+--     the same rollover rule.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; food uuid; fun uuid; n int; per date; amt bigint;
+        m0 date := date_trunc('month', current_date)::date;
+        m1 date := (date_trunc('month', current_date) - interval '1 month')::date;
+        m2 date := (date_trunc('month', current_date) - interval '2 month')::date;
+begin
+  begin
+    u := pg_temp.zz_user('roll');
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Food', 'expense') returning id into food;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Fun', 'expense') returning id into fun;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_budget(food, 40000, 'EUR', m2);
+    perform public.save_budget(fun, 10000, 'EUR', m2);
+
+    -- Two months later, with no rows of its own: m2's caps, labelled as m2's.
+    select count(*), min(period_start) into n, per from public.my_budgets(m0);
+    if n <> 2 or per <> m2 then raise exception 'rollover: % rows from %', n, per; end if;
+
+    -- Editing one cap in the carried month gives it its own rows (both caps).
+    perform public.edit_budget(food, 45000, 'EUR', m0);
+    select count(*) into n from public.my_budgets(m0) where period_start = m0;
+    if n <> 2 then raise exception 'edit did not materialise the month (% own rows)', n; end if;
+    select amount_minor into amt from public.my_budgets(m0) where category_id = food;
+    if amt <> 45000 then raise exception 'edited cap = %', amt; end if;
+    select amount_minor into amt from public.my_budgets(m1) where category_id = food;
+    if amt <> 40000 then raise exception 'edit leaked into last month (%)', amt; end if;
+
+    -- Deleting both caps leaves the month empty — it doesn't fall back to m2.
+    perform public.delete_budget(food, m0);
+    perform public.delete_budget(fun, m0);
+    select count(*) into n from public.my_budgets(m0);
+    if n <> 0 then raise exception 'deleted caps came back (%)', n; end if;
+    select count(*) into n from public.my_budgets(m1);
+    if n <> 2 then raise exception 'deleting this month touched last month'; end if;
+
+    -- Copy last month's budgets restores m1's effective (carried) caps.
+    n := public.copy_previous_budgets(m0);
+    if n <> 2 then raise exception 'copied % caps', n; end if;
+    select count(*) into n from public.my_budgets(m0) where period_start = m0;
+    if n <> 2 then raise exception 'copy did not create own rows'; end if;
+    begin
+      perform public.copy_previous_budgets(m2);
+      raise exception 'GUARD_MISSED: copied from an empty month';
+    exception when others then if sqlerrm not like '%no budgets to copy%' then raise; end if; end;
+
+    -- Alerts use the rollover rule: m1 has no rows, so Fun's m2 cap (€100)
+    -- applies to an m1 expense of €120.
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'amount_minor', 12000, 'currency', 'EUR', 'category_id', fun, 'spent_at', m1 + 3)));
+    execute 'reset role';
+    select count(*) into n from public.notifications
+     where user_id = u and type = 'budget' and title = 'Budget exceeded' and body like 'ZZ Fun%';
+    if n <> 1 then raise exception 'carried cap did not alert (%)', n; end if;
+    -- A removed cap never alerts.
+    update public.budgets set removed = true where user_id = u and category_id = food and period_start = m0;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'amount_minor', 99900, 'currency', 'EUR', 'category_id', food, 'spent_at', m0)));
+    execute 'reset role';
+    select count(*) into n from public.notifications where user_id = u and body like 'ZZ Food%';
+    if n <> 0 then raise exception 'removed cap alerted'; end if;
+
+    if has_function_privilege('authenticated', 'public.budget_source_period(uuid, date)', 'execute')
+       or has_function_privilege('authenticated', 'public.materialise_budgets(uuid, date)', 'execute')
+       or has_function_privilege('anon', 'public.edit_budget(uuid, bigint, text, date)', 'execute')
+       or has_function_privilege('anon', 'public.delete_budget(uuid, date)', 'execute')
+       or has_function_privilege('anon', 'public.copy_previous_budgets(date)', 'execute') then
+      raise exception 'budget functions over-granted';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: budgets roll forward (+edit/delete/copy, alerts use rollover)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: budget rollover — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 45. 0062/0064: a GBP expense in a EUR group. The split is in the group currency
+--     (the same exact rounding as the client's toBaseMinor: £42.50 @ 1.1699 =
+--     €49.72; ¥275 @ 0.0062 = €1.705 → €1.71, where float maths said €1.70),
+--     balances
+--     credit the payer with the group amount and net to zero, the audit
+--     summary names the conversion, and each member's mirrored share is in
+--     the group currency at the ECB rate to THEIR base currency (pending,
+--     never 1, when the cache has no rate).
+-- ---------------------------------------------------------------------------
+do $$
+declare ua uuid; ub uuid; uc uuid; gid uuid; ma uuid; mb uuid; mc uuid; eid uuid; n bigint;
+        r record; d date := date '2001-02-05'; summ text; led jsonb;
+begin
+  begin
+    -- JS↔SQL lockstep vectors (test/currency.test.js uses the same ones).
+    if public.to_base_minor(4250, 1.1699, 'GBP', 'EUR') <> 4972
+       or public.to_base_minor(275, 0.0062, 'JPY', 'EUR') <> 171
+       or public.to_base_minor(50, 1.15, 'USD', 'EUR') <> 58
+       or public.to_base_minor(1800, 0.0062, 'JPY', 'EUR') <> 1116
+       or public.to_base_minor(1005, 1.005, 'USD', 'EUR') <> 1010
+       or public.to_base_minor(12345, 0.85725, 'EUR', 'GBP') <> 10583
+       or public.to_base_minor(10000, 162.35, 'EUR', 'JPY') <> 16235 then
+      raise exception 'to_base_minor lockstep vectors differ';
+    end if;
+    if public.to_base_minor(500, null, 'GBP', 'EUR') is not null
+       or public.to_base_minor(500, null, 'EUR', 'EUR') <> 500 then
+      raise exception 'pending rate handling wrong';
+    end if;
+
+    -- Cached ECB rates for the expense day (a Monday: the Friday before).
+    insert into public.fx_rates (rate_date, currency, per_eur) values
+      (date '2001-02-02', 'EUR', 1), (date '2001-02-02', 'GBP', 0.6), (date '2001-02-02', 'USD', 0.9)
+    on conflict (rate_date, currency) do update set per_eur = excluded.per_eur;
+    delete from public.fx_rates where rate_date between date '2001-01-20' and date '2001-02-05' and currency = 'CHF';
+
+    ua := pg_temp.zz_user('gfa'); ub := pg_temp.zz_user('gfb'); uc := pg_temp.zz_user('gfc');
+    update public.profiles set base_currency = 'EUR', display_name = 'ZZ Ann' where id = ua;
+    update public.profiles set base_currency = 'USD' where id = ub;
+    update public.profiles set base_currency = 'CHF' where id = uc;
+    insert into public.groups (name, owner_id, currency) values ('ZZT trip', ua, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, ua, 'A', 'owner') returning id into ma;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, ub, 'B') returning id into mb;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, uc, 'C') returning id into mc;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', ua, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.create_group_expense_v2(gid, 'ZZ no rate', 4250, 'GBP', ma, d, array[ma, mb, mc], null, 'equal');
+      raise exception 'GUARD_MISSED: foreign expense without a rate';
+    exception when others then if sqlerrm not like '%needs a positive exchange rate%' then raise; end if; end;
+    begin
+      perform public.create_group_expense_v2(gid, 'ZZ bad split', 4250, 'GBP', ma, d, array[ma, mb],
+                                             array[2125, 2125]::bigint[], 'exact', 1.1699);
+      raise exception 'GUARD_MISSED: shares in the expense currency accepted';
+    exception when others then if sqlerrm not like '%add up to the total%' then raise; end if; end;
+    eid := public.create_group_expense_v2(gid, 'ZZ dinner', 4250, 'GBP', ma, d, array[ma, mb, mc],
+                                          null, 'equal', 1.1699);
+    select coalesce(sum(net_minor), 0) into n from public.group_balances(gid);
+    execute 'reset role';
+    if n <> 0 then raise exception 'balances don''t net to zero (%)', n; end if;
+    select count(*) into n from public.expense_splits where expense_id = eid;
+    if n <> 3 then raise exception 'splits missing'; end if;
+    select sum(public.dec_minor(share_enc)) into n from public.expense_splits where expense_id = eid;
+    if n <> 4972 then raise exception 'splits sum to %, expected the group amount 4972', n; end if;
+    select net_minor into n from public._group_net(gid) where member_id = ma;
+    if n <> 4972 - 1658 then raise exception 'payer net %', n; end if;
+
+    -- The ledger shows both amounts; the audit log names the conversion.
+    perform set_config('request.jwt.claims', json_build_object('sub', ub, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    led := public.group_ledger(gid) -> 'expenses' -> 0;
+    select summary into summ from public.group_audit_entries(gid) where action = 'expense_added' limit 1;
+    execute 'reset role';
+    if (led ->> 'amount_minor')::bigint <> 4250 or led ->> 'currency' <> 'GBP'
+       or (led ->> 'group_amount_minor')::bigint <> 4972 or (led ->> 'exchange_rate')::numeric <> 1.1699 then
+      raise exception 'ledger row %', led;
+    end if;
+    if summ not like '%“ZZ dinner” · 49.72 EUR at 1.1699' then raise exception 'audit summary: %', summ; end if;
+
+    -- Mirrors: group currency; the rate is to each member's base currency.
+    select currency, exchange_rate into r from public.transactions where user_id = ua and group_expense_id = eid;
+    if r.currency <> 'EUR' or r.exchange_rate <> 1 then raise exception 'EUR member mirror % @ %', r.currency, r.exchange_rate; end if;
+    select currency, exchange_rate into r from public.transactions where user_id = ub and group_expense_id = eid;
+    if r.currency <> 'EUR' or r.exchange_rate <> 0.9 then raise exception 'USD member mirror % @ %', r.currency, r.exchange_rate; end if;
+    select currency, exchange_rate into r from public.transactions where user_id = uc and group_expense_id = eid;
+    if r.currency <> 'EUR' or r.exchange_rate is not null then
+      raise exception 'CHF member mirror should be pending, got % @ %', r.currency, r.exchange_rate;
+    end if;
+    -- Once the cache has the rate, the pending share is rated.
+    insert into public.fx_rates (rate_date, currency, per_eur) values (date '2001-02-02', 'CHF', 1.5);
+    perform public.fx_apply_pending();
+    select exchange_rate into r from public.transactions where user_id = uc and group_expense_id = eid;
+    if r.exchange_rate <> 1.5 then raise exception 'pending share not rated (%)', r.exchange_rate; end if;
+
+    -- A share the cache can't cover queues a fetch at once (0064: after the
+    -- pending row exists). Nothing may be in flight for this to be observable.
+    update public.fx_fetches set ingested_at = coalesce(ingested_at, now());
+    delete from public.fx_rates where rate_date between date '2002-06-01' and date '2002-06-12';
+    select count(*) into n from public.fx_fetches;
+    perform set_config('request.jwt.claims', json_build_object('sub', ua, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.create_group_expense_v2(gid, 'ZZ old', 1000, 'EUR', ma, date '2002-06-12', array[ma, mb], null, 'equal');
+    execute 'reset role';
+    if (select count(*) from public.fx_fetches) <> n + 1 then raise exception 'no ECB fetch queued for a pending share'; end if;
+
+    -- Editing the date re-rates the mirrors; the currency stays the group's.
+    insert into public.fx_rates (rate_date, currency, per_eur) values
+      (date '2001-03-01', 'EUR', 1), (date '2001-03-01', 'USD', 0.95)
+    on conflict (rate_date, currency) do update set per_eur = excluded.per_eur;
+    perform set_config('request.jwt.claims', json_build_object('sub', ua, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.update_group_expense_v2(eid, 'ZZ dinner', 1800, 'JPY', ma, date '2001-03-01',
+                                           array[ma, mb], array[600, 516]::bigint[], 'exact', 0.0062);
+    execute 'reset role';
+    select currency, exchange_rate into r from public.transactions where user_id = ub and group_expense_id = eid;
+    if r.currency <> 'EUR' or r.exchange_rate <> 0.95 then raise exception 'edited mirror % @ %', r.currency, r.exchange_rate; end if;
+    select count(*) into n from public.transactions where user_id = uc and group_expense_id = eid;
+    if n <> 0 then raise exception 'dropped member kept a mirror'; end if;
+
+    -- The cache and its plumbing aren't client-facing.
+    if has_table_privilege('authenticated', 'public.fx_rates', 'SELECT')
+       or has_table_privilege('authenticated', 'public.fx_rates', 'INSERT')
+       or has_table_privilege('authenticated', 'public.fx_fetches', 'SELECT')
+       or has_function_privilege('authenticated', 'public.fx_sync()', 'execute')
+       or has_function_privilege('authenticated', 'public.fx_request()', 'execute')
+       or has_function_privilege('authenticated', 'public.fx_rate(text, text, date)', 'execute')
+       or has_function_privilege('authenticated', 'public.fx_store_rates(jsonb)', 'execute')
+       or has_function_privilege('authenticated', 'public.group_expense_amount(uuid, bigint, text, numeric)', 'execute')
+       or has_function_privilege('anon', 'public.create_group_expense_v2(uuid, text, bigint, character, uuid, date, uuid[], bigint[], text, numeric)', 'execute') then
+      raise exception 'fx / group-expense functions over-granted';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: foreign-currency group expense (split, balances, audit, mirrors at member rates)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: group expense currency — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 46. 0062: the ECB cache parser keeps only well-formed positive rates, and a
+--     foreign-currency recurring rule materialises at the cached ECB rate of
+--     each run date (it stored 1 before), or pending when there is none.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; n int; r record;
+begin
+  begin
+    n := public.fx_store_rates('{"rates": {"2001-04-02": {"GBP": 0.62, "USD": "1.1", "XX": 2, "SEK": -3, "NOK": 0},
+                                             "not-a-day": {"GBP": 0.7}, "2001-04-03": "junk"}}'::jsonb);
+    if n <> 2 then raise exception 'stored % rows, expected GBP + EUR', n; end if;
+    if public.fx_rate('GBP', 'EUR', date '2001-04-04') <> round(1 / 0.62, 8) then
+      raise exception 'fx_rate % (the day before, weekend-style)', public.fx_rate('GBP', 'EUR', date '2001-04-04');
+    end if;
+    if public.fx_rate('GBP', 'EUR', date '2001-04-20') is not null then
+      raise exception 'rate older than 10 days used';
+    end if;
+    if public.fx_store_rates('{"nope": 1}'::jsonb) <> 0 then raise exception 'garbage stored'; end if;
+
+    u := pg_temp.zz_user('recfx');
+    update public.profiles set base_currency = 'EUR' where id = u;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_recurring_rule(null, jsonb_build_object('amount_minor', 999, 'currency', 'GBP',
+      'frequency', 'daily', 'next_run', current_date, 'end_date', current_date,
+      'description', 'ZZ sub'));
+    execute 'reset role';
+    -- Today's rate: make sure the cache has one for today.
+    insert into public.fx_rates (rate_date, currency, per_eur) values
+      (current_date, 'EUR', 1), (current_date, 'GBP', 0.8)
+    on conflict (rate_date, currency) do update set per_eur = excluded.per_eur;
+    perform public.materialize_recurring_rules();
+    select currency, exchange_rate into r from public.transactions where user_id = u;
+    if r.currency <> 'GBP' or r.exchange_rate <> 1.25 then
+      raise exception 'materialised % @ %', r.currency, r.exchange_rate;
+    end if;
+    -- No cached rate for the user's base currency → pending, not 1.
+    update public.profiles set base_currency = 'ZZZ' where id = u;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_recurring_rule(null, jsonb_build_object('amount_minor', 500, 'currency', 'GBP',
+      'frequency', 'daily', 'next_run', current_date, 'end_date', current_date, 'description', 'ZZ sub 2'));
+    execute 'reset role';
+    perform public.materialize_recurring_rules();
+    select count(*) into n from public.transactions where user_id = u and exchange_rate is null;
+    if n <> 1 then raise exception 'pending recurring row missing (%)', n; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: ECB cache parser + foreign recurring rules at the cached rate';
+    else update _t set fails = fails + 1; raise notice 'FAIL: fx cache / recurring — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 47. 0063: the PayPal.me handle is encrypted, readable by the owner and
+--     co-members only, validated, and an old 2-argument save keeps it.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; u3 uuid; gid uuid; m1 uuid; j jsonb; raw bytea;
+begin
+  begin
+    u1 := pg_temp.zz_user('pp1'); u2 := pg_temp.zz_user('pp2'); u3 := pg_temp.zz_user('pp3');
+    insert into public.groups (name, owner_id, currency) values ('ZZT pay', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'P1', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'P2');
+    if has_column_privilege('authenticated', 'public.profiles', 'payment_paypal_enc', 'UPDATE') then
+      raise exception 'paypal ciphertext column updatable';
+    end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.set_payment_info(null, null, 'not a handle!');
+      raise exception 'GUARD_MISSED: invalid PayPal handle';
+    exception when others then if sqlerrm not like '%PayPal.me%' then raise; end if; end;
+    perform public.set_payment_info('CY17002001280000001200527600', 'zzrev', 'ZzPay123');
+    perform public.set_payment_info('CY17002001280000001200527600', 'zzrev');   -- an old client
+    j := public.my_payment_info();
+    if j ->> 'payment_paypal' is distinct from 'ZzPay123' then raise exception 'own paypal = %', j; end if;
+    execute 'reset role';
+    select payment_paypal_enc into raw from public.profiles where id = u1;
+    if raw is null or position('ZzPay123' in encode(raw, 'escape')) > 0 then raise exception 'paypal not encrypted'; end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    j := public.member_payment_info(m1);
+    if j ->> 'payment_paypal' is distinct from 'ZzPay123' then raise exception 'co-member sees %', j; end if;
+    execute 'reset role';
+    perform set_config('request.jwt.claims', json_build_object('sub', u3, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      j := public.member_payment_info(m1);
+      raise exception 'GUARD_MISSED: outsider read payment info';
+    exception when others then if sqlerrm not like '%not allowed%' then raise; end if; end;
+    execute 'reset role';
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.set_payment_info(null, null, '');
+    j := public.my_payment_info();
+    execute 'reset role';
+    if j ->> 'payment_paypal' is not null then raise exception 'empty string did not clear paypal'; end if;
+    if to_regprocedure('public.set_payment_info(text, text)') is not null then
+      raise exception 'old 2-argument set_payment_info still present';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: PayPal.me handle encrypted, co-member only, validated';
+    else update _t set fails = fails + 1; raise notice 'FAIL: PayPal handle — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 43; f int; p int;  -- tests 1–42 + B-0059
+declare expected_tests constant int := 48; f int; p int;  -- tests 1–47 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

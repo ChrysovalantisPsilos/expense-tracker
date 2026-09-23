@@ -4,11 +4,12 @@ import { useTransactions } from '../transactions/useData.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
-import { budgetTone } from './budgetMath.js'
+import { budgetTone, carriedFrom } from './budgetMath.js'
 
 // This month's budgets with their actual spend — shared by the dashboard card
 // and the Budgets page. Budgets are stored in the base currency; spend is
 // converted to base too, so they're directly comparable. Both queries are live.
+// `carriedFrom` is the month the caps rolled over from (null: this month's own).
 export function useBudgetProgress() {
   const { baseCurrency } = useProfile()
   const { from, to } = monthRange()
@@ -38,5 +39,8 @@ export function useBudgetProgress() {
   }, [budgets, txns, baseCurrency])
 
   const reload = () => Promise.all([b.reload(), t.reload()])
-  return { items, loading: b.loading || t.loading, error: b.error ?? t.error, reload }
+  return {
+    items, carriedFrom: carriedFrom(budgets, b.periodStart), periodStart: b.periodStart,
+    loading: b.loading || t.loading, error: b.error ?? t.error, reload,
+  }
 }

@@ -98,17 +98,21 @@ export async function uploadGroupImage(groupId, file) {
 }
 
 // Add a shared expense + its split in ONE transaction (RPC), so a failure can
-// never leave an expense without splits. Pass `shares` (minor units aligned to
-// memberIds) + `splitType` for an unequal split; omit them for an equal split
-// (the server computes it via split_equally, matching the edit path).
+// never leave an expense without splits. `amountMinor` is in `currency` (what
+// was paid); a currency other than the group's needs `exchangeRate` (paid →
+// group currency). Pass `shares` (GROUP-currency minor units aligned to
+// memberIds, adding up to expenseGroupAmount) + `splitType` for an unequal
+// split; omit them for an equal split (the server computes it via
+// split_equally on the group amount, matching the edit path).
 export async function addSharedExpense({
-  groupId, description, amountMinor, currency, paidBy, spentAt, memberIds,
+  groupId, description, amountMinor, currency, exchangeRate = null, paidBy, spentAt, memberIds,
   shares = null, splitType = 'equal',
 }) {
   const { data, error } = await supabase.rpc('create_group_expense_v2', {
     p_group: groupId, p_description: description || null, p_amount: amountMinor,
     p_currency: currency, p_paid_by: paidBy, p_spent_at: spentAt,
     p_member_ids: memberIds, p_shares: shares, p_split_type: splitType,
+    p_exchange_rate: exchangeRate,
   })
   if (error) throw new Error(error.message)
   return data // expense id
@@ -214,16 +218,17 @@ export async function respondToInvite(inviteId, accept) {
   return data // group id when accepted
 }
 
-// Edit an existing shared expense (fields + re-split among memberIds). Pass
-// `shares` + `splitType` for an unequal split; omit for an equal re-split.
+// Edit an existing shared expense (fields + re-split among memberIds), with
+// the same currency/rate/shares rules as addSharedExpense.
 export async function updateSharedExpense({
-  expenseId, description, amountMinor, currency, paidBy, spentAt, memberIds,
+  expenseId, description, amountMinor, currency, exchangeRate = null, paidBy, spentAt, memberIds,
   shares = null, splitType = 'equal',
 }) {
   const { error } = await supabase.rpc('update_group_expense_v2', {
     p_expense: expenseId, p_description: description || null, p_amount: amountMinor,
     p_currency: currency, p_paid_by: paidBy, p_spent_at: spentAt,
     p_member_ids: memberIds, p_shares: shares, p_split_type: splitType,
+    p_exchange_rate: exchangeRate,
   })
   if (error) throw new Error(error.message)
 }
