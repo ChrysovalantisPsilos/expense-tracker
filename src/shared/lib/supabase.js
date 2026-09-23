@@ -1,11 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
+import { SUPABASE_URL } from './environment.js'
 
 // Config is injected at build time by the host (Vercel env vars) — never
 // committed. Two naming schemes are accepted so one bundle works in both
 // Vercel environments: PROD sets VITE_SUPABASE_URL / _ANON_KEY, DEV sets the
 // _DEV-suffixed pair. Whichever is present wins.
 const env = import.meta.env
-const url = env.VITE_SUPABASE_URL || env.VITE_SUPABASE_URL_DEV
+const url = SUPABASE_URL
 const anonKey = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY_DEV
 
 export const isSupabaseConfigured = Boolean(url && anonKey)

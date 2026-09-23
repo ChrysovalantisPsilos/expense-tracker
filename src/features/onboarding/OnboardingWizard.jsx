@@ -150,7 +150,7 @@ export default function OnboardingWizard({ profile, onDone }) {
               <FormControl>
                 <FormLabel>IBAN</FormLabel>
                 <Input value={iban} onChange={(e) => setIban(e.target.value)}
-                  placeholder="CY17 0020 0128 …" autoComplete="off" />
+                  placeholder="BE68 5390 0754 7034" autoComplete="off" />
               </FormControl>
               <FormControl>
                 <FormLabel>Revolut tag</FormLabel>

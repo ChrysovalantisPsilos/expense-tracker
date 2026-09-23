@@ -62,10 +62,13 @@ export const devTitle = (env, title) =>
   env === TEST && !title.startsWith(TITLE_PREFIX) ? TITLE_PREFIX + title : title
 export const faviconFor = (env) => (env === TEST ? '/budgeer-mark-dev.svg' : '/budgeer-mark.svg')
 
+// Build-time config (Vercel env vars): PROD sets VITE_SUPABASE_URL, DEV the
+// _DEV-suffixed name; whichever is present wins. supabase.js reads it here.
 const viteEnv = import.meta.env ?? {}
+export const SUPABASE_URL = viteEnv.VITE_SUPABASE_URL || viteEnv.VITE_SUPABASE_URL_DEV
 export const CURRENT_ENV = detectEnvironment({
   host: globalThis.location?.host,
-  supabaseUrl: viteEnv.VITE_SUPABASE_URL || viteEnv.VITE_SUPABASE_URL_DEV,
+  supabaseUrl: SUPABASE_URL,
 })
 export const isTestSite = CURRENT_ENV === TEST
 

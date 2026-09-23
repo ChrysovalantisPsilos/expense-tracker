@@ -42,7 +42,7 @@ aspirations — if a change would break one, fix the cause, don't paper over it.
 | Concern | Where |
 | --- | --- |
 | App shell, routing, providers | `src/app/`, `src/main.jsx` (zero data access) |
-| Cross-feature utilities | `src/shared/lib/` (data: `db.js`, `supabase.js`, `realtime.js`, `fx.js`, `profile.js`, `push.js`; pure: `currency.js`, `dates.js`, `moneyParse.js`, `paginate.js`, `offlineReads.js`, `txnRollup.js`, `spread.js`, `localeParse.js`) |
+| Cross-feature utilities | `src/shared/lib/` (data: `db.js`, `supabase.js`, `realtime.js`, `fx.js`, `profile.js`, `push.js`; pure: `currency.js`, `dates.js`, `moneyParse.js`, `paginate.js`, `offlineReads.js`, `txnRollup.js`, `spread.js`, `environment.js`, `localeParse.js`) |
 | Cross-feature UI | `src/shared/ui/` (design-system kit in `src/shared/ui/kit/`) |
 | Auth context | `src/shared/auth/` |
 | Features | `src/features/{auth,backup,budgets,categories,dashboard,groups,help,import,insights,landing,notifications,onboarding,privacy,recurring,settings,transactions}/` |

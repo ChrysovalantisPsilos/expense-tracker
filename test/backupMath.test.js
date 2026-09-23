@@ -54,7 +54,7 @@ function sourceDoc() {
     exportedAt: '2026-09-22T12:00:00.000Z',
     userId: 'u-source',
     profile: { display_name: 'Alex Demo', base_currency: 'USD', notify_email: false, notify_push: true },
-    payment: { payment_iban: 'CY17002001280000001200527600', payment_revolut: null },
+    payment: { payment_iban: 'BE68539007547034', payment_revolut: null },
     categories: CATS,
     categoryRules: [{ pattern: 'LIDL', category_id: 'cat-food' }, { pattern: 'GONE', category_id: 'cat-missing' }],
     accounts: ACCOUNTS,
@@ -175,7 +175,7 @@ test('read: copies only known fields (file contents are data, never code)', () =
 test('password: encrypted envelope round trip, and a wrong password is refused', async () => {
   const doc = sourceDoc()
   const text = await serializeBackup(doc, 'correct horse 42')
-  assert.ok(!text.includes('Lunch') && !text.includes('CY17'), 'plaintext leaked into the envelope')
+  assert.ok(!text.includes('Lunch') && !text.includes('BE68'), 'plaintext leaked into the envelope')
   const env = JSON.parse(text)
   assert.equal(env.format, BACKUP_FORMAT)
   assert.equal(env.version, BACKUP_VERSION)
@@ -344,9 +344,9 @@ test('profile: only empty/default values are filled; the rest is reported, never
 
 test('payment: fills an empty IBAN/Revolut, keeps one that is set', () => {
   const { data } = fresh() // IBAN set, no Revolut
-  assert.deepEqual(planPayment(data, {}), { patch: { iban: 'CY17002001280000001200527600', revolut: null, paypal: null }, kept: [] })
+  assert.deepEqual(planPayment(data, {}), { patch: { iban: 'BE68539007547034', revolut: null, paypal: null }, kept: [] })
   assert.deepEqual(planPayment(data, { payment_iban: 'GB00OTHER', payment_revolut: 'alex' }), { patch: null, kept: ['IBAN'] })
-  assert.deepEqual(planPayment(data, { payment_iban: 'CY17002001280000001200527600' }), { patch: null, kept: [] })
+  assert.deepEqual(planPayment(data, { payment_iban: 'BE68539007547034' }), { patch: null, kept: [] })
 })
 
 test('summary: what was added, what was skipped, what was kept', () => {
@@ -420,9 +420,9 @@ test('version 2 carries the PayPal.me name; a version 1 file still reads', () =>
 test('payment: a PayPal.me name fills an empty one and is kept when set', () => {
   const { data } = fresh()
   data.payment.paypal = 'AlexK'
-  assert.deepEqual(planPayment(data, { payment_iban: 'CY17002001280000001200527600' }).patch,
-    { iban: 'CY17002001280000001200527600', revolut: null, paypal: 'AlexK' })
-  assert.deepEqual(planPayment(data, { payment_iban: 'CY17002001280000001200527600', payment_paypal: 'Other' }),
+  assert.deepEqual(planPayment(data, { payment_iban: 'BE68539007547034' }).patch,
+    { iban: 'BE68539007547034', revolut: null, paypal: 'AlexK' })
+  assert.deepEqual(planPayment(data, { payment_iban: 'BE68539007547034', payment_paypal: 'Other' }),
     { patch: null, kept: ['PayPal.me name'] })
 })
 
