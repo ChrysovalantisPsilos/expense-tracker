@@ -1,4 +1,5 @@
 import { formatMoney } from '../../shared/lib/currency.js'
+import { simplifyDebts } from './splitMath.js'
 
 // Display name for a member id within a group's member list. Falls back to an
 // em dash for unknown/removed ids. (Members carry their own display_name, so
@@ -27,4 +28,17 @@ export function splitLabel(expense) {
   return expense?.split_type && expense.split_type !== 'equal'
     ? `custom split · ${pluralise(n, 'person', 'people')}`
     : `split ${pluralise(n, 'way')}`
+}
+
+// The group's full settle-up plan (fewest payments, from simplifyDebts) with
+// display names; the viewer shows as "You" and is flagged so it can be
+// highlighted. [{ from, to, fromName, toName, amount, mine }]
+export function settlePlan(balances, members, myMemberId) {
+  const name = (id) => (id === myMemberId ? 'You' : memberName(members, id))
+  return simplifyDebts(balances ?? new Map()).map((t) => ({
+    ...t,
+    fromName: name(t.from),
+    toName: name(t.to),
+    mine: t.from === myMemberId || t.to === myMemberId,
+  }))
 }

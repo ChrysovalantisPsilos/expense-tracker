@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  List, ListItem, HStack, Stack, Text, Divider, Tag, TagLabel, useToast,
+  Box, List, ListItem, HStack, Stack, Text, Divider, Tag, TagLabel, useToast,
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
   ModalFooter, Button, Flex,
 } from '@chakra-ui/react'
@@ -9,7 +9,7 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import RowActions from '../../shared/ui/RowActions.jsx'
 import RowAmount from '../../shared/ui/RowAmount.jsx'
 import TransactionForm from './TransactionForm.jsx'
-import { formatMoney } from '../../shared/lib/currency.js'
+import { formatMoney, baseEquivalent } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { deleteTransaction } from './writes.js'
@@ -60,6 +60,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
         {rows.map((r, i) => {
           const shared = !!r.group_expense_id
           const rk = kindOf(r, kind)
+          const conv = baseEquivalent(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
           return (
             <ListItem key={r.id}>
               {i > 0 && <Divider />}
@@ -86,9 +87,17 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                     )}
                   </Flex>
                 </Stack>
-                <RowAmount color={rk === 'income' ? 'status.positive' : 'text.primary'}>
-                  {rk === 'income' ? '+' : ''}{formatMoney(r.amount_minor, r.currency)}
-                </RowAmount>
+                <Stack spacing={0} align="flex-end" flexShrink={0}>
+                  <RowAmount color={rk === 'income' ? 'status.positive' : 'text.primary'}>
+                    {rk === 'income' ? '+' : ''}{formatMoney(r.amount_minor, r.currency)}
+                  </RowAmount>
+                  {conv && (
+                    <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">
+                      ≈ {formatMoney(conv.baseMinor, baseCurrency)}
+                      <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {conv.rate}</Box>
+                    </Text>
+                  )}
+                </Stack>
                 <RowActions slots={2} actions={shared ? [] : [
                   { label: 'Edit', icon: Pencil, onClick: () => { setEditing(r); editModal.onOpen() } },
                   { label: 'Delete', icon: Trash2, danger: true, onClick: () => setRemoving(r) },

@@ -8,7 +8,7 @@ import {
   Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
 import {
-  ArrowLeft, Plus, Link2, Users, HandCoins, Mail,
+  ArrowLeft, ArrowRight, ArrowRightLeft, Plus, Link2, Users, HandCoins, Mail,
   MoreVertical, LogOut, Trash2, UserMinus, Pencil, Camera, FileDown, MessageSquare,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
@@ -18,7 +18,7 @@ import {
   uploadGroupImage, listAuditLog, downloadGroupReport,
 } from './groups.js'
 import { commentCounts } from './comments.js'
-import { memberName, describeBalance, splitLabel } from './groupFormat.js'
+import { memberName, describeBalance, splitLabel, settlePlan, pluralise } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
@@ -159,6 +159,7 @@ export default function GroupDetail() {
 
   const { group, members, expenses, settlements } = data
   const cur = group.currency
+  const plan = settlePlan(balances, members, myMember?.id)
   const isOwner = group.owner_id === user.id
 
   return (
@@ -227,6 +228,30 @@ export default function GroupDetail() {
           </HStack>
         </CardBody>
       </Card>
+
+      {/* Who owes whom: the whole group's settle-up plan (fewest payments) */}
+      {plan.length > 0 && (
+        <Card><CardBody>
+          <CardHeader icon={ArrowRightLeft} title="Who owes whom"
+            subtitle={`${pluralise(plan.length, 'payment')} to settle everyone up`} />
+          <Stack spacing={2}>
+            {plan.map((t) => (
+              <HStack key={`${t.from}-${t.to}`} spacing={2} px={3} py={2.5} borderRadius="lg"
+                bg={t.mine ? 'bg.subtle' : 'transparent'}
+                borderWidth={t.mine ? 0 : '1px'} borderColor="border.default">
+                <Text fontSize="sm" fontWeight="600" noOfLines={1} minW={0}>{t.fromName}</Text>
+                <Box color="text.muted" flexShrink={0}><ArrowRight size={14} /></Box>
+                <Text fontSize="sm" fontWeight="600" noOfLines={1} minW={0} flex="1">{t.toName}</Text>
+                <Text fontSize="sm" fontWeight="700" whiteSpace="nowrap"
+                  color={t.to === myMember?.id ? 'status.positive'
+                    : t.from === myMember?.id ? 'status.negative' : 'text.primary'}>
+                  {formatMoney(t.amount, cur)}
+                </Text>
+              </HStack>
+            ))}
+          </Stack>
+        </CardBody></Card>
+      )}
 
       {/* Members */}
       <Card><CardBody>

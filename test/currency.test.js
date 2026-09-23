@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { toMinor, fromMinor, formatMoney, toBaseMinor, minorFactor } from '../src/shared/lib/currency.js'
+import { toMinor, fromMinor, formatMoney, toBaseMinor, minorFactor, baseEquivalent } from '../src/shared/lib/currency.js'
 
 test('toMinor/fromMinor round-trip (2-decimal currency)', () => {
   assert.equal(toMinor('12.34', 'EUR'), 1234)
@@ -28,4 +28,15 @@ test('toBaseMinor applies the captured exchange rate', () => {
   assert.equal(toBaseMinor(10000, 0.9, 'USD', 'EUR'), 9000)
   // Same currency: rate ignored/1 — amount unchanged.
   assert.equal(toBaseMinor(10000, 1, 'EUR', 'EUR'), 10000)
+})
+
+test('baseEquivalent: converts foreign rows at the captured rate', () => {
+  assert.deepEqual(baseEquivalent(4250, 1.17, 'GBP', 'EUR'), { baseMinor: 4973, rate: 1.17 })
+  assert.deepEqual(baseEquivalent(1800, '0.0062', 'JPY', 'EUR'), { baseMinor: 1116, rate: 0.0062 })
+})
+
+test('baseEquivalent: null for base-currency rows or a missing rate', () => {
+  assert.equal(baseEquivalent(500, 1, 'EUR', 'EUR'), null)
+  assert.equal(baseEquivalent(500, null, 'USD', 'EUR'), null)
+  assert.equal(baseEquivalent(500, 0, 'USD', 'EUR'), null)
 })

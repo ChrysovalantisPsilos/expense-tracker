@@ -33,6 +33,15 @@ export function toBaseMinor(minor, exchangeRate, fromCurrency = 'EUR', baseCurre
   )
 }
 
+// A foreign-currency row's value in the user's base currency, for display
+// next to the original amount: { baseMinor, rate }, or null when the row is
+// already in the base currency or has no captured rate.
+export function baseEquivalent(minor, exchangeRate, fromCurrency, baseCurrency) {
+  const rate = Number(exchangeRate)
+  if (!fromCurrency || fromCurrency === baseCurrency || !(rate > 0)) return null
+  return { baseMinor: toBaseMinor(minor, rate, fromCurrency, baseCurrency), rate }
+}
+
 // Fetch a daily FX rate from base->quote. Cached in localStorage per day so we
 // don't hammer the API. Returns 1 on failure (caller can flag as unconverted).
 // Optional chaining: import.meta.env only exists under Vite — this module is
