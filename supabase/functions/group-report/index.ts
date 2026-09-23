@@ -10,11 +10,10 @@
 
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { BRAND, loadBrandFonts, Statement } from '../_shared/pdf.ts'
-import { cors, json, callerClient } from '../_shared/http.ts'
+import { withCors, json, callerClient } from '../_shared/http.ts'
 import { fmtMinor as fmt } from '../_shared/money.ts'
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
+Deno.serve(withCors(async (req) => {
   try {
     const { group_id } = await req.json()
     if (!group_id || typeof group_id !== 'string') return json({ error: 'group_id is required' }, 400)
@@ -48,7 +47,6 @@ Deno.serve(async (req) => {
     const bytes = await buildPdf({ group, cur, members: members ?? [], settlements: settlements ?? [], log: log ?? [], net, nameOf })
     return new Response(bytes, {
       headers: {
-        ...cors,
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${group.name.replace(/[^a-z0-9]+/gi, '-')}-statement.pdf"`,
       },
@@ -57,7 +55,7 @@ Deno.serve(async (req) => {
     console.error('group-report error', e)
     return json({ error: 'Could not generate the report.' }, 500)
   }
-})
+}))
 
 // deno-lint-ignore no-explicit-any
 async function buildPdf({ group, cur, members, settlements, log, net, nameOf }: any): Promise<Uint8Array> {

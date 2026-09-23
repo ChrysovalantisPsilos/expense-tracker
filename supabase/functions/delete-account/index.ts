@@ -15,11 +15,9 @@
 // cascade-delete with them. (Receipts are no longer stored at all — 0049.)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { cors, json } from '../_shared/http.ts'
+import { withCors, json } from '../_shared/http.ts'
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
-
+Deno.serve(withCors(async (req) => {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
   const ANON = Deno.env.get('SUPABASE_ANON_KEY')!
   const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -83,7 +81,7 @@ Deno.serve(async (req) => {
     console.error('delete-account error', e)
     return json({ error: 'Something went wrong.' }, 500)
   }
-})
+}))
 
 // Delete every file under `<folder>/` in a bucket (paths are keyed by the
 // owning user / group id, matching the storage RLS policies). Lists in pages

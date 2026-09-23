@@ -12,6 +12,8 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { esc, brandEmail } from '../_shared/email.ts'
+import { requireCronSecret } from '../_shared/cron.ts'
+import { eachLimited, isAllowedPushEndpoint } from '../_shared/push.ts'
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -38,18 +40,13 @@ function eventEmail(opts: { title: string; body: string; url: string }): string 
     inner: `<h1 style="margin:0 0 10px;font-size:20px;color:#242019;">${title}</h1>
           <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#5f5545;">${body}</p>
           <a href="${url}" style="display:inline-block;background:#f95d38;color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:13px 26px;border-radius:10px;">Open Budgeer</a>`,
-    footer: 'Budgeer · your money, your friends, sorted<br>You can turn these emails off in Profile → Notifications.',
+    footer: 'Budgeer · your money, your friends, sorted<br>You can turn these emails off in Settings → Notifications.',
   })
 }
 
 Deno.serve(async (req) => {
-  const { data: secrets, error: secErr } = await admin.rpc('reminder_secrets')
-  if (secErr || !secrets?.reminder_cron_secret) {
-    return new Response('secrets unavailable', { status: 500 })
-  }
-  if (req.headers.get('x-cron-secret') !== secrets.reminder_cron_secret) {
-    return new Response('forbidden', { status: 403 })
-  }
+  const secrets = await requireCronSecret(admin, req)
+  if (secrets instanceof Response) return secrets
 
   const { notification_id } = await req.json().catch(() => ({}))
   if (!notification_id) return new Response('notification_id required', { status: 400 })
@@ -82,7 +79,10 @@ Deno.serve(async (req) => {
       .select('id, endpoint, p256dh, auth')
       .eq('user_id', n.user_id)
     const payload = JSON.stringify({ title: n.title, body: n.body ?? '', url: urlFor(n) })
-    for (const s of subs ?? []) {
+    // Only real browser push services (rows saved before 0058 weren't
+    // checked), at most 10 devices, 4 requests in flight at a time.
+    const targets = (subs ?? []).filter((s) => isAllowedPushEndpoint(s.endpoint)).slice(0, 10)
+    await eachLimited(targets, 4, async (s) => {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
           await admin.from('push_subscriptions').delete().eq('id', s.id)
         }
       }
-    }
+    })
   }
 
   // -- Email (big events only) ------------------------------------------------

@@ -9,11 +9,17 @@
 // inject HTML, point the button at a phishing URL, or email on behalf of a
 // group they're not in. Authorization piggybacks on the caller's RLS: they can
 // only read the invite row (and thus send for it) if they're a member.
+//
+// Anti-abuse: the recipient must be the address the invite was created for;
+// the subject line is fixed (user-chosen names appear only in the escaped
+// body); and on top of the caller's quota, any one address gets at most 3
+// invite emails a day, whoever sends them.
 
-import { cors, json, callerClient } from '../_shared/http.ts'
+import { withCors, json, callerClient } from '../_shared/http.ts'
 import { esc, brandEmail } from '../_shared/email.ts'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const SUBJECT = 'You’re invited to a group on Budgeer'
 
 function inviteEmail(opts: { heading: string; url: string }): string {
   const heading = esc(opts.heading)
@@ -26,9 +32,7 @@ function inviteEmail(opts: { heading: string; url: string }): string {
   })
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
-
+Deno.serve(withCors(async (req) => {
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
   const FROM = Deno.env.get('INVITE_FROM') || 'Budgeer <onboarding@resend.dev>'
   // Fallback = production origin; the TEST project sets APP_ORIGIN to
@@ -58,10 +62,14 @@ Deno.serve(async (req) => {
 
     const { data: invite } = await asUser
       .from('group_invites')
-      .select('group_id, groups(name)')
+      .select('group_id, invited_email, groups(name)')
       .eq('token', token)
       .maybeSingle()
     if (!invite) return json({ error: 'not allowed for this invite' }, 403)
+    const recipient = to.trim().toLowerCase()
+    if ((invite.invited_email ?? '').trim().toLowerCase() !== recipient) {
+      return json({ error: 'This invite was created for a different address.' }, 403)
+    }
 
     // Inviter name from the caller's own profile (server-side, never trusted input).
     const { data: prof } = await asUser
@@ -70,6 +78,10 @@ Deno.serve(async (req) => {
     if (!RESEND_API_KEY) {
       return json({ error: 'Email invites are not configured yet (missing RESEND_API_KEY). Use the share link instead.' }, 503)
     }
+
+    const { data: recipientOk, error: rqErr } = await asUser.rpc('consume_invite_recipient_quota', { p_email: recipient })
+    if (rqErr) throw rqErr
+    if (recipientOk !== true) return json({ error: 'That address has already been sent several invites today.' }, 429)
 
     // deno-lint-ignore no-explicit-any
     const groupName = (invite as any).groups?.name as string | undefined
@@ -83,7 +95,7 @@ Deno.serve(async (req) => {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [to.trim()], subject: `${who}${group} on Budgeer`, html }),
+      body: JSON.stringify({ from: FROM, to: [recipient], subject: SUBJECT, html }),
     })
     if (!res.ok) {
       console.error('resend error', res.status, await res.text().catch(() => ''))
@@ -95,4 +107,4 @@ Deno.serve(async (req) => {
     console.error('send-invite error', e)
     return json({ error: 'Something went wrong.' }, 500)
   }
-})
+}))

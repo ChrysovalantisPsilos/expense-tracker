@@ -50,6 +50,11 @@ export function DeleteGroupModal({ group, isOpen, onClose, busy, onConfirm }) {
   )
 }
 
+const INVITE_STATUS_MESSAGE = {
+  already_member: 'That person is already in this group.',
+  already_invited: 'They already have a pending invite to this group.',
+}
+
 export function InviteEmailModal({ group, isOpen, onClose }) {
   const toast = useToast()
   const [email, setEmail] = useState('')
@@ -62,29 +67,27 @@ export function InviteEmailModal({ group, isOpen, onClose }) {
     setBusy(true)
     try {
       // First try to invite an existing Budgeer user (in-app request).
-      await inviteExistingUser(group.id, addr)
-      toast({ title: `Request sent to ${addr}`, description: 'They’ll see it in Budgeer.', status: 'success' })
-      onClose(); setEmail('')
-    } catch (err) {
-      if (err.message === 'no_account') {
+      const status = await inviteExistingUser(group.id, addr)
+      if (status === 'invited') {
+        toast({ title: `Request sent to ${addr}`, description: 'They’ll see it in Budgeer.', status: 'success' })
+        onClose(); setEmail('')
+      } else if (status === 'no_account') {
         // No account yet — send an emailable join link.
+        const { token, url } = await createInvite(group.id, { email: addr })
         try {
-          const { token, url } = await createInvite(group.id, { email: addr })
-          try {
-            await emailInvite({ to: addr, token })
-            toast({ title: `Invite emailed to ${addr}`, status: 'success' })
-          } catch (mailErr) {
-            await navigator.clipboard.writeText(url)
-            toast({ title: 'Couldn’t send the email — link copied instead',
-              description: mailErr.message, status: 'warning', duration: 8000 })
-          }
-          onClose(); setEmail('')
-        } catch (e2) {
-          toast({ title: e2.message, status: 'error' })
+          await emailInvite({ to: addr, token })
+          toast({ title: `Invite emailed to ${addr}`, status: 'success' })
+        } catch (mailErr) {
+          await navigator.clipboard.writeText(url)
+          toast({ title: 'Couldn’t send the email — link copied instead',
+            description: mailErr.message, status: 'warning', duration: 8000 })
         }
+        onClose(); setEmail('')
       } else {
-        toast({ title: err.message, status: 'error' })
+        toast({ title: INVITE_STATUS_MESSAGE[status] ?? 'Couldn’t send the invite.', status: 'error' })
       }
+    } catch (err) {
+      toast({ title: err.message, status: 'error' })
     } finally { setBusy(false) }
   }
 

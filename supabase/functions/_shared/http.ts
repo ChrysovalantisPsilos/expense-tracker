@@ -1,19 +1,28 @@
-// Shared HTTP helpers for the edge functions: identical CORS headers, a JSON
-// responder that carries them, and a caller-scoped Supabase client (anon key +
-// the caller's JWT, so RLS applies as that user).
+// Shared HTTP helpers for the browser-called edge functions: a CORS wrapper
+// pinned to the app's origins, a JSON responder, and a caller-scoped Supabase
+// client (anon key + the caller's JWT, so RLS applies as that user).
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { allowedOrigins, corsHeaders } from './cors.ts'
 
-export const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+const ALLOWED = allowedOrigins(Deno.env.get('APP_ORIGIN'), Deno.env.get('CORS_ORIGINS'))
+
+// Wrap a handler: answers the preflight, and stamps the CORS headers on
+// every response the handler returns.
+export function withCors(handler: (req: Request) => Promise<Response>) {
+  return async (req: Request): Promise<Response> => {
+    const headers = corsHeaders(req.headers.get('Origin'), ALLOWED)
+    if (req.method === 'OPTIONS') return new Response('ok', { headers })
+    const res = await handler(req)
+    for (const [k, v] of Object.entries(headers)) res.headers.set(k, v)
+    return res
+  }
 }
 
 export function json(obj: unknown, status = 200): Response {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { ...cors, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
   })
 }
 

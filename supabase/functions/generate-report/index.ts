@@ -16,7 +16,7 @@
 import * as XLSX from 'https://esm.sh/xlsx@0.18.5'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { BRAND, loadBrandFonts, money, Statement } from '../_shared/pdf.ts'
-import { cors, json, callerClient } from '../_shared/http.ts'
+import { withCors, json, callerClient } from '../_shared/http.ts'
 import { minorFactor } from '../_shared/money.ts'
 
 interface Body {
@@ -25,9 +25,7 @@ interface Body {
   format: 'xlsx' | 'pdf'
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
-
+Deno.serve(withCors(async (req) => {
   try {
     const { from, to, format = 'xlsx' } = (await req.json()) as Body
     const DATE = /^\d{4}-\d{2}-\d{2}$/
@@ -85,19 +83,19 @@ Deno.serve(async (req) => {
     if (format === 'pdf') {
       const bytes = await buildPdf({ from, to, base, rows, totalSpent, totalIncome, byCategory, name: profile?.display_name })
       return new Response(bytes, {
-        headers: { ...cors, 'Content-Type': 'application/pdf' },
+        headers: { 'Content-Type': 'application/pdf' },
       })
     }
 
     const bytes = buildXlsx({ base, rows, totalSpent, totalIncome, byCategory })
     return new Response(bytes, {
-      headers: { ...cors, 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+      headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     })
   } catch (e) {
     console.error('generate-report error', e)
     return json({ error: 'Could not generate the report.' }, 500)
   }
-})
+}))
 
 // Neutralise spreadsheet formula injection: cells starting with a formula
 // trigger are prefixed with an apostrophe so Excel/Sheets treat them as text.

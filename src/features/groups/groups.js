@@ -191,12 +191,15 @@ export async function previewGroup(token) {
   return data // null if token invalid/expired
 }
 
-// Invite an EXISTING user by exact email (creates an in-app request). Throws
-// with message 'no_account' when no user has that email (caller falls back to
-// a phantom).
+// Invite an EXISTING user by exact email (creates an in-app request). Returns
+// the server's status: 'invited' | 'no_account' (caller sends a link invite
+// instead) | 'already_member' | 'already_invited'. Only real errors (not a
+// member, rate limit) throw — a miss is a status so it still counts against
+// the inviter's lookup quota.
 export async function inviteExistingUser(groupId, email) {
-  const { error } = await supabase.rpc('invite_user_to_group', { p_group: groupId, p_email: email })
+  const { data, error } = await supabase.rpc('invite_user_to_group', { p_group: groupId, p_email: email })
   if (error) throw new Error(error.message)
+  return data?.status
 }
 
 export async function listMyInvites() {

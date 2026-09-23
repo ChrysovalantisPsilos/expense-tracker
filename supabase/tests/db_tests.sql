@@ -6,10 +6,28 @@
 --
 -- Run: paste into the Supabase SQL editor, or
 --      psql "$DATABASE_URL" -f supabase/tests/db_tests.sql
--- Needs at least two users in auth.users (any real project has them).
+--
+-- Self-contained: every user a test needs is a throwaway auth.users row made
+-- by pg_temp.zz_user() inside that test's rolled-back subtransaction. The
+-- suite never reads an existing account, so it runs the same on a project
+-- with zero users (PROD before launch, a fresh branch, CI). The only
+-- auth.users reads are of rows the test itself just inserted.
+--
+-- The summary requires every test to have PASSED (EXPECTED_TESTS below): a
+-- test that is skipped, or never reaches its PASS line, fails the suite.
 
-create temp table if not exists _t (fails int not null default 0);
-insert into _t select 0 where not exists (select 1 from _t);
+drop table if exists _t;
+create temp table _t (fails int not null default 0, passes int not null default 0);
+insert into _t values (0, 0);
+
+-- A throwaway signed-up user (the signup trigger gives it a profile). Only call
+-- it as the table owner, i.e. before any `set local role`.
+create or replace function pg_temp.zz_user(tag text) returns uuid language sql as $$
+  insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
+  values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
+          'authenticated', 'zzt-' || tag || '-' || md5(random()::text) || '@example.com', now(), now())
+  returning id;
+$$;
 
 -- ---------------------------------------------------------------------------
 -- 1. Rejoin reclaims your old member slot (no duplicate members)
@@ -19,9 +37,8 @@ declare u1 uuid; u2 uuid; gid uuid; m2 uuid; m2_after uuid;
         tok text := 'zztest_' || md5(random()::text); cnt int; fuid uuid;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     insert into public.groups (name, owner_id, currency) values ('ZZT rejoin', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner');
@@ -50,7 +67,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: rejoin reclaims member slot';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: rejoin reclaims member slot';
     else update _t set fails = fails + 1; raise notice 'FAIL: rejoin reclaims member slot — %', sqlerrm; end if;
   end;
 end $$;
@@ -62,8 +79,8 @@ do $$
 declare u1 uuid; u2 uuid; gid uuid; m2 uuid; cnt int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     insert into public.groups (name, owner_id, currency) values ('ZZT notif', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner');
@@ -90,7 +107,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: member_joined + silent/loud leave';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: member_joined + silent/loud leave';
     else update _t set fails = fails + 1; raise notice 'FAIL: member_joined + silent/loud leave — %', sqlerrm; end if;
   end;
 end $$;
@@ -102,7 +119,7 @@ do $$
 declare u uuid; cat uuid; cnt int;
 begin
   begin
-    select id into u from auth.users order by created_at limit 1;
+    u := pg_temp.zz_user('a');
     insert into public.categories (user_id, name, kind) values (u, 'ZZT cat', 'expense') returning id into cat;
     -- Budget caps are encrypted at rest (0047); store the cap the way save_budget does.
     insert into public.budgets (user_id, category_id, amount_enc, currency, period_start)
@@ -135,7 +152,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: budget threshold alerts (encrypted amounts)';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: budget threshold alerts (encrypted amounts)';
     else update _t set fails = fails + 1; raise notice 'FAIL: budget threshold alerts — %', sqlerrm; end if;
   end;
 end $$;
@@ -147,7 +164,7 @@ do $$
 declare u uuid; cnt int;
 begin
   begin
-    select id into u from auth.users order by created_at limit 1;
+    u := pg_temp.zz_user('a');
     insert into public.transactions (user_id, kind, amount_enc, currency, spent_at)
     values (u, 'expense', public.enc_minor(1234), 'EUR', current_date);
     perform public.send_weekly_digests();
@@ -159,7 +176,7 @@ begin
     if cnt <> 0 then raise exception 'digest body carries an amount'; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: weekly digest';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: weekly digest';
     else update _t set fails = fails + 1; raise notice 'FAIL: weekly digest — %', sqlerrm; end if;
   end;
 end $$;
@@ -171,8 +188,8 @@ do $$
 declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; cnt int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     insert into public.groups (name, owner_id, currency) values ('ZZT nudge', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Me', 'owner') returning id into m1;
@@ -194,7 +211,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: nudge delivery + self-nudge guard';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: nudge delivery + self-nudge guard';
     else update _t set fails = fails + 1; raise notice 'FAIL: nudge delivery + self-nudge guard — %', sqlerrm; end if;
   end;
 end $$;
@@ -206,8 +223,8 @@ do $$
 declare u1 uuid; u2 uuid; tid uuid; cnt int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     insert into public.transactions (user_id, kind, amount_enc, currency, spent_at)
     values (u2, 'expense', public.enc_minor(999), 'EUR', current_date) returning id into tid;
@@ -220,7 +237,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: transactions RLS isolation';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: transactions RLS isolation';
     else update _t set fails = fails + 1; raise notice 'FAIL: transactions RLS isolation — %', sqlerrm; end if;
   end;
 end $$;
@@ -232,8 +249,8 @@ do $$
 declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; eid uuid;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     insert into public.groups (name, owner_id, currency) values ('ZZT guard', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner') returning id into m1;
@@ -257,7 +274,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: settled-up guard blocks unsettled leave';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: settled-up guard blocks unsettled leave';
     else update _t set fails = fails + 1; raise notice 'FAIL: settled-up guard blocks unsettled leave — %', sqlerrm; end if;
   end;
 end $$;
@@ -270,8 +287,8 @@ do $$
 declare u1 uuid; u2 uuid; gid uuid; m2 uuid; res jsonb; raw bytea;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     insert into public.groups (name, owner_id, currency) values ('ZZT pay', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Me', 'owner');
@@ -312,7 +329,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: payment info encrypted at rest + co-member access + outsider guard';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: payment info encrypted at rest + co-member access + outsider guard';
     else update _t set fails = fails + 1; raise notice 'FAIL: payment info co-member access + outsider guard — %', sqlerrm; end if;
   end;
 end $$;
@@ -326,9 +343,8 @@ do $$
 declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; sid uuid; cb uuid; still int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     insert into public.groups (name, owner_id, currency) values ('ZZT settle', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role)
@@ -366,7 +382,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: settlement writes via RPC only + created_by forced + delete restricted';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: settlement writes via RPC only + created_by forced + delete restricted';
     else update _t set fails = fails + 1; raise notice 'FAIL: settlement guard — %', sqlerrm; end if;
   end;
 end $$;
@@ -379,9 +395,8 @@ do $$
 declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; eid uuid; injected int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     insert into public.groups (name, owner_id, currency) values ('ZZT split', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role)
@@ -407,7 +422,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: expense_splits insert restricted to creator/owner';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: expense_splits insert restricted to creator/owner';
     else update _t set fails = fails + 1; raise notice 'FAIL: expense_splits insert guard — %', sqlerrm; end if;
   end;
 end $$;
@@ -421,7 +436,7 @@ declare u2 uuid; aid uuid; gid uuid; bal bigint; budcap bigint; gtar bigint;
         raw_a bytea; raw_b bytea; raw_g bytea; per date := date_trunc('month', current_date)::date;
 begin
   begin
-    select id into u2 from auth.users order by created_at limit 1;
+    u2 := pg_temp.zz_user('a');
 
     perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
@@ -447,7 +462,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: balances/budgets/goals encrypted at rest + owner round-trip';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: balances/budgets/goals encrypted at rest + owner round-trip';
     else update _t set fails = fails + 1; raise notice 'FAIL: balances/budgets/goals encryption — %', sqlerrm; end if;
   end;
 end $$;
@@ -465,7 +480,7 @@ begin
   where n.nspname = 'public' and p.prokind = 'f'
     and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
     and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search_path=%');
-  if unpinned is null then raise notice 'PASS: every public function pins search_path';
+  if unpinned is null then update _t set passes = passes + 1; raise notice 'PASS: every public function pins search_path';
   else update _t set fails = fails + 1; raise notice 'FAIL: search_path not pinned on: %', unpinned; end if;
 end $$;
 
@@ -489,7 +504,7 @@ begin
     if n <> 0 then raise exception 'an RPC still takes p_receipt_path'; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: receipts bucket + receipt_path columns gone';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: receipts bucket + receipt_path columns gone';
     else update _t set fails = fails + 1; raise notice 'FAIL: receipts removal — %', sqlerrm; end if;
   end;
 end $$;
@@ -505,9 +520,8 @@ declare u1 uuid; u2 uuid; cu uuid := gen_random_uuid(); tid uuid; r record; n in
         raw_a bytea; raw_d bytea; raw_n bytea;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
@@ -571,7 +585,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: transactions encrypted at rest + owner round-trip + outsider rejected';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: transactions encrypted at rest + owner round-trip + outsider rejected';
     else update _t set fails = fails + 1; raise notice 'FAIL: transactions encryption — %', sqlerrm; end if;
   end;
 end $$;
@@ -588,9 +602,8 @@ declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; eid uuid; sid uuid; cid uu
         led jsonb; n int; b1 bigint; b2 bigint; r record; raw bytea; raw2 bytea;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     insert into public.groups (name, owner_id, currency) values ('ZZT ledger', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role)
@@ -694,7 +707,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: group ledger encrypted at rest + member round-trip + balances + outsider rejected';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: group ledger encrypted at rest + member round-trip + balances + outsider rejected';
     else update _t set fails = fails + 1; raise notice 'FAIL: group ledger encryption — %', sqlerrm; end if;
   end;
 end $$;
@@ -708,9 +721,8 @@ do $$
 declare u1 uuid; u2 uuid; rid uuid; r record; n int; raw bytea;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
@@ -748,7 +760,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: recurring rules encrypted at rest + owner round-trip + materializer + outsider rejected';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: recurring rules encrypted at rest + owner round-trip + materializer + outsider rejected';
     else update _t set fails = fails + 1; raise notice 'FAIL: recurring rules encryption — %', sqlerrm; end if;
   end;
 end $$;
@@ -762,9 +774,8 @@ do $$
 declare u1 uuid; u2 uuid; gid uuid; iid uuid; iid2 uuid; cb uuid; ab uuid; exp timestamptz; n int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     select count(*) into n from pg_policies where schemaname = 'public' and tablename = 'group_invites' and cmd = 'ALL';
     if n <> 0 then raise exception 'blanket FOR ALL policy still present'; end if;
@@ -813,7 +824,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: invite policies per-verb + created_by/expires_at forced';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: invite policies per-verb + created_by/expires_at forced';
     else update _t set fails = fails + 1; raise notice 'FAIL: invite policies — %', sqlerrm; end if;
   end;
 end $$;
@@ -827,9 +838,8 @@ do $$
 declare u1 uuid; u2 uuid; gid uuid; m1 uuid; tok text := 'zztest_' || md5(random()::text); res jsonb;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     insert into public.groups (name, owner_id, currency) values ('ZZT preview', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role)
@@ -865,7 +875,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: anon group_preview is minimal (no members/expenses/balances)';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: anon group_preview is minimal (no members/expenses/balances)';
     else update _t set fails = fails + 1; raise notice 'FAIL: group_preview minimal — %', sqlerrm; end if;
   end;
 end $$;
@@ -889,7 +899,7 @@ begin
                'update_group_expense', 'update_group_expense_v2', 'preview_link_invite',
                'consume_quota')))
     and has_function_privilege(r.rolname, p.oid, 'execute');
-  if bad is null then raise notice 'PASS: crypto helpers + new RPCs not executable by anon';
+  if bad is null then update _t set passes = passes + 1; raise notice 'PASS: crypto helpers + new RPCs not executable by anon';
   else update _t set fails = fails + 1; raise notice 'FAIL: over-granted functions: %', bad; end if;
 end $$;
 
@@ -902,9 +912,8 @@ do $$
 declare u1 uuid; u2 uuid; gid uuid; m2 uuid; ok boolean; n int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
     if has_function_privilege('authenticated', 'public.rate_limit(text,integer,integer)', 'execute')
        or has_function_privilege('anon', 'public.rate_limit(text,integer,integer)', 'execute') then
       raise exception 'rate_limit still executable by an API role';
@@ -937,46 +946,60 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: rate_limit closed to API roles + consume_quota scoped to caller';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: rate_limit closed to API roles + consume_quota scoped to caller';
     else update _t set fails = fails + 1; raise notice 'FAIL: rate_limit lock-down — %', sqlerrm; end if;
   end;
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 21. invite_user_to_group is rate-limited (0052): it fans out a notification.
+-- 21. M4 (0058): invite_user_to_group answers with a status instead of raising
+--     on a miss, so every lookup — hit or miss — spends the inviter's quota
+--     (20/h). Before 0058 a miss raised, rolling its own increment back.
 -- ---------------------------------------------------------------------------
 do $$
-declare u1 uuid; u2 uuid; em text; gid uuid; n int;
+declare u1 uuid; u2 uuid; u3 uuid; em2 text; em3 text; gid uuid; n int; r jsonb; i int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id, email into u2, em from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
+    u3 := pg_temp.zz_user('c');
+    select email into em2 from auth.users where id = u2;   -- rows this test just made
+    select email into em3 from auth.users where id = u3;
     insert into public.groups (name, owner_id, currency) values ('ZZT invite limit', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner');
-    delete from public.rate_limits where key = 'invite:' || u1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Member');
 
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
-    perform public.invite_user_to_group(gid, em);   -- under the limit: works
-    execute 'reset role';
-    select count(*) into n from public.notifications where user_id = u2 and group_id = gid and type = 'invite';
-    if n <> 1 then raise exception 'invite not delivered (got %)', n; end if;
-
-    update public.rate_limits set count = 30, window_start = now() where key = 'invite:' || u1;
-    execute 'set local role authenticated';
+    r := public.invite_user_to_group(gid, upper(em3));
+    if r->>'status' is distinct from 'invited' or r->>'invite_id' is null then raise exception 'invite: %', r; end if;
+    r := public.invite_user_to_group(gid, em3);
+    if r->>'status' is distinct from 'already_invited' then raise exception 'repeat invite: %', r; end if;
+    r := public.invite_user_to_group(gid, em2);
+    if r->>'status' is distinct from 'already_member' then raise exception 'member invite: %', r; end if;
+    -- 17 misses, each its own sub-block (= its own REST call): 20 lookups in all.
+    for i in 1..17 loop
+      begin
+        r := public.invite_user_to_group(gid, 'zzt-nobody-' || i || '-' || md5(random()::text) || '@example.com');
+        if r->>'status' is distinct from 'no_account' then raise exception 'miss %: %', i, r; end if;
+      end;
+    end loop;
     begin
-      perform public.invite_user_to_group(gid, em);
-      raise exception 'GUARD_MISSED: invite not rate-limited';
+      r := public.invite_user_to_group(gid, 'zzt-nobody-21@example.com');
+      raise exception 'GUARD_MISSED: 21st lookup allowed';
     exception when others then
-      if sqlerrm like '%Too many invites%' then null; else raise; end if;
+      if sqlerrm not like '%Too many invites%' then raise; end if;
     end;
     execute 'reset role';
 
+    select count into n from public.rate_limits where key = 'invite:' || u1;
+    if n is distinct from 20 then raise exception 'lookups not all counted: %', n; end if;
+    select count(*) into n from public.notifications where user_id = u3 and group_id = gid and type = 'invite';
+    if n <> 1 then raise exception 'invite not delivered (got %)', n; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: invite_user_to_group rate-limited';
-    else update _t set fails = fails + 1; raise notice 'FAIL: invite rate limit — %', sqlerrm; end if;
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: invite_user_to_group returns a status and every lookup is rate-limited';
+    else update _t set fails = fails + 1; raise notice 'FAIL: invite status / rate limit — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -988,20 +1011,23 @@ do $$
 declare u1 uuid; u2 uuid; bad text; n int; cid uuid;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
 
     select string_agg(schemaname || '.' || tablename || '.' || policyname, ', ') into bad
       from pg_policies where schemaname in ('public', 'storage') and cmd = 'ALL';
     if bad is not null then raise exception 'FOR ALL policies remain: %', bad; end if;
     -- Tables the client still writes directly keep all four verbs; the rest keep
-    -- only select/delete policies (their writes go through definer RPCs, 0053).
+    -- only the verbs a client uses (their writes go through definer RPCs, 0053).
+    -- notifications: no client INSERT since 0057.
     select string_agg(t, ', ') into bad from (
       select tablename as t from pg_policies
-       where schemaname = 'public' and tablename in ('categories', 'notifications')
+       where schemaname = 'public' and tablename in ('categories', 'category_rules')
        group by tablename having count(distinct cmd) <> 4) x;
     if bad is not null then raise exception 'not split into 4 verbs: %', bad; end if;
+    select string_agg(cmd, ',' order by cmd) into bad from pg_policies
+     where schemaname = 'public' and tablename = 'notifications';
+    if bad is distinct from 'DELETE,SELECT,UPDATE' then raise exception 'notifications policies: %', bad; end if;
     select count(distinct cmd) into n from pg_policies
      where schemaname = 'storage' and tablename = 'objects' and policyname like 'avatars\_%';
     if n <> 4 then raise exception 'avatars policies not per-verb (%)', n; end if;
@@ -1036,7 +1062,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: no FOR ALL policies left + own-row/own-folder semantics kept';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: no FOR ALL policies left + own-row/own-folder semantics kept';
     else update _t set fails = fails + 1; raise notice 'FAIL: per-verb policies — %', sqlerrm; end if;
   end;
 end $$;
@@ -1051,7 +1077,7 @@ do $$
 declare u1 uuid; aid uuid; gid uuid; planted bytea; cu uuid := gen_random_uuid(); r record; bad text;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
+    u1 := pg_temp.zz_user('a');
     select string_agg(t || ':' || v, ', ') into bad
       from (values ('budgets'), ('accounts'), ('savings_goals'), ('group_audit_log'), ('profiles')) x(t)
       cross join (values ('INSERT'), ('UPDATE')) y(v)
@@ -1110,7 +1136,7 @@ begin
 
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: no decryption oracle (direct ciphertext writes closed, dec_minor silent, *_enc keys ignored)';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: no decryption oracle (direct ciphertext writes closed, dec_minor silent, *_enc keys ignored)';
     else update _t set fails = fails + 1; raise notice 'FAIL: decryption oracle — %', sqlerrm; end if;
   end;
 end $$;
@@ -1123,7 +1149,7 @@ do $$
 declare u uuid; cat uuid; t0 timestamptz; ms int := -1; n int;
 begin
   begin
-    select id into u from auth.users order by created_at limit 1;
+    u := pg_temp.zz_user('a');
     insert into public.categories (user_id, name, kind) values (u, 'ZZT bulk cat', 'expense') returning id into cat;
     insert into public.budgets (user_id, category_id, amount_enc, currency, period_start)
       values (u, cat, public.enc_minor(40000), 'EUR', date_trunc('month', current_date)::date);
@@ -1143,7 +1169,7 @@ begin
     if ms > 4000 then raise exception '500-row import took % ms', ms; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: 500-row import into a budgeted category in % ms, one alert', ms;
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: 500-row import into a budgeted category in % ms, one alert', ms;
     else update _t set fails = fails + 1; raise notice 'FAIL: bulk import / budget alert — %', sqlerrm; end if;
   end;
 end $$;
@@ -1155,7 +1181,7 @@ do $$
 declare u1 uuid; rid uuid; nr date; have int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
+    u1 := pg_temp.zz_user('a');
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     rid := public.save_recurring_rule(null, jsonb_build_object(
@@ -1182,7 +1208,7 @@ begin
     execute 'reset role';
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: recurring next_run clamped + 200-rule cap';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: recurring next_run clamped + 200-rule cap';
     else update _t set fails = fails + 1; raise notice 'FAIL: recurring limits — %', sqlerrm; end if;
   end;
 end $$;
@@ -1195,9 +1221,8 @@ do $$
 declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; eid uuid; d1 text; d2 text;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
     insert into public.groups (name, owner_id, currency) values ('ZZT leave-edit', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner') returning id into m1;
     insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Leaver') returning id into m2;
@@ -1223,7 +1248,7 @@ begin
     if d1 is distinct from 'ZZ new desc' then raise exception 'current member copy not updated: %', d1; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: expense edit leaves former members'' copies alone';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: expense edit leaves former members'' copies alone';
     else update _t set fails = fails + 1; raise notice 'FAIL: former member copy — %', sqlerrm; end if;
   end;
 end $$;
@@ -1236,9 +1261,8 @@ do $$
 declare u1 uuid; u2 uuid; vcat uuid; tid uuid; n int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    select id into u2 from auth.users where id <> u1 order by created_at limit 1;
-    if u2 is null then raise exception 'SKIP: needs two users'; end if;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('b');
     insert into public.categories (user_id, name, kind) values (u2, 'ZZT victim secret', 'expense') returning id into vcat;
 
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
@@ -1279,7 +1303,7 @@ begin
     if n <> 0 then raise exception 'my_budgets embedded a foreign category'; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: foreign category/account ids rejected + names not leaked';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: foreign category/account ids rejected + names not leaked';
     else update _t set fails = fails + 1; raise notice 'FAIL: foreign category refs — %', sqlerrm; end if;
   end;
 end $$;
@@ -1291,7 +1315,7 @@ do $$
 declare u1 uuid; gid uuid; tok text;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
+    u1 := pg_temp.zz_user('a');
     insert into public.groups (name, owner_id, currency) values ('ZZT token', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner');
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
@@ -1301,7 +1325,7 @@ begin
     if tok = 'x' or length(tok) < 32 then raise exception 'client-chosen token accepted: %', tok; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: invite token is server-generated';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: invite token is server-generated';
     else update _t set fails = fails + 1; raise notice 'FAIL: invite token — %', sqlerrm; end if;
   end;
 end $$;
@@ -1314,7 +1338,7 @@ do $$
 declare u1 uuid; gid uuid; m1 uuid; eid uuid; left_rows int; logged int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
+    u1 := pg_temp.zz_user('a');
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     gid := public.create_group('ZZT delete', 'EUR');
@@ -1341,10 +1365,7 @@ begin
     -- Deleting the account of a sole owner of a group with expenses also works
     -- (its cascade SET NULLs created_by: an UPDATE that runs after the group
     -- row is gone).
-    insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
-    values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
-            'authenticated', 'zzt-owner-' || md5(random()::text) || '@example.com', now(), now())
-    returning id into u1;
+    u1 := pg_temp.zz_user('owner');
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     gid := public.create_group('ZZT owner delete', 'EUR');
@@ -1358,7 +1379,7 @@ begin
     if left_rows <> 0 then raise exception 'owner deletion left the group behind'; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: groups with expenses can be deleted (delete_group + owner account deletion)';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: groups with expenses can be deleted (delete_group + owner account deletion)';
     else update _t set fails = fails + 1; raise notice 'FAIL: delete_group with expenses — %', sqlerrm; end if;
   end;
 end $$;
@@ -1370,12 +1391,8 @@ do $$
 declare u1 uuid; u2 uuid; v boolean; n int;
 begin
   begin
-    select id into u1 from auth.users order by created_at limit 1;
-    -- A fresh second user (rolled back), so the test needs only one real account.
-    insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
-    values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
-            'authenticated', 'zzt-pk-' || md5(random()::text) || '@example.com', now(), now())
-    returning id into u2;
+    u1 := pg_temp.zz_user('a');
+    u2 := pg_temp.zz_user('pk');
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     update public.profiles set passkey_reminder_off = true where id = u1;
@@ -1389,31 +1406,38 @@ begin
     if v then raise exception 'flag leaked onto another user'; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: passkey_reminder_off owner-only';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: passkey_reminder_off owner-only';
     else update _t set fails = fails + 1; raise notice 'FAIL: passkey_reminder_off — %', sqlerrm; end if;
   end;
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 31. Clients cannot create notifications (each one fans out to push/email)
---     and can only change read_at on their own.
+-- 31. Clients cannot create notifications (each one fans out to push/email),
+--     for themselves or anyone else, and can only change read_at on their own.
 -- ---------------------------------------------------------------------------
 do $$
-declare u uuid; nid uuid; blocked_insert boolean := false; blocked_title boolean := false; n int;
+declare u uuid; u2 uuid; nid uuid; nid2 uuid; blocked_insert boolean := false; blocked_other boolean := false;
+        blocked_title boolean := false; n int; n2 int;
 begin
   begin
-    insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
-    values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated',
-            'authenticated', 'zzt-notif-' || md5(random()::text) || '@example.com', now(), now())
-    returning id into u;
+    u := pg_temp.zz_user('notif');
+    u2 := pg_temp.zz_user('notif2');
     insert into public.notifications (user_id, type, title, body)
       values (u, 'digest', 'zz title', 'zz body') returning id into nid;
+    insert into public.notifications (user_id, type, title, body)
+      values (u2, 'digest', 'zz title', 'zz body') returning id into nid2;
     perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     begin
       insert into public.notifications (user_id, type, title, body) values (u, 'member_joined', 'x', 'y');
     exception when insufficient_privilege then blocked_insert := true;
     end;
+    begin
+      insert into public.notifications (user_id, type, title, body) values (u2, 'member_joined', 'x', 'y');
+    exception when insufficient_privilege then blocked_other := true;
+    end;
+    update public.notifications set read_at = now() where id = nid2;   -- RLS: 0 rows
+    get diagnostics n2 = row_count;
     begin
       update public.notifications set title = 'changed' where id = nid;
     exception when insufficient_privilege then blocked_title := true;
@@ -1422,23 +1446,729 @@ begin
     get diagnostics n = row_count;
     execute 'reset role';
     if not blocked_insert then raise exception 'client could insert a notification'; end if;
+    if not blocked_other then raise exception 'client could insert a notification for another user'; end if;
+    if n2 <> 0 then raise exception 'client marked another user''s notification read'; end if;
     if not blocked_title then raise exception 'client could change a notification title'; end if;
     if n <> 1 then raise exception 'client could not mark its notification read'; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then raise notice 'PASS: notifications insert blocked, only read_at updatable';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: notifications insert blocked, only read_at updatable';
     else update _t set fails = fails + 1; raise notice 'FAIL: notifications lockdown — %', sqlerrm; end if;
   end;
 end $$;
 
 -- ---------------------------------------------------------------------------
--- Summary — raises if anything failed (so CI/psql exit non-zero).
+-- 32. M3/F1 (0058): a group owner can't rewrite membership or ownership
+--     directly (no member UPDATE/INSERT/DELETE, groups only name/image_url),
+--     the guards pin identity columns even if a grant comes back, and the
+--     definer RPCs still move ownership.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; u3 uuid; gid uuid; gid2 uuid; m1 uuid; m2 uuid; n int; blocked int := 0; r record;
+begin
+  begin
+    u1 := pg_temp.zz_user('m3o');
+    u2 := pg_temp.zz_user('m3m');
+    u3 := pg_temp.zz_user('m3s');
+    insert into public.groups (name, owner_id, currency) values ('ZZT m3', u1, 'EUR') returning id into gid;
+    insert into public.groups (name, owner_id, currency) values ('ZZT m3 other', u1, 'EUR') returning id into gid2;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid2, u1, 'Owner', 'owner');
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Member') returning id into m2;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin update public.group_members set user_id = u3 where id = m2;
+    exception when insufficient_privilege then blocked := blocked + 1; end;
+    begin update public.group_members set group_id = gid2 where id = m2;
+    exception when insufficient_privilege then blocked := blocked + 1; end;
+    begin delete from public.group_members where id = m2;
+    exception when insufficient_privilege then blocked := blocked + 1; end;
+    begin insert into public.group_members (group_id, user_id, display_name) values (gid, u1, 'Dup');
+    exception when insufficient_privilege then blocked := blocked + 1; end;
+    begin update public.groups set owner_id = u3 where id = gid;
+    exception when insufficient_privilege then blocked := blocked + 1; end;
+    begin update public.groups set currency = 'USD' where id = gid;
+    exception when insufficient_privilege then blocked := blocked + 1; end;
+    begin insert into public.groups (name, owner_id, currency) values ('ZZT forged', u1, 'EUR');
+    exception when insufficient_privilege then blocked := blocked + 1; end;
+    begin delete from public.groups where id = gid;   -- bypassed delete_group's settled-up check
+    exception when insufficient_privilege then blocked := blocked + 1; end;
+    update public.groups set name = 'ZZT m3 renamed' where id = gid;
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if blocked <> 8 then raise exception 'only % of 8 direct writes refused', blocked; end if;
+    if n <> 1 then raise exception 'owner could not rename the group'; end if;
+    select user_id, group_id into r from public.group_members where id = m2;
+    if r.user_id is distinct from u2 or r.group_id is distinct from gid then raise exception 'member row changed'; end if;
+
+    -- Defence in depth: with the grant and a permissive policy back (both
+    -- rolled back), the triggers still pin identity for API roles.
+    grant update on public.group_members, public.groups to authenticated;
+    create policy zzt_tmp_gm_update on public.group_members for update to authenticated using (true);
+    execute 'set local role authenticated';
+    begin
+      update public.group_members set user_id = u3 where id = m2;
+      raise exception 'GUARD_MISSED: member guard';
+    exception when insufficient_privilege then null;
+    end;
+    update public.groups set owner_id = u3, currency = 'USD', name = 'ZZT m3 again' where id = gid;
+    execute 'reset role';
+    select owner_id, currency, name into r from public.groups where id = gid;
+    if r.owner_id is distinct from u1 or r.currency <> 'EUR' or r.name <> 'ZZT m3 again' then
+      raise exception 'groups guard: % % %', r.owner_id, r.currency, r.name;
+    end if;
+    revoke update on public.group_members from authenticated;
+    drop policy zzt_tmp_gm_update on public.group_members;
+
+    -- The RPC path is unaffected: the owner leaves, ownership moves to u2.
+    execute 'set local role authenticated';
+    perform public.remove_group_member(m1, true);
+    execute 'reset role';
+    select owner_id into r from public.groups where id = gid;
+    if r.owner_id is distinct from u2 then raise exception 'ownership not transferred by the RPC'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: owners can''t rewrite members/ownership; guards pin identity; RPCs still work';
+    else update _t set fails = fails + 1; raise notice 'FAIL: group owner lockdown — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 33. M1 (0058): push subscriptions — push-service allowlist, 10 per user, no
+--     re-binding another account's endpoint without its keys.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; n int; i int; ep text; p text; a text; owner uuid; bad text;
+begin
+  begin
+    u1 := pg_temp.zz_user('push1');
+    u2 := pg_temp.zz_user('push2');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    foreach bad in array array['http://fcm.googleapis.com/fcm/send/x', 'https://attacker.invalid/p/1',
+                               'https://fcm.googleapis.com.attacker.invalid/x', 'http://169.254.169.254/latest/meta-data'] loop
+      begin
+        perform public.save_push_subscription(bad, 'k', 'a');
+        raise exception 'GUARD_MISSED: accepted %', bad;
+      exception when others then
+        if sqlerrm not like '%unsupported push endpoint%' then raise; end if;
+      end;
+    end loop;
+    begin
+      insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values (u1, 'https://x.invalid/', 'k', 'a');
+      raise exception 'GUARD_MISSED: direct insert';
+    exception when insufficient_privilege then null;
+    end;
+    for i in 1..11 loop
+      perform public.save_push_subscription('https://fcm.googleapis.com/fcm/send/zzt-' || u1 || '-' || i, 'p' || i, 'a' || i);
+    end loop;
+    perform public.save_push_subscription('https://web.push.apple.com/zzt-' || u1, 'pa', 'aa');
+    execute 'reset role';
+    select count(*) into n from public.push_subscriptions where user_id = u1;
+    if n <> 10 then raise exception 'expected 10 subscriptions, got %', n; end if;
+
+    select endpoint, p256dh, auth into ep, p, a from public.push_subscriptions where user_id = u1 limit 1;
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_push_subscription(ep, 'attacker-key', 'attacker-auth');
+    execute 'reset role';
+    select user_id into owner from public.push_subscriptions where endpoint = ep;
+    if owner is distinct from u1 then raise exception 'endpoint taken over without its keys'; end if;
+    execute 'set local role authenticated';
+    perform public.save_push_subscription(ep, p, a);   -- same browser after a sign-in switch
+    execute 'reset role';
+    select user_id into owner from public.push_subscriptions where endpoint = ep;
+    if owner is distinct from u2 then raise exception 'key holder could not re-bind the endpoint'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: push endpoint allowlist + 10-device cap + no re-binding without keys';
+    else update _t set fails = fails + 1; raise notice 'FAIL: push subscriptions — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 34. M2 (0058): joining is rate-limited, and a join/leave loop notifies the
+--     group once, not every cycle.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; mid uuid; tok text := 'zztest_' || md5(random()::text); n int; i int;
+begin
+  begin
+    u1 := pg_temp.zz_user('jl1');
+    u2 := pg_temp.zz_user('jl2');
+    insert into public.groups (name, owner_id, currency) values ('ZZT join loop', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner');
+    insert into public.group_invites (group_id, token, created_by) values (gid, tok, u1);
+
+    insert into public.rate_limits (key, count, window_start) values ('join:' || u2, 10, now());
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.join_via_link(tok);
+      raise exception 'GUARD_MISSED: 11th join allowed';
+    exception when others then
+      if sqlerrm not like '%Too many groups joined%' then raise; end if;
+    end;
+    execute 'reset role';
+    delete from public.rate_limits where key = 'join:' || u2;
+
+    for i in 1..3 loop
+      execute 'set local role authenticated';
+      perform public.join_via_link(tok);
+      execute 'reset role';
+      select id into mid from public.group_members where group_id = gid and user_id = u2;
+      execute 'set local role authenticated';
+      perform public.remove_group_member(mid, false);   -- loud leave
+      execute 'reset role';
+    end loop;
+    select count(*) into n from public.notifications where user_id = u1 and group_id = gid and type = 'member_joined';
+    if n <> 1 then raise exception 'expected 1 join notification over 3 cycles, got %', n; end if;
+    select count(*) into n from public.notifications where user_id = u1 and group_id = gid and type = 'member_left';
+    if n <> 1 then raise exception 'expected 1 leave notification over 3 cycles, got %', n; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: join rate limit + join/leave loop notifies once';
+    else update _t set fails = fails + 1; raise notice 'FAIL: join/leave throttling — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 35. L7 (0058): a member records settlements only when they're a party; the
+--     owner may record any pair (incl. unlinked members).
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; u3 uuid; gid uuid; m1 uuid; m2 uuid; m3 uuid; mp uuid;
+begin
+  begin
+    u1 := pg_temp.zz_user('st1');
+    u2 := pg_temp.zz_user('st2');
+    u3 := pg_temp.zz_user('st3');
+    insert into public.groups (name, owner_id, currency) values ('ZZT settle party', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'B') returning id into m2;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u3, 'C') returning id into m3;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, null, 'Phantom') returning id into mp;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.add_settlement(gid, m3, m1, 100, 'EUR');
+      raise exception 'GUARD_MISSED: third-party settlement';
+    exception when others then
+      if sqlerrm not like '%settlements you are part of%' then raise; end if;
+    end;
+    perform public.add_settlement(gid, m2, m3, 100, 'EUR');
+    perform public.add_settlement(gid, m3, m2, 50, 'EUR');
+    execute 'reset role';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.add_settlement(gid, m2, m3, 100, 'EUR');
+    perform public.add_settlement(gid, mp, m3, 100, 'EUR');
+    execute 'reset role';
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: settlements need the caller as a party (or the owner)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: settlement party check — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 36. L3 (0058/0058b) + 0052 gap: storage limits, group_images per-verb
+--     policies, no anonymous listing; a client-set avatar must be in the
+--     caller's own folder of this project's bucket or a Google avatar over
+--     https; a group cover must be in the group's own folder.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; n int; bad text; base text;
+begin
+  begin
+    u1 := pg_temp.zz_user('img1');
+    u2 := pg_temp.zz_user('img2');
+    select string_agg(id, ', ') into bad from storage.buckets
+     where id in ('avatars', 'group-images')
+       and (file_size_limit is null or file_size_limit > 5 * 1024 * 1024
+            or allowed_mime_types is null or 'text/html' = any(allowed_mime_types)
+            or exists (select 1 from unnest(allowed_mime_types) m where m not like 'image/%'));
+    if bad is not null then raise exception 'bucket without size/MIME limits: %', bad; end if;
+    select count(distinct cmd) into n from pg_policies
+     where schemaname = 'storage' and tablename = 'objects' and policyname like 'group\_images\_%';
+    if n <> 4 then raise exception 'group_images policies not per-verb (%)', n; end if;
+    select string_agg(policyname, ', ') into bad from pg_policies
+     where schemaname = 'storage' and tablename = 'objects'
+       and (roles && array['public', 'anon']::name[]);
+    if bad is not null then raise exception 'storage policies open to anon/public: %', bad; end if;
+
+    insert into public.groups (name, owner_id, currency) values ('ZZT images', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner');
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Member');
+    insert into storage.objects (bucket_id, name) values ('group-images', gid || '/zzt.png');
+
+    perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+    execute 'set local role anon';
+    select count(*) into n from storage.objects where bucket_id = 'group-images';
+    execute 'reset role';
+    if n <> 0 then raise exception 'anon can list group-images (% rows)', n; end if;
+
+    -- A member (not the owner) can't write the group's folder.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      insert into storage.objects (bucket_id, name) values ('group-images', gid || '/zzt2.png');
+      raise exception 'GUARD_MISSED: member wrote the group folder';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+
+    base := public.storage_public_base();
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    foreach bad in array array['https://example.com/x.png',
+                               base || 'avatars/' || u2 || '/avatar.png',
+                               base || 'avatars/' || u1 || '/../' || u2 || '/avatar.png',
+                               'http://lh3.googleusercontent.com/a/zzt',
+                               'https://lh3.googleusercontent.com.evil.example/a/zzt',
+                               'https://evil.example/lh3.googleusercontent.com/a/zzt',
+                               'https://x@lh3.googleusercontent.com/a/zzt'] loop
+      begin
+        update public.profiles set avatar_url = bad where id = u1;
+        raise exception 'GUARD_MISSED: avatar %', bad;
+      exception when check_violation then null;
+      end;
+    end loop;
+    update public.profiles set avatar_url = base || 'avatars/' || u1 || '/avatar.png?t=1' where id = u1;
+    update public.profiles set avatar_url = 'https://lh3.googleusercontent.com/a/zzt=s96-c' where id = u1;
+    update public.profiles set avatar_url = null where id = u1;
+    foreach bad in array array['https://example.com/x.png',
+                               'https://lh3.googleusercontent.com/a/zzt',
+                               base || 'avatars/' || u1 || '/avatar.png'] loop
+      begin
+        update public.groups set image_url = bad where id = gid;
+        raise exception 'GUARD_MISSED: cover %', bad;
+      exception when check_violation then null;
+      end;
+    end loop;
+    update public.groups set image_url = base || 'group-images/' || gid || '/cover.png?t=1' where id = gid;
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if n <> 1 then raise exception 'owner could not set an own-storage cover'; end if;
+    -- Server-side writers (the signup trigger, the service role) are unaffected.
+    update public.profiles set avatar_url = 'https://example.com/legacy.png' where id = u1;
+    -- An existing value that no longer qualifies stays valid while other fields change.
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set display_name = 'ZZT still fine' where id = u1;
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if n <> 1 then raise exception 'unchanged legacy avatar blocked a profile edit'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: storage limits + group_images policies + own-storage image URLs';
+    else update _t set fails = fails + 1; raise notice 'FAIL: storage / image URLs — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 37. L6 (0058): name limits, signup trims long provider names, and the
+--     send-invite quotas (10/h per sender, 3/day per recipient).
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; n int; nm text; i int; ok boolean;
+begin
+  begin
+    u1 := pg_temp.zz_user('nm');
+    insert into public.groups (name, owner_id, currency) values ('ZZT names', u1, 'EUR') returning id into gid;
+    begin
+      update public.profiles set display_name = repeat('x', 61) where id = u1;
+      raise exception 'GUARD_MISSED: 61-char display name';
+    exception when check_violation then null;
+    end;
+    begin
+      update public.profiles set display_name = 'Your account' || chr(10) || 'is locked' where id = u1;
+      raise exception 'GUARD_MISSED: newline in display name';
+    exception when check_violation then null;
+    end;
+    begin
+      update public.groups set name = repeat('g', 61) where id = gid;
+      raise exception 'GUARD_MISSED: 61-char group name';
+    exception when check_violation then null;
+    end;
+    update public.profiles set display_name = repeat('x', 60) where id = u1;
+
+    insert into auth.users (instance_id, id, aud, role, email, raw_user_meta_data, created_at, updated_at)
+    values ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated',
+            'zzt-longname-' || md5(random()::text) || '@example.com',
+            jsonb_build_object('full_name', repeat('y', 80)), now(), now())
+    returning id into u2;
+    select display_name into nm from public.profiles where id = u2;
+    if char_length(nm) <> 60 then raise exception 'signup name not trimmed: %', char_length(nm); end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    for i in 1..3 loop
+      if not public.consume_invite_recipient_quota('ZZT-Friend@Example.com') then raise exception 'recipient quota % refused', i; end if;
+    end loop;
+    ok := public.consume_invite_recipient_quota(' zzt-friend@example.com ');
+    if ok then raise exception 'recipient quota not capped at 3/day'; end if;
+    for i in 1..10 loop
+      if not public.consume_quota('send-invite') then raise exception 'send-invite quota % refused', i; end if;
+    end loop;
+    ok := public.consume_quota('send-invite');
+    if ok then raise exception 'send-invite quota not capped at 10/h'; end if;
+    execute 'reset role';
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: name limits + signup trim + invite email quotas';
+    else update _t set fails = fails + 1; raise notice 'FAIL: names / invite quotas — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 38. Zero-decimal currencies (0058): budget alerts and the weekly digest
+--     convert with the minor-unit factor. ¥13,000 at 0.0062 is €80.60 — 80.6%
+--     of a €100 budget (it used to count as €0.81) — and outranks a €10
+--     category in the digest.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; yen uuid; eur uuid; n int; body text;
+begin
+  begin
+    if public.to_base_minor(1800, 0.0062, 'JPY', 'EUR') <> 1116 then raise exception 'JPY->EUR'; end if;
+    if public.to_base_minor(1000, 160, 'EUR', 'JPY') <> 1600 then raise exception 'EUR->JPY'; end if;
+    if public.to_base_minor(1234, 1, 'EUR', 'EUR') <> 1234 then raise exception 'EUR->EUR'; end if;
+    u := pg_temp.zz_user('yen');
+    update public.profiles set base_currency = 'EUR' where id = u;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZT yen cat', 'expense') returning id into yen;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZT euro cat', 'expense') returning id into eur;
+    insert into public.budgets (user_id, category_id, amount_enc, currency, period_start)
+      values (u, yen, public.enc_minor(10000), 'EUR', date_trunc('month', current_date)::date);
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(
+      jsonb_build_object('kind', 'expense', 'category_id', yen, 'amount_minor', 13000, 'currency', 'JPY',
+                         'exchange_rate', 0.0062, 'spent_at', current_date),
+      jsonb_build_object('kind', 'expense', 'category_id', eur, 'amount_minor', 1000, 'currency', 'EUR',
+                         'exchange_rate', 1, 'spent_at', current_date)));
+    execute 'reset role';
+    select count(*) into n from public.notifications where user_id = u and type = 'budget' and title = 'Budget almost used';
+    if n <> 1 then raise exception '¥ spend at 80.6%% of budget: % warnings', n; end if;
+    select count(*) into n from public.notifications where user_id = u and type = 'budget' and title = 'Budget exceeded';
+    if n <> 0 then raise exception '¥ spend reported as over budget'; end if;
+
+    perform public.send_weekly_digests();
+    select string_agg(n2.body, ' | ') into body from public.notifications n2 where n2.user_id = u and n2.type = 'digest';
+    if body is null or body not like '%top category: ZZT yen cat%' then raise exception 'digest top category: %', body; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: zero-decimal (¥) spend converts correctly in budget alerts + digest';
+    else update _t set fails = fails + 1; raise notice 'FAIL: zero-decimal conversion — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 39. Grants, dead RPCs, indexes and policy hygiene (0058: F9–F11), plus
+--     profile columns that have no client grant.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; bad text; n int;
+begin
+  begin
+    select string_agg(c.relname, ', ') into bad from pg_class c
+     where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'v', 'm', 'p')
+       and (has_table_privilege('anon', c.oid, 'SELECT') or has_table_privilege('anon', c.oid, 'INSERT')
+            or has_table_privilege('anon', c.oid, 'UPDATE') or has_table_privilege('anon', c.oid, 'DELETE')
+            or has_table_privilege('anon', c.oid, 'TRUNCATE'));
+    if bad is not null then raise exception 'anon has table privileges on: %', bad; end if;
+    select string_agg(c.relname, ', ') into bad from pg_class c
+     where c.relnamespace = 'public'::regnamespace and c.relkind = 'r'
+       and (has_table_privilege('authenticated', c.oid, 'TRUNCATE')
+            or has_table_privilege('authenticated', c.oid, 'TRIGGER')
+            or has_table_privilege('authenticated', c.oid, 'REFERENCES'));
+    if bad is not null then raise exception 'authenticated has TRUNCATE/TRIGGER/REFERENCES on: %', bad; end if;
+    if has_table_privilege('authenticated', 'public.rate_limits', 'SELECT')
+       or has_table_privilege('authenticated', 'public.push_subscriptions', 'INSERT')
+       or has_table_privilege('authenticated', 'public.push_subscriptions', 'UPDATE') then
+      raise exception 'rate_limits / push_subscriptions writable by clients';
+    end if;
+
+    if to_regprocedure('public.shares_group(uuid)') is not null
+       or to_regprocedure('public.create_group_expense(uuid,text,bigint,character,uuid,date,uuid[])') is not null
+       or to_regprocedure('public.update_group_expense(uuid,text,bigint,character,uuid,date,uuid[])') is not null then
+      raise exception 'dead RPCs still present';
+    end if;
+    if has_function_privilege('authenticated', 'public.member_name_for(uuid)', 'execute')
+       or has_function_privilege('anon', 'public.member_name_for(uuid)', 'execute') then
+      raise exception 'member_name_for callable by clients';
+    end if;
+
+    -- Every FK in public has an index leading with its columns.
+    select string_agg(c.conrelid::regclass || '.' || c.conname, ', ') into bad
+      from pg_constraint c
+     where c.contype = 'f' and c.connamespace = 'public'::regnamespace
+       and not exists (
+         select 1 from pg_index i
+          where i.indrelid = c.conrelid
+            and (select array_agg(k order by o) from unnest(i.indkey::int2[]) with ordinality x(k, o)
+                  where o <= array_length(c.conkey, 1)) = c.conkey::int2[]);
+    if bad is not null then raise exception 'unindexed foreign keys: %', bad; end if;
+    if to_regclass('public.categories_user_idx') is not null or to_regclass('public.expense_splits_expense_idx') is not null then
+      raise exception 'redundant indexes still present';
+    end if;
+    -- auth.uid() in a policy is wrapped in a scalar subquery (once per statement).
+    select string_agg(tablename || '.' || policyname, ', ') into bad from pg_policies
+     where schemaname = 'public'
+       and replace(coalesce(qual, '') || coalesce(with_check, ''), '( SELECT auth.uid() AS uid)', '') like '%auth.uid()%';
+    if bad is not null then raise exception 'policies re-evaluating auth.uid() per row: %', bad; end if;
+
+    -- Profile columns without a client grant can't be changed.
+    u := pg_temp.zz_user('cols');
+    if has_column_privilege('authenticated', 'public.profiles', 'id', 'UPDATE')
+       or has_column_privilege('authenticated', 'public.profiles', 'created_at', 'UPDATE')
+       or has_column_privilege('authenticated', 'public.profiles', 'updated_at', 'UPDATE') then
+      raise exception 'profile identity columns granted';
+    end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      update public.profiles set created_at = now() - interval '1 year' where id = u;
+      raise exception 'GUARD_MISSED: created_at updatable';
+    exception when insufficient_privilege then null;
+    end;
+    begin
+      update public.profiles set id = gen_random_uuid() where id = u;
+      raise exception 'GUARD_MISSED: id updatable';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: grants, dead RPCs, FK indexes, per-statement auth.uid(), profile column grants';
+    else update _t set fails = fails + 1; raise notice 'FAIL: grants / hygiene — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 40. Comment notifications (0050) never quote the encrypted comment text.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; eid uuid; n int;
+begin
+  begin
+    u1 := pg_temp.zz_user('cm1');
+    u2 := pg_temp.zz_user('cm2');
+    insert into public.groups (name, owner_id, currency) values ('ZZT comments', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Member') returning id into m2;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    eid := public.create_group_expense_v2(gid, 'ZZ expense', 1000, 'EUR', m1, current_date, array[m1, m2], null, 'equal');
+    execute 'reset role';
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.add_group_comment(gid, 'expense', eid, m2, 'ZZ very secret comment text');
+    execute 'reset role';
+    select count(*) into n from public.notifications where user_id = u1 and group_id = gid and type = 'comment';
+    if n <> 1 then raise exception 'comment notification missing (%)', n; end if;
+    select count(*) into n from public.notifications
+     where group_id = gid and (title || coalesce(body, '')) like '%secret comment%';
+    if n <> 0 then raise exception 'notification quotes the comment text'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: comment notifications carry no comment text';
+    else update _t set fails = fails + 1; raise notice 'FAIL: comment notification plaintext — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 41. F14 (0058): stale rate_limits rows are purged nightly; live ones stay.
 -- ---------------------------------------------------------------------------
 do $$
 declare n int;
 begin
-  select fails into n from _t;
-  if n > 0 then raise exception '% test(s) FAILED', n; end if;
-  raise notice 'ALL DATABASE TESTS PASSED';
+  begin
+    insert into public.rate_limits (key, count, window_start) values
+      ('zzt-stale-' || md5(random()::text), 1, now() - interval '3 days'),
+      ('zzt-fresh', 1, now());
+    perform public.purge_stale_rate_limits();
+    select count(*) into n from public.rate_limits where key like 'zzt-stale-%';
+    if n <> 0 then raise exception 'stale row kept'; end if;
+    select count(*) into n from public.rate_limits where key = 'zzt-fresh';
+    if n <> 1 then raise exception 'fresh row purged'; end if;
+    select count(*) into n from cron.job where jobname = 'purge-rate-limits' and active;
+    if n <> 1 then raise exception 'purge job not scheduled'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: rate_limits retention';
+    else update _t set fails = fails + 1; raise notice 'FAIL: rate_limits retention — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 42. 0058c: a foreign-currency transaction needs a positive rate (a missing
+--     one used to default to 1, storing ¥1,800 as €1,800); base-currency rows
+--     still default to 1; ISK is zero-decimal, HUF/IDR are not.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; tid uuid; r record; bad jsonb; n int;
+begin
+  begin
+    if public.minor_factor('ISK') <> 1 or public.minor_factor('JPY') <> 1
+       or public.minor_factor('HUF') <> 100 or public.minor_factor('IDR') <> 100 then
+      raise exception 'minor_factor zero-decimal set wrong';
+    end if;
+    u := pg_temp.zz_user('fx');
+    update public.profiles set base_currency = 'EUR' where id = u;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    foreach bad in array array[
+      '{"amount_minor": 1800, "currency": "JPY"}'::jsonb,
+      '{"amount_minor": 1800, "currency": "JPY", "exchange_rate": 0}'::jsonb,
+      '{"amount_minor": 1800, "currency": "JPY", "exchange_rate": -0.0062}'::jsonb,
+      '{"amount_minor": 100, "currency": "EUR", "exchange_rate": 0}'::jsonb] loop
+      begin
+        perform public.save_transactions(jsonb_build_array(bad));
+        raise exception 'GUARD_MISSED: saved %', bad;
+      exception when others then
+        if sqlerrm not like '%needs a positive exchange rate%' then raise; end if;
+      end;
+    end loop;
+    n := public.save_transactions(jsonb_build_array(
+      jsonb_build_object('amount_minor', 1800, 'currency', 'JPY', 'exchange_rate', 0.0062),
+      jsonb_build_object('amount_minor', 500, 'currency', 'EUR')));
+    if n <> 2 then raise exception 'valid rows not saved (%)', n; end if;
+    select * into r from public.my_transactions() t where t.currency = 'EUR' limit 1;
+    if r.exchange_rate <> 1 then raise exception 'base-currency row rate = %', r.exchange_rate; end if;
+    tid := r.id;
+    begin
+      perform public.update_transaction(tid, '{"currency": "USD"}'::jsonb);
+      raise exception 'GUARD_MISSED: currency change without a rate';
+    exception when others then
+      if sqlerrm not like '%needs a positive exchange rate%' then raise; end if;
+    end;
+    begin
+      perform public.update_transaction(tid, '{"exchange_rate": 0}'::jsonb);
+      raise exception 'GUARD_MISSED: zero rate on update';
+    exception when others then
+      if sqlerrm not like '%needs a positive exchange rate%' then raise; end if;
+    end;
+    perform public.update_transaction(tid, '{"currency": "USD", "exchange_rate": 0.92}'::jsonb);
+    perform public.update_transaction(tid, '{"description": "ZZ edit keeps the rate"}'::jsonb);
+    select * into r from public.my_transactions() t where t.id = tid;
+    if r.currency <> 'USD' or r.exchange_rate <> 0.92 then
+      raise exception 'update result % @ %', r.currency, r.exchange_rate;
+    end if;
+    execute 'reset role';
+    -- A JPY-based user may omit the rate for JPY.
+    update public.profiles set base_currency = 'JPY' where id = u;
+    execute 'set local role authenticated';
+    n := public.save_transactions('[{"amount_minor": 1800, "currency": "JPY"}]'::jsonb);
+    execute 'reset role';
+    if n <> 1 then raise exception 'base-currency JPY row refused'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: foreign-currency rows need a positive rate; ISK zero-decimal';
+    else update _t set fails = fails + 1; raise notice 'FAIL: exchange rate required — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- B-0059. Budget period keys (0059): a key saved a day early east of UTC
+--     (last day of the previous month) is repaired to the right month, merging
+--     with an existing row for that month (newest created wins); new writes,
+--     including save_budget from an API caller, are normalised to the 1st.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; c1 uuid; c2 uuid; c3 uuid; keep_id uuid; drop_id uuid; untouched uuid;
+        n int; d date; ids uuid[];
+begin
+  begin
+    u := pg_temp.zz_user('bperiod');
+    insert into public.categories (user_id, name, kind) values (u, 'ZZT b1', 'expense') returning id into c1;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZT b2', 'expense') returning id into c2;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZT b3', 'expense') returning id into c3;
+
+    -- The key function itself.
+    if public.budget_period_key('2026-08-31') <> '2026-09-01'
+       or public.budget_period_key('2026-02-28') <> '2026-03-01'
+       or public.budget_period_key('2028-02-29') <> '2028-03-01'
+       or public.budget_period_key('2026-12-31') <> '2027-01-01'
+       or public.budget_period_key('2026-09-01') <> '2026-09-01'
+       or public.budget_period_key('2026-06-15') <> '2026-06-01' then
+      raise exception 'budget_period_key maps a date wrongly';
+    end if;
+
+    -- Legacy rows as the buggy client wrote them (bypass the new guards; this
+    -- whole block is rolled back).
+    alter table public.budgets disable trigger budgets_normalise_period;
+    alter table public.budgets drop constraint budgets_period_is_month_start;
+    -- c1: mis-keyed Sept row (newer) + a correct Sept row (older) → merge.
+    insert into public.budgets (user_id, category_id, currency, period_start, amount_enc, created_at)
+      values (u, c1, 'EUR', '2026-09-01', public.enc_minor(100), now() - interval '2 days') returning id into drop_id;
+    insert into public.budgets (user_id, category_id, currency, period_start, amount_enc, created_at)
+      values (u, c1, 'EUR', '2026-08-31', public.enc_minor(200), now() - interval '1 hour') returning id into keep_id;
+    -- c2: lone mis-keyed March row and a mid-month June row.
+    insert into public.budgets (user_id, category_id, currency, period_start, amount_enc)
+      values (u, c2, 'EUR', '2026-02-28', public.enc_minor(300));
+    insert into public.budgets (user_id, category_id, currency, period_start, amount_enc)
+      values (u, c2, 'EUR', '2026-06-15', public.enc_minor(400));
+    -- c3: already correct → untouched.
+    insert into public.budgets (user_id, category_id, currency, period_start, amount_enc)
+      values (u, c3, 'EUR', '2026-09-01', public.enc_minor(500)) returning id into untouched;
+
+    perform public.repair_budget_periods();
+    alter table public.budgets enable trigger budgets_normalise_period;
+
+    select array_agg(id) into ids from public.budgets where user_id = u and category_id = c1;
+    if ids is distinct from array[keep_id] then raise exception 'c1 not merged to the newest row: %', ids; end if;
+    select period_start into d from public.budgets where id = keep_id;
+    if d <> '2026-09-01' then raise exception 'c1 moved to % not 2026-09-01', d; end if;
+    if public.dec_minor((select amount_enc from public.budgets where id = keep_id)) <> 200 then
+      raise exception 'c1 kept the wrong amount';
+    end if;
+    select count(*) into n from public.budgets
+      where user_id = u and category_id = c2 and period_start in ('2026-03-01', '2026-06-01');
+    if n <> 2 then raise exception 'c2 rows not moved to their month starts'; end if;
+    select period_start into d from public.budgets where id = untouched;
+    if d <> '2026-09-01' then raise exception 'a correct row was changed'; end if;
+    select count(*) into n from public.budgets where user_id = u and extract(day from period_start) <> 1;
+    if n <> 0 then raise exception '% rows still off the 1st', n; end if;
+
+    -- New writes: an API caller on an old cached client sends the bad key.
+    alter table public.budgets add constraint budgets_period_is_month_start check (extract(day from period_start) = 1);
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_budget(c3, 900, 'EUR', '2026-09-30');   -- = October, a day early
+    execute 'reset role';
+    select count(*) into n from public.budgets where user_id = u and category_id = c3 and period_start = '2026-10-01';
+    if n <> 1 then raise exception 'save_budget did not normalise to 2026-10-01'; end if;
+    update public.budgets set period_start = '2026-11-17' where id = untouched;
+    select period_start into d from public.budgets where id = untouched;
+    if d <> '2026-11-01' then raise exception 'update not normalised (%)', d; end if;
+
+    -- The maintenance function is not an API.
+    if has_function_privilege('authenticated', 'public.repair_budget_periods()', 'execute')
+       or has_function_privilege('anon', 'public.repair_budget_periods()', 'execute') then
+      raise exception 'repair_budget_periods is callable by an API role';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: budget period keys repaired, merged and normalised';
+    else update _t set fails = fails + 1; raise notice 'FAIL: budget period keys — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Summary — raises if anything failed or any test didn't reach PASS (so a
+-- skipped test can never count as a pass; CI/psql exit non-zero).
+-- ---------------------------------------------------------------------------
+do $$
+declare expected_tests constant int := 43; f int; p int;  -- tests 1–42 + B-0059
+begin
+  select fails, passes into f, p from _t;
+  if f > 0 then raise exception '% test(s) FAILED', f; end if;
+  if p <> expected_tests then raise exception 'only % of % tests passed', p, expected_tests; end if;
+  raise notice 'ALL DATABASE TESTS PASSED (% tests)', p;
 end $$;
 drop table _t;

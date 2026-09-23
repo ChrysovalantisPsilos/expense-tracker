@@ -16,6 +16,7 @@
 // schedule columns and sends a generic reminder; the details are one tap away.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { requireCronSecret } from '../_shared/cron.ts'
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -31,13 +32,8 @@ function daysUntil(iso: string, today: string): number {
 }
 
 Deno.serve(async (req) => {
-  const { data: secrets, error: secErr } = await admin.rpc('reminder_secrets')
-  if (secErr || !secrets?.reminder_cron_secret) {
-    return new Response('secrets unavailable', { status: 500 })
-  }
-  if (req.headers.get('x-cron-secret') !== secrets.reminder_cron_secret) {
-    return new Response('forbidden', { status: 403 })
-  }
+  const gate = await requireCronSecret(admin, req)
+  if (gate instanceof Response) return gate
 
   const today = isoToday()
   const { data: rules, error } = await admin
