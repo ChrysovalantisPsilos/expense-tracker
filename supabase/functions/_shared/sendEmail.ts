@@ -5,8 +5,11 @@
 // Two senders:
 //   invite — INVITE_FROM: invites, group event emails, and privacy requests
 //            forwarded to the privacy inbox;
-//   notice — NOTICE_FROM (default "Budgeer <no-reply@budgeer.com>"), Reply-To
-//            the privacy address: the GDPR service notices (_shared/gdprEmails.ts).
+//   notice — NOTICE_FROM (default "Budgeer <privacy@budgeer.com>", built from
+//            PRIVACY_EMAIL), Reply-To the privacy address too: the GDPR
+//            service notices (_shared/gdprEmails.ts). Recipients can simply
+//            reply — it lands in the privacy inbox (the Reply-To keeps that
+//            true if NOTICE_FROM is ever pointed elsewhere).
 // Both are null without RESEND_API_KEY, so callers skip or fall back cleanly.
 //
 // Deno.env is read only inside functions: the unit tests load this file
@@ -17,7 +20,7 @@ import { PRIVACY_EMAIL } from './contact.ts'
 // Production origin; the TEST project sets APP_ORIGIN (https://dev.budgeer.com)
 // in its function secrets. www: the apex redirects there.
 export const DEFAULT_ORIGIN = 'https://www.budgeer.com'
-export const DEFAULT_NOTICE_FROM = 'Budgeer <no-reply@budgeer.com>'
+export const DEFAULT_NOTICE_FROM = `Budgeer <${PRIVACY_EMAIL}>`
 const DEFAULT_INVITE_FROM = 'Budgeer <onboarding@resend.dev>'
 
 // Resend's default rate limit is 2 requests a second; loops pace themselves.

@@ -100,7 +100,8 @@ creation/refresh (an installed PWA refreshes its session when opened).
 
 Sent regardless of the notification switches (they inform the user about their
 data and account security; nothing to opt out of), from `NOTICE_FROM`
-(default `Budgeer <no-reply@budgeer.com>`) with Reply-To privacy@budgeer.com.
+(default `Budgeer <privacy@budgeer.com>`, built from `PRIVACY_EMAIL`) with
+Reply-To privacy@budgeer.com, so a reply goes straight to the privacy inbox.
 Plain: no amounts, descriptions, group names or other records. Every one says
 why it was sent and names privacy@. Templates:
 `supabase/functions/_shared/gdprEmails.ts` (unit-tested in
@@ -163,8 +164,9 @@ security suite (`supabase/tests/db_tests.sql`).
   each one's SCC module and sub-processor list; verify Vercel's DPF status.
 - Set `PRIVACY_INBOX` (optional; defaults to privacy@budgeer.com) and confirm
   `RESEND_API_KEY`, `INVITE_FROM`, `APP_ORIGIN` in both projects' function
-  secrets; `NOTICE_FROM` is optional (defaults to `Budgeer <no-reply@budgeer.com>`,
-  which needs budgeer.com verified as a sending domain in Resend).
+  secrets; `NOTICE_FROM` is optional (defaults to `Budgeer <privacy@budgeer.com>`,
+  which needs budgeer.com verified as a sending domain in Resend) — leave it
+  unset, or set it to that address, so recipients can reply.
 - Consider shortening Supabase Auth session lifetime / enabling inactivity
   timeout; check that auth audit logs are not kept longer than needed.
 - Keep this record and a request/breach log up to date.

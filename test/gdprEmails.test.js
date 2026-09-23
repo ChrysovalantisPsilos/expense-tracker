@@ -119,7 +119,9 @@ test('origin defaults to www and loses trailing slashes', () => {
   assert.equal(DEFAULT_ORIGIN, 'https://www.budgeer.com')
   assert.equal(normalizeOrigin(undefined), 'https://www.budgeer.com')
   assert.equal(normalizeOrigin('https://dev.budgeer.com//'), 'https://dev.budgeer.com')
-  assert.equal(DEFAULT_NOTICE_FROM, 'Budgeer <no-reply@budgeer.com>')
+  // Notices come from the privacy inbox itself, so a reply reaches it.
+  assert.equal(DEFAULT_NOTICE_FROM, `Budgeer <${PRIVACY_EMAIL}>`)
+  assert.equal(DEFAULT_NOTICE_FROM, 'Budgeer <privacy@budgeer.com>')
 })
 
 test('sendEmail posts one message to Resend, with the sender’s Reply-To, and never throws', async (t) => {
@@ -128,14 +130,14 @@ test('sendEmail posts one message to Resend, with the sender’s Reply-To, and n
     calls.push([url, init])
     return new Response(JSON.stringify({ id: 'em_1' }), { status: 200 })
   })
-  const sender = { apiKey: 'k', from: 'Budgeer <no-reply@budgeer.com>', replyTo: PRIVACY_EMAIL }
+  const sender = { apiKey: 'k', from: DEFAULT_NOTICE_FROM, replyTo: PRIVACY_EMAIL }
   const res = await sendEmail(sender, { to: 'alex@example.com', subject: 'S', html: '<p>h</p>', text: 't' })
   assert.deepEqual(res, { ok: true, status: 200, id: 'em_1' })
   const [url, init] = calls[0]
   assert.equal(url, 'https://api.resend.com/emails')
   assert.equal(init.headers.Authorization, 'Bearer k')
   assert.deepEqual(JSON.parse(init.body), {
-    from: 'Budgeer <no-reply@budgeer.com>', to: ['alex@example.com'], subject: 'S', html: '<p>h</p>', text: 't',
+    from: 'Budgeer <privacy@budgeer.com>', to: ['alex@example.com'], subject: 'S', html: '<p>h</p>', text: 't',
     reply_to: PRIVACY_EMAIL,
   })
   // A per-message Reply-To wins; none at all → no field.
