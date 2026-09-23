@@ -13,6 +13,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring } from '../recurring/recurring.js'
 import { frequencyLabel } from '../recurring/recurringMath.js'
 import { formatMoney } from '../../shared/lib/currency.js'
+import { spendRows, paidInWindow } from '../../shared/lib/spread.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
@@ -46,8 +47,10 @@ export default function Dashboard() {
   const [periodValue, setPeriodValue] = useState(() => buildPeriods(null)[0].value)
   const period = periods.find((p) => p.value === periodValue) ?? periods[0]
 
+  // `spread`: yearly subscriptions paid before the period still count their
+  // share of it (totals only — the list shows what was paid in the period).
   const { rows, loading, error, reload, mutate } = useTransactions({
-    from: period.from ?? undefined, to: period.to ?? undefined,
+    from: period.from ?? undefined, to: period.to ?? undefined, spread: true,
   })
   // Recheck whenever the (live) transaction rows change, so importing older
   // data extends the period dropdown without a reload. Cheap: 1-row query.
@@ -59,8 +62,13 @@ export default function Dashboard() {
   // it always shows what's coming up next plus the monthly subscriptions total.
   const { subsMonthly, activeRecurring } = useMemo(() => recurringOverview(rules), [rules])
 
-  const totals = useMemo(() => periodTotals(rows, baseCurrency), [rows, baseCurrency])
-  const { byCategory, expenses, bucketRow } = totals
+  const totals = useMemo(
+    () => periodTotals(spendRows(rows, baseCurrency, period.from, period.to), baseCurrency),
+    [rows, baseCurrency, period.from, period.to])
+  const { byCategory, bucketRow } = totals
+  const expenses = useMemo(
+    () => paidInWindow(rows, period.from, period.to).filter((r) => r.kind !== 'income'),
+    [rows, period.from, period.to])
   const bars = useMemo(() => categoryBars(byCategory), [byCategory])
 
   // Fold not-yet-charged recurring into the period's spend/income projection,

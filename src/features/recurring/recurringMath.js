@@ -1,4 +1,5 @@
 // Pure recurring-rule math (no React/supabase imports — unit-testable).
+import { ruleSpreadMonths, spreadDates, spreadPart } from '../../shared/lib/spread.js'
 
 export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly']
 
@@ -62,6 +63,17 @@ export function ruleFromTransaction(t, { frequency = 'monthly', interval_n: n = 
   }
 }
 
+// What a yearly expense rule's charge counts in each month's budgets:
+// { perMonth, months, exact } (perMonth = the first, largest part; exact when
+// every month gets the same), or null for rules that aren't spread.
+export function monthlyBudgetShare(rule) {
+  const n = ruleSpreadMonths(rule)
+  if (!n) return null
+  const total = Number(rule.amount_minor) || 0
+  const perMonth = spreadPart(total, n, 0)
+  return { perMonth, months: n, exact: perMonth === spreadPart(total, n, n - 1) }
+}
+
 // Can this transaction be made recurring? Not a mirrored group share (it's
 // edited in its group) and not a row that already belongs to a rule.
 export const canMakeRecurring = (t) => !!t && !t.group_expense_id && !t.recurring_rule_id
@@ -72,6 +84,8 @@ export const canMakeRecurring = (t) => !!t && !t.group_expense_id && !t.recurrin
 // from each rule's next_run, so a charge that has already materialised (its
 // next_run has advanced past the window) is naturally excluded — no double
 // counting. Amounts are treated as base currency (rules carry no FX rate).
+// A yearly expense counts only its monthly parts that fall in the window, as
+// its charge will once it's made (shared/lib/spread.js).
 export function expectedInWindow(rules, fromISO, toISO) {
   if (!fromISO || !toISO) return { expense: 0, income: 0 }
   let expense = 0
@@ -82,7 +96,12 @@ export function expectedInWindow(rules, fromISO, toISO) {
     let d = r.next_run
     let guard = 0
     while (d <= toISO && (!r.end_date || d <= r.end_date) && guard < 500) {
-      if (d >= fromISO) {
+      const n = ruleSpreadMonths(r)
+      if (n) {
+        spreadDates(d, n).forEach((p, i) => {
+          if (p >= fromISO && p <= toISO) expense += spreadPart(r.amount_minor, n, i)
+        })
+      } else if (d >= fromISO) {
         if (r.kind === 'income') income += r.amount_minor
         else expense += r.amount_minor
       }

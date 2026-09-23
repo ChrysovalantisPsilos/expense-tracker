@@ -2683,11 +2683,154 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 49. 0067: a yearly subscription is spread over the months it covers. The
+--     source row of a yearly "Make recurring" and every materialised yearly
+--     row get spread_months (12·N); monthly rules' rows don't; the split is
+--     exact (remainder to the earliest months); a budget alert counts the
+--     month's share to the cent; my_transactions(p_spread) returns the earlier
+--     spread row for a month window; the source row follows a frequency edit,
+--     already-charged rows don't; unlinking keeps it; clients can't write it.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; cat uuid; cat2 uuid; t1 uuid; tp uuid; rid uuid; rb uuid; rc uuid; n int; v bigint;
+        m0 date := date_trunc('month', current_date)::date;
+        cu1 uuid := gen_random_uuid(); cu2 uuid := gen_random_uuid();
+begin
+  begin
+    -- The split itself (JS twin: test/spread.test.js).
+    select sum(public.spread_part(120005, 12, i)) into v from generate_series(0, 11) i;
+    if v <> 120005 then raise exception 'parts sum to %', v; end if;
+    if public.spread_part(120005, 12, 0) <> 10001 or public.spread_part(120005, 12, 4) <> 10001
+       or public.spread_part(120005, 12, 5) <> 10000 or public.spread_part(120005, 12, 12) <> 0 then
+      raise exception 'remainder not on the earliest months';
+    end if;
+    select sum(public.spread_part(10000, 24, i)) into v from generate_series(0, 23) i;
+    if v <> 10000 or public.spread_part(10000, 24, 15) <> 417 or public.spread_part(10000, 24, 16) <> 416 then
+      raise exception '24-month split';
+    end if;
+    if public.month_share(120005, date '2026-03-15', 12, date '2027-02-01') <> 10000
+       or public.month_share(120005, date '2026-03-15', 12, date '2027-03-01') <> 0
+       or public.month_share(120005, date '2026-03-15', 12, date '2026-02-01') <> 0
+       or public.month_share(500, date '2026-03-15', null, date '2026-03-01') <> 500
+       or public.month_share(500, date '2026-03-15', null, date '2026-04-01') <> 0 then
+      raise exception 'month_share window';
+    end if;
+
+    u := pg_temp.zz_user('spread');
+    update public.profiles set base_currency = 'EUR' where id = u;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZT insurance', 'expense') returning id into cat;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZT subs', 'expense') returning id into cat2;
+    insert into public.budgets (user_id, category_id, amount_enc, currency, period_start)
+      values (u, cat, public.enc_minor(20000), 'EUR', m0);
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    -- €1,200.05 paid on the 15th two months ago; spread_months in the payload is ignored.
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'client_uuid', cu1, 'category_id', cat, 'amount_minor', 120005, 'currency', 'EUR',
+      'spent_at', (m0 - interval '2 months' + interval '14 days')::date, 'spread_months', 24)));
+    select id into t1 from public.transactions where client_uuid = cu1;
+    rid := public.save_recurring_rule(null, jsonb_build_object('amount_minor', 120005, 'currency', 'EUR',
+      'category_id', cat, 'frequency', 'yearly', 'next_run', (m0 + interval '10 months' + interval '14 days')::date,
+      'source_transaction_id', t1));
+    -- Clients can't write the column.
+    begin
+      update public.transactions set spread_months = 2 where id = t1;
+      raise exception 'GUARD_MISSED: spread_months writable';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+    if has_column_privilege('authenticated', 'public.transactions', 'spread_months', 'UPDATE')
+       or has_column_privilege('authenticated', 'public.transactions', 'spread_months', 'INSERT') then
+      raise exception 'spread_months granted to clients';
+    end if;
+    select spread_months into n from public.transactions where id = t1;
+    if n is distinct from 12 then raise exception 'source row spread_months = %', n; end if;
+
+    -- This month's share of it is 10001 (index 2 of 12, remainder 5): with a
+    -- €59.99 expense that's exactly 80% of €200 → one "almost used" alert.
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'client_uuid', cu2, 'category_id', cat, 'amount_minor', 5999, 'currency', 'EUR', 'spent_at', m0)));
+    execute 'reset role';
+    select count(*) into n from public.notifications where user_id = u and type = 'budget' and title = 'Budget almost used';
+    if n <> 1 then raise exception 'spread spend 16000/20000: % warnings', n; end if;
+    select count(*) into n from public.notifications where user_id = u and type = 'budget' and title = 'Budget exceeded';
+    if n <> 0 then raise exception 'spread spend counted in full'; end if;
+    select id into tp from public.transactions where client_uuid = cu2;
+    if (select spread_months from public.transactions where id = tp) is not null then
+      raise exception 'a plain row got spread';
+    end if;
+
+    -- my_transactions: spread_months out; p_spread brings the earlier row in.
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select count(*) into n from public.my_transactions('expense', m0, (m0 + interval '1 month - 1 day')::date);
+    if n <> 1 then raise exception 'month window without spread: % rows', n; end if;
+    select count(*) into n from public.my_transactions('expense', m0, (m0 + interval '1 month - 1 day')::date,
+                                                        null, null, true) t where t.spread_months = 12;
+    if n <> 1 then raise exception 'p_spread did not return the earlier yearly row'; end if;
+    select count(*) into n from public.my_transactions('expense', (m0 + interval '10 months')::date, null, null, null, true);
+    if n <> 0 then raise exception 'p_spread returned a row past its 12 months'; end if;
+
+    -- The source row follows a frequency edit (it predates the rule).
+    perform public.save_recurring_rule(rid, jsonb_build_object('frequency', 'monthly'));
+    execute 'reset role';
+    if (select spread_months from public.transactions where id = t1) is not null then
+      raise exception 'source row kept its spread after the rule went monthly';
+    end if;
+    execute 'set local role authenticated';
+    perform public.save_recurring_rule(rid, jsonb_build_object('frequency', 'yearly', 'interval_n', 2));
+    execute 'reset role';
+    if (select spread_months from public.transactions where id = t1) is distinct from 24 then
+      raise exception 'source row did not follow every 2 years';
+    end if;
+
+    -- Materialised rows: yearly → 12, monthly → not spread; charged rows keep
+    -- their spread when their rule changes later.
+    execute 'set local role authenticated';
+    rb := public.save_recurring_rule(null, jsonb_build_object('amount_minor', 6000, 'currency', 'EUR',
+      'category_id', cat2, 'frequency', 'yearly', 'next_run', current_date - 1));
+    rc := public.save_recurring_rule(null, jsonb_build_object('amount_minor', 999, 'currency', 'EUR',
+      'category_id', cat2, 'frequency', 'monthly', 'next_run', current_date - 1));
+    execute 'reset role';
+    perform public.materialize_recurring_rules();
+    select count(*) into n from public.transactions where recurring_rule_id = rb and spread_months = 12;
+    if n <> 1 then raise exception 'materialised yearly row not spread (%)', n; end if;
+    select count(*) into n from public.transactions where recurring_rule_id = rc and spread_months is null;
+    if n <> 1 then raise exception 'materialised monthly row spread or missing (%)', n; end if;
+    update public.recurring_rules set created_at = now() - interval '1 day' where id in (rb, rc);
+    execute 'set local role authenticated';
+    perform public.save_recurring_rule(rc, jsonb_build_object('frequency', 'yearly'));
+    perform public.save_recurring_rule(rb, jsonb_build_object('frequency', 'monthly'));
+    execute 'reset role';
+    select count(*) into n from public.transactions
+     where (recurring_rule_id = rc and spread_months is not null) or (recurring_rule_id = rb and spread_months is null);
+    if n <> 0 then raise exception 'already-charged rows changed spread with their rule'; end if;
+
+    -- Deleting the rule unlinks but keeps the spread; income is never spread.
+    execute 'set local role authenticated';
+    delete from public.recurring_rules where id = rid;
+    execute 'reset role';
+    select spread_months into n from public.transactions where id = t1 and recurring_rule_id is null;
+    if n is distinct from 24 then raise exception 'unlinked row lost its spread (%)', n; end if;
+    update public.transactions set kind = 'income' where id = t1;
+    if (select spread_months from public.transactions where id = t1) is not null then
+      raise exception 'an income row stayed spread';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: yearly subscriptions spread over their months (rows, split, alerts, reads)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: yearly spread — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 49; f int; p int;  -- tests 1–48 + B-0059
+declare expected_tests constant int := 50; f int; p int;  -- tests 1–49 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

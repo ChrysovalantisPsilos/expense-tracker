@@ -28,20 +28,25 @@ export function useCategories(kind) {
 // can bucket them under the group). Realtime still watches the base table.
 // A row whose rate the server hasn't filled in yet comes back with the ECB
 // rate for its date and `rate_estimated: true` (see fillPendingRates).
-export function useTransactions({ kind, from, to, categoryId, limit } = {}) {
+//
+// `spread: true` (monthly-spend views) also returns the yearly-subscription
+// rows paid before `from` that still count in the range (spread_months, 0067):
+// feed the rows to shared/lib/spread.js — spendRows for totals, paidInWindow
+// for what to list.
+export function useTransactions({ kind, from, to, categoryId, limit, spread = false } = {}) {
   const { baseCurrency } = useProfile()
   return useOwnedQuery('transactions', {
-    fetch: () => listTransactions({ kind, from, to, categoryId, limit, baseCurrency }),
-    deps: [kind, from, to, categoryId, limit, baseCurrency],
+    fetch: () => listTransactions({ kind, from, to, categoryId, limit, spread, baseCurrency }),
+    deps: [kind, from, to, categoryId, limit, spread, baseCurrency],
   })
 }
 
 // One-shot read behind useTransactions (same filters, same row shape). Pass
 // `baseCurrency` to have pending rates estimated.
-export async function listTransactions({ kind, from, to, categoryId, limit, baseCurrency } = {}) {
+export async function listTransactions({ kind, from, to, categoryId, limit, spread = false, baseCurrency } = {}) {
   const { data, error } = await supabase.rpc('my_transactions', {
     p_kind: kind ?? null, p_from: from ?? null, p_to: to ?? null,
-    p_category: categoryId ?? null, p_limit: limit ?? null,
+    p_category: categoryId ?? null, p_limit: limit ?? null, p_spread: spread,
   })
   if (error) throw new Error(error.message)
   return baseCurrency ? fillPendingRates(data ?? [], baseCurrency) : data ?? []

@@ -11,6 +11,7 @@ import TransactionForm from './TransactionForm.jsx'
 import { formatMoney, baseEquivalent } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
+import { spreadLabel } from '../../shared/lib/spread.js'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import RecurringForm from '../recurring/RecurringForm.jsx'
@@ -20,7 +21,9 @@ import { canMakeRecurring, frequencyLabel, ruleFromTransaction } from '../recurr
 // Group-mirrored rows (group_expense_id set) are read-only here — they're
 // edited in the group — and show their group's tag under the title instead.
 // "Make recurring" turns a row into a recurring rule (next charge one period
-// after it); rows that belong to a rule say "Repeats every month".
+// after it); rows that belong to a rule say "Repeats every month", and a
+// yearly subscription's payment adds "Spread over 12 months" (it counts in
+// monthly spend a twelfth at a time; the row itself is the real payment).
 // On phones the row actions fold into a ⋯ menu.
 // Each row's income/expense styling follows its own `kind`, so the same
 // list renders every mode of the Transactions page (Expenses, Income, All).
@@ -155,6 +158,7 @@ function RowMeta({ row: r, shared }) {
           {!r.recurring.is_active && ' (paused)'}
         </Text>
       )}
+      {spreadLabel(r) && <Text whiteSpace="nowrap">· {spreadLabel(r)}</Text>}
     </Flex>
   )
 }

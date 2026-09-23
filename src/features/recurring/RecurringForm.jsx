@@ -8,12 +8,12 @@ import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import FormModal from '../../shared/ui/FormModal.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import { useCategories } from '../transactions/useData.js'
-import { toMinor, fromMinor } from '../../shared/lib/currency.js'
+import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { enablePush } from '../../shared/lib/push.js'
 import { saveRecurring } from './recurring.js'
-import { FREQUENCIES, nextRunAfter } from './recurringMath.js'
+import { FREQUENCIES, nextRunAfter, monthlyBudgetShare } from './recurringMath.js'
 
 // Add or edit a recurring rule. `rule` edits an existing one; `initial` starts a
 // new one pre-filled from a transaction ("Make recurring": ruleFromTransaction
@@ -42,6 +42,10 @@ export default function RecurringForm({ rule, initial, baseCurrency, onClose, on
   const [remind, setRemind] = useState(rule?.remind_days_before != null)
   const [remindDays, setRemindDays] = useState(String(rule?.remind_days_before ?? 3))
   const { busy, run } = useAsyncSubmit()
+  // A yearly expense counts evenly in each month's budgets (spread.js).
+  const share = Number(amount) > 0 ? monthlyBudgetShare({
+    kind, frequency, interval_n: parseInt(intervalN, 10) || 1, amount_minor: toMinor(amount, currency),
+  }) : null
 
   // Enrol this device for push the moment reminders are switched on — the
   // flip is the user gesture iOS needs for the permission prompt. A refusal
@@ -142,6 +146,11 @@ export default function RecurringForm({ rule, initial, baseCurrency, onClose, on
             </Select>
           </FormControl>
         </HStack>
+        {share && (
+          <Text fontSize="sm" color="text.muted" mt={-2}>
+            {`Counts as ${share.exact ? '' : 'about '}${formatMoney(share.perMonth, currency)}/month in budgets, spread over ${share.months} months.`}
+          </Text>
+        )}
 
         <FormControl>
           <FormLabel>Next charge</FormLabel>

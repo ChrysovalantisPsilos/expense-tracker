@@ -15,7 +15,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { useRecurring, setRecurringActive, deleteRecurring } from './recurring.js'
-import { monthlyMinor, frequencyLabel } from './recurringMath.js'
+import { monthlyMinor, frequencyLabel, monthlyBudgetShare } from './recurringMath.js'
 import RecurringForm from './RecurringForm.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 
@@ -133,13 +133,19 @@ export default function Recurring() {
   )
 }
 
-// The muted line under a rule's title: frequency · next date, plus its
-// reminder and paused tags.
+// The muted line under a rule's title: frequency · next date · a yearly
+// expense's monthly budget share, plus its reminder and paused tags.
 function RuleMeta({ rule: r }) {
+  const share = monthlyBudgetShare(r)
   return (
     <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted">
       <Text whiteSpace="nowrap">{frequencyLabel(r)}</Text>
       <Text whiteSpace="nowrap">· next {shortDate(r.next_run)}</Text>
+      {share && (
+        <Text whiteSpace="nowrap">
+          · {share.exact ? '' : '≈ '}{formatMoney(share.perMonth, r.currency)}/month in budgets
+        </Text>
+      )}
       {r.remind_days_before != null && (
         <Tag size="sm" colorScheme="brand" borderRadius="full" px={2}>
           <Bell size={10} style={{ marginRight: 3 }} /> {r.remind_days_before}d

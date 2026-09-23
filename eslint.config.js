@@ -15,7 +15,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 
 export default [
   // Edge functions are Deno/TypeScript and are checked by `supabase functions`.
-  { ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'supabase/functions/**'] },
+  { ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'supabase/functions/**', '.claude/**'] },
   js.configs.recommended,
   {
     files: ['src/**/*.{js,jsx}'],

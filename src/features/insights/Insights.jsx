@@ -29,6 +29,7 @@ import { lastMonths, shortDate } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, toMinor, fromMinor, minorFactor } from '../../shared/lib/currency.js'
+import { spendRows } from '../../shared/lib/spread.js'
 import {
   useAccounts, saveAccount, deleteAccount,
   useGoals, saveGoal, deleteGoal,
@@ -46,15 +47,21 @@ const ABROAD_ROWS = 5
 export default function Insights() {
   const { baseCurrency = 'EUR' } = useProfile()
   const months = useMemo(() => lastMonths(6), [])
-  const { rows, loading, error, reload } = useTransactions({ from: months[0].from, to: months[months.length - 1].to })
+  const from = months[0].from
+  const to = months[months.length - 1].to
+  // `spread`: a yearly subscription counts its monthly share in every month it
+  // covers, including one paid before the six months (spendRows).
+  const { rows, loading, error, reload } = useTransactions({ from, to, spread: true })
+  const spend = useMemo(() => spendRows(rows, baseCurrency, from, to), [rows, baseCurrency, from, to])
   const failed = error ? <QueryError error={error} onRetry={reload} what="your transactions" /> : null
   const thisMonth = months[months.length - 1].key
 
   // Trend values are major units (chart axis); `money` converts back to minor.
   const factor = minorFactor(baseCurrency)
   const money = (major) => formatMoney(Math.round(major * factor), baseCurrency)
-  const trend = useMemo(() => buildTrend(rows, months, baseCurrency), [rows, months, baseCurrency])
-  const shares = useMemo(() => spendingShares(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
+  const trend = useMemo(() => buildTrend(spend, months, baseCurrency), [spend, months, baseCurrency])
+  const shares = useMemo(() => spendingShares(spend, thisMonth, baseCurrency), [spend, thisMonth, baseCurrency])
+  // Spending abroad lists actual payments (each at its own rate), not shares.
   const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
 
   return (

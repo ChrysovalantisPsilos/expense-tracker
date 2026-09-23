@@ -120,3 +120,29 @@ test('expectedInWindow: month-end rules follow the same clamped chain', () => {
   assert.deepEqual(expectedInWindow([rule], '2026-03-29', '2026-03-31'), { expense: 0, income: 0 })
   assert.deepEqual(expectedInWindow([rule], '2026-02-01', '2026-02-28'), { expense: 100, income: 0 })
 })
+
+// ---- Yearly expenses spread over the months they cover (0067) ---------------
+import { monthlyBudgetShare } from '../src/features/recurring/recurringMath.js'
+
+test('expectedInWindow: an upcoming yearly expense counts only its parts in the window', () => {
+  const rules = [
+    { is_active: true, kind: 'expense', amount_minor: 12005, frequency: 'yearly', interval_n: 1, next_run: '2026-07-20', end_date: null },
+    { is_active: true, kind: 'income', amount_minor: 60000, frequency: 'yearly', interval_n: 1, next_run: '2026-07-20', end_date: null },
+  ]
+  // 12005 / 12 = 1000 r 5: July (the first part) gets 1001. Income isn't spread.
+  assert.deepEqual(expectedInWindow(rules, '2026-07-15', '2026-07-31'), { expense: 1001, income: 60000 })
+  // Jul..Dec: 5 parts of 1001 + 1 of 1000.
+  assert.deepEqual(expectedInWindow(rules, '2026-07-15', '2026-12-31'), { expense: 5 * 1001 + 1000, income: 60000 })
+  // A charge next month adds nothing to this month.
+  assert.deepEqual(expectedInWindow([{ ...rules[0], next_run: '2026-08-02' }], '2026-07-15', '2026-07-31'),
+    { expense: 0, income: 0 })
+})
+
+test('monthlyBudgetShare: yearly expense rules only, first part and whether it is even', () => {
+  assert.deepEqual(monthlyBudgetShare({ kind: 'expense', frequency: 'yearly', interval_n: 1, amount_minor: 12000 }),
+    { perMonth: 1000, months: 12, exact: true })
+  assert.deepEqual(monthlyBudgetShare({ kind: 'expense', frequency: 'yearly', interval_n: 2, amount_minor: 10000 }),
+    { perMonth: 417, months: 24, exact: false })
+  assert.equal(monthlyBudgetShare({ kind: 'income', frequency: 'yearly', interval_n: 1, amount_minor: 12000 }), null)
+  assert.equal(monthlyBudgetShare({ kind: 'expense', frequency: 'monthly', interval_n: 12, amount_minor: 12000 }), null)
+})

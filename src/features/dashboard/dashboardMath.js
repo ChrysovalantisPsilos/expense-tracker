@@ -4,9 +4,10 @@ import { toBaseMinor } from '../../shared/lib/currency.js'
 import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { monthlyMinor, expectedInWindow } from '../recurring/recurringMath.js'
 
-// A period's actual totals from its transaction rows: `spent` and `earned`
-// (base currency), the expense rows themselves, `byCategory` (bucket totals,
-// largest first) and `bucketRow` (bucket name → one row in it, for its icon).
+// A period's totals from its rows: `spent` and `earned` (base currency),
+// `byCategory` (bucket totals, largest first) and `bucketRow` (bucket name →
+// one row in it, for its icon). Pass spendRows(...) output (shared/lib/
+// spread.js), so a yearly subscription counts only its share of the period.
 export function periodTotals(rows, baseCurrency) {
   let spent = 0
   let earned = 0
@@ -24,7 +25,7 @@ export function periodTotals(rows, baseCurrency) {
   const byCategory = [...sumToBaseByKey(expenses, baseCurrency, bucketOf).entries()]
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
-  return { spent, earned, byCategory, expenses, bucketRow }
+  return { spent, earned, byCategory, bucketRow }
 }
 
 // Recurring charges still to come in a period, folded into its projection —

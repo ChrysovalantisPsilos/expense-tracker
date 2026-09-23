@@ -4,7 +4,9 @@ import { categoryBars } from '../dashboard/categoryBars.js'
 
 // Income/expense trend in MAJOR base-currency units, one entry per month bucket
 // (keyed by YYYY-MM). `months` come from lastMonths(); rows outside those months
-// are ignored. Values are major units so the chart axis reads naturally.
+// are ignored. Values are major units so the chart axis reads naturally. Pass
+// spendRows output (shared/lib/spread.js) so a yearly subscription counts its
+// monthly share in each month.
 export function buildTrend(rows, months, baseCurrency) {
   const factor = minorFactor(baseCurrency)
   const by = new Map(months.map((m) => [m.key, { label: m.label, income: 0, expense: 0 }]))

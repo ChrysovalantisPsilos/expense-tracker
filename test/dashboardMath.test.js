@@ -17,7 +17,6 @@ test('periodTotals: base-currency spent/earned and a largest-first category brea
   const t = periodTotals(rows, 'EUR')
   assert.equal(t.spent, 1000 + 2300 + 500 + 1200)
   assert.equal(t.earned, 50000)
-  assert.deepEqual(t.expenses.map((r) => r.id), [1, 2, 4, 5])
   assert.deepEqual(t.byCategory, [
     { name: 'Travel', value: 2300 }, { name: 'Food', value: 1500 }, { name: 'Italy', value: 1200 },
   ])
@@ -27,7 +26,7 @@ test('periodTotals: base-currency spent/earned and a largest-first category brea
 
 test('periodTotals: no rows, all zero', () => {
   const t = periodTotals([], 'EUR')
-  assert.deepEqual([t.spent, t.earned, t.byCategory, t.expenses], [0, 0, [], []])
+  assert.deepEqual([t.spent, t.earned, t.byCategory], [0, 0, []])
 })
 
 const rules = [
