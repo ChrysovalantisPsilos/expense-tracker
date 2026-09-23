@@ -9,7 +9,7 @@ import { X, ArrowRight, ArrowLeft, Sparkles, Landmark, Users, BellRing, KeyRound
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
-import { EVENTS } from '../../shared/lib/keys.js'
+import { EVENTS, STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { enablePush, pushSupported } from '../../shared/lib/push.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { updateProfile, savePaymentInfo } from '../profile/profile.js'
@@ -49,7 +49,7 @@ export default function OnboardingWizard({ profile, onDone }) {
     } catch { /* non-fatal — App still unmounts us via the realtime refetch */ }
     // The wizard already covered these, so don't let the separate prompts re-ask.
     try {
-      sessionStorage.setItem('budge:passkeyPrompted', '1')
+      sessionStorage.setItem(STORAGE_KEYS.passkeyPrompted, '1')
       localStorage.setItem('budge:notifPrompted', '1')
     } catch { /* private mode */ }
     window.dispatchEvent(new Event(EVENTS.profileUpdated))

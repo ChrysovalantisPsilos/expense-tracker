@@ -5,6 +5,8 @@ export const STORAGE_KEYS = {
   pendingInvite: 'budge:invite',       // localStorage — survives email round-trip
   pendingEmail: 'budge:pendingEmail',  // sessionStorage — verify-email screen
   overviewView: 'budge:overviewView',  // localStorage — dashboard chart/table toggle
+  passkeyPrompted: 'budge:passkeyPrompted', // sessionStorage — passkey prompt shown this session
+  passkeyNever: 'budge:passkeyNever',  // localStorage — "don't remind me", suffixed with the user id
 }
 
 export const EVENTS = {

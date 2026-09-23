@@ -71,6 +71,14 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                   </Text>
                   <Flex wrap="wrap" align="center" columnGap={2} rowGap={1}>
                     <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
+                    {r.description && r.categories?.name && (
+                      <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">· {r.categories.name}</Text>
+                    )}
+                    {r.notes && (
+                      <Text fontSize="xs" color="text.muted" fontStyle="italic" noOfLines={1} minW={0} title={r.notes}>
+                        · {r.notes}
+                      </Text>
+                    )}
                     {shared && (
                       <Tag size="sm" colorScheme="brand" maxW="100%">
                         <TagLabel noOfLines={1}>{groupLabel(r)}</TagLabel>

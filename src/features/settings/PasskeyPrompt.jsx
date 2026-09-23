@@ -1,41 +1,53 @@
 import { useEffect, useState } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Button, Text, HStack, Flex, useToast,
+  Button, Text, HStack, Flex, FormControl, FormLabel, Switch, useToast,
 } from '@chakra-ui/react'
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
 import { claimPromptSlot, releasePromptSlot } from '../../shared/lib/promptGate.js'
+import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { toPasskeyList } from './authMethods.js'
 
-const SEEN = 'budge:passkeyPrompted'
+// Storage can be unavailable (private mode, blocked site data): treat that as
+// "not set" and never let it break the prompt.
+function readFlag(store, key) {
+  try { return !!store.getItem(key) } catch { return false }
+}
+function writeFlag(store, key) {
+  try { store.setItem(key, '1') } catch { /* ignore */ }
+}
 
-// Shown once per session, right after login, if the user has no passkey yet.
-// Silently does nothing when passkeys aren't supported or aren't enabled
-// server-side (listPasskeys errors), so it never nags in unsupported setups.
+// Shown once per session, right after login, if the user has no passkey yet
+// and hasn't asked not to be reminded on this device. Silently does nothing
+// when passkeys aren't supported or aren't enabled server-side (listPasskeys
+// errors), so it never nags in unsupported setups.
 export default function PasskeyPrompt() {
-  const { listPasskeys, registerPasskey } = useAuth()
+  const { user, listPasskeys, registerPasskey } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [never, setNever] = useState(false)
   const toast = useToast()
+  const neverKey = `${STORAGE_KEYS.passkeyNever}:${user?.id}`
 
   useEffect(() => {
     if (!passkeysSupported) return
-    if (sessionStorage.getItem(SEEN)) return
+    if (readFlag(sessionStorage, STORAGE_KEYS.passkeyPrompted)) return
+    if (readFlag(localStorage, neverKey)) return
     let active = true
     listPasskeys()
       .then(({ data, error }) => {
         if (!active || error) return
         if (toPasskeyList(data).length === 0) {
-          sessionStorage.setItem(SEEN, '1')
+          writeFlag(sessionStorage, STORAGE_KEYS.passkeyPrompted)
           claimPromptSlot() // NotificationPrompt waits its turn
           setOpen(true)
         }
       })
       .catch(() => { /* passkeys not enabled — skip */ })
     return () => { active = false }
-  }, [listPasskeys])
+  }, [listPasskeys, neverKey])
 
   async function create() {
     setBusy(true)
@@ -50,6 +62,7 @@ export default function PasskeyPrompt() {
   }
 
   function close() {
+    if (never) writeFlag(localStorage, neverKey)
     setOpen(false)
     releasePromptSlot()
   }
@@ -70,6 +83,17 @@ export default function PasskeyPrompt() {
             Sign in faster and more securely next time with Face ID, Touch ID, or
             your device PIN — no password to remember.
           </Text>
+          <FormControl display="flex" alignItems="center" mt={5}>
+            <Switch id="passkey-never" isChecked={never} onChange={(e) => setNever(e.target.checked)} />
+            <FormLabel htmlFor="passkey-never" mb={0} ml={3} fontWeight="500">
+              Don’t remind me again
+            </FormLabel>
+          </FormControl>
+          {never && (
+            <Text fontSize="xs" color="text.muted" mt={2}>
+              You can still add a passkey anytime in Settings → Security.
+            </Text>
+          )}
         </ModalBody>
         <ModalFooter gap={2}>
           <Button variant="ghost" onClick={close}>Not now</Button>
