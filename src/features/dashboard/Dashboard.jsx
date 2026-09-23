@@ -4,10 +4,9 @@ import {
   SimpleGrid, Card, CardBody, Stat, StatLabel, StatNumber, StatHelpText,
   Box, Text, Stack, Center, Spinner, HStack, IconButton,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Button,
-  List, ListItem, Divider, Wrap, WrapItem,
+  List, ListItem, Divider,
 } from '@chakra-ui/react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { PieChart as PieIcon, Table as TableIcon, Repeat, ReceiptText } from 'lucide-react'
+import { ChartBarDecreasing, Table as TableIcon, Repeat, ReceiptText } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
 import { useTransactions, buildPeriods, oldestTransactionDate } from '../transactions/useData.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
@@ -21,20 +20,15 @@ import Paginator from '../../shared/ui/Paginator.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import CardHeader from '../../shared/ui/CardHeader.jsx'
 import RowAmount from '../../shared/ui/RowAmount.jsx'
-import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
+import { categoryBars } from './categoryBars.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
-
-// A category's colour key, shared by the pie legend and the table view.
-const Swatch = ({ color }) => <Box boxSize="10px" borderRadius="sm" bg={color} flexShrink={0} />
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { baseCurrency } = useProfile()
   const { rules } = useRecurring()
-  const chart = useChartTheme()
-  const seriesColor = (i) => chart.series[i % chart.series.length]
   const [oldest, setOldest] = useState(null)
   const periods = useMemo(() => buildPeriods(oldest), [oldest])
   // Default to this month; its token is stable and always present in the list.
@@ -47,7 +41,7 @@ export default function Dashboard() {
   // Recheck whenever the (live) transaction rows change, so importing older
   // data extends the period dropdown without a reload. Cheap: 1-row query.
   useEffect(() => { oldestTransactionDate().then(setOldest) }, [rows])
-  const [view, setView] = useState(() => localStorage.getItem(VIEW_KEY) || 'pie')
+  const [view, setView] = useState(() => localStorage.getItem(VIEW_KEY) || 'chart')
   function chooseView(v) { setView(v); localStorage.setItem(VIEW_KEY, v) }
 
   // Recurring is forward-looking, so it ignores the historical period filter:
@@ -72,6 +66,7 @@ export default function Dashboard() {
       .sort((a, b) => b.value - a.value)
     return { spent, earned, byCategory, expenses }
   }, [rows, baseCurrency])
+  const bars = useMemo(() => categoryBars(byCategory), [byCategory])
 
   // Fold not-yet-charged recurring into the period's spend/income projection,
   // but only for periods that are still ongoing (end today or later). Past
@@ -132,13 +127,13 @@ export default function Dashboard() {
       </SimpleGrid>
 
       <Card><CardBody>
-        <CardHeader icon={PieIcon} title="Spending by category" action={
+        <CardHeader icon={ChartBarDecreasing} title="Spending by category" action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
             <CkTooltip label="Chart">
-              <IconButton aria-label="Chart view" size="xs" icon={<PieIcon size={15} />}
-                variant={view === 'pie' ? 'solid' : 'ghost'}
-                colorScheme={view === 'pie' ? 'brand' : 'gray'}
-                onClick={() => chooseView('pie')} />
+              <IconButton aria-label="Chart view" size="xs" icon={<ChartBarDecreasing size={15} />}
+                variant={view !== 'table' ? 'solid' : 'ghost'}
+                colorScheme={view !== 'table' ? 'brand' : 'gray'}
+                onClick={() => chooseView('chart')} />
             </CkTooltip>
             <CkTooltip label="Table">
               <IconButton aria-label="Table view" size="xs" icon={<TableIcon size={15} />}
@@ -152,32 +147,7 @@ export default function Dashboard() {
           <Center py={8}><Spinner color="brand.500" /></Center>
         ) : byCategory.length === 0 ? (
           <Text color="text.muted">No expenses in this period.</Text>
-        ) : view === 'pie' ? (
-          <>
-            <Box h="220px">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={byCategory} dataKey="value" nameKey="name" innerRadius={58} outerRadius={96}
-                    paddingAngle={2} stroke={chart.surface}>
-                    {byCategory.map((_, i) => <Cell key={i} fill={seriesColor(i)} />)}
-                  </Pie>
-                  <Tooltip formatter={(v) => formatMoney(v, baseCurrency)} {...chart.tooltip} />
-                </PieChart>
-              </ResponsiveContainer>
-            </Box>
-            {/* Our own legend below the chart rather than Recharts' <Legend>, which
-                sits inside the fixed-height box and overlaps the donut once it
-                wraps on a phone. */}
-            <Wrap spacingX={4} spacingY={1.5} justify="center" mt={3}>
-              {byCategory.map((c, i) => (
-                <WrapItem key={c.name} alignItems="center" gap={1.5}>
-                  <Swatch color={seriesColor(i)} />
-                  <Text fontSize="xs" color="text.muted">{c.name}</Text>
-                </WrapItem>
-              ))}
-            </Wrap>
-          </>
-        ) : (
+        ) : view === 'table' ? (
           <Table size="sm" variant="simple">
             <Thead>
               <Tr>
@@ -187,20 +157,36 @@ export default function Dashboard() {
               </Tr>
             </Thead>
             <Tbody>
-              {byCategory.map((c, i) => (
+              {bars.map((c) => (
                 <Tr key={c.name}>
-                  <Td>
-                    <HStack spacing={2}>
-                      <Swatch color={seriesColor(i)} />
-                      <Text>{c.name}</Text>
-                    </HStack>
-                  </Td>
+                  <Td>{c.name}</Td>
                   <Td isNumeric fontWeight="600">{formatMoney(c.value, baseCurrency)}</Td>
-                  <Td isNumeric color="text.muted">{spent ? Math.round((c.value / spent) * 100) : 0}%</Td>
+                  <Td isNumeric color="text.muted">{c.share}%</Td>
                 </Tr>
               ))}
             </Tbody>
           </Table>
+        ) : (
+          // Ranked bars: one hue (identity is the label, not a colour), each row
+          // labelled with its amount and share, so nothing depends on hover.
+          <Stack spacing={3} role="list" aria-label="Spending by category">
+            {bars.map((c) => (
+              <Box key={c.name} role="listitem"
+                title={`${c.name}: ${formatMoney(c.value, baseCurrency)} (${c.share}%)`}>
+                <HStack justify="space-between" spacing={3} mb={1.5}>
+                  <Text fontSize="sm" fontWeight="600" noOfLines={1} minW={0}>{c.name}</Text>
+                  <Text fontSize="sm" whiteSpace="nowrap">
+                    <Text as="span" fontWeight="700">{formatMoney(c.value, baseCurrency)}</Text>
+                    <Text as="span" color="text.muted"> · {c.share}%</Text>
+                  </Text>
+                </HStack>
+                <Box h="8px" bg="bg.subtle" borderRadius="full" overflow="hidden">
+                  <Box h="full" w={`${Math.max(c.ratio * 100, 2)}%`} bg="brand.500"
+                    _dark={{ bg: 'brand.400' }} borderRadius="full" />
+                </Box>
+              </Box>
+            ))}
+          </Stack>
         )}
       </CardBody></Card>
 
