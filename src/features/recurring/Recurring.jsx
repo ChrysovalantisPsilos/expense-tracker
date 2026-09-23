@@ -1,28 +1,23 @@
 import { useMemo, useState } from 'react'
 import {
-  Stack, HStack, Text, Button, Center, Spinner,
+  Stack, Text, Button, Center, Spinner,
   List, ListItem, Switch, Tag, SimpleGrid, Flex, Box, Modal, ModalOverlay, ModalContent, ModalHeader,
-  ModalBody, ModalFooter, FormControl, FormLabel, Input, Select, useToast,
-  useDisclosure, NumberInput, NumberInputField,
+  ModalBody, ModalFooter, useToast,
+  useDisclosure,
 } from '@chakra-ui/react'
 import { Plus, Pencil, Trash2, Repeat, Bell, Pause, Play } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
-import MoneyInput from '../../shared/ui/MoneyInput.jsx'
-import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { useCategories } from '../transactions/useData.js'
-import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
-import { today, shortDate } from '../../shared/lib/dates.js'
-import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { enablePush } from '../../shared/lib/push.js'
+import { formatMoney } from '../../shared/lib/currency.js'
+import { shortDate } from '../../shared/lib/dates.js'
 import {
-  useRecurring, monthlyMinor, frequencyLabel, FREQUENCIES,
-  saveRecurring, setRecurringActive, deleteRecurring,
+  useRecurring, monthlyMinor, frequencyLabel, setRecurringActive, deleteRecurring,
 } from './recurring.js'
+import RecurringForm from './RecurringForm.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 
 export default function Recurring() {
@@ -153,160 +148,5 @@ function RuleMeta({ rule: r }) {
       )}
       {!r.is_active && <Tag size="sm" borderRadius="full">Paused</Tag>}
     </Flex>
-  )
-}
-
-function RecurringForm({ rule, baseCurrency, onClose, onSaved }) {
-  const toast = useToast()
-  const isEdit = !!rule
-  const [kind, setKind] = useState(rule?.kind ?? 'expense')
-  const { categories } = useCategories(kind)
-  const [amount, setAmount] = useState(rule ? String(fromMinor(rule.amount_minor, rule.currency)) : '')
-  const [currency] = useState(rule?.currency ?? baseCurrency)
-  const [categoryId, setCategoryId] = useState(rule?.category_id ?? '')
-  const [description, setDescription] = useState(rule?.description ?? '')
-  const [frequency, setFrequency] = useState(rule?.frequency ?? 'monthly')
-  const [intervalN, setIntervalN] = useState(String(rule?.interval_n ?? 1))
-  const [nextRun, setNextRun] = useState(rule?.next_run ?? today())
-  const [endDate, setEndDate] = useState(rule?.end_date ?? '')
-  const [remind, setRemind] = useState(rule?.remind_days_before != null)
-  const [remindDays, setRemindDays] = useState(String(rule?.remind_days_before ?? 3))
-  const { busy, run } = useAsyncSubmit()
-
-  // Enrol this device for push the moment reminders are switched on — the
-  // flip is the user gesture iOS needs for the permission prompt. A refusal
-  // isn't fatal: reminders still land in the app's notification bell.
-  async function toggleRemind(e) {
-    const on = e.target.checked
-    setRemind(on)
-    if (!on) return
-    try {
-      const status = await enablePush()
-      if (status === 'denied') {
-        toast({ title: 'Push blocked', status: 'info',
-          description: 'Reminders will show in the app’s notification bell instead.' })
-      } else if (status === 'unsupported') {
-        toast({ title: 'Push isn’t available in this browser', status: 'info',
-          description: 'On iPhone, install Budgeer to your home screen first. Reminders will still show in the bell.' })
-      }
-    } catch {
-      toast({ title: 'Couldn’t enable push on this device', status: 'warning',
-        description: 'Reminders will show in the app’s notification bell.' })
-    }
-  }
-
-  async function submit(e) {
-    e.preventDefault()
-    if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
-    await run(async () => {
-      await saveRecurring({
-        id: rule?.id,
-        kind,
-        category_id: categoryId || null,
-        amount_minor: toMinor(amount, currency),
-        currency,
-        description: description || null,
-        frequency,
-        interval_n: Math.max(1, parseInt(intervalN, 10) || 1),
-        next_run: nextRun,
-        end_date: endDate || null,
-        is_active: rule?.is_active ?? true,
-        remind_days_before: remind
-          ? Math.min(60, Math.max(1, parseInt(remindDays, 10) || 3))
-          : null,
-      })
-      toast({ title: isEdit ? 'Recurring entry updated' : 'Recurring entry added', status: 'success' })
-      onSaved()
-    })
-  }
-
-  return (
-    <Modal isOpen onClose={onClose} isCentered scrollBehavior="inside">
-      <ModalOverlay />
-      <ModalContent as="form" onSubmit={submit} mx={4}>
-        <ModalHeader>{isEdit ? 'Edit recurring entry' : 'New recurring entry'}</ModalHeader>
-        <ModalBody>
-          <Stack spacing={4}>
-            <HStack spacing={2}>
-              <Button flex="1" variant={kind === 'expense' ? 'solid' : 'outline'}
-                colorScheme={kind === 'expense' ? 'brand' : 'gray'}
-                onClick={() => { setKind('expense'); setCategoryId('') }}>Expense</Button>
-              <Button flex="1" variant={kind === 'income' ? 'solid' : 'outline'}
-                colorScheme={kind === 'income' ? 'brand' : 'gray'}
-                onClick={() => { setKind('income'); setCategoryId('') }}>Income</Button>
-            </HStack>
-
-            <FormControl isRequired>
-              <FormLabel>Description</FormLabel>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)}
-                placeholder={kind === 'income' ? 'Salary' : 'Netflix, rent, gym…'} />
-            </FormControl>
-
-            <FormControl isRequired>
-              <FormLabel>Amount ({currency})</FormLabel>
-              <MoneyInput value={amount} onChange={setAmount} />
-            </FormControl>
-
-            <FormControl>
-              <FormLabel>Category</FormLabel>
-              <Select placeholder="Uncategorized" value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </Select>
-            </FormControl>
-
-            <HStack align="end">
-              <FormControl maxW="120px">
-                <FormLabel>Every</FormLabel>
-                <NumberInput min={1} value={intervalN} onChange={setIntervalN}>
-                  <NumberInputField />
-                </NumberInput>
-              </FormControl>
-              <FormControl>
-                <FormLabel>Frequency</FormLabel>
-                <Select value={frequency} onChange={(e) => setFrequency(e.target.value)}>
-                  {FREQUENCIES.map((f) => (
-                    <option key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</option>
-                  ))}
-                </Select>
-              </FormControl>
-            </HStack>
-
-            <FormControl>
-              <FormLabel>Next charge</FormLabel>
-              <Input type="date" value={nextRun} onChange={(e) => setNextRun(e.target.value)} />
-            </FormControl>
-            <FormControl>
-              <OptionalDate label="Set an end date" value={endDate} onChange={setEndDate} />
-            </FormControl>
-
-            <FormControl>
-              <HStack justify="space-between">
-                <FormLabel mb={0} htmlFor="remind-switch">
-                  <HStack spacing={2}>
-                    <Bell size={15} />
-                    <Text>Remind me before each charge</Text>
-                  </HStack>
-                </FormLabel>
-                <Switch id="remind-switch" isChecked={remind} onChange={toggleRemind} />
-              </HStack>
-              {remind && (
-                <HStack mt={3} spacing={2}>
-                  <NumberInput min={1} max={60} maxW="90px" value={remindDays}
-                    onChange={setRemindDays}>
-                    <NumberInputField />
-                  </NumberInput>
-                  <Text fontSize="sm" color="text.muted">days before, via notification</Text>
-                </HStack>
-              )}
-            </FormControl>
-          </Stack>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" isLoading={busy}>{isEdit ? 'Save' : 'Add'}</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
   )
 }

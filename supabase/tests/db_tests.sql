@@ -2599,11 +2599,94 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 48. 0065: "Make recurring". A rule made from a transaction links that row
+--     (only the caller's own personal row, once, atomically with the rule);
+--     materialised rows carry their rule; my_transactions reports it; deleting
+--     the rule unlinks the rows but keeps them.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; t1 uuid; t2 uuid; tmirror uuid; rid uuid; rid2 uuid;
+        n int; r record; cu uuid := gen_random_uuid(); cu2 uuid := gen_random_uuid(); cu3 uuid := gen_random_uuid();
+begin
+  begin
+    u1 := pg_temp.zz_user('mr1');
+    u2 := pg_temp.zz_user('mr2');
+    insert into public.groups (name, owner_id, currency) values ('ZZT mr', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'A', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'B') returning id into m2;
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'client_uuid', cu2, 'amount_minor', 700, 'currency', 'EUR', 'spent_at', current_date - 3)));
+    execute 'reset role';
+    select id into t2 from public.transactions where client_uuid = cu2;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'client_uuid', cu, 'amount_minor', 85000, 'currency', 'EUR', 'description', 'ZZ rent',
+      'spent_at', current_date - 40),
+      jsonb_build_object('client_uuid', cu3, 'amount_minor', 999, 'currency', 'EUR', 'spent_at', current_date)));
+    perform public.create_group_expense_v2(gid, 'ZZ shared', 1000, 'EUR', m1, current_date, array[m1, m2], null, 'equal');
+    execute 'reset role';
+    select id into t1 from public.transactions where client_uuid = cu;
+    select id into tmirror from public.transactions where user_id = u1 and group_expense_id is not null;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    rid := public.save_recurring_rule(null, jsonb_build_object('amount_minor', 85000, 'currency', 'EUR',
+      'description', 'ZZ rent', 'frequency', 'monthly', 'next_run', current_date - 10,
+      'source_transaction_id', t1));
+    -- The form's Repeat switch links by client_uuid (save_transactions returns a count).
+    rid2 := public.save_recurring_rule(null, jsonb_build_object('amount_minor', 999, 'currency', 'EUR',
+      'frequency', 'weekly', 'next_run', current_date + 7, 'source_client_uuid', cu3));
+    begin
+      perform public.save_recurring_rule(null, jsonb_build_object('amount_minor', 1, 'currency', 'EUR',
+        'next_run', current_date + 30, 'source_client_uuid', cu2));
+      raise exception 'GUARD_MISSED: linked another user''s client_uuid';
+    exception when others then if sqlerrm not like '%can''t be made recurring%' then raise; end if; end;
+    foreach rid2 in array array[t1, t2, tmirror] loop
+      begin
+        perform public.save_recurring_rule(null, jsonb_build_object('amount_minor', 1, 'currency', 'EUR',
+          'next_run', current_date + 30, 'source_transaction_id', rid2));
+        raise exception 'GUARD_MISSED: linked %', rid2;
+      exception when others then if sqlerrm not like '%can''t be made recurring%' then raise; end if; end;
+    end loop;
+    execute 'reset role';
+    select count(*) into n from public.recurring_rules where user_id = u1;
+    if n <> 2 then raise exception 'a refused link left a rule behind (% rules)', n; end if;
+    select count(*) into n from public.transactions where client_uuid = cu3 and recurring_rule_id is not null;
+    if n <> 1 then raise exception 'client_uuid source not linked'; end if;
+    select recurring_rule_id into r from public.transactions where id = t1;
+    if r.recurring_rule_id is distinct from rid then raise exception 'source not linked'; end if;
+    select count(*) into n from public.transactions where id in (t2, tmirror) and recurring_rule_id is not null;
+    if n <> 0 then raise exception 'another user''s row or a group share got linked'; end if;
+    perform public.materialize_recurring_rules();
+    select count(*) into n from public.transactions where user_id = u1 and recurring_rule_id = rid and id <> t1;
+    if n <> 1 then raise exception 'materialised rows not stamped with their rule (%)', n; end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select * into r from public.my_transactions() t where t.id = t1;
+    if r.recurring_rule_id is distinct from rid or r.recurring ->> 'frequency' <> 'monthly' then
+      raise exception 'my_transactions recurring = %', r.recurring;
+    end if;
+    delete from public.recurring_rules where id = rid;
+    execute 'reset role';
+    select count(*) into n from public.transactions where user_id = u1 and group_expense_id is null;
+    if n <> 3 then raise exception 'rule delete removed rows (% left)', n; end if;
+    select count(*) into n from public.transactions where recurring_rule_id = rid;
+    if n <> 0 then raise exception 'rows still linked to a deleted rule'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: make recurring links the source row; materialised rows carry their rule';
+    else update _t set fails = fails + 1; raise notice 'FAIL: make recurring — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 48; f int; p int;  -- tests 1–47 + B-0059
+declare expected_tests constant int := 49; f int; p int;  -- tests 1–48 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

@@ -53,3 +53,70 @@ test('expectedInWindow: income vs expense split', () => {
   ]
   assert.deepEqual(expectedInWindow(rules, '2026-07-15', '2026-07-31'), { expense: 800, income: 200000 })
 })
+
+// ---- Make recurring: next charge one period after the transaction ----------
+import { nextRunAfter, ruleFromTransaction, canMakeRecurring } from '../src/features/recurring/recurringMath.js'
+
+test('nextRunAfter: one period later, as the SQL materializer steps', () => {
+  assert.equal(nextRunAfter('2026-09-01', 'monthly'), '2026-10-01') // rent on the 1st
+  assert.equal(nextRunAfter('2026-09-01', 'weekly'), '2026-09-08')
+  assert.equal(nextRunAfter('2026-12-28', 'weekly'), '2027-01-04') // across a year
+  assert.equal(nextRunAfter('2026-09-30', 'daily'), '2026-10-01')
+  assert.equal(nextRunAfter('2026-09-01', 'yearly'), '2027-09-01')
+  assert.equal(nextRunAfter('2026-09-15', 'weekly', 2), '2026-09-29')
+  assert.equal(nextRunAfter('2026-11-30', 'monthly', 3), '2027-02-28')
+})
+
+test('nextRunAfter: month ends clamp to the shorter month (Postgres date + interval)', () => {
+  assert.equal(nextRunAfter('2026-01-31', 'monthly'), '2026-02-28')
+  assert.equal(nextRunAfter('2028-01-31', 'monthly'), '2028-02-29') // leap year
+  assert.equal(nextRunAfter('2026-03-31', 'monthly'), '2026-04-30')
+  assert.equal(nextRunAfter('2026-08-31', 'monthly'), '2026-09-30')
+  assert.equal(nextRunAfter('2028-02-29', 'yearly'), '2029-02-28')
+  assert.equal(nextRunAfter('2027-02-28', 'yearly'), '2028-02-28')
+  assert.equal(nextRunAfter('2028-02-28', 'weekly'), '2028-03-06')
+})
+
+test('ruleFromTransaction: carries the entry over; next charge after its date', () => {
+  const t = {
+    id: 't1', kind: 'expense', amount_minor: 85000, currency: 'EUR', exchange_rate: 1,
+    category_id: 'c1', account_id: null, description: 'Rent', spent_at: '2026-09-01', notes: 'x',
+  }
+  assert.deepEqual(ruleFromTransaction(t, { frequency: 'monthly', interval_n: 1 }), {
+    kind: 'expense', amount_minor: 85000, currency: 'EUR', category_id: 'c1', account_id: null,
+    description: 'Rent', frequency: 'monthly', interval_n: 1, next_run: '2026-10-01',
+    source_transaction_id: 't1',
+  })
+  // A foreign-currency entry keeps its currency; no rate is stored on the rule.
+  const gbp = ruleFromTransaction({ ...t, currency: 'GBP', exchange_rate: 1.17, spent_at: '2026-01-31' })
+  assert.equal(gbp.currency, 'GBP')
+  assert.equal(gbp.next_run, '2026-02-28')
+  assert.ok(!('exchange_rate' in gbp))
+  // A just-saved entry (no id on the client yet) links through its client_uuid.
+  const fresh = ruleFromTransaction({ ...t, id: undefined, client_uuid: 'cu1' })
+  assert.equal(fresh.source_client_uuid, 'cu1')
+  assert.ok(!('source_transaction_id' in fresh))
+  assert.ok(!('source_client_uuid' in ruleFromTransaction({ ...t, id: undefined })))
+})
+
+test('canMakeRecurring: not group shares, not rows that already belong to a rule', () => {
+  assert.equal(canMakeRecurring({ id: 1 }), true)
+  assert.equal(canMakeRecurring({ id: 1, group_expense_id: 'g' }), false)
+  assert.equal(canMakeRecurring({ id: 1, recurring_rule_id: 'r' }), false)
+  assert.equal(canMakeRecurring(null), false)
+})
+
+test('stepping chains from the clamped date like the materializer: 31 Mar is not restored', () => {
+  const chain = (iso, f, k) => Array.from({ length: k }).reduce((acc) => [...acc, nextRunAfter(acc.at(-1), f)], [iso])
+  assert.deepEqual(chain('2026-01-31', 'monthly', 3), ['2026-01-31', '2026-02-28', '2026-03-28', '2026-04-28'])
+  assert.deepEqual(chain('2028-01-31', 'monthly', 2), ['2028-01-31', '2028-02-29', '2028-03-29'])
+  assert.deepEqual(chain('2024-02-29', 'yearly', 2), ['2024-02-29', '2025-02-28', '2026-02-28'])
+})
+
+test('expectedInWindow: month-end rules follow the same clamped chain', () => {
+  const rule = { is_active: true, kind: 'expense', amount_minor: 100, frequency: 'monthly', interval_n: 1, next_run: '2026-01-31' }
+  // Charges on 31 Jan, 28 Feb, 28 Mar: 28 Mar is in March's window, 31 Mar is not a charge.
+  assert.deepEqual(expectedInWindow([rule], '2026-03-01', '2026-03-31'), { expense: 100, income: 0 })
+  assert.deepEqual(expectedInWindow([rule], '2026-03-29', '2026-03-31'), { expense: 0, income: 0 })
+  assert.deepEqual(expectedInWindow([rule], '2026-02-01', '2026-02-28'), { expense: 100, income: 0 })
+})

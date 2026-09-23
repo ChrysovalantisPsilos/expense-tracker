@@ -17,16 +17,54 @@ export function frequencyLabel({ frequency, interval_n = 1 }) {
   return interval_n > 1 ? `every ${interval_n} ${unit}s` : `every ${unit}`
 }
 
-// Advance a date by one recurrence step (mirrors the SQL materializer).
-// Internal helper of this module (the public API is the higher-level functions).
-function stepDate(d, freq, n) {
-  const x = new Date(d)
-  if (freq === 'daily') x.setDate(x.getDate() + n)
-  else if (freq === 'weekly') x.setDate(x.getDate() + n * 7)
-  else if (freq === 'yearly') x.setFullYear(x.getFullYear() + n)
-  else x.setMonth(x.getMonth() + n) // monthly (default)
-  return x
+// The date one recurrence step after `iso` ('YYYY-MM-DD'), exactly as the SQL
+// materializer steps (run_date + make_interval): days/weeks add days; months
+// and years keep the day of the month, clamped to the target month's last day
+// — 31 Jan + 1 month = 28 Feb (29 in a leap year), 29 Feb + 1 year = 28 Feb.
+// Each step starts from the previous (clamped) date, like the materializer,
+// so 31 Jan → 28 Feb → 28 Mar: the 31st is not restored. Pure calendar
+// arithmetic on UTC dates, so no time zone can shift the day.
+export function nextRunAfter(iso, frequency, n = 1) {
+  const [y, m, d] = iso.split('-').map(Number)
+  const step = Math.max(1, Number(n) || 1)
+  let date
+  if (frequency === 'daily' || frequency === 'weekly') {
+    date = new Date(Date.UTC(y, m - 1, d + step * (frequency === 'weekly' ? 7 : 1)))
+  } else {
+    const months = frequency === 'yearly' ? step * 12 : step // monthly (default)
+    const first = new Date(Date.UTC(y, m - 1 + months, 1))
+    const lastDay = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate()
+    date = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth(), Math.min(d, lastDay)))
+  }
+  return date.toISOString().slice(0, 10)
 }
+
+// A new recurring rule made from a transaction ("Make recurring" / the form's
+// Repeat switch): same kind, amount, currency, category, account and
+// description; the next charge is one period after the transaction's date, so
+// the transaction itself is the first occurrence. The server links the two
+// through `source_transaction_id` (a listed row) or `source_client_uuid` (an
+// entry just saved, whose id the client doesn't have). The rule stores no
+// rate — each charge gets the ECB rate of its own date when it's created.
+export function ruleFromTransaction(t, { frequency = 'monthly', interval_n: n = 1 } = {}) {
+  return {
+    kind: t.kind ?? 'expense',
+    amount_minor: Number(t.amount_minor),
+    currency: t.currency,
+    category_id: t.category_id ?? null,
+    account_id: t.account_id ?? null,
+    description: t.description ?? null,
+    frequency,
+    interval_n: Math.max(1, Number(n) || 1),
+    next_run: nextRunAfter(t.spent_at, frequency, n),
+    ...(t.id ? { source_transaction_id: t.id }
+      : t.client_uuid ? { source_client_uuid: t.client_uuid } : {}),
+  }
+}
+
+// Can this transaction be made recurring? Not a mirrored group share (it's
+// edited in its group) and not a row that already belongs to a rule.
+export const canMakeRecurring = (t) => !!t && !t.group_expense_id && !t.recurring_rule_id
 
 // Sum of recurring charges expected to fall within [fromISO, toISO], split by
 // kind (minor units, in each rule's own currency). Used to fold not-yet-charged
@@ -36,21 +74,19 @@ function stepDate(d, freq, n) {
 // counting. Amounts are treated as base currency (rules carry no FX rate).
 export function expectedInWindow(rules, fromISO, toISO) {
   if (!fromISO || !toISO) return { expense: 0, income: 0 }
-  const from = new Date(fromISO)
-  const to = new Date(toISO)
   let expense = 0
   let income = 0
   for (const r of rules) {
     if (!r.is_active) continue
-    const end = r.end_date ? new Date(r.end_date) : null
-    let d = new Date(r.next_run)
+    // ISO dates compare as strings; each step clamps like the materializer.
+    let d = r.next_run
     let guard = 0
-    while (d <= to && (!end || d <= end) && guard < 500) {
-      if (d >= from) {
+    while (d <= toISO && (!r.end_date || d <= r.end_date) && guard < 500) {
+      if (d >= fromISO) {
         if (r.kind === 'income') income += r.amount_minor
         else expense += r.amount_minor
       }
-      d = stepDate(d, r.frequency, r.interval_n || 1)
+      d = nextRunAfter(d, r.frequency, r.interval_n || 1)
       guard += 1
     }
   }

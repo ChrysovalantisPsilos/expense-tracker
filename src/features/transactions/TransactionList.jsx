@@ -4,7 +4,7 @@ import {
   useDisclosure, Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody,
   ModalFooter, Button, Flex,
 } from '@chakra-ui/react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import TransactionForm from './TransactionForm.jsx'
@@ -13,10 +13,14 @@ import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
+import RecurringForm from '../recurring/RecurringForm.jsx'
+import { canMakeRecurring, frequencyLabel, ruleFromTransaction } from '../recurring/recurringMath.js'
 
 // Shared list of personal transactions with edit + delete.
 // Group-mirrored rows (group_expense_id set) are read-only here — they're
 // edited in the group — and show their group's tag under the title instead.
+// "Make recurring" turns a row into a recurring rule (next charge one period
+// after it); rows that belong to a rule say "Repeats every month".
 // On phones the row actions fold into a ⋯ menu.
 // Each row's income/expense styling follows its own `kind`, so the same
 // list renders every mode of the Transactions page (Expenses, Income, All).
@@ -26,6 +30,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
   const editModal = useDisclosure()
   const [editing, setEditing] = useState(null)
   const [removing, setRemoving] = useState(null)
+  const [repeating, setRepeating] = useState(null) // the row being made recurring
   const [busy, setBusy] = useState(false)
 
   function onEdited(updated) {
@@ -76,8 +81,10 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                     {r.rate_estimated && ' · est.'}
                   </>
                 )}
-                actionSlots={2} actions={shared ? [] : [
+                actionSlots={3} actions={shared ? [] : [
                   { label: 'Edit', icon: Pencil, onClick: () => { setEditing(r); editModal.onOpen() } },
+                  ...(canMakeRecurring(r)
+                    ? [{ label: 'Make recurring', icon: Repeat, onClick: () => setRepeating(r) }] : []),
                   { label: 'Delete', icon: Trash2, danger: true, onClick: () => setRemoving(r) },
                 ]} />
             </ListItem>
@@ -97,6 +104,12 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
           </ModalBody>
         </ModalContent>
       </Modal>
+
+      {repeating && (
+        <RecurringForm baseCurrency={baseCurrency}
+          initial={{ ...ruleFromTransaction(repeating), from_date: repeating.spent_at }}
+          onClose={() => setRepeating(null)} onSaved={() => { setRepeating(null); reload() }} />
+      )}
 
       {/* Delete confirm */}
       <Modal isOpen={!!removing} onClose={() => setRemoving(null)} isCentered>
@@ -135,6 +148,12 @@ function RowMeta({ row: r, shared }) {
         <Tag size="sm" colorScheme="brand" borderRadius="full" maxW="100%">
           <TagLabel noOfLines={1}>{groupLabel(r)}</TagLabel>
         </Tag>
+      )}
+      {r.recurring && (
+        <Text whiteSpace="nowrap" display="inline-flex" alignItems="center" gap={1}>
+          · <Repeat size={11} aria-hidden /> Repeats {frequencyLabel(r.recurring)}
+          {!r.recurring.is_active && ' (paused)'}
+        </Text>
       )}
     </Flex>
   )
