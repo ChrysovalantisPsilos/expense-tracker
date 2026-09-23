@@ -1,11 +1,11 @@
 import { HStack, Image, Text } from '@chakra-ui/react'
 
-// Budgeer logo: coin-with-a-nudge mark + wordmark. `showWord` toggles the text
+// Budgeer logo: a lowercase b whose bowl is a budget progress ring + wordmark. `showWord` toggles the text
 // (hidden when the sidebar is collapsed / on tight spaces).
 export default function Logo({ size = 32, showWord = true, ...props }) {
   return (
     <HStack spacing={2.5} {...props}>
-      <Image src="/budge-mark.svg" alt="Budgeer" boxSize={`${size}px`} />
+      <Image src="/budgeer-mark.svg" alt="Budgeer" boxSize={`${size}px`} />
       {showWord && (
         <Text
           fontFamily="heading"

@@ -140,7 +140,7 @@ only reports for now and doesn't fail the build.
 25. Appearance: Light/Dark/System each apply immediately; System follows the
     OS. The header moon/sun quick-toggle stays in sync with Settings → Appearance.
 26. **Icons**: on iOS, use Share → Add to Home Screen. The icon is the
-    coral coin on cream (`apple-touch-icon.png`), not a screenshot. On
+    coral-and-amber "b" ring mark on cream (`apple-touch-icon.png`), not a screenshot. On
     Android, the installed icon fills the adaptive mask without clipping
     (`pwa-512.png`, maskable).
 27. **Security headers**: on a Vercel preview, open DevTools → Console, then

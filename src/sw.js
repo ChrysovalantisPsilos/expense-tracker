@@ -62,8 +62,9 @@ self.addEventListener('push', (event) => {
   try { data = event.data?.json() ?? {} } catch { /* non-JSON push */ }
   event.waitUntil(self.registration.showNotification(data.title ?? 'Budgeer', {
     body: data.body ?? '',
-    icon: '/pwa-icon.svg',
-    badge: '/pwa-icon.svg',
+    icon: '/pwa-192.png',
+    // Android draws the badge from its alpha channel only: a white silhouette.
+    badge: '/pwa-badge.png',
     data: { url: data.url ?? '/' },
   }))
 })

@@ -53,7 +53,7 @@ export default defineConfig({
       filename: 'sw.js',
       registerType: 'prompt',
       // iOS ignores SVG touch icons, so the home-screen icon is a 180px PNG.
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['budgeer-mark.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Budgeer',
         short_name: 'Budgeer',
@@ -75,11 +75,12 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        // Social-preview card is only fetched by link scrapers, and the OCR
+        // Social-preview card is only fetched by link scrapers, the email logo
+        // only by mail clients, and the OCR
         // engine (~7 MB) only when someone scans — don't ship either to every
         // installed client's precache.
         // The xlsx parser worker (~500 KB) is only needed when importing a file.
-        globIgnores: ['og-image.png', `${OCR_ASSET_DIR}/**`, 'assets/sheetWorker-*.js'],
+        globIgnores: ['og-image.png', 'email-mark.png', `${OCR_ASSET_DIR}/**`, 'assets/sheetWorker-*.js'],
       },
     }),
   ],
