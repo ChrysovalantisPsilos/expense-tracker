@@ -1,6 +1,6 @@
 import { keyframes } from '@emotion/react'
 import { Box } from '@chakra-ui/react'
-import { MARK_ARCS, circumference } from './markGeometry.js'
+import { MARK, MARK_ARCS, circumference } from './markGeometry.js'
 
 // The error screens' and empty states' illustration: the Budgeer mark
 // (public/budgeer-mark.svg, a lowercase "b" whose bowl is a budget ring,
@@ -25,13 +25,21 @@ const C = {
   track: 'var(--chakra-colors-border-default)',
 }
 
-// Geometry (viewBox 200 × 170): a chunkier mark, ring resting on the ground
-// line at y 152, with the mark's own arcs (markGeometry.js).
-const RING = { cx: 100, cy: 118, r: 23, width: 22 }
-const CIRC = circumference(RING.r) // ≈ 144.5
+// Geometry (viewBox 200 × 170): the mark itself (markGeometry.js) scaled up,
+// ring centred at x 100 and resting on the ground line at y 152. Same
+// proportions as the logo, so the stem ends hidden inside the ring's band.
+const OUTER = 34 // the ring's outer radius here
+const S = OUTER / (MARK.ring.r + MARK.ring.width / 2)
+const RING = { cx: 100, cy: 152 - OUTER, r: MARK.ring.r * S, width: MARK.ring.width * S }
+const CIRC = circumference(RING.r)
 const [AMBER, CORAL] = [MARK_ARCS.amber, MARK_ARCS.coral]
   .map((arc) => arc.map((f) => f * CIRC)) // spans along the circumference, from 12 o'clock
-const STEM = { x: 66, y: 40, w: 22, h: 100 }
+const STEM = {
+  x: RING.cx + (MARK.stem.x - MARK.ring.cx) * S,
+  y: RING.cy + (MARK.stem.y - MARK.ring.cy) * S,
+  w: MARK.stem.w * S,
+  h: MARK.stem.h * S,
+}
 const STEM_BASE = `${STEM.x + STEM.w / 2}px ${STEM.y + STEM.h}px`
 const RING_CENTER = `${RING.cx}px ${RING.cy}px`
 
@@ -81,9 +89,9 @@ const dust = keyframes`
 // Each piece drifts out from the centre along its own middle angle.
 const PIECES = [
   { from: AMBER[0], to: AMBER[1], color: C.amber, spin: 10 },
-  { from: CORAL[0], to: 78, color: C.coral, spin: -8 },
-  { from: 78, to: 112, color: C.coral, spin: 6 },
-  { from: 112, to: CIRC, color: C.coral, spin: -10 },
+  { from: CORAL[0], to: CIRC * 0.54, color: C.coral, spin: -8 },
+  { from: CIRC * 0.54, to: CIRC * 0.775, color: C.coral, spin: 6 },
+  { from: CIRC * 0.775, to: CIRC, color: C.coral, spin: -10 },
 ].map((p) => {
   const mid = (((p.from + p.to) / 2) / CIRC) * 2 * Math.PI
   const d = 10
@@ -119,11 +127,10 @@ const twinkle = keyframes`
 `
 
 // ---- split: three slices ---------------------------------------------------
-// Equal thirds with a small gap between them, filling in turn. The first
-// (amber) starts at 7 o'clock, so the slice against the coral stem is amber
-// and the ring still reads apart from the stem.
+// Equal thirds with a small gap between them, filling in turn: amber at the
+// top right and coral last, against the stem, where the logo has them.
 const SLICE_GAP = 7
-const SLICE_START = (CIRC * 7) / 12
+const SLICE_START = CIRC * 0.94
 const SLICES = [C.amber, C.orange, C.coral].map((color, i) => ({
   from: SLICE_START + (i * CIRC) / 3 + SLICE_GAP / 2,
   to: SLICE_START + ((i + 1) * CIRC) / 3 - SLICE_GAP / 2,

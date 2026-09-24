@@ -2,7 +2,7 @@
 // budget ring. A coral stem, then the ring: an amber arc, a small gap, and a
 // coral arc round to the top again. Pure data, in the mark's own 48 × 48
 // viewBox: the loading ring (ringLoader.js) draws exactly this, and the error
-// screens' chunkier LooseRing takes its arcs.
+// screens' LooseRing scales it up.
 
 export const MARK = {
   size: 48,
