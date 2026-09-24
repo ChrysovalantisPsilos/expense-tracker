@@ -193,16 +193,15 @@ function ClosingCta({ onSignup }) {
     <Box as="section">
       <Container maxW="6xl" px={{ base: 4, md: 6 }} py={{ base: 14, md: 20 }}>
         <Stack align="center" textAlign="center" spacing={6} px={{ base: 6, md: 12 }} py={{ base: 12, md: 16 }}
-          borderRadius="2xl" bg="brand.500" color="white" boxShadow="lifted"
-          bgGradient="linear(to-br, brand.400, brand.600)">
+          borderRadius="2xl" bg="brand.50" borderWidth="1px" borderColor="brand.100"
+          _dark={{ bg: 'rgba(249, 93, 56, 0.10)', borderColor: 'rgba(249, 93, 56, 0.24)' }}>
           <Heading as="h2" fontSize={{ base: '2xl', md: '4xl' }} letterSpacing="-0.02em">
-            Start splitting — it’s free
+            Start splitting — <Box as="span" color="accent.fg">it’s free</Box>
           </Heading>
-          <Text fontSize={{ base: 'md', md: 'lg' }} opacity={0.9} maxW="md">
+          <Text fontSize={{ base: 'md', md: 'lg' }} color="text.muted" maxW="md">
             Create your first group and invite friends with a link. No limits, no ads.
           </Text>
-          <Button size="lg" bg="white" color="brand.700"
-            _hover={{ bg: 'brand.50' }} _active={{ bg: 'brand.100' }} onClick={onSignup}>
+          <Button size="lg" onClick={onSignup}>
             Get started
           </Button>
         </Stack>
