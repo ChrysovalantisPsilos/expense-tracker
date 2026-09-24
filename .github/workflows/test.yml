@@ -1,6 +1,6 @@
 # CI on every push/PR (Vercel waits for it only once Deployment Checks are on;
 # see README → Deploy):
-#   unit tests (in UTC and in an east-of-UTC zone, so date bugs that only
+#   unit tests (in UTC and in an east- and a west-of-UTC zone, so date bugs that only
 #   show up away from UTC can't hide — see the test:* scripts), lint,
 #   production build, and a dependency audit; plus a Deno lint of the
 #   Edge Functions (functions job).
