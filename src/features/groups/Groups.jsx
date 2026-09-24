@@ -70,6 +70,13 @@ export default function Groups() {
     }
   }
 
+  // The currency defaults to the base currency as it is now (the profile may
+  // still have been loading when the page mounted).
+  function openNew() {
+    setCurrency(baseCurrency)
+    onOpen()
+  }
+
   async function submit() {
     if (!name.trim()) return
     await run(async () => {
@@ -82,7 +89,7 @@ export default function Groups() {
   return (
     <Stack spacing={5}>
       <PageHeader title="Groups"
-        action={<PageAction icon={<Plus size={16} />} label="New group" onClick={onOpen} />} />
+        action={<PageAction icon={<Plus size={16} />} label="New group" onClick={openNew} />} />
 
       {invites.length > 0 && (
         <Stack spacing={2}>
@@ -122,7 +129,7 @@ export default function Groups() {
               Create a group for a trip or household, add the people in it, and
               start splitting shared expenses.
             </Text>
-            <Button leftIcon={<Plus size={18} />} onClick={onOpen} mt={2}>Create your first group</Button>
+            <Button leftIcon={<Plus size={18} />} onClick={openNew} mt={2}>Create your first group</Button>
           </Center>
         </Panel>
       ) : (

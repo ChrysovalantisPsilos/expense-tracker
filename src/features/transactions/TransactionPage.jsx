@@ -31,7 +31,7 @@ export default function TransactionPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const toast = useToast()
-  const { baseCurrency = 'EUR' } = useProfile()
+  const { baseCurrency, profile, loading: profileLoading } = useProfile()
   const passed = location.state?.row
   const known = id && passed?.id === id ? passed : null
   const { row, loading, error, reload } = useTransaction(id, known)
@@ -48,6 +48,9 @@ export default function TransactionPage() {
   const rule = row?.recurring_rule_id ? rules.find((r) => r.id === row.recurring_rule_id) ?? null : null
   // A linked entry waits for its rule, so the Repeat section opens on it.
   const waiting = loading || (!!row?.recurring_rule_id && rulesLoading)
+  // A new entry starts in the base currency, which the form reads once: wait
+  // for the profile rather than freeze the 'EUR' placeholder.
+  const profilePending = !profile && profileLoading
 
   async function remove() {
     setDeleting(true)
@@ -67,7 +70,7 @@ export default function TransactionPage() {
 
   let body
   if (!isNew && error) body = <Panel><QueryError error={error} onRetry={reload} what="this entry" /></Panel>
-  else if (!isNew && waiting) body = <RingLoader />
+  else if ((!isNew && waiting) || profilePending) body = <RingLoader />
   else if (!isNew && !row) {
     body = (
       <Panel>
@@ -96,7 +99,7 @@ export default function TransactionPage() {
     )
   } else {
     body = (
-      <TransactionForm key={row?.id ?? `new-${kind}`} kind={kind} baseCurrency={baseCurrency}
+      <TransactionForm key={row?.id ?? `new-${kind}-${baseCurrency}`} kind={kind} baseCurrency={baseCurrency}
         transaction={row} rule={rule} onSaved={back} onDelete={row ? () => setConfirming(true) : undefined} />
     )
   }
