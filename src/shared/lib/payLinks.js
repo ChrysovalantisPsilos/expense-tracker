@@ -38,3 +38,17 @@ export function paypalUrl(handle, amountMinor, currency) {
   const digits = Math.log10(minorFactor(currency))
   return `${base}/${(amount / minorFactor(currency)).toFixed(digits)}${currency}`
 }
+
+// The EPC069-12 ("SEPA QR") payload a banking app scans to pre-fill a EUR
+// transfer: payee name, IBAN, the amount (major units, 2 decimals) and a
+// remittance text. The settle-up QR is rebuilt whenever this string changes.
+export function sepaQrPayload({ name, iban, amountMinor, reference }) {
+  return [
+    'BCD', '002', '1', 'SCT', '',
+    (name || 'Payee').slice(0, 70),
+    iban,
+    `EUR${(Math.round(Number(amountMinor)) / 100).toFixed(2)}`,
+    '', '',
+    String(reference ?? '').slice(0, 140),
+  ].join('\n')
+}

@@ -4,7 +4,7 @@ import {
 } from '@chakra-ui/react'
 import { ExternalLink, QrCode, Copy } from 'lucide-react'
 import { memberPaymentInfo } from './groups.js'
-import { revolutUrl, paypalUrl } from '../../shared/lib/payLinks.js'
+import { revolutUrl, paypalUrl, sepaQrPayload } from '../../shared/lib/payLinks.js'
 
 // One-tap ways to actually pay a co-member the settle-up amount, driven by
 // the payment details they saved in Settings → Account → Getting paid (readable to
@@ -15,7 +15,7 @@ import { revolutUrl, paypalUrl } from '../../shared/lib/payLinks.js'
 export default function PayShortcuts({ member, amountMinor, currency, groupName }) {
   const toast = useToast()
   const [info, setInfo] = useState(null)
-  const [qr, setQr] = useState(null)
+  const [qr, setQr] = useState(null) // { payload, url }
   const [showQr, setShowQr] = useState(false)
 
   useEffect(() => {
@@ -29,34 +29,34 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
   }, [member?.id, member?.user_id])
 
   const iban = info?.payment_iban
+  const eur = currency === 'EUR'
+  const amountStr = (amountMinor / 100).toFixed(2)
+  // The QR belongs to one payload: a new amount (or payee) builds a new one,
+  // so a stale code is never shown.
+  const payload = iban && eur ? sepaQrPayload({
+    name: member?.display_name, iban, amountMinor, reference: `Budgeer settle-up · ${groupName ?? ''}`,
+  }) : null
+
+  useEffect(() => {
+    if (!showQr || !payload || qr?.payload === payload) return
+    let active = true
+    // The QR encoder is only fetched the first time someone asks for one.
+    import('qrcode')
+      .then(({ default: QRCode }) => QRCode.toDataURL(payload, { margin: 1, width: 220 }))
+      .then((url) => { if (active) setQr({ payload, url }) })
+      .catch(() => {
+        if (!active) return
+        setShowQr(false)
+        toast({ title: 'Couldn’t build the QR code', status: 'error' })
+      })
+    return () => { active = false }
+  }, [showQr, payload, qr?.payload, toast])
+
   const revolut = revolutUrl(info?.payment_revolut, amountMinor, currency)
   const paypal = paypalUrl(info?.payment_paypal, amountMinor, currency)
   if (!member?.user_id || (!iban && !revolut && !paypal)) return null
 
-  const eur = currency === 'EUR'
-  const amountStr = (amountMinor / 100).toFixed(2)
-
-  async function toggleQr() {
-    if (showQr) { setShowQr(false); return }
-    try {
-      if (!qr) {
-        const payload = [
-          'BCD', '002', '1', 'SCT', '',
-          (member.display_name || 'Payee').slice(0, 70),
-          iban,
-          `EUR${amountStr}`,
-          '', '',
-          `Budgeer settle-up · ${groupName ?? ''}`.slice(0, 140),
-        ].join('\n')
-        // The QR encoder is only fetched the first time someone asks for one.
-        const { default: QRCode } = await import('qrcode')
-        setQr(await QRCode.toDataURL(payload, { margin: 1, width: 220 }))
-      }
-      setShowQr(true)
-    } catch {
-      toast({ title: 'Couldn’t build the QR code', status: 'error' })
-    }
-  }
+  const qrUrl = showQr && qr?.payload === payload ? qr.url : null
 
   async function copyIban() {
     try {
@@ -85,8 +85,8 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
             PayPal
           </Button>
         )}
-        {iban && eur && (
-          <Button size="sm" variant="outline" leftIcon={<QrCode size={14} />} onClick={toggleQr}>
+        {payload && (
+          <Button size="sm" variant="outline" leftIcon={<QrCode size={14} />} onClick={() => setShowQr((v) => !v)}>
             {showQr ? 'Hide bank QR' : 'Bank QR'}
           </Button>
         )}
@@ -96,10 +96,10 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
           </Button>
         )}
       </HStack>
-      {showQr && qr && (
+      {qrUrl && (
         <Center pt={3} flexDirection="column">
           {/* White backing keeps the QR scannable in dark mode. */}
-          <Image src={qr} boxSize="200px" borderRadius="md" bg="white" p={2} alt="SEPA payment QR" />
+          <Image src={qrUrl} boxSize="200px" borderRadius="md" bg="white" p={2} alt="SEPA payment QR" />
           <Text fontSize="xs" color="text.muted" mt={2}>
             Scan with your banking app — payee and {amountStr} EUR are pre-filled.
           </Text>
