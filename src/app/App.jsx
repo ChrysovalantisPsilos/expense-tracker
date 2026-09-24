@@ -142,7 +142,7 @@ function AuthedRoutes() {
           <Route key={path} path={path} element={<Navigate to="/" replace />} />
         ))}
         {kitRoute}
-        <Route element={<AppShell />}>
+        <Route element={<AppShell hideAddExpense={!!tour} />}>
           <Route index element={<Dashboard />} />
           <Route path="recurring" element={<Recurring />} />
           <Route path="insights" element={<Insights />} />

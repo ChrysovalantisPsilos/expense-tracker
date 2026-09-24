@@ -6,7 +6,7 @@ import { isSignedInRoute, SIGNED_IN_ROUTES } from '../src/app/routes.js'
 // The <Route>s inside the AppShell layout route in App.jsx, as absolute paths.
 function shellRoutesInApp() {
   const src = readFileSync(new URL('../src/app/App.jsx', import.meta.url), 'utf8')
-  const start = src.indexOf('<Route element={<AppShell />}>')
+  const start = src.search(/<Route element=\{<AppShell\b[^>]*\/>\}>/)
   assert.ok(start > 0, 'AppShell layout route not found in App.jsx')
   // The shell's pages are all leaf routes, so its block ends at the first
   // closing tag. (Nesting routes there would break this parse, loudly.)

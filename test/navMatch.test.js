@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isNavActive } from '../src/app/navMatch.js'
+import { isNavActive, showsAddExpense } from '../src/app/navMatch.js'
 
 test('Home is active only on the root', () => {
   assert.equal(isNavActive('/', '/'), true)
@@ -45,4 +45,14 @@ test('exactly one bottom-bar tab is active on every routed page', () => {
     assert.equal(TABS.filter((t) => isNavActive(t, p)).length, 1, p)
   }
   assert.equal(isNavActive('/budgets', '/categories/c1'), true) // a category's page, with its budget
+})
+
+test('the floating Add expense button shows on the four main tabs only', () => {
+  for (const p of ['/', '/transactions', '/transactions/', '/groups', '/budgets']) {
+    assert.equal(showsAddExpense(p), true, p)
+  }
+  for (const p of ['/transactions/new', '/transactions/42', '/groups/1', '/settings', '/settings/account',
+    '/more', '/insights', '/recurring', '/import', '/categories/1', '/help']) {
+    assert.equal(showsAddExpense(p), false, p)
+  }
 })

@@ -1,12 +1,12 @@
 import { Suspense, useEffect, useState } from 'react'
 import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom'
 import {
-  Box, Flex, HStack, VStack, IconButton, Text, Spacer, Tooltip,
+  Box, Button, Flex, HStack, VStack, IconButton, Text, Spacer, Tooltip,
 } from '@chakra-ui/react'
 import UserAvatar from '../shared/ui/UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Users,
-  LogOut, Repeat, TrendingUp, MoreHorizontal, Settings,
+  LogOut, Repeat, TrendingUp, MoreHorizontal, Settings, Plus,
 } from 'lucide-react'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/ProfileProvider.jsx'
@@ -17,7 +17,7 @@ import ThemeToggle from '../shared/ui/ThemeToggle.jsx'
 import SiteSwitch from '../shared/ui/SiteSwitch.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
 import { useNotificationFeed } from '../features/notifications/notifications.js'
-import { isNavActive } from './navMatch.js'
+import { isNavActive, showsAddExpense } from './navMatch.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
@@ -84,12 +84,33 @@ function TabItem({ to, label, icon: Icon, tour }) {
   )
 }
 
-export default function AppShell() {
+// The phone's bottom bar is this tall above the safe-area inset; the
+// floating Add expense button sits just above it.
+const TAB_BAR_H = '60px'
+const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)'
+const NEW_EXPENSE = '/transactions/new'
+
+// Phone only: a round "Add expense" button above the bottom bar, on the main
+// tabs (navMatch.showsAddExpense). The shell hides it while the app tour runs
+// so it never sits over a highlighted stop.
+function AddExpenseFab() {
+  return (
+    <IconButton as={RouterLink} to={NEW_EXPENSE} aria-label="Add expense"
+      icon={<Plus size={26} strokeWidth={2.4} />} w="56px" h="56px" borderRadius="full"
+      position="fixed" zIndex={10} boxShadow="lg"
+      right="calc(16px + env(safe-area-inset-right, 0px))"
+      bottom={`calc(${TAB_BAR_H} + 16px + ${SAFE_BOTTOM})`}
+      display={{ base: 'inline-flex', md: 'none' }} />
+  )
+}
+
+export default function AppShell({ hideAddExpense = false }) {
   const { signOut } = useAuth()
   const { profile } = useProfile()
   // One live feed for both bells (mobile top bar + desktop header).
   const feed = useNotificationFeed()
   const location = useLocation()
+  const fab = !hideAddExpense && showsAddExpense(location.pathname)
   const [, setTick] = useState(0)
   useEffect(() => { setTick((n) => n + 1) }, [location])
 
@@ -103,6 +124,9 @@ export default function AppShell() {
         display={{ base: 'none', md: 'flex' }}
       >
         <Box px={2} py={2} mb={2}><Logo size={30} /></Box>
+        <Button as={RouterLink} to={NEW_EXPENSE} leftIcon={<Plus size={18} />} mb={3} mx={1}>
+          Add expense
+        </Button>
         {PRIMARY.map((n) => <SideItem key={n.to} {...n} />)}
         <Box h="1px" bg="border.default" my={2} mx={2} />
         <Flex direction="column" gap={1} data-tour="nav-more">
@@ -169,7 +193,7 @@ export default function AppShell() {
         </Flex>
 
         <Box as="main" flex="1" px={{ base: 4, md: 6 }} py={{ base: 4, md: 4 }}
-          pb={{ base: '92px', md: 8 }} maxW="900px" w="full" mx="auto">
+          pb={{ base: `calc(${fab ? '164px' : '92px'} + ${SAFE_BOTTOM})`, md: 8 }} maxW="900px" w="full" mx="auto">
           {/* Pages are lazy chunks: the shell stays put while one loads, and
               if one fails (a chunk gone after a deploy, offline, a crash) its
               error screen shows here, with the navigation still around it.
@@ -182,14 +206,17 @@ export default function AppShell() {
         </Box>
       </Flex>
 
-      {/* Mobile bottom nav */}
+      {/* Mobile bottom nav (it also holds the floating Add expense button,
+          so the button sits in a landmark) */}
       <HStack
-        as="nav" spacing={0} justify="space-around" px={2} py={1.5}
+        as="nav" spacing={0} justify="space-around" px={2} pt={1.5}
+        pb={`calc(6px + ${SAFE_BOTTOM})`}
         borderTopWidth="1px" borderColor="border.default" bg="bg.surface"
         position="fixed" bottom={0} left={0} right={0} zIndex={10}
         display={{ base: 'flex', md: 'none' }}
       >
         {MOBILE_NAV.map((n) => <TabItem key={n.to} {...n} />)}
+        {fab && <AddExpenseFab />}
       </HStack>
     </Flex>
   )

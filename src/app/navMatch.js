@@ -18,3 +18,11 @@ export function isNavActive(to, pathname) {
   if (to === '/') return pathname === '/'
   return (SECTIONS[to] ?? [to]).some((p) => under(pathname, p))
 }
+
+// The phone's floating "Add expense" button: only on the four main tabs'
+// own pages — never over a form, a detail page or Settings.
+const ADD_EXPENSE_PAGES = new Set(['/', '/transactions', '/groups', '/budgets'])
+
+export function showsAddExpense(pathname) {
+  return ADD_EXPENSE_PAGES.has(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
+}
