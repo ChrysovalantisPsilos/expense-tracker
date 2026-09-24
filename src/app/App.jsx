@@ -31,6 +31,8 @@ const TransactionPage = lazy(() => import('../features/transactions/TransactionP
 const Recurring = lazy(() => import('../features/recurring/Recurring.jsx'))
 const RecurringPage = lazy(() => import('../features/recurring/RecurringPage.jsx'))
 const Insights = lazy(() => import('../features/insights/Insights.jsx'))
+const GoalPage = lazy(() => import('../features/insights/GoalPage.jsx'))
+const AccountPage = lazy(() => import('../features/insights/AccountPage.jsx'))
 const More = lazy(() => import('./More.jsx'))
 const Groups = lazy(() => import('../features/groups/Groups.jsx'))
 const GroupDetail = lazy(() => import('../features/groups/GroupDetail.jsx'))
@@ -157,6 +159,10 @@ function AuthedRoutes() {
           <Route path="recurring/new" element={<RecurringPage />} />
           <Route path="recurring/:id" element={<RecurringPage />} />
           <Route path="insights" element={<Insights />} />
+          <Route path="insights/goals/new" element={<GoalPage />} />
+          <Route path="insights/goals/:id" element={<GoalPage />} />
+          <Route path="insights/accounts/new" element={<AccountPage />} />
+          <Route path="insights/accounts/:id" element={<AccountPage />} />
           <Route path="more" element={<More />} />
           <Route path="transactions" element={<LedgerPage />} />
           <Route path="transactions/new" element={<TransactionPage />} />

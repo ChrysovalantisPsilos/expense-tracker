@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
-  Stack, HStack, Text, Button, Box, Divider, Select, Input, SimpleGrid,
-  FormControl, FormLabel, useToast, useDisclosure,
+  Stack, HStack, Text, Button, Box, Divider, SimpleGrid, useToast,
 } from '@chakra-ui/react'
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, CartesianGrid,
@@ -9,9 +9,6 @@ import {
 import {
   Plus, Pencil, Trash2, PiggyBank, Landmark, CreditCard, ArrowUpRight, ArrowDownRight,
 } from 'lucide-react'
-import OptionalDate from '../../shared/ui/OptionalDate.jsx'
-import MoneyInput from '../../shared/ui/MoneyInput.jsx'
-import FormModal from '../../shared/ui/FormModal.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
@@ -28,12 +25,11 @@ import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Ske
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
 import { lastMonths, shortDate } from '../../shared/lib/dates.js'
-import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { formatMoney, toMinor, minorFactor, minorToInput } from '../../shared/lib/currency.js'
+import { formatMoney, minorFactor } from '../../shared/lib/currency.js'
 import { spendRows } from '../../shared/lib/spread.js'
 import {
-  useAccounts, saveAccount, deleteAccount,
+  useAccounts, deleteAccount,
   useGoals, saveGoal, deleteGoal,
 } from './insights.js'
 import {
@@ -86,7 +82,7 @@ export default function Insights() {
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}
       <IncomeCard loading={loading} failed={failed} trend={trend} money={money} />
       <NetWorthCard baseCurrency={baseCurrency} />
-      <GoalsCard baseCurrency={baseCurrency} />
+      <GoalsCard />
       <ReportsCard noEntries={oldest === null} />
     </Stack>
   )
@@ -275,8 +271,7 @@ function SpendDelta({ delta }) {
 function NetWorthCard({ baseCurrency }) {
   const { accounts, loading, error, reload } = useAccounts()
   const toast = useToast()
-  const modal = useDisclosure()
-  const [editing, setEditing] = useState(null)
+  const navigate = useNavigate()
 
   const { assets, liabilities, net } = useMemo(() => netWorth(accounts), [accounts])
 
@@ -291,7 +286,7 @@ function NetWorthCard({ baseCurrency }) {
   return (
     <Panel title="Net worth" action={
       <Button size="xs" leftIcon={<Plus size={14} />}
-        onClick={() => { setEditing(null); modal.onOpen() }}>Account</Button>
+        onClick={() => navigate('/insights/accounts/new')}>Account</Button>
     }>
       {error ? <QueryError error={error} onRetry={reload} what="your accounts" /> : loading ? <NetWorthSkeleton /> : (
         <Stack spacing={4}>
@@ -316,7 +311,7 @@ function NetWorthCard({ baseCurrency }) {
                     amount={`${debt ? '−' : ''}${formatMoney(acc.balance_minor, acc.currency)}`}
                     amountTone={debt ? 'negative' : 'default'}
                     actions={[
-                      { label: 'Edit', icon: Pencil, onClick: () => { setEditing(acc); modal.onOpen() } },
+                      { label: 'Edit', icon: Pencil, onClick: () => navigate(`/insights/accounts/${acc.id}`, { state: { account: acc } }) },
                       { label: 'Delete', icon: Trash2, onClick: () => remove(acc), danger: true },
                     ]} />
                 )
@@ -329,65 +324,15 @@ function NetWorthCard({ baseCurrency }) {
             tone={net < 0 ? 'negative' : 'default'} />
         </Stack>
       )}
-
-      {modal.isOpen && (
-        <AccountModal account={editing} baseCurrency={baseCurrency}
-          onClose={modal.onClose} onSaved={() => { modal.onClose(); reload() }} />
-      )}
     </Panel>
   )
 }
 
-function AccountModal({ account, baseCurrency, onClose, onSaved }) {
-  const toast = useToast()
-  const isEdit = !!account
-  const [name, setName] = useState(account?.name ?? '')
-  const [type, setType] = useState(account?.type ?? 'asset')
-  const [balance, setBalance] = useState(account ? minorToInput(account.balance_minor, account.currency) : '')
-  const [currency] = useState(account?.currency ?? baseCurrency)
-  const { busy, run } = useAsyncSubmit()
-
-  async function submit() {
-    if (!name.trim()) return toast({ title: 'Name it', status: 'warning' })
-    await run(async () => {
-      await saveAccount({
-        id: account?.id, name: name.trim(), type,
-        balance_minor: toMinor(Number(balance) || 0, currency), currency,
-      })
-      onSaved()
-    })
-  }
-
-  return (
-    <FormModal isOpen onClose={onClose} title={isEdit ? 'Edit account' : 'Add account'}
-      onSubmit={submit} busy={busy} submitLabel={isEdit ? 'Save' : 'Add'}>
-      <Stack spacing={4}>
-        <FormControl isRequired>
-          <FormLabel>Name</FormLabel>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Checking, Visa, Savings…" />
-        </FormControl>
-        <FormControl>
-          <FormLabel>Type</FormLabel>
-          <Select value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="asset">Asset (what you own)</option>
-            <option value="liability">Debt (what you owe)</option>
-          </Select>
-        </FormControl>
-        <FormControl isRequired>
-          <FormLabel>Balance ({currency})</FormLabel>
-          <MoneyInput allowNegative currency={currency} value={balance} onChange={setBalance} placeholder="0" />
-        </FormControl>
-      </Stack>
-    </FormModal>
-  )
-}
-
 // ── Goals ───────────────────────────────────────────────────────────────────
-function GoalsCard({ baseCurrency }) {
+function GoalsCard() {
   const { goals, loading, error, reload } = useGoals()
   const toast = useToast()
-  const modal = useDisclosure()
-  const [editing, setEditing] = useState(null)
+  const navigate = useNavigate()
 
   async function remove(g) {
     try { await deleteGoal(g.id); reload() }
@@ -410,7 +355,7 @@ function GoalsCard({ baseCurrency }) {
   return (
     <Panel title="Savings goals" action={
       <Button size="xs" leftIcon={<Plus size={14} />}
-        onClick={() => { setEditing(null); modal.onOpen() }}>Goal</Button>
+        onClick={() => navigate('/insights/goals/new')}>Goal</Button>
     }>
       {error ? <QueryError error={error} onRetry={reload} what="your goals" /> : loading ? (
         <SkeletonRegion><SkeletonRows count={2} progress spacing={5} /></SkeletonRegion>
@@ -428,7 +373,7 @@ function GoalsCard({ baseCurrency }) {
                   percent={pct} over={false} tone={done ? 'positive' : undefined}
                   valueLabel={done ? 'Reached 🎉' : `${pct}%`}
                   actions={[
-                    { label: 'Edit', icon: Pencil, onClick: () => { setEditing(g); modal.onOpen() } },
+                    { label: 'Edit', icon: Pencil, onClick: () => navigate(`/insights/goals/${g.id}`, { state: { goal: g } }) },
                     { label: 'Delete', icon: Trash2, onClick: () => remove(g), danger: true },
                   ]} />
                 {!done && (
@@ -446,60 +391,6 @@ function GoalsCard({ baseCurrency }) {
           })}
         </Stack>
       )}
-
-      {modal.isOpen && (
-        <GoalModal goal={editing} baseCurrency={baseCurrency}
-          onClose={modal.onClose} onSaved={() => { modal.onClose(); reload() }} />
-      )}
     </Panel>
-  )
-}
-
-function GoalModal({ goal, baseCurrency, onClose, onSaved }) {
-  const toast = useToast()
-  const isEdit = !!goal
-  const [name, setName] = useState(goal?.name ?? '')
-  const [target, setTarget] = useState(goal ? minorToInput(goal.target_minor, goal.currency) : '')
-  const [saved, setSaved] = useState(goal ? minorToInput(goal.saved_minor, goal.currency) : '0')
-  const [currency] = useState(goal?.currency ?? baseCurrency)
-  const [targetDate, setTargetDate] = useState(goal?.target_date ?? '')
-  const { busy, run } = useAsyncSubmit()
-
-  async function submit() {
-    if (!name.trim()) return toast({ title: 'Name it', status: 'warning' })
-    if (!target || Number(target) <= 0) return toast({ title: 'Set a target', status: 'warning' })
-    await run(async () => {
-      await saveGoal({
-        id: goal?.id, name: name.trim(),
-        target_minor: toMinor(target, currency), saved_minor: toMinor(saved || '0', currency),
-        currency, target_date: targetDate || null,
-      })
-      onSaved()
-    })
-  }
-
-  return (
-    <FormModal isOpen onClose={onClose} title={isEdit ? 'Edit goal' : 'New goal'}
-      onSubmit={submit} busy={busy} submitLabel={isEdit ? 'Save' : 'Add'}>
-      <Stack spacing={4}>
-        <FormControl isRequired>
-          <FormLabel>Name</FormLabel>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Emergency fund, holiday…" />
-        </FormControl>
-        <HStack>
-          <FormControl isRequired>
-            <FormLabel>Target ({currency})</FormLabel>
-            <MoneyInput currency={currency} value={target} onChange={setTarget} placeholder="0" />
-          </FormControl>
-          <FormControl>
-            <FormLabel>Saved so far</FormLabel>
-            <MoneyInput currency={currency} value={saved} onChange={setSaved} placeholder="0" />
-          </FormControl>
-        </HStack>
-        <FormControl>
-          <OptionalDate label="Set a target date" value={targetDate} onChange={setTargetDate} />
-        </FormControl>
-      </Stack>
-    </FormModal>
   )
 }
