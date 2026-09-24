@@ -7,8 +7,11 @@
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
 import { NetworkFirst } from 'workbox-strategies'
-import { ExpirationPlugin } from 'workbox-expiration'
+import { CacheExpiration, ExpirationPlugin } from 'workbox-expiration'
 import { offlineReadRpc, offlineReadKey, requestUser } from './shared/lib/offlineReads.js'
+import {
+  REST_CACHE, RPC_CACHE, REST_CACHE_LIMITS, RPC_CACHE_LIMITS, NETWORK_TIMEOUT_SECONDS, isLegacyRpcKey,
+} from './shared/lib/userDataCaches.js'
 
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
@@ -21,38 +24,57 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), {
   denylist: [/^\/assets\//, /^[^?]*\./],
 }))
 
-// Supabase REST reads: serve cached data while offline, refresh when online.
+// Supabase REST reads: serve cached data while offline (or when the network
+// hangs past the timeout), refresh when online. Both caches are wiped on any
+// sign-out (AuthProvider → clearUserDataCaches).
 registerRoute(
   ({ url }) => url.pathname.startsWith('/rest/v1'),
   new NetworkFirst({
-    cacheName: 'supabase-rest',
-    plugins: [new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 })],
+    cacheName: REST_CACHE,
+    networkTimeoutSeconds: NETWORK_TIMEOUT_SECONDS,
+    plugins: [new ExpirationPlugin(REST_CACHE_LIMITS)],
   }),
 )
 
 // Decrypting ledger reads are POST RPCs, which the route above (GET-only) can't
 // cache. Network first; on success file the response under a per-user,
-// per-arguments GET key in the same cache (so sign-out's cache wipe clears it);
-// offline, serve that copy. Only allowlisted read RPCs, never writes.
+// per-arguments GET key in their own bounded cache (a day, the newest N
+// entries); offline, serve that copy while it's fresh. Only allowlisted read
+// RPCs, never writes.
+const rpcExpiration = new CacheExpiration(RPC_CACHE, RPC_CACHE_LIMITS)
 registerRoute(
   ({ url, request }) => !!offlineReadRpc(request.method, url.pathname),
-  async ({ url, request }) => {
+  async ({ url, request, event }) => {
     const body = await request.clone().text()
     const who = requestUser(request.headers.get('authorization'))
     const key = offlineReadKey(url.origin, offlineReadRpc(request.method, url.pathname), body, who)
-    const cache = await caches.open('supabase-rest')
+    const cache = await caches.open(RPC_CACHE)
     try {
       const res = await fetch(request)
-      if (res.ok) await cache.put(key, res.clone())
+      if (res.ok) {
+        await cache.put(key, res.clone())
+        await rpcExpiration.updateTimestamp(key)
+        event?.waitUntil?.(rpcExpiration.expireEntries())
+      }
       return res
     } catch (err) {
       const hit = await cache.match(key)
-      if (hit) return hit
+      if (hit && !(await rpcExpiration.isURLExpired(key))) return hit
       throw err
     }
   },
   'POST',
 )
+
+// RPC reads cached by earlier versions sit in the REST cache with no expiry.
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(REST_CACHE)
+    for (const req of await cache.keys()) {
+      if (isLegacyRpcKey(req.url)) await cache.delete(req)
+    }
+  })())
+})
 
 // Updates: AutoUpdate sends SKIP_WAITING once it's safe to reload.
 self.addEventListener('message', (event) => {

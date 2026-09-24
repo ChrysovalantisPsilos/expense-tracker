@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { UserError } from '../lib/errors.js'
+import { clearUserDataCaches } from '../lib/userDataCaches.js'
 
 const AuthContext = createContext(null)
 
@@ -44,6 +45,9 @@ export function AuthProvider({ children }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       if (!mounted) return
       if (event === 'PASSWORD_RECOVERY') setRecovering(true)
+      // Any sign-out — explicit, an expired refresh token, another tab, or a
+      // deleted account — clears the decrypted reads the service worker cached.
+      if (event === 'SIGNED_OUT') void clearUserDataCaches()
       setSession(s)
       setLoading(false)
     })
@@ -86,9 +90,10 @@ export function AuthProvider({ children }) {
 
   const signOut = useCallback(async () => {
     const res = await supabase.auth.signOut()
-    // Clear the cached financial data (supabase REST responses) so it isn't
-    // left behind on a shared device after logout.
-    try { if ('caches' in window) await caches.delete('supabase-rest') } catch { /* ignore */ }
+    // Clear the cached financial data so it isn't left behind on a shared
+    // device (awaited here, so it's gone before the app moves on; the
+    // SIGNED_OUT event covers the implicit sign-outs).
+    await clearUserDataCaches()
     return res
   }, [])
 
