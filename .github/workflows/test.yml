@@ -1,7 +1,9 @@
-# CI on every push/PR, before Vercel ships the commit:
+# CI on every push/PR (Vercel waits for it only once Deployment Checks are on;
+# see README → Deploy):
 #   unit tests (in UTC and in an east-of-UTC zone, so date bugs that only
 #   show up away from UTC can't hide — see the test:* scripts), lint,
-#   production build, and a dependency audit.
+#   production build, and a dependency audit; plus a Deno lint of the
+#   Edge Functions (functions job).
 #
 # Lint policy: `npm run lint` is strict (--max-warnings=0) — a warning fails
 # the build just like an error.
@@ -33,3 +35,21 @@ jobs:
       # Blocking at high severity (production dependencies only).
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+  # Edge Functions (Deno): static lint only, no network. A separate job so the
+  # web checks above run exactly as before. DENO_NO_PACKAGE_JSON keeps Deno
+  # from treating the repo's package.json as a workspace (whose rules forbid
+  # the inline npm:/https: imports Supabase's runtime expects).
+  # no-explicit-any is off because the functions pass untyped PostgREST rows.
+  # Deno is pinned so a new release can't add rules under an unchanged repo.
+  functions:
+    runs-on: ubuntu-latest
+    env:
+      DENO_NO_PACKAGE_JSON: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.9.6
+      - name: Lint Edge Functions
+        run: deno lint --rules-exclude=no-explicit-any supabase/functions

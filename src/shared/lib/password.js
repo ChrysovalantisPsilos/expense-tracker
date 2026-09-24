@@ -1,7 +1,7 @@
 // Client-side new-password rules, shared by sign-up, password reset, and the
-// Profile change-password form. Supabase's leaked-password protection is the
-// authoritative server-side check (see the README dashboard note) — this is the
-// fast, friendly first pass.
+// Profile change-password form. Supabase Auth's password settings are the
+// authoritative server-side check (leaked-password protection is deliberately
+// off) — this is the fast, friendly first pass.
 
 // A few of the most common weak passwords to reject outright.
 const COMMON = new Set([

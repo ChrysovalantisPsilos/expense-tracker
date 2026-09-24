@@ -29,7 +29,8 @@ Four layers:
 **CI** (`.github/workflows/test.yml`) runs these steps on every push and PR:
 `npm ci`, then `npm test` (UTC and `Europe/Brussels`), then lint, then
 `npm run build`, then `npm audit --omit=dev --audit-level=high`. The audit
-only reports for now and doesn't fail the build.
+blocks: a high or critical advisory in a production dependency fails the
+build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 
 ---
 
@@ -147,7 +148,10 @@ only reports for now and doesn't fail the build.
     click through the landing page, login, Home, a group, Insights and a
     receipt scan. There should be no `[Report Only] Refused to …` CSP
     messages. Any new third-party host (API, image or font) must be added to
-    the CSP in `vercel.json`.
+    the CSP in `vercel.json`. `curl -sI https://dev.budgeer.com/` shows
+    `X-Robots-Tag: noindex, nofollow`; the same on `https://www.budgeer.com/`
+    doesn't. `/robots.txt` and `/sitemap.xml` open as files, including in the
+    installed app, not as the app's 404 page.
 28. Deploy update: with the app open and idle, a new deploy installs and the
     page reloads on its own within ~1 min (no button). While typing in a field
     or with a dialog open it waits, then updates once you finish or switch away.

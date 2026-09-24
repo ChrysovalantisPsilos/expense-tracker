@@ -150,10 +150,13 @@ units.
   services.
 - HTTP security headers are set in `vercel.json`: HSTS, `nosniff`,
   `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and a
-  Content-Security-Policy that is currently in Report-Only mode.
+  Content-Security-Policy that is currently in Report-Only mode (it has no
+  reporting endpoint, so violations show only in the browser console).
 - Receipt OCR runs on the device, and its engine is served from our own
   origin, not a CDN.
-- `package-lock.json` is committed, and CI audits production dependencies.
+- `package-lock.json` is committed, and CI's `npm audit --omit=dev
+  --audit-level=high` fails the build on any high or critical advisory in a
+  production dependency.
 
 ---
 
@@ -165,7 +168,7 @@ units.
 | Time zones | `npm test` runs the unit suite in UTC **and** `Europe/Brussels` | Catches local-vs-UTC date bugs that only show up east of UTC |
 | Database | `supabase/tests/db_tests.sql` | RLS isolation, definer functions, triggers, rate limits and encryption guards. Each test creates its own throwaway users in a subtransaction and rolls back, so it's safe on a live project. It must end with `ALL DATABASE TESTS PASSED` |
 | Lint | `npm run lint` (ESLint 9 flat config) | React, hooks, a11y, unused imports, and the `shared/` → `features/` import ban |
-| CI | `.github/workflows/test.yml` | `npm ci` → `npm test` (both time zones) → lint → build → `npm audit` (report) |
+| CI | `.github/workflows/test.yml` | `test` job: `npm ci` → `npm test` (both time zones) → lint → build → `npm audit --omit=dev --audit-level=high` (blocking). `functions` job: `deno lint` over `supabase/functions` |
 | Manual | [`docs/TESTING.md`](docs/TESTING.md) | End-to-end checklist for flows that need a browser and two accounts |
 
 ---
@@ -206,14 +209,28 @@ too) · `npm run build` · `npm run preview`.
    keys used for web push.
 3. **Deploy the Edge Functions right after the migrations,** because the
    functions and the schema change together. Use the `verify_jwt` settings in
-   `supabase/config.toml`: on for the user-called functions, off for
-   `notify-user` and `send-reminders`, which check the cron secret instead.
-   Function secrets: `RESEND_API_KEY` (email is dormant without it),
-   `INVITE_FROM`, `APP_ORIGIN` and `CORS_ORIGINS`.
-4. **Configure Auth:** enable Email, Google and passkeys, and turn on
-   leaked-password protection. Turn on **Allow manual linking** (Settings →
-   Security's "Connect Google" needs it) and add `<origin>/settings/security`
-   to the redirect URLs.
+   `supabase/config.toml`: on for the user-called functions (`generate-report`,
+   `send-invite`, `group-report`, `delete-account`, `privacy-request`), off for
+   `notify-user`, `send-reminders`, `purge-inactive` and `privacy-emails`,
+   which are called by cron or database webhooks and check the `x-cron-secret`
+   header instead.
+   Function secrets (set per project):
+
+   | Secret | Read by | Purpose |
+   | --- | --- | --- |
+   | `RESEND_API_KEY` | `_shared/sendEmail.ts` | Resend API key. Without it, email is dormant |
+   | `INVITE_FROM` | `_shared/sendEmail.ts` | Sender for `send-invite` and `notify-user` emails. The default is Resend's test sender, which only delivers to the Resend account owner |
+   | `NOTICE_FROM` | `_shared/sendEmail.ts` | Sender for `privacy-emails` and `purge-inactive` notices (default `privacy@budgeer.com`) |
+   | `PRIVACY_INBOX` | `_shared/sendEmail.ts` | Where `privacy-request` forwards requests (default `privacy@budgeer.com`) |
+   | `APP_ORIGIN` | `_shared/http.ts`, `_shared/sendEmail.ts` | The site's origin: links in emails, and an allowed CORS origin |
+   | `CORS_ORIGINS` | `_shared/http.ts` | Extra allowed CORS origins, comma-separated |
+
+   `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are
+   also read, but Supabase provides them to every function.
+4. **Configure Auth:** enable Email, Google and passkeys. Turn on **Allow
+   manual linking** (Settings → Security's "Connect Google" needs it) and add
+   `<origin>/settings/security` to the redirect URLs. Leaked-password
+   protection stays off by choice.
 5. **Run `supabase/tests/db_tests.sql`** against the project and confirm it
    ends with `ALL DATABASE TESTS PASSED`.
 
@@ -224,6 +241,18 @@ then goes to PROD.
 ### Deploy
 
 Vercel builds the Vite app (`npm run build` → `dist/`) and serves it with the
-SPA rewrite and security headers in `vercel.json`. The `develop` branch
+SPA rewrite and the headers in `vercel.json`. The `develop` branch
 deploys to dev.budgeer.com and `main` deploys to budgeer.com. Installed PWAs
 pick up the new build on their own.
+
+`vercel.json` headers apply in order, and when two matching rules set the same
+header the later one wins. The first rule puts the security headers on every
+path; the rules after it only set `Cache-Control` (hashed `/assets/` are
+immutable for a year; `index.html`, SPA routes, the manifest, `sw.js` and
+`theme-boot.js` are revalidated on every load) or, on `dev.budgeer.com` only,
+`X-Robots-Tag: noindex, nofollow`. `public/robots.txt` and
+`public/sitemap.xml` are for the production site.
+
+Vercel deploys a commit without waiting for CI. To hold a production release
+until CI is green, add the GitHub `test` check under the Vercel project's
+Settings → Deployment Checks.
