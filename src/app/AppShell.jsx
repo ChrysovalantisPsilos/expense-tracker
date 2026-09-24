@@ -178,10 +178,10 @@ export default function AppShell({ hideAddExpense = false }) {
             <SiteSwitch compact />
             <NotificationBell feed={feed} />
             <ThemeToggle />
-            <RouterLink to="/settings" aria-label="Settings">
+            <Box as={RouterLink} to="/settings" aria-label="Settings" layerStyle="hitArea" display="flex">
               <UserAvatar size="sm" name={profile?.display_name}
                 src={profile?.avatar_url} highlight />
-            </RouterLink>
+            </Box>
           </Flex>
         </Flex>
 

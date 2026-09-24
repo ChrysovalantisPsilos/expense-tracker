@@ -28,7 +28,7 @@ export default function PublicHeader({ children }) {
       transition="border-color 0.2s">
       <Container maxW="6xl" px={{ base: 4, md: 6 }}>
         <Flex h="60px" align="center" gap={{ base: 1, sm: 2 }}>
-          <Logo as={RouterLink} to="/" aria-label="Budgeer home" size={28}
+          <Logo as={RouterLink} to="/" aria-label="Budgeer home" size={28} layerStyle="hitArea"
             borderRadius="md" _focusVisible={{ boxShadow: 'outline', outline: 'none' }} />
           <Box flex="1" />
           <ThemeToggle />

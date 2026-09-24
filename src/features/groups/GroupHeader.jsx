@@ -109,7 +109,7 @@ function MemberStack({ members, myUserId, onClick }) {
   return (
     <HStack as="button" type="button" onClick={onClick} spacing={2} maxW="100%"
       aria-label={`${pluralise(members.length, 'member')} — show members`}
-      borderRadius="full" pr={2} ml={-0.5} _hover={{ bg: 'bg.subtle' }}
+      borderRadius="full" pr={2} ml={-0.5} layerStyle="hitArea" _hover={{ bg: 'bg.subtle' }}
       _focusVisible={{ boxShadow: 'outline' }} transition="background 0.1s">
       <AvatarStack members={members} myUserId={myUserId} />
       <Text as="span" fontSize="sm" color="text.muted" fontWeight="500" whiteSpace="nowrap">

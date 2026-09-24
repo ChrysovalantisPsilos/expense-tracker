@@ -92,6 +92,20 @@ const popupTitle = { fontFamily: 'heading', fontWeight: '700', letterSpacing: '-
 // dark, where the status tokens are light tints — so it clears 4.5:1 in both.
 const TOAST_FILL = { green: 'status.positive', red: 'status.negative', orange: 'status.warning' }
 
+// A 44×44px minimum touch target around a control that looks smaller (a 24px
+// chevron, a 32px icon button, a text link): an invisible pseudo-element
+// centred on it, so the visual size stays compact. Every Button and
+// IconButton has it; `layerStyle="hitArea"` adds it to anything else.
+const HIT_AREA = {
+  content: '""',
+  position: 'absolute',
+  top: '50%',
+  left: '50%',
+  width: 'max(100%, 44px)',
+  height: 'max(100%, 44px)',
+  transform: 'translate(-50%, -50%)',
+}
+
 const theme = extendTheme({
   config,
   colors,
@@ -99,6 +113,9 @@ const theme = extendTheme({
   fonts: {
     heading: FONTS.heading,
     body: FONTS.body,
+  },
+  layerStyles: {
+    hitArea: { position: 'relative', _after: HIT_AREA },
   },
   radii: {
     lg: '0.75rem',
@@ -134,7 +151,7 @@ const theme = extendTheme({
       },
     },
     Button: {
-      baseStyle: { borderRadius: 'lg', fontWeight: '600' },
+      baseStyle: { borderRadius: 'lg', fontWeight: '600', _after: HIT_AREA },
       defaultProps: { colorScheme: 'brand' },
       variants: {
         // The same fill in both modes (Chakra switches to a pale 200 in dark
@@ -181,11 +198,14 @@ const theme = extendTheme({
         } : {}),
       },
     },
-    // `inline`: a link inside running text — coral and underlined, so it
-    // never relies on colour alone.
+    // A standalone link gets the 44px touch target; `inline` (a link inside
+    // running text) is coral and underlined, so it never relies on colour
+    // alone, and keeps its own size so it can't cover the lines around it.
     Link: {
+      baseStyle: { position: 'relative', _after: HIT_AREA },
       variants: {
         inline: {
+          _after: { content: 'none' },
           color: 'accent.fg',
           textDecoration: 'underline',
           textUnderlineOffset: '2px',
