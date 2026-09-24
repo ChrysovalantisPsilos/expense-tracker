@@ -12,6 +12,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { toMinor } from '../../shared/lib/currency.js'
 import { monthTitle } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
+import { unsavedFormAttr } from '../../shared/lib/autoUpdate.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import { editBudget, deleteBudget, copyPreviousBudgets, useMonthBudgets } from './budgets.js'
 import { useBudgetProgress } from './useBudgetProgress.js'
@@ -95,7 +96,7 @@ export default function Budgets() {
       <PageHeader eyebrow={monthTitle()} title="Budgets" />
 
       <Panel icon={Target} title="Set a monthly cap">
-        <form onSubmit={addBudget}>
+        <form onSubmit={addBudget} {...unsavedFormAttr(!!(catId || amount))}>
           <HStack align="end" spacing={3}>
             <FormControl>
               <FormLabel>Category</FormLabel>

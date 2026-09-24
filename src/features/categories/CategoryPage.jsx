@@ -22,6 +22,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, minorToInput } from '../../shared/lib/currency.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
+import { useUnsavedForm } from '../../shared/lib/useUnsavedForm.js'
 import TransactionList from '../transactions/TransactionList.jsx'
 import { listHeading } from '../transactions/listHeading.js'
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
@@ -198,6 +199,7 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
   const [amount, setAmount] = useState(current == null ? '' : minorToInput(current, baseCurrency))
   const amountRef = useRef(null)
   const { busy, run } = useAsyncSubmit()
+  const unsaved = useUnsavedForm()
 
   useEffect(() => { if (focusBudget) amountRef.current?.focus() }, [focusBudget])
 
@@ -233,7 +235,7 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
 
   return (
     <Panel icon={Pencil} title={`Edit ${category.name}`}>
-      <form onSubmit={save}>
+      <form onSubmit={save} {...unsaved}>
         <Stack spacing={5}>
           {category.kind === 'expense' && (
             canEditBudget ? (

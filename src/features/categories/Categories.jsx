@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Box, Button, FormControl, FormHelperText, FormLabel,
   Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
@@ -12,13 +12,9 @@ import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
-import FormModal from '../../shared/ui/FormModal.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import {
-  useAllCategories, createCategory, updateCategory, countCategoryUse, deleteCategory,
-} from './categories.js'
-import { moveTargets, sameKindOthers, sortCategories } from './categoryMath.js'
-import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
+import { useAllCategories, updateCategory, countCategoryUse, deleteCategory } from './categories.js'
+import { moveTargets, sortCategories } from './categoryMath.js'
 import { categoryPath } from './categoryLinks.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader, { BusyNote } from '../../shared/ui/RingLoader.jsx'
@@ -27,13 +23,17 @@ const KINDS = [['expense', 'Expenses'], ['income', 'Income']]
 
 // Settings → Categories: add, rename, re-icon, recolour, archive and delete
 // expense and income categories. Archived ones keep their past entries but
-// leave the pickers. A row opens the category's page (its entries and budget).
+// leave the pickers. A row opens the category's page (its entries and budget);
+// Edit opens it on its Edit panel, and Add opens the new-category page.
 export default function Categories() {
   const toast = useToast()
   const navigate = useNavigate()
   const { rows, loading, error, reload } = useAllCategories()
-  const [kind, setKind] = useState('expense')
-  const [editing, setEditing] = useState(null) // { kind } for new, a row to edit
+  // The Expenses / Income switch is kept in the address, so coming back from
+  // adding a category lands on its kind.
+  const [params, setParams] = useSearchParams()
+  const kind = params.get('kind') === 'income' ? 'income' : 'expense'
+  const setKind = (k) => setParams(k === 'income' ? { kind: k } : {}, { replace: true })
   const [deleting, setDeleting] = useState(null)
   const list = sortCategories(rows, kind)
 
@@ -52,7 +52,8 @@ export default function Categories() {
     <SettingsPage title="Categories"
       description="Add your own, rename them, pick an icon and colour, or archive the ones you no longer use. Archived categories stay on past entries.">
       <Panel icon={Tags} title="Your categories" action={
-        <Button size="sm" leftIcon={<Plus size={16} />} onClick={() => setEditing({ kind })}>Add</Button>
+        <Button size="sm" leftIcon={<Plus size={16} />}
+          onClick={() => navigate(`/settings/categories/new?kind=${kind}`)}>Add</Button>
       }>
         <SegmentedControl label="Category type" options={KINDS} value={kind} onChange={setKind} mb={3}
           alignSelf="start" w="fit-content" />
@@ -68,7 +69,7 @@ export default function Categories() {
                   title={c.name} meta={c.is_archived ? 'Archived' : undefined} dimmed={c.is_archived}
                   onClick={() => navigate(categoryPath(c.id))} chevron
                   actionSlots={3} actions={[
-                    { label: `Edit ${c.name}`, icon: Pencil, onClick: () => setEditing(c) },
+                    { label: `Edit ${c.name}`, icon: Pencil, onClick: () => navigate(categoryPath(c.id), { state: { edit: true } }) },
                     c.is_archived
                       ? { label: `Unarchive ${c.name}`, icon: ArchiveRestore, onClick: () => toggleArchive(c) }
                       : { label: `Archive ${c.name}`, icon: Archive, onClick: () => toggleArchive(c) },
@@ -80,38 +81,9 @@ export default function Categories() {
         )}
       </Panel>
 
-      <CategoryModal key={editing?.id ?? `new-${editing?.kind}`} category={editing} all={rows}
-        onClose={() => setEditing(null)} onSaved={reload} />
       <DeleteCategoryModal key={deleting?.id ?? 'none'} category={deleting} all={rows}
         onClose={() => setDeleting(null)} onSaved={reload} />
     </SettingsPage>
-  )
-}
-
-// Add (category = { kind }) or edit (category = a row) one category.
-function CategoryModal({ category, all, onClose, onSaved }) {
-  const toast = useToast()
-  const isEdit = !!category?.id
-  const draft = useCategoryDraft(category, sameKindOthers(all, category))
-  const { busy, run } = useAsyncSubmit()
-
-  async function submit() {
-    draft.setTouched(true)
-    if (draft.nameError) return
-    await run(async () => {
-      if (isEdit) await updateCategory(category.id, draft.values)
-      else await createCategory({ ...draft.values, kind: category.kind })
-      toast({ title: isEdit ? 'Category saved' : `${draft.name.trim()} added`, status: 'success' })
-      onSaved?.(); onClose()
-    })
-  }
-
-  return (
-    <FormModal isOpen={!!category} onClose={onClose} scrollBehavior="inside" onSubmit={submit}
-      busy={busy} submitLabel={isEdit ? 'Save' : 'Add category'}
-      title={isEdit ? 'Edit category' : `New ${category?.kind === 'income' ? 'income' : 'expense'} category`}>
-      <CategoryFields draft={draft} kind={category?.kind} />
-    </FormModal>
   )
 }
 

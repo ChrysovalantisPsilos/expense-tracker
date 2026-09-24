@@ -12,7 +12,7 @@ import {
 import { CATEGORY_NAME_MAX, categoryNameError } from './categoryMath.js'
 
 // The name / icon / colour form a category is added or edited with — the
-// Categories page's modal and the category page's Edit panel share it.
+// new-category page and the category page's Edit panel share it.
 // `useCategoryDraft` holds its state; `others` are the user's categories of
 // the same kind (for the duplicate-name rule).
 export function useCategoryDraft(category, others) {

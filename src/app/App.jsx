@@ -49,6 +49,7 @@ const AppearanceSettings = lazy(() => import('../features/settings/AppearanceSet
 const SpendingSettings = lazy(() => import('../features/settings/SpendingSettings.jsx'))
 const Categories = lazy(() => import('../features/categories/Categories.jsx'))
 const CategoryPage = lazy(() => import('../features/categories/CategoryPage.jsx'))
+const NewCategoryPage = lazy(() => import('../features/categories/NewCategoryPage.jsx'))
 const SecuritySettings = lazy(() => import('../features/settings/SecuritySettings.jsx'))
 const YourData = lazy(() => import('../features/backup/YourData.jsx'))
 const Privacy = lazy(() => import('../features/privacy/Privacy.jsx'))
@@ -178,6 +179,7 @@ function AuthedRoutes() {
           <Route path="settings/appearance" element={<AppearanceSettings />} />
           <Route path="settings/spending" element={<SpendingSettings />} />
           <Route path="settings/categories" element={<Categories />} />
+          <Route path="settings/categories/new" element={<NewCategoryPage />} />
           <Route path="settings/security" element={<SecuritySettings />} />
           <Route path="settings/data" element={<YourData />} />
           <Route path="settings/privacy" element={<PrivacySettings />} />
