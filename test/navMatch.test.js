@@ -56,3 +56,19 @@ test('the floating Add expense button shows on the four main tabs only', () => {
     assert.equal(showsAddExpense(p), false, p)
   }
 })
+
+test('the form pages never show the floating Add expense button, and light their section', () => {
+  const FORMS = {
+    '/groups': ['/groups/new', '/groups/g1/settle', '/groups/g1/edit', '/groups/g1/members',
+      '/groups/g1/expenses/new', '/groups/g1/expenses/e1', '/groups/g1/comments/e1'],
+    '/more': ['/recurring/new', '/recurring/r1', '/insights/goals/new', '/insights/goals/g1',
+      '/insights/accounts/new', '/insights/accounts/a1', '/settings/categories/new',
+      '/settings/data/export', '/settings/data/restore', '/settings/privacy/request'],
+  }
+  for (const [tab, pages] of Object.entries(FORMS)) {
+    for (const p of pages) {
+      assert.equal(showsAddExpense(p), false, p)
+      assert.equal(isNavActive(tab, p), true, p)
+    }
+  }
+})

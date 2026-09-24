@@ -156,8 +156,10 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     doesn't. `/robots.txt` and `/sitemap.xml` open as files, including in the
     installed app, not as the app's 404 page.
 28. Deploy update: with the app open and idle, a new deploy installs and the
-    page reloads on its own within ~1 min (no button). While typing in a field
-    or with a dialog open it waits, then updates once you finish or switch away.
+    page reloads on its own within ~1 min (no button). While typing in a field,
+    with a dialog open, or on a form page with unsaved input (even after
+    tapping outside the fields) it waits, then updates once you save or leave
+    the page, or switch away. A closed notification bell never holds it back.
 
 ### I. Reports
 29. Insights → Statement export: personal PDF downloads with brand styling.
@@ -216,6 +218,51 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     version, offline) are previewed at `/kit` on the dev server; none of
     them shows the technical error message (it goes to the console only).
 
+### K2. Form pages (no form dialogs)
+
+Every form that fills in data is its own page with a ← arrow (which is also
+Cancel); only yes/no confirmations and the one-time prompts (passkey,
+notifications, the legal gate, the setup wizard, delete account) are small
+dialogs. The receipt scanner's crop-and-check overlay stays too: it's a
+camera step inside the expense page, and it never submits that page.
+
+| Page | Opened from |
+| --- | --- |
+| `/groups/new` | Groups → New group (lands in the new group; ← from it goes to Groups) |
+| `/groups/<id>/settle` | a group's Settle up |
+| `/groups/<id>/expenses/new`, `/groups/<id>/expenses/<expenseId>` | a group's Add expense; tapping an expense you may edit |
+| `/groups/<id>/comments/<itemId>` | the comment icon on an expense or settlement |
+| `/groups/<id>/members` | the member stack under the group's name |
+| `/groups/<id>/edit` | ⋯ → Rename group (owner) |
+| `/recurring/new?kind=…`, `/recurring/<id>` | Recurring → Add; a rule's Edit |
+| `/insights/goals/new`, `/insights/goals/<id>` | Insights → Goal; a goal's Edit |
+| `/insights/accounts/new`, `/insights/accounts/<id>` | Insights → Account; an account's Edit |
+| `/settings/categories/new?kind=…` | Settings → Categories → Add (Edit opens the category's page with its Edit panel, like Budgets → Edit) |
+| `/settings/data/export`, `/settings/data/restore` | Settings → Your data |
+| `/settings/privacy/request` | Settings → Privacy → Send a request |
+
+For each, at 390px and on desktop, light and dark:
+
+1. Open it from its screen, fill it in, save → you're back where you came
+   from and the change shows there (the list or group refetches). ← without
+   saving changes nothing.
+2. Reload the page, or open its address in a new tab: it loads (a spinner,
+   then the form), filled in for an edit; ← then goes to its parent
+   (the group, Recurring, Insights, Categories, Your data, Privacy).
+   Signed out, the address goes to sign-in and comes back to it.
+3. The phone's floating "+" is not on any of these pages; the bottom bar
+   keeps the section lit (Groups, or More).
+4. Settle up opens on the top suggestion; each suggestion is a row that
+   fills the form; "I received" shows the payment-details ask when you have
+   none saved. Group expense: empty Save shows the inline errors, the payer
+   starts as "You", Percent starts even, and Delete asks "Delete this
+   expense?" first. Coming back from a settlement's comments lands on the
+   Settlements tab; from an income rule, on Recurring's Income tab.
+5. Type something, tap outside the field, then deploy a new version (or
+   wait for one): the page doesn't reload until you save or leave.
+6. Restore: ← is disabled while the restore runs; a bad file says why and
+   offers "Choose another file".
+
 ### L. Privacy & legal (GDPR)
 
 39. Sign-up: the "I'm 16 or older and I accept the Terms of Use and the
@@ -230,11 +277,12 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     Accept records it and the prompt doesn't return.
 41. Settings → Privacy: Download my data saves `budgeer-my-data-<date>.json`
     with your profile, consents, notifications, records and your part of each
-    group (no other user's ids/emails). "Send a request" emails the privacy
-    inbox (Reply-To = your address; 4th request in a day is refused). The
+    group (no other user's ids/emails). "Send a request" opens its own page
+    (`/settings/privacy/request`) and emails the privacy inbox (Reply-To = your address; 4th request in a day is refused). The
     switches record history rows. Weekly summary is off for a new account.
-42. Delete account: the dialog lists what's deleted and what stays; afterwards
-    co-members see "Former member" in the group and its change log.
+42. Delete account: the confirmation dialog lists what's deleted and what
+    stays; afterwards co-members see "Former member" in the group and its
+    change log.
 43. Footer / Settings links: Help, Privacy, Terms, Contact (support@) on the
     landing page; Privacy, Privacy Notice and Terms of Use in Settings.
 44. /privacy and /terms: the "A free hobby project" notice sits under the
