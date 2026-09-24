@@ -66,7 +66,7 @@ export default function OnboardingWizard({ profile, onDone }) {
     // The wizard already covered these, so don't let the separate prompts re-ask.
     try {
       sessionStorage.setItem(STORAGE_KEYS.passkeyPrompted, '1')
-      localStorage.setItem('budge:notifPrompted', '1')
+      localStorage.setItem(STORAGE_KEYS.notifPrompted, '1')
     } catch { /* private mode */ }
     window.dispatchEvent(new Event(EVENTS.profileUpdated))
     if (tour) startTour({ returnTo: groupPath || '/' })

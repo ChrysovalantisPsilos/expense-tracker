@@ -57,7 +57,7 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | `rate_limits` | key (uid or email hash), counters | Abuse prevention | (f) | ≤ 2 days (0058), backstop 30 days (0073) | server only |
 | `fx_rates`, `fx_fetches` | none (currency rates) | Currency conversion | — | — | server |
 | Storage `avatars/<uid>/`, `group-images/<gid>/` | profile and group pictures (public URLs) | Display | (b) | removed on account/group deletion | anyone with the link |
-| Browser storage (no cookies) | Supabase session token, service-worker cache of recent reads, appearance/view prefs, prompt flags, pending invite token, FX cache | Strictly necessary / user-requested (ePrivacy Art. 5(3) exemption) | — | session token and cache cleared on sign-out | the user's device |
+| Browser storage (no cookies) | Supabase session token, service-worker caches (app files; recent reads + their IndexedDB timestamps), appearance/view prefs, prompt flags and "Not now" dismissals, import column mappings, pending invite token, post-sign-in return path, FX cache; tab-only: pending-confirmation email, passkey-prompt and Google-link flags. Full key list: Privacy Notice → "Storage on your device" | Strictly necessary / user-requested (ePrivacy Art. 5(3) exemption) | — | session token and cache cleared on sign-out | the user's device |
 
 ## 4. Processors and recipients
 

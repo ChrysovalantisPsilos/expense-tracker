@@ -1,6 +1,8 @@
 // Centralized storage keys + custom-event names. A typo in any one of these
 // silently breaks a cross-page handshake (invite redeem, verify-email, profile
-// refresh), so they live in exactly one place.
+// refresh), so they live in exactly one place. Every browser-storage key the
+// app writes belongs here: the Privacy Notice's "Storage on your device" list
+// names each one (test/storageKeys.test.js checks both).
 export const STORAGE_KEYS = {
   pendingInvite: 'budge:invite',       // localStorage — survives email round-trip
   pendingEmail: 'budge:pendingEmail',  // sessionStorage — verify-email screen
@@ -9,6 +11,10 @@ export const STORAGE_KEYS = {
   returnPath: 'budge:returnPath',      // localStorage — page to open after an off-page sign-in
   appearance: 'budge-appearance',      // localStorage — Light/Dark/System (also read by public/theme-boot.js)
   paymentAskDismissed: 'budge:paymentAsk', // localStorage — "Not now" to Settle up's payment-details ask
+  notifPrompted: 'budge:notifPrompted', // localStorage — notification prompt answered ("Not now" included)
+  linkingGoogle: 'budge:linkingGoogle', // sessionStorage — a Google link attempt is in flight
+  importMappings: 'budgeer:import-mappings:v1', // localStorage — confirmed import column mappings
+  fxRatePrefix: 'fx2:',                // localStorage — prefix of each cached exchange rate
 }
 
 export const EVENTS = {

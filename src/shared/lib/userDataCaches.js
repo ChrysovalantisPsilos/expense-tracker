@@ -17,7 +17,7 @@ export const RPC_CACHE_LIMITS = { maxEntries: 150, maxAgeSeconds: 60 * 60 * 24 }
 
 // Workbox keeps each cached URL's timestamp here (the RPC keys carry the user
 // id and the call's arguments), so it goes with the caches.
-const EXPIRATION_DB = 'workbox-expiration'
+export const EXPIRATION_DB = 'workbox-expiration'
 
 // Delete everything cached from the signed-in session. Never throws: a
 // sign-out must not fail because storage is unavailable. The IndexedDB delete

@@ -1,6 +1,8 @@
 import LegalLayout, { Body, Bullets, Facts, Lead, MailLink, PageLink } from './LegalLayout.jsx'
 import { PRIVACY_EMAIL } from '../../shared/lib/contact.js'
 import { CONTROLLER, LEGAL_VERSIONS, RETENTION as R } from './legal.js'
+import { STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { EXPIRATION_DB, REST_CACHE, RPC_CACHE } from '../../shared/lib/userDataCaches.js'
 
 // The Privacy Notice (GDPR Art. 13/14). Every statement must stay true to the
 // code and migrations — update it alongside any change to what is stored,
@@ -114,10 +116,17 @@ const RETENTION_ITEMS = [
   <><Lead>Backups:</Lead> our database host keeps encrypted backups for a limited period, so deleted data disappears from them when they roll over.</>,
 ]
 
+// Every key in STORAGE_KEYS (and each service-worker cache) is named here;
+// test/storageKeys.test.js fails if one is missing.
 const DEVICE = [
-  <><Lead>Sign-in session</Lead> (Supabase’s <code>sb-…-auth-token</code>): keeps you signed in.</>,
-  <><Lead>Offline copy</Lead> (service worker cache): recently loaded data so the app opens offline; cleared when you sign out.</>,
-  <><Lead>Your choices:</Lead> light/dark appearance, the dashboard chart/table view, whether you’ve seen the notification and passkey prompts, a pending group invite while you sign up, and cached exchange rates.</>,
+  <><Lead>Sign-in session</Lead> (Supabase’s <code>sb-…-auth-token</code>): keeps you signed in on this device; removed when you sign out.</>,
+  <><Lead>Offline copy</Lead> (service worker caches <code>{REST_CACHE}</code> and <code>{RPC_CACHE}</code>, with their timestamps in <code>{EXPIRATION_DB}</code>): recently loaded data so the app opens offline; each item expires after a day, and all of it is cleared when you sign out.</>,
+  <><Lead>App files</Lead> (service worker cache): the app’s own code, styles, fonts and icons, so it starts quickly and works offline. None of your data; replaced when the app updates.</>,
+  <><Lead>Your choices:</Lead> light/dark appearance (<code>{STORAGE_KEYS.appearance}</code>), the dashboard chart/table view (<code>{STORAGE_KEYS.overviewView}</code>), that you’ve answered the notification prompt (<code>{STORAGE_KEYS.notifPrompted}</code>), and that you tapped “Not now” when Settle up suggested adding your payment details (<code>{STORAGE_KEYS.paymentAskDismissed}</code>), so we don’t ask again on this device.</>,
+  <><Lead>Import column choices</Lead> (<code>{STORAGE_KEYS.importMappings}</code>): how you matched the columns of your last few imported spreadsheet layouts, so the next file from the same bank skips that step. Only column headings and your choices — no transactions.</>,
+  <><Lead>Exchange rates</Lead> (<code>{STORAGE_KEYS.fxRatePrefix}…</code>): rates already looked up, so they aren’t fetched again. Only currency codes, dates and rates.</>,
+  <><Lead>Sign-in helpers:</Lead> a pending group invite while you sign up (<code>{STORAGE_KEYS.pendingInvite}</code>, removed once you join) and the page to return to after signing in through Google or an email link (<code>{STORAGE_KEYS.returnPath}</code>, removed once used and ignored after an hour).</>,
+  <><Lead>This tab only</Lead> (session storage, gone when you close the tab): the email address you’re confirming after signing up (<code>{STORAGE_KEYS.pendingEmail}</code>), that you’ve seen the passkey prompt (<code>{STORAGE_KEYS.passkeyPrompted}</code>), and that you’re connecting Google in Settings (<code>{STORAGE_KEYS.linkingGoogle}</code>).</>,
 ]
 
 // ===========================================================================
@@ -241,7 +250,11 @@ const SECTIONS = [
         own choices — so no consent banner is needed:
       </Body>
       <Bullets items={DEVICE} />
-      <Body>Signing out removes the session and the offline copy. You can clear the rest in your browser’s settings.</Body>
+      <Body>
+        All of it stays on your device and is never sent to us. Signing out removes the session and
+        the offline copy, and closing the tab removes the tab-only items. You can clear the rest at
+        any time by deleting this site’s data in your browser’s settings.
+      </Body>
     </>
   ) },
   { id: 'children', title: 'Children', body: (

@@ -11,12 +11,13 @@ import { detectMapping, headerSignature, savedMappingFor } from './statementDete
 // importMath.js so they're unit-testable.
 import { deterministicUuid, rowToDraft, signedConvention } from './importMath.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
+import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 
 // Mappings the user confirmed, per header layout — a per-device convenience
 // (the next export from the same bank skips the mapping step). Browser
 // storage may be unavailable (private mode, blocked): then nothing is
 // remembered and detection runs as usual.
-const MAPPINGS_KEY = 'budgeer:import-mappings:v1'
+const MAPPINGS_KEY = STORAGE_KEYS.importMappings
 const MAX_REMEMBERED = 20
 
 function rememberedMappings() {

@@ -7,9 +7,10 @@ import { BellRing } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { patchRow } from '../../shared/lib/db.js'
 import { enablePush, pushSupported } from '../../shared/lib/push.js'
+import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { claimPromptSlot, releasePromptSlot, whenPromptSlotFree } from '../../shared/lib/promptGate.js'
 
-const SEEN = 'budge:notifPrompted'
+const SEEN = STORAGE_KEYS.notifPrompted
 
 // One-time ask, shortly after login: enable push notifications (and confirm
 // the email preference for big events)? "Not now" never auto-asks again —

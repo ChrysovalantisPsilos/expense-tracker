@@ -1,5 +1,6 @@
 // Currency helpers. Money is stored as integer minor units (cents).
 import { ZERO_DECIMAL, toBaseMinor } from '../../../supabase/functions/_shared/money.ts'
+import { STORAGE_KEYS } from './keys.js'
 
 // Supported currencies: every currency the ECB publishes a daily reference
 // rate for (so each one can be converted to any other), EUR first — it's the
@@ -173,7 +174,7 @@ export function rateOnOrBefore(series, date) {
 // localStorage key for a cached rate. Versioned so the old v1 cache (which
 // could hold a fake 1 from the broken provider) is never read.
 export function fxCacheKey(from, to, date) {
-  return `fx2:${from}:${to}:${date}`
+  return `${STORAGE_KEYS.fxRatePrefix}${from}:${to}:${date}`
 }
 
 // Is an answer final, i.e. safe to cache under the date we asked for? A past

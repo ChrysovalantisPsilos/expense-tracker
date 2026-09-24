@@ -13,12 +13,13 @@ import {
   signInMethods, googleDisconnectBlock, linkErrorMessage, redirectError,
 } from './authMethods.js'
 import { userMessage } from '../../shared/lib/errors.js'
+import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 
 // Set before leaving for Google's consent screen; its presence on the way
 // back means "this load is the end of a link attempt" (sessionStorage: the
 // same tab). Supabase may strip the URL's tokens before this page mounts, so
 // the outcome is read from the identities, not the URL alone.
-const LINKING = 'budge:linkingGoogle'
+const LINKING = STORAGE_KEYS.linkingGoogle
 const ICONS = { password: KeyRound, passkeys: Fingerprint }
 
 // Settings → Security: how this account can sign in — email & password,
