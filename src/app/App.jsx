@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import AppShell from './AppShell.jsx'
 import PasskeyPrompt from '../features/settings/PasskeyPrompt.jsx'
@@ -10,6 +10,9 @@ import { useTour } from '../features/onboarding/tour.js'
 import { useLegalGate } from '../features/privacy/useLegalGate.js'
 import { STORAGE_KEYS } from '../shared/lib/keys.js'
 import PageSpinner from '../shared/ui/PageSpinner.jsx'
+import { loginPathFor, NEXT_PARAM, safeReturnPath, takeReturnPath } from '../shared/lib/returnPath.js'
+import NotFound from './NotFound.jsx'
+import { isSignedInRoute } from './routes.js'
 
 // Every page is its own chunk, fetched on first visit (the service worker
 // precaches them all, so this costs nothing offline). The shell and the
@@ -57,6 +60,21 @@ const kitRoute = KitGallery && (
   <Route path="/kit" element={<KitGallery />} />
 )
 
+// Signed out, an address no public page answers: an app page (routes.js)
+// goes to sign-in and comes back afterwards; anything else is the 404.
+function SignedOutFallback() {
+  const location = useLocation()
+  if (isSignedInRoute(location.pathname)) return <Navigate to={loginPathFor(location)} replace />
+  return <NotFound />
+}
+
+// Signed in on /login (the moment a password or passkey sign-in lands, or an
+// old bookmark): on to the page the visitor was headed for, else Home.
+function SignedInLogin() {
+  const [params] = useSearchParams()
+  return <Navigate to={safeReturnPath(params.get(NEXT_PARAM)) ?? '/'} replace />
+}
+
 // Logged-out invite link -> read-only group preview. Its CTAs stash the token
 // (localStorage survives the email-confirmation round-trip in the same browser)
 // and send the visitor to sign up; AuthedRoutes then redeems it.
@@ -73,7 +91,8 @@ function PublicRoutes() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/help" element={<Help />} />
         {kitRoute}
-        <Route path="*" element={<Landing />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="*" element={<SignedOutFallback />} />
       </Routes>
     </Suspense>
   )
@@ -100,11 +119,17 @@ function AuthedRoutes() {
   // the shared profile code never reaches into a feature).
   useEnsureDefaultCategories()
 
+  // Arriving signed in from a sign-in that left the page (Google, the email
+  // confirmation link, a password reset): a pending invite first, else the
+  // page the visitor was headed for (Login stashed it; returnPath.js).
   useEffect(() => {
     const token = localStorage.getItem(PENDING_INVITE)
+    const back = takeReturnPath()
     if (token) {
       localStorage.removeItem(PENDING_INVITE)
       navigate(`/join/${token}`, { replace: true })
+    } else if (back) {
+      navigate(back, { replace: true })
     }
   }, [navigate])
 
@@ -112,6 +137,10 @@ function AuthedRoutes() {
     <Suspense fallback={<PageSpinner fullScreen />}>
       <Routes>
         <Route path="/join/:token" element={<JoinGroup />} />
+        <Route path="/login" element={<SignedInLogin />} />
+        {['/verify-email', '/forgot-password', '/reset-password'].map((path) => (
+          <Route key={path} path={path} element={<Navigate to="/" replace />} />
+        ))}
         {kitRoute}
         <Route element={<AppShell />}>
           <Route index element={<Dashboard />} />
@@ -146,8 +175,9 @@ function AuthedRoutes() {
           <Route path="search" element={
             <Navigate to="/transactions?type=all" replace state={{ focusSearch: true }} />
           } />
+          {/* Any other address: the 404, inside the shell. */}
+          <Route path="*" element={<NotFound />} />
         </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {legal.needs ? (
         <Suspense fallback={null}><LegalGate status={legal.status} onAccept={legal.accept} /></Suspense>

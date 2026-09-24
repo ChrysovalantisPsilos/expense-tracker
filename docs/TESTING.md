@@ -199,7 +199,14 @@ only reports for now and doesn't fail the build.
     the panel open.
 38. Old links: `/expenses` → Transactions (Expenses), `/income` →
     Transactions (Income), `/search` → Transactions (All) with the search
-    field focused.
+    field focused. Unknown addresses (`/nope`) show the "This page rolled
+    away" 404: inside the app shell signed in (Back to Home, Go back),
+    public signed out (Go to Home, Help & FAQ). Signed out, an app page
+    (`/transactions/123`, `/groups/<id>`, `/settings/security`) goes to
+    `/login?next=…` and, after signing in with a password, a passkey, Google
+    or a confirmed sign-up in the same browser, lands on that page;
+    `/login?next=//evil.com` lands on Home. Error screens (crash, new
+    version, offline) are previewed at `/kit` on the dev server.
 
 ### L. Privacy & legal (GDPR)
 

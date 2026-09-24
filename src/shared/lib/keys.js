@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   pendingEmail: 'budge:pendingEmail',  // sessionStorage — verify-email screen
   overviewView: 'budge:overviewView',  // localStorage — dashboard chart/table toggle
   passkeyPrompted: 'budge:passkeyPrompted', // sessionStorage — passkey prompt shown this session
+  returnPath: 'budge:returnPath',      // localStorage — page to open after an off-page sign-in
 }
 
 export const EVENTS = {

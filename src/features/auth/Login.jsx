@@ -9,6 +9,7 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { isSupabaseConfigured, passkeysSupported } from '../../shared/lib/supabase.js'
 import { validatePassword } from '../../shared/lib/password.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { NEXT_PARAM, rememberReturnPath, safeReturnPath } from '../../shared/lib/returnPath.js'
 import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
 import { signupConsentMetadata } from '../privacy/legal.js'
 import AuthLayout from './AuthLayout.jsx'
@@ -25,8 +26,18 @@ export default function Login() {
   const [passkeyBusy, setPasskeyBusy] = useState(false)
   const toast = useToast()
   const navigate = useNavigate()
+  // Where to go once signed in (a signed-out visit to an app page sent the
+  // visitor here). Untrusted input: safeReturnPath drops anything that isn't
+  // an app-relative path. Password and passkey sign-ins happen on this page,
+  // so they go there directly; Google, the confirmation email and a password
+  // reset come back to the site root, so for those it's stashed and the
+  // signed-in app picks it up (App.jsx). Every attempt overwrites the stash,
+  // so an abandoned one can't steer a later sign-in.
+  const next = safeReturnPath(searchParams.get(NEXT_PARAM))
+  const landing = next ?? '/'
 
   async function handlePasskey() {
+    rememberReturnPath(null)
     setPasskeyBusy(true)
     const { error } = await signInWithPasskey()
     setPasskeyBusy(false)
@@ -34,7 +45,7 @@ export default function Login() {
       toast({ title: 'Passkey sign-in failed', description: error.message, status: 'error' })
       return
     }
-    navigate('/', { replace: true })
+    navigate(landing, { replace: true })
   }
 
   async function handleSubmit(e) {
@@ -47,6 +58,8 @@ export default function Login() {
         return
       }
     }
+    // Sign-up may continue from the confirmation email; sign-in stays here.
+    rememberReturnPath(mode === 'signup' ? next : null)
     setBusy(true)
     const { data, error } = mode === 'signin'
       ? await signInWithPassword(email, password)
@@ -69,7 +82,7 @@ export default function Login() {
       sessionStorage.setItem(STORAGE_KEYS.pendingEmail, email)
       navigate('/verify-email', { replace: true })
     } else {
-      navigate('/', { replace: true })
+      navigate(landing, { replace: true })
     }
   }
 
@@ -117,7 +130,7 @@ export default function Login() {
           )}
           {mode === 'signin' && (
             <Button variant="link" colorScheme="brand" size="sm" alignSelf="flex-end"
-              onClick={() => navigate('/forgot-password')}>
+              onClick={() => { rememberReturnPath(next); navigate('/forgot-password') }}>
               Forgot password?
             </Button>
           )}
@@ -140,7 +153,7 @@ export default function Login() {
           borderWidth="1px" borderColor="gray.300"
           _hover={{ bg: 'gray.50' }} _active={{ bg: 'gray.100' }}
           leftIcon={<GoogleIcon boxSize={5} />}
-          onClick={() => signInWithProvider('google')}>
+          onClick={() => { rememberReturnPath(next); signInWithProvider('google') }}>
           {mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
         </Button>
         {mode === 'signup' && (
