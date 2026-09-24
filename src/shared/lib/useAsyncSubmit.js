@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useToast } from '@chakra-ui/react'
+import { userMessage } from './errors.js'
 
 // Wraps an async form action with busy state and a failure toast, removing the
 // setBusy(true) / try / catch(toast) / finally(setBusy(false)) boilerplate
@@ -8,7 +9,9 @@ import { useToast } from '@chakra-ui/react'
 //   const { busy, run } = useAsyncSubmit()
 //   await run(async () => { await save(...); toast({ title: 'Saved' }); onSaved() })
 //
-// `run` returns the action's result, or undefined if it threw.
+// `run` returns the action's result, or undefined if it threw. The toast shows
+// userMessage(e) (our own copy, or a generic line); the error itself goes to
+// the console.
 export function useAsyncSubmit() {
   const toast = useToast()
   const [busy, setBusy] = useState(false)
@@ -18,9 +21,11 @@ export function useAsyncSubmit() {
     try {
       return await fn()
     } catch (e) {
+      console.error('[submit] failed:', e)
+      const message = userMessage(e)
       toast({
-        title: errorTitle || e.message,
-        description: errorTitle ? e.message : undefined,
+        title: errorTitle || message,
+        description: errorTitle ? message : undefined,
         status: 'error',
       })
       return undefined

@@ -13,6 +13,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import SettingsPage from './SettingsPage.jsx'
 import PaymentCard from './PaymentCard.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 export default function AccountSettings() {
   const { user } = useAuth()
@@ -69,8 +70,10 @@ function IdentityCard({ user }) {
       const url = await uploadAvatar(user.id, file)
       setAvatarUrl(url)
       toast({ title: 'Photo updated', status: 'success' })
-    } catch (e) { toast({ title: e.message, status: 'error' }) }
-    finally { setUploading(false) }
+    } catch (e) {
+      console.error('[settings] avatar upload failed:', e)
+      toast({ title: userMessage(e, 'Couldn’t update your photo. Please try again.'), status: 'error' })
+    } finally { setUploading(false) }
   }
 
   if (loading) {

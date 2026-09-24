@@ -14,6 +14,7 @@ import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
 import { signupConsentMetadata } from '../privacy/legal.js'
 import AuthLayout from './AuthLayout.jsx'
 import GoogleIcon from '../../shared/ui/GoogleIcon.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 export default function Login() {
   const { signInWithPassword, signUp, signInWithPasskey, signInWithProvider } = useAuth()
@@ -42,7 +43,8 @@ export default function Login() {
     const { error } = await signInWithPasskey()
     setPasskeyBusy(false)
     if (error) {
-      toast({ title: 'Passkey sign-in failed', description: error.message, status: 'error' })
+      console.error('[auth] passkey sign-in failed:', error)
+      toast({ title: 'Passkey sign-in failed', description: userMessage(error), status: 'error' })
       return
     }
     navigate(landing, { replace: true })
@@ -66,14 +68,11 @@ export default function Login() {
       : await signUp(email, password, signupConsentMetadata())
     setBusy(false)
     if (error) {
-      // Some backend failures (e.g. a 500 when the confirmation email can't be
-      // sent) come back with no readable body, which would otherwise render as
-      // an empty "{}". Fall back to a human message so the user isn't stranded.
-      const raw = (error.message || '').trim()
-      const msg = raw && raw !== '{}'
-        ? raw
-        : 'Something went wrong on our side — please try again in a moment.'
-      toast({ title: msg, status: 'error' })
+      // Known cases (wrong password, unconfirmed email, rate limit…) get our
+      // own words; anything else, including a bodiless 500 when the
+      // confirmation email can't be sent, a generic line.
+      console.error('[auth] sign-in/up failed:', error)
+      toast({ title: userMessage(error, 'Something went wrong on our side — please try again in a moment.'), status: 'error' })
       return
     }
     // Sign-up with email confirmation ON returns no session (go check your

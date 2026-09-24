@@ -20,6 +20,7 @@ import {
 import { moveTargets, sameKindOthers, sortCategories } from './categoryMath.js'
 import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
 import { categoryPath } from './categoryLinks.js'
+import { userMessage } from '../../shared/lib/errors.js'
 
 const KINDS = [['expense', 'Expenses'], ['income', 'Income']]
 
@@ -40,7 +41,10 @@ export default function Categories() {
       await updateCategory(c.id, { is_archived: !c.is_archived })
       reload()
       toast({ title: c.is_archived ? `${c.name} is back in your pickers` : `${c.name} archived`, status: 'success' })
-    } catch (e) { toast({ title: e.message, status: 'error' }) }
+    } catch (e) {
+      console.error('[categories] archive failed:', e)
+      toast({ title: userMessage(e, 'Couldn’t update the category. Please try again.'), status: 'error' })
+    }
   }
 
   return (

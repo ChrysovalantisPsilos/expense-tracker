@@ -19,6 +19,7 @@ import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import FxPreview from '../../shared/ui/FxPreview.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 const KINDS = [['expense', 'Expense'], ['income', 'Income']]
 const KIND_LABEL = Object.fromEntries(KINDS)
@@ -97,9 +98,10 @@ export default function TransactionForm({
       else if (plan.action === 'update') await saveRecurring({ id: plan.id, ...plan.fields })
       else if (plan.action === 'delete') await deleteRecurring(plan.id)
     } catch (err) {
+      console.error('[transactions] repeat not saved:', err)
       toast({
         title: rule ? 'Saved, but its repeat couldn’t be updated' : 'Saved, but it couldn’t be set to repeat',
-        description: err.message, status: 'warning',
+        description: userMessage(err), status: 'warning',
       })
     }
   }

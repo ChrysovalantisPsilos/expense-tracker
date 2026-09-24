@@ -7,6 +7,7 @@ import { EVENTS } from '../../shared/lib/keys.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
 import PrefRow from './PrefRow.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 // How monthly spending is counted. One synced preference for now:
 // profiles.yearly_separate (0068). Off (the default) spreads a yearly
@@ -31,7 +32,8 @@ export default function SpendingSettings() {
       window.dispatchEvent(new Event(EVENTS.profileUpdated))
     } catch (err) {
       setPending(null)
-      toast({ title: 'Couldn’t save', description: err.message, status: 'error' })
+      console.error('[settings] spending setting not saved:', err)
+      toast({ title: 'Couldn’t save', description: userMessage(err), status: 'error' })
     }
   }
 

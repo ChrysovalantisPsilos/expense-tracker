@@ -19,6 +19,7 @@ import { carriedLabel, previousPeriod } from './budgetMath.js'
 import BudgetRow from './BudgetRow.jsx'
 import { categoryPath } from '../categories/categoryLinks.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 export default function Budgets() {
   const { baseCurrency } = useProfile()
@@ -48,7 +49,8 @@ export default function Budgets() {
       toast({ title: 'Budget saved', status: 'success' })
       reload() // live via realtime too; this covers a dropped socket
     } catch (err) {
-      toast({ title: err.message, status: 'error' })
+      console.error('[budgets] save failed:', err)
+      toast({ title: userMessage(err, 'Couldn’t save the budget. Please try again.'), status: 'error' })
     }
   }
 
@@ -62,7 +64,10 @@ export default function Budgets() {
       await deleteBudget({ categoryId: item.categoryId, periodStart })
       toast({ title: `${item.name} budget removed`, status: 'success' })
       reload()
-    } catch (err) { toast({ title: err.message, status: 'error' }) }
+    } catch (err) {
+      console.error('[budgets] remove failed:', err)
+      toast({ title: userMessage(err, 'Couldn’t remove the budget. Please try again.'), status: 'error' })
+    }
   }
 
   async function copy() {

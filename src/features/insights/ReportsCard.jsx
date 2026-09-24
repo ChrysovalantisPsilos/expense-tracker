@@ -6,6 +6,7 @@ import { FileSpreadsheet, FileText } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { monthRange } from '../../shared/lib/dates.js'
 import { downloadStatement } from './reports.js'
+import { userMessage } from '../../shared/lib/errors.js'
 
 // Financial-statement export (PDF/Excel) for a date range, on the Insights page.
 export default function ReportsCard() {
@@ -20,7 +21,8 @@ export default function ReportsCard() {
     try {
       await downloadStatement({ from, to, format })
     } catch (e) {
-      toast({ title: 'Could not generate report', description: e.message, status: 'error' })
+      console.error('[insights] report failed:', e)
+      toast({ title: 'Could not generate report', description: userMessage(e), status: 'error' })
     } finally {
       setBusy(null)
     }

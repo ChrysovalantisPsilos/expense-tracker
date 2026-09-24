@@ -7,6 +7,7 @@ import { KeyRound, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { validatePassword } from '../../shared/lib/password.js'
 import AuthLayout from './AuthLayout.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -29,7 +30,8 @@ export default function ResetPassword() {
     const { error } = await updatePassword(password)
     setBusy(false)
     if (error) {
-      toast({ title: error.message || 'Couldn’t update your password — the link may have expired.', status: 'error' })
+      console.error('[auth] password update failed:', error)
+      toast({ title: userMessage(error, 'Couldn’t update your password — the link may have expired.'), status: 'error' })
       return
     }
     clearRecovery()

@@ -11,6 +11,7 @@ import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { getProfile, updateProfile } from '../../shared/lib/profile.js'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { toPasskeyList } from './authMethods.js'
+import { userMessage } from '../../shared/lib/errors.js'
 
 // sessionStorage can be unavailable (private mode, blocked site data): treat
 // that as "not shown yet" and never let it break the prompt.
@@ -56,7 +57,8 @@ export default function PasskeyPrompt() {
     const { error } = await registerPasskey()
     setBusy(false)
     if (error) {
-      toast({ title: 'Couldn’t create passkey', description: error.message, status: 'error' })
+      console.error('[passkeys] create failed:', error)
+      toast({ title: 'Couldn’t create passkey', description: userMessage(error), status: 'error' })
       return
     }
     toast({ title: 'Passkey added — you can use it to sign in next time', status: 'success' })

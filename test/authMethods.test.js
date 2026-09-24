@@ -75,8 +75,10 @@ test('googleDisconnectBlock: never the last sign-in identity', () => {
 test('linkErrorMessage: clear words for the known failures', () => {
   assert.match(linkErrorMessage({ code: 'manual_linking_disabled', message: 'Manual linking is disabled' }), /isn’t switched on/)
   assert.match(linkErrorMessage({ code: 'identity_already_exists' }), /another Budgeer account/)
-  assert.equal(linkErrorMessage({ message: 'Boom' }), 'Boom')
-  assert.equal(linkErrorMessage({ description: 'Denied' }), 'Denied')
+  // Supabase's and Google's own text never shows: the fallback does.
+  assert.match(linkErrorMessage({ message: 'Boom' }), /wasn’t connected/)
+  assert.match(linkErrorMessage({ code: 'access_denied', description: 'Denied' }), /wasn’t connected/)
+  assert.equal(linkErrorMessage({ message: 'Boom' }, 'Google is still connected.'), 'Google is still connected.')
   assert.match(linkErrorMessage(null), /wasn’t connected/)
 })
 

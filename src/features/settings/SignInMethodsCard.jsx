@@ -12,6 +12,7 @@ import GoogleIcon from '../../shared/ui/GoogleIcon.jsx'
 import {
   signInMethods, googleDisconnectBlock, linkErrorMessage, redirectError,
 } from './authMethods.js'
+import { userMessage } from '../../shared/lib/errors.js'
 
 // Set before leaving for Google's consent screen; its presence on the way
 // back means "this load is the end of a link attempt" (sessionStorage: the
@@ -44,6 +45,7 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
     handled.current = true
     try { sessionStorage.removeItem(LINKING) } catch { /* storage blocked */ }
     if (err) {
+      console.error('[settings] Google link came back with an error:', err)
       toast({ title: 'Google wasn’t connected', description: linkErrorMessage(err), status: 'error' })
     } else if (ids.some((i) => i.provider === 'google')) {
       toast({ title: 'Google connected', description: 'You can now sign in with Google too.', status: 'success' })
@@ -61,6 +63,7 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
     if (error) { // it never left for Google
       try { sessionStorage.removeItem(LINKING) } catch { /* storage blocked */ }
       setBusy(null)
+      console.error('[settings] Google link failed:', error)
       toast({ title: 'Couldn’t connect Google', description: linkErrorMessage(error), status: 'error' })
     }
   }
@@ -70,7 +73,12 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
     const { error } = await unlinkIdentity(identity)
     setBusy(null)
     if (error) {
-      toast({ title: 'Couldn’t disconnect Google', description: linkErrorMessage(error), status: 'error' })
+      console.error('[settings] Google unlink failed:', error)
+      toast({
+        title: 'Couldn’t disconnect Google',
+        description: linkErrorMessage(error, 'Google is still connected. Please try again.'),
+        status: 'error',
+      })
       return
     }
     toast({ title: 'Google disconnected', status: 'success' })
@@ -152,7 +160,11 @@ function SetPasswordForm({ email, onCancel, onDone, setFirstPassword, markPasswo
       onDone()
       return
     }
-    if (error) { toast({ title: 'Couldn’t set the password', description: error.message, status: 'error' }); return }
+    if (error) {
+      console.error('[settings] first password failed:', error)
+      toast({ title: 'Couldn’t set the password', description: userMessage(error), status: 'error' })
+      return
+    }
     toast({ title: 'Password set', description: `You can now also sign in with ${email} and this password.`, status: 'success' })
     onDone()
   }

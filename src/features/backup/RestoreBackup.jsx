@@ -13,6 +13,7 @@ import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { readBackup, unlockBackup, backupContents, restoreSummary } from './backupMath.js'
 import { restoreBackup } from './backup.js'
 import Note from './Note.jsx'
+import { UserError, userMessage } from '../../shared/lib/errors.js'
 
 // Hard ceiling on what we'll read into memory; real backups are far smaller.
 const MAX_FILE_BYTES = 50 * 1024 * 1024
@@ -28,11 +29,12 @@ export default function RestoreBackup() {
     e.target.value = ''
     if (!file) return
     try {
-      if (file.size > MAX_FILE_BYTES) throw new Error('This file is too large to be a Budgeer backup.')
+      if (file.size > MAX_FILE_BYTES) throw new UserError('This file is too large to be a Budgeer backup.')
       const read = readBackup(await file.text())
       setFlow(read.encrypted ? { step: 'password', envelope: read.envelope } : { step: 'review', backup: read.backup })
     } catch (err) {
-      setFlow({ step: 'error', error: err.message })
+      console.error('[backup] file not read:', err)
+      setFlow({ step: 'error', error: userMessage(err, 'This file couldn’t be read as a Budgeer backup.') })
     }
   }
 
@@ -103,7 +105,8 @@ function PasswordStep({ envelope, setFlow, onClose, inputRef }) {
     try {
       setFlow({ step: 'review', backup: await unlockBackup(envelope, password) })
     } catch (err) {
-      setError(err.message)
+      console.error('[backup] unlock failed:', err)
+      setError(userMessage(err, 'Wrong password or damaged file.'))
       setBusy(false)
     }
   }
@@ -153,8 +156,9 @@ function ReviewStep({ backup, setFlow, onClose, running }) {
       window.dispatchEvent(new Event(EVENTS.profileUpdated))
       setFlow({ step: 'done', tally })
     } catch (err) {
+      console.error('[backup] restore stopped:', err)
       toast({ title: 'The restore stopped', status: 'error',
-        description: `${err.message} What was added so far stays; running the restore again picks up the rest.` })
+        description: `${userMessage(err)} What was added so far stays; running the restore again picks up the rest.` })
       setFlow((f) => ({ ...f, step: 'review' }))
     }
   }

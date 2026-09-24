@@ -20,6 +20,7 @@ import {
 import RecurringForm from './RecurringForm.jsx'
 import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 const TABS = ['expense', 'income']
 
@@ -44,14 +45,20 @@ export default function Recurring() {
 
   async function toggle(r) {
     try { await setRecurringActive(r.id, !r.is_active); reload() }
-    catch (e) { toast({ title: e.message, status: 'error' }) }
+    catch (e) {
+      console.error('[recurring] pause/resume failed:', e)
+      toast({ title: userMessage(e, 'Couldn’t update the recurring entry. Please try again.'), status: 'error' })
+    }
   }
   async function confirmRemove() {
     try {
       await deleteRecurring(removing.id)
       toast({ title: 'Recurring entry removed', status: 'success' })
       setRemoving(null); reload()
-    } catch (e) { toast({ title: e.message, status: 'error' }) }
+    } catch (e) {
+      console.error('[recurring] remove failed:', e)
+      toast({ title: userMessage(e, 'Couldn’t remove the recurring entry. Please try again.'), status: 'error' })
+    }
   }
 
   const list = (rows) => (

@@ -17,6 +17,7 @@ import { memberName } from './groupFormat.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import PayShortcuts from './PayShortcuts.jsx'
 import FormModal from '../../shared/ui/FormModal.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 export function DeleteGroupModal({ group, isOpen, onClose, busy, onConfirm }) {
   const [text, setText] = useState('')
@@ -130,8 +131,9 @@ export function InviteEmailModal({ group, isOpen, onClose }) {
           toast({ title: `Invite emailed to ${addr}`, status: 'success' })
         } catch (mailErr) {
           await navigator.clipboard.writeText(url)
+          console.error('[groups] invite email failed:', mailErr)
           toast({ title: 'Couldn’t send the email — link copied instead',
-            description: mailErr.message, status: 'warning', duration: 8000 })
+            description: userMessage(mailErr), status: 'warning', duration: 8000 })
         }
         onClose(); setEmail('')
       } else {
@@ -190,7 +192,10 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
     try {
       await nudgeMember(group.id, memberId)
       toast({ title: 'Reminder sent', status: 'success' })
-    } catch (e) { toast({ title: e.message, status: 'info' }) }
+    } catch (e) {
+      console.error('[groups] reminder failed:', e)
+      toast({ title: userMessage(e, 'Couldn’t send the reminder. Please try again.'), status: 'info' })
+    }
   }
 
   async function submit() {

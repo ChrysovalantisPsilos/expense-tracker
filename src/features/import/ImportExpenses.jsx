@@ -23,6 +23,7 @@ import { previewDrafts, merchantKey } from './importMath.js'
 import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
 import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
+import { userMessage } from '../../shared/lib/errors.js'
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 const mappingComplete = (m) => Boolean(m.date && (m.amount || (m.debit && m.credit)))
@@ -66,7 +67,8 @@ export default function ImportExpenses() {
       setShowMapping(parsed.detection.confidence < CONFIDENCE_THRESHOLD)
       setStep('map')
     } catch (err) {
-      toast({ title: 'Couldn’t read that file', description: err.message,
+      console.error('[import] file not read:', err)
+      toast({ title: 'Couldn’t read that file', description: userMessage(err, 'This spreadsheet couldn’t be read.'),
         status: 'error', duration: 9000, isClosable: true })
     }
   }

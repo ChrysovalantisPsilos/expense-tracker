@@ -21,6 +21,7 @@ import {
   DeleteGroupModal, InviteEmailModal, SettleUpModal, RenameGroupModal, LeaveGroupModal,
   RemoveMemberModal,
 } from './GroupModals.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 export default function GroupDetail() {
   const { id } = useParams()
@@ -107,7 +108,8 @@ export default function GroupDetail() {
       await navigator.clipboard.writeText(url)
       toast({ title: 'Invite link copied', description: 'Paste it in a chat to invite friends.', status: 'success' })
     } catch (e) {
-      toast({ title: 'Could not create invite', description: e.message, status: 'error' })
+      console.error('[groups] invite link failed:', e)
+      toast({ title: 'Could not create invite', description: userMessage(e), status: 'error' })
     }
   }
 
@@ -117,7 +119,10 @@ export default function GroupDetail() {
       await removeMember(myMember.id, silent)
       toast({ title: 'You left the group', status: 'success' })
       navigate('/groups')
-    } catch (e) { toast({ title: 'Couldn’t leave', description: e.message, status: 'error' }) }
+    } catch (e) {
+      console.error('[groups] leave failed:', e)
+      toast({ title: 'Couldn’t leave', description: userMessage(e), status: 'error' })
+    }
     finally { setActionBusy(false); leaveModal.onClose() }
   }
 
@@ -127,7 +132,10 @@ export default function GroupDetail() {
       await deleteGroup(id)
       toast({ title: 'Group deleted', status: 'success' })
       navigate('/groups')
-    } catch (e) { toast({ title: 'Couldn’t delete', description: e.message, status: 'error' }) }
+    } catch (e) {
+      console.error('[groups] delete failed:', e)
+      toast({ title: 'Couldn’t delete', description: userMessage(e), status: 'error' })
+    }
     finally { setActionBusy(false); deleteModal.onClose() }
   }
 
@@ -139,7 +147,10 @@ export default function GroupDetail() {
       toast({ title: `Removed ${removeTarget.display_name}`, status: 'success' })
       setRemoveTarget(null)
       load()
-    } catch (e) { toast({ title: 'Couldn’t remove', description: e.message, status: 'error' }) }
+    } catch (e) {
+      console.error('[groups] remove member failed:', e)
+      toast({ title: 'Couldn’t remove', description: userMessage(e), status: 'error' })
+    }
     finally { setActionBusy(false) }
   }
 

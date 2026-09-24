@@ -1,5 +1,6 @@
 // Pure helpers about how a user signs in. No Supabase calls — callers pass in
 // the auth user / API responses they already have.
+import { userMessage } from '../../shared/lib/errors.js'
 
 // True when the account has an email/password identity (so it has a password
 // to change or re-enter). Defaults to true when the providers can't be read,
@@ -72,8 +73,9 @@ export function googleDisconnectBlock({ user, identities }) {
 }
 
 // A user-facing message for a failed link, from supabase-js' error or the
-// error the OAuth redirect came back with (redirectError).
-export function linkErrorMessage(error) {
+// error the OAuth redirect came back with (redirectError). Anything without
+// words of our own gets `fallback`, never Supabase's or Google's text.
+export function linkErrorMessage(error, fallback = 'Google wasn’t connected. Please try again.') {
   const code = error?.code
   if (code === 'manual_linking_disabled') {
     return 'Connecting a Google account isn’t switched on for this site yet. Please try again later.'
@@ -81,7 +83,7 @@ export function linkErrorMessage(error) {
   if (code === 'identity_already_exists') {
     return 'That Google account already belongs to another Budgeer account.'
   }
-  return error?.message || error?.description || 'Google wasn’t connected. Please try again.'
+  return userMessage(error, fallback)
 }
 
 // The error an OAuth redirect came back with (?error=… or #error=…), or null.

@@ -6,6 +6,7 @@ import { getProfile, updateProfile } from '../../shared/lib/profile.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
 import PrefRow from './PrefRow.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 export default function NotificationSettings() {
   return (
@@ -50,7 +51,8 @@ export function NotificationPrefs({ title, onChanged }) {
       }
     } catch (e) {
       setPrefs(prev)
-      toast({ title: 'Couldn’t save', description: e.message, status: 'error' })
+      console.error('[settings] notification setting not saved:', e)
+      toast({ title: 'Couldn’t save', description: userMessage(e), status: 'error' })
     }
   }
 

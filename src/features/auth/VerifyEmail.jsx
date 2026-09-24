@@ -7,6 +7,7 @@ import { MailCheck, LogIn } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import AuthLayout from './AuthLayout.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 const PENDING_EMAIL = STORAGE_KEYS.pendingEmail
 const RESEND_COOLDOWN = 60 // seconds
@@ -33,7 +34,8 @@ export default function VerifyEmail() {
   async function resend() {
     const { error } = await resendConfirmation(email)
     if (error) {
-      toast({ title: 'Couldn’t resend', description: error.message, status: 'error' })
+      console.error('[auth] resend failed:', error)
+      toast({ title: 'Couldn’t resend', description: userMessage(error), status: 'error' })
       return
     }
     toast({ title: 'Confirmation email resent', status: 'success' })

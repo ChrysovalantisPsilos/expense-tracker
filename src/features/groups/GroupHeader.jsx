@@ -11,6 +11,7 @@ import { PageAction } from '../../shared/ui/PageHeader.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import GroupMark from './GroupMark.jsx'
 import AvatarStack from './AvatarStack.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 // The group page's header, styled after the landing's trip card: the group
 // photo (owner can replace it) or a solid brand tile, the name over a
@@ -37,7 +38,10 @@ export default function GroupHeader({
       await uploadGroupImage(group.id, file)
       await onPhotoChanged()
       toast({ title: 'Group photo updated', status: 'success' })
-    } catch (err) { toast({ title: 'Couldn’t update photo', description: err.message, status: 'error' }) }
+    } catch (err) {
+      console.error('[groups] photo upload failed:', err)
+      toast({ title: 'Couldn’t update photo', description: userMessage(err), status: 'error' })
+    }
     finally { setUploading(false) }
   }
 

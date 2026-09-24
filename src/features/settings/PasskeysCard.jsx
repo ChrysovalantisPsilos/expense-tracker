@@ -4,6 +4,7 @@ import { Fingerprint, KeyRound, Plus, Trash2 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 // List / add / remove passkeys. `passkeys` is SecuritySettings' usePasskeys()
 // (shared with the sign-in methods list). Renders nothing when this browser
@@ -20,14 +21,22 @@ export default function PasskeysCard({ passkeys: query }) {
     setPkBusy(true)
     const { error } = await registerPasskey()
     setPkBusy(false)
-    if (error) { toast({ title: 'Couldn’t add passkey', description: error.message, status: 'error' }); return }
+    if (error) {
+      console.error('[passkeys] add failed:', error)
+      toast({ title: 'Couldn’t add passkey', description: userMessage(error), status: 'error' })
+      return
+    }
     toast({ title: 'Passkey added', status: 'success' })
     loadPasskeys()
   }
 
   async function removePasskey(id) {
     const { error } = await deletePasskey(id)
-    if (error) { toast({ title: error.message, status: 'error' }); return }
+    if (error) {
+      console.error('[passkeys] remove failed:', error)
+      toast({ title: userMessage(error, 'Couldn’t remove the passkey. Please try again.'), status: 'error' })
+      return
+    }
     loadPasskeys()
   }
 

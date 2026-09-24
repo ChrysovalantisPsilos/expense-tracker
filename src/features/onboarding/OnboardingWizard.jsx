@@ -16,6 +16,7 @@ import { updateProfile, savePaymentInfo } from '../../shared/lib/profile.js'
 import { createGroup } from '../groups/groups.js'
 import Logo from '../../shared/ui/Logo.jsx'
 import { startTour } from './tour.js'
+import { userMessage } from '../../shared/lib/errors.js'
 
 // Post-signup setup wizard. Shows once per account (App gates on
 // profiles.onboarded_at). Collects the essentials, folds in the notification +
@@ -101,7 +102,11 @@ export default function OnboardingWizard({ profile, onDone }) {
 
   async function addPasskey() {
     const { error } = await registerPasskey()
-    if (error) { toast({ title: 'Couldn’t add passkey', description: error.message, status: 'error' }); return }
+    if (error) {
+      console.error('[onboarding] passkey not added:', error)
+      toast({ title: 'Couldn’t add passkey', description: userMessage(error), status: 'error' })
+      return
+    }
     setPasskeyDone(true)
     toast({ title: 'Passkey added', status: 'success' })
   }

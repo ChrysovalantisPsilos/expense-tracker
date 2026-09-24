@@ -41,6 +41,7 @@ import {
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
 
 // How many foreign-currency rows "Spending abroad" lists (the total covers all).
 const ABROAD_ROWS = 5
@@ -208,7 +209,10 @@ function NetWorthCard({ baseCurrency }) {
 
   async function remove(acc) {
     try { await deleteAccount(acc.id); reload() }
-    catch (e) { toast({ title: e.message, status: 'error' }) }
+    catch (e) {
+      console.error('[insights] account delete failed:', e)
+      toast({ title: userMessage(e, 'Couldn’t remove it from your net worth. Please try again.'), status: 'error' })
+    }
   }
 
   return (
@@ -314,14 +318,20 @@ function GoalsCard({ baseCurrency }) {
 
   async function remove(g) {
     try { await deleteGoal(g.id); reload() }
-    catch (e) { toast({ title: e.message, status: 'error' }) }
+    catch (e) {
+      console.error('[insights] goal delete failed:', e)
+      toast({ title: userMessage(e, 'Couldn’t delete the goal. Please try again.'), status: 'error' })
+    }
   }
   async function addTo(g, deltaMinor) {
     try {
       // Send the full goal — the encrypting save RPC rewrites every field.
       await saveGoal({ ...g, saved_minor: goalSavedAfter(g, deltaMinor) })
       reload()
-    } catch (e) { toast({ title: e.message, status: 'error' }) }
+    } catch (e) {
+      console.error('[insights] goal update failed:', e)
+      toast({ title: userMessage(e, 'Couldn’t update the goal. Please try again.'), status: 'error' })
+    }
   }
 
   return (

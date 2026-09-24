@@ -8,6 +8,9 @@ import { Check, X } from 'lucide-react'
 import { previewLinkInvite, joinViaLink } from './groups.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import GroupMark from './GroupMark.jsx'
+import { userMessage } from '../../shared/lib/errors.js'
+
+const INVITE_UNAVAILABLE = 'This invite link is invalid or has expired. Ask whoever invited you for a fresh link.'
 
 export default function JoinGroup() {
   const { token } = useParams()
@@ -28,7 +31,10 @@ export default function JoinGroup() {
         }
         setState(res)
       })
-      .catch((e) => { if (active) setState({ status: 'error', message: e.message }) })
+      .catch((e) => {
+        console.error('[groups] invite preview failed:', e)
+        if (active) setState({ status: 'error', message: userMessage(e, INVITE_UNAVAILABLE) })
+      })
     return () => { active = false }
   }, [token, navigate])
 
@@ -38,7 +44,8 @@ export default function JoinGroup() {
       const gid = await joinViaLink(token)
       navigate(`/groups/${gid}`, { replace: true })
     } catch (e) {
-      toast({ title: 'Couldn’t join', description: e.message, status: 'error' })
+      console.error('[groups] join failed:', e)
+      toast({ title: 'Couldn’t join', description: userMessage(e), status: 'error' })
       setBusy(null)
     }
   }
@@ -64,7 +71,7 @@ export default function JoinGroup() {
         <Stack spacing={4} textAlign="center" maxW="sm">
           <Heading size="md">Invite unavailable</Heading>
           <Text color="text.muted">
-            {state.message || 'This invite link is invalid or has expired. Ask whoever invited you for a fresh link.'}
+            {state.message || INVITE_UNAVAILABLE}
           </Text>
           <Button onClick={() => navigate('/groups')}>Go to groups</Button>
         </Stack>

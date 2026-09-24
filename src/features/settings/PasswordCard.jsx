@@ -7,6 +7,7 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { validatePassword } from '../../shared/lib/password.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { hasPassword } from './authMethods.js'
+import { userMessage } from '../../shared/lib/errors.js'
 
 // Change password for accounts that have one (an email identity, or a Google
 // account that set one). A Google-only account has none to change, so this
@@ -30,7 +31,11 @@ export default function PasswordCard({ user }) {
     try {
       // AuthProvider re-verifies the current password (and so does the server).
       const { error } = await changePassword(current, next)
-      if (error) { toast({ title: error.message, status: 'error' }); return }
+      if (error) {
+        console.error('[settings] password change failed:', error)
+        toast({ title: userMessage(error, 'Couldn’t update your password. Please try again.'), status: 'error' })
+        return
+      }
 
       setCurrent(''); setNext(''); setConfirm('')
       toast({ title: 'Password updated', status: 'success' })

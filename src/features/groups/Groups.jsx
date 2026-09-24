@@ -21,6 +21,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import GroupMark from './GroupMark.jsx'
 import AvatarStack from './AvatarStack.jsx'
 import { textColor } from '../../shared/ui/kit/kitMath.js'
+import { userMessage } from '../../shared/lib/errors.js'
 
 const NO_GROUPS = { groups: [], summaries: new Map(), invites: [] }
 
@@ -62,7 +63,10 @@ export default function Groups() {
       mutate((d) => ({ ...d, invites: d.invites.filter((i) => i.invite_id !== inviteId) }))
       if (accept && gid) navigate(`/groups/${gid}`)
       else load()
-    } catch (e) { toast({ title: e.message, status: 'error' }) }
+    } catch (e) {
+      console.error('[groups] invite response failed:', e)
+      toast({ title: userMessage(e, 'Couldn’t answer the invite. Please try again.'), status: 'error' })
+    }
   }
 
   async function submit() {
