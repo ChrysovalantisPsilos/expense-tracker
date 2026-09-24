@@ -64,7 +64,8 @@ Deno.serve(withCors(async (req) => {
       .from('profiles').select('display_name').eq('id', user.id).maybeSingle()
 
     if (!sender) {
-      return json({ error: 'Email invites are not configured yet (missing RESEND_API_KEY). Use the share link instead.' }, 503)
+      console.error('send-invite: RESEND_API_KEY is not set')
+      return json({ error: 'Email invites aren’t available right now. Use the share link instead.' }, 503)
     }
 
     const { data: recipientOk, error: rqErr } = await asUser.rpc('consume_invite_recipient_quota', { p_email: recipient })
