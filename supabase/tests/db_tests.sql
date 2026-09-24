@@ -2070,8 +2070,11 @@ begin
       raise exception 'update result % @ %', r.currency, r.exchange_rate;
     end if;
     execute 'reset role';
-    -- A JPY-based user may omit the rate for JPY.
+    -- A JPY-based user may omit the rate for JPY. A second account: this one
+    -- has entries now, so its base currency is fixed (0078).
+    u := pg_temp.zz_user('fx-jpy');
     update public.profiles set base_currency = 'JPY' where id = u;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     n := public.save_transactions('[{"amount_minor": 1800, "currency": "JPY"}]'::jsonb);
     execute 'reset role';
@@ -2535,7 +2538,9 @@ begin
     if r.currency <> 'GBP' or r.exchange_rate <> 1.25 then
       raise exception 'materialised % @ %', r.currency, r.exchange_rate;
     end if;
-    -- No cached rate for the user's base currency → pending, not 1.
+    -- No cached rate for the user's base currency → pending, not 1. A second
+    -- account: this one has entries now, so its base currency is fixed (0078).
+    u := pg_temp.zz_user('recfx-zzz');
     update public.profiles set base_currency = 'ZZZ' where id = u;
     perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
