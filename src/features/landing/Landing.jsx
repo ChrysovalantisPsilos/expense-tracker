@@ -3,14 +3,14 @@ import {
   Box, Button, Container, Flex, Heading, HStack, Link, SimpleGrid, Stack, Text,
 } from '@chakra-ui/react'
 import {
-  ArchiveRestore, Download, FileSpreadsheet, Landmark, LockKeyhole, PiggyBank,
-  Percent, Repeat, ScanLine,
+  ArchiveRestore, ArrowRight, Download, FileSpreadsheet, Heart, Landmark, LockKeyhole,
+  MapPin, PiggyBank, Percent, Repeat, ScanLine, Wrench,
 } from 'lucide-react'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import ThemeToggle from '../../shared/ui/ThemeToggle.jsx'
-import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
+import { DISCLAIMER, HOBBY_BADGE, HOBBY_NOTICE_TITLE } from '../../shared/lib/disclaimer.js'
 import TripSplitMock from './TripSplitMock.jsx'
 import BudgetsMock from './BudgetsMock.jsx'
 import InsightsMock from './InsightsMock.jsx'
@@ -53,6 +53,30 @@ const ALSO_INCLUDED = [
   { icon: LockKeyhole, label: 'Encrypted at rest' },
 ]
 
+// A quiet pill above the headline saying what Budgeer is, linking to the
+// "Who runs Budgeer?" answer in Help & FAQ.
+function HobbyBadge() {
+  return (
+    <Link as={RouterLink} to="/help#who-runs-budgeer" alignSelf="flex-start" display="inline-flex"
+      alignItems="center" gap={2} px={3} py={1.5} borderRadius="full" fontSize="sm" fontWeight="600"
+      color="text.primary" bg="bg.surface" borderWidth="1px" borderColor="border.default" boxShadow="sm"
+      _hover={{ textDecoration: 'none', borderColor: 'brand.300' }}>
+      <Box as="span" color="accent.fg"><Heart size={14} fill="currentColor" /></Box>
+      {HOBBY_BADGE}
+      <Box as="span" color="text.muted"><ArrowRight size={14} /></Box>
+    </Link>
+  )
+}
+
+// What Budgeer is and isn't, in plain words. Every line here must match the
+// Privacy Notice, the Terms and Help & FAQ.
+const HONEST_POINTS = [
+  { icon: Heart, title: 'Free, with no ads', body: 'Every feature is free. No ads, no analytics, no cookies, and your data is never sold.' },
+  { icon: Landmark, title: 'Not a bank or an adviser', body: 'Budgeer never holds or moves money, and it doesn’t give financial, tax or legal advice.' },
+  { icon: MapPin, title: 'Stored in the EU', body: 'Our database is hosted in the EU, in Paris, France.' },
+  { icon: Wrench, title: 'Looked after with care', body: 'It can still have bugs or downtime, so check important figures against your bank.' },
+]
+
 function Hero({ onLogin, onSignup }) {
   return (
     <Box as="section" position="relative" overflow="hidden">
@@ -61,6 +85,7 @@ function Hero({ onLogin, onSignup }) {
         pt={{ base: 10, md: 16, lg: 20 }} pb={{ base: 14, md: 20 }}>
         <Flex direction={{ base: 'column', lg: 'row' }} align="center" gap={{ base: 12, lg: 16 }}>
           <Stack spacing={6} flex="1.15" maxW={{ base: '2xl', lg: 'none' }}>
+            <HobbyBadge />
             <Heading as="h1" fontSize={{ base: '4xl', md: '5xl', xl: '6xl' }} letterSpacing="-0.03em" lineHeight="1.05">
               Track your money.<br />
               <Text as="span" color="accent.fg">Split with friends.</Text>
@@ -127,6 +152,42 @@ function AlsoIncluded() {
   )
 }
 
+// "Made by one person, for fun": a card before the closing call to action
+// saying plainly what Budgeer is and isn't.
+function Honest() {
+  return (
+    <Box as="section">
+      <Container maxW="6xl" px={{ base: 4, md: 6 }} pt={{ base: 14, md: 20 }}>
+        <Box p={{ base: 6, md: 10 }} bg="bg.surface" borderRadius="2xl" borderWidth="1px" borderColor="border.default">
+          <Flex direction={{ base: 'column', md: 'row' }} align={{ md: 'flex-end' }} justify="space-between"
+            gap={{ base: 4, md: 8 }}>
+            <SectionHeading eyebrow={HOBBY_NOTICE_TITLE} title="Made by one person, for fun">
+              There’s no company behind Budgeer — just one person building it in their spare
+              time. Here’s what that means.
+            </SectionHeading>
+            <HStack spacing={5} rowGap={2} flexWrap="wrap" fontWeight="600" flexShrink={0}>
+              <Link as={RouterLink} to="/help#who-runs-budgeer" color="accent.fg">Who runs Budgeer?</Link>
+              <Link as={RouterLink} to="/terms" color="accent.fg">Terms of Use</Link>
+            </HStack>
+          </Flex>
+          <SimpleGrid as="ul" listStyleType="none" columns={{ base: 1, sm: 2, lg: 4 }}
+            spacing={{ base: 5, md: 6 }} mt={{ base: 8, md: 10 }}>
+            {HONEST_POINTS.map(({ icon, title, body }) => (
+              <Flex as="li" key={title} direction={{ base: 'row', lg: 'column' }} gap={3}>
+                <IconTile icon={icon} size={40} radius="lg" />
+                <Box minW={0}>
+                  <Text fontFamily="heading" fontWeight="700" lineHeight="1.4">{title}</Text>
+                  <Text color="text.muted" fontSize="sm" lineHeight="1.6" mt={1}>{body}</Text>
+                </Box>
+              </Flex>
+            ))}
+          </SimpleGrid>
+        </Box>
+      </Container>
+    </Box>
+  )
+}
+
 function ClosingCta({ onSignup }) {
   return (
     <Box as="section">
@@ -166,6 +227,7 @@ export default function Landing() {
         <HowItWorks />
         <Showcase />
         <AlsoIncluded />
+        <Honest />
         <ClosingCta onSignup={onSignup} />
       </main>
       <Box as="footer" borderTopWidth="1px" borderColor="border.default">
