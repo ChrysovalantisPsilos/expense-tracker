@@ -18,17 +18,26 @@ const fadeIn = keyframes`
   to { opacity: 1 }
 `
 const MOTION = '@media (prefers-reduced-motion: no-preference)'
-const SHIMMER = {
+// The sweep runs from the shape's own fill to a shine and back.
+const shimmerOver = (fill, shine) => ({
   [MOTION]: {
-    backgroundImage: 'linear-gradient(90deg, var(--chakra-colors-bg-subtle) 0%, var(--chakra-colors-skeleton-shine) 45%, var(--chakra-colors-bg-subtle) 90%)',
+    backgroundImage: `linear-gradient(90deg, var(--chakra-colors-${fill}) 0%, var(--chakra-colors-${shine}) 45%, var(--chakra-colors-${fill}) 90%)`,
     backgroundSize: '250% 100%',
     animation: `${shimmer} 1.4s linear infinite`,
   },
+})
+const FILLS = {
+  card: { bg: 'bg.subtle', sx: shimmerOver('bg-subtle', 'skeleton-shine') },
+  // Straight on the page background, where bg.subtle barely shows in light
+  // mode: a step stronger there, the same as in a card in dark mode.
+  canvas: { bg: 'skeleton.onCanvas', sx: shimmerOver('skeleton-onCanvas', 'skeleton-onCanvasShine') },
 }
 
-// One shimmering shape. Text lines are pills; pass `radius` for tiles.
-export function SkeletonBlock({ w = 'full', h = '12px', radius = 'full', ...props }) {
-  return <Box w={w} h={h} borderRadius={radius} flexShrink={0} bg="bg.subtle" sx={SHIMMER} {...props} />
+// One shimmering shape. Text lines are pills; pass `radius` for tiles, and
+// `onCanvas` for a shape on the page background rather than in a card.
+export function SkeletonBlock({ w = 'full', h = '12px', radius = 'full', onCanvas = false, ...props }) {
+  const fill = FILLS[onCanvas ? 'canvas' : 'card']
+  return <Box w={w} h={h} borderRadius={radius} flexShrink={0} bg={fill.bg} sx={fill.sx} {...props} />
 }
 
 // Wraps a page's skeleton: one "Loading…" status for screen readers, the
@@ -93,11 +102,11 @@ export function SkeletonRows({ count = 4, progress = false, spacing, ...rowProps
 
 // Figure's shape: a small label over a big number, sized like Figure's.
 const VALUE_H = { sm: '14px', md: '18px', lg: '24px', xl: '32px', hero: { base: '32px', lg: '48px' } }
-export function SkeletonFigure({ size = 'md', w = '45%', ...props }) {
+export function SkeletonFigure({ size = 'md', w = '45%', onCanvas, ...props }) {
   return (
     <Stack spacing={2} minW={0} {...props}>
-      <SkeletonBlock w="64px" h="10px" />
-      <SkeletonBlock w={w} maxW="220px" h={VALUE_H[size]} radius="lg" />
+      <SkeletonBlock w="64px" h="10px" onCanvas={onCanvas} />
+      <SkeletonBlock w={w} maxW="220px" h={VALUE_H[size]} radius="lg" onCanvas={onCanvas} />
     </Stack>
   )
 }

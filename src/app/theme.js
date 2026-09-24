@@ -20,6 +20,11 @@ const semanticTokens = {
     'bg.subtle': { default: 'sand.100', _dark: DARK.subtle },
     // The highlight that sweeps across a loading skeleton (a bg.subtle block).
     'skeleton.shine': { default: 'sand.50', _dark: DARK.border },
+    // A skeleton shape straight on bg.canvas (not in a card): a step stronger
+    // in light mode, where bg.subtle barely shows against the sand page.
+    'skeleton.onCanvas': { default: 'sand.200', _dark: DARK.subtle },
+    // …and its sweep, which must not fade into the page itself (sand.50).
+    'skeleton.onCanvasShine': { default: 'sand.100', _dark: DARK.border },
     'border.default': { default: 'sand.200', _dark: DARK.border },
     'text.primary': { default: 'sand.900', _dark: DARK.text },
     'text.muted': { default: 'sand.600', _dark: 'sand.400' },

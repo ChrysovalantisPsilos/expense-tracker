@@ -37,13 +37,14 @@ export function GroupDetailSkeleton() {
   return (
     <SkeletonRegion>
       <Stack spacing={5}>
+        {/* On the page background, not in a card. */}
         <HStack spacing={3} pt={{ base: 10, md: 0 }} pl={{ md: 12 }}>
-          <SkeletonBlock w="48px" h="48px" radius="xl" />
+          <SkeletonBlock w="48px" h="48px" radius="xl" onCanvas />
           <Stack spacing={2} flex="1" minW={0}>
-            <SkeletonBlock w="55%" h="20px" radius="lg" />
-            <SkeletonBlock w="35%" h="12px" />
+            <SkeletonBlock w="55%" h="20px" radius="lg" onCanvas />
+            <SkeletonBlock w="35%" h="12px" onCanvas />
           </Stack>
-          <SkeletonFigure size="lg" w="88px" align="end" />
+          <SkeletonFigure size="lg" w="88px" align="end" onCanvas />
         </HStack>
 
         <Panel>
