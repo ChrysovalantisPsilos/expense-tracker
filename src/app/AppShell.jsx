@@ -19,6 +19,7 @@ import NotificationBell from '../features/notifications/NotificationBell.jsx'
 import { useNotificationFeed } from '../features/notifications/notifications.js'
 import { isNavActive, showsAddExpense } from './navMatch.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
+import { MAIN_ID } from '../shared/ui/SkipLink.jsx'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
 // desktop sidebar. `tour` names the app tour's stop (data-tour, tourSteps.js).
@@ -192,7 +193,7 @@ export default function AppShell({ hideAddExpense = false }) {
           <NotificationBell feed={feed} />
         </Flex>
 
-        <Box as="main" flex="1" px={{ base: 4, md: 6 }} py={{ base: 4, md: 4 }}
+        <Box as="main" id={MAIN_ID} flex="1" px={{ base: 4, md: 6 }} py={{ base: 4, md: 4 }}
           pb={{ base: `calc(${fab ? '164px' : '92px'} + ${SAFE_BOTTOM})`, md: 8 }} maxW="900px" w="full" mx="auto">
           {/* Pages are lazy chunks: the shell stays put while one loads, and
               if one fails (a chunk gone after a deploy, offline, a crash) its

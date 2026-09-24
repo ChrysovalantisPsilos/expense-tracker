@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Heading, Stack, HStack, Text, Button, Spacer, Select,
@@ -51,6 +51,10 @@ export default function ImportExpenses() {
   const [assign, setAssign] = useState({})       // merchant pattern -> category id
   const [missingRates, setMissingRates] = useState([]) // [{ currency, count }]
   const [rateInput, setRateInput] = useState({})  // currency -> typed rate
+
+  // A real, focusable button that opens the hidden picker (a label around
+  // the input can't be reached with Tab).
+  const fileInput = useRef(null)
 
   async function onFile(e) {
     const file = e.target.files?.[0]
@@ -166,12 +170,13 @@ export default function ImportExpenses() {
               anything is saved. Pending and declined payments are left out;
               foreign-currency rows convert at the ECB rate for their date.
             </Text>
+            <input ref={fileInput} type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,text/csv" hidden
+              onChange={onFile} />
             {reading ? (
               <BusyNote minH="40px">Reading your file…</BusyNote>
             ) : (
-              <Button as="label" leftIcon={<FileSpreadsheet size={16} />} cursor="pointer">
+              <Button leftIcon={<FileSpreadsheet size={16} />} onClick={() => fileInput.current?.click()}>
                 Choose file
-                <input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,text/csv" hidden onChange={onFile} />
               </Button>
             )}
           </Stack>

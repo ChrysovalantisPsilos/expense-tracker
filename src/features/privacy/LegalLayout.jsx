@@ -9,6 +9,7 @@ import PageHeader from '../../shared/ui/PageHeader.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { formatVersion } from './legal.js'
+import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 
 // The document itself: intro, the hobby-project notice, version and
 // effective date, a table of contents, then numbered sections.
@@ -74,7 +75,7 @@ export default function LegalLayout({ eyebrow, title, intro, version, sections }
         <Button as={RouterLink} to="/login?signup=1" size="sm" px={{ base: 3, sm: 4 }}>Get started</Button>
       </PublicHeader>
 
-      <Container as="main" maxW="3xl" px={{ base: 4, md: 6 }} pt={{ base: 4, md: 8 }} pb={{ base: 10, md: 16 }}>
+      <Container as="main" id={MAIN_ID} maxW="3xl" px={{ base: 4, md: 6 }} pt={{ base: 4, md: 8 }} pb={{ base: 10, md: 16 }}>
         <Stack spacing={6}>
           <Stack spacing={3}>
             <BackButton fallback="/" />

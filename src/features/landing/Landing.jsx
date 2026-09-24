@@ -18,6 +18,7 @@ import { SUPPORT_EMAIL } from '../../shared/lib/contact.js'
 import CurrencyMock from './CurrencyMock.jsx'
 import SectionHeading from './SectionHeading.jsx'
 import HowItWorks from './HowItWorks.jsx'
+import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 
 const SHOWCASE = [
   {
@@ -221,7 +222,7 @@ export default function Landing() {
         <Button size="sm" variant="ghost" px={{ base: 2, sm: 3 }} onClick={onLogin}>Log in</Button>
         <Button size="sm" px={{ base: 3, sm: 4 }} onClick={onSignup}>Get started</Button>
       </PublicHeader>
-      <main>
+      <main id={MAIN_ID}>
         <Hero onLogin={onLogin} onSignup={onSignup} />
         <HowItWorks />
         <Showcase />

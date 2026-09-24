@@ -10,6 +10,7 @@ import { useTour } from '../features/onboarding/tour.js'
 import { useLegalGate } from '../features/privacy/useLegalGate.js'
 import { STORAGE_KEYS } from '../shared/lib/keys.js'
 import RingLoader from '../shared/ui/RingLoader.jsx'
+import SkipLink from '../shared/ui/SkipLink.jsx'
 import { loginPathFor, NEXT_PARAM, safeReturnPath, takeReturnPath } from '../shared/lib/returnPath.js'
 import NotFound from './NotFound.jsx'
 import { isSignedInRoute } from './routes.js'
@@ -203,5 +204,10 @@ export default function App() {
   // A password-recovery link signs the user in, but they must set a new password
   // before doing anything else — so this screen preempts the normal routing.
   if (recovering) return <Suspense fallback={<RingLoader fullScreen />}><ResetPassword /></Suspense>
-  return session ? <AuthedRoutes /> : <PublicRoutes />
+  return (
+    <>
+      <SkipLink />
+      {session ? <AuthedRoutes /> : <PublicRoutes />}
+    </>
+  )
 }

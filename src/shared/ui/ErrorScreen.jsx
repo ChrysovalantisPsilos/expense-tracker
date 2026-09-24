@@ -5,6 +5,7 @@ import Eyebrow from './Eyebrow.jsx'
 import Logo from './Logo.jsx'
 import LooseRing from './LooseRing.jsx'
 import { errorScreen } from './errorScreens.js'
+import { MAIN_ID } from './SkipLink.jsx'
 
 // Handlers every screen can fall back on. Plain page loads, so they also work
 // where there's no router (the top-level error boundary sits above it).
@@ -73,7 +74,7 @@ export default function ErrorScreen({
           <Logo size={28} />
         </Flex>
       )}
-      <Flex as="main" flex="1" position="relative" overflow="hidden" align="center" justify="center"
+      <Flex as="main" id={MAIN_ID} flex="1" position="relative" overflow="hidden" align="center" justify="center"
         px={4} pt={{ base: 6, md: 8 }} pb={{ base: 20, md: 24 }}>
         <BrandGlow top="34%" left="50%" transform="translate(-50%, -50%)"
           w={{ base: '140%', md: '720px' }} h={{ base: '70%', md: '560px' }} />

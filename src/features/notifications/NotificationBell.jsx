@@ -25,6 +25,7 @@ export default function NotificationBell({ feed }) {
   const { items, error, reload, setItems } = feed
 
   const unread = items.filter((n) => !n.read_at).length
+  const label = unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'
 
   async function handleOpen() {
     onOpen()
@@ -44,19 +45,22 @@ export default function NotificationBell({ feed }) {
     else if (n.group_id) navigate(`/groups/${n.group_id}`)
   }
 
+  // The IconButton itself is the trigger, so aria-expanded sits on the
+  // button; the count badge is visual only (the label carries it).
   return (
     <Popover isOpen={isOpen} onOpen={handleOpen} onClose={onClose} placement="bottom-end">
-      <PopoverTrigger>
-        <Box position="relative" display="inline-flex">
-          <IconButton aria-label="Notifications" variant="ghost" size="sm" icon={<Bell size={18} />} />
-          {unread > 0 && (
-            <Badge position="absolute" top="-2px" right="-2px" borderRadius="full"
-              bg="brand.500" color="white" fontSize="0.6rem" minW="16px" textAlign="center" px={1}>
-              {unread > 9 ? '9+' : unread}
-            </Badge>
-          )}
-        </Box>
-      </PopoverTrigger>
+      <Box position="relative" display="inline-flex">
+        <PopoverTrigger>
+          <IconButton aria-label={label} variant="ghost" size="sm" icon={<Bell size={18} />} />
+        </PopoverTrigger>
+        {unread > 0 && (
+          <Badge position="absolute" top="-2px" right="-2px" borderRadius="full" aria-hidden
+            pointerEvents="none" bg="accent.solid" color="white" fontSize="0.6rem" minW="16px"
+            textAlign="center" px={1}>
+            {unread > 9 ? '9+' : unread}
+          </Badge>
+        )}
+      </Box>
       <PopoverContent w="320px">
         <PopoverHeader>Notifications</PopoverHeader>
         <PopoverBody px={0} maxH="380px" overflowY="auto">
@@ -73,8 +77,10 @@ export default function NotificationBell({ feed }) {
                 return (
                   <Box key={n.id}>
                     {i > 0 && <Divider />}
-                    <HStack px={4} py={3} spacing={3} align="start" cursor="pointer"
-                      _hover={{ bg: 'bg.subtle' }} onClick={() => go(n)}>
+                    <HStack as="button" type="button" w="full" textAlign="left" px={4} py={3}
+                      spacing={3} align="start" _hover={{ bg: 'bg.subtle' }}
+                      _focusVisible={{ bg: 'bg.subtle', outline: 'none', boxShadow: 'inset 0 0 0 2px var(--chakra-colors-accent-fg)' }}
+                      onClick={() => go(n)}>
                       <Flex boxSize="32px" flexShrink={0} align="center" justify="center"
                         borderRadius="lg" bg="bg.subtle" color="accent.fg"><Icon size={16} /></Flex>
                       <Stack spacing={0} flex="1" minW={0} overflowWrap="anywhere">

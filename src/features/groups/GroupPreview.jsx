@@ -10,6 +10,7 @@ import { shortDateTime } from '../../shared/lib/dates.js'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
+import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
 
@@ -50,7 +51,7 @@ export default function GroupPreview() {
     <Flex direction="column" minH="100dvh" bg="bg.canvas" overflowX="clip">
       <PublicHeader />
 
-      <Box as="main" flex="1" position="relative" px={4} pb="120px" maxW="600px" w="full" mx="auto">
+      <Box as="main" id={MAIN_ID} flex="1" position="relative" px={4} pb="120px" maxW="600px" w="full" mx="auto">
         <BrandGlow top={0} left="50%" transform="translateX(-50%)"
           w={{ base: '160%', md: '900px' }} h="480px" />
         <Stack spacing={5} position="relative">

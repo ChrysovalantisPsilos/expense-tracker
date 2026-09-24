@@ -5,6 +5,7 @@ import {
 import { ArrowLeft } from 'lucide-react'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
+import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 
 // Shared frame for the sign-in family of pages: the public header, the brand
 // glow, and a centered card that opens with an optional icon tile, the page's
@@ -24,7 +25,7 @@ export default function AuthLayout({
           </Button>
         )}
       </PublicHeader>
-      <Flex as="main" flex="1" position="relative" overflow="hidden"
+      <Flex as="main" id={MAIN_ID} flex="1" position="relative" overflow="hidden"
         align="center" justify="center" px={4} pt={{ base: 6, md: 10 }} pb={{ base: 10, md: 16 }}>
         <BrandGlow top="50%" left="50%" transform="translate(-50%, -50%)"
           w={{ base: '160%', md: '900px' }} h="90%" />

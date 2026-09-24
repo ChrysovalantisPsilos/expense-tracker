@@ -21,6 +21,7 @@ import InstallIllustration from './InstallIllustration.jsx'
 import {
   anchorFromHash, applyOpenIndexes, countItems, filterFaq, openIndexes, questionLink,
 } from './faqMath.js'
+import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 
 const PATH = '/help'
 const INTRO = 'Answers to the questions people ask most. Search, or browse by topic.'
@@ -186,7 +187,7 @@ export default function Help() {
         <Button as={RouterLink} to="/login" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}>Log in</Button>
         <Button as={RouterLink} to="/login?signup=1" size="sm" px={{ base: 3, sm: 4 }}>Get started</Button>
       </PublicHeader>
-      <Container as="main" maxW="3xl" px={{ base: 4, md: 6 }} py={{ base: 10, md: 16 }}>
+      <Container as="main" id={MAIN_ID} maxW="3xl" px={{ base: 4, md: 6 }} py={{ base: 10, md: 16 }}>
         <Stack spacing={{ base: 8, md: 10 }}>
           <Stack spacing={3}>
             <Eyebrow fontSize="sm" lineHeight="base">Help</Eyebrow>
