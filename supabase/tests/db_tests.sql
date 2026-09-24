@@ -338,7 +338,8 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- 9. Settlements (M1/L1): direct INSERT is closed to API roles (writes go
 --    through add_settlement, which encrypts); created_by is forced to the
---    caller; a member cannot delete a settlement they didn't create.
+--    caller; a member cannot delete a settlement they didn't create (since
+--    0078 no client can delete one at all — test 66).
 -- ---------------------------------------------------------------------------
 do $$
 declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; sid uuid; cb uuid; still int;
@@ -376,7 +377,10 @@ begin
 
     perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
-    delete from public.settlements where id = sid;  -- RLS filters the row out silently
+    begin
+      delete from public.settlements where id = sid;
+    exception when insufficient_privilege then null;  -- no DELETE grant (0078)
+    end;
     execute 'reset role';
     select count(*) into still from public.settlements where id = sid;
     if still <> 1 then raise exception 'member deleted an owner-created settlement'; end if;
@@ -1808,13 +1812,15 @@ begin
     select display_name into nm from public.profiles where id = u2;
     if char_length(nm) <> 60 then raise exception 'signup name not trimmed: %', char_length(nm); end if;
 
-    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
-    execute 'set local role authenticated';
+    -- The per-address quota is server-only since 0078 (test 67): called here
+    -- the way send-invite's service-role client does, with no signed-in user.
     for i in 1..3 loop
       if not public.consume_invite_recipient_quota('ZZT-Friend@Example.com') then raise exception 'recipient quota % refused', i; end if;
     end loop;
     ok := public.consume_invite_recipient_quota(' zzt-friend@example.com ');
     if ok then raise exception 'recipient quota not capped at 3/day'; end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
     for i in 1..10 loop
       if not public.consume_quota('send-invite') then raise exception 'send-invite quota % refused', i; end if;
     end loop;
@@ -3399,14 +3405,30 @@ end $$;
 -- 58. 0072: deleting an account anonymises what stays for the group — its
 --     member rows (current and earlier-left) become "Former member" with no
 --     link back, as does its name on the change log; the shared expense stays.
+--     0078: the names are also gone from the (encrypted) change-log texts and
+--     from other members' group notifications, whole words only.
 -- ---------------------------------------------------------------------------
 do $$
 declare u1 uuid; u2 uuid; u3 uuid; gid uuid; m1 uuid; m2 uuid; m3 uuid; eid uuid; r record; n int;
 begin
   begin
+    -- The redaction helper: whole words, longest name first, metacharacters literal.
+    if public.redact_names('Ann paid for the Annual trip', array['Ann']) <> 'Former member paid for the Annual trip'
+       or public.redact_names('Ann Lee → Ann', array['Ann', 'Ann Lee']) <> 'Former member → Former member'
+       or public.redact_names('axb and a.b (x)', array['a.b', '(x)']) <> 'axb and Former member Former member'
+       or public.redact_names('nobody here', array['Ann']) <> 'nobody here'
+       or public.redact_names(null, array['Ann']) is not null then
+      raise exception 'redact_names: %', public.redact_names('axb and a.b (x)', array['a.b', '(x)']);
+    end if;
+    if has_function_privilege('authenticated', 'public.redact_names(text,text[])', 'execute')
+       or has_function_privilege('anon', 'public.redact_names(text,text[])', 'execute') then
+      raise exception 'redact_names callable by clients';
+    end if;
+
     u1 := pg_temp.zz_user('an1');
     u2 := pg_temp.zz_user('an2');
     u3 := pg_temp.zz_user('an3');
+    update public.profiles set display_name = 'ZZ Owner' where id = u1;
     update public.profiles set display_name = 'ZZ Bobby' where id = u2;
     insert into public.groups (name, owner_id, currency) values ('ZZT anon', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'ZZ Owner', 'owner') returning id into m1;
@@ -3418,6 +3440,12 @@ begin
     eid := public.create_group_expense_v2(gid, 'zz anon dinner', 900, 'EUR', m2, current_date,
                                           array[m1, m2], null, 'equal');
     execute 'reset role';
+    -- The owner records Bobby paying them back: the summary names Bobby
+    -- though the actor is the owner.
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.add_settlement(gid, m2, m1, 450, 'EUR');
+    execute 'reset role';
     perform set_config('request.jwt.claims', json_build_object('sub', u3, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     perform public.remove_group_member(m3, true);
@@ -3425,6 +3453,12 @@ begin
     if not exists (select 1 from public.group_audit_log where group_id = gid and actor_name = 'ZZ Bobby') then
       raise exception 'setup: no audit row under the name';
     end if;
+    select count(*) into n from public.group_audit_log
+     where group_id = gid and public.dec_text(summary_enc) like '%ZZ Bobby%';
+    if n < 2 then raise exception 'setup: summaries don''t name Bobby (%)', n; end if;
+    select count(*) into n from public.notifications
+     where group_id = gid and user_id = u1 and (body like '%ZZ Bobby%' or body like '%ZZ Leaver%');
+    if n = 0 then raise exception 'setup: no notification names them'; end if;
 
     perform set_config('request.jwt.claims', '', true);   -- as the service would
     delete from auth.users where id in (u2, u3);
@@ -3446,6 +3480,26 @@ begin
     end if;
     select display_name into r from public.group_members where id = m1;
     if r.display_name <> 'ZZ Owner' then raise exception 'other member renamed'; end if;
+
+    -- 0078: the change-log texts and the other members' notifications.
+    select count(*) into n from public.group_audit_log
+     where group_id = gid and (public.dec_text(summary_enc) like '%ZZ Bobby%' or public.dec_text(summary_enc) like '%ZZ Leaver%');
+    if n <> 0 then raise exception 'change-log texts still name the deleted users (%)', n; end if;
+    if not exists (select 1 from public.group_audit_log
+                    where group_id = gid and public.dec_text(summary_enc) = 'Former member added “zz anon dinner”') then
+      raise exception 'expense summary not rewritten';
+    end if;
+    if not exists (select 1 from public.group_audit_log
+                    where group_id = gid and public.dec_text(summary_enc) = 'ZZ Owner recorded a payment: Former member → ZZ Owner') then
+      raise exception 'settlement summary not rewritten (other names must stay)';
+    end if;
+    select count(*) into n from public.notifications
+     where group_id = gid and (title || coalesce(body, '')) similar to '%(ZZ Bobby|ZZ Leaver)%';
+    if n <> 0 then raise exception 'notifications still name the deleted users (%)', n; end if;
+    if not exists (select 1 from public.notifications
+                    where group_id = gid and user_id = u1 and body like 'Former member joined%') then
+      raise exception 'join notification lost instead of anonymised';
+    end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: account deletion anonymises the group history left behind';
@@ -3808,11 +3862,232 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 65. 0078: splits change only through the expense RPCs or the expense's own
+--     delete. Neither the expense's creator nor the group owner can delete a
+--     split over REST (no grant, no policy); the ledger still nets to zero and
+--     the mirror stays; editing re-splits and deleting the expense cascades.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; eid uuid; n bigint;
+begin
+  begin
+    u1 := pg_temp.zz_user('sp1');
+    u2 := pg_temp.zz_user('sp2');
+    insert into public.groups (name, owner_id, currency) values ('ZZT splits', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Creator') returning id into m2;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    eid := public.create_group_expense_v2(gid, 'zz split guard', 1000, 'EUR', m2, current_date,
+                                          array[m1, m2], null, 'equal');
+    begin
+      delete from public.expense_splits where expense_id = eid and member_id = m1;
+      raise exception 'GUARD_MISSED: the creator deleted a split';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      delete from public.expense_splits where expense_id = eid;
+      raise exception 'GUARD_MISSED: the group owner deleted splits';
+    exception when insufficient_privilege then null;
+    end;
+    select coalesce(sum(net_minor), 0) into n from public.group_balances(gid);
+    execute 'reset role';
+    if n <> 0 then raise exception 'balances don''t net to zero (%)', n; end if;
+    select count(*) into n from public.expense_splits where expense_id = eid;
+    if n <> 2 then raise exception 'splits changed (% left)', n; end if;
+    select count(*) into n from public.transactions where user_id = u1 and group_expense_id = eid;
+    if n <> 1 then raise exception 'the owner''s mirrored share is gone'; end if;
+    if has_table_privilege('authenticated', 'public.expense_splits', 'DELETE')
+       or has_table_privilege('anon', 'public.expense_splits', 'DELETE')
+       or exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'expense_splits' and cmd in ('DELETE', 'ALL')) then
+      raise exception 'expense_splits still deletable by clients';
+    end if;
+
+    -- The legitimate paths still work: an edit re-splits, a delete cascades.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.update_group_expense_v2(eid, 'zz split guard', 1000, 'EUR', m2, current_date,
+                                           array[m2], null, 'equal');
+    select coalesce(sum(net_minor), 0) into n from public.group_balances(gid);
+    if n <> 0 then raise exception 'balances don''t net to zero after the edit (%)', n; end if;
+    delete from public.group_expenses where id = eid;
+    execute 'reset role';
+    select count(*) into n from public.expense_splits where expense_id = eid;
+    if n <> 0 then raise exception 'deleting the expense left % split(s)', n; end if;
+    if not exists (select 1 from public.group_audit_log where group_id = gid and action = 'expense_deleted') then
+      raise exception 'the expense delete wasn''t logged';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: splits can''t be deleted over REST; RPC edits and expense deletes still work';
+    else update _t set fails = fails + 1; raise notice 'FAIL: split delete lockdown — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 66. 0078: settlements can't be deleted over REST either — not by whoever
+--     recorded one, not by the group owner — so the change log (which only
+--     records additions) always matches the ledger.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; gid uuid; m1 uuid; m2 uuid; sid uuid; n bigint;
+begin
+  begin
+    u1 := pg_temp.zz_user('st1');
+    u2 := pg_temp.zz_user('st2');
+    insert into public.groups (name, owner_id, currency) values ('ZZT settle del', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Payer') returning id into m2;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    sid := public.add_settlement(gid, m2, m1, 700, 'EUR');
+    begin
+      delete from public.settlements where id = sid;
+      raise exception 'GUARD_MISSED: the recorder deleted a settlement';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      delete from public.settlements where group_id = gid;
+      raise exception 'GUARD_MISSED: the group owner deleted a settlement';
+    exception when insufficient_privilege then null;
+    end;
+    select coalesce(sum(net_minor), 0) into n from public.group_balances(gid);
+    execute 'reset role';
+    if n <> 0 then raise exception 'balances don''t net to zero (%)', n; end if;
+    select count(*) into n from public.settlements where id = sid;
+    if n <> 1 then raise exception 'settlement gone'; end if;
+    if has_table_privilege('authenticated', 'public.settlements', 'DELETE')
+       or has_table_privilege('anon', 'public.settlements', 'DELETE')
+       or exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'settlements' and cmd in ('DELETE', 'ALL')) then
+      raise exception 'settlements still deletable by clients';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: settlements can''t be deleted over REST';
+    else update _t set fails = fails + 1; raise notice 'FAIL: settlement delete lockdown — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 67. 0078: the per-address invite quota is server-only. A signed-in user
+--     can't spend another address's 3-a-day allowance (or grow rate_limits);
+--     the service role (send-invite, after its own checks) still can, with no
+--     signed-in user.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; addr text := 'zzt-victim-' || md5(random()::text) || '@example.com'; i int; n int;
+begin
+  begin
+    u := pg_temp.zz_user('iq');
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.consume_invite_recipient_quota(addr);
+      raise exception 'GUARD_MISSED: a client spent an address''s invite quota';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+    select count(*) into n from public.rate_limits where key = 'invite-to:' || md5(addr);
+    if n <> 0 then raise exception 'a refused call still wrote rate_limits'; end if;
+    if has_function_privilege('authenticated', 'public.consume_invite_recipient_quota(text)', 'execute')
+       or has_function_privilege('anon', 'public.consume_invite_recipient_quota(text)', 'execute')
+       or not has_function_privilege('service_role', 'public.consume_invite_recipient_quota(text)', 'execute') then
+      raise exception 'wrong grants on consume_invite_recipient_quota';
+    end if;
+
+    perform set_config('request.jwt.claims', '', true);   -- as the service would
+    for i in 1..3 loop
+      if not public.consume_invite_recipient_quota(upper(addr)) then raise exception 'service call % refused', i; end if;
+    end loop;
+    if public.consume_invite_recipient_quota(addr) then raise exception 'not capped at 3/day'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: invite recipient quota is server-only';
+    else update _t set fails = fails + 1; raise notice 'FAIL: invite recipient quota — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 68. 0078: the base currency is fixed once the account has entries. A new
+--     account can change it; with a transaction (or an account, a budget, a
+--     goal, a recurring entry) the change is refused — for the client and for
+--     server-side writers — while the same value and other fields still save;
+--     base_currency_locked() reports it; removing the entries frees it again.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; n int; cur text;
+begin
+  begin
+    u := pg_temp.zz_user('cur');
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    if public.base_currency_locked() then raise exception 'a new account is locked'; end if;
+    update public.profiles set base_currency = 'USD' where id = u;
+    n := public.save_transactions(jsonb_build_array(
+      jsonb_build_object('kind', 'expense', 'amount_minor', 500, 'currency', 'USD')));
+    if n <> 1 then raise exception 'setup: entry not saved'; end if;
+    if not public.base_currency_locked() then raise exception 'lock flag not set'; end if;
+    begin
+      update public.profiles set base_currency = 'EUR' where id = u;
+      raise exception 'GUARD_MISSED: base currency changed with entries';
+    exception when others then
+      if sqlerrm not like 'Your base currency is fixed%' then raise; end if;
+    end;
+    update public.profiles set base_currency = 'USD', display_name = 'ZZ Cur' where id = u;
+    execute 'reset role';
+    select base_currency into cur from public.profiles where id = u;
+    if cur <> 'USD' then raise exception 'base currency is %', cur; end if;
+    begin
+      update public.profiles set base_currency = 'GBP' where id = u;
+      raise exception 'GUARD_MISSED: a server-side write changed it';
+    exception when others then
+      if sqlerrm not like 'Your base currency is fixed%' then raise; end if;
+    end;
+
+    -- No entries left → free again; an account alone locks it too.
+    delete from public.transactions where user_id = u;
+    execute 'set local role authenticated';
+    if public.base_currency_locked() then raise exception 'still locked with no entries'; end if;
+    update public.profiles set base_currency = 'CHF' where id = u;
+    perform public.save_account(null, 'ZZ cur acct', 'asset', 100, 'CHF');
+    begin
+      update public.profiles set base_currency = 'EUR' where id = u;
+      raise exception 'GUARD_MISSED: changed with an account';
+    exception when others then
+      if sqlerrm not like 'Your base currency is fixed%' then raise; end if;
+    end;
+    execute 'reset role';
+
+    if has_function_privilege('authenticated', 'public.base_currency_in_use(uuid)', 'execute')
+       or has_function_privilege('anon', 'public.base_currency_in_use(uuid)', 'execute')
+       or has_function_privilege('authenticated', 'public.profiles_base_currency_lock()', 'execute')
+       or has_function_privilege('anon', 'public.base_currency_locked()', 'execute')
+       or not has_function_privilege('authenticated', 'public.base_currency_locked()', 'execute') then
+      raise exception 'wrong grants on the base-currency functions';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: base currency fixed once there are entries';
+    else update _t set fails = fails + 1; raise notice 'FAIL: base currency lock — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 65; f int; p int;  -- tests 1–64 + B-0059
+declare expected_tests constant int := 69; f int; p int;  -- tests 1–68 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

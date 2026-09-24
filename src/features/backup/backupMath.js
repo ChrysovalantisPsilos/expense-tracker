@@ -543,8 +543,9 @@ export function planRecurring(backupRules, existingRules, { categoryIdByKey, acc
 // Profile settings and payment details fill in only what's empty or still at
 // its default; anything the account already set is kept and reported, never
 // overwritten. `emailName` is the email's local part (the signup default for
-// the display name); `emptyAccount` means no transactions before the restore,
-// the only time a default main currency is safe to replace.
+// the display name); `emptyAccount` means no entries before the restore (no
+// transactions, recurring entries, budgets, accounts or goals), the only time
+// a default main currency is safe to replace — and allowed (0078).
 export function planProfile(backup, current, { emailName, emptyAccount }) {
   const patch = {}
   const kept = []

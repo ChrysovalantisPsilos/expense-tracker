@@ -138,12 +138,12 @@ function Rights() {
           ['By email', 'Ask for a copy, or for details about how we use your data.'],
         ] },
         { name: 'Rectification (Art. 16)', lines: [
-          ['In the app', 'Edit your name, picture, currency and payment details in Settings → Account, and edit or delete any expense, income, budget, goal or recurring payment where it’s shown.'],
+          ['In the app', 'Edit your name, picture and payment details (and your main currency, until you add entries) in Settings → Account, and edit or delete any expense, income, budget, goal or recurring payment where it’s shown.'],
           ['By email', 'For anything you can’t change yourself, such as your email address.'],
         ] },
         { name: 'Erasure (Art. 17)', lines: [
           ['In the app', 'Settings → Security → Delete account. This permanently deletes your account, sign-in details and passkeys, profile and picture, payment details, expenses and income, categories and rules, accounts, budgets, goals, recurring payments, notifications, push subscriptions, consent history, and the group comments you wrote. Groups you own pass to another member; a group with no other members is deleted with its picture.'],
-          ['What stays', 'Group expenses, splits and settlements you were part of stay for the other members, because their balances depend on them — but your name there is replaced by “Former member” with no link to you, as it is in the group change log. Change-log texts and notifications that other members already received may still mention your name until they are deleted after the periods above.'],
+          ['What stays', 'Group expenses, splits and settlements you were part of stay for the other members, because their balances depend on them — but your name there is replaced by “Former member” with no link to you, as it is in the group change log, its texts and the group notifications other members received. A name you used before renaming yourself may still appear in older texts until they are deleted after the periods above.'],
           ['By email', 'Or ask us to delete specific data.'],
         ] },
         { name: 'Restriction (Art. 18)', lines: [

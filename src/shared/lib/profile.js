@@ -39,6 +39,15 @@ export async function savePaymentInfo({ iban, revolut, paypal }) {
   if (error) throw dbError(error)
 }
 
+// Whether the base currency is fixed: true once the account has entries whose
+// amounts depend on it (transactions, recurring entries, budgets, accounts or
+// goals), when the server refuses a change (0078).
+export async function baseCurrencyLocked() {
+  const { data, error } = await supabase.rpc('base_currency_locked')
+  if (error) throw dbError(error)
+  return data === true
+}
+
 // Update editable profile fields for the current user.
 export async function updateProfile(userId, fields) {
   const { data, error } = await supabase

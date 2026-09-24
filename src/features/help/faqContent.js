@@ -301,7 +301,10 @@ export const FAQ_SECTIONS = [
       {
         id: 'main-currency',
         q: 'How do I change my main currency?',
-        a: ['In Settings → Account → Default currency.'],
+        a: [
+          'In Settings → Account → Default currency, until you add your first entry. After that it’s fixed, because every entry’s exchange rate is to that currency — so past amounts stay correct.',
+          'To start over in another currency, export your data (Settings → Your data) and create a new account.',
+        ],
       },
     ],
   },

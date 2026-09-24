@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Stack, HStack, Button, FormControl, SimpleGrid, FormLabel,
+  Stack, HStack, Button, FormControl, FormHelperText, SimpleGrid, FormLabel,
   Input, Select, useToast, Text, IconButton, Box,
 } from '@chakra-ui/react'
 import { Camera, UserRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { getProfile, updateProfile, uploadAvatar } from '../../shared/lib/profile.js'
+import { baseCurrencyLocked, getProfile, updateProfile, uploadAvatar } from '../../shared/lib/profile.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
@@ -26,23 +26,29 @@ export default function AccountSettings() {
   )
 }
 
-// Name, photo and default currency.
+// Name, photo and default currency. The currency is fixed once the account
+// has entries (0078): each one's exchange rate is to the currency it was
+// saved in, so switching would misprice everything already there.
 function IdentityCard({ user }) {
   const toast = useToast()
   const fileRef = useRef(null)
   const [loading, setLoading] = useState(true)
   const [displayName, setDisplayName] = useState('')
   const [currency, setCurrency] = useState('EUR')
+  const [currencyLocked, setCurrencyLocked] = useState(false)
   const [avatarUrl, setAvatarUrl] = useState('')
   const { busy, run } = useAsyncSubmit()
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     let active = true
-    getProfile(user.id).then((data) => {
+    // If the lock can't be read, the picker stays and the server has the
+    // last word (its refusal is shown as the save error).
+    Promise.all([getProfile(user.id), baseCurrencyLocked().catch(() => false)]).then(([data, locked]) => {
       if (!active || !data) return
       setDisplayName(data.display_name ?? '')
       setCurrency(data.base_currency ?? 'EUR')
+      setCurrencyLocked(locked)
       setAvatarUrl(data.avatar_url ?? '')
       setLoading(false)
     })
@@ -54,7 +60,7 @@ function IdentityCard({ user }) {
     await run(async () => {
       await updateProfile(user.id, {
         display_name: displayName || null,
-        base_currency: currency,
+        ...(currencyLocked ? {} : { base_currency: currency }),
       })
       // Nudge live consumers (nav bar) to refetch the new name/avatar at once.
       window.dispatchEvent(new Event(EVENTS.profileUpdated))
@@ -106,9 +112,20 @@ function IdentityCard({ user }) {
           </FormControl>
           <FormControl>
             <FormLabel>Default currency</FormLabel>
-            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </Select>
+            {currencyLocked ? (
+              <>
+                <Input value={currency} isReadOnly />
+                <FormHelperText>
+                  Your base currency is fixed once you’ve added entries, so past amounts stay
+                  correct. To start over in another currency, export your data and create a new
+                  account.
+                </FormHelperText>
+              </>
+            ) : (
+              <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            )}
           </FormControl>
         </SimpleGrid>
 

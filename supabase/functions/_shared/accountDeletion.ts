@@ -5,9 +5,10 @@
 // Owned groups are transferred to the earliest other linked member first (so
 // they survive for everyone else); groups where the user is the only linked
 // member cascade-delete. The database does the rest when the auth user goes:
-// personal rows cascade, and the anonymise_departing_user trigger (0072)
-// turns the member rows and change-log names left in shared groups into
-// "Former member" before their user link is set to null.
+// personal rows cascade, and the anonymise_departing_user trigger (0072,
+// 0078) turns the member rows, change-log names and the user's names in
+// change-log texts and other members' group notifications into "Former
+// member" before their user link is set to null.
 //
 // Storage isn't covered by the database cascade, so the user's files are
 // removed through the Storage API first: their `avatars/<uid>/…` folder, and

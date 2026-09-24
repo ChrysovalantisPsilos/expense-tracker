@@ -9,7 +9,9 @@ import {
 import { listRecurring, saveRecurring } from '../recurring/recurring.js'
 import { listBudgets, budgetPeriods, saveBudget } from '../budgets/budgets.js'
 import { listAccounts, saveAccount, listGoals, saveGoal } from '../insights/insights.js'
-import { getProfile, updateProfile, getMyPaymentInfo, savePaymentInfo } from '../../shared/lib/profile.js'
+import {
+  baseCurrencyLocked, getProfile, updateProfile, getMyPaymentInfo, savePaymentInfo,
+} from '../../shared/lib/profile.js'
 import { listGroups, getGroup } from '../groups/groups.js'
 import { listComments, commentCounts } from '../groups/comments.js'
 import { listRules, saveRule, importTransactions } from '../import/importExpenses.js'
@@ -118,9 +120,17 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   }
 
   step('Checking what’s already in your account')
-  const [cats, existingAccounts, existingTxns] = await Promise.all([
+  const [cats, existingAccounts, existingTxns, current, locked] = await Promise.all([
     listAllCategories(), listAccounts(), allTransactions(),
+    getProfile(user.id, PROFILE_FIELDS), baseCurrencyLocked().catch(() => true),
   ])
+
+  // Profile settings go first: the main currency can only change while the
+  // account has no entries (0078), i.e. before this restore adds any.
+  const prof = planProfile(data, current ?? {}, {
+    emailName: (user.email ?? '').split('@')[0], emptyAccount: !locked,
+  })
+  if (Object.keys(prof.patch).length) await updateProfile(user.id, prof.patch)
 
   step('Categories')
   const catPlan = mapCategories(data.categories, cats)
@@ -187,12 +197,7 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   t.goals = goalPlan.fresh.length
   t.duplicates += goalPlan.skipped
 
-  step('Profile and payment details')
-  const current = await getProfile(user.id, PROFILE_FIELDS) ?? {}
-  const prof = planProfile(data, current, {
-    emailName: (user.email ?? '').split('@')[0], emptyAccount: existingTxns.length === 0,
-  })
-  if (Object.keys(prof.patch).length) await updateProfile(user.id, prof.patch)
+  step('Payment details')
   const pay = planPayment(data, await getMyPaymentInfo())
   if (pay.patch) await savePaymentInfo(pay.patch)
   t.settings = Object.keys(prof.patch).length + (pay.patch ? 1 : 0)

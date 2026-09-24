@@ -47,9 +47,9 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | `group_members` | display_name, user link, former_user_id, role | Who is in a group | (b)/(f) | group lifetime; on account deletion renamed "Former member" and unlinked (0072) | members |
 | `group_expenses`, `expense_splits`, `settlements` | amounts, descriptions, notes (enc), payer, shares, dates | Shared ledger and balances | (b)/(f) | group lifetime (other members rely on it) | members |
 | `group_comments` | body (enc), author | Discussion on expenses | (b) | group lifetime; deleted with the author's account | members |
-| `group_audit_log` | actor name, action, summary/amount (enc) | Transparency of group changes | (f) | 2 years (0073) ; actor name anonymised on account deletion | members |
+| `group_audit_log` | actor name, action, summary/amount (enc) | Transparency of group changes | (f) | 2 years (0073) ; on account deletion the actor name and every mention of the user's names in the summaries become "Former member" (0072, 0078) | members |
 | `group_invites` | invited_email, token, inviter, timestamps | Invitations | (f) inviter's and invitee's interest | link ≤ 24 h, row purged 7 days after expiry (0022) | group members (RLS), invitee via token |
-| `notifications` | title/body (names, never amounts), actor | In-app notices; push/email fan-out | (b); digest (a) | 90 days (0073) | recipient |
+| `notifications` | title/body (names, never amounts), actor | In-app notices; push/email fan-out | (b); digest (a) | 90 days (0073); a deleted account's names in other members' group notifications become "Former member" (0078) | recipient |
 | `push_subscriptions` | endpoint, keys | Web push delivery | (b) + browser permission | until unsubscribed/expired/account deletion | owner (own rows), server |
 | `inactivity_notices` (0073) | warned_at | Avoid repeat warnings; notice before deletion | (c) Art. 5(1)(e) | until the account is used again or deleted | owner (read), server |
 | `privacy_email_queue` (0076) | kind (consent change / data export), event and send timestamps, pending count | Coalesce the security notices (§ 6a) | (f) security; (c) | row kept per kind while the account exists (holds only timestamps) | server only (exported to the owner) |

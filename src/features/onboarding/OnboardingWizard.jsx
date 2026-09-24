@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Stack, HStack, Text, Heading, FormControl, FormLabel, Input, Select, Button,
+  Stack, HStack, Text, Heading, FormControl, FormHelperText, FormLabel, Input, Select, Button,
   IconButton, Progress, Box, useToast,
 } from '@chakra-ui/react'
 import { X, ArrowRight, ArrowLeft, Sparkles, Landmark, Users, BellRing, KeyRound, Compass } from 'lucide-react'
@@ -141,6 +141,7 @@ export default function OnboardingWizard({ profile, onDone }) {
                 <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
                   {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </Select>
+                <FormHelperText>It’s fixed once you add your first entry, so past amounts stay correct.</FormHelperText>
               </FormControl>
             </Stack>
           )}

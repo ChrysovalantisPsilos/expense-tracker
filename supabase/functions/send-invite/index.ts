@@ -16,7 +16,7 @@
 // body); and on top of the caller's quota, any one address gets at most 3
 // invite emails a day, whoever sends them.
 
-import { withCors, json, callerClient } from '../_shared/http.ts'
+import { withCors, json, callerClient, serviceClient } from '../_shared/http.ts'
 import { brandEmail } from '../_shared/email.ts'
 import { appOrigin, inviteSender, sendEmail } from '../_shared/sendEmail.ts'
 
@@ -68,7 +68,11 @@ Deno.serve(withCors(async (req) => {
       return json({ error: 'Email invites aren’t available right now. Use the share link instead.' }, 503)
     }
 
-    const { data: recipientOk, error: rqErr } = await asUser.rpc('consume_invite_recipient_quota', { p_email: recipient })
+    // The per-address cap is server-only (0078): consumed here, after the
+    // caller has proven they can see this invite and it names this address,
+    // so no one can use it up for an address they haven't invited.
+    const { data: recipientOk, error: rqErr } = await serviceClient()
+      .rpc('consume_invite_recipient_quota', { p_email: recipient })
     if (rqErr) throw rqErr
     if (recipientOk !== true) return json({ error: 'That address has already been sent several invites today.' }, 429)
 

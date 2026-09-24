@@ -134,7 +134,7 @@ export const SQL_USER_MESSAGES = new Map([
   ['the split must add up to the total', null],
   ['A foreign-currency entry needs a positive exchange rate.', null],
   ['A foreign-currency expense needs a positive exchange rate.', null],
-  // Entries, categories, budgets, recurring, comments, payment details
+  // Entries, categories, budgets, recurring, comments, payment details, profile
   ['An entry’s type can’t be changed once it’s saved.', null],
   ["That entry can't be made recurring.", null],
   ['You can have at most 200 recurring entries.', null],
@@ -144,6 +144,7 @@ export const SQL_USER_MESSAGES = new Map([
   ['Last month has no budgets to copy.', null],
   ['A comment must be 1–2000 characters.', null],
   ['A PayPal.me name is up to 20 letters and numbers.', null],
+  ['Your base currency is fixed once you’ve added entries, so past amounts stay correct.', null],
   ['Payment details are too long.', null],
   // Rate limits
   ['Too many changes — please try again later.', null],
