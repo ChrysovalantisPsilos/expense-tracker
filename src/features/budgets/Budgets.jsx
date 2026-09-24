@@ -105,7 +105,7 @@ export default function Budgets() {
             </FormControl>
             <FormControl maxW="160px">
               <FormLabel>Monthly cap</FormLabel>
-              <MoneyInput value={amount} onChange={setAmount} />
+              <MoneyInput currency={baseCurrency} value={amount} onChange={setAmount} />
             </FormControl>
             <Button type="submit">Set</Button>
           </HStack>

@@ -208,7 +208,7 @@ export default function ReceiptScanner({ onScan }) {
           <HStack align="end">
             <FormControl>
               <FormLabel fontSize="sm">Total</FormLabel>
-              <MoneyInput value={fields.total} onChange={set('total')} />
+              <MoneyInput currency={fields.currency || undefined} value={fields.total} onChange={set('total')} />
             </FormControl>
             <FormControl maxW="120px">
               <FormLabel fontSize="sm">Currency</FormLabel>

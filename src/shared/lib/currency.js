@@ -1,5 +1,5 @@
 // Currency helpers. Money is stored as integer minor units (cents).
-import { toBaseMinor } from '../../../supabase/functions/_shared/money.ts'
+import { ZERO_DECIMAL, toBaseMinor } from '../../../supabase/functions/_shared/money.ts'
 
 // Supported currencies: every currency the ECB publishes a daily reference
 // rate for (so each one can be converted to any other), EUR first — it's the
@@ -11,11 +11,10 @@ export const CURRENCIES = [
   'SEK', 'SGD', 'THB', 'TRY', 'ZAR',
 ]
 
-// Minor units per ISO 4217: most currencies have 2 decimal places; these have
-// 0. (HUF and IDR are 2 in ISO even though cash rounds to whole units.)
-// VND/CLP aren't selectable but may appear in old rows. Keep in lockstep with
-// supabase/functions/_shared/money.ts and the SQL minor-unit helper.
-const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'ISK', 'VND', 'CLP'])
+// Minor units per ISO 4217: most currencies have 2 decimal places; the
+// zero-decimal set (one copy, in _shared/money.ts, checked against the SQL
+// minor-unit helper) has 0. HUF and IDR are 2 in ISO even though cash rounds
+// to whole units; VND/CLP aren't selectable but may appear in old rows.
 export function minorFactor(currency = 'EUR') {
   return ZERO_DECIMAL.has(currency) ? 1 : 100
 }

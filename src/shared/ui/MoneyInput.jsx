@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import { Input } from '@chakra-ui/react'
 import { sanitizeAmountInput, sanitizeSignedAmountInput } from '../lib/moneyParse.js'
+import { minorFactor } from '../lib/currency.js'
 
 // Controlled money field. `value` is the raw numeric string ("1234.56") that
 // callers pass straight to toMinor(); `onChange(raw)` receives the same.
@@ -10,17 +11,21 @@ import { sanitizeAmountInput, sanitizeSignedAmountInput } from '../lib/moneyPars
 // key. sanitizeAmountInput accepts both separators; no thousands grouping is
 // rendered — grouping commas and decimal commas are indistinguishable on
 // input, and losing the decimal key made amounts like 5,50 silently become 550.
+// `currency` is the amount's currency: a zero-decimal one (JPY, KRW…) takes
+// whole numbers only, reading "," and "." as grouping. Leave it out for a
+// field that isn't money in one currency (a percentage, a share weight).
 // `allowNegative` keeps a leading minus (balances that can be overdrawn).
 // Forwards its ref (e.g. to focus the field).
-export default forwardRef(function MoneyInput({ value, onChange, allowNegative = false, ...props }, ref) {
+export default forwardRef(function MoneyInput({ value, onChange, currency, allowNegative = false, ...props }, ref) {
   const sanitize = allowNegative ? sanitizeSignedAmountInput : sanitizeAmountInput
+  const whole = !!currency && minorFactor(currency) === 1
   return (
     <Input
       ref={ref}
-      inputMode="decimal"
+      inputMode={whole ? 'numeric' : 'decimal'}
       value={value ?? ''}
-      onChange={(e) => onChange(sanitize(e.target.value))}
-      placeholder="0.00"
+      onChange={(e) => onChange(sanitize(e.target.value, currency))}
+      placeholder={whole ? '0' : '0.00'}
       {...props}
     />
   )

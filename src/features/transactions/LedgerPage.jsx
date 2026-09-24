@@ -161,11 +161,11 @@ export default function LedgerPage() {
               </FormControl>
               <FormControl>
                 <FormLabel fontSize="xs" color="text.muted">Min ({baseCurrency})</FormLabel>
-                <MoneyInput placeholder="0" value={filters.min} onChange={setFilter('min')} />
+                <MoneyInput currency={baseCurrency} placeholder="0" value={filters.min} onChange={setFilter('min')} />
               </FormControl>
               <FormControl>
                 <FormLabel fontSize="xs" color="text.muted">Max ({baseCurrency})</FormLabel>
-                <MoneyInput placeholder="∞" value={filters.max} onChange={setFilter('max')} />
+                <MoneyInput currency={baseCurrency} placeholder="∞" value={filters.max} onChange={setFilter('max')} />
               </FormControl>
               <FormControl>
                 <OptionalDate label="From" value={filters.from} onChange={setFilter('from')} />

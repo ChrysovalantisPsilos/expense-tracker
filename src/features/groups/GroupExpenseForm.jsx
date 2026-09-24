@@ -194,7 +194,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
         <HStack align="end">
           <FormControl isRequired>
             <FormLabel>Amount</FormLabel>
-            <MoneyInput value={amount} onChange={setAmount} />
+            <MoneyInput currency={paidCurrency} value={amount} onChange={setAmount} />
           </FormControl>
           <FormControl maxW="110px">
             <FormLabel>Currency</FormLabel>
@@ -246,6 +246,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
                   {on && mode !== 'equal' && (
                     <InputGroup size="sm" maxW="130px">
                       <MoneyInput textAlign="right" placeholder="0" borderEndRadius={0}
+                        currency={mode === 'exact' ? cur : undefined}
                         aria-label={`${m.display_name}’s ${mode === 'exact' ? 'amount' : mode === 'percent' ? 'percentage' : 'shares'}`}
                         value={values[m.id]} onChange={(v) => setVal(m.id, v)} />
                       <InputRightAddon>{addon}</InputRightAddon>

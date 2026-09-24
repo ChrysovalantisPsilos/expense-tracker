@@ -239,7 +239,7 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
             canEditBudget ? (
               <FormControl>
                 <FormLabel>Monthly budget</FormLabel>
-                <MoneyInput ref={amountRef} value={amount} onChange={setAmount} placeholder="No budget" />
+                <MoneyInput ref={amountRef} currency={baseCurrency} value={amount} onChange={setAmount} placeholder="No budget" />
                 <FormHelperText>
                   {current == null ? 'A monthly cap for this category, from this month on.'
                     : 'Changes this month’s cap and the months after it. Clear it to remove the budget.'}

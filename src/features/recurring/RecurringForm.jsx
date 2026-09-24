@@ -66,7 +66,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
 
         <FormControl isRequired>
           <FormLabel>Amount ({currency})</FormLabel>
-          <MoneyInput value={amount} onChange={setAmount} />
+          <MoneyInput currency={currency} value={amount} onChange={setAmount} />
         </FormControl>
 
         <FormControl>

@@ -286,7 +286,7 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
           <HStack>
             <FormControl isRequired>
               <FormLabel>Amount ({group.currency})</FormLabel>
-              <MoneyInput value={amount} onChange={setAmount} />
+              <MoneyInput currency={group.currency} value={amount} onChange={setAmount} />
             </FormControl>
             <FormControl maxW="160px">
               <FormLabel>Date</FormLabel>

@@ -176,7 +176,7 @@ export default function TransactionForm({
           <HStack align="start">
             <FormControl isRequired>
               <FormLabel>Amount</FormLabel>
-              <MoneyInput value={amount} onChange={setAmount} />
+              <MoneyInput currency={currency} value={amount} onChange={setAmount} />
             </FormControl>
             <FormControl maxW="110px">
               <FormLabel>Currency</FormLabel>

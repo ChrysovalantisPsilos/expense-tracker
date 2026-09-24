@@ -363,7 +363,7 @@ function AccountModal({ account, baseCurrency, onClose, onSaved }) {
         </FormControl>
         <FormControl isRequired>
           <FormLabel>Balance ({currency})</FormLabel>
-          <MoneyInput allowNegative value={balance} onChange={setBalance} placeholder="0" />
+          <MoneyInput allowNegative currency={currency} value={balance} onChange={setBalance} placeholder="0" />
         </FormControl>
       </Stack>
     </FormModal>
@@ -477,11 +477,11 @@ function GoalModal({ goal, baseCurrency, onClose, onSaved }) {
         <HStack>
           <FormControl isRequired>
             <FormLabel>Target ({currency})</FormLabel>
-            <MoneyInput value={target} onChange={setTarget} placeholder="0" />
+            <MoneyInput currency={currency} value={target} onChange={setTarget} placeholder="0" />
           </FormControl>
           <FormControl>
             <FormLabel>Saved so far</FormLabel>
-            <MoneyInput value={saved} onChange={setSaved} placeholder="0" />
+            <MoneyInput currency={currency} value={saved} onChange={setSaved} placeholder="0" />
           </FormControl>
         </HStack>
         <FormControl>
