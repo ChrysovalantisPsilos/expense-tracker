@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  SimpleGrid, Box, Text, Stack, HStack, IconButton,
+  SimpleGrid, Box, Text, Stack, HStack, IconButton, Button,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, Table as TableIcon, ReceiptText, Users } from 'lucide-react'
@@ -22,6 +22,7 @@ import Paginator from '../../shared/ui/Paginator.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import { CardEmptyState } from '../../shared/ui/EmptyState.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { BalanceTile } from '../../shared/ui/kit/Balances.jsx'
@@ -152,7 +153,12 @@ export default function Dashboard() {
         {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
           <SkeletonRegion><SkeletonRows count={4} progress /></SkeletonRegion>
         ) : byCategory.length === 0 ? (
-          <Text color="text.muted" fontSize="sm">No expenses in this period.</Text>
+          // On a first run the "Nothing logged yet" card above already offers
+          // the next step, so no second button here.
+          <CardEmptyState text="No expenses in this period."
+            action={!firstRun && (
+              <Button as={RouterLink} to="/transactions/new" size="sm" variant="outline">Add an expense</Button>
+            )} />
         ) : view === 'table' ? (
           <Table size="sm" variant="simple">
             <Thead>

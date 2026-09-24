@@ -3,6 +3,7 @@ import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Text } from '@chakra-ui/react'
 import { Repeat } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import { CardEmptyState } from '../../shared/ui/EmptyState.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
@@ -35,9 +36,8 @@ export default function SubscriptionsCard({ rules, loading, error, onRetry, base
       ) : loading ? (
         <SkeletonRegion><SkeletonRows count={3} /></SkeletonRegion>
       ) : groups.length === 0 ? (
-        <Text color="text.muted" fontSize="sm">
-          No subscriptions yet. Set an expense to repeat, or add bills and subscriptions in Recurring.
-        </Text>
+        <CardEmptyState text="No subscriptions yet. Set an expense to repeat, or add bills and subscriptions in Recurring."
+          action={<Button as={RouterLink} to="/recurring/new" size="sm" variant="outline">Add a subscription</Button>} />
       ) : (
         <GroupTabs groups={groups} label="Subscriptions by frequency">
           {(g) => (

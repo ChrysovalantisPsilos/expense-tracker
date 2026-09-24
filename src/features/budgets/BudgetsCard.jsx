@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { Stack, Text, Button } from '@chakra-ui/react'
+import { Stack, Button } from '@chakra-ui/react'
 import { Target } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import { CardEmptyState } from '../../shared/ui/EmptyState.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
@@ -25,9 +26,8 @@ export default function BudgetsCard() {
       {error ? <QueryError error={error} onRetry={reload} what="budgets" py={4} /> : loading ? (
         <SkeletonRegion><SkeletonRows count={3} progress /></SkeletonRegion>
       ) : items.length === 0 ? (
-        <Text color="text.muted" fontSize="sm">
-          No budgets yet. Set monthly caps per category to track them here.
-        </Text>
+        <CardEmptyState text="No budgets yet. Set monthly caps per category to track them here."
+          action={<Button size="sm" variant="outline" onClick={() => navigate('/budgets')}>Set a budget</Button>} />
       ) : (
         <>
           <Stack spacing={4} role="list" aria-label="Budgets">

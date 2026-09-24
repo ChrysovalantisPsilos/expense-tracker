@@ -23,6 +23,20 @@ export default function EmptyState({ variant = 'start', title, text, actions }) 
   )
 }
 
+// The same, small, for an empty card among others (Home's Spending,
+// Budgets and Subscriptions): a smaller mark, the muted line and at most one
+// outline `action`. Unlike EmptyState it leaves the floating Add expense
+// button alone — the rest of the page isn't empty.
+export function CardEmptyState({ variant = 'start', text, action }) {
+  return (
+    <Stack align="center" textAlign="center" spacing={2} py={2}>
+      <LooseRing variant={variant} w="84px" />
+      <Text color="text.muted" fontSize="sm" maxW="sm" sx={{ textWrap: 'balance' }}>{text}</Text>
+      {action}
+    </Stack>
+  )
+}
+
 // The app shell listens (EmptyStateCount.Provider, value: a `delta => void`
 // counter) so the phone's floating Add expense button can step aside while an
 // empty state is on the page: the empty state's own buttons are the next step
