@@ -95,7 +95,7 @@ export default function GroupExpenseForm({
   }
 
   function handleScan({ total, date }) {
-    if (total != null) setAmount(String(total))
+    if (total != null) setAmount(minorToInput(toMinor(total, paidCurrency), paidCurrency))
     if (date) setSpentAt(date)
   }
 
