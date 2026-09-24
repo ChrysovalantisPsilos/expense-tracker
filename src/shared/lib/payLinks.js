@@ -17,6 +17,19 @@ export function revolutUrl(tag, amountMinor, currency) {
     : base
 }
 
+// Whether you've told friends how to pay you: an IBAN, a Revolut tag or a
+// PayPal.me name (profile.getMyPaymentInfo's shape).
+export function hasPaymentDetails(info) {
+  return ['payment_iban', 'payment_revolut', 'payment_paypal'].some((k) => String(info?.[k] ?? '').trim())
+}
+
+// Settle up asks for payment details once: when you're the one being paid
+// (direction 'in'), your details have loaded (`info`) and there are none, and
+// you haven't answered "Not now" before (`dismissed`).
+export function askForPaymentDetails({ direction, info, dismissed }) {
+  return direction === 'in' && info != null && !dismissed && !hasPaymentDetails(info)
+}
+
 // A PayPal.me name as people paste it ("paypal.me/Name", "@Name",
 // "https://www.paypal.me/Name/10") → "Name", or null if it isn't one
 // (PayPal.me names are 1–20 letters and numbers; the server checks the same).

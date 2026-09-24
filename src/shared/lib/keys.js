@@ -8,6 +8,7 @@ export const STORAGE_KEYS = {
   passkeyPrompted: 'budge:passkeyPrompted', // sessionStorage — passkey prompt shown this session
   returnPath: 'budge:returnPath',      // localStorage — page to open after an off-page sign-in
   appearance: 'budge-appearance',      // localStorage — Light/Dark/System (also read by public/theme-boot.js)
+  paymentAskDismissed: 'budge:paymentAsk', // localStorage — "Not now" to Settle up's payment-details ask
 }
 
 export const EVENTS = {

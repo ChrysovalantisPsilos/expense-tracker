@@ -119,7 +119,9 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     appear live on the other screen.
 18. Settle up: use a "Suggested" transfer → if the payee saved payment
     details, Revolut/QR/copy-IBAN shortcuts appear (QR only for EUR groups).
-    Record it → balances update everywhere.
+    Record it → balances update everywhere. With no payment details saved,
+    opening it on a debt owed to you shows "Add payment details" / "Not now"
+    once; "Not now" hides it on that device.
 19. Nudge: on a debt owed to you, tap the bell icon → debtor gets "Friendly
     reminder". A third nudge the same day is politely refused.
 20. Leave silently (checkbox) → no notification to others. Rejoin via a new

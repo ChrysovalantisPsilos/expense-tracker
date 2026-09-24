@@ -15,6 +15,7 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { memberName, mySettleSuggestions } from './groupFormat.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import PayShortcuts from './PayShortcuts.jsx'
+import PaymentDetailsAsk from './PaymentDetailsAsk.jsx'
 import FormModal from '../../shared/ui/FormModal.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 
@@ -313,6 +314,8 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
               <Input type="date" value={settledAt} onChange={(e) => setSettledAt(e.target.value)} />
             </FormControl>
           </HStack>
+
+          <PaymentDetailsAsk direction={direction} />
 
           {direction === 'out' && otherId && Number(amount) > 0 && (
             <PayShortcuts

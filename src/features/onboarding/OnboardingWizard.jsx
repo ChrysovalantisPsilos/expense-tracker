@@ -1,18 +1,18 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Stack, HStack, Text, Heading, FormControl, FormHelperText, FormLabel, Input, Select, Button,
   IconButton, Progress, Box, useToast,
 } from '@chakra-ui/react'
-import { X, ArrowRight, ArrowLeft, Sparkles, Landmark, Users, BellRing, KeyRound, Compass } from 'lucide-react'
+import { X, ArrowRight, ArrowLeft, Sparkles, Users, BellRing, KeyRound, Compass } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS, STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { enablePush, pushSupported } from '../../shared/lib/push.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { updateProfile, savePaymentInfo } from '../../shared/lib/profile.js'
+import { updateProfile } from '../../shared/lib/profile.js'
 import { createGroup } from '../groups/groups.js'
 import Logo from '../../shared/ui/Logo.jsx'
 import { startTour } from './tour.js'
@@ -21,6 +21,8 @@ import { userMessage } from '../../shared/lib/errors.js'
 // Post-signup setup wizard. Shows once per account (App gates on
 // profiles.onboarded_at). Collects the essentials, folds in the notification +
 // passkey asks so they don't fire separately, and every step is skippable —
+// payment details are asked later, in Settle up, the first time someone owes
+// you (groups/PaymentDetailsAsk) —
 // closing at any point stamps onboarded_at so it never nags again. Its last
 // step hands over to the app tour (ProductTour); skipping that, or closing
 // the wizard early, marks the tour seen too (profiles.tour_done).
@@ -33,10 +35,6 @@ export default function OnboardingWizard({ profile, onDone }) {
 
   const [name, setName] = useState(profile?.display_name ?? '')
   const [currency, setCurrency] = useState(profile?.base_currency ?? 'EUR')
-  // Payment details are write-only from here (encrypted at rest); onboarding is
-  // first-run, so there's nothing to prefill.
-  const [iban, setIban] = useState('')
-  const [revolut, setRevolut] = useState('')
   const [groupName, setGroupName] = useState('')
   const [pushDone, setPushDone] = useState(false)
   const [passkeyDone, setPasskeyDone] = useState(false)
@@ -44,8 +42,16 @@ export default function OnboardingWizard({ profile, onDone }) {
 
   const { busy, run } = useAsyncSubmit()
 
-  const STEPS = ['Welcome', 'Getting paid', 'Stay in the loop', 'Look around']
+  const STEPS = ['Welcome', 'First group', 'Stay in the loop', 'Look around']
   const isLast = step === STEPS.length - 1
+
+  // Each step opens on its field (not the close button): the name first,
+  // then the group name.
+  const nameRef = useRef(null)
+  const groupRef = useRef(null)
+  useEffect(() => {
+    if (step === 1) groupRef.current?.focus()
+  }, [step])
 
   // Finishing or dismissing both end the wizard the same way: persist the flag
   // (+ suppress the standalone prompts this session) and hand control back —
@@ -76,12 +82,8 @@ export default function OnboardingWizard({ profile, onDone }) {
     }, { errorTitle: 'Couldn’t save your details' })
   }
 
-  async function savePaymentAndGroup() {
+  async function saveGroup() {
     await run(async () => {
-      await savePaymentInfo({
-        iban: iban.replace(/\s+/g, '').toUpperCase() || null,
-        revolut: revolut.replace(/^@/, '').trim() || null,
-      })
       if (groupName.trim()) {
         const gid = await createGroup(groupName.trim(), currency)
         toast({ title: `Group “${groupName.trim()}” created`, status: 'success' })
@@ -112,7 +114,8 @@ export default function OnboardingWizard({ profile, onDone }) {
   }
 
   return (
-    <Modal isOpen={open} onClose={() => finish()} isCentered scrollBehavior="inside" closeOnOverlayClick={false}>
+    <Modal isOpen={open} onClose={() => finish()} isCentered scrollBehavior="inside" closeOnOverlayClick={false}
+      initialFocusRef={nameRef}>
       <ModalOverlay />
       <ModalContent mx={4}>
         <ModalHeader pb={2}>
@@ -124,7 +127,8 @@ export default function OnboardingWizard({ profile, onDone }) {
           <Progress value={((step + 1) / STEPS.length) * 100} size="xs" mt={3} />
         </ModalHeader>
 
-        <ModalBody>
+        {/* One height for every step, so the buttons don't jump about. */}
+        <ModalBody minH="340px">
           {step === 0 && (
             <Stack spacing={4}>
               <HStack color="accent.fg"><Sparkles size={18} /><Heading size="sm">Welcome to Budgeer</Heading></HStack>
@@ -134,7 +138,8 @@ export default function OnboardingWizard({ profile, onDone }) {
               </Text>
               <FormControl>
                 <FormLabel>Your name</FormLabel>
-                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
+                <Input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name"
+                  autoComplete="name" />
               </FormControl>
               <FormControl>
                 <FormLabel>Default currency</FormLabel>
@@ -148,24 +153,14 @@ export default function OnboardingWizard({ profile, onDone }) {
 
           {step === 1 && (
             <Stack spacing={4}>
-              <HStack color="accent.fg"><Landmark size={18} /><Heading size="sm">Getting paid & groups</Heading></HStack>
+              <HStack color="accent.fg"><Users size={18} /><Heading size="sm">Split costs with friends</Heading></HStack>
               <Text fontSize="sm" color="text.muted">
-                Add how friends can pay you back (shown as one-tap options when they settle up),
-                and start a group if you like. All optional.
+                A group keeps track of shared costs for a trip or a household, and of who
+                owes whom. Start one now if you like — or any time from Groups.
               </Text>
               <FormControl>
-                <FormLabel>IBAN</FormLabel>
-                <Input value={iban} onChange={(e) => setIban(e.target.value)}
-                  placeholder="BE68 5390 0754 7034" autoComplete="off" />
-              </FormControl>
-              <FormControl>
-                <FormLabel>Revolut tag</FormLabel>
-                <Input value={revolut} onChange={(e) => setRevolut(e.target.value)}
-                  placeholder="@yourtag" autoComplete="off" />
-              </FormControl>
-              <FormControl>
-                <FormLabel><HStack spacing={2}><Users size={14} /><Text>Name your first group (optional)</Text></HStack></FormLabel>
-                <Input value={groupName} onChange={(e) => setGroupName(e.target.value)}
+                <FormLabel>Name your first group (optional)</FormLabel>
+                <Input ref={groupRef} value={groupName} onChange={(e) => setGroupName(e.target.value)}
                   placeholder="Corfu trip, Flatmates…" />
               </FormControl>
             </Stack>
@@ -215,7 +210,7 @@ export default function OnboardingWizard({ profile, onDone }) {
             <Button rightIcon={<ArrowRight size={16} />} isLoading={busy} onClick={saveBasics}>Continue</Button>
           )}
           {step === 1 && (
-            <Button rightIcon={<ArrowRight size={16} />} isLoading={busy} onClick={savePaymentAndGroup}>Continue</Button>
+            <Button rightIcon={<ArrowRight size={16} />} isLoading={busy} onClick={saveGroup}>Continue</Button>
           )}
           {step === 2 && (
             <Button rightIcon={<ArrowRight size={16} />} onClick={() => setStep(3)}>Continue</Button>

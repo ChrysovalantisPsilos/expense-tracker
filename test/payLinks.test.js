@@ -1,6 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { revolutUrl, paypalUrl, normalisePaypalHandle, sepaQrPayload } from '../src/shared/lib/payLinks.js'
+import {
+  revolutUrl, paypalUrl, normalisePaypalHandle, sepaQrPayload, hasPaymentDetails, askForPaymentDetails,
+} from '../src/shared/lib/payLinks.js'
 
 test('revolutUrl: the amount in minor units plus the currency', () => {
   assert.equal(revolutUrl('alexk', 8925, 'EUR'), 'https://revolut.me/alexk?currency=EUR&amount=8925')
@@ -40,4 +42,22 @@ test('sepaQrPayload: EPC069-12 lines, and a new amount is a new payload', () => 
   assert.equal(long[7], 'EUR0.01')
   assert.equal(long[10].length, 140)
   assert.equal(sepaQrPayload({ name: '', iban: 'X', amountMinor: 100 }).split('\n')[5], 'Payee')
+})
+
+test('hasPaymentDetails: any one of IBAN, Revolut or PayPal.me', () => {
+  assert.equal(hasPaymentDetails({}), false)
+  assert.equal(hasPaymentDetails(null), false)
+  assert.equal(hasPaymentDetails({ payment_iban: '  ', payment_revolut: null }), false)
+  assert.equal(hasPaymentDetails({ payment_iban: 'BE68539007547034' }), true)
+  assert.equal(hasPaymentDetails({ payment_revolut: 'alexk' }), true)
+  assert.equal(hasPaymentDetails({ payment_paypal: 'AlexK' }), true)
+})
+
+test('askForPaymentDetails: only when being paid, loaded, none saved and not dismissed', () => {
+  const base = { direction: 'in', info: {}, dismissed: false }
+  assert.equal(askForPaymentDetails(base), true)
+  assert.equal(askForPaymentDetails({ ...base, direction: 'out' }), false)
+  assert.equal(askForPaymentDetails({ ...base, info: null }), false) // not loaded (or failed)
+  assert.equal(askForPaymentDetails({ ...base, dismissed: true }), false)
+  assert.equal(askForPaymentDetails({ ...base, info: { payment_revolut: 'alexk' } }), false)
 })
