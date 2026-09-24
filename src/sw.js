@@ -13,8 +13,13 @@ import { offlineReadRpc, offlineReadKey, requestUser } from './shared/lib/offlin
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
 
-// SPA navigation fallback so the installed PWA opens on any route.
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
+// SPA navigation fallback so the installed PWA opens on any route. Same
+// exclusions as vercel.json's rewrite: /assets/ and any path with a dot in it
+// (robots.txt, sitemap.xml, images…) go to the network, not the app shell.
+// Workbox matches pathname + search, so the dot test stops at the "?".
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), {
+  denylist: [/^\/assets\//, /^[^?]*\./],
+}))
 
 // Supabase REST reads: serve cached data while offline, refresh when online.
 registerRoute(
