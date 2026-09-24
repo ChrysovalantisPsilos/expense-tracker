@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Stack, HStack, Button, FormControl, FormLabel, Input, Select, useToast } from '@chakra-ui/react'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
-import FormModal from '../../shared/ui/FormModal.jsx'
+import { PageForm } from '../../shared/ui/FormPage.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { toMinor, minorToInput } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
@@ -10,10 +10,11 @@ import { saveRecurring } from './recurring.js'
 import { editRepeat, repeatDraft, repeatRuleFields } from './recurringMath.js'
 import RepeatFields from './RepeatFields.jsx'
 
-// Add or edit a recurring rule. `rule` edits an existing one; otherwise a new
-// one starts as `kind` (the Recurring page's open tab). Pausing lives on the
-// page's rows, so the schedule here has no Paused switch.
-export default function RecurringForm({ rule, kind: initialKind = 'expense', baseCurrency, onClose, onSaved }) {
+// The body of a recurring rule's page (RecurringPage). `rule` edits an
+// existing one; otherwise a new one starts as `kind`. Pausing lives on the
+// Recurring page's rows, so the schedule here has no Paused switch.
+// `onSaved` runs after a successful save.
+export default function RecurringForm({ rule, kind: initialKind = 'expense', baseCurrency, onSaved }) {
   const toast = useToast()
   const isEdit = !!rule
   const [kind, setKind] = useState(rule?.kind ?? initialKind)
@@ -45,9 +46,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
   const pickKind = (k) => { setKind(k); setCategoryId('') }
 
   return (
-    <FormModal isOpen onClose={onClose} scrollBehavior="inside" onSubmit={submit} busy={busy}
-      title={isEdit ? 'Edit recurring entry' : 'New recurring entry'}
-      submitLabel={isEdit ? 'Save' : 'Add'}>
+    <PageForm onSubmit={submit} busy={busy} submitLabel={isEdit ? 'Save changes' : 'Add recurring entry'}>
       <Stack spacing={4}>
         <HStack spacing={2}>
           <Button flex="1" variant={kind === 'expense' ? 'solid' : 'outline'}
@@ -81,6 +80,6 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
           kind={kind} currency={currency} amountMinor={Number(amount) > 0 ? toMinor(amount, currency) : 0}
           idPrefix="rule" />
       </Stack>
-    </FormModal>
+    </PageForm>
   )
 }

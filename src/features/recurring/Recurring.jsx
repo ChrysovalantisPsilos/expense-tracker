@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Stack, Text, Button, List, ListItem, Switch, Tag, Flex, Box, Modal, ModalOverlay,
   ModalContent, ModalHeader, ModalBody, ModalFooter, Tabs, TabList, Tab, TabPanels, TabPanel, useToast,
-  useDisclosure, SimpleGrid,
+  SimpleGrid,
 } from '@chakra-ui/react'
 import { Plus, Pencil, Trash2, Repeat, Bell, Pause, Play } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
@@ -17,7 +18,6 @@ import { useRecurring, setRecurringActive, deleteRecurring } from './recurring.j
 import {
   frequencyLabel, incomePerMonth, monthlyBudgetShare, subscriptionGroups,
 } from './recurringMath.js'
-import RecurringForm from './RecurringForm.jsx'
 import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
@@ -27,22 +27,25 @@ const TABS = ['expense', 'income']
 
 // The Recurring page (/recurring): "Subscriptions" (money going out, by
 // frequency — the same groups as Home's card, each with its total) and
-// "Income" (money coming in on a schedule). Add, edit, pause and delete.
+// "Income" (money coming in on a schedule). Pause and delete here; adding and
+// editing open a rule's own page (RecurringPage). The open tab is kept in the
+// address (?tab=income), so coming back from a rule's page lands on it.
 export default function Recurring() {
   const { baseCurrency = 'EUR' } = useProfile()
   const { rules, loading, error, reload } = useRecurring()
   const toast = useToast()
-  const form = useDisclosure()
-  const [tab, setTab] = useState(0)
-  const [editing, setEditing] = useState(null)
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
+  const tab = params.get('tab') === 'income' ? 1 : 0
+  const setTab = (i) => setParams(TABS[i] === 'income' ? { tab: 'income' } : {}, { replace: true })
   const [removing, setRemoving] = useState(null)
 
   const groups = useMemo(() => subscriptionGroups(rules, baseCurrency), [rules, baseCurrency])
   const income = useMemo(() => rules.filter((r) => r.kind === 'income'), [rules])
   const incomeMonthly = useMemo(() => incomePerMonth(rules), [rules])
 
-  function openNew() { setEditing(null); form.onOpen() }
-  function openEdit(r) { setEditing(r); form.onOpen() }
+  const openNew = () => navigate(`/recurring/new?kind=${TABS[tab]}`)
+  const openEdit = (r) => navigate(`/recurring/${r.id}`, { state: { rule: r } })
 
   async function toggle(r) {
     try { await setRecurringActive(r.id, !r.is_active); reload() }
@@ -128,11 +131,6 @@ export default function Recurring() {
           </Tabs>
         )}
       </Panel>
-
-      {form.isOpen && (
-        <RecurringForm rule={editing} kind={TABS[tab]} baseCurrency={baseCurrency}
-          onClose={form.onClose} onSaved={() => { form.onClose(); reload() }} />
-      )}
 
       <Modal isOpen={!!removing} onClose={() => setRemoving(null)} isCentered>
         <ModalOverlay />

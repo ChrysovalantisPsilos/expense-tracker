@@ -29,6 +29,7 @@ const Budgets = lazy(() => import('../features/budgets/Budgets.jsx'))
 const LedgerPage = lazy(() => import('../features/transactions/LedgerPage.jsx'))
 const TransactionPage = lazy(() => import('../features/transactions/TransactionPage.jsx'))
 const Recurring = lazy(() => import('../features/recurring/Recurring.jsx'))
+const RecurringPage = lazy(() => import('../features/recurring/RecurringPage.jsx'))
 const Insights = lazy(() => import('../features/insights/Insights.jsx'))
 const More = lazy(() => import('./More.jsx'))
 const Groups = lazy(() => import('../features/groups/Groups.jsx'))
@@ -152,6 +153,8 @@ function AuthedRoutes() {
         <Route element={<AppShell hideAddExpense={!!tour} />}>
           <Route index element={<Dashboard />} />
           <Route path="recurring" element={<Recurring />} />
+          <Route path="recurring/new" element={<RecurringPage />} />
+          <Route path="recurring/:id" element={<RecurringPage />} />
           <Route path="insights" element={<Insights />} />
           <Route path="more" element={<More />} />
           <Route path="transactions" element={<LedgerPage />} />
