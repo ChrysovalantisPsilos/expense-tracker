@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { FX_API } from '../src/shared/lib/currency.js'
 
 // vercel.json, public/robots.txt and public/sitemap.xml: the hosting config
 // the review asked for, pinned so a later edit can't quietly drop it.
@@ -15,9 +16,14 @@ test('vercel.json: every security header stays on every path, first in the list'
   assert.equal(all.has, undefined)
   for (const key of ['Strict-Transport-Security', 'X-Content-Type-Options', 'X-Frame-Options',
     'Referrer-Policy', 'Permissions-Policy']) assert.ok(header(all, key), key)
-  const csp = header(all, 'Content-Security-Policy-Report-Only') ?? header(all, 'Content-Security-Policy')
+  // Enforced, not report-only.
+  assert.equal(header(all, 'Content-Security-Policy-Report-Only'), undefined)
+  const csp = header(all, 'Content-Security-Policy')
   assert.match(csp, /default-src 'self'/)
   assert.match(csp, /frame-ancestors 'none'/)
+  assert.doesNotMatch(csp, /script-src[^;]*'unsafe-(inline|eval)'/)
+  // The browser fetches exchange rates itself, so the FX API must stay allowed.
+  assert.match(csp, new RegExp(`connect-src[^;]* ${new URL(FX_API).origin.replaceAll('.', '\\.')}[ ;]`))
 })
 
 test('vercel.json: only the dev host is noindex', () => {

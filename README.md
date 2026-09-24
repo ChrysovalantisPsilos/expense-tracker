@@ -150,8 +150,10 @@ units.
   services.
 - HTTP security headers are set in `vercel.json`: HSTS, `nosniff`,
   `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, and a
-  Content-Security-Policy that is currently in Report-Only mode (it has no
-  reporting endpoint, so violations show only in the browser console).
+  Content-Security-Policy that is enforced: scripts, styles, fonts and
+  workers only from our own origin (plus `blob:` workers and WebAssembly for
+  the OCR engine), connections only to Supabase and the exchange-rate API,
+  and images from our origin, Supabase Storage and Google profile pictures.
 - Receipt OCR runs on the device, and its engine is served from our own
   origin, not a CDN.
 - `package-lock.json` is committed, and CI's `npm audit --omit=dev

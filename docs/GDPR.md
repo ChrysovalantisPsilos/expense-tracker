@@ -147,7 +147,7 @@ TLS everywhere (HSTS); at-rest encryption of money/text fields with a Vault key;
 RLS on every table with per-verb policies; server-authoritative columns forced
 by triggers; SECURITY DEFINER functions pin `search_path` and are revoked from
 API roles unless deliberately callable; rate limits on every fan-out mutation;
-password re-check before account deletion; CSP (report-only) and security
+password re-check before account deletion; enforced CSP and security
 headers on Vercel; no analytics or third-party scripts; the rolled-back DB
 security suite (`supabase/tests/db_tests.sql`).
 
