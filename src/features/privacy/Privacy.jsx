@@ -251,7 +251,8 @@ const SECTIONS = [
       </Body>
       <Bullets items={DEVICE} />
       <Body>
-        All of it stays on your device and is never sent to us. Signing out removes the session and
+        All of it stays on your device. The only item the app sends anywhere is the sign-in session,
+        which proves it’s you when the app loads your data. Signing out removes the session and
         the offline copy, and closing the tab removes the tab-only items. You can clear the rest at
         any time by deleting this site’s data in your browser’s settings.
       </Body>
