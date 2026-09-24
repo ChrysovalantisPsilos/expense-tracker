@@ -454,8 +454,8 @@ const cap = (currency, amount_minor, period_start = '2026-09-01') => ({ category
 const dataIn = (base, transactions, budgets = []) => ({
   profile: { base_currency: base }, transactions, budgets,
   recurring: [{ kind: 'expense', amount_minor: 999, currency: base, frequency: 'monthly' }],
-  goals: [{ name: 'Holiday', target_minor: 100000, saved_minor: 0, currency: base }],
-  accounts: [{ key: 'a1', name: 'Current', balance_minor: 5000, currency: base }],
+  goals: [{ name: 'Holiday', target_minor: 100000, saved_minor: 0, currency: base, target_date: null }],
+  accounts: [{ key: 'a1', name: 'Current', type: 'asset', balance_minor: 5000, currency: base }],
 })
 const rebase = (data, toBase, series = new Map()) =>
   rebaseBackupData(data, { fromBase: data.profile.base_currency, toBase, seriesByCurrency: series, todayIso: TODAY })
@@ -477,6 +477,7 @@ test('main currency: USD backup into a EUR account — entries keep amounts, rat
     tx('USD', 500, '2026-10-01'),                  // future-dated: today's rate
   ], [cap('USD', 40000), cap('EUR', 7000)])
   const opts = { fromBase: 'USD', toBase: 'EUR', todayIso: TODAY }
+  // Accounts and goals need the restore day's rate (covered by the span too).
   assert.deepEqual([...rebaseRateSpans(data, opts)], [
     ['USD', { first: '2026-09-01', last: '2026-09-24' }],
     ['GBP', { first: '2026-08-08', last: '2026-08-08' }],
@@ -491,10 +492,13 @@ test('main currency: USD backup into a EUR account — entries keep amounts, rat
   ])
   // Budget caps are in the main currency: converted at their month's rate.
   assert.deepEqual(out.budgets, [cap('EUR', 36000), cap('EUR', 7000)])
-  // Things with their own currency are left alone; the input isn't mutated.
+  // Balances and goals at the latest rate (the restore day's): $50.00 → €42.50,
+  // $1000.00 → €850.00. Recurring rules keep their own currency.
+  assert.deepEqual(out.accounts, [{ key: 'a1', name: 'Current', type: 'asset', balance_minor: 4250, currency: 'EUR' }])
+  assert.deepEqual(out.goals, [{ name: 'Holiday', target_minor: 85000, saved_minor: 0, currency: 'EUR', target_date: null }])
   assert.equal(out.recurring, data.recurring)
-  assert.equal(out.goals, data.goals)
-  assert.equal(out.accounts, data.accounts)
+  // The input isn't mutated.
+  assert.equal(data.accounts[0].currency, 'USD')
   assert.equal(data.transactions[0].exchange_rate, 1)
   assert.equal(data.budgets[0].currency, 'USD')
 })
@@ -534,11 +538,47 @@ test('main currency: a missing rate stops the restore with a clear message', () 
 })
 
 test('main currency: restated rates flow into the rows a restore saves', async () => {
-  const data = dataIn('USD', [tx('GBP', 2000, '2026-08-07', 1.3)])
+  const data = { ...dataIn('USD', [tx('GBP', 2000, '2026-08-07', 1.3)]), accounts: [], goals: [] }
   const out = rebase(data, 'EUR', new Map([['GBP', [['2026-08-07', 1.17]]]]))
   const plan = await planTransactions(out.transactions, [],
     { userId: 'u', categoryIdByKey: new Map(), accountIdByKey: new Map() })
   assert.equal(plan.rows[0].exchange_rate, 1.17)
   assert.equal(plan.rows[0].amount_minor, 2000)
   assert.equal(plan.rows[0].currency, 'GBP')
+})
+
+test('main currency: accounts and goals — zero-decimal target, negatives, rows already in the target', () => {
+  const data = {
+    ...dataIn('EUR', []),
+    accounts: [
+      { key: 'a1', name: 'Card', type: 'liability', balance_minor: 12345, currency: 'EUR' },
+      { key: 'a2', name: 'Overdrawn', type: 'asset', balance_minor: -1005, currency: 'EUR' },
+      { key: 'a3', name: 'Tokyo cash', type: 'asset', balance_minor: 30000, currency: 'JPY' },
+    ],
+    goals: [
+      { name: 'Trip', target_minor: 250050, saved_minor: 1234, currency: 'EUR', target_date: '2027-01-01' },
+      { name: 'Camera', target_minor: 150000, saved_minor: 20000, currency: 'JPY', target_date: null },
+    ],
+  }
+  assert.deepEqual([...rebaseRateSpans(data, { fromBase: 'EUR', toBase: 'JPY', todayIso: TODAY })],
+    [['EUR', { first: TODAY, last: TODAY }]])
+  // The latest rate on or before the restore day wins.
+  const out = rebase(data, 'JPY', new Map([['EUR', [['2026-09-01', 160], ['2026-09-23', 163.456]]]]))
+  assert.deepEqual(out.accounts.map((a) => [a.balance_minor, a.currency]), [
+    [20179, 'JPY'],   // €123.45 × 163.456 = ¥20178.64
+    [-1643, 'JPY'],   // −€10.05 × 163.456 = −¥1642.73
+    [30000, 'JPY'],   // already yen: untouched
+  ])
+  assert.equal(out.accounts[2], data.accounts[2])
+  assert.deepEqual(out.goals.map((g) => [g.target_minor, g.saved_minor, g.currency, g.target_date]), [
+    [408722, 2017, 'JPY', '2027-01-01'], // €2500.50 → ¥408721.73; €12.34 → ¥2017.05
+    [150000, 20000, 'JPY', null],
+  ])
+  assert.equal(out.goals[1], data.goals[1])
+  // Zero-decimal source: ¥30,000 at 0.0061 → €183.00.
+  const back = rebase({ ...dataIn('JPY', []), accounts: [data.accounts[2]], goals: [] }, 'EUR',
+    new Map([['JPY', [['2026-09-24', 0.0061]]]]))
+  assert.deepEqual(back.accounts.map((a) => [a.balance_minor, a.currency]), [[18300, 'EUR']])
+  // No rate for the restore day's side → the restore stops.
+  assert.throws(() => rebase(data, 'JPY'), UserError)
 })

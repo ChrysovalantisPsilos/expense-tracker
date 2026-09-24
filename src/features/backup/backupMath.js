@@ -605,10 +605,13 @@ export function planPayment(backup, current) {
 // amount and currency; each gets the ECB rate for its date into the target's
 // main currency (1 when it's already in it), as if it were added there. Budget
 // caps have no currency of their own: they're converted at the ECB rate for
-// their month, rounded to the target's minor units (toBaseMinor). Recurring
-// entries, accounts and goals keep their own currency (recurring charges are
-// rated by the server when they run). Same main currency — or an old backup
-// that doesn't say — changes nothing.
+// their month, rounded to the target's minor units (toBaseMinor). Account
+// balances and savings goals (target and saved) are summed and shown as
+// main-currency amounts, so they're converted too, at the latest rate (the
+// restore day's). A row already in the target's currency is left alone.
+// Recurring entries keep their own currency (the server rates each charge
+// when it runs). Same main currency — or an old backup that doesn't say —
+// changes nothing.
 
 const RATES_MISSING = 'Couldn’t get the exchange rates needed to convert this backup to your main currency. Check your connection and try again.'
 
@@ -632,6 +635,7 @@ export function rebaseRateSpans(data, { fromBase, toBase, todayIso }) {
   }
   for (const t of data.transactions) add(t.currency, t.spent_at)
   for (const b of data.budgets) add(b.currency, b.period_start)
+  for (const x of [...data.accounts, ...data.goals]) add(x.currency, todayIso)
   return spans
 }
 
@@ -644,14 +648,20 @@ export function rebaseBackupData(data, { fromBase, toBase, seriesByCurrency, tod
   const rateFor = (currency, date) => (currency === toBase ? 1
     : rateOnOrBefore(seriesByCurrency.get(currency) ?? [], fxQueryDate(date, todayIso))?.rate
       ?? fail(RATES_MISSING))
+  // `fields` (minor amounts) of a row in its own currency → toBase at `date`.
+  const convert = (row, fields, date) => {
+    if (row.currency === toBase) return row
+    const rate = rateFor(row.currency, date)
+    const out = { ...row, currency: toBase }
+    for (const f of fields) out[f] = toBaseMinor(row[f], rate, row.currency, toBase)
+    return out
+  }
   return {
     ...data,
     transactions: data.transactions.map((t) => ({ ...t, exchange_rate: rateFor(t.currency, t.spent_at) })),
-    budgets: data.budgets.map((b) => (b.currency === toBase ? b : {
-      ...b,
-      amount_minor: toBaseMinor(b.amount_minor, rateFor(b.currency, b.period_start), b.currency, toBase),
-      currency: toBase,
-    })),
+    budgets: data.budgets.map((b) => convert(b, ['amount_minor'], b.period_start)),
+    accounts: data.accounts.map((a) => convert(a, ['balance_minor'], todayIso)),
+    goals: data.goals.map((g) => convert(g, ['target_minor', 'saved_minor'], todayIso)),
   }
 }
 

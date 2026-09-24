@@ -183,7 +183,8 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     Restoring into an account that already has entries in another main
     currency (e.g. a EUR backup into a JPY account): every entry keeps its
     original amount and currency, shows the right ¥ equivalent at that day's
-    rate, and budget caps come back converted to whole yen. Offline, the
+    rate; budget caps, account balances and savings goals come back
+    converted to whole yen (recurring entries keep their own currency). Offline, the
     restore stops with the exchange-rate message and nothing is added.
 
 ### K. Navigation
