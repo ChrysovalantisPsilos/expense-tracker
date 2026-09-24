@@ -59,6 +59,7 @@ const RestoreBackupPage = lazy(() => import('../features/backup/RestoreBackupPag
 const Privacy = lazy(() => import('../features/privacy/Privacy.jsx'))
 const Terms = lazy(() => import('../features/privacy/Terms.jsx'))
 const PrivacySettings = lazy(() => import('../features/privacy/PrivacySettings.jsx'))
+const PrivacyRequestPage = lazy(() => import('../features/privacy/PrivacyRequestPage.jsx'))
 const LegalGate = lazy(() => import('../features/privacy/LegalGate.jsx'))
 const Help = lazy(() => import('../features/help/Help.jsx'))
 const OnboardingWizard = lazy(() => import('../features/onboarding/OnboardingWizard.jsx'))
@@ -193,6 +194,7 @@ function AuthedRoutes() {
           <Route path="settings/data/export" element={<ExportBackupPage />} />
           <Route path="settings/data/restore" element={<RestoreBackupPage />} />
           <Route path="settings/privacy" element={<PrivacySettings />} />
+          <Route path="settings/privacy/request" element={<PrivacyRequestPage />} />
           <Route path="help" element={<Help />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="terms" element={<Terms />} />

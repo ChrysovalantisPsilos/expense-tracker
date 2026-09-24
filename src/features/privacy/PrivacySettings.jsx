@@ -1,23 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  Box, Button, FormControl, FormHelperText, FormLabel, HStack, Link, Select,
-  Stack, Text, Textarea, useDisclosure, useToast,
+  Box, Button, HStack, Link, Stack, Text, useToast,
 } from '@chakra-ui/react'
 import {
   Download, FileText, History, Mail, PencilLine, Scale, ShieldOff, Trash2, UserCheck,
 } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import FormModal from '../../shared/ui/FormModal.jsx'
 import { shortDateTime } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import SettingsPage from '../settings/SettingsPage.jsx'
 import { NotificationPrefs } from '../settings/NotificationSettings.jsx'
-import {
-  MESSAGE_MAX, REQUEST_KINDS, describeConsent, responseDeadline, validatePrivacyRequest,
-} from './legal.js'
+import { describeConsent } from './legal.js'
 import { PRIVACY_EMAIL } from '../../shared/lib/contact.js'
-import { downloadMyData, listMyConsents, sendPrivacyRequest } from './privacyData.js'
+import { downloadMyData, listMyConsents } from './privacyData.js'
 import RingLoader, { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 // Settings → Privacy: each GDPR right with the way to use it here, the
@@ -103,61 +99,19 @@ function DownloadRight() {
 }
 
 function RequestRight() {
-  const dialog = useDisclosure()
   return (
     <Right icon={ShieldOff} title="Restrict or object, or another request" article="Art. 18 and 21"
       text="Ask us to limit how we use your data, object to a use based on our legitimate interest, or make any other privacy request. It goes to our privacy inbox, and we reply to your account’s email address.">
       <HStack spacing={2} flexWrap="wrap">
-        <Button leftIcon={<Mail size={16} />} size="sm" variant="outline" onClick={dialog.onOpen}>
+        <Button as={RouterLink} to="/settings/privacy/request" leftIcon={<Mail size={16} />} size="sm"
+          variant="outline">
           Send a request
         </Button>
         <Button as="a" href={`mailto:${PRIVACY_EMAIL}`} size="sm" variant="ghost" leftIcon={<FileText size={16} />}>
           Email instead
         </Button>
       </HStack>
-      {dialog.isOpen && <RequestDialog onClose={dialog.onClose} />}
     </Right>
-  )
-}
-
-function RequestDialog({ onClose }) {
-  const toast = useToast()
-  const [kind, setKind] = useState('restrict')
-  const [message, setMessage] = useState('')
-  const { busy, run } = useAsyncSubmit()
-  const firstRef = useRef(null)
-
-  async function submit() {
-    const checked = validatePrivacyRequest({ kind, message })
-    if (checked.error) { toast({ title: checked.error, status: 'warning' }); return }
-    await run(async () => {
-      await sendPrivacyRequest(checked)
-      const by = responseDeadline().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-      toast({ title: 'Request sent', status: 'success',
-        description: `We’ve emailed you a receipt, and we’ll reply to your account’s email address by ${by}.` })
-      onClose()
-    }, { errorTitle: 'Couldn’t send your request' })
-  }
-
-  return (
-    <FormModal isOpen onClose={onClose} title="Privacy request" onSubmit={submit} busy={busy}
-      submitLabel="Send request" initialFocusRef={firstRef}>
-      <Stack spacing={4}>
-        <FormControl>
-          <FormLabel>What is it about?</FormLabel>
-          <Select ref={firstRef} value={kind} onChange={(e) => setKind(e.target.value)}>
-            {Object.entries(REQUEST_KINDS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-          </Select>
-        </FormControl>
-        <FormControl>
-          <FormLabel>Your request</FormLabel>
-          <Textarea rows={5} value={message} maxLength={MESSAGE_MAX}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Tell us what you’d like us to do, and which data it concerns." />
-          <FormHelperText>We answer within one month. Up to 3 requests a day.</FormHelperText>
-        </FormControl>
-      </Stack>
-    </FormModal>
   )
 }
 
