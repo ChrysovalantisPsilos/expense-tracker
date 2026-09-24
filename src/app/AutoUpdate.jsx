@@ -14,7 +14,8 @@ const RETRY_MS = 5 * 1000
 // PWA) re-checks on an interval while visible, on focus and on reconnect.
 // When one is waiting, it activates and reloads as soon as that won't lose
 // anything: immediately if the user is idle or the tab is hidden, otherwise
-// once they stop typing / close the dialog, or switch away.
+// once they stop typing, close the dialog or leave a form page with unsaved
+// input (isSafeToReload), or switch away.
 export default function AutoUpdate() {
   const {
     needRefresh: [needRefresh],

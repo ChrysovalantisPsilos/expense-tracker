@@ -19,6 +19,7 @@ import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import FxPreview from '../../shared/ui/FxPreview.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import { PageForm } from '../../shared/ui/FormPage.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 
@@ -119,8 +120,7 @@ export default function TransactionForm({
 
   const errors = tried ? checkFields({ amount, spentAt }) : {}
 
-  async function submit(e) {
-    e.preventDefault()
+  async function submit() {
     const first = firstInvalid(checkFields({ amount, spentAt }), FIELDS)
     if (first) {
       setTried(true)
@@ -171,7 +171,13 @@ export default function TransactionForm({
     : undefined
 
   return (
-    <Stack as="form" spacing={5} onSubmit={submit} noValidate>
+    <PageForm bare onSubmit={submit} noValidate busy={busy} submitProps={{ isDisabled: !rate }}
+      submitLabel={isEdit ? 'Save changes' : `Add ${kind === 'income' ? 'income' : 'expense'}`}
+      secondary={onDelete && (
+        <Button variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />} onClick={onDelete}>
+          Delete
+        </Button>
+      )}>
       <Panel>
         <Stack spacing={4}>
           {isEdit ? (
@@ -261,19 +267,6 @@ export default function TransactionForm({
           </Text>
         ) : null}
       </Panel>
-
-      <Stack direction={{ base: 'column-reverse', sm: 'row' }} spacing={3}>
-        {onDelete && (
-          <Button variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />} onClick={onDelete}>
-            Delete
-          </Button>
-        )}
-        {/* Grows only in the row layout: a flex-basis of 0 in the phone's
-            column would collapse the button to its padding. */}
-        <Button type="submit" flex={{ sm: 1 }} isLoading={busy} isDisabled={!rate}>
-          {isEdit ? 'Save changes' : `Add ${kind === 'income' ? 'income' : 'expense'}`}
-        </Button>
-      </Stack>
-    </Stack>
+    </PageForm>
   )
 }
