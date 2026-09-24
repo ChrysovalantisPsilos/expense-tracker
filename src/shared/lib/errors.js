@@ -7,10 +7,14 @@
 // guessing from its text:
 //   UserError                 — thrown by our client code with copy for the user
 //   code 'P0001'              — a Postgres RAISE EXCEPTION from our SQL functions
-//                               and triggers (Postgres' own errors carry other codes)
+//                               and triggers (Postgres' own errors carry other
+//                               codes), but only when its text is on the
+//                               SQL_USER_MESSAGES allowlist: our SQL also raises
+//                               internal guards ("unknown quota scope") that
+//                               only fire on a bug, and those stay hidden
 //   serverMessage: true       — the JSON `error` body of one of our edge functions
 // Supabase Auth and WebAuthn errors with a clear meaning map to our own copy.
-// Server-worded text is still checked for anything code-like (a snake_case
+// Edge-function text is still checked for anything code-like (a snake_case
 // token, brackets, a stack line) and falls back when it has some.
 
 export const GENERIC_ERROR = 'Something went wrong. Please try again.'
@@ -81,13 +85,77 @@ const NETWORK_TEXT = /failed to fetch|load failed|networkerror|network request f
 
 // True when the request never got an answer: offline, DNS, CORS, a dropped
 // connection.
-export function isNetworkError(error) {
+function isNetworkError(error) {
   if (!error) return false
   return NETWORK_NAMES.has(error.name) || NETWORK_TEXT.test(String(error.message ?? ''))
 }
 
+// The RAISE EXCEPTION messages in supabase/migrations that are copy for the
+// user (validation, permission and rate-limit refusals), exactly as raised,
+// mapped to what to show: null shows the message itself as a sentence.
+// Every other raise there is an internal guard and gets the fallback.
+// test/errors.test.js reads the migrations and fails when a raise is in
+// neither this list nor its list of internal guards.
+export const SQL_USER_MESSAGES = new Map([
+  // Signed out mid-session (every definer function checks auth.uid()).
+  ['not authenticated', SESSION_EXPIRED],
+  // Permissions and membership
+  ['not allowed', null],
+  ['not a member', null],
+  ['not a member of this group', null],
+  ['only the owner can delete this group', null],
+  ['Only the person who added this expense (or the group owner) can edit it.', null],
+  ['You can only record settlements you are part of.', null],
+  ['Payer is not a member of this group', null],
+  ['Settlement members must belong to this group', null],
+  ["Split member is not in this expense's group", null],
+  // Leaving, removing, deleting
+  ['Everyone must be settled up before the group can be deleted.', null],
+  ['This member still has an outstanding balance — settle up first.', null],
+  ["This person has expense history and can't be removed individually — delete the group instead.", null],
+  ['You are the only member — delete the group instead.', null],
+  // Invites and reminders
+  ['invalid email', null],
+  ['invite expired', null],
+  ['invite invalid or expired', null],
+  ['already responded', null],
+  ['That person is already in this group.', null],
+  ['They already have a pending invite to this group.', null],
+  ["You've already reminded them today.", null],
+  // Amounts and splits
+  ['amount must be positive', null],
+  ['amount must be zero or more', null],
+  ['each person needs a share', null],
+  ['shares cannot be negative', null],
+  ['split between at least one person', null],
+  ['the split must add up to the total', null],
+  ['A foreign-currency entry needs a positive exchange rate.', null],
+  ['A foreign-currency expense needs a positive exchange rate.', null],
+  // Entries, categories, budgets, recurring, comments, payment details
+  ['An entry’s type can’t be changed once it’s saved.', null],
+  ["That entry can't be made recurring.", null],
+  ['You can have at most 200 recurring entries.', null],
+  ["A category can't be moved to another account.", null],
+  ["A category's type (expense or income) can't change.", null],
+  ['Pick a different category to move its entries to.', null],
+  ['Last month has no budgets to copy.', null],
+  ['A comment must be 1–2000 characters.', null],
+  ['A PayPal.me name is up to 20 letters and numbers.', null],
+  ['Payment details are too long.', null],
+  // Rate limits
+  ['Too many changes — please try again later.', null],
+  ['Too many comments — please slow down.', null],
+  ['Too many expenses added — please slow down.', null],
+  ['Too many exports — please try again later.', null],
+  ['Too many groups joined — please try again later.', null],
+  ['Too many invites — please slow down.', null],
+  ['Too many requests — please try again later.', null],
+  ['Too many saves — please slow down.', null],
+  ['Too many settlements — please slow down.', null],
+])
+
 // Code-like content that must never reach the user, even from our own
-// server: a snake_case or bracketed token, a stack line, Postgres wording.
+// edge functions: a snake_case or bracketed token, a stack line, Postgres wording.
 const CODE_LIKE = /[_{}<>[\]\\`|]|\n|\bat\s+\S+\s*\(|\b(undefined|null|NaN|violates|constraint|syntax|permission denied|row-level security|JWT|PGRST\w*|SQLSTATE|\w+Error)\b/i
 
 function plainWording(message) {
@@ -102,6 +170,12 @@ function sentence(message) {
   return /[.!?…]$/.test(capital) ? capital : `${capital}.`
 }
 
+// The copy for a P0001 raise, or null when it isn't on the allowlist.
+function sqlCopy(message) {
+  if (!SQL_USER_MESSAGES.has(message)) return null
+  return SQL_USER_MESSAGES.get(message) ?? sentence(message)
+}
+
 // The message to show for `error`: ours when it is ours, otherwise `fallback`
 // (network failures get the connection message instead).
 export function userMessage(error, fallback = GENERIC_ERROR) {
@@ -110,8 +184,15 @@ export function userMessage(error, fallback = GENERIC_ERROR) {
   if (isNetworkError(error)) return CONNECTION_ERROR
   const mapped = AUTH_MESSAGES[error.code] ?? PASSKEY_MESSAGES[error.code] ?? PASSKEY_MESSAGES[error.name]
   if (mapped) return mapped
-  if ((error.code === 'P0001' || error.serverMessage === true) && plainWording(error.message)) {
-    return sentence(error.message)
-  }
+  if (error.code === 'P0001') return sqlCopy(error.message) ?? fallback
+  if (error.serverMessage === true && plainWording(error.message)) return sentence(error.message)
   return fallback
+}
+
+// The line under "Couldn't load …" (QueryError): offline first, then the
+// connection hint, then our own copy, else a generic line. `online` is
+// navigator.onLine; only an explicit false means offline.
+export function loadErrorMessage(error, online) {
+  if (online === false) return 'You’re offline. Reconnect and try again.'
+  return userMessage(error)
 }

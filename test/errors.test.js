@@ -2,7 +2,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import {
-  CONNECTION_ERROR, GENERIC_ERROR, UserError, dbError, edgeFunctionError, isNetworkError, userMessage,
+  CONNECTION_ERROR, GENERIC_ERROR, SQL_USER_MESSAGES, UserError, dbError, edgeFunctionError, loadErrorMessage,
+  userMessage,
 } from '../src/shared/lib/errors.js'
 
 const FALLBACK = 'Couldn’t save the expense. Please try again.'
@@ -24,8 +25,14 @@ test('userMessage: a deliberate SQL RAISE (P0001) passes through as a sentence',
   // Through dbError, the way the data modules throw it.
   assert.equal(userMessage(dbError(pg('This member still has an outstanding balance — settle up first.', 'P0001'))),
     'This member still has an outstanding balance — settle up first.')
-  // An internal guard token is not copy.
-  assert.equal(userMessage(pg('no_account', 'P0001'), FALLBACK), FALLBACK)
+  // Signed out mid-session: our session copy, not the raw guard.
+  assert.match(userMessage(pg('not authenticated', 'P0001')), /session has expired/)
+  // Internal guards that only fire on a bug stay hidden.
+  for (const guard of ['no_account', 'unknown quota scope', 'bad type', 'rows must be an array', 'invalid push keys']) {
+    assert.equal(userMessage(pg(guard, 'P0001'), FALLBACK), FALLBACK, guard)
+  }
+  // Only an exact allowlisted message passes: not a lookalike.
+  assert.equal(userMessage(pg('not allowed: row 3', 'P0001'), FALLBACK), FALLBACK)
 })
 
 test('userMessage: Postgres and PostgREST errors become the fallback', () => {
@@ -43,7 +50,7 @@ test('userMessage: Postgres and PostgREST errors become the fallback', () => {
     assert.equal(userMessage(e, FALLBACK), FALLBACK, e.message)
     assert.equal(userMessage(dbError(e), FALLBACK), FALLBACK, e.message)
   }
-  // P0001 with code-like content still falls back.
+  // P0001 that isn't on the allowlist falls back.
   assert.equal(userMessage(pg('relation "x" does not exist\n  at foo (bar.js:1)', 'P0001'), FALLBACK), FALLBACK)
   assert.equal(userMessage(pg('value is null', 'P0001'), FALLBACK), FALLBACK)
   assert.equal(userMessage(pg('x'.repeat(300), 'P0001'), FALLBACK), FALLBACK)
@@ -67,12 +74,23 @@ test('userMessage: network failures get the connection message', () => {
   for (const message of ['Failed to fetch', 'TypeError: Failed to fetch', 'Load failed',
     'NetworkError when attempting to fetch resource.', 'Failed to send a request to the Edge Function']) {
     assert.equal(userMessage(new Error(message), FALLBACK), CONNECTION_ERROR, message)
-    assert.equal(isNetworkError({ message }), true)
   }
   assert.equal(userMessage(Object.assign(new Error('{}'), { name: 'AuthRetryableFetchError' })), CONNECTION_ERROR)
   assert.equal(userMessage(Object.assign(new Error(''), { name: 'FunctionsFetchError' })), CONNECTION_ERROR)
-  assert.equal(isNetworkError(null), false)
-  assert.equal(isNetworkError(new Error('not allowed')), false)
+})
+
+test('loadErrorMessage (QueryError): offline, then connection, then our copy, else generic', () => {
+  const pass = pg('not a member of this group', 'P0001')
+  assert.equal(loadErrorMessage(pass, false), 'You’re offline. Reconnect and try again.')
+  assert.equal(loadErrorMessage(new Error('Failed to fetch'), false), 'You’re offline. Reconnect and try again.')
+  assert.equal(loadErrorMessage(new Error('Failed to fetch'), true), CONNECTION_ERROR)
+  assert.equal(loadErrorMessage(new Error('Load failed'), undefined), CONNECTION_ERROR)
+  assert.equal(loadErrorMessage(pass, true), 'Not a member of this group.')
+  assert.equal(loadErrorMessage(new UserError('Couldn’t read all of your entries — please try again.'), true),
+    'Couldn’t read all of your entries — please try again.')
+  assert.equal(loadErrorMessage(pg('permission denied for table budgets', '42501'), true), GENERIC_ERROR)
+  assert.equal(loadErrorMessage(pg('unknown quota scope', 'P0001'), true), GENERIC_ERROR)
+  assert.equal(loadErrorMessage(null, true), GENERIC_ERROR)
 })
 
 test('userMessage: Supabase Auth codes map to our own copy', () => {
@@ -128,18 +146,51 @@ test('edgeFunctionError: our JSON `error` is copy; anything else keeps the origi
   assert.equal(userMessage(await edgeFunctionError(offline), FALLBACK), CONNECTION_ERROR)
 })
 
-// The copy our SQL raises for users (a capitalised RAISE EXCEPTION without an
-// errcode, so P0001) must all reach them.
-test('every capitalised RAISE message in the migrations passes through', () => {
+// Every RAISE EXCEPTION in the migrations, classified. A message is either
+// copy for the user (on SQL_USER_MESSAGES in errors.js, so it passes) or an
+// internal guard listed here (it only fires on a bug, a migration or a cron
+// job, or carries a Postgres errcode, so users get the fallback). A new raise
+// in neither list fails the test until someone decides which it is.
+const INTERNAL_RAISES = [
+  // Not-found guards: a stale id or a bug; the action's fallback says enough.
+  'not found', 'item not found', 'member not found', 'expense not found', 'group not found',
+  'invite not found', 'category not found', 'category or account not found', 'category to move to not found',
+  // Input the app never sends.
+  'bad type', 'unknown currency', 'cannot nudge yourself', 'rows must be an array', 'too many rows in one request',
+  'invalid push keys', 'unsupported push endpoint', 'no_account', 'unknown quota scope',
+  // Server-only paths: cron, migrations, decryption.
+  'unknown privacy email kind %', 'encrypted value is not an amount',
+  'receipts bucket is not empty: empty it via the Storage API, then re-run this migration',
+  // Raised with a Postgres errcode (42501, 23514), not P0001: never trusted.
+  'Group members can only be changed through the app.', 'Images must be uploaded to Budgeer.',
+]
+
+function migrationRaises() {
   const dir = new URL('../supabase/migrations/', import.meta.url)
   const messages = new Set()
+  const raise = /raise\s+exception\s+(?:'((?:[^']|'')*)'|using[^;]*?message\s*=\s*'((?:[^']|'')*)')/gis
   for (const f of readdirSync(dir).filter((n) => n.endsWith('.sql'))) {
-    const sql = readFileSync(new URL(f, dir), 'utf8')
-    for (const m of sql.matchAll(/raise exception '((?:[^']|'')+)'\s*;/gi)) messages.add(m[1].replaceAll("''", "'"))
+    for (const m of readFileSync(new URL(f, dir), 'utf8').matchAll(raise)) {
+      messages.add((m[1] ?? m[2]).replaceAll("''", "'"))
+    }
   }
-  const copy = [...messages].filter((m) => /^[A-Z]/.test(m))
-  assert.ok(copy.length > 20)
-  for (const m of copy) assert.equal(userMessage(pg(m, 'P0001')), /[.!?…]$/.test(m) ? m : `${m}.`, m)
+  return messages
+}
+
+test('every RAISE in the migrations is classified: user copy passes, internal guards are hidden', () => {
+  const raises = migrationRaises()
+  assert.ok(raises.size > 60)
+  const unclassified = [...raises].filter((m) => !SQL_USER_MESSAGES.has(m) && !INTERNAL_RAISES.includes(m))
+  assert.deepEqual(unclassified, [], 'classify these raises in errors.js or INTERNAL_RAISES')
+  for (const m of raises) {
+    const shown = userMessage(pg(m, 'P0001'), FALLBACK)
+    if (INTERNAL_RAISES.includes(m)) assert.equal(shown, FALLBACK, m)
+    else if (m === 'not authenticated') assert.match(shown, /session has expired/)
+    else assert.equal(shown, /[.!?…]$/.test(m) ? m : `${m.charAt(0).toUpperCase()}${m.slice(1)}.`, m)
+  }
+  // No list names a message the migrations don't raise, and none both.
+  for (const m of [...SQL_USER_MESSAGES.keys(), ...INTERNAL_RAISES]) assert.ok(raises.has(m), `not raised: ${m}`)
+  for (const m of INTERNAL_RAISES) assert.ok(!SQL_USER_MESSAGES.has(m), `in both lists: ${m}`)
 })
 
 // Every literal `error` string our browser-called edge functions return is
