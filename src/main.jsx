@@ -33,7 +33,7 @@ markEnvironment(document)
 // a failure of Chakra itself, with a plain unthemed fallback.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ErrorBoundary fallback={(error) => <RootFallback error={error} />}>
+    <ErrorBoundary fallback={<RootFallback />}>
       <ColorModeScript initialColorMode={theme.config.initialColorMode} />
       <ChakraProvider theme={theme}>
         <ErrorBoundary>

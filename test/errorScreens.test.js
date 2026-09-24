@@ -50,15 +50,14 @@ test('errorScreen: the 404 copy and its actions signed out and signed in', () =>
   assert.deepEqual(out.actions.map((a) => [a.id, a.label]), [['home', 'Go to Home'], ['help', 'Help & FAQ']])
   const inside = errorScreen('notFound', { signedIn: true })
   assert.deepEqual(inside.actions.map((a) => [a.id, a.label]), [['home', 'Back to Home'], ['back', 'Go back']])
-  assert.equal(out.showDetail, false)
 })
 
-test('errorScreen: crash keeps Reload, the reassurance and the technical detail', () => {
+test('errorScreen: crash keeps Reload and the reassurance, and no screen shows a technical detail', () => {
   const s = errorScreen('crash')
   assert.equal(s.actions[0].id, 'reload')
   assert.equal(s.actions[0].label, 'Reload')
   assert.match(s.body, /data is safe on the server/)
-  assert.equal(s.showDetail, true)
+  for (const v of ERROR_VARIANTS) assert.deepEqual(Object.keys(errorScreen(v)).sort(), ['actions', 'body', 'eyebrow', 'title', 'variant'])
 })
 
 test('errorScreen: new version reloads, offline tries again', () => {

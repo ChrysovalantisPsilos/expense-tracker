@@ -8,12 +8,12 @@ import { errorVariant } from '../shared/ui/errorScreens.js'
 // recovery screen on screen instead (AutoUpdate lives outside it and keeps
 // installing new versions). Which screen depends on the error: a page chunk
 // that failed to load after a deploy gets "new version", anything while the
-// browser is offline gets "offline", the rest the crash screen with its
-// technical message (errorScreens.js).
+// browser is offline gets "offline", the rest the crash screen (errorScreens.js).
+// The technical message stays out of sight: it goes to the console only.
 //
 // Props: `inline` renders inside the app shell's content column (the route
 // boundary around its <Outlet>); `resetKey` clears the error when it changes
-// (the pathname, so moving to another page tries again); `fallback(error)`
+// (the pathname, so moving to another page tries again); `fallback` (an element)
 // replaces the screen entirely (the last-resort boundary outside Chakra).
 export default class ErrorBoundary extends Component {
   constructor(props) {
@@ -36,11 +36,10 @@ export default class ErrorBoundary extends Component {
   render() {
     const { error } = this.state
     if (!error) return this.props.children
-    if (this.props.fallback) return this.props.fallback(error)
+    if (this.props.fallback) return this.props.fallback
     const variant = errorVariant(error, typeof navigator === 'undefined' ? undefined : navigator.onLine)
     return (
-      <ErrorScreen variant={variant} fullPage={!this.props.inline}
-        detail={error?.message ? String(error.message) : String(error)} />
+      <ErrorScreen variant={variant} fullPage={!this.props.inline} />
     )
   }
 }

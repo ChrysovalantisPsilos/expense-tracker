@@ -206,7 +206,8 @@ only reports for now and doesn't fail the build.
     `/login?next=…` and, after signing in with a password, a passkey, Google
     or a confirmed sign-up in the same browser, lands on that page;
     `/login?next=//evil.com` lands on Home. Error screens (crash, new
-    version, offline) are previewed at `/kit` on the dev server.
+    version, offline) are previewed at `/kit` on the dev server; none of
+    them shows the technical error message (it goes to the console only).
 
 ### L. Privacy & legal (GDPR)
 

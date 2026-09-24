@@ -1,5 +1,5 @@
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Button, Flex, Heading, Stack, Text } from '@chakra-ui/react'
+import { Button, Flex, Heading, Stack, Text } from '@chakra-ui/react'
 import BrandGlow from './BrandGlow.jsx'
 import Eyebrow from './Eyebrow.jsx'
 import Logo from './Logo.jsx'
@@ -30,11 +30,11 @@ function ActionButton({ label, primary, handler }) {
 // The error screens (404, crash, new version, offline): the loose-ring
 // illustration, eyebrow, heading, body and actions from errorScreens.js.
 // `handlers` maps action ids to { to | href | onClick } (reload and home have
-// defaults). `detail` is the technical message, shown on the crash screen.
-// `fullPage` fills the viewport with a header (`header`, else a plain logo
+// defaults). No technical message is ever shown: the error boundary logs it
+// to the console instead. `fullPage` fills the viewport with a header (`header`, else a plain logo
 // bar); otherwise it sits inside the app shell's content column.
 export default function ErrorScreen({
-  variant, signedIn = false, detail, handlers, fullPage = false, header, headingAs = 'h1',
+  variant, signedIn = false, handlers, fullPage = false, header, headingAs = 'h1',
 }) {
   const screen = errorScreen(variant, { signedIn })
   const all = { ...DEFAULT_HANDLERS, ...handlers }
@@ -49,14 +49,6 @@ export default function ErrorScreen({
         </Heading>
         <Text color="text.muted" fontSize={{ base: 'md', md: 'lg' }} lineHeight="1.6">{screen.body}</Text>
       </Stack>
-      {screen.showDetail && detail && (
-        <Box as="code" display="block" w="full" maxH="7.5rem" overflowY="auto" textAlign="left"
-          fontFamily="mono" fontSize="xs" lineHeight="1.6" color="text.muted" whiteSpace="pre-wrap"
-          overflowWrap="anywhere" bg="bg.subtle" borderWidth="1px" borderColor="border.default"
-          borderRadius="lg" px={3} py={2}>
-          {detail}
-        </Box>
-      )}
       <Flex gap={3} wrap="wrap" justify="center" w="full">
         {screen.actions.map((a) => (
           <ActionButton key={a.id} label={a.label} primary={a.primary} handler={all[a.id]} />

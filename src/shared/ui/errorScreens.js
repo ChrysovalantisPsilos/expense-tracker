@@ -77,10 +77,10 @@ function actionsFor(variant, signedIn) {
   }
 }
 
-// Everything a screen shows: { variant, eyebrow, title, body, showDetail,
-// actions: [{ id, label, primary? }] }. `showDetail`: the crash screen keeps
-// the technical message visible (the others' messages are just noise).
+// Everything a screen shows: { variant, eyebrow, title, body,
+// actions: [{ id, label, primary? }] }. None of them shows the error's own
+// message; the error boundary logs it to the console.
 export function errorScreen(variant, { signedIn = false } = {}) {
   const actions = actionsFor(variant, signedIn)
-  return { variant, ...COPY[variant], showDetail: variant === 'crash', actions }
+  return { variant, ...COPY[variant], actions }
 }

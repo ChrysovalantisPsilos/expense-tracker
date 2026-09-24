@@ -66,7 +66,6 @@ function AnimatedDemo() {
 // (/kit?preview=crash), and "Crash the gallery" throws for real so the app's
 // error boundary shows the actual crash screen.
 const NOOP_HANDLERS = Object.fromEntries(['home', 'help', 'back', 'reload'].map((id) => [id, { onClick: noop }]))
-const SAMPLE_DETAIL = "Cannot read properties of undefined (reading 'amount')"
 const PREVIEWS = [
   ...ERROR_VARIANTS.map((variant) => ({ variant, signedIn: false })),
   { variant: 'notFound', signedIn: true },
@@ -89,7 +88,7 @@ function ErrorScreens() {
             <Spec key={name} name={name}>
               <Box borderWidth="1px" borderColor="border.default" borderRadius="xl" bg="bg.canvas">
                 <ErrorScreen variant={variant} signedIn={signedIn} headingAs="h2"
-                  detail={SAMPLE_DETAIL} handlers={NOOP_HANDLERS} />
+                  handlers={NOOP_HANDLERS} />
               </Box>
               <Link as={RouterLink} fontSize="xs" color="accent.fg"
                 to={`/kit?preview=${variant}${signedIn ? '&signedIn=1' : ''}`}>Full page</Link>
@@ -106,7 +105,7 @@ export default function KitGallery() {
   const preview = params.get('preview')
   if (ERROR_VARIANTS.includes(preview)) {
     return (
-      <ErrorScreen variant={preview} signedIn={params.has('signedIn')} fullPage detail={SAMPLE_DETAIL}
+      <ErrorScreen variant={preview} signedIn={params.has('signedIn')} fullPage
         handlers={{ home: { to: '/kit' }, help: { to: '/kit' }, back: { to: '/kit' } }} />
     )
   }
