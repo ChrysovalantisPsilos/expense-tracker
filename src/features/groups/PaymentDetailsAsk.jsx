@@ -16,7 +16,7 @@ function wasDismissed() {
 // no way to pay you yet: add an IBAN, Revolut tag or PayPal.me name (Settings
 // › Account › Getting paid), or "Not now", which this device remembers. It
 // replaces the setup wizard's old payment step; the details stay editable in
-// Settings. `direction` is the dialog's ('in' = you're being paid).
+// Settings. `direction` is the settle-up form's ('in' = you're being paid).
 export default function PaymentDetailsAsk({ direction }) {
   const navigate = useNavigate()
   const [info, setInfo] = useState(null) // null until loaded (or if it fails)

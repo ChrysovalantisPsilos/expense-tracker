@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Stack, HStack, Text, Spacer, Button, Flex, IconButton } from '@chakra-ui/react'
 import { HandCoins, FileDown, MessageSquare, Receipt } from 'lucide-react'
-import { viewerName, splitLabel, paidByLabel, isEveryoneEqualSplit } from './groupFormat.js'
+import { splitLabel, paidByLabel, isEveryoneEqualSplit, expenseLabel, settlementLabel } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
@@ -11,14 +11,18 @@ import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 const TABS = [['expenses', 'Expenses'], ['settlements', 'Settlements'], ['activity', 'Activity']]
 
-// A group's history, tabbed: its expenses (tap to edit where allowed),
-// settlements, and the activity log (with the PDF statement). Expense and
-// settlement rows open their comment thread via `onThread({ type, id, label })`.
+// A group's history, tabbed: its expenses (tap to edit where allowed, via
+// `onEdit(expense)`), settlements, and the activity log (with the PDF
+// statement). Expense and settlement rows open their comments via
+// `onThread(itemId)`. The open tab is kept in the address (?tab=), so
+// coming back from a comments page or an expense lands on it again.
 export default function GroupHistory({
   group, members, expenses, settlements, auditLog, counts, myMember, myUserId, isOwner,
   onEdit, onThread, reportBusy, onReport,
 }) {
-  const [tab, setTab] = useState('expenses')
+  const [params, setParams] = useSearchParams()
+  const tab = TABS.some(([key]) => key === params.get('tab')) ? params.get('tab') : 'expenses'
+  const setTab = (t) => setParams(t === 'expenses' ? {} : { tab: t }, { replace: true })
   const cur = group.currency
 
   return (
@@ -38,9 +42,8 @@ export default function GroupHistory({
         <Stack spacing={0}>
           {expenses.map((e) => {
             const canEdit = e.created_by === myUserId || isOwner
-            const label = e.description || 'Expense'
             return (
-              <ItemRow key={e.id} icon={Receipt} title={label}
+              <ItemRow key={e.id} icon={Receipt} title={expenseLabel(e)}
                 meta={<RowMeta parts={[paidByLabel(members, e.paid_by, myMember?.id), shortDate(e.spent_at),
                   { text: splitLabel(e), phone: !isEveryoneEqualSplit(e, members) }]} />}
                 amount={formatMoney(e.amount_minor, e.currency)}
@@ -48,7 +51,7 @@ export default function GroupHistory({
                   ? `≈ ${formatMoney(e.group_amount_minor, cur)}` : undefined}
                 onClick={canEdit ? () => onEdit(e) : undefined}
                 trailing={<CommentButton count={counts.get(e.id)}
-                  onClick={() => onThread({ type: 'expense', id: e.id, label })} />} />
+                  onClick={() => onThread(e.id)} />} />
             )
           })}
         </Stack>
@@ -59,13 +62,12 @@ export default function GroupHistory({
       ) : (
         <Stack spacing={0}>
           {settlements.map((s) => {
-            const who = (mid) => viewerName(members, mid, myMember?.id)
-            const label = `${who(s.from_member)} → ${who(s.to_member)}`
             return (
-              <ItemRow key={s.id} icon={HandCoins} title={label} meta={shortDate(s.settled_at)}
+              <ItemRow key={s.id} icon={HandCoins} title={settlementLabel(s, members, myMember?.id)}
+                meta={shortDate(s.settled_at)}
                 amount={formatMoney(s.amount_minor, s.currency)}
                 trailing={<CommentButton count={counts.get(s.id)}
-                  onClick={() => onThread({ type: 'settlement', id: s.id, label })} />} />
+                  onClick={() => onThread(s.id)} />} />
             )
           })}
         </Stack>

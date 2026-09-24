@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   memberName, pluralise, splitLabel, settlePlan, sortMembers, avatarStack,
   paidByLabel, groupTotal, memberBalances, balanceHighlight, isEveryoneEqualSplit,
-  myGroupBalance, mySettleSuggestions, viewerName,
+  myGroupBalance, mySettleSuggestions, viewerName, expenseLabel, settlementLabel, commentTarget,
 } from '../src/features/groups/groupFormat.js'
 
 const members = [{ id: 'a', display_name: 'Alice' }, { id: 'b', display_name: 'Bob' }]
@@ -212,4 +212,27 @@ test('viewerName: "You" for the viewer, the member\'s name otherwise', () => {
   assert.equal(viewerName(ms, 'a', 'y'), 'Anna')
   assert.equal(viewerName(ms, 'y', null), 'Alex')
   assert.equal(viewerName(ms, 'zzz', 'y'), '—')
+})
+
+test('expenseLabel / settlementLabel: the names rows and comment pages use', () => {
+  const ms = [{ id: 'y', display_name: 'Alex' }, { id: 'a', display_name: 'Anna' }]
+  assert.equal(expenseLabel({ description: 'Taxi' }), 'Taxi')
+  assert.equal(expenseLabel({ description: '' }), 'Expense')
+  assert.equal(expenseLabel(null), 'Expense')
+  assert.equal(settlementLabel({ from_member: 'a', to_member: 'y' }, ms, 'y'), 'Anna → You')
+  assert.equal(settlementLabel({ from_member: 'y', to_member: 'a' }, ms, null), 'Alex → Anna')
+})
+
+test('commentTarget: finds an expense or a settlement by id, null otherwise', () => {
+  const ms = [{ id: 'y', display_name: 'Alex' }, { id: 'a', display_name: 'Anna' }]
+  const ledger = {
+    members: ms,
+    expenses: [{ id: 'e1', description: 'Dinner' }, { id: 'e2', description: null }],
+    settlements: [{ id: 's1', from_member: 'a', to_member: 'y' }],
+  }
+  assert.deepEqual(commentTarget(ledger, 'e1', 'y'), { type: 'expense', id: 'e1', label: 'Dinner' })
+  assert.deepEqual(commentTarget(ledger, 'e2', 'y'), { type: 'expense', id: 'e2', label: 'Expense' })
+  assert.deepEqual(commentTarget(ledger, 's1', 'y'), { type: 'settlement', id: 's1', label: 'Anna → You' })
+  assert.equal(commentTarget(ledger, 'gone', 'y'), null)
+  assert.equal(commentTarget({}, 'e1', 'y'), null)
 })

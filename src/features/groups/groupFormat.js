@@ -43,6 +43,29 @@ export function viewerName(members, id, myMemberId) {
   return id === myMemberId ? 'You' : memberName(members, id)
 }
 
+// The name an expense goes by in its row and its comments' page.
+export function expenseLabel(expense) {
+  return expense?.description || 'Expense'
+}
+
+// A settlement's name, from the viewer's side: "You → Sam".
+export function settlementLabel(settlement, members, myMemberId) {
+  const who = (id) => viewerName(members, id, myMemberId)
+  return `${who(settlement.from_member)} → ${who(settlement.to_member)}`
+}
+
+// The item a comments page is about, found in the group's ledger by id: an
+// expense or a settlement, as { type, id, label } (add_group_comment's target
+// type and id, and the page's subtitle). null when it isn't in the group (a
+// deleted item, a mistyped link).
+export function commentTarget({ expenses, settlements, members }, itemId, myMemberId) {
+  const e = (expenses ?? []).find((x) => x.id === itemId)
+  if (e) return { type: 'expense', id: e.id, label: expenseLabel(e) }
+  const s = (settlements ?? []).find((x) => x.id === itemId)
+  if (s) return { type: 'settlement', id: s.id, label: settlementLabel(s, members, myMemberId) }
+  return null
+}
+
 // An expense row's payer line: "Paid by You" / "Paid by Anna".
 export function paidByLabel(members, payerId, myMemberId) {
   return `Paid by ${viewerName(members, payerId, myMemberId)}`
@@ -121,12 +144,12 @@ export function balanceHighlight(plan) {
     : { text: `You owe ${best.toName}`, amount: best.amount, tone: 'negative' }
 }
 
-// The settle-up dialog's suggestions: the fewest-payments plan's transfers
+// The settle-up page's suggestions: the fewest-payments plan's transfers
 // that involve the viewer, biggest first. (The viewer has one net balance,
 // so all of them go the same way: all paid by you, or all paid to you.)
 // Each carries the form values it fills in, from the viewer's side:
 // direction 'out' (you pay `otherId`) or 'in' (they pay you), and the amount
-// in minor units. The first one is what the dialog opens on.
+// in minor units. The first one is what the page opens on.
 // [{ from, to, amount, direction, otherId }]
 export function mySettleSuggestions(balances, myMemberId) {
   if (!myMemberId) return []

@@ -1,4 +1,5 @@
 import { supabase } from '../../shared/lib/supabase.js'
+import { useLiveQuery } from '../../shared/lib/db.js'
 import { fileStem, saveBlob, toBlob } from '../../shared/lib/download.js'
 import { FILE_TYPES } from '../../../supabase/functions/_shared/files.ts'
 import { dbError, edgeFunctionError } from '../../shared/lib/errors.js'
@@ -46,6 +47,27 @@ export async function getGroup(groupId) {
     settlements: ledger.data?.settlements ?? [],
     balances: balanceMap(bal.data),
   }
+}
+
+// One group, live: getGroup's detail (plus the activity log with
+// `activity`), refetched when anyone in the group adds or edits expenses,
+// settles up, or joins or leaves — and caught up after reconnects and when the
+// tab becomes visible again. The group page and its form pages all read it.
+// Returns useLiveQuery's { data, loading, error, reload }; data is
+// { group, members, expenses, settlements, balances, auditLog }.
+export function useGroup(groupId, { activity = false } = {}) {
+  return useLiveQuery(async () => {
+    const [detail, auditLog] = await Promise.all([getGroup(groupId), activity ? listAuditLog(groupId) : []])
+    return { ...detail, auditLog }
+  }, {
+    key: `group:${groupId}`,
+    specs: [
+      { table: 'group_expenses', filter: `group_id=eq.${groupId}` },
+      { table: 'settlements', filter: `group_id=eq.${groupId}` },
+      { table: 'group_members', filter: `group_id=eq.${groupId}` },
+    ],
+    deps: [groupId, activity],
+  })
 }
 
 // The groups list's per-group extras, for the given group ids: each group's
@@ -264,7 +286,7 @@ export async function deleteGroup(groupId) {
 
 // Immutable audit trail for a group (members can read; append-only server-side).
 // Summaries/amounts are encrypted at rest; the RPC decrypts for members only.
-export async function listAuditLog(groupId, limit = 200) {
+async function listAuditLog(groupId, limit = 200) {
   const { data, error } = await supabase.rpc('group_audit_entries', { p_group: groupId, p_limit: limit })
   if (error) throw dbError(error)
   return data ?? []

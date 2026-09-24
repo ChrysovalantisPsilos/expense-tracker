@@ -1,21 +1,12 @@
-import { useState, useRef } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import {
-  Box, Stack, HStack, Text, Button, Center,
-  Icon, useDisclosure, FormControl, FormLabel, Input, Select, useToast,
-} from '@chakra-ui/react'
+import { Box, Stack, HStack, Text, Button, Center, Icon, useToast } from '@chakra-ui/react'
 import { Plus, ChevronRight, Check, X } from 'lucide-react'
-import {
-  listGroups, listGroupSummaries, createGroup, listMyInvites, respondToInvite,
-} from './groups.js'
+import { listGroups, listGroupSummaries, listMyInvites, respondToInvite } from './groups.js'
 import { myGroupBalance, pluralise } from './groupFormat.js'
-import { CURRENCIES, formatMoney } from '../../shared/lib/currency.js'
+import { formatMoney } from '../../shared/lib/currency.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useLiveQuery } from '../../shared/lib/db.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
-import FormModal from '../../shared/ui/FormModal.jsx'
-import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import GroupMark from './GroupMark.jsx'
@@ -29,12 +20,6 @@ const NO_GROUPS = { groups: [], summaries: new Map(), invites: [] }
 export default function Groups() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { baseCurrency } = useProfile()
-  const { isOpen, onOpen, onClose } = useDisclosure()
-  const [name, setName] = useState('')
-  const [currency, setCurrency] = useState(baseCurrency)
-  const { busy, run } = useAsyncSubmit()
-  const nameRef = useRef(null)
   const toast = useToast()
 
   // Live overview: balances, memberships, and the invite inbox update as they
@@ -70,21 +55,7 @@ export default function Groups() {
     }
   }
 
-  // The currency defaults to the base currency as it is now (the profile may
-  // still have been loading when the page mounted).
-  function openNew() {
-    setCurrency(baseCurrency)
-    onOpen()
-  }
-
-  async function submit() {
-    if (!name.trim()) return
-    await run(async () => {
-      const id = await createGroup(name.trim(), currency || 'EUR')
-      onClose(); setName('')
-      navigate(`/groups/${id}`)
-    })
-  }
+  const openNew = () => navigate('/groups/new')
 
   return (
     <Stack spacing={5}>
@@ -174,25 +145,6 @@ export default function Groups() {
           })}
         </Stack>
       )}
-
-      <FormModal isOpen={isOpen} onClose={onClose} title="New group" onSubmit={submit}
-        busy={busy} submitLabel="Create" initialFocusRef={nameRef}>
-        <Stack spacing={4}>
-          <FormControl isRequired>
-            <FormLabel>Name</FormLabel>
-            <Input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="Italy 2026, Flat 3B…" />
-          </FormControl>
-          <FormControl>
-            <FormLabel>Currency</FormLabel>
-            <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </Select>
-          </FormControl>
-        </Stack>
-      </FormModal>
     </Stack>
   )
 }

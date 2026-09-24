@@ -15,7 +15,7 @@ import { userMessage } from '../../shared/lib/errors.js'
 
 // The group page's header, styled after the landing's trip card: the group
 // photo (owner can replace it) or a solid brand tile, the name over a
-// tappable member stack that opens the Members sheet, and the group's
+// tappable member stack that opens the Members page, and the group's
 // "Total" on the right. Back, "Add expense" and the ⋯ menu sit on the same
 // row from `md` up; on phones they form a toolbar above it so the name and
 // total keep their room. Menu actions are callbacks; `onLeave` is omitted
@@ -104,7 +104,7 @@ export default function GroupHeader({
   )
 }
 
-// The avatar stack and member count — one button that opens the Members sheet.
+// The avatar stack and member count — one button that opens the Members page.
 function MemberStack({ members, myUserId, onClick }) {
   return (
     <HStack as="button" type="button" onClick={onClick} spacing={2} maxW="100%"

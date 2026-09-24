@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import {
   Button, Stack, HStack, FormControl, FormErrorMessage, FormLabel, Input, Select, Checkbox,
-  Text, Divider, useToast, IconButton, ButtonGroup,
+  Text, Divider, useToast, ButtonGroup,
   InputGroup, InputRightAddon,
 } from '@chakra-ui/react'
 import { Trash2 } from 'lucide-react'
@@ -12,11 +12,11 @@ import {
   splitEqually, expenseGroupAmount, computeSplit, prefillSplitValues, evenPercents,
 } from './splitMath.js'
 import { viewerName } from './groupFormat.js'
-import { addSharedExpense, updateSharedExpense, deleteSharedExpense } from './groups.js'
+import { addSharedExpense, updateSharedExpense } from './groups.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import FxPreview from '../../shared/ui/FxPreview.jsx'
-import FormModal from '../../shared/ui/FormModal.jsx'
+import { PageForm } from '../../shared/ui/FormPage.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 
@@ -34,11 +34,14 @@ const MODES = [
   { key: 'shares', label: 'Shares' },
 ]
 
+// The body of a group expense's page (GroupExpensePage): a new expense, or
+// (`expense`) an existing one, with a Delete button when `onDelete` is given
+// (the page confirms it). `onSaved` runs after a successful save.
 // An expense can be paid in any currency: the split is always worked out in
 // the group currency, from the ECB rate for the expense's date (or a rate the
 // user types when none can be fetched) — the same rules as a personal expense.
 export default function GroupExpenseForm({
-  group, members, myMemberId, defaultPayer, expense, isOpen, onClose, onSaved,
+  group, members, myMemberId, defaultPayer, expense, onSaved, onDelete,
 }) {
   const toast = useToast()
   const isEdit = !!expense
@@ -60,7 +63,6 @@ export default function GroupExpenseForm({
   const [mode, setMode] = useState(initialMode)
   const [values, setValues] = useState(() => (isEdit ? prefillSplitValues(expense, initialMode, cur) : {}))
   const { busy, run } = useAsyncSubmit()
-  const { busy: deleting, run: runDelete } = useAsyncSubmit()
   // Inline errors for the required fields, shown from the first submit on.
   const [tried, setTried] = useState(false)
   const refs = { description: useRef(null), amount: useRef(null), paidBy: useRef(null) }
@@ -158,16 +160,6 @@ export default function GroupExpenseForm({
         toast({ title: 'Expense added', status: 'success' })
       }
       onSaved?.()
-      onClose()
-    })
-  }
-
-  async function remove() {
-    await runDelete(async () => {
-      await deleteSharedExpense(expense.id)
-      toast({ title: 'Expense deleted', status: 'success' })
-      onSaved?.()
-      onClose()
     })
   }
 
@@ -195,12 +187,11 @@ export default function GroupExpenseForm({
   const addon = mode === 'percent' ? '%' : mode === 'shares' ? '×' : cur
 
   return (
-    <FormModal isOpen={isOpen} onClose={onClose} scrollBehavior="inside" onSubmit={submit} noValidate
-      title={isEdit ? 'Edit expense' : 'Add shared expense'}
-      busy={busy} submitLabel={isEdit ? 'Save' : 'Add expense'}
-      footerStart={isEdit && (
-        <IconButton aria-label="Delete expense" icon={<Trash2 size={16} />}
-          variant="ghost" colorScheme="red" isLoading={deleting} onClick={remove} />
+    <PageForm onSubmit={submit} noValidate busy={busy} submitLabel={isEdit ? 'Save changes' : 'Add expense'}
+      secondary={onDelete && (
+        <Button variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />} onClick={onDelete}>
+          Delete
+        </Button>
       )}>
       <Stack spacing={4}>
         {!isEdit && (
@@ -294,6 +285,6 @@ export default function GroupExpenseForm({
           </Text>
         </FormControl>
       </Stack>
-    </FormModal>
+    </PageForm>
   )
 }

@@ -33,6 +33,12 @@ const Insights = lazy(() => import('../features/insights/Insights.jsx'))
 const More = lazy(() => import('./More.jsx'))
 const Groups = lazy(() => import('../features/groups/Groups.jsx'))
 const GroupDetail = lazy(() => import('../features/groups/GroupDetail.jsx'))
+const NewGroupPage = lazy(() => import('../features/groups/NewGroupPage.jsx'))
+const EditGroupPage = lazy(() => import('../features/groups/EditGroupPage.jsx'))
+const MembersPage = lazy(() => import('../features/groups/MembersPage.jsx'))
+const SettleUpPage = lazy(() => import('../features/groups/SettleUpPage.jsx'))
+const GroupExpensePage = lazy(() => import('../features/groups/GroupExpensePage.jsx'))
+const CommentsPage = lazy(() => import('../features/groups/CommentsPage.jsx'))
 const JoinGroup = lazy(() => import('../features/groups/JoinGroup.jsx'))
 const GroupPreview = lazy(() => import('../features/groups/GroupPreview.jsx'))
 const Settings = lazy(() => import('../features/settings/Settings.jsx'))
@@ -155,7 +161,14 @@ function AuthedRoutes() {
           <Route path="budgets" element={<Budgets />} />
           <Route path="categories/:id" element={<CategoryPage />} />
           <Route path="groups" element={<Groups />} />
+          <Route path="groups/new" element={<NewGroupPage />} />
           <Route path="groups/:id" element={<GroupDetail />} />
+          <Route path="groups/:id/edit" element={<EditGroupPage />} />
+          <Route path="groups/:id/members" element={<MembersPage />} />
+          <Route path="groups/:id/settle" element={<SettleUpPage />} />
+          <Route path="groups/:id/expenses/new" element={<GroupExpensePage />} />
+          <Route path="groups/:id/expenses/:expenseId" element={<GroupExpensePage />} />
+          <Route path="groups/:id/comments/:itemId" element={<CommentsPage />} />
           <Route path="settings" element={<Settings />} />
           <Route path="settings/account" element={<AccountSettings />} />
           <Route path="settings/notifications" element={<NotificationSettings />} />
