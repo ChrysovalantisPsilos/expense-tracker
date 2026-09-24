@@ -33,9 +33,10 @@ export function buildPeriods(oldestISO, d = new Date()) {
   const thisMonth = monthPeriod(y, m, d)
   if (!oldestISO) return [thisMonth]
 
-  const oldest = new Date(oldestISO)
-  const oldestY = oldest.getFullYear()
-  const oldestMonthIdx = oldestY * 12 + oldest.getMonth()
+  // Read the calendar date straight from the string: new Date('YYYY-MM-DD')
+  // is UTC midnight, which is the previous day (and month) west of UTC.
+  const [oldestY, oldestM] = String(oldestISO).split('-').map(Number)
+  const oldestMonthIdx = oldestY * 12 + oldestM - 1
   const nowMonthIdx = y * 12 + m
 
   const out = []

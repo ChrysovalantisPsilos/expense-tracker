@@ -31,6 +31,22 @@ test('oldest in current month: no All time, still non-empty', () => {
   assert.ok(!p.some((x) => x.value === 'all'))
 })
 
+test('the oldest date is a local calendar date in every timezone (no UTC shift)', () => {
+  const saved = process.env.TZ
+  try {
+    for (const tz of ['UTC', 'America/Los_Angeles', 'Pacific/Kiritimati']) {
+      process.env.TZ = tz
+      const p = buildPeriods('2026-07-01', new Date(2026, 6, 15))
+      assert.deepEqual(p.map((x) => x.value), ['m:2026-7', 'y:2026'], tz)
+      assert.deepEqual(buildPeriods('2026-01-01', new Date(2026, 6, 15)).filter((x) => x.value.startsWith('y:'))
+        .map((x) => x.value), ['y:2026'], tz)
+    }
+  } finally {
+    if (saved === undefined) delete process.env.TZ
+    else process.env.TZ = saved
+  }
+})
+
 test('REGRESSION: all transactions future-dated must not return empty', () => {
   const p = buildPeriods('2026-09-01', NOW)
   assert.ok(p.length >= 1)

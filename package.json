@@ -9,9 +9,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",
-    "test": "npm run test:utc && npm run test:tz",
+    "test": "npm run test:utc && npm run test:tz && npm run test:tz-west",
     "test:utc": "TZ=UTC node --test test/*.test.js",
     "test:tz": "TZ=Europe/Brussels node --test test/*.test.js",
+    "test:tz-west": "TZ=America/Los_Angeles node --test test/*.test.js",
     "functions:serve": "supabase functions serve"
   },
   "dependencies": {

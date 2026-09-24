@@ -5,7 +5,7 @@ import {
 } from '../src/shared/lib/dates.js'
 
 test('isoDate: YYYY-MM-DD', () => {
-  assert.match(isoDate(new Date(Date.UTC(2026, 6, 21))), /^2026-07-21$/)
+  assert.match(isoDate(new Date(2026, 6, 21)), /^2026-07-21$/)
 })
 
 test('monthRange spans first to last day', () => {

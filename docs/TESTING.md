@@ -6,9 +6,10 @@ Four layers:
    parsing, currency conversion and FX parsing, dates, recurring projections,
    dashboard periods, statement import, backup validation and crypto, offline
    cache rules, and the edge-function shared helpers. They use Node's built-in
-   test runner, with no framework. `npm test` runs the suite twice, in
-   `TZ=UTC` and in `TZ=Europe/Brussels` (`test:utc` / `test:tz`), because
-   date bugs hide in UTC.
+   test runner, with no framework. `npm test` runs the suite three times, in
+   `TZ=UTC`, `TZ=Europe/Brussels` and `TZ=America/Los_Angeles` (`test:utc` /
+   `test:tz` / `test:tz-west`), because date bugs hide in UTC and show up on
+   one side of it only.
 2. **Lint** (`npm run lint`, ESLint 9, `eslint.config.js`): React, hooks,
    a11y, unused imports (an error), and the ban on `shared/` importing from
    `features/`. It is strict (`--max-warnings=0`): a warning fails it just
