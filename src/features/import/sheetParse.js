@@ -4,6 +4,7 @@
 import { isoDate } from '../../shared/lib/dates.js'
 import { sniffContainer, decodeText, parseDelimited } from './statementText.js'
 import { findHeaderRow } from './statementDetect.js'
+import { UserError } from '../../shared/lib/errors.js'
 
 // Statement files are small; anything bigger is almost certainly not one, and
 // parsing it would freeze low-end phones.
@@ -74,7 +75,7 @@ function readWorkbook(XLSX, bytes, kind) {
       // several export-quirk crashes.
       wb = XLSX.read(bytes, { ...base, cellStyles: false, cellHTML: false, cellNF: false, bookVBA: false })
     } catch {
-      throw new Error(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
+      throw new UserError(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
     }
   }
   const ws = wb.Sheets[wb.SheetNames[0]]
@@ -82,7 +83,7 @@ function readWorkbook(XLSX, bytes, kind) {
   try {
     return XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: null })
   } catch {
-    throw new Error(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
+    throw new UserError(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
   }
 }
 

@@ -10,6 +10,7 @@ import { detectMapping, headerSignature, savedMappingFor } from './statementDete
 // Pure helpers (parsing, drafts, deterministic identity) live in
 // importMath.js so they're unit-testable.
 import { deterministicUuid, rowToDraft, signedConvention } from './importMath.js'
+import { UserError, dbError } from '../../shared/lib/errors.js'
 
 // Mappings the user confirmed, per header layout — a per-device convenience
 // (the next export from the same bank skips the mapping step). Browser
@@ -45,16 +46,16 @@ export function rememberMapping(headers, mapping) {
 // actionable messages.
 export async function parseWorkbook(file) {
   const problem = importFileProblem(file)
-  if (problem) throw new Error(problem)
+  if (problem) throw new UserError(problem)
   const buf = await file.arrayBuffer()
   const worker = new Worker(new URL('./sheetWorker.js', import.meta.url), { type: 'module' })
   try {
     const res = await new Promise((resolve, reject) => {
       worker.onmessage = (e) => resolve(e.data)
-      worker.onerror = () => reject(new Error('The spreadsheet reader failed to start. Reload the page and try again.'))
+      worker.onerror = () => reject(new UserError('The spreadsheet reader failed to start. Reload the page and try again.'))
       worker.postMessage(buf, [buf])
     })
-    if (!res.ok) throw new Error(res.message)
+    if (!res.ok) throw new UserError(res.message)
     const rows = rowsToObjects(res.headers, res.rows)
     const detected = detectMapping(res.headers, rows)
     const saved = savedMappingFor(rememberedMappings(), res.headers)
@@ -68,7 +69,7 @@ export async function parseWorkbook(file) {
 // The user's saved auto-categorization rules.
 export async function listRules() {
   const { data, error } = await supabase.from('category_rules').select('id, pattern, category_id')
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? []
 }
 
@@ -76,7 +77,7 @@ export async function listRules() {
 export async function saveRule(userId, pattern, categoryId) {
   const { error } = await supabase.from('category_rules')
     .upsert({ user_id: userId, pattern, category_id: categoryId }, { onConflict: 'user_id,pattern' })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 // Turn raw rows + a mapping into ready-to-insert transactions, collecting
@@ -177,7 +178,7 @@ export async function importTransactions(rows, onProgress) {
     const { data, error } = await supabase.rpc('save_transactions', {
       p_rows: chunk, p_ignore_duplicates: true,
     })
-    if (error) throw new Error(error.message)
+    if (error) throw dbError(error)
     inserted += Number(data ?? 0)
     onProgress?.(Math.min(i + 500, rows.length), rows.length)
   }

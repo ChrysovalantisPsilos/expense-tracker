@@ -17,6 +17,7 @@ import {
   buildBackup, serializeBackup, backupFileName, splitDateRange, mapCategories, matchByName,
   planRules, planTransactions, planBudgets, planRecurring, planProfile, planPayment,
 } from './backupMath.js'
+import { UserError } from '../../shared/lib/errors.js'
 
 const PROFILE_FIELDS = 'display_name, base_currency, notify_email, notify_push, yearly_separate'
 // my_transactions is capped by the API's row limit; a window that comes back
@@ -45,7 +46,7 @@ async function allTransactions(baseCurrency) {
   }
   const total = await countTransactions()
   if (rows.length !== total) {
-    throw new Error('Couldn’t read all of your entries — please try again.')
+    throw new UserError('Couldn’t read all of your entries — please try again.')
   }
   return rows
 }

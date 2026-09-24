@@ -5,6 +5,7 @@
 // first move the category's entries (transactions have no client UPDATE path).
 import { supabase } from '../../shared/lib/supabase.js'
 import { useOwnedQuery } from '../../shared/lib/db.js'
+import { UserError, dbError } from '../../shared/lib/errors.js'
 
 // Every category the user has, archived included (live).
 export function useAllCategories() {
@@ -14,28 +15,29 @@ export function useAllCategories() {
   })
 }
 
+// A duplicate name is the one database refusal worth telling the user about.
 const friendly = (error) => (error.code === '23505'
-  ? 'You already have a category with that name.'
-  : error.message)
+  ? new UserError('You already have a category with that name.')
+  : dbError(error))
 
 export async function createCategory({ name, kind, icon, color }) {
   const { error } = await supabase.from('categories')
     .insert({ name: name.trim(), kind, icon: icon ?? null, color: color ?? null })
-  if (error) throw new Error(friendly(error))
+  if (error) throw friendly(error)
 }
 
 // patch: any of { name, icon, color, is_archived }.
 export async function updateCategory(id, patch) {
   const { error } = await supabase.from('categories')
     .update(patch.name != null ? { ...patch, name: patch.name.trim() } : patch).eq('id', id)
-  if (error) throw new Error(friendly(error))
+  if (error) throw friendly(error)
 }
 
 // How many of the user's transactions use a category (a cheap head count).
 export async function countCategoryUse(id) {
   const { count, error } = await supabase.from('transactions')
     .select('id', { count: 'exact', head: true }).eq('category_id', id)
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return count ?? 0
 }
 
@@ -43,6 +45,6 @@ export async function countCategoryUse(id) {
 // uncategorised). Returns how many entries moved.
 export async function deleteCategory(id, moveTo = null) {
   const { data, error } = await supabase.rpc('delete_category', { p_category: id, p_move_to: moveTo })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? 0
 }

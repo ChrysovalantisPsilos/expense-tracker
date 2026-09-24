@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from './supabase.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { useLiveRefetch } from './realtime.js'
+import { dbError } from './errors.js'
 
 // The app's one live-query hook: fetch, keep it fresh over realtime, and never
 // leave a page spinning.
@@ -52,6 +53,7 @@ export function useLiveQuery(fetcher, {
         console.warn('[live-query] background refresh failed; keeping last data', error)
         return
       }
+      console.error('[live-query] read failed', error)
       setState((s) => ({ ...s, loading: false, error }))
     }
     // deps are the caller's declared inputs to fetcher (read via the ref).
@@ -107,7 +109,7 @@ export function useOwnedQuery(table, { select = '*', build, deps = [], fetch } =
     let q = supabase.from(table).select(select)
     if (build) q = build(q)
     const { data: rows, error } = await q
-    if (error) throw new Error(error.message)
+    if (error) throw dbError(error)
     return rows ?? []
   }, {
     key: uid ? `owned:${table}` : null,
@@ -121,10 +123,10 @@ export function useOwnedQuery(table, { select = '*', build, deps = [], fetch } =
 
 export async function removeRow(table, id) {
   const { error } = await supabase.from(table).delete().eq('id', id)
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 export async function patchRow(table, id, patch) {
   const { error } = await supabase.from(table).update(patch).eq('id', id)
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }

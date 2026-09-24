@@ -1,4 +1,5 @@
 import { supabase } from '../../shared/lib/supabase.js'
+import { dbError } from '../../shared/lib/errors.js'
 
 // Comment bodies are encrypted at rest: reads go through the decrypting
 // `group_comments_for` RPC, posts through `add_group_comment` (which checks
@@ -8,7 +9,7 @@ import { supabase } from '../../shared/lib/supabase.js'
 // Rows: { id, body, created_at, author_member_id, author_id, author: { display_name } }.
 export async function listComments(groupId, targetId) {
   const { data, error } = await supabase.rpc('group_comments_for', { p_group: groupId, p_target: targetId })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? []
 }
 
@@ -17,17 +18,17 @@ export async function addComment({ groupId, targetType, targetId, authorMemberId
     p_group: groupId, p_target_type: targetType, p_target_id: targetId,
     p_author_member: authorMemberId, p_body: body,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 export async function deleteComment(id) {
   const { error } = await supabase.from('group_comments').delete().eq('id', id)
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 // Map of target_id -> comment count for the whole group (drives the row badge).
 export async function commentCounts(groupId) {
   const { data, error } = await supabase.rpc('group_comment_counts', { p_group: groupId })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return new Map((data ?? []).map((r) => [r.target_id, Number(r.n)]))
 }

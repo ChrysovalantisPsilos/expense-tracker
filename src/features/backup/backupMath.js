@@ -19,6 +19,7 @@ import { FREQUENCIES } from '../recurring/recurringMath.js'
 import { sealText, openText } from './backupCrypto.js'
 import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import { CATEGORY_ICON_KEYS, CATEGORY_COLOR_KEYS } from '../../shared/lib/categoryStyle.js'
+import { UserError } from '../../shared/lib/errors.js'
 
 export const BACKUP_FORMAT = 'budgeer-backup'
 export const BACKUP_VERSION = 2
@@ -30,7 +31,7 @@ const ACCOUNT_TYPES = ['asset', 'liability']
 const SPLIT_NOTE_PREFIX = 'Group: '
 const MAX_MINOR = Number.MAX_SAFE_INTEGER
 
-export class BackupError extends Error {}
+export class BackupError extends UserError {}
 const fail = (msg) => { throw new BackupError(msg) }
 const NOT_A_BACKUP = 'This file isn’t a Budgeer backup.'
 const NEWER = 'This backup was made by a newer version of Budgeer. Update the app (reload the page) and try again.'

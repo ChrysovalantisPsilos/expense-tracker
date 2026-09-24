@@ -1,4 +1,5 @@
-import { supabase, edgeFunctionError } from './supabase.js'
+import { supabase } from './supabase.js'
+import { dbError, edgeFunctionError } from './errors.js'
 
 // Profile and account data access (shared: settings, onboarding, backup and
 // the ProfileProvider all use it).
@@ -8,7 +9,7 @@ import { supabase, edgeFunctionError } from './supabase.js'
 // on a failed read (the ProfileProvider shows an error for that).
 export async function fetchProfile(userId, columns = '*') {
   const { data, error } = await supabase.from('profiles').select(columns).eq('id', userId).maybeSingle()
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? null
 }
 
@@ -22,7 +23,7 @@ export async function getProfile(userId, columns = '*') {
 // goes through these definer RPCs, which decrypt/encrypt for the owner only.
 export async function getMyPaymentInfo() {
   const { data, error } = await supabase.rpc('my_payment_info')
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? {}
 }
 
@@ -35,7 +36,7 @@ export async function savePaymentInfo({ iban, revolut, paypal }) {
     p_revolut: revolut || null,
     ...(paypal !== undefined ? { p_paypal: paypal || '' } : {}),
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 // Update editable profile fields for the current user.
@@ -71,5 +72,5 @@ export async function uploadAvatar(userId, file) {
 export async function deleteMyAccount({ password } = {}) {
   const body = password != null ? { password } : {}
   const { error } = await supabase.functions.invoke('delete-account', { body })
-  if (error) throw new Error(await edgeFunctionError(error))
+  if (error) throw await edgeFunctionError(error)
 }

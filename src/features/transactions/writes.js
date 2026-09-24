@@ -1,4 +1,5 @@
 import { supabase } from '../../shared/lib/supabase.js'
+import { dbError } from '../../shared/lib/errors.js'
 
 // Direct writes to the transactions table. Login is required (and reads are
 // served from the service-worker cache when offline), so there's no offline
@@ -14,16 +15,16 @@ import { supabase } from '../../shared/lib/supabase.js'
 export async function insertTransaction(row) {
   const client_uuid = row.client_uuid ?? crypto.randomUUID()
   const { error } = await supabase.rpc('save_transactions', { p_rows: [{ ...row, client_uuid }] })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 // Patch a transaction: only the keys present in `fields` change.
 export async function updateTransaction(id, fields) {
   const { error } = await supabase.rpc('update_transaction', { p_id: id, p_patch: fields })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 export async function deleteTransaction(id) {
   const { error } = await supabase.from('transactions').delete().eq('id', id)
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }

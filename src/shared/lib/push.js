@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js'
+import { dbError } from './errors.js'
 
 // Web-push enrolment for payment reminders. The VAPID public key is not a
 // secret (it ships in every push subscription); its private half lives in
@@ -36,6 +37,6 @@ export async function enablePush() {
   const { error } = await supabase.rpc('save_push_subscription', {
     p_endpoint: sub.endpoint, p_p256dh: keys.p256dh, p_auth: keys.auth,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return 'subscribed'
 }

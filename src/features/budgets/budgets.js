@@ -1,6 +1,7 @@
 import { supabase } from '../../shared/lib/supabase.js'
 import { useOwnedQuery } from '../../shared/lib/db.js'
 import { monthRange } from '../../shared/lib/dates.js'
+import { dbError } from '../../shared/lib/errors.js'
 
 // A month's budget rows for the signed-in user (live via realtime; defaults to
 // this month). Caps are encrypted at rest, so reads go through the decrypting
@@ -16,14 +17,14 @@ export function useMonthBudgets(periodStart = monthRange().from) {
 // One month's effective budgets (decrypted, rolled forward), keyed by its first day.
 export async function listBudgets(periodStart) {
   const { data, error } = await supabase.rpc('my_budgets', { p_period: periodStart })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? []
 }
 
 // Every month the user has set any budget for (plain columns, no amounts).
 export async function budgetPeriods() {
   const { data, error } = await supabase.from('budgets').select('period_start')
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return [...new Set((data ?? []).map((b) => b.period_start))].sort()
 }
 
@@ -37,7 +38,7 @@ export async function saveBudget({ categoryId, amountMinor, currency, periodStar
     p_currency: currency,
     p_period: periodStart,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 // The Budgets page's "set a cap": a month still showing carried-over caps
@@ -46,19 +47,19 @@ export async function editBudget({ categoryId, amountMinor, currency, periodStar
   const { error } = await supabase.rpc('edit_budget', {
     p_category: categoryId, p_amount: amountMinor, p_currency: currency, p_period: periodStart,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 // Remove a category's cap from this month (and the months that carry it).
 export async function deleteBudget({ categoryId, periodStart }) {
   const { error } = await supabase.rpc('delete_budget', { p_category: categoryId, p_period: periodStart })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 // "Copy last month's budgets": this month's caps become last month's. Returns
 // how many were copied.
 export async function copyPreviousBudgets(periodStart) {
   const { data, error } = await supabase.rpc('copy_previous_budgets', { p_period: periodStart })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? 0
 }

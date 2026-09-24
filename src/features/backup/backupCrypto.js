@@ -8,6 +8,8 @@
 // AES-GCM is authenticated: a wrong password and a damaged file both fail the
 // tag check, and we can't (and don't try to) tell those apart.
 
+import { UserError } from '../../shared/lib/errors.js'
+
 const ITERATIONS = 600_000 // OWASP 2023 guidance for PBKDF2-SHA256
 // Bounds for a file's own iteration count: refuse absurd values rather than
 // hang the tab (or accept a weakened file) on a crafted input.
@@ -30,7 +32,7 @@ function toBase64(bytes) {
 }
 
 function fromBase64(b64) {
-  if (typeof b64 !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(b64)) throw new Error(WRONG_PASSWORD)
+  if (typeof b64 !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(b64)) throw new UserError(WRONG_PASSWORD)
   const bin = atob(b64)
   const out = new Uint8Array(bin.length)
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
@@ -63,22 +65,22 @@ export async function sealText(text, password, { aad } = {}) {
   }
 }
 
-// Reverse of sealText. Throws Error(WRONG_PASSWORD) for a wrong password,
+// Reverse of sealText. Throws UserError(WRONG_PASSWORD) for a wrong password,
 // a tampered/truncated file or malformed parameters.
 export async function openText({ kdf, iv, ciphertext } = {}, password, { aad } = {}) {
   const iterations = kdf?.iterations
   if (kdf?.name !== 'PBKDF2' || kdf?.hash !== 'SHA-256' || !Number.isInteger(iterations)
     || iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) {
-    throw new Error(WRONG_PASSWORD)
+    throw new UserError(WRONG_PASSWORD)
   }
   const salt = fromBase64(kdf.salt)
   const ivBytes = fromBase64(iv)
-  if (salt.length < 16 || ivBytes.length !== 12) throw new Error(WRONG_PASSWORD)
+  if (salt.length < 16 || ivBytes.length !== 12) throw new UserError(WRONG_PASSWORD)
   const key = await deriveKey(password, salt, iterations)
   try {
     const params = { name: 'AES-GCM', iv: ivBytes, ...(aad ? { additionalData: enc.encode(aad) } : {}) }
     return dec.decode(await crypto.subtle.decrypt(params, key, fromBase64(ciphertext)))
   } catch {
-    throw new Error(WRONG_PASSWORD)
+    throw new UserError(WRONG_PASSWORD)
   }
 }

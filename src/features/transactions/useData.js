@@ -4,6 +4,7 @@ import { useLiveQuery, useOwnedQuery } from '../../shared/lib/db.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { fillPendingRates } from '../../shared/lib/fx.js'
+import { dbError } from '../../shared/lib/errors.js'
 
 // Categories for the current user (optionally filtered by kind).
 export function useCategories(kind) {
@@ -48,7 +49,7 @@ export async function listTransactions({ kind, from, to, categoryId, limit, spre
     p_kind: kind ?? null, p_from: from ?? null, p_to: to ?? null,
     p_category: categoryId ?? null, p_limit: limit ?? null, p_spread: spread,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return baseCurrency ? fillPendingRates(data ?? [], baseCurrency) : data ?? []
 }
 
@@ -69,7 +70,7 @@ export function useTransaction(id, known) {
 export async function countTransactions() {
   const { count, error } = await supabase
     .from('transactions').select('id', { count: 'exact', head: true })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return count ?? 0
 }
 
@@ -88,7 +89,7 @@ export async function oldestTransactionDate() {
 export async function listAllCategories() {
   const { data, error } = await supabase
     .from('categories').select('id, name, kind, icon, color, is_archived').order('name')
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? []
 }
 
@@ -98,7 +99,7 @@ export async function createCategories(userId, rows) {
   if (!rows.length) return
   const { error } = await supabase.from('categories')
     .insert(rows.map((r) => ({ ...r, user_id: userId })))
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 // One-time default-category seed after first login.
@@ -106,10 +107,10 @@ async function ensureSeeded() {
   const { count, error } = await supabase
     .from('categories')
     .select('id', { count: 'exact', head: true })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   if ((count ?? 0) === 0) {
     const { error: seedErr } = await supabase.rpc('seed_default_categories')
-    if (seedErr) throw new Error(seedErr.message)
+    if (seedErr) throw dbError(seedErr)
   }
 }
 

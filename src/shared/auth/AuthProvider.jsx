@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
+import { UserError } from '../lib/errors.js'
 
 const AuthContext = createContext(null)
 
@@ -125,13 +126,13 @@ export function AuthProvider({ children }) {
   // Server-side enforcement is Supabase Auth's "Secure password change".
   const changePassword = useCallback(async (current, next) => {
     const email = session?.user?.email
-    if (!email) return { error: new Error('You need to be signed in.') }
+    if (!email) return { error: new UserError('You need to be signed in.') }
     const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: current })
-    if (authErr) return { error: new Error('Current password is incorrect.') }
+    if (authErr) return { error: new UserError('Current password is incorrect.') }
     // The project requires the current password on a change (Auth setting
     // "require current password"), so the server checks it again.
     const { error } = await supabase.auth.updateUser({ password: next, current_password: current })
-    if (error?.code === 'current_password_invalid') return { error: new Error('Current password is incorrect.') }
+    if (error?.code === 'current_password_invalid') return { error: new UserError('Current password is incorrect.') }
     return { error: error ?? null }
   }, [session?.user?.email])
 

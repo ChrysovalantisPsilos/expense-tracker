@@ -1,5 +1,6 @@
 import { useOwnedQuery, removeRow } from '../../shared/lib/db.js'
 import { supabase } from '../../shared/lib/supabase.js'
+import { dbError } from '../../shared/lib/errors.js'
 
 // Balances and goal amounts are encrypted at rest (pgcrypto + Vault key), so
 // there are no plaintext columns to select — reads go through decrypting RPCs
@@ -8,7 +9,7 @@ import { supabase } from '../../shared/lib/supabase.js'
 
 async function rpcRows(name, args) {
   const { data, error } = await supabase.rpc(name, args)
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? []
 }
 
@@ -25,7 +26,7 @@ export async function saveAccount(acc) {
     p_id: acc.id ?? null, p_name: acc.name, p_type: acc.type,
     p_balance: acc.balance_minor, p_currency: acc.currency,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 export const deleteAccount = (id) => removeRow('accounts', id)
 
@@ -43,6 +44,6 @@ export async function saveGoal(goal) {
     p_target: goal.target_minor, p_saved: goal.saved_minor,
     p_currency: goal.currency, p_target_date: goal.target_date ?? null,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 export const deleteGoal = (id) => removeRow('savings_goals', id)

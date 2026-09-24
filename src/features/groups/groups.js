@@ -1,6 +1,7 @@
-import { supabase, edgeFunctionError } from '../../shared/lib/supabase.js'
+import { supabase } from '../../shared/lib/supabase.js'
 import { fileStem, saveBlob, toBlob } from '../../shared/lib/download.js'
 import { FILE_TYPES } from '../../../supabase/functions/_shared/files.ts'
+import { dbError, edgeFunctionError } from '../../shared/lib/errors.js'
 
 // ---- Queries -------------------------------------------------------------
 
@@ -36,7 +37,7 @@ export async function getGroup(groupId) {
     supabase.rpc('group_balances', { p_group: groupId }),
   ])
   if (g.error) throw g.error
-  if (ledger.error) throw new Error(ledger.error.message)
+  if (ledger.error) throw dbError(ledger.error)
 
   return {
     group: g.data,
@@ -79,7 +80,7 @@ export async function createGroup(name, currency = 'EUR') {
 // Rename a group (owner only — enforced by RLS).
 export async function renameGroup(groupId, name) {
   const { error } = await supabase.from('groups').update({ name }).eq('id', groupId)
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 // Upload/replace a group's cover image (owner only — enforced by storage RLS
@@ -90,11 +91,11 @@ export async function uploadGroupImage(groupId, file) {
   const { error } = await supabase.storage.from('group-images').upload(path, file, {
     contentType: file.type || 'image/jpeg', upsert: true,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   const { data } = supabase.storage.from('group-images').getPublicUrl(path)
   const url = `${data.publicUrl}?t=${Date.now()}`
   const { error: uErr } = await supabase.from('groups').update({ image_url: url }).eq('id', groupId)
-  if (uErr) throw new Error(uErr.message)
+  if (uErr) throw dbError(uErr)
   return url
 }
 
@@ -115,7 +116,7 @@ export async function addSharedExpense({
     p_member_ids: memberIds, p_shares: shares, p_split_type: splitType,
     p_exchange_rate: exchangeRate,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data // expense id
 }
 
@@ -135,7 +136,7 @@ export async function addSettlement({ groupId, fromMember, toMember, amountMinor
 // only answers for co-members of the given member's group. Returns {} if none.
 export async function memberPaymentInfo(memberId) {
   const { data, error } = await supabase.rpc('member_payment_info', { p_member: memberId })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? {}
 }
 
@@ -164,7 +165,7 @@ export async function emailInvite({ to, token }) {
   const { data, error } = await supabase.functions.invoke('send-invite', {
     body: { to, token },
   })
-  if (error) throw new Error(await edgeFunctionError(error))
+  if (error) throw await edgeFunctionError(error)
   return data
 }
 
@@ -174,7 +175,7 @@ export async function emailInvite({ to, token }) {
 // plus `members: [{ id, display_name, avatar_url }]` (no money).
 export async function previewLinkInvite(token) {
   const { data, error } = await supabase.rpc('preview_link_invite', { p_token: token })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data
 }
 
@@ -182,7 +183,7 @@ export async function previewLinkInvite(token) {
 // next person. Returns the group id.
 export async function joinViaLink(token) {
   const { data, error } = await supabase.rpc('join_via_link', { p_token: token })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data
 }
 
@@ -203,7 +204,7 @@ export async function previewGroup(token) {
 // the inviter's lookup quota.
 export async function inviteExistingUser(groupId, email) {
   const { data, error } = await supabase.rpc('invite_user_to_group', { p_group: groupId, p_email: email })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data?.status
 }
 
@@ -215,7 +216,7 @@ export async function listMyInvites() {
 
 export async function respondToInvite(inviteId, accept) {
   const { data, error } = await supabase.rpc('respond_to_invite', { p_invite: inviteId, p_accept: accept })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data // group id when accepted
 }
 
@@ -231,41 +232,41 @@ export async function updateSharedExpense({
     p_member_ids: memberIds, p_shares: shares, p_split_type: splitType,
     p_exchange_rate: exchangeRate,
   })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 export async function deleteSharedExpense(expenseId) {
   const { error } = await supabase.from('group_expenses').delete().eq('id', expenseId)
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 // Leave a group, or (as owner) remove another member. Server enforces the
 // settled-up rule and owner auto-transfer. Returns the group id.
 // `silent` (self-leave only) skips the "X left the group" notification.
 export async function removeMember(memberId, silent = false) {
-  // Postgres RAISE messages surface on error.message directly.
+  // Its RAISE messages (e.g. "settle up first") are copy for the user.
   const { data, error } = await supabase.rpc('remove_group_member',
     { p_member: memberId, p_silent: silent })
-  if (error) throw new Error(error.message || 'Something went wrong')
+  if (error) throw dbError(error)
   return data
 }
 
 // Rate-limited "please settle up" reminder to a co-member (server: 2/day/pair).
 export async function nudgeMember(groupId, memberId) {
   const { error } = await supabase.rpc('nudge_member', { p_group: groupId, p_member: memberId })
-  if (error) throw new Error(error.message || 'Something went wrong')
+  if (error) throw dbError(error)
 }
 
 export async function deleteGroup(groupId) {
   const { error } = await supabase.rpc('delete_group', { p_group: groupId })
-  if (error) throw new Error(error.message || 'Something went wrong')
+  if (error) throw dbError(error)
 }
 
 // Immutable audit trail for a group (members can read; append-only server-side).
 // Summaries/amounts are encrypted at rest; the RPC decrypts for members only.
 export async function listAuditLog(groupId, limit = 200) {
   const { data, error } = await supabase.rpc('group_audit_entries', { p_group: groupId, p_limit: limit })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? []
 }
 
@@ -275,6 +276,6 @@ export async function downloadGroupReport(groupId, groupName = 'group') {
   const { data, error } = await supabase.functions.invoke('group-report', {
     body: { group_id: groupId },
   })
-  if (error) throw new Error(await edgeFunctionError(error))
+  if (error) throw await edgeFunctionError(error)
   saveBlob(toBlob(data, FILE_TYPES.pdf), `${fileStem(groupName, 'group')}-statement.pdf`)
 }

@@ -1,5 +1,6 @@
 import { useOwnedQuery, removeRow } from '../../shared/lib/db.js'
 import { supabase } from '../../shared/lib/supabase.js'
+import { dbError } from '../../shared/lib/errors.js'
 
 // A rule's amount and description are encrypted at rest, so reads go through
 // the decrypting `my_recurring_rules` RPC (active first, then by next charge
@@ -13,13 +14,13 @@ export function useRecurring() {
 
 export async function listRecurring() {
   const { data, error } = await supabase.rpc('my_recurring_rules')
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
   return data ?? []
 }
 
 async function saveRule(id, fields) {
   const { error } = await supabase.rpc('save_recurring_rule', { p_id: id ?? null, p_fields: fields })
-  if (error) throw new Error(error.message)
+  if (error) throw dbError(error)
 }
 
 export const saveRecurring = ({ id, ...fields }) => saveRule(id, fields)
