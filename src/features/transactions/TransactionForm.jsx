@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  Button, FormControl, FormHelperText, FormLabel, HStack, Input, Link, Select, Stack,
+  Button, FormControl, FormErrorMessage, FormHelperText, FormLabel, HStack, Input, Link, Select, Stack,
   Switch, Text, Textarea, useToast,
 } from '@chakra-ui/react'
 import { Repeat, Trash2 } from 'lucide-react'
@@ -20,8 +20,14 @@ import FxPreview from '../../shared/ui/FxPreview.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 
 const KINDS = [['expense', 'Expense'], ['income', 'Income']]
+const FIELDS = ['amount', 'date']
+const checkFields = ({ amount, spentAt }) => fieldErrors({
+  amount: amountError(amount),
+  date: requiredError(spentAt, 'Pick a date'),
+})
 const KIND_LABEL = Object.fromEntries(KINDS)
 
 // The body of the transaction page: one expense or income, new or
@@ -48,6 +54,10 @@ export default function TransactionForm({
   const [spentAt, setSpentAt] = useState(transaction?.spent_at ?? today)
   const [notes, setNotes] = useState(transaction?.notes ?? '')
   const [busy, setBusy] = useState(false)
+  // Inline field errors, shown from the first submit on.
+  const [tried, setTried] = useState(false)
+  const amountRef = useRef(null)
+  const dateRef = useRef(null)
   const [manualRate, setManualRate] = useState('')
   const [repeat, setRepeat] = useState(!!rule)
   const [draft, setDraft] = useState(() => repeatDraft(rule, { fromDate: spentAt }))
@@ -106,10 +116,15 @@ export default function TransactionForm({
     }
   }
 
+  const errors = tried ? checkFields({ amount, spentAt }) : {}
+
   async function submit(e) {
     e.preventDefault()
-    if (!amount || Number(amount) <= 0) {
-      toast({ title: 'Enter an amount', status: 'warning' })
+    const first = firstInvalid(checkFields({ amount, spentAt }), FIELDS)
+    if (first) {
+      setTried(true)
+      const field = first === 'amount' ? amountRef : dateRef
+      field.current?.focus()
       return
     }
     // Never save a foreign amount without a real rate (no silent 1:1).
@@ -155,7 +170,7 @@ export default function TransactionForm({
     : undefined
 
   return (
-    <Stack as="form" spacing={5} onSubmit={submit}>
+    <Stack as="form" spacing={5} onSubmit={submit} noValidate>
       <Panel>
         <Stack spacing={4}>
           {isEdit ? (
@@ -174,9 +189,10 @@ export default function TransactionForm({
           {kind === 'expense' && !isEdit && <ReceiptScanner onScan={handleScan} />}
 
           <HStack align="start">
-            <FormControl isRequired>
+            <FormControl isRequired isInvalid={!!errors.amount}>
               <FormLabel>Amount</FormLabel>
-              <MoneyInput currency={currency} value={amount} onChange={setAmount} />
+              <MoneyInput ref={amountRef} currency={currency} value={amount} onChange={setAmount} />
+              <FormErrorMessage>{errors.amount}</FormErrorMessage>
             </FormControl>
             <FormControl maxW="110px">
               <FormLabel>Currency</FormLabel>
@@ -208,9 +224,10 @@ export default function TransactionForm({
               placeholder={kind === 'income' ? 'Paycheck' : 'Coffee'} />
           </FormControl>
 
-          <FormControl isRequired>
+          <FormControl isRequired isInvalid={!!errors.date}>
             <FormLabel>Date</FormLabel>
-            <Input type="date" value={spentAt} onChange={(e) => changeDate(e.target.value)} />
+            <Input ref={dateRef} type="date" value={spentAt} onChange={(e) => changeDate(e.target.value)} />
+            <FormErrorMessage>{errors.date}</FormErrorMessage>
           </FormControl>
 
           <FormControl>

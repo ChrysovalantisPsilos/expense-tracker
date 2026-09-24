@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
-  Button, Stack, HStack, FormControl, FormLabel, Input, Select, Checkbox,
+  Button, Stack, HStack, FormControl, FormErrorMessage, FormLabel, Input, Select, Checkbox,
   Text, Divider, useToast, IconButton, ButtonGroup,
   InputGroup, InputRightAddon,
 } from '@chakra-ui/react'
@@ -19,6 +19,14 @@ import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import FxPreview from '../../shared/ui/FxPreview.jsx'
 import FormModal from '../../shared/ui/FormModal.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
+import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
+
+const FIELDS = ['description', 'amount', 'paidBy']
+const checkFields = ({ description, amount, paidBy }) => fieldErrors({
+  description: requiredError(description, 'Add a description'),
+  amount: amountError(amount),
+  paidBy: requiredError(paidBy, 'Who paid?'),
+})
 
 const MODES = [
   { key: 'equal', label: 'Equally' },
@@ -52,6 +60,10 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
   const [values, setValues] = useState(() => (isEdit ? prefillSplitValues(expense, initialMode, cur) : {}))
   const { busy, run } = useAsyncSubmit()
   const { busy: deleting, run: runDelete } = useAsyncSubmit()
+  // Inline errors for the required fields, shown from the first submit on.
+  const [tried, setTried] = useState(false)
+  const refs = { description: useRef(null), amount: useRef(null), paidBy: useRef(null) }
+  const errors = tried ? checkFields({ description, amount, paidBy }) : {}
 
   // Rate paid currency → group currency. Editing keeps the saved rate unless
   // the currency or date changes.
@@ -91,7 +103,12 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
   }
 
   async function submit() {
-    if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
+    const first = firstInvalid(checkFields({ description, amount, paidBy }), FIELDS)
+    if (first) {
+      setTried(true)
+      refs[first].current?.focus()
+      return
+    }
     // Never split a foreign amount without a real rate (no silent 1:1).
     if (!rate) {
       return toast({
@@ -99,7 +116,6 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
         status: 'warning',
       })
     }
-    if (!paidBy) return toast({ title: 'Who paid?', status: 'warning' })
     if (includedIds.length === 0) return toast({ title: 'Split between at least one person', status: 'warning' })
 
     if (mode === 'exact' && computed.assigned !== totalMinor) {
@@ -172,7 +188,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
   const addon = mode === 'percent' ? '%' : mode === 'shares' ? '×' : cur
 
   return (
-    <FormModal isOpen={isOpen} onClose={onClose} scrollBehavior="inside" onSubmit={submit}
+    <FormModal isOpen={isOpen} onClose={onClose} scrollBehavior="inside" onSubmit={submit} noValidate
       title={isEdit ? 'Edit expense' : 'Add shared expense'}
       busy={busy} submitLabel={isEdit ? 'Save' : 'Add expense'}
       footerStart={isEdit && (
@@ -186,15 +202,17 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
             <Divider />
           </>
         )}
-        <FormControl isRequired>
+        <FormControl isRequired isInvalid={!!errors.description}>
           <FormLabel>Description</FormLabel>
-          <Input value={description} onChange={(e) => setDescription(e.target.value)}
+          <Input ref={refs.description} value={description} onChange={(e) => setDescription(e.target.value)}
             placeholder="Dinner, taxi, groceries…" />
+          <FormErrorMessage>{errors.description}</FormErrorMessage>
         </FormControl>
-        <HStack align="end">
-          <FormControl isRequired>
+        <HStack align="start">
+          <FormControl isRequired isInvalid={!!errors.amount}>
             <FormLabel>Amount</FormLabel>
-            <MoneyInput currency={paidCurrency} value={amount} onChange={setAmount} />
+            <MoneyInput ref={refs.amount} currency={paidCurrency} value={amount} onChange={setAmount} />
+            <FormErrorMessage>{errors.amount}</FormErrorMessage>
           </FormControl>
           <FormControl maxW="110px">
             <FormLabel>Currency</FormLabel>
@@ -215,11 +233,12 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
           <FormLabel>Date</FormLabel>
           <Input type="date" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} />
         </FormControl>
-        <FormControl isRequired>
+        <FormControl isRequired isInvalid={!!errors.paidBy}>
           <FormLabel>Paid by</FormLabel>
-          <Select value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
+          <Select ref={refs.paidBy} value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
             {members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
           </Select>
+          <FormErrorMessage>{errors.paidBy}</FormErrorMessage>
         </FormControl>
 
         <FormControl>

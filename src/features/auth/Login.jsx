@@ -1,13 +1,13 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Button, Checkbox, Divider, FormControl, FormLabel, FormHelperText,
-  Input, Link, Stack, Text, useToast, HStack,
+  Alert, AlertIcon, AlertDescription, Button, Checkbox, Divider, FormControl, FormErrorMessage,
+  FormLabel, FormHelperText, IconButton, Input, InputGroup, InputRightElement, Link, Stack, Text,
+  useToast, HStack,
 } from '@chakra-ui/react'
-import { KeyRound } from 'lucide-react'
+import { Eye, EyeOff, KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { isSupabaseConfigured, passkeysSupported } from '../../shared/lib/supabase.js'
-import { validatePassword } from '../../shared/lib/password.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { NEXT_PARAM, rememberReturnPath, safeReturnPath } from '../../shared/lib/returnPath.js'
 import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
@@ -15,6 +15,8 @@ import { signupConsentMetadata } from '../privacy/legal.js'
 import AuthLayout from './AuthLayout.jsx'
 import GoogleIcon from '../../shared/ui/GoogleIcon.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { firstInvalid } from '../../shared/lib/formChecks.js'
+import { AUTH_FIELDS, authErrors } from './authChecks.js'
 
 export default function Login() {
   const { signInWithPassword, signUp, signInWithPasskey, signInWithProvider } = useAuth()
@@ -23,6 +25,12 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [accepted, setAccepted] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  // Field errors show from the first submit on, and then follow the typing.
+  const [tried, setTried] = useState(false)
+  // A failed sign-in/up (wrong password, rate limit…), shown above the button.
+  const [serverError, setServerError] = useState('')
+  const fieldRefs = { email: useRef(null), password: useRef(null), consent: useRef(null) }
   const [busy, setBusy] = useState(false)
   const [passkeyBusy, setPasskeyBusy] = useState(false)
   const toast = useToast()
@@ -50,15 +58,23 @@ export default function Login() {
     navigate(landing, { replace: true })
   }
 
+  const errors = tried ? authErrors({ mode, email, password, accepted }) : {}
+
+  function switchMode(m) {
+    setMode(m)
+    setTried(false)
+    setServerError('')
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
-    if (mode === 'signup') {
-      const err = validatePassword(password)
-      if (err) { toast({ title: err, status: 'warning' }); return }
-      if (!accepted) {
-        toast({ title: 'Please accept the Terms of Use and Privacy Notice', status: 'warning' })
-        return
-      }
+    setServerError('')
+    const found = authErrors({ mode, email, password, accepted })
+    const first = firstInvalid(found, AUTH_FIELDS)
+    if (first) {
+      setTried(true)
+      fieldRefs[first].current?.focus()
+      return
     }
     // Sign-up may continue from the confirmation email; sign-in stays here.
     rememberReturnPath(mode === 'signup' ? next : null)
@@ -72,7 +88,7 @@ export default function Login() {
       // own words; anything else, including a bodiless 500 when the
       // confirmation email can't be sent, a generic line.
       console.error('[auth] sign-in/up failed:', error)
-      toast({ title: userMessage(error, 'Something went wrong on our side — please try again in a moment.'), status: 'error' })
+      setServerError(userMessage(error, 'Something went wrong on our side — please try again in a moment.'))
       return
     }
     // Sign-up with email confirmation ON returns no session (go check your
@@ -98,31 +114,48 @@ export default function Login() {
         </Text>
       )}
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <Stack spacing={4}>
-          <FormControl isRequired>
+          <FormControl isRequired isInvalid={!!errors.email}>
             <FormLabel>Email</FormLabel>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input ref={fieldRefs.email} type="email" name="email" autoComplete="email"
+              inputMode="email" autoCapitalize="none" spellCheck={false}
+              value={email} onChange={(e) => setEmail(e.target.value)} />
+            <FormErrorMessage>{errors.email}</FormErrorMessage>
           </FormControl>
-          <FormControl isRequired>
+          <FormControl isRequired isInvalid={!!errors.password}>
             <FormLabel>Password</FormLabel>
-            <Input type="password" value={password}
-              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-              onChange={(e) => setPassword(e.target.value)} />
-            {mode === 'signup' && (
+            <InputGroup>
+              <Input ref={fieldRefs.password} type={showPassword ? 'text' : 'password'} name="password"
+                value={password} pr="48px"
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                onChange={(e) => setPassword(e.target.value)} />
+              <InputRightElement>
+                <IconButton size="sm" variant="ghost" aria-pressed={showPassword}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  icon={showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  onClick={() => setShowPassword((v) => !v)} />
+              </InputRightElement>
+            </InputGroup>
+            {mode === 'signup' && !errors.password && (
               <FormHelperText>At least 8 characters, with a letter and a number.</FormHelperText>
             )}
+            <FormErrorMessage>{errors.password}</FormErrorMessage>
           </FormControl>
           {mode === 'signup' && (
-            <Checkbox isChecked={accepted} onChange={(e) => setAccepted(e.target.checked)}
-              alignItems="flex-start" colorScheme="brand" isRequired>
-              <Text as="span" fontSize="sm" color="text.muted">
-                I’m 16 or older and I accept the{' '}
-                <Link as={RouterLink} to="/terms" target="_blank" variant="inline">Terms of Use</Link>{' '}
-                and the{' '}
-                <Link as={RouterLink} to="/privacy" target="_blank" variant="inline">Privacy Notice</Link>.
-              </Text>
-            </Checkbox>
+            <FormControl isRequired isInvalid={!!errors.consent}>
+              <Checkbox ref={fieldRefs.consent} isChecked={accepted} size="lg"
+                onChange={(e) => setAccepted(e.target.checked)}
+                alignItems="flex-start" colorScheme="brand" spacing={3}>
+                <Text as="span" fontSize="sm" color="text.muted" display="block" mt="-1px">
+                  I’m 16 or older and I accept the{' '}
+                  <Link as={RouterLink} to="/terms" target="_blank" variant="inline">Terms of Use</Link>{' '}
+                  and the{' '}
+                  <Link as={RouterLink} to="/privacy" target="_blank" variant="inline">Privacy Notice</Link>.
+                </Text>
+              </Checkbox>
+              <FormErrorMessage>{errors.consent}</FormErrorMessage>
+            </FormControl>
           )}
           {mode === 'signup' && (
             <Text fontSize="xs" color="text.muted">{DISCLAIMER}</Text>
@@ -132,6 +165,12 @@ export default function Login() {
               onClick={() => { rememberReturnPath(next); navigate('/forgot-password') }}>
               Forgot password?
             </Button>
+          )}
+          {serverError && (
+            <Alert status="error" borderRadius="lg" role="alert">
+              <AlertIcon />
+              <AlertDescription fontSize="sm">{serverError}</AlertDescription>
+            </Alert>
           )}
           <Button type="submit" isLoading={busy} w="full">
             {mode === 'signin' ? 'Sign in' : 'Sign up'}
@@ -172,7 +211,7 @@ export default function Login() {
       <Text fontSize="sm" textAlign="center" color="text.muted">
         {mode === 'signin' ? "Don't have an account? " : 'Already have one? '}
         <Button variant="link" colorScheme="brand" size="sm"
-          onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')}>
+          onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}>
           {mode === 'signin' ? 'Sign up' : 'Sign in'}
         </Button>
       </Text>

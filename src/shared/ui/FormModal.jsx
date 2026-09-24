@@ -11,11 +11,12 @@ import {
 //
 // `submitProps` reach the submit button (colorScheme, isDisabled, loadingText);
 // `initialFocusRef` picks the field focused on open; `footerStart` sits at the
-// footer's far left (e.g. a delete button); any other prop (size,
-// scrollBehavior…) goes to the Modal.
+// footer's far left (e.g. a delete button); `noValidate` turns off the
+// browser's own required-field bubbles for a form that shows its errors
+// inline; any other prop (size, scrollBehavior…) goes to the Modal.
 export default function FormModal({
   isOpen, onClose, title, onSubmit, busy, submitLabel = 'Save', submitProps,
-  initialFocusRef, footerStart, children, ...modalProps
+  initialFocusRef, footerStart, noValidate, children, ...modalProps
 }) {
   function handleSubmit(e) {
     e.preventDefault()
@@ -25,7 +26,7 @@ export default function FormModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered initialFocusRef={initialFocusRef} {...modalProps}>
       <ModalOverlay />
-      <ModalContent as="form" onSubmit={handleSubmit} mx={4}>
+      <ModalContent as="form" onSubmit={handleSubmit} noValidate={noValidate} mx={4}>
         <ModalHeader>{title}</ModalHeader>
         <ModalBody>{children}</ModalBody>
         <ModalFooter gap={2}>
