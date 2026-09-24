@@ -111,3 +111,26 @@ test('prefillSplitValues rebuilds the inputs from stored group-currency shares',
   assert.deepEqual(prefillSplitValues(expense, 'equal', 'EUR'), {})
   assert.deepEqual(prefillSplitValues(null, 'exact', 'EUR'), {})
 })
+
+test('prefillSplitValues: a percent split round-trips to the same shares and passes the 100% check', () => {
+  const cases = [
+    [3334, 3333, 3333],
+    [333334, 333333, 333333],
+    [1, 1, 1],
+    [5000, 5000],
+    [1, 2, 99997],
+    [700, 0, 300],
+  ]
+  for (const shares of cases) {
+    const total = shares.reduce((a, b) => a + b, 0)
+    const ids = shares.map((_, i) => `m${i}`)
+    const expense = { amount_minor: total, expense_splits: ids.map((id, i) => ({ member_id: id, share_minor: shares[i] })) }
+    const values = prefillSplitValues(expense, 'percent', 'EUR')
+    const back = computeSplit('percent', total, ids, values, 'EUR')
+    assert.equal(back.ok, true, `${shares} → ${JSON.stringify(values)}`)
+    assert.deepEqual(back.shares, shares, `${shares} → ${JSON.stringify(values)}`)
+  }
+  const three = { amount_minor: 10000, expense_splits: [
+    { member_id: 'a', share_minor: 3334 }, { member_id: 'b', share_minor: 3333 }, { member_id: 'c', share_minor: 3333 }] }
+  assert.deepEqual(prefillSplitValues(three, 'percent', 'EUR'), { a: '33.34', b: '33.33', c: '33.33' })
+})

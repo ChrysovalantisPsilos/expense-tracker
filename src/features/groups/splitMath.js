@@ -55,11 +55,29 @@ export function computeSplit(mode, totalMinor, memberIds, values, currency) {
 export function prefillSplitValues(expense, mode, groupCurrency) {
   const splits = expense?.expense_splits ?? []
   const total = expense?.group_amount_minor ?? expense?.amount_minor ?? 0
+  const pct = mode === 'percent' && total ? percentsFor(splits.map((s) => Number(s.share_minor))) : null
   const out = {}
-  for (const s of splits) {
+  splits.forEach((s, i) => {
     if (mode === 'exact') out[s.member_id] = String(fromMinor(s.share_minor, groupCurrency))
-    else if (mode === 'percent') out[s.member_id] = total ? String(Math.round((s.share_minor / total) * 1000) / 10) : ''
+    else if (mode === 'percent') out[s.member_id] = pct ? pct[i] : ''
     else if (mode === 'shares') out[s.member_id] = String(s.share_minor)
+  })
+  return out
+}
+
+// Percentages for stored shares that add up to exactly 100 and apportion back
+// to the very same shares (so an untouched percent split re-saves unchanged
+// and passes computeSplit's 100% check): 3334/3333/3333 → 33.34/33.33/33.33,
+// never 33.3 ×3 = 99.9. Uses the fewest decimals (2 to 6) that round-trip.
+function percentsFor(shares) {
+  const total = shares.reduce((a, b) => a + b, 0)
+  let out = []
+  for (let d = 2; d <= 6; d++) {
+    const scale = 10 ** d
+    const units = distributeByWeights(100 * scale, shares)
+    out = units.map((u) => String(u / scale))
+    const back = distributeByWeights(total, units)
+    if (back.every((v, i) => v === shares[i])) break
   }
   return out
 }
