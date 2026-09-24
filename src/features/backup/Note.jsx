@@ -1,7 +1,7 @@
 import { Box, HStack, Text } from '@chakra-ui/react'
 import Tile from '../../shared/ui/kit/Tile.jsx'
 
-// A quiet callout inside the backup cards and dialogs: an icon and a short
+// A quiet callout inside the backup pages: an icon and a short
 // explanation on a sand tile. `tone="warning"` tints the icon amber.
 export default function Note({ icon: Icon, tone, children }) {
   return (

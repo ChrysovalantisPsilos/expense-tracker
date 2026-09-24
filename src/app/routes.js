@@ -39,6 +39,8 @@ export const SIGNED_IN_ROUTES = [
   '/settings/categories/new',
   '/settings/security',
   '/settings/data',
+  '/settings/data/export',
+  '/settings/data/restore',
   '/settings/privacy',
   '/help',
   '/privacy',

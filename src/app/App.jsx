@@ -54,6 +54,8 @@ const CategoryPage = lazy(() => import('../features/categories/CategoryPage.jsx'
 const NewCategoryPage = lazy(() => import('../features/categories/NewCategoryPage.jsx'))
 const SecuritySettings = lazy(() => import('../features/settings/SecuritySettings.jsx'))
 const YourData = lazy(() => import('../features/backup/YourData.jsx'))
+const ExportBackupPage = lazy(() => import('../features/backup/ExportBackupPage.jsx'))
+const RestoreBackupPage = lazy(() => import('../features/backup/RestoreBackupPage.jsx'))
 const Privacy = lazy(() => import('../features/privacy/Privacy.jsx'))
 const Terms = lazy(() => import('../features/privacy/Terms.jsx'))
 const PrivacySettings = lazy(() => import('../features/privacy/PrivacySettings.jsx'))
@@ -188,6 +190,8 @@ function AuthedRoutes() {
           <Route path="settings/categories/new" element={<NewCategoryPage />} />
           <Route path="settings/security" element={<SecuritySettings />} />
           <Route path="settings/data" element={<YourData />} />
+          <Route path="settings/data/export" element={<ExportBackupPage />} />
+          <Route path="settings/data/restore" element={<RestoreBackupPage />} />
           <Route path="settings/privacy" element={<PrivacySettings />} />
           <Route path="help" element={<Help />} />
           <Route path="privacy" element={<Privacy />} />

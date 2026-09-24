@@ -74,7 +74,7 @@ async function groupLedgers(groups) {
 }
 
 // Gather the signed-in user's data into a backup document.
-// `onStep(label)` narrates progress for the dialog.
+// `onStep(label)` narrates progress for the export page.
 async function gatherBackup(userId, onStep = () => {}) {
   onStep('Reading your settings')
   const [profile, payment] = await Promise.all([getProfile(userId, PROFILE_FIELDS), getMyPaymentInfo()])
