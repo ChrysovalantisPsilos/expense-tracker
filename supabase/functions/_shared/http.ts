@@ -35,3 +35,9 @@ export function callerClient(req: Request) {
     { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } },
   )
 }
+
+// A service-role client (bypasses RLS). Only for the server-only steps a
+// function takes AFTER it has authorised the caller with callerClient.
+export function serviceClient() {
+  return createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+}

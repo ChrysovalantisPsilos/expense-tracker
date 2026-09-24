@@ -146,6 +146,17 @@ test('edgeFunctionError: our JSON `error` is copy; anything else keeps the origi
   assert.equal(userMessage(await edgeFunctionError(offline), FALLBACK), CONNECTION_ERROR)
 })
 
+test('edgeFunctionError keeps the machine-readable code next to the copy', async () => {
+  const res = Object.assign(new Error('Edge Function returned a non-2xx status code'), {
+    context: { json: async () => ({ error: 'For your security, please sign in again to delete your account.', code: 'reauth_required' }) },
+  })
+  const e = await edgeFunctionError(res)
+  assert.equal(e.code, 'reauth_required')
+  assert.equal(userMessage(e, FALLBACK), 'For your security, please sign in again to delete your account.')
+  const plain = await edgeFunctionError(Object.assign(new Error('x'), { context: { json: async () => ({ error: 'Incorrect password.' }) } }))
+  assert.equal(plain.code, undefined)
+})
+
 // Every RAISE EXCEPTION in the migrations, classified. A message is either
 // copy for the user (on SQL_USER_MESSAGES in errors.js, so it passes) or an
 // internal guard listed here (it only fires on a bug, a migration or a cron

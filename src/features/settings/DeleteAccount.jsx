@@ -11,6 +11,8 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import FormModal from '../../shared/ui/FormModal.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { hasPasswordIdentity } from './authMethods.js'
+import { useRecentSignIn } from './useRecentSignIn.js'
+import ReauthNotice from './ReauthNotice.jsx'
 import { DELETION_SCOPE } from '../privacy/legal.js'
 import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
@@ -43,13 +45,16 @@ export default function DeleteAccount({ user }) {
 export function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
   const toast = useToast()
   // Require a password if the user has an email/password identity (default to
-  // requiring it when we can't tell); otherwise ask for a typed phrase.
+  // requiring it when we can't tell); otherwise a recent sign-in (the server
+  // checks it too, _shared/reauth.ts) and a typed phrase.
   const isPasswordUser = hasPasswordIdentity(user)
+  const recent = useRecentSignIn()
+  const needsReauth = !isPasswordUser && !recent
   const [value, setValue] = useState('')
   const { busy, run } = useAsyncSubmit()
   const inputRef = useRef(null)
 
-  const canSubmit = isPasswordUser ? value.length > 0 : value.trim().toUpperCase() === 'DELETE'
+  const canSubmit = isPasswordUser ? value.length > 0 : !needsReauth && value.trim().toUpperCase() === 'DELETE'
 
   async function confirm() {
     if (!canSubmit) return
@@ -71,13 +76,15 @@ export function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
           (Settings → Privacy).
         </Text>
         <DeletionScope />
-        <FormControl isRequired>
-          <FormLabel>{isPasswordUser ? 'Enter your password to confirm'
-            : 'Type DELETE to confirm'}</FormLabel>
-          <Input ref={inputRef} type={isPasswordUser ? 'password' : 'text'} value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder={isPasswordUser ? 'Your password' : 'DELETE'} />
-        </FormControl>
+        {needsReauth ? <ReauthNotice what="delete your account" /> : (
+          <FormControl isRequired>
+            <FormLabel>{isPasswordUser ? 'Enter your password to confirm'
+              : 'Type DELETE to confirm'}</FormLabel>
+            <Input ref={inputRef} type={isPasswordUser ? 'password' : 'text'} value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={isPasswordUser ? 'Your password' : 'DELETE'} />
+          </FormControl>
+        )}
       </Stack>
     </FormModal>
   )

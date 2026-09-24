@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useMemo } 
 import { supabase } from '../lib/supabase.js'
 import { UserError } from '../lib/errors.js'
 import { clearUserDataCaches } from '../lib/userDataCaches.js'
+import { REAUTH_REQUIRED, isRecentSignIn, reauthMessage } from '../../../supabase/functions/_shared/reauth.ts'
 
 const AuthContext = createContext(null)
 
@@ -18,6 +19,17 @@ function hasStoredSession() {
     }
   } catch { /* localStorage unavailable */ }
   return false
+}
+
+// Adding a passkey and connecting or disconnecting Google change how the
+// account can be entered, so they need a recent sign-in (_shared/reauth.ts),
+// as deleting the account does. Supabase Auth doesn't ask for one on these
+// calls, so the app checks the session first; the returned error is copy for
+// the user (Settings → Security also offers "Sign in again").
+async function reauthError(what) {
+  const { data } = await supabase.auth.getSession()
+  if (isRecentSignIn(data?.session?.access_token)) return null
+  return Object.assign(new UserError(reauthMessage(what)), { code: REAUTH_REQUIRED })
 }
 
 export function AuthProvider({ children }) {
@@ -154,12 +166,17 @@ export function AuthProvider({ children }) {
   // Connect a Google account to the signed-in user: Google's consent screen,
   // then back to `returnTo`. Returns { error } when it can't start (e.g.
   // manual linking is off for the project: code manual_linking_disabled).
-  const linkGoogle = useCallback(
-    (returnTo) => supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo: returnTo } }),
-    [],
-  )
+  const linkGoogle = useCallback(async (returnTo) => {
+    const error = await reauthError('connect Google')
+    if (error) return { data: null, error }
+    return supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo: returnTo } })
+  }, [])
 
-  const unlinkIdentity = useCallback((identity) => supabase.auth.unlinkIdentity(identity), [])
+  const unlinkIdentity = useCallback(async (identity) => {
+    const error = await reauthError('disconnect Google')
+    if (error) return { data: null, error }
+    return supabase.auth.unlinkIdentity(identity)
+  }, [])
 
   // A first password for an account that signs in with Google only (no
   // current password to give). `password_set` in user_metadata only tells the
@@ -181,7 +198,11 @@ export function AuthProvider({ children }) {
   // Passkeys (WebAuthn). These no-op-guard so callers can rely on them even if
   // the API is missing on an older client build.
   const signInWithPasskey = useCallback(() => supabase.auth.signInWithPasskey(), [])
-  const registerPasskey = useCallback(() => supabase.auth.registerPasskey(), [])
+  const registerPasskey = useCallback(async () => {
+    const error = await reauthError('add a passkey')
+    if (error) return { data: null, error }
+    return supabase.auth.registerPasskey()
+  }, [])
   const listPasskeys = useCallback(() => supabase.auth.passkey.list(), [])
   const deletePasskey = useCallback(
     (passkeyId) => supabase.auth.passkey.delete({ passkeyId }),

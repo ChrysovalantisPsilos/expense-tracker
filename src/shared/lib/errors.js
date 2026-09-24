@@ -37,13 +37,16 @@ export function dbError(error) {
 }
 
 // A failed supabase.functions.invoke as a thrown Error. Our functions answer
-// with { error: '<copy for the user>' }; anything else (the gateway, a crash,
-// no network) keeps supabase-js' own error.
+// with { error: '<copy for the user>', code?: '<machine-readable reason>' };
+// anything else (the gateway, a crash, no network) keeps supabase-js' own
+// error.
 export async function edgeFunctionError(error) {
   try {
     const body = await error?.context?.json?.()
     if (typeof body?.error === 'string' && body.error) {
-      return Object.assign(new Error(body.error), { serverMessage: true })
+      return Object.assign(new Error(body.error), {
+        serverMessage: true, ...(typeof body.code === 'string' ? { code: body.code } : {}),
+      })
     }
   } catch { /* not JSON */ }
   return error

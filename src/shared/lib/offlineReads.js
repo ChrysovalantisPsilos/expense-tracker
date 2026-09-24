@@ -3,6 +3,7 @@
 // (POST /rest/v1/rpc/<fn>), which the Cache API can't store by method, so the
 // service worker files each response under a synthetic GET key. Only this
 // allowlist is cached: writes must never be replayed from a cache.
+import { jwtClaims } from '../../../supabase/functions/_shared/reauth.ts'
 
 const OFFLINE_READ_RPCS = new Set([
   'my_transactions', 'my_recurring_rules', 'my_budgets', 'my_accounts', 'my_goals',
@@ -32,12 +33,6 @@ export function offlineReadKey(origin, rpc, body, identity) {
 // when absent/unreadable. Only used to partition the local cache, so the
 // signature isn't checked here (the server verifies it on every request).
 export function requestUser(authorization) {
-  const payload = /^Bearer [^.]+\.([^.]+)\./.exec(authorization ?? '')?.[1]
-  if (!payload) return ''
-  try {
-    const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
-    return String(JSON.parse(json).sub ?? '')
-  } catch {
-    return ''
-  }
+  if (!/^Bearer /.test(authorization ?? '')) return ''
+  return String(jwtClaims(authorization)?.sub ?? '')
 }
