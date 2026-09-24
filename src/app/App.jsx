@@ -9,7 +9,7 @@ import { useEnsureDefaultCategories } from '../features/transactions/useData.js'
 import { useTour } from '../features/onboarding/tour.js'
 import { useLegalGate } from '../features/privacy/useLegalGate.js'
 import { STORAGE_KEYS } from '../shared/lib/keys.js'
-import PageSpinner from '../shared/ui/PageSpinner.jsx'
+import RingLoader from '../shared/ui/RingLoader.jsx'
 import { loginPathFor, NEXT_PARAM, safeReturnPath, takeReturnPath } from '../shared/lib/returnPath.js'
 import NotFound from './NotFound.jsx'
 import { isSignedInRoute } from './routes.js'
@@ -80,7 +80,7 @@ function SignedInLogin() {
 // and send the visitor to sign up; AuthedRoutes then redeems it.
 function PublicRoutes() {
   return (
-    <Suspense fallback={<PageSpinner fullScreen />}>
+    <Suspense fallback={<RingLoader fullScreen />}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
@@ -134,7 +134,7 @@ function AuthedRoutes() {
   }, [navigate])
 
   return (
-    <Suspense fallback={<PageSpinner fullScreen />}>
+    <Suspense fallback={<RingLoader fullScreen />}>
       <Routes>
         <Route path="/join/:token" element={<JoinGroup />} />
         <Route path="/login" element={<SignedInLogin />} />
@@ -198,10 +198,10 @@ function AuthedRoutes() {
 export default function App() {
   const { session, loading, recovering } = useAuth()
   if (loading) {
-    return <PageSpinner fullScreen />
+    return <RingLoader fullScreen />
   }
   // A password-recovery link signs the user in, but they must set a new password
   // before doing anything else — so this screen preempts the normal routing.
-  if (recovering) return <Suspense fallback={<PageSpinner fullScreen />}><ResetPassword /></Suspense>
+  if (recovering) return <Suspense fallback={<RingLoader fullScreen />}><ResetPassword /></Suspense>
   return session ? <AuthedRoutes /> : <PublicRoutes />
 }

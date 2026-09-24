@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
-  Stack, HStack, Text, Button, Center, Spinner, Box, Divider, Select, Input,
+  Stack, HStack, Text, Button, Box, Divider, Select, Input, SimpleGrid,
   FormControl, FormLabel, useToast, useDisclosure,
 } from '@chakra-ui/react'
 import {
@@ -24,6 +24,7 @@ import { StackedBar, ShareLegend } from '../../shared/ui/kit/ShareBar.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
+import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useTransactions } from '../transactions/useData.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
 import { lastMonths, shortDate } from '../../shared/lib/dates.js'
@@ -87,7 +88,67 @@ export default function Insights() {
   )
 }
 
-const Loading = () => <Center py={10}><Spinner color="brand.500" /></Center>
+// ── Skeletons, shaped like each card ────────────────────────────────────────
+const TREND = ['55%', '70%', '62%', '85%', '74%', '66%']
+const TileSkeletons = () => (
+  <SimpleGrid columns={2} spacing={2}>
+    <SkeletonBlock h="52px" radius="lg" />
+    <SkeletonBlock h="52px" radius="lg" />
+  </SimpleGrid>
+)
+
+function SpendingSkeleton() {
+  return (
+    <SkeletonRegion>
+      <Stack spacing={5}>
+        <Box>
+          <SkeletonBlock h="12px" />
+          <SimpleGrid columns={2} spacingX={4} spacingY={2.5} mt={3}>
+            {['70%', '55%', '62%', '48%'].map((w) => <SkeletonBlock key={w} w={w} h="10px" />)}
+          </SimpleGrid>
+        </Box>
+        <Box>
+          <SkeletonBlock w="30%" h="10px" mb={3} />
+          <HStack h="110px" align="end" spacing={2}>
+            {TREND.map((h, i) => <SkeletonBlock key={i} flex="1" h={h} radius="md" />)}
+          </HStack>
+        </Box>
+      </Stack>
+    </SkeletonRegion>
+  )
+}
+
+function IncomeSkeleton() {
+  return (
+    <SkeletonRegion>
+      <Stack spacing={5}>
+        <Box>
+          <SkeletonBlock w="25%" h="10px" mb={3} />
+          <TileSkeletons />
+          <HStack justify="space-between" mt={3}>
+            <SkeletonBlock w="80px" h="12px" />
+            <SkeletonBlock w="90px" h="16px" />
+          </HStack>
+        </Box>
+        <Box>
+          <SkeletonBlock w="30%" h="10px" mb={3} />
+          <SkeletonBlock h="220px" radius="lg" />
+        </Box>
+      </Stack>
+    </SkeletonRegion>
+  )
+}
+
+function NetWorthSkeleton() {
+  return (
+    <SkeletonRegion>
+      <Stack spacing={4}>
+        <TileSkeletons />
+        <SkeletonRows count={2} />
+      </Stack>
+    </SkeletonRegion>
+  )
+}
 
 // ── Where your money went ───────────────────────────────────────────────────
 // This month's spending split by category, then six months of spending.
@@ -95,7 +156,7 @@ function SpendingCard({ loading, failed, shares, trend, money }) {
   const latest = trend[trend.length - 1]
   return (
     <Panel title="Where your money went" subtitle="This month">
-      {failed ? failed : loading ? <Loading /> : (
+      {failed ? failed : loading ? <SpendingSkeleton /> : (
         <Stack spacing={5}>
           {shares.length === 0 ? (
             <Text color="text.muted" fontSize="sm">No spending yet this month.</Text>
@@ -149,7 +210,7 @@ function IncomeCard({ loading, failed, trend, money }) {
   const net = signedAmount(latest.income - latest.expense, money)
   return (
     <Panel title="Income vs expenses" action={delta != null && <SpendDelta delta={delta} />}>
-      {failed ? failed : loading ? <Loading /> : (
+      {failed ? failed : loading ? <IncomeSkeleton /> : (
         <Stack spacing={5}>
           <Box>
             <SectionLabel mb={3}>This month</SectionLabel>
@@ -220,7 +281,7 @@ function NetWorthCard({ baseCurrency }) {
       <Button size="xs" leftIcon={<Plus size={14} />}
         onClick={() => { setEditing(null); modal.onOpen() }}>Account</Button>
     }>
-      {error ? <QueryError error={error} onRetry={reload} what="your accounts" /> : loading ? <Loading /> : (
+      {error ? <QueryError error={error} onRetry={reload} what="your accounts" /> : loading ? <NetWorthSkeleton /> : (
         <Stack spacing={4}>
           <BalanceGrid>
             <BalanceTile label="Assets" value={formatMoney(assets, baseCurrency)} tone="positive" />
@@ -339,7 +400,9 @@ function GoalsCard({ baseCurrency }) {
       <Button size="xs" leftIcon={<Plus size={14} />}
         onClick={() => { setEditing(null); modal.onOpen() }}>Goal</Button>
     }>
-      {error ? <QueryError error={error} onRetry={reload} what="your goals" /> : loading ? <Loading /> : goals.length === 0 ? (
+      {error ? <QueryError error={error} onRetry={reload} what="your goals" /> : loading ? (
+        <SkeletonRegion><SkeletonRows count={2} progress spacing={5} /></SkeletonRegion>
+      ) : goals.length === 0 ? (
         <Text color="text.muted" fontSize="sm">No goals yet — set one to start saving toward it.</Text>
       ) : (
         <Stack spacing={5}>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Stack, Text, Button, FormControl, FormLabel, FormHelperText,
-  FormErrorMessage, Input, HStack, Spinner, useDisclosure, useToast, Modal, ModalOverlay,
+  FormErrorMessage, Input, useDisclosure, useToast, Modal, ModalOverlay,
   ModalContent, ModalHeader, ModalBody, ModalFooter, ModalCloseButton,
 } from '@chakra-ui/react'
 import { Download, Info, Eye, KeyRound } from 'lucide-react'
@@ -11,6 +11,7 @@ import { saveErrorToast } from '../../shared/lib/saveError.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { downloadBackup } from './backup.js'
 import Note from './Note.jsx'
+import { BusyNote, RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 // "Export backup": one JSON file of everything personal, optionally locked
 // with a password (encrypted in the browser before it's saved).
@@ -99,17 +100,13 @@ function ExportDialog({ onClose }) {
               keep; restoring brings back your share of each group expense as a
               personal expense.
             </Note>
-            {busy && (
-              <HStack spacing={3} color="text.muted" fontSize="sm" aria-live="polite">
-                <Spinner size="sm" color="brand.500" /><Text>{step}…</Text>
-              </HStack>
-            )}
+            {busy && <BusyNote>{step}…</BusyNote>}
           </Stack>
         </ModalBody>
         <ModalFooter gap={2}>
           <Button variant="ghost" onClick={onClose} isDisabled={busy}>Cancel</Button>
           <Button type="submit" leftIcon={<Download size={16} />} isLoading={busy}
-            loadingText="Exporting">
+            loadingText="Exporting" spinner={<RingSpinner />}>
             Download
           </Button>
         </ModalFooter>

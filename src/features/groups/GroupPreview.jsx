@@ -9,7 +9,7 @@ import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { shortDateTime } from '../../shared/lib/dates.js'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
-import PageSpinner from '../../shared/ui/PageSpinner.jsx'
+import RingLoader from '../../shared/ui/RingLoader.jsx'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
 
@@ -31,7 +31,7 @@ export default function GroupPreview() {
     navigate('/login')
   }
 
-  if (data === undefined) return <PageSpinner fullScreen />
+  if (data === undefined) return <RingLoader fullScreen />
   if (data === null) {
     return (
       <Center h="100dvh" px={4}>

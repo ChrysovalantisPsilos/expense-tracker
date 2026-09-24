@@ -9,6 +9,7 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
+import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { frequencyLabel, subscriptionGroups } from './recurringMath.js'
 import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
 
@@ -17,8 +18,9 @@ import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
 // has), each with its total per period, about how much a month, and the next
 // few charges. Informational: it ignores the period picker and never feeds
 // Home's totals, whichever way the yearly-subscription setting is set (the
-// Yearly tab just says how those count). `rules` are the useRecurring() rows.
-export default function SubscriptionsCard({ rules, baseCurrency }) {
+// Yearly tab just says how those count). `rules` are the useRecurring() rows;
+// `loading` while they're on their way.
+export default function SubscriptionsCard({ rules, loading, baseCurrency }) {
   const { separateYearly } = useProfile()
   const groups = useMemo(
     () => subscriptionGroups(rules, baseCurrency, { upcomingOnly: true }), [rules, baseCurrency])
@@ -26,7 +28,9 @@ export default function SubscriptionsCard({ rules, baseCurrency }) {
   return (
     <Panel data-tour="subscriptions" icon={Repeat} title="Subscriptions"
       action={<Button as={RouterLink} to="/recurring" size="xs" variant="ghost">Manage</Button>}>
-      {groups.length === 0 ? (
+      {loading ? (
+        <SkeletonRegion><SkeletonRows count={3} /></SkeletonRegion>
+      ) : groups.length === 0 ? (
         <Text color="text.muted" fontSize="sm">
           No subscriptions yet. Set an expense to repeat, or add bills and subscriptions in Recurring.
         </Text>

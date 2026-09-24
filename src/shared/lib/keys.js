@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   overviewView: 'budge:overviewView',  // localStorage — dashboard chart/table toggle
   passkeyPrompted: 'budge:passkeyPrompted', // sessionStorage — passkey prompt shown this session
   returnPath: 'budge:returnPath',      // localStorage — page to open after an off-page sign-in
+  appearance: 'budge-appearance',      // localStorage — Light/Dark/System (also read by public/theme-boot.js)
 }
 
 export const EVENTS = {

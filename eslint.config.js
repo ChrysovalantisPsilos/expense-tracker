@@ -60,5 +60,7 @@ export default [
     },
   },
   { files: ['src/sw.js'], languageOptions: { globals: { ...globals.serviceworker } } },
+  // Plain scripts served as-is from public/ (index.html's colour-mode boot).
+  { files: ['public/**/*.js'], languageOptions: { sourceType: 'script', globals: { ...globals.browser } } },
   { files: ['test/**/*.js', '*.config.js'], languageOptions: { globals: { ...globals.node } } },
 ]

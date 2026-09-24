@@ -11,6 +11,7 @@ import { CURRENCIES } from '../lib/currency.js'
 import { useAsyncSubmit } from '../lib/useAsyncSubmit.js'
 import FormModal from './FormModal.jsx'
 import MoneyInput from './MoneyInput.jsx'
+import { RingMark, RingSpinner } from './RingLoader.jsx'
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v))
 
@@ -166,7 +167,10 @@ export default function ReceiptScanner({ onScan }) {
               )}
               {busy && (
                 <Box>
-                  <Text fontSize="sm" color="text.muted" mb={1}>Reading receipt…</Text>
+                  <HStack spacing={2.5} fontSize="sm" color="text.muted" mb={2}>
+                    <RingMark size={20} />
+                    <Text>Reading your receipt…</Text>
+                  </HStack>
                   <Progress value={progress * 100} size="sm" aria-label="Reading receipt" />
                 </Box>
               )}
@@ -180,7 +184,8 @@ export default function ReceiptScanner({ onScan }) {
             </Button>
             <Spacer />
             <Button variant="ghost" isDisabled={busy} onClick={cancel}>Cancel</Button>
-            <Button leftIcon={<ScanText size={16} />} isLoading={busy} loadingText="Reading" onClick={read}>
+            <Button leftIcon={<ScanText size={16} />} isLoading={busy} loadingText="Reading"
+              spinner={<RingSpinner />} onClick={read}>
               Read receipt
             </Button>
           </ModalFooter>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Stack, HStack, Text, Button, FormControl, FormLabel, Select, useToast, Center, Spinner,
+  Stack, HStack, Text, Button, FormControl, FormLabel, Select, useToast,
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
 } from '@chakra-ui/react'
 import { Target, CalendarDays, Copy, Pencil, Trash2 } from 'lucide-react'
@@ -20,6 +20,7 @@ import BudgetRow from './BudgetRow.jsx'
 import { categoryPath } from '../categories/categoryLinks.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 
 export default function Budgets() {
   const { baseCurrency } = useProfile()
@@ -115,7 +116,7 @@ export default function Budgets() {
         subtitle={carriedFrom ? carriedLabel(carriedFrom, periodStart) : undefined}
         action={items.length > 0 ? copyButton : undefined}>
         {error ? <QueryError error={error} onRetry={reload} what="budgets" /> : loading ? (
-          <Center py={8}><Spinner color="brand.500" /></Center>
+          <SkeletonRegion><SkeletonRows count={4} progress spacing={5} /></SkeletonRegion>
         ) : items.length === 0 ? (
           <Stack spacing={3} align="start">
             <Text color="text.muted" fontSize="sm">No budgets set for this month yet.</Text>

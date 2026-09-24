@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Box, Stack, useDisclosure, Collapse, Text, Center, Spinner, HStack,
+  Box, Stack, useDisclosure, Collapse, Text, HStack,
   IconButton, Input, InputGroup, InputLeftElement, InputRightElement, Select,
   FormControl, FormLabel, SimpleGrid, Button, Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
@@ -26,6 +26,7 @@ import { monthRange } from '../../shared/lib/dates.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 
 const OWN_EDIT = { ownEdit: true }
 const TYPES = [['expense', 'Expenses'], ['income', 'Income'], ['all', 'All']]
@@ -186,7 +187,7 @@ export default function LedgerPage() {
             </Button>
           )} />
         {error ? <QueryError error={error} onRetry={reload} what="your transactions" /> : loading ? (
-          <Center py={8}><Spinner color="brand.500" /></Center>
+          <SkeletonRegion><SkeletonRows count={8} py={2.5} /></SkeletonRegion>
         ) : shown.length === 0 ? (
           <Text color="text.muted" fontSize="sm">
             {searching ? 'No transactions match this search.' : EMPTY_TEXT[type]}

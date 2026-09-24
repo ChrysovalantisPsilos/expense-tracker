@@ -12,6 +12,7 @@ import FormModal from '../../shared/ui/FormModal.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { hasPasswordIdentity } from './authMethods.js'
 import { DELETION_SCOPE } from '../privacy/legal.js'
+import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 // The danger zone at the foot of Security: set apart by space and a red
 // label, with the confirm-to-delete modal behind its button.
@@ -63,7 +64,7 @@ export function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
   return (
     <FormModal isOpen={isOpen} onClose={onClose} title="Delete your account?" onSubmit={confirm}
       busy={busy} submitLabel="Delete account" initialFocusRef={inputRef}
-      submitProps={{ colorScheme: 'red', isDisabled: !canSubmit }}>
+      submitProps={{ colorScheme: 'red', isDisabled: !canSubmit, loadingText: 'Deleting…', spinner: <RingSpinner /> }}>
       <Stack spacing={4}>
         <Text color="text.muted" fontSize="sm">
           This can’t be undone. You may want to download your data first

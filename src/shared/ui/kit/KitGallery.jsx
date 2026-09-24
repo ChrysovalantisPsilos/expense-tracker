@@ -7,6 +7,10 @@ import {
 import ThemeToggle from '../ThemeToggle.jsx'
 import ErrorScreen from '../ErrorScreen.jsx'
 import { ERROR_VARIANTS } from '../errorScreens.js'
+import RingLoader, { BusyNote, RingMark, RingSpinner } from '../RingLoader.jsx'
+import {
+  SkeletonBlock, SkeletonFigure, SkeletonProgressRow, SkeletonRegion, SkeletonRows,
+} from '../Skeleton.jsx'
 import Panel from './Panel.jsx'
 import Tile from './Tile.jsx'
 import IconTile from './IconTile.jsx'
@@ -100,9 +104,67 @@ function ErrorScreens() {
   )
 }
 
+// The loaders: the ring (in-page, compact, in buttons, for longer waits) and
+// the skeleton primitives. Each appears after the reveal delay, like in the
+// app; "full page" shows the full-screen loader (/kit?preview=loading).
+function Loaders() {
+  return (
+    <Panel title="Loaders" subtitle="RingLoader, BusyNote, RingSpinner and the skeleton primitives"
+      action={<Link as={RouterLink} fontSize="xs" color="accent.fg" to="/kit?preview=loading">Full page</Link>}>
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
+        <Stack spacing={4}>
+          <Spec name="RingMark — 84 · 40 · 24 · mono">
+            <HStack spacing={5} align="center">
+              <RingMark size={84} />
+              <RingMark />
+              <RingMark size={24} />
+              <Box color="text.muted"><RingMark size={24} mono /></Box>
+            </HStack>
+          </Spec>
+          <Spec name="RingLoader (in-page) · compact">
+            <SimpleGrid columns={2} spacing={3}>
+              <Box borderWidth="1px" borderColor="border.default" borderRadius="xl"><RingLoader /></Box>
+              <Box borderWidth="1px" borderColor="border.default" borderRadius="xl"><RingLoader compact /></Box>
+            </SimpleGrid>
+          </Spec>
+          <Spec name="BusyNote">
+            <BusyNote>Preparing your statement…</BusyNote>
+          </Spec>
+          <Spec name="Button spinner={<RingSpinner />}">
+            <HStack spacing={3} flexWrap="wrap">
+              <Button isLoading loadingText="Building…" spinner={<RingSpinner />}>Export PDF</Button>
+              <Button isLoading loadingText="Building…" spinner={<RingSpinner />} variant="outline">Export Excel</Button>
+              <Button isLoading spinner={<RingSpinner />} size="sm">Save</Button>
+            </HStack>
+          </Spec>
+        </Stack>
+        <SkeletonRegion>
+          <Stack spacing={4}>
+            <Spec name="SkeletonFigure — hero · md">
+              <HStack spacing={6} align="end">
+                <SkeletonFigure size="hero" w="160px" />
+                <SkeletonFigure w="96px" />
+              </HStack>
+            </Spec>
+            <Spec name="SkeletonBlock — tiles">
+              <SimpleGrid columns={2} spacing={2}>
+                <SkeletonBlock h="52px" radius="lg" />
+                <SkeletonBlock h="52px" radius="lg" />
+              </SimpleGrid>
+            </Spec>
+            <Spec name="SkeletonRows (ItemRow shape)"><SkeletonRows count={3} /></Spec>
+            <Spec name="SkeletonProgressRow"><SkeletonProgressRow /></Spec>
+          </Stack>
+        </SkeletonRegion>
+      </SimpleGrid>
+    </Panel>
+  )
+}
+
 export default function KitGallery() {
   const [params] = useSearchParams()
   const preview = params.get('preview')
+  if (preview === 'loading') return <RingLoader fullScreen />
   if (ERROR_VARIANTS.includes(preview)) {
     return (
       <ErrorScreen variant={preview} signedIn={params.has('signedIn')} fullPage
@@ -229,6 +291,7 @@ export default function KitGallery() {
 
           <AnimatedDemo />
         </SimpleGrid>
+        <Box mt={6}><Loaders /></Box>
         <Box mt={6}><ErrorScreens /></Box>
       </Container>
     </Box>

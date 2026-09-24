@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Stack, HStack, Text, Textarea, IconButton, Center, Spinner, Box,
+  Stack, HStack, Text, Textarea, IconButton, Box,
 } from '@chakra-ui/react'
 import { Trash2, Send } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
@@ -11,6 +11,7 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 import { shortDateTime } from '../../shared/lib/dates.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { listComments, addComment, deleteComment } from './comments.js'
+import RingLoader from '../../shared/ui/RingLoader.jsx'
 
 // Thread of comments on one group item. Loads on open and stays live while
 // open — new comments from other members appear as they're posted.
@@ -68,7 +69,7 @@ export default function CommentThread({ group, target, myMember, isOpen, onClose
           {error ? (
             <QueryError error={error} onRetry={reload} what="comments" py={4} />
           ) : loading ? (
-            <Center py={8}><Spinner color="brand.500" /></Center>
+            <RingLoader />
           ) : comments.length === 0 ? (
             <Text color="text.muted" fontSize="sm" py={2}>No comments yet. Start the thread.</Text>
           ) : (

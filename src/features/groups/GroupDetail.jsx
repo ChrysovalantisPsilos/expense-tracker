@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Stack, Text, Center, Spinner, useToast, useDisclosure } from '@chakra-ui/react'
+import { Stack, Text, useToast, useDisclosure } from '@chakra-ui/react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useLiveQuery } from '../../shared/lib/db.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -17,11 +17,13 @@ import GroupHistory from './GroupHistory.jsx'
 import MembersSheet from './MembersSheet.jsx'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
 import CommentThread from './CommentThread.jsx'
+import { GroupDetailSkeleton } from './GroupSkeletons.jsx'
 import {
   DeleteGroupModal, InviteEmailModal, SettleUpModal, RenameGroupModal, LeaveGroupModal,
   RemoveMemberModal,
 } from './GroupModals.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { BusyNote } from '../../shared/ui/RingLoader.jsx'
 
 export default function GroupDetail() {
   const { id } = useParams()
@@ -155,7 +157,7 @@ export default function GroupDetail() {
   }
 
   if (error) return <QueryError error={error} onRetry={load} what="this group" py={20} />
-  if (loading) return <Center py={20}><Spinner color="brand.500" /></Center>
+  if (loading) return <GroupDetailSkeleton />
   if (!data) return <Text color="text.muted">Group not found.</Text>
 
   const { group, members, expenses, settlements } = data
@@ -168,6 +170,8 @@ export default function GroupDetail() {
         onPhotoChanged={load} onAdd={openAdd} onMembers={membersSheet.onOpen}
         onReport={downloadReport} onShare={shareSummary} onRename={renameModal.onOpen}
         onLeave={myMember ? leaveModal.onOpen : undefined} onDelete={deleteModal.onOpen} />
+
+      {reportBusy && <BusyNote>Preparing the group statement…</BusyNote>}
 
       <GroupBalances group={group} members={members} balances={balances} myMember={myMember}
         myUserId={user.id} onSettle={settleModal.onOpen} />

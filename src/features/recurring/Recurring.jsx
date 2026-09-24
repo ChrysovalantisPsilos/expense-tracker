@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
-  Stack, Text, Button, Center, Spinner, List, ListItem, Switch, Tag, Flex, Box, Modal, ModalOverlay,
+  Stack, Text, Button, List, ListItem, Switch, Tag, Flex, Box, Modal, ModalOverlay,
   ModalContent, ModalHeader, ModalBody, ModalFooter, Tabs, TabList, Tab, TabPanels, TabPanel, useToast,
-  useDisclosure,
+  useDisclosure, SimpleGrid,
 } from '@chakra-ui/react'
 import { Plus, Pencil, Trash2, Repeat, Bell, Pause, Play } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
@@ -21,6 +21,7 @@ import RecurringForm from './RecurringForm.jsx'
 import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 
 const TABS = ['expense', 'income']
 
@@ -85,7 +86,13 @@ export default function Recurring() {
 
       <Panel>
         {error ? <QueryError error={error} onRetry={reload} what="recurring payments" /> : loading ? (
-          <Center py={8}><Spinner color="brand.500" /></Center>
+          <SkeletonRegion>
+            <SimpleGrid columns={2} spacing={6} px={6} pb={4} mb={2} borderBottomWidth="2px" borderColor="border.default">
+              <SkeletonBlock h="14px" />
+              <SkeletonBlock h="14px" />
+            </SimpleGrid>
+            <SkeletonRows count={5} />
+          </SkeletonRegion>
         ) : (
           <Tabs colorScheme="brand" index={tab} onChange={setTab} isFitted>
             <TabList>

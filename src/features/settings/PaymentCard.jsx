@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import {
-  Stack, SimpleGrid, Button, FormControl, FormLabel, Input, useToast,
-  Center, Spinner, Text,
+  Stack, SimpleGrid, Button, FormControl, FormLabel, Input, useToast, Text,
 } from '@chakra-ui/react'
 import { Landmark } from 'lucide-react'
 import { getMyPaymentInfo, savePaymentInfo } from '../../shared/lib/profile.js'
 import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
+import RingLoader from '../../shared/ui/RingLoader.jsx'
 
 // "Getting paid": the IBAN / Revolut tag / PayPal.me name friends see when
 // settling up.
@@ -56,7 +56,7 @@ export default function PaymentCard({ user }) {
         a bank QR for your IBAN, and Revolut and PayPal links with the amount filled in.
       </Text>
       {!loaded ? (
-        <Center py={3}><Spinner size="sm" color="brand.500" /></Center>
+        <RingLoader compact />
       ) : (
         <Stack spacing={4} as="form" onSubmit={save}>
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>

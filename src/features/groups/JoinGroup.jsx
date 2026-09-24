@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
-  Box, Flex, Center, Stack, HStack, Heading, Text, Button, Spinner,
+  Box, Flex, Center, Stack, HStack, Heading, Text, Button,
   Avatar, Divider, List, ListItem, Spacer, useToast,
 } from '@chakra-ui/react'
 import { Check, X } from 'lucide-react'
@@ -9,6 +9,7 @@ import { previewLinkInvite, joinViaLink } from './groups.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import GroupMark from './GroupMark.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import RingLoader from '../../shared/ui/RingLoader.jsx'
 
 const INVITE_UNAVAILABLE = 'This invite link is invalid or has expired. Ask whoever invited you for a fresh link.'
 
@@ -55,14 +56,7 @@ export default function JoinGroup() {
   }
 
   if (state.status === 'loading') {
-    return (
-      <Center h="100dvh">
-        <Stack align="center" spacing={3}>
-          <Spinner color="brand.500" size="lg" />
-          <Text color="text.muted">Loading invite…</Text>
-        </Stack>
-      </Center>
-    )
+    return <RingLoader fullScreen caption="Loading invite…" />
   }
 
   if (state.status === 'invalid' || state.status === 'error') {

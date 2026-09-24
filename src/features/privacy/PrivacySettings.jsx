@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  Box, Button, Center, FormControl, FormHelperText, FormLabel, HStack, Link, Select, Spinner,
+  Box, Button, FormControl, FormHelperText, FormLabel, HStack, Link, Select,
   Stack, Text, Textarea, useDisclosure, useToast,
 } from '@chakra-ui/react'
 import {
@@ -18,6 +18,7 @@ import {
 } from './legal.js'
 import { PRIVACY_EMAIL } from '../../shared/lib/contact.js'
 import { downloadMyData, listMyConsents, sendPrivacyRequest } from './privacyData.js'
+import RingLoader, { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 // Settings → Privacy: each GDPR right with the way to use it here, the
 // optional-message switches (consent), and the consent history.
@@ -91,7 +92,8 @@ function DownloadRight() {
     <Right icon={Download} title="Download your data" article="Art. 15 and 20"
       text="One JSON file with everything we hold about you: account and profile, payment details, consents, notifications, devices for push (service only), categories, rules, accounts, budgets, goals, recurring payments, transactions, and your part of your groups. Nothing about other people beyond what you already see in the app.">
       <HStack spacing={2} flexWrap="wrap">
-        <Button leftIcon={<Download size={16} />} size="sm" isLoading={busy} onClick={download}>
+        <Button leftIcon={<Download size={16} />} size="sm" isLoading={busy} onClick={download}
+          loadingText="Gathering your data…" spinner={<RingSpinner />}>
           Download my data
         </Button>
         <Button as={RouterLink} to="/settings/data" size="sm" variant="ghost">Backup and restore</Button>
@@ -163,7 +165,7 @@ function ConsentHistory({ consents }) {
   return (
     <Panel title="Your consent history" icon={History}>
       {consents === null ? (
-        <Center py={4}><Spinner size="sm" color="brand.500" /></Center>
+        <RingLoader compact />
       ) : consents.length === 0 ? (
         <Text fontSize="sm" color="text.muted">Nothing recorded yet.</Text>
       ) : (

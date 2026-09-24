@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  SimpleGrid, Box, Text, Stack, Center, Spinner, HStack, IconButton,
+  SimpleGrid, Box, Text, Stack, HStack, IconButton,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, Table as TableIcon, ReceiptText, Users } from 'lucide-react'
@@ -33,6 +33,7 @@ import {
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 import SubscriptionsCard from '../recurring/SubscriptionsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import { SkeletonBlock, SkeletonFigure, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
 
@@ -40,7 +41,7 @@ const UNAVAILABLE = 'Not available until your transactions load.'
 
 export default function Dashboard() {
   const { baseCurrency, separateYearly } = useProfile()
-  const { rules } = useRecurring()
+  const { rules, loading: rulesLoading } = useRecurring()
   const [oldest, setOldest] = useState(null)
   const periods = useMemo(() => buildPeriods(oldest), [oldest])
   // Default to this month; its token is stable and always present in the list.
@@ -102,6 +103,7 @@ export default function Dashboard() {
         <Panel data-tour="overview"><QueryError error={error} onRetry={reload} what="your transactions" /></Panel>
       ) : (
       <Panel data-tour="overview">
+        {loading ? <OverviewSkeleton /> : (
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} alignItems="center">
           <Box>
             <Figure label="Spent" size="hero" value={formatMoney(spentTotal, baseCurrency)} />
@@ -118,6 +120,7 @@ export default function Dashboard() {
               note={proj.expense > 0 || proj.income > 0 ? 'incl. upcoming recurring' : 'income − expenses'} />
           </SimpleGrid>
         </SimpleGrid>
+        )}
       </Panel>
       )}
 
@@ -138,7 +141,7 @@ export default function Dashboard() {
           </HStack>
         }>
         {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
-          <Center py={8}><Spinner color="brand.500" /></Center>
+          <SkeletonRegion><SkeletonRows count={4} progress /></SkeletonRegion>
         ) : byCategory.length === 0 ? (
           <Text color="text.muted" fontSize="sm">No expenses in this period.</Text>
         ) : view === 'table' ? (
@@ -182,7 +185,7 @@ export default function Dashboard() {
 
       <Panel icon={ReceiptText} title={expHead.title} subtitle={expHead.subtitle} divider>
         {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
-          <Center py={8}><Spinner color="brand.500" /></Center>
+          <SkeletonRegion><SkeletonRows count={5} py={2.5} /></SkeletonRegion>
         ) : expenses.length === 0 ? (
           <Text color="text.muted" fontSize="sm">No expenses in this period.</Text>
         ) : (
@@ -194,8 +197,24 @@ export default function Dashboard() {
         )}
       </Panel>
 
-      <SubscriptionsCard rules={rules} baseCurrency={baseCurrency} />
+      <SubscriptionsCard rules={rules} loading={rulesLoading} baseCurrency={baseCurrency} />
     </Stack>
+  )
+}
+
+// The overview's shape while the period's transactions load: Spent, then the
+// Income and Net tiles (instead of €0.00 totals that look real).
+function OverviewSkeleton() {
+  return (
+    <SkeletonRegion>
+      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} alignItems="center">
+        <SkeletonFigure size="hero" w="60%" />
+        <SimpleGrid columns={2} spacing={2}>
+          <SkeletonBlock h="64px" radius="lg" />
+          <SkeletonBlock h="64px" radius="lg" />
+        </SimpleGrid>
+      </SimpleGrid>
+    </SkeletonRegion>
   )
 }
 

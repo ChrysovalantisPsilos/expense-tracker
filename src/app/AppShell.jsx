@@ -11,7 +11,7 @@ import {
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/ProfileProvider.jsx'
 import Logo from '../shared/ui/Logo.jsx'
-import PageSpinner from '../shared/ui/PageSpinner.jsx'
+import RingLoader from '../shared/ui/RingLoader.jsx'
 import OfflineIndicator from '../shared/ui/OfflineIndicator.jsx'
 import ThemeToggle from '../shared/ui/ThemeToggle.jsx'
 import SiteSwitch from '../shared/ui/SiteSwitch.jsx'
@@ -175,7 +175,7 @@ export default function AppShell() {
               error screen shows here, with the navigation still around it.
               Moving to another page tries again. */}
           <ErrorBoundary inline resetKey={location.pathname}>
-            <Suspense fallback={<PageSpinner />}>
+            <Suspense fallback={<RingLoader />}>
               <Outlet />
             </Suspense>
           </ErrorBoundary>

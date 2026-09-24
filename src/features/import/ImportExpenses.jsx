@@ -24,6 +24,7 @@ import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
 import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { userMessage } from '../../shared/lib/errors.js'
+import { BusyNote, RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 const mappingComplete = (m) => Boolean(m.date && (m.amount || (m.debit && m.credit)))
@@ -44,6 +45,7 @@ export default function ImportExpenses() {
   const [detection, setDetection] = useState(null) // { preset, confidence, remembered }
   const [showMapping, setShowMapping] = useState(false)
   const { busy, run } = useAsyncSubmit()
+  const [reading, setReading] = useState(false) // parsing the chosen file
   const [result, setResult] = useState(null)
   const [pending, setPending] = useState(null)   // { valid, errors, groups }
   const [assign, setAssign] = useState({})       // merchant pattern -> category id
@@ -54,6 +56,7 @@ export default function ImportExpenses() {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    setReading(true)
     try {
       const parsed = await parseWorkbook(file)
       if (!parsed.rows.length) { toast({ title: 'That file has no rows', status: 'warning' }); return }
@@ -70,6 +73,8 @@ export default function ImportExpenses() {
       console.error('[import] file not read:', err)
       toast({ title: 'Couldn’t read that file', description: userMessage(err, 'This spreadsheet couldn’t be read.'),
         status: 'error', duration: 9000, isClosable: true })
+    } finally {
+      setReading(false)
     }
   }
 
@@ -161,10 +166,14 @@ export default function ImportExpenses() {
               anything is saved. Pending and declined payments are left out;
               foreign-currency rows convert at the ECB rate for their date.
             </Text>
-            <Button as="label" leftIcon={<FileSpreadsheet size={16} />} cursor="pointer">
-              Choose file
-              <input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,text/csv" hidden onChange={onFile} />
-            </Button>
+            {reading ? (
+              <BusyNote minH="40px">Reading your file…</BusyNote>
+            ) : (
+              <Button as="label" leftIcon={<FileSpreadsheet size={16} />} cursor="pointer">
+                Choose file
+                <input type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,text/csv" hidden onChange={onFile} />
+              </Button>
+            )}
           </Stack>
         </Panel>
       )}
@@ -221,8 +230,9 @@ export default function ImportExpenses() {
               </Text>
             )}
             <HStack mt={4}>
+              {busy && <BusyNote>Importing {plural(preview.ready, 'row')}…</BusyNote>}
               <Spacer />
-              <Button leftIcon={<Check size={16} />} isLoading={busy}
+              <Button leftIcon={<Check size={16} />} isLoading={busy} spinner={<RingSpinner />}
                 isDisabled={preview.ready === 0} onClick={() => prepare()}>
                 Import {plural(preview.ready, 'row')}
               </Button>
@@ -253,8 +263,9 @@ export default function ImportExpenses() {
           </Stack>
           <HStack mt={5}>
             <Button variant="ghost" onClick={() => setStep('map')}>Back</Button>
+            {busy && <BusyNote>Importing {plural(preview.ready, 'row')}…</BusyNote>}
             <Spacer />
-            <Button leftIcon={<Check size={16} />} isLoading={busy}
+            <Button leftIcon={<Check size={16} />} isLoading={busy} spinner={<RingSpinner />}
               isDisabled={missingRates.some(({ currency }) => !parseManualRate(rateInput[currency]))}
               onClick={() => prepare(Object.fromEntries(missingRates.map(({ currency }) =>
                 [currency, parseManualRate(rateInput[currency])])))}>
@@ -290,8 +301,9 @@ export default function ImportExpenses() {
           </Stack>
           <HStack mt={5}>
             <Button variant="ghost" onClick={() => { setPending(null); setStep('map') }}>Back</Button>
+            {busy && <BusyNote>Importing {plural(pending.valid.length, 'row')}…</BusyNote>}
             <Spacer />
-            <Button leftIcon={<Check size={16} />} isLoading={busy}
+            <Button leftIcon={<Check size={16} />} isLoading={busy} spinner={<RingSpinner />}
               onClick={() => finishImport(pending.valid, pending.errors, pending.skipped, assign)}>
               Import {pending.valid.length} rows
             </Button>

@@ -7,6 +7,7 @@ import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 const TABS = [['expenses', 'Expenses'], ['settlements', 'Settlements'], ['activity', 'Activity']]
 
@@ -28,7 +29,7 @@ export default function GroupHistory({
         <Spacer />
         {tab === 'activity' && (
           <Button size="xs" variant="ghost" leftIcon={<FileDown size={14} />}
-            isLoading={reportBusy} onClick={onReport}>PDF</Button>
+            isLoading={reportBusy} spinner={<RingSpinner />} onClick={onReport}>PDF</Button>
         )}
       </HStack>
 

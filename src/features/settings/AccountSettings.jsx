@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Stack, HStack, Button, FormControl, SimpleGrid, FormLabel,
-  Input, Select, useToast, Center, Spinner, Text, IconButton, Box,
+  Input, Select, useToast, Text, IconButton, Box,
 } from '@chakra-ui/react'
 import { Camera, UserRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
@@ -14,6 +14,7 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import SettingsPage from './SettingsPage.jsx'
 import PaymentCard from './PaymentCard.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import RingLoader from '../../shared/ui/RingLoader.jsx'
 
 export default function AccountSettings() {
   const { user } = useAuth()
@@ -77,7 +78,7 @@ function IdentityCard({ user }) {
   }
 
   if (loading) {
-    return <Panel title="Profile" icon={UserRound}><Center py={10}><Spinner color="brand.500" /></Center></Panel>
+    return <Panel title="Profile" icon={UserRound}><RingLoader /></Panel>
   }
 
   return (

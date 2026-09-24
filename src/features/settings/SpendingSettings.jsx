@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Center, Spinner, useToast } from '@chakra-ui/react'
+import { useToast } from '@chakra-ui/react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { updateProfile } from '../../shared/lib/profile.js'
@@ -8,6 +8,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
 import PrefRow from './PrefRow.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import RingLoader from '../../shared/ui/RingLoader.jsx'
 
 // How monthly spending is counted. One synced preference for now:
 // profiles.yearly_separate (0068). Off (the default) spreads a yearly
@@ -41,7 +42,7 @@ export default function SpendingSettings() {
     <SettingsPage title="Monthly spending">
       <Panel>
         {!profile ? (
-          <Center py={4}><Spinner size="sm" color="brand.500" /></Center>
+          <RingLoader compact />
         ) : (
           <PrefRow id="pref-yearly" label="Count yearly subscriptions in monthly spending"
             hint="On: a yearly payment is spread over the months it covers. Off: it stays out of monthly totals and budgets (Home's Subscriptions card still lists it)."

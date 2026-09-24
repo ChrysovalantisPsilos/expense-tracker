@@ -1,4 +1,5 @@
 import { extendTheme } from '@chakra-ui/react'
+import { colors, DARK, FONTS } from '../shared/ui/palette.js'
 
 // Budgeer — warm & playful. Coral accent + amber, warm sand neutrals (never
 // cool grays), rounded cards, soft shadows. Light + dark.
@@ -12,71 +13,15 @@ const config = {
   useSystemColorMode: false,
 }
 
-const colors = {
-  // Primary accent — coral.
-  brand: {
-    50: '#fff4f1',
-    100: '#ffe3db',
-    200: '#ffc5b6',
-    300: '#ffa088',
-    400: '#ff7a5a',
-    500: '#f95d38', // primary
-    600: '#e2431f',
-    700: '#bd3418',
-    800: '#962b17',
-    900: '#7a2717',
-  },
-  // Secondary accent — amber (positive/highlights).
-  amber: {
-    50: '#fff8eb',
-    100: '#feefc7',
-    200: '#fddf8a',
-    300: '#fcc94d',
-    400: '#fbb324',
-    500: '#f59e0b',
-    600: '#d97a06',
-    700: '#b45709',
-    800: '#92440e',
-    900: '#78390f',
-  },
-  // Warm neutral ramp (sand) — replaces cool gray everywhere.
-  sand: {
-    50: '#faf8f4',
-    100: '#f3efe7',
-    200: '#e8e1d5',
-    300: '#d6ccba',
-    400: '#b8ab94',
-    500: '#9a8b72',
-    600: '#7c6f59',
-    700: '#5f5545',
-    800: '#3d372d',
-    900: '#242019',
-  },
-  // Warm brick red — replaces Chakra's saturated red, so everything that
-  // uses colorScheme="red" (destructive buttons, tags, form errors, error
-  // toasts) reads as clearly red, never coral. 500 and 200 are the
-  // status.negative values for light and dark mode.
-  red: {
-    50: '#fdf1ee',
-    100: '#fbdcd5',
-    200: '#f2917f',
-    300: '#e9705d',
-    400: '#d9503f',
-    500: '#c2372b',
-    600: '#a52d23',
-    700: '#87251d',
-    800: '#6b1e18',
-    900: '#541914',
-  },
-}
-
 const semanticTokens = {
   colors: {
-    'bg.canvas': { default: 'sand.50', _dark: '#1a1714' },
-    'bg.surface': { default: 'white', _dark: '#232019' },
-    'bg.subtle': { default: 'sand.100', _dark: '#2b271f' },
-    'border.default': { default: 'sand.200', _dark: '#352f26' },
-    'text.primary': { default: 'sand.900', _dark: '#f6f2ea' },
+    'bg.canvas': { default: 'sand.50', _dark: DARK.canvas },
+    'bg.surface': { default: 'white', _dark: DARK.surface },
+    'bg.subtle': { default: 'sand.100', _dark: DARK.subtle },
+    // The highlight that sweeps across a loading skeleton (a bg.subtle block).
+    'skeleton.shine': { default: 'sand.50', _dark: DARK.border },
+    'border.default': { default: 'sand.200', _dark: DARK.border },
+    'text.primary': { default: 'sand.900', _dark: DARK.text },
     'text.muted': { default: 'sand.600', _dark: 'sand.400' },
     'accent.fg': { default: 'brand.600', _dark: 'brand.300' },
 
@@ -105,8 +50,8 @@ const semanticTokens = {
     // Chakra's own global tokens (default borders, dividers, placeholders,
     // subtle fills) are cool grays; re-point them at the sand ramp. These use
     // _light (not default) because that's the key Chakra's base theme sets.
-    'chakra-border-color': { _light: 'sand.200', _dark: '#352f26' },
-    'chakra-subtle-bg': { _light: 'sand.100', _dark: '#2b271f' },
+    'chakra-border-color': { _light: 'sand.200', _dark: DARK.border },
+    'chakra-subtle-bg': { _light: 'sand.100', _dark: DARK.subtle },
     'chakra-subtle-text': { _light: 'sand.600', _dark: 'sand.400' },
     'chakra-placeholder-color': { _light: 'sand.500', _dark: 'sand.500' },
   },
@@ -142,8 +87,8 @@ const theme = extendTheme({
   colors,
   semanticTokens,
   fonts: {
-    heading: `'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
-    body: `'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
+    heading: FONTS.heading,
+    body: FONTS.body,
   },
   radii: {
     lg: '0.75rem',

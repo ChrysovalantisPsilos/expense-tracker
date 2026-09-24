@@ -22,6 +22,7 @@ import { ProfileProvider } from './shared/lib/ProfileProvider.jsx'
 import { AppearanceProvider } from './shared/lib/appearance.jsx'
 import AutoUpdate from './app/AutoUpdate.jsx'
 import { markEnvironment } from './shared/lib/environment.js'
+import { adoptBootLoader } from './shared/ui/useLoaderReveal.js'
 
 // On the test site: "DEV · " tab title and the tagged favicon.
 markEnvironment(document)
@@ -31,7 +32,12 @@ markEnvironment(document)
 // anywhere in them still gets a branded screen. AutoUpdate stays outside it,
 // so a crashed tab keeps picking up fixed deploys. The outer one only catches
 // a failure of Chakra itself, with a plain unthemed fallback.
-ReactDOM.createRoot(document.getElementById('root')).render(
+// index.html paints a loading screen into #root before this script arrives;
+// React replaces it, and the app's first loader carries it on seamlessly.
+const root = document.getElementById('root')
+adoptBootLoader(root)
+
+ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <ErrorBoundary fallback={<RootFallback />}>
       <ColorModeScript initialColorMode={theme.config.initialColorMode} />

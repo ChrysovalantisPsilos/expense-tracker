@@ -1,6 +1,7 @@
-import { Box, FormControl, FormLabel, HStack, Input, Spinner, Text } from '@chakra-ui/react'
+import { Box, FormControl, FormLabel, Input, Text } from '@chakra-ui/react'
 import { formatMoney, formatRate, toBaseMinor } from '../lib/currency.js'
 import { shortDate } from '../lib/dates.js'
+import { BusyNote } from './RingLoader.jsx'
 
 // The conversion a foreign-currency entry will be saved with, shown BEFORE
 // saving: "£42.50 ≈ €49.73 @ 1.1699 on 21 Aug". When no rate could be fetched
@@ -15,11 +16,7 @@ export default function FxPreview({ from, to, amountMinor, fx, captured, manual,
     : `1 ${from} = ${formatRate(r)} ${to}`)
 
   if (fx.status === 'loading') {
-    return (
-      <HStack fontSize="sm" color="text.muted" spacing={2} aria-live="polite">
-        <Spinner size="xs" /><Text>Looking up the {from}→{to} rate…</Text>
-      </HStack>
-    )
+    return <BusyNote>Looking up the {from}→{to} rate…</BusyNote>
   }
 
   if (fx.status === 'skipped' && captured) {

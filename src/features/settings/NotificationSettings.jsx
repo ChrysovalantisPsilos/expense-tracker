@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Stack, Divider, Center, Spinner, useToast } from '@chakra-ui/react'
+import { Stack, Divider, useToast } from '@chakra-ui/react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { enablePush } from '../../shared/lib/push.js'
 import { getProfile, updateProfile } from '../../shared/lib/profile.js'
@@ -7,6 +7,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
 import PrefRow from './PrefRow.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import RingLoader from '../../shared/ui/RingLoader.jsx'
 
 export default function NotificationSettings() {
   return (
@@ -59,7 +60,7 @@ export function NotificationPrefs({ title, onChanged }) {
   return (
     <Panel title={title}>
       {prefs === null ? (
-        <Center py={4}><Spinner size="sm" color="brand.500" /></Center>
+        <RingLoader compact />
       ) : (
         <Stack spacing={4} divider={<Divider />}>
           <PrefRow id="pref-push" label="Push notifications"

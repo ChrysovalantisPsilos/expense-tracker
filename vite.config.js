@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { OCR_ASSET_DIR } from './src/shared/lib/receiptScan.js'
+import { RING_LOADER_CSS, bootLoaderHtml } from './src/shared/ui/ringLoader.js'
 
 // Receipt OCR engine, served from our own origin instead of Tesseract's
 // jsDelivr defaults: the worker, both LSTM cores (Tesseract picks SIMD or not
@@ -41,11 +42,42 @@ function selfHostedOcr() {
   }
 }
 
+// index.html's loading screen, painted before any JavaScript arrives (see
+// src/shared/ui/ringLoader.js): its markup inside #root, which React replaces
+// on mount; its stylesheet in <head>, which the app's loaders (RingLoader.jsx)
+// share; public/theme-boot.js, which picks the saved colour mode before the
+// first paint; and, in a build, a preload for the wordmark's font.
+const ROOT = '<div id="root"></div>'
+function bootLoader() {
+  return {
+    name: 'boot-loader',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        if (!html.includes(ROOT)) throw new Error(`boot-loader: index.html needs an empty ${ROOT}`)
+        const font = Object.keys(ctx.bundle ?? {}).find((f) => /poppins-latin-700-normal-[\w-]+\.woff2$/.test(f))
+        const preload = font
+          ? [{ tag: 'link', attrs: { rel: 'preload', href: `/${font}`, as: 'font', type: 'font/woff2', crossorigin: true } }]
+          : []
+        return {
+          html: html.replace(ROOT, `<div id="root">${bootLoaderHtml()}</div>`),
+          tags: [
+            { tag: 'script', attrs: { src: '/theme-boot.js' }, injectTo: 'head' },
+            { tag: 'style', attrs: { id: 'ring-loader' }, children: RING_LOADER_CSS, injectTo: 'head' },
+            ...preload.map((t) => ({ ...t, injectTo: 'head' })),
+          ],
+        }
+      },
+    },
+  }
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     selfHostedOcr(),
+    bootLoader(),
     VitePWA({
       // Custom worker (src/sw.js): generateSW can't add push handlers, so the
       // precache/fallback/runtime-caching setup lives there alongside the

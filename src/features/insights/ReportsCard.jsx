@@ -7,6 +7,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import { monthRange } from '../../shared/lib/dates.js'
 import { downloadStatement } from './reports.js'
 import { userMessage } from '../../shared/lib/errors.js'
+import { BusyNote, RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 // Financial-statement export (PDF/Excel) for a date range, on the Insights page.
 export default function ReportsCard() {
@@ -46,14 +47,16 @@ export default function ReportsCard() {
       </SimpleGrid>
       <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3}>
         <Button leftIcon={<FileText size={18} />} onClick={() => generate('pdf')}
-          isLoading={busy === 'pdf'} loadingText="Building…">
+          isLoading={busy === 'pdf'} isDisabled={busy !== null} loadingText="Building…" spinner={<RingSpinner />}>
           Export PDF
         </Button>
         <Button leftIcon={<FileSpreadsheet size={18} />} onClick={() => generate('xlsx')}
-          isLoading={busy === 'xlsx'} loadingText="Building…" variant="outline">
+          isLoading={busy === 'xlsx'} isDisabled={busy !== null} loadingText="Building…" spinner={<RingSpinner />}
+          variant="outline">
           Export Excel
         </Button>
       </SimpleGrid>
+      {busy && <BusyNote mt={4}>Preparing your {busy === 'pdf' ? 'PDF' : 'Excel'} statement…</BusyNote>}
     </Panel>
   )
 }

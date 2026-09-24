@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Box, Button, Center, FormControl, FormHelperText, FormLabel, HStack,
+  Box, Button, FormControl, FormHelperText, FormLabel,
   Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
-  Select, Spinner, Stack, Text, useToast,
+  Select, Stack, Text, useToast,
 } from '@chakra-ui/react'
 import { Archive, ArchiveRestore, Pencil, Plus, Tags, Trash2 } from 'lucide-react'
 import SettingsPage from '../settings/SettingsPage.jsx'
@@ -21,6 +21,7 @@ import { moveTargets, sameKindOthers, sortCategories } from './categoryMath.js'
 import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
 import { categoryPath } from './categoryLinks.js'
 import { userMessage } from '../../shared/lib/errors.js'
+import RingLoader, { BusyNote } from '../../shared/ui/RingLoader.jsx'
 
 const KINDS = [['expense', 'Expenses'], ['income', 'Income']]
 
@@ -56,7 +57,7 @@ export default function Categories() {
         <SegmentedControl label="Category type" options={KINDS} value={kind} onChange={setKind} mb={3}
           alignSelf="start" w="fit-content" />
         {error ? <QueryError error={error} onRetry={reload} what="categories" /> : loading ? (
-          <Center py={8}><Spinner color="brand.500" /></Center>
+          <RingLoader />
         ) : list.length === 0 ? (
           <Text color="text.muted" fontSize="sm">No {kind} categories yet — add one.</Text>
         ) : (
@@ -151,7 +152,7 @@ function DeleteCategoryModal({ category, all, onClose, onSaved }) {
         <ModalBody>
           <Stack spacing={4}>
             {count == null ? (
-              <HStack color="text.muted" fontSize="sm"><Spinner size="xs" /><Text>Checking its entries…</Text></HStack>
+              <BusyNote>Checking its entries…</BusyNote>
             ) : count === 0 ? (
               <Text color="text.muted">No entries use this category.</Text>
             ) : (

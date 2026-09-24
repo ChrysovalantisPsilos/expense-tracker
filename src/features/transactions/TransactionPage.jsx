@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { Button, Center, IconButton, Spinner, Stack, Text, useToast } from '@chakra-ui/react'
+import { Button, IconButton, Stack, Text, useToast } from '@chakra-ui/react'
 import { ArrowLeft, Users } from 'lucide-react'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
@@ -14,6 +14,7 @@ import { useTransaction } from './useData.js'
 import { deleteTransaction } from './writes.js'
 import TransactionForm from './TransactionForm.jsx'
 import DeleteTransactionDialog from './DeleteTransactionDialog.jsx'
+import RingLoader from '../../shared/ui/RingLoader.jsx'
 
 const noun = (kind) => (kind === 'income' ? 'income' : 'expense')
 
@@ -66,7 +67,7 @@ export default function TransactionPage() {
 
   let body
   if (!isNew && error) body = <Panel><QueryError error={error} onRetry={reload} what="this entry" /></Panel>
-  else if (!isNew && waiting) body = <Center py={12}><Spinner color="brand.500" /></Center>
+  else if (!isNew && waiting) body = <RingLoader />
   else if (!isNew && !row) {
     body = (
       <Panel>

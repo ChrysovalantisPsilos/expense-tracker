@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useParams, useSearchParams } from 'react-router-dom'
 import {
-  Box, Button, Center, Divider, Flex, FormControl, FormHelperText, FormLabel, HStack, Select,
-  Spinner, Stack, Text, useToast,
+  Box, Button, Divider, Flex, FormControl, FormHelperText, FormLabel, HStack, Select,
+  Stack, Text, useToast,
 } from '@chakra-ui/react'
 import { Archive, ArchiveRestore, Pencil, ReceiptText, Target, X } from 'lucide-react'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
@@ -10,6 +10,9 @@ import BackButton from '../../shared/ui/BackButton.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import {
+  SkeletonFigure, SkeletonProgressRow, SkeletonRegion, SkeletonRows,
+} from '../../shared/ui/Skeleton.jsx'
 import Paginator from '../../shared/ui/Paginator.jsx'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
@@ -122,8 +125,12 @@ export default function CategoryPage() {
 
       <Panel>
         <Flex gap={3} align="start" justify="space-between" wrap="wrap">
-          <Figure label={kind === 'income' ? 'Earned' : 'Spent'} size="xl"
-            value={txns.loading ? '…' : formatMoney(total, baseCurrency)} />
+          {txns.loading ? (
+            <SkeletonRegion flex="1"><SkeletonFigure size="xl" w="160px" /></SkeletonRegion>
+          ) : (
+            <Figure label={kind === 'income' ? 'Earned' : 'Spent'} size="xl"
+              value={formatMoney(total, baseCurrency)} />
+          )}
           <Select w={{ base: '150px', sm: '200px' }} size="md" borderRadius="lg" aria-label="Period"
             value={period.value} onChange={(e) => pickPeriod(e.target.value)}>
             {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
@@ -140,7 +147,7 @@ export default function CategoryPage() {
 
       <Panel icon={ReceiptText} title={listHead.title} subtitle={listHead.subtitle} divider>
         {txns.error ? <QueryError error={txns.error} onRetry={txns.reload} what="these entries" /> : txns.loading ? (
-          <Center py={8}><Spinner color="brand.500" /></Center>
+          <SkeletonRegion><SkeletonRows count={6} py={2.5} /></SkeletonRegion>
         ) : listed.length === 0 ? (
           <Text color="text.muted" fontSize="sm">Nothing here for this period.</Text>
         ) : (
@@ -160,7 +167,7 @@ function BudgetSummary({ budget, spent, month, canEdit, period, loading, baseCur
   if (!month) {
     return <Text color="text.muted" fontSize="sm">Budgets are monthly — pick a month to see one.</Text>
   }
-  if (loading) return <Center py={2}><Spinner size="sm" color="brand.500" /></Center>
+  if (loading) return <SkeletonRegion><SkeletonProgressRow /></SkeletonRegion>
   if (budget) {
     const carried = budget.period_start < period.from ? carriedLabel(budget.period_start, period.from) : null
     return (

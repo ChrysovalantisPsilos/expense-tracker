@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useColorMode } from '@chakra-ui/react'
+import { STORAGE_KEYS } from './keys.js'
 
 // Appearance preference: 'light' | 'dark' | 'system'. Persisted locally and
 // applied to Chakra's colour mode. 'system' follows the OS live (and updates
 // when the OS flips). This is the single source of truth for colour mode, so
 // the theme sets useSystemColorMode:false and lets this drive setColorMode.
 
-const APPEARANCE_KEY = 'budge-appearance'
+const APPEARANCE_KEY = STORAGE_KEYS.appearance
 const Ctx = createContext({ pref: 'system', setPref: () => {} })
 
 export function AppearanceProvider({ children }) {

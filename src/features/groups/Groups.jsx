@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
-  Box, Stack, HStack, Text, Button, Center, Spinner,
+  Box, Stack, HStack, Text, Button, Center,
   Icon, useDisclosure, FormControl, FormLabel, Input, Select, useToast,
 } from '@chakra-ui/react'
 import { Plus, ChevronRight, Check, X } from 'lucide-react'
@@ -20,6 +20,7 @@ import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import GroupMark from './GroupMark.jsx'
 import AvatarStack from './AvatarStack.jsx'
+import { GroupsSkeleton } from './GroupSkeletons.jsx'
 import { textColor } from '../../shared/ui/kit/kitMath.js'
 import { userMessage } from '../../shared/lib/errors.js'
 
@@ -111,7 +112,7 @@ export default function Groups() {
       {error ? (
         <QueryError error={error} onRetry={load} what="your groups" py={16} />
       ) : loading ? (
-        <Center py={16}><Spinner color="brand.500" /></Center>
+        <GroupsSkeleton />
       ) : groups.length === 0 ? (
         <Panel>
           <Center flexDir="column" py={10} gap={3} textAlign="center">

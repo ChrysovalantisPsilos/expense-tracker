@@ -10,6 +10,7 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { DeleteAccountModal } from '../settings/DeleteAccount.jsx'
 import { changesSince, formatVersion } from './legal.js'
 import { downloadMyData } from './privacyData.js'
+import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 // Blocking prompt shown when the user hasn't accepted the Privacy Notice and
 // Terms versions in force: a new account that signed up with Google, or
@@ -68,7 +69,8 @@ export default function LegalGate({ status, onAccept }) {
                     with you or delete your account.
                   </Text>
                   <Button size="sm" variant="outline" leftIcon={<Download size={16} />}
-                    isLoading={exporting.busy} onClick={download}>Download my data</Button>
+                    isLoading={exporting.busy} loadingText="Gathering your data…" spinner={<RingSpinner />}
+                    onClick={download}>Download my data</Button>
                   <Button size="sm" variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />}
                     onClick={deleteModal.onOpen}>Delete my account</Button>
                   <Button size="sm" variant="ghost" leftIcon={<LogOut size={16} />} onClick={signOut}>

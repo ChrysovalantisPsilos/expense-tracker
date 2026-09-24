@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   Stack, Text, Button, FormControl, FormLabel, FormErrorMessage, Input,
-  Progress, Box, Flex, useToast, Modal, ModalOverlay, ModalContent, ModalHeader,
+  Progress, Box, Flex, HStack, useToast, Modal, ModalOverlay, ModalContent, ModalHeader,
   ModalBody, ModalFooter, ModalCloseButton,
 } from '@chakra-ui/react'
 import { Upload, Check, Info, ShieldAlert } from 'lucide-react'
@@ -14,6 +14,7 @@ import { readBackup, unlockBackup, backupContents, restoreSummary } from './back
 import { restoreBackup } from './backup.js'
 import Note from './Note.jsx'
 import { UserError, userMessage } from '../../shared/lib/errors.js'
+import { RingMark, RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 // Hard ceiling on what we'll read into memory; real backups are far smaller.
 const MAX_FILE_BYTES = 50 * 1024 * 1024
@@ -129,7 +130,8 @@ function PasswordStep({ envelope, setFlow, onClose, inputRef }) {
       </ModalBody>
       <ModalFooter gap={2}>
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
-        <Button type="submit" isLoading={busy} loadingText="Unlocking" isDisabled={!password}>Unlock</Button>
+        <Button type="submit" isLoading={busy} loadingText="Unlocking" spinner={<RingSpinner />}
+          isDisabled={!password}>Unlock</Button>
       </ModalFooter>
     </form>
   )
@@ -171,7 +173,10 @@ function ReviewStep({ backup, setFlow, onClose, running }) {
           {running && (
             <Box aria-live="polite">
               <Flex justify="space-between" fontSize="sm" mb={1.5} gap={2}>
-                <Text minW={0} overflowWrap="anywhere">{progress.label}…</Text>
+                <HStack spacing={2.5} minW={0}>
+                  <RingMark size={20} />
+                  <Text minW={0} overflowWrap="anywhere">{progress.label}…</Text>
+                </HStack>
                 {progress.total > 0 && (
                   <Text color="text.muted" flexShrink={0}>{progress.done} / {progress.total}</Text>
                 )}
@@ -207,7 +212,7 @@ function ReviewStep({ backup, setFlow, onClose, running }) {
       <ModalFooter gap={2}>
         <Button variant="ghost" onClick={onClose} isDisabled={running}>Cancel</Button>
         <Button leftIcon={<Upload size={16} />} onClick={start} isLoading={running}
-          loadingText="Restoring">
+          loadingText="Restoring" spinner={<RingSpinner />}>
           Restore
         </Button>
       </ModalFooter>

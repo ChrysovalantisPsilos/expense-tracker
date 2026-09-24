@@ -1,5 +1,6 @@
 import { keyframes } from '@emotion/react'
 import { Box } from '@chakra-ui/react'
+import { MARK_ARCS, circumference } from './markGeometry.js'
 
 // The error screens' illustration: the Budgeer mark (public/budgeer-mark.svg,
 // a lowercase "b" whose bowl is a budget ring, amber then coral) with its
@@ -18,12 +19,12 @@ const C = {
   track: 'var(--chakra-colors-border-default)',
 }
 
-// Geometry (viewBox 200 × 170): the mark's proportions, ring resting on the
-// ground line at y 152.
+// Geometry (viewBox 200 × 170): a chunkier mark, ring resting on the ground
+// line at y 152, with the mark's own arcs (markGeometry.js).
 const RING = { cx: 100, cy: 118, r: 23, width: 22 }
-const CIRC = 2 * Math.PI * RING.r // ≈ 144.5
-const AMBER = [0, 40] // arc spans along the circumference, from 12 o'clock
-const CORAL = [44, CIRC]
+const CIRC = circumference(RING.r) // ≈ 144.5
+const [AMBER, CORAL] = [MARK_ARCS.amber, MARK_ARCS.coral]
+  .map((arc) => arc.map((f) => f * CIRC)) // spans along the circumference, from 12 o'clock
 const STEM = { x: 66, y: 40, w: 22, h: 100 }
 const STEM_BASE = `${STEM.x + STEM.w / 2}px ${STEM.y + STEM.h}px`
 const RING_CENTER = `${RING.cx}px ${RING.cy}px`
@@ -74,7 +75,7 @@ const dust = keyframes`
 // Each piece drifts out from the centre along its own middle angle.
 const PIECES = [
   { from: AMBER[0], to: AMBER[1], color: C.amber, spin: 10 },
-  { from: 44, to: 78, color: C.coral, spin: -8 },
+  { from: CORAL[0], to: 78, color: C.coral, spin: -8 },
   { from: 78, to: 112, color: C.coral, spin: 6 },
   { from: 112, to: CIRC, color: C.coral, spin: -10 },
 ].map((p) => {
