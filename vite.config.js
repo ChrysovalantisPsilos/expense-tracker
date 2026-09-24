@@ -92,7 +92,16 @@ export default defineConfig({
         name: 'Budgeer',
         short_name: 'Budgeer',
         description: 'Track spending, budgets, and income — and split with friends.',
-        theme_color: '#f95d38',
+        // Stable identity for the installed app, independent of start_url.
+        id: '/',
+        scope: '/',
+        // The manifest takes one colour per field, with no dark variant.
+        // theme_color is the title/status bar before the page loads; index.html's
+        // per-scheme theme-color metas take over once it does. Both it and the
+        // splash background_color are the light canvas (sand.50), the colour of
+        // index.html's loading screen, so launch → splash → loader → app never
+        // flashes the brand orange (which stays in the icon).
+        theme_color: '#faf8f4',
         background_color: '#faf8f4',
         display: 'standalone',
         start_url: '/',
