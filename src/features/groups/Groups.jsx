@@ -95,13 +95,17 @@ export default function Groups() {
         <Stack spacing={2}>
           {invites.map((inv) => (
             <Panel key={inv.invite_id} elevation="soft" borderColor="brand.200" _dark={{ borderColor: 'brand.700' }}>
-              <HStack spacing={3} flexWrap="wrap">
-                <GroupMark name={inv.group_name} size={40} />
-                <Stack spacing={0} flex="1" minW={0}>
-                  <Text fontWeight="600" overflowWrap="anywhere">{inv.group_name}</Text>
-                  <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{inv.invited_by} invited you</Text>
-                </Stack>
-                <HStack spacing={2} ml="auto">
+              {/* On phones the actions go under the name, so they never
+                  squeeze it into a letter-per-line column. */}
+              <Stack direction={{ base: 'column', sm: 'row' }} spacing={3} align={{ sm: 'center' }}>
+                <HStack spacing={3} flex="1" minW={0}>
+                  <GroupMark name={inv.group_name} size={40} />
+                  <Stack spacing={0} flex="1" minW={0}>
+                    <Text fontWeight="600" noOfLines={2} wordBreak="break-word">{inv.group_name}</Text>
+                    <Text fontSize="xs" color="text.muted" noOfLines={2} wordBreak="break-word">{inv.invited_by} invited you</Text>
+                  </Stack>
+                </HStack>
+                <HStack spacing={2} justify="flex-end" flexShrink={0}>
                   <Button size="sm" leftIcon={<Check size={16} />} onClick={() => respond(inv.invite_id, true)}>
                     Accept
                   </Button>
@@ -110,7 +114,7 @@ export default function Groups() {
                     Decline
                   </Button>
                 </HStack>
-              </HStack>
+              </Stack>
             </Panel>
           ))}
         </Stack>
