@@ -33,10 +33,10 @@ export default function PrivacySettings() {
     <SettingsPage title="Privacy" description="Your data rights, consents and requests">
       <Text fontSize="sm" color="text.muted">
         You have these rights under the GDPR. Use them here, or email{' '}
-        <Link href={`mailto:${PRIVACY_EMAIL}`} color="accent.fg">{PRIVACY_EMAIL}</Link> — we answer
+        <Link href={`mailto:${PRIVACY_EMAIL}`} variant="inline">{PRIVACY_EMAIL}</Link> — we answer
         within one month. Details are in the{' '}
-        <Link as={RouterLink} to="/privacy" color="accent.fg">Privacy Notice</Link> and the{' '}
-        <Link as={RouterLink} to="/terms" color="accent.fg">Terms of Use</Link>.
+        <Link as={RouterLink} to="/privacy" variant="inline">Privacy Notice</Link> and the{' '}
+        <Link as={RouterLink} to="/terms" variant="inline">Terms of Use</Link>.
       </Text>
 
       <DownloadRight />

@@ -24,7 +24,7 @@ function Document({ intro, version, sections }) {
           </Text>
           <Text fontSize="sm" color="text.muted">
             Questions about using the app? See{' '}
-            <Link as={RouterLink} to="/help" color="accent.fg" fontWeight="600">Help &amp; FAQ</Link>.
+            <Link as={RouterLink} to="/help" variant="inline" fontWeight="600">Help &amp; FAQ</Link>.
           </Text>
         </Stack>
       </Stack>
@@ -128,9 +128,9 @@ export function Facts({ items }) {
 }
 
 export function MailLink({ to }) {
-  return <Link href={`mailto:${to}`} color="accent.fg">{to}</Link>
+  return <Link href={`mailto:${to}`} variant="inline">{to}</Link>
 }
 
 export function PageLink({ to, children }) {
-  return <Link as={RouterLink} to={to} color="accent.fg">{children}</Link>
+  return <Link as={RouterLink} to={to} variant="inline">{children}</Link>
 }

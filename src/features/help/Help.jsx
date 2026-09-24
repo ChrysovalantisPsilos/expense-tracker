@@ -158,7 +158,7 @@ function FaqBody() {
 
       <Text fontSize="sm" color="text.muted" textAlign="center" pt={2}>
         {DISCLAIMER} See also the{' '}
-        <Link as={RouterLink} to="/privacy" color="accent.fg" fontWeight="600">Privacy page</Link>.
+        <Link as={RouterLink} to="/privacy" variant="inline" fontWeight="600">Privacy page</Link>.
       </Text>
     </Stack>
   )

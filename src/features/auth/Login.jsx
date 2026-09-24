@@ -118,9 +118,9 @@ export default function Login() {
               alignItems="flex-start" colorScheme="brand" isRequired>
               <Text as="span" fontSize="sm" color="text.muted">
                 I’m 16 or older and I accept the{' '}
-                <Link as={RouterLink} to="/terms" target="_blank" color="accent.fg">Terms of Use</Link>{' '}
+                <Link as={RouterLink} to="/terms" target="_blank" variant="inline">Terms of Use</Link>{' '}
                 and the{' '}
-                <Link as={RouterLink} to="/privacy" target="_blank" color="accent.fg">Privacy Notice</Link>.
+                <Link as={RouterLink} to="/privacy" target="_blank" variant="inline">Privacy Notice</Link>.
               </Text>
             </Checkbox>
           )}

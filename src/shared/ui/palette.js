@@ -60,6 +60,20 @@ export const colors = {
   },
 }
 
+// Coral that carries text (WCAG AA, 4.5:1). brand.500 is too light for white
+// type on it or for coral type on the cream page, so solid buttons and coral
+// text use these; brand.500 stays for the logo, charts, rings and
+// illustrations. `solid` sits under white text in both modes, `text` is coral
+// type on white, cream and sand; `muted` is secondary text on those surfaces
+// (sand.600 falls just short on sand.100). test/contrast.test.js checks them.
+export const ACCESSIBLE = {
+  solid: '#d63d1a',
+  solidHover: '#bd3418',
+  solidActive: '#962b17',
+  text: '#c9381a',
+  muted: '#6f634f',
+}
+
 // Dark-mode surfaces; theme.js maps its semantic tokens onto them (light mode
 // uses the sand ramp: canvas 50, subtle 100, border 200, text 900).
 export const DARK = {

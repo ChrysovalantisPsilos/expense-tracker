@@ -1,5 +1,5 @@
 import { extendTheme } from '@chakra-ui/react'
-import { colors, DARK, FONTS } from '../shared/ui/palette.js'
+import { colors, ACCESSIBLE, DARK, FONTS } from '../shared/ui/palette.js'
 
 // Budgeer — warm & playful. Coral accent + amber, warm sand neutrals (never
 // cool grays), rounded cards, soft shadows. Light + dark.
@@ -27,8 +27,13 @@ const semanticTokens = {
     'skeleton.onCanvasShine': { default: 'sand.100', _dark: DARK.border },
     'border.default': { default: 'sand.200', _dark: DARK.border },
     'text.primary': { default: 'sand.900', _dark: DARK.text },
-    'text.muted': { default: 'sand.600', _dark: 'sand.400' },
-    'accent.fg': { default: 'brand.600', _dark: 'brand.300' },
+    'text.muted': { default: ACCESSIBLE.muted, _dark: 'sand.400' },
+    'accent.fg': { default: ACCESSIBLE.text, _dark: 'brand.300' },
+    // Fill of a solid coral button: white text on it passes 4.5:1 in both
+    // modes (brand.500 is 3.2:1, so it stays decorative).
+    'accent.solid': { default: ACCESSIBLE.solid, _dark: ACCESSIBLE.solid },
+    'accent.solidHover': { default: ACCESSIBLE.solidHover, _dark: ACCESSIBLE.solidHover },
+    'accent.solidActive': { default: ACCESSIBLE.solidActive, _dark: ACCESSIBLE.solidActive },
 
     // Money direction & alerts — warm-leaning green / red / amber, never
     // Chakra's saturated defaults. Each passes 4.5:1 as text on bg.surface
@@ -57,7 +62,7 @@ const semanticTokens = {
     // _light (not default) because that's the key Chakra's base theme sets.
     'chakra-border-color': { _light: 'sand.200', _dark: DARK.border },
     'chakra-subtle-bg': { _light: 'sand.100', _dark: DARK.subtle },
-    'chakra-subtle-text': { _light: 'sand.600', _dark: 'sand.400' },
+    'chakra-subtle-text': { _light: ACCESSIBLE.muted, _dark: 'sand.400' },
     'chakra-placeholder-color': { _light: 'sand.500', _dark: 'sand.500' },
   },
 }
@@ -132,15 +137,22 @@ const theme = extendTheme({
       baseStyle: { borderRadius: 'lg', fontWeight: '600' },
       defaultProps: { colorScheme: 'brand' },
       variants: {
-        // The colorScheme's 500 shade in both modes (Chakra switches to a
-        // pale 200 in dark mode). Brand is the default scheme; red is for
-        // destructive actions. Gray keeps Chakra's neutral fill.
-        solid: ({ colorScheme: c }) => (c === 'gray' ? {} : {
-          bg: `${c}.500`,
-          color: 'white',
-          _hover: { bg: `${c}.600`, _disabled: { bg: `${c}.500` } },
-          _active: { bg: `${c}.700` },
-        }),
+        // The same fill in both modes (Chakra switches to a pale 200 in dark
+        // mode). Brand, the default scheme, uses the accessible coral so its
+        // white label passes 4.5:1; red (destructive) and any other scheme
+        // use their 500 shade. Gray keeps Chakra's neutral fill.
+        solid: ({ colorScheme: c }) => {
+          if (c === 'gray') return {}
+          const [bg, hover, active] = c === 'brand'
+            ? ['accent.solid', 'accent.solidHover', 'accent.solidActive']
+            : [`${c}.500`, `${c}.600`, `${c}.700`]
+          return {
+            bg,
+            color: 'white',
+            _hover: { bg: hover, _disabled: { bg } },
+            _active: { bg: active },
+          }
+        },
         // Quiet muted ghost for the default/neutral schemes; any other scheme
         // (e.g. a red delete icon) keeps Chakra's coloured ghost.
         ghost: ({ colorScheme: c }) => (c === 'brand' || c === 'gray' ? {
@@ -150,12 +162,35 @@ const theme = extendTheme({
         } : {}),
         // Neutral outline buttons (the unselected half of segmented toggles)
         // get sand borders instead of Chakra's gray.
+        // Brand outline and link buttons take the accessible coral text.
         outline: ({ colorScheme }) => (colorScheme === 'gray' ? {
           borderColor: 'border.default',
           color: 'text.primary',
           _hover: { bg: 'bg.subtle' },
           _active: { bg: 'bg.subtle' },
+        } : colorScheme === 'brand' ? { color: 'accent.fg' } : {}),
+        link: ({ colorScheme }) => (colorScheme === 'brand' ? { color: 'accent.fg' } : {}),
+      },
+    },
+    // The selected line tab's label and underline take the accessible coral
+    // (Chakra uses the scheme's 600, which is short of 4.5:1 on white).
+    Tabs: {
+      variants: {
+        line: ({ colorScheme: c }) => (c === 'brand' ? {
+          tab: { _selected: { color: 'accent.fg', borderColor: 'currentColor' } },
         } : {}),
+      },
+    },
+    // `inline`: a link inside running text — coral and underlined, so it
+    // never relies on colour alone.
+    Link: {
+      variants: {
+        inline: {
+          color: 'accent.fg',
+          textDecoration: 'underline',
+          textUnderlineOffset: '2px',
+          _hover: { textDecorationThickness: '2px' },
+        },
       },
     },
     // Tight tracking reads well on big display type but closes up Poppins'

@@ -4,6 +4,6 @@ import { Avatar } from '@chakra-ui/react'
 // "you" looks identical everywhere — Settings, nav, and your own group row.
 // Everyone else keeps Chakra's name-derived color so members stay distinct.
 export default function UserAvatar({ name, src, highlight = false, ...props }) {
-  const brand = highlight ? { bg: 'brand.500', color: 'white' } : {}
+  const brand = highlight ? { bg: 'accent.solid', color: 'white' } : {}
   return <Avatar name={name} src={src} {...brand} {...props} />
 }

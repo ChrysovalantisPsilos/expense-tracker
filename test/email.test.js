@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { EMAIL_COLORS, brandEmail, esc } from '../supabase/functions/_shared/email.ts'
+import { contrast } from './contrast.js'
 
 const EVIL = '<script>alert("x")</script> & \'q\''
 const sample = (over = {}) => brandEmail({
@@ -69,17 +70,6 @@ test('light and dark palettes are declared', () => {
   assert.match(html, /@media \(prefers-color-scheme: dark\)/)
   for (const [, dark] of Object.values(EMAIL_COLORS)) assert.ok(html.includes(dark))
 })
-
-// WCAG 2 contrast ratio of two #rrggbb colours.
-function contrast(a, b) {
-  const lum = (hex) => {
-    const [r, g, bl] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
-      .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
-    return 0.2126 * r + 0.7152 * g + 0.0722 * bl
-  }
-  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x)
-  return (hi + 0.05) / (lo + 0.05)
-}
 
 test('text colours meet WCAG AA (4.5:1) on their surfaces in both modes', () => {
   const pairs = [

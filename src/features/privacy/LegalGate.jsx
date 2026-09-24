@@ -59,8 +59,8 @@ export default function LegalGate({ status, onAccept }) {
                 </UnorderedList>
               )}
               <Text fontSize="sm">
-                Read the <Link as={RouterLink} to="/privacy" color="accent.fg">Privacy Notice</Link> and
-                the <Link as={RouterLink} to="/terms" color="accent.fg">Terms of Use</Link>.
+                Read the <Link as={RouterLink} to="/privacy" variant="inline">Privacy Notice</Link> and
+                the <Link as={RouterLink} to="/terms" variant="inline">Terms of Use</Link>.
               </Text>
               {declined && (
                 <Stack spacing={2} borderWidth="1px" borderColor="border.default" borderRadius="xl" p={3}>
