@@ -121,6 +121,25 @@ export function balanceHighlight(plan) {
     : { text: `You owe ${best.toName}`, amount: best.amount, tone: 'negative' }
 }
 
+// The settle-up dialog's suggestions: the fewest-payments plan's transfers
+// that involve the viewer, biggest first. (The viewer has one net balance,
+// so all of them go the same way: all paid by you, or all paid to you.)
+// Each carries the form values it fills in, from the viewer's side:
+// direction 'out' (you pay `otherId`) or 'in' (they pay you), and the amount
+// in minor units. The first one is what the dialog opens on.
+// [{ from, to, amount, direction, otherId }]
+export function mySettleSuggestions(balances, myMemberId) {
+  if (!myMemberId) return []
+  return simplifyDebts(balances ?? new Map())
+    .filter((t) => t.from === myMemberId || t.to === myMemberId)
+    .map((t) => ({
+      ...t,
+      direction: t.from === myMemberId ? 'out' : 'in',
+      otherId: t.from === myMemberId ? t.to : t.from,
+    }))
+    .sort((a, b) => b.amount - a.amount)
+}
+
 // The "Share summary" text (WhatsApp, Messages…): the group's name and total,
 // then who owes whom by name — never "You", since friends read it. Text only:
 // no expense descriptions, notes or comments. `format(minor)` formats money in

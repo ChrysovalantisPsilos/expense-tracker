@@ -12,8 +12,7 @@ import {
 import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { simplifyDebts } from './splitMath.js'
-import { memberName } from './groupFormat.js'
+import { memberName, mySettleSuggestions } from './groupFormat.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import PayShortcuts from './PayShortcuts.jsx'
 import FormModal from '../../shared/ui/FormModal.jsx'
@@ -164,6 +163,7 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
   const [otherId, setOtherId] = useState(others[0]?.id ?? '')
   const [amount, setAmount] = useState('')
   const [settledAt, setSettledAt] = useState(() => today())
+  const [picked, setPicked] = useState(-1) // the suggestion the form holds
   const { busy, run } = useAsyncSubmit()
   // Open on the form's first real choice rather than the first tabbable
   // element — that is the suggestion list's reminder bell, whose tooltip
@@ -176,17 +176,30 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
 
   // Minimal set of transfers that settles the whole group; surface only the
   // ones the current user is part of, one tap to pre-fill the form.
-  const myPlan = useMemo(() => {
-    if (!myMember) return []
-    return simplifyDebts(balances ?? new Map())
-      .filter((t) => t.from === myMember.id || t.to === myMember.id)
-  }, [balances, myMember])
+  const myPlan = useMemo(() => mySettleSuggestions(balances, myMember?.id), [balances, myMember])
 
-  function applySuggestion(t) {
-    if (t.from === myMember.id) { setDirection('out'); setOtherId(t.to) }
-    else { setDirection('in'); setOtherId(t.from) }
+  function applySuggestion(t, i) {
+    setDirection(t.direction)
+    setOtherId(t.otherId)
     setAmount(String(fromMinor(t.amount, group.currency)))
+    setPicked(i)
   }
+
+  // Each time it opens, the form starts from the top suggestion (the biggest
+  // payment you're part of), so recording it is one tap on Record.
+  const top = myPlan[0]
+  useEffect(() => {
+    if (!isOpen || !top) return
+    setDirection(top.direction)
+    setOtherId(top.otherId)
+    setAmount(String(fromMinor(top.amount, group.currency)))
+    setPicked(0)
+    // Only on opening: later balance updates must not overwrite what's typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen])
+
+  // Editing a field by hand means the form no longer matches a suggestion.
+  const edited = (fn) => (v) => { fn(v); setPicked(-1) }
 
   async function nudge(memberId) {
     try {
@@ -227,23 +240,30 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
                 <Wand2 size={15} />
                 <Text fontSize="sm" fontWeight="600">Suggested to settle up</Text>
               </HStack>
-              <Stack spacing={1.5}>
+              <Stack spacing={1}>
                 {myPlan.map((t, i) => {
-                  const iPay = t.from === myMember.id
+                  const iPay = t.direction === 'out'
+                  const on = picked === i
                   return (
-                    <HStack key={i} fontSize="sm">
-                      <Text flex="1" minW={0} overflowWrap="anywhere">
-                        {iPay
-                          ? <>Pay <b>{nameOf(t.to)}</b> {formatMoney(t.amount, group.currency)}</>
-                          : <><b>{nameOf(t.from)}</b> pays you {formatMoney(t.amount, group.currency)}</>}
-                      </Text>
+                    <HStack key={i} spacing={1}>
+                      {/* The whole row fills the form with this payment. */}
+                      <Button variant="ghost" flex="1" minW={0} h="auto" minH="44px" py={2} px={2}
+                        justifyContent="flex-start" textAlign="left" whiteSpace="normal"
+                        fontWeight="400" fontSize="sm" color="text.primary"
+                        bg={on ? 'bg.subtle' : undefined} aria-pressed={on}
+                        onClick={() => applySuggestion(t, i)}>
+                        <Text as="span" overflowWrap="anywhere">
+                          {iPay
+                            ? <>Pay <b>{nameOf(t.to)}</b> {formatMoney(t.amount, group.currency)}</>
+                            : <><b>{nameOf(t.from)}</b> pays you {formatMoney(t.amount, group.currency)}</>}
+                        </Text>
+                      </Button>
                       {!iPay && members.find((m) => m.id === t.from)?.user_id && (
                         <Tooltip label="Send them a reminder">
-                          <IconButton aria-label="Nudge to settle" size="xs" variant="ghost"
-                            icon={<BellRing size={13} />} onClick={() => nudge(t.from)} />
+                          <IconButton aria-label={`Remind ${nameOf(t.from)} to settle`} size="md" variant="ghost"
+                            icon={<BellRing size={18} />} onClick={() => nudge(t.from)} />
                         </Tooltip>
                       )}
-                      <Button size="xs" variant="ghost" onClick={() => applySuggestion(t)}>Use</Button>
                     </HStack>
                   )
                 })}
@@ -252,16 +272,16 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
           )}
           <HStack spacing={2}>
             <Button ref={directionRef} flex="1" variant={direction === 'out' ? 'solid' : 'outline'}
-              colorScheme={direction === 'out' ? 'brand' : 'gray'}
-              onClick={() => setDirection('out')}>I paid</Button>
+              colorScheme={direction === 'out' ? 'brand' : 'gray'} aria-pressed={direction === 'out'}
+              onClick={() => edited(setDirection)('out')}>I paid</Button>
             <Button flex="1" variant={direction === 'in' ? 'solid' : 'outline'}
-              colorScheme={direction === 'in' ? 'brand' : 'gray'}
-              onClick={() => setDirection('in')}>I received</Button>
+              colorScheme={direction === 'in' ? 'brand' : 'gray'} aria-pressed={direction === 'in'}
+              onClick={() => edited(setDirection)('in')}>I received</Button>
           </HStack>
 
           <FormControl isRequired>
             <FormLabel>{direction === 'out' ? 'Paid to' : 'Received from'}</FormLabel>
-            <Select value={otherId} onChange={(e) => setOtherId(e.target.value)}>
+            <Select value={otherId} onChange={(e) => edited(setOtherId)(e.target.value)}>
               {others.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
             </Select>
             {otherId && (
@@ -286,7 +306,7 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
           <HStack>
             <FormControl isRequired>
               <FormLabel>Amount ({group.currency})</FormLabel>
-              <MoneyInput currency={group.currency} value={amount} onChange={setAmount} />
+              <MoneyInput currency={group.currency} value={amount} onChange={edited(setAmount)} />
             </FormControl>
             <FormControl maxW="160px">
               <FormLabel>Date</FormLabel>

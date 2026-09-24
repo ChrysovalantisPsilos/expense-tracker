@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   memberName, pluralise, splitLabel, settlePlan, sortMembers, avatarStack,
   paidByLabel, groupTotal, memberBalances, balanceHighlight, isEveryoneEqualSplit,
-  myGroupBalance,
+  myGroupBalance, mySettleSuggestions,
 } from '../src/features/groups/groupFormat.js'
 
 const members = [{ id: 'a', display_name: 'Alice' }, { id: 'b', display_name: 'Bob' }]
@@ -68,6 +68,19 @@ test('settlePlan: fewest payments, named, viewer shown as You and flagged', () =
   // Seen by Sofia: she pays, so her row is negative.
   const [s] = settlePlan(new Map([['y', 1000], ['s', -1000]]), ms, 's')
   assert.equal(`${s.fromName}->${s.toName}:${s.tone}`, 'You->Alex:negative')
+})
+
+test('mySettleSuggestions: only your payments, biggest first, with the form values', () => {
+  // You are owed 1500 by Anna (500) and Sofia (1000); Ben and Cara settle between themselves.
+  const bal = new Map([['y', 1500], ['a', -500], ['s', -1000], ['b', -200], ['c', 200]])
+  const got = mySettleSuggestions(bal, 'y')
+  assert.deepEqual(got.map((t) => `${t.direction}:${t.otherId}:${t.amount}`), ['in:s:1000', 'in:a:500'])
+  // You owe: direction 'out', the other side is who you pay.
+  const [pay] = mySettleSuggestions(new Map([['y', -700], ['a', 700]]), 'y')
+  assert.deepEqual({ direction: pay.direction, otherId: pay.otherId, amount: pay.amount },
+    { direction: 'out', otherId: 'a', amount: 700 })
+  assert.deepEqual(mySettleSuggestions(bal, null), [])
+  assert.deepEqual(mySettleSuggestions(undefined, 'y'), [])
 })
 
 test('settlePlan: empty when everyone is settled; others marked not mine', () => {
