@@ -13,7 +13,8 @@
     "test:utc": "TZ=UTC node --test test/*.test.js",
     "test:tz": "TZ=Europe/Brussels node --test test/*.test.js",
     "test:tz-west": "TZ=America/Los_Angeles node --test test/*.test.js",
-    "functions:serve": "supabase functions serve"
+    "functions:serve": "supabase functions serve",
+    "emails:auth": "node scripts/build-auth-emails.mjs"
   },
   "dependencies": {
     "@chakra-ui/react": "^2.8.2",

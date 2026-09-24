@@ -1,10 +1,12 @@
-// The one branded layout for every email the edge functions send (group
-// invites, notification emails, the GDPR notices in gdprEmails.ts). Supabase
-// Auth's own emails are separate (supabase/email-templates).
+// The one branded layout for every Budgeer email: the ones the edge functions
+// send (group invites, notification emails, the GDPR notices in
+// gdprEmails.ts) and the Supabase Auth templates in supabase/email-templates.
 //
 // Callers pass plain text only: every value is HTML-escaped here, so nothing
 // a user typed (a group or display name) can inject markup. The result has an
-// HTML body and a plain-text alternative (Resend's `text`).
+// HTML body and a plain-text alternative (Resend's `text`), plus the same
+// layout as a bare fragment (no <html>/<head>/<body>) for the Supabase Auth
+// templates, which scripts/build-auth-emails.mjs generates from it.
 //
 // Look: the budgeer mark + wordmark over a white rounded card on sand, Poppins
 // headings (falling back to the system sans), a coral button. Colours meet
@@ -50,7 +52,7 @@ export interface BrandEmail {
   footer?: string[]
 }
 
-export function brandEmail(opts: BrandEmail): { html: string; text: string } {
+export function brandEmail(opts: BrandEmail): { html: string; text: string; fragment: string } {
   const C = Object.fromEntries(Object.entries(EMAIL_COLORS).map(([k, v]) => [k, v[0]])) as Record<keyof typeof EMAIL_COLORS, string>
   const D = Object.fromEntries(Object.entries(EMAIL_COLORS).map(([k, v]) => [k, v[1]])) as Record<keyof typeof EMAIL_COLORS, string>
   const origin = opts.origin.replace(/\/+$/, '')
@@ -72,14 +74,10 @@ export function brandEmail(opts: BrandEmail): { html: string; text: string } {
     ? `<p class="bb-muted" style="margin:24px 0 0;font-family:${BODY_FONT};font-size:13px;line-height:1.5;color:${C.muted};">Or paste this link into your browser:<br><a class="bb-link" href="${esc(opts.cta.url)}" style="color:${C.link};word-break:break-all;">${esc(opts.cta.url)}</a></p>`
     : ''
 
-  const html = `<!doctype html>
-<html lang="en"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="light dark">
-<meta name="supported-color-schemes" content="light dark">
-<title>${esc(opts.heading)}</title>
-<style>
+  // The dark palette. In the full document it sits in <head>; the fragment
+  // (for Supabase Auth's template editor, see supabase/email-templates)
+  // carries it inline ahead of the layout.
+  const style = `<style>
   :root { color-scheme: light dark; supported-color-schemes: light dark; }
   @media (prefers-color-scheme: dark) {
     .bb-canvas { background: ${D.canvas} !important; }
@@ -89,10 +87,8 @@ export function brandEmail(opts: BrandEmail): { html: string; text: string } {
     .bb-muted { color: ${D.muted} !important; }
     .bb-link { color: ${D.link} !important; }
   }
-</style>
-</head>
-<body class="bb-canvas" style="margin:0;padding:0;background:${C.canvas};">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(opts.paragraphs.find((p) => typeof p === 'string') ?? opts.heading)}</div>
+</style>`
+  const content = `  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${esc(opts.paragraphs.find((p) => typeof p === 'string') ?? opts.heading)}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="bb-canvas" style="background:${C.canvas};">
     <tr><td align="center" style="padding:28px 12px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
@@ -109,8 +105,21 @@ export function brandEmail(opts: BrandEmail): { html: string; text: string } {
         <tr><td class="bb-muted" style="padding:20px 8px;text-align:center;font-family:${BODY_FONT};font-size:12px;line-height:1.6;color:${C.muted};">${footer.map(esc).join('<br>')}</td></tr>
       </table>
     </td></tr>
-  </table>
+  </table>`
+
+  const html = `<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>${esc(opts.heading)}</title>
+${style}
+</head>
+<body class="bb-canvas" style="margin:0;padding:0;background:${C.canvas};">
+${content}
 </body></html>`
+  const fragment = `${style}\n${content}\n`
 
   const text = [
     opts.heading,
@@ -120,5 +129,5 @@ export function brandEmail(opts: BrandEmail): { html: string; text: string } {
     `--\n${footer.join('\n')}`,
   ].join('\n\n')
 
-  return { html, text }
+  return { html, text, fragment }
 }
