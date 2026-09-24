@@ -107,7 +107,8 @@ export default function Login() {
       subtitle={mode === 'signin'
         ? 'Log in to your groups and budgets'
         : 'Free — track your money and split with friends'}>
-      {!isSupabaseConfigured && (
+      {/* A local-setup hint for developers only; never shown on a built site. */}
+      {import.meta.env.DEV && !isSupabaseConfigured && (
         <Text fontSize="sm" color="status.warning" textAlign="center">
           Supabase isn’t configured yet — set VITE_SUPABASE_URL and
           VITE_SUPABASE_ANON_KEY in .env.
