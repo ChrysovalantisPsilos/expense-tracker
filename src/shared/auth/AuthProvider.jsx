@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useCallback, useMemo } 
 import { supabase } from '../lib/supabase.js'
 import { UserError } from '../lib/errors.js'
 import { clearUserDataCaches } from '../lib/userDataCaches.js'
+import { liveQueryCache } from '../lib/queryCache.js'
 import { REAUTH_REQUIRED, isRecentSignIn, reauthMessage } from '../../../supabase/functions/_shared/reauth.ts'
 
 const AuthContext = createContext(null)
@@ -58,8 +59,12 @@ export function AuthProvider({ children }) {
       if (!mounted) return
       if (event === 'PASSWORD_RECOVERY') setRecovering(true)
       // Any sign-out — explicit, an expired refresh token, another tab, or a
-      // deleted account — clears the decrypted reads the service worker cached.
-      if (event === 'SIGNED_OUT') void clearUserDataCaches()
+      // deleted account — clears the decrypted reads the service worker cached,
+      // and the pages' last answers held in memory.
+      if (event === 'SIGNED_OUT') {
+        liveQueryCache.clear()
+        void clearUserDataCaches()
+      }
       setSession(s)
       setLoading(false)
     })

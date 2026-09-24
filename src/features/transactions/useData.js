@@ -37,6 +37,7 @@ export function useCategories(kind) {
 export function useTransactions({ kind, from, to, categoryId, limit, spread = false } = {}) {
   const { baseCurrency } = useProfile()
   return useOwnedQuery('transactions', {
+    cacheAs: 'transactions',
     fetch: () => listTransactions({ kind, from, to, categoryId, limit, spread, baseCurrency }),
     deps: [kind, from, to, categoryId, limit, spread, baseCurrency],
   })

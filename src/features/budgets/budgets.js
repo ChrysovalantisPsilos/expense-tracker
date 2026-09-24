@@ -10,7 +10,9 @@ import { dbError } from '../../shared/lib/errors.js'
 // forward: a month without its own rows gets the latest earlier month's, whose
 // period_start then names that month (budgetMath.carriedFrom).
 export function useMonthBudgets(periodStart = monthRange().from) {
-  const q = useOwnedQuery('budgets', { fetch: () => listBudgets(periodStart), deps: [periodStart] })
+  const q = useOwnedQuery('budgets', {
+    cacheAs: 'budgets', fetch: () => listBudgets(periodStart), deps: [periodStart],
+  })
   return { ...q, periodStart }
 }
 

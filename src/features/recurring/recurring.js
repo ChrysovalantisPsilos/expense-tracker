@@ -8,7 +8,9 @@ import { dbError } from '../../shared/lib/errors.js'
 // `save_recurring_rule` (the server forces user_id; on update only the keys
 // sent change). Realtime still watches the base table.
 export function useRecurring() {
-  const { rows: rules, loading, error, reload } = useOwnedQuery('recurring_rules', { fetch: listRecurring })
+  const { rows: rules, loading, error, reload } = useOwnedQuery('recurring_rules', {
+    cacheAs: 'recurring', fetch: listRecurring,
+  })
   return { rules, loading, error, reload }
 }
 
