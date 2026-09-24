@@ -6,9 +6,10 @@
 // they survive for everyone else); groups where the user is the only linked
 // member cascade-delete. The database does the rest when the auth user goes:
 // personal rows cascade, and the anonymise_departing_user trigger (0072,
-// 0078) turns the member rows, change-log names and the user's names in
-// change-log texts and other members' group notifications into "Former
-// member" before their user link is set to null.
+// 0078, 0080) turns the member rows, change-log names and the user's names in
+// change-log texts into "Former member" before their user link is set to
+// null, and deletes the notifications other people got about the user's
+// actions (the only notifications that name a person).
 //
 // Storage isn't covered by the database cascade, so the user's files are
 // removed through the Storage API first: their `avatars/<uid>/…` folder, and
@@ -25,7 +26,7 @@ export const DELETION_SCOPE = {
   deleted: [
     'Your sign-in, passkeys, profile, picture and payment details',
     'Your expenses and income, categories and rules, accounts, budgets, goals and recurring payments',
-    'Your notifications, push subscriptions, consent history and the group comments you wrote',
+    'Your notifications (and the ones other members got about something you did), push subscriptions, consent history and the group comments you wrote',
     'Groups you own that have no other members (the rest pass to another member)',
   ],
   stays: [

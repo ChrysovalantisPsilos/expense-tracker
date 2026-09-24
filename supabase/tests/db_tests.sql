@@ -3408,13 +3408,17 @@ end $$;
 
 -- ---------------------------------------------------------------------------
 -- 58. 0072: deleting an account anonymises what stays for the group — its
---     member rows (current and earlier-left) become "Former member" with no
---     link back, as does its name on the change log; the shared expense stays.
---     0078: the names are also gone from the (encrypted) change-log texts and
---     from other members' group notifications, whole words only.
+--     member rows become "Former member" with no link back (a current one,
+--     and an earlier-left one kept for its history; a leaver without history
+--     has no row to keep), as does its name on the change log; the shared
+--     expense stays. 0078: the names are also gone from the (encrypted)
+--     change-log texts, whole words only. 0080: other people's notifications
+--     about what the user did are deleted — including from a group they left
+--     without a trace, which nothing links them to any more.
 -- ---------------------------------------------------------------------------
 do $$
-declare u1 uuid; u2 uuid; u3 uuid; gid uuid; m1 uuid; m2 uuid; m3 uuid; eid uuid; r record; n int;
+declare u1 uuid; u2 uuid; u3 uuid; u4 uuid; gid uuid; m1 uuid; m2 uuid; m3 uuid; m4 uuid; eid uuid;
+        r record; n int;
 begin
   begin
     -- The redaction helper: whole words, longest name first, metacharacters literal.
@@ -3433,17 +3437,20 @@ begin
     u1 := pg_temp.zz_user('an1');
     u2 := pg_temp.zz_user('an2');
     u3 := pg_temp.zz_user('an3');
+    u4 := pg_temp.zz_user('an4');
     update public.profiles set display_name = 'ZZ Owner' where id = u1;
     update public.profiles set display_name = 'ZZ Bobby' where id = u2;
+    update public.profiles set display_name = 'ZZ Past' where id = u4;
     insert into public.groups (name, owner_id, currency) values ('ZZT anon', u1, 'EUR') returning id into gid;
     insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'ZZ Owner', 'owner') returning id into m1;
     insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'ZZ Bobby') returning id into m2;
     insert into public.group_members (group_id, user_id, display_name) values (gid, u3, 'ZZ Leaver') returning id into m3;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u4, 'ZZ Past') returning id into m4;
 
     perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     eid := public.create_group_expense_v2(gid, 'zz anon dinner', 900, 'EUR', m2, current_date,
-                                          array[m1, m2], null, 'equal');
+                                          array[m1, m2, m4], null, 'equal');
     execute 'reset role';
     -- The owner records Bobby paying them back: the summary names Bobby
     -- though the actor is the owner.
@@ -3451,10 +3458,26 @@ begin
     execute 'set local role authenticated';
     perform public.add_settlement(gid, m2, m1, 450, 'EUR');
     execute 'reset role';
+    -- ZZ Past settles their 300 share and leaves: their row stays (history)
+    -- with former_user_id set.
+    perform set_config('request.jwt.claims', json_build_object('sub', u4, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.add_settlement(gid, m4, m2, 300, 'EUR');
+    perform public.remove_group_member(m4, true);
+    execute 'reset role';
+    -- ZZ Leaver leaves without a trace: the row is deleted, nothing links
+    -- them to the group, but "ZZ Leaver joined …" is in the others' inboxes.
     perform set_config('request.jwt.claims', json_build_object('sub', u3, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
     perform public.remove_group_member(m3, true);
     execute 'reset role';
+    if exists (select 1 from public.group_members where id = m3) then
+      raise exception 'setup: a leaver without history kept a row';
+    end if;
+    select * into r from public.group_members where id = m4;
+    if not found or r.user_id is not null or r.former_user_id is distinct from u4 then
+      raise exception 'setup: the leaver with history wasn''t kept as a former member';
+    end if;
     if not exists (select 1 from public.group_audit_log where group_id = gid and actor_name = 'ZZ Bobby') then
       raise exception 'setup: no audit row under the name';
     end if;
@@ -3462,33 +3485,38 @@ begin
      where group_id = gid and public.dec_text(summary_enc) like '%ZZ Bobby%';
     if n < 2 then raise exception 'setup: summaries don''t name Bobby (%)', n; end if;
     select count(*) into n from public.notifications
-     where group_id = gid and user_id = u1 and (body like '%ZZ Bobby%' or body like '%ZZ Leaver%');
-    if n = 0 then raise exception 'setup: no notification names them'; end if;
+     where group_id = gid and user_id = u1 and body like 'ZZ Leaver joined%';
+    if n = 0 then raise exception 'setup: no notification names the traceless leaver'; end if;
+    select count(*) into n from public.notifications
+     where group_id = gid and user_id = u1 and (body like '%ZZ Bobby%' or body like '%ZZ Past%');
+    if n = 0 then raise exception 'setup: no notification names the others'; end if;
 
     perform set_config('request.jwt.claims', '', true);   -- as the service would
-    delete from auth.users where id in (u2, u3);
+    delete from auth.users where id in (u2, u3, u4);
 
     select * into r from public.group_members where id = m2;
-    if r.user_id is not null or r.former_user_id is not null or r.display_name <> 'Former member' then
+    if not found or r.user_id is not null or r.former_user_id is not null or r.display_name <> 'Former member' then
       raise exception 'member row not anonymised: %', row_to_json(r);
     end if;
-    select * into r from public.group_members where id = m3;
-    if r.user_id is not null or r.former_user_id is not null or r.display_name <> 'Former member' then
+    select * into r from public.group_members where id = m4;
+    if not found or r.user_id is not null or r.former_user_id is not null or r.display_name <> 'Former member' then
       raise exception 'earlier-left row not anonymised: %', row_to_json(r);
     end if;
-    select count(*) into n from public.group_audit_log where group_id = gid and actor_name = 'ZZ Bobby';
-    if n <> 0 then raise exception 'change log still names the deleted user'; end if;
+    select count(*) into n from public.group_members where group_id = gid;
+    if n <> 3 then raise exception 'member rows: % (expected owner + two former members)', n; end if;
+    select count(*) into n from public.group_audit_log where group_id = gid and actor_name in ('ZZ Bobby', 'ZZ Past');
+    if n <> 0 then raise exception 'change log still names the deleted users'; end if;
     select count(*) into n from public.group_audit_log where group_id = gid and actor_name = 'Former member' and actor_id is null;
-    if n = 0 then raise exception 'change log entry lost instead of anonymised'; end if;
+    if n < 2 then raise exception 'change log entries lost instead of anonymised (%)', n; end if;
     if not exists (select 1 from public.group_expenses where id = eid and paid_by = m2) then
       raise exception 'shared expense removed';
     end if;
     select display_name into r from public.group_members where id = m1;
     if r.display_name <> 'ZZ Owner' then raise exception 'other member renamed'; end if;
 
-    -- 0078: the change-log texts and the other members' notifications.
+    -- 0078: the change-log texts.
     select count(*) into n from public.group_audit_log
-     where group_id = gid and (public.dec_text(summary_enc) like '%ZZ Bobby%' or public.dec_text(summary_enc) like '%ZZ Leaver%');
+     where group_id = gid and public.dec_text(summary_enc) similar to '%(ZZ Bobby|ZZ Leaver|ZZ Past)%';
     if n <> 0 then raise exception 'change-log texts still name the deleted users (%)', n; end if;
     if not exists (select 1 from public.group_audit_log
                     where group_id = gid and public.dec_text(summary_enc) = 'Former member added “zz anon dinner”') then
@@ -3498,13 +3526,18 @@ begin
                     where group_id = gid and public.dec_text(summary_enc) = 'ZZ Owner recorded a payment: Former member → ZZ Owner') then
       raise exception 'settlement summary not rewritten (other names must stay)';
     end if;
-    select count(*) into n from public.notifications
-     where group_id = gid and (title || coalesce(body, '')) similar to '%(ZZ Bobby|ZZ Leaver)%';
-    if n <> 0 then raise exception 'notifications still name the deleted users (%)', n; end if;
-    if not exists (select 1 from public.notifications
-                    where group_id = gid and user_id = u1 and body like 'Former member joined%') then
-      raise exception 'join notification lost instead of anonymised';
+    if not exists (select 1 from public.group_audit_log
+                    where group_id = gid and public.dec_text(summary_enc) = 'Former member recorded a payment: Former member → Former member') then
+      raise exception 'the earlier leaver''s settlement summary not rewritten';
     end if;
+    -- 0080: notifications. Nothing anywhere names them, and none of the
+    -- deleted users' actions is left in anyone's inbox.
+    select count(*) into n from public.notifications
+     where (group_id = gid or user_id = u1)
+       and (title || coalesce(body, '')) similar to '%(ZZ Bobby|ZZ Leaver|ZZ Past)%';
+    if n <> 0 then raise exception 'notifications still name the deleted users (%)', n; end if;
+    select count(*) into n from public.notifications where group_id = gid and user_id = u1 and actor_id is null;
+    if n <> 0 then raise exception 'notifications about them kept with the link cut (%)', n; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: account deletion anonymises the group history left behind';
