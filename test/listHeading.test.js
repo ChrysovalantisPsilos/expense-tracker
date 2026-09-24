@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { listHeading, countLabel } from '../src/features/transactions/listHeading.js'
+import { listHeading, countLabel, isFirstRun } from '../src/features/transactions/listHeading.js'
 
 test('countLabel: singular and plural', () => {
   assert.equal(countLabel(0), '0 entries')
@@ -28,4 +28,22 @@ test('listHeading: a search counts results', () => {
     { title: 'Search results', subtitle: '2 results' })
   assert.deepEqual(listHeading({ count: 0, searching: true, loading: true }),
     { title: 'Search results', subtitle: 'Searching…' })
+})
+
+test('listHeading: no count when the list failed to load, so it never reads "0 entries"', () => {
+  assert.deepEqual(listHeading({ kind: 'expense', periodLabel: 'This month', count: 0, failed: true }),
+    { title: 'Expenses', subtitle: 'This month' })
+  assert.deepEqual(listHeading({ count: 0, searching: true, failed: true }),
+    { title: 'Search results', subtitle: '' })
+})
+
+test('isFirstRun: only a loaded, empty list with no first transaction at all', () => {
+  const base = { loading: false, failed: false, count: 0, oldest: null }
+  assert.equal(isFirstRun(base), true)
+  assert.equal(isFirstRun({ ...base, loading: true }), false)
+  assert.equal(isFirstRun({ ...base, failed: true }), false)
+  assert.equal(isFirstRun({ ...base, searching: true }), false)
+  assert.equal(isFirstRun({ ...base, count: 2 }), false)
+  assert.equal(isFirstRun({ ...base, oldest: '2026-01-04' }), false) // entries in other periods
+  assert.equal(isFirstRun({ ...base, oldest: undefined }), false) // not known (yet, or unreadable)
 })

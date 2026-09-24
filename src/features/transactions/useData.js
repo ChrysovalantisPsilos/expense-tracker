@@ -75,13 +75,17 @@ export async function countTransactions() {
 }
 
 // The user's oldest transaction date (YYYY-MM-DD), or null if none.
+// The date of the user's first transaction: null when there are none, and
+// undefined when it couldn't be read (so a failed read never looks like an
+// empty account).
 export async function oldestTransactionDate() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('transactions')
     .select('spent_at')
     .order('spent_at', { ascending: true })
     .limit(1)
     .maybeSingle()
+  if (error) return undefined
   return data?.spent_at ?? null
 }
 

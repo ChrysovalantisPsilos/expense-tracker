@@ -21,6 +21,12 @@ export function buildTrend(rows, months, baseCurrency) {
   return [...by.values()]
 }
 
+// Whether a trend has anything to draw: some income or spending in any of
+// its months. An all-zero trend shows a note instead of an empty chart.
+export function hasTrendData(trend) {
+  return (trend ?? []).some((t) => t.income > 0 || t.expense > 0)
+}
+
 // Percent change in spend from the previous month to the latest one, or null
 // when there's no prior month or it had zero spend (avoids divide-by-zero).
 export function spendDelta(trend) {

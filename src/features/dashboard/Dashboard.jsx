@@ -6,7 +6,8 @@ import {
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, Table as TableIcon, ReceiptText, Users } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
-import { listHeading } from '../transactions/listHeading.js'
+import FirstEntry from '../transactions/FirstEntry.jsx'
+import { isFirstRun, listHeading } from '../transactions/listHeading.js'
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { buildPeriods } from '../transactions/periods.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
@@ -41,8 +42,9 @@ const UNAVAILABLE = 'Not available until your transactions load.'
 
 export default function Dashboard() {
   const { baseCurrency, separateYearly } = useProfile()
-  const { rules, loading: rulesLoading } = useRecurring()
-  const [oldest, setOldest] = useState(null)
+  const { rules, loading: rulesLoading, error: rulesError, reload: reloadRules } = useRecurring()
+  // undefined until known (null: no transactions at all)
+  const [oldest, setOldest] = useState(undefined)
   const periods = useMemo(() => buildPeriods(oldest), [oldest])
   // Default to this month; its token is stable and always present in the list.
   const [periodValue, setPeriodValue] = useState(() => buildPeriods(null)[0].value)
@@ -86,7 +88,10 @@ export default function Dashboard() {
 
   // Paginate the expenses (10/page), back to page 1 when the period changes.
   const expPage = usePaged(expenses, 10, periodValue)
-  const expHead = listHeading({ kind: 'expense', periodLabel: period.label, count: expenses.length, loading })
+  const expHead = listHeading({
+    kind: 'expense', periodLabel: period.label, count: expenses.length, loading, failed: !!error,
+  })
+  const firstRun = isFirstRun({ loading, failed: !!error, count: rows.length, oldest })
 
   return (
     <Stack spacing={5}>
@@ -123,6 +128,10 @@ export default function Dashboard() {
         )}
       </Panel>
       )}
+
+      {/* Nothing logged at all yet: the way to start sits right under the
+          totals, in place of the (empty) Expenses card further down. */}
+      {firstRun && <Panel><FirstEntry /></Panel>}
 
       <Panel data-tour="categories" icon={ChartBarDecreasing} title="Spending by category" action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
@@ -183,6 +192,7 @@ export default function Dashboard() {
 
       <BudgetsCard />
 
+      {!firstRun && (
       <Panel icon={ReceiptText} title={expHead.title} subtitle={expHead.subtitle} divider>
         {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
           <SkeletonRegion><SkeletonRows count={5} py={2.5} /></SkeletonRegion>
@@ -196,8 +206,10 @@ export default function Dashboard() {
           </>
         )}
       </Panel>
+      )}
 
-      <SubscriptionsCard rules={rules} loading={rulesLoading} baseCurrency={baseCurrency} />
+      <SubscriptionsCard rules={rules} loading={rulesLoading} error={rulesError} onRetry={reloadRules}
+        baseCurrency={baseCurrency} />
     </Stack>
   )
 }

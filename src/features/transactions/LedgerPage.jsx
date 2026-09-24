@@ -16,8 +16,9 @@ import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import TransactionList from './TransactionList.jsx'
-import { listHeading } from './listHeading.js'
-import { useTransactions, useCategories } from './useData.js'
+import FirstEntry from './FirstEntry.jsx'
+import { isFirstRun, listHeading } from './listHeading.js'
+import { useTransactions, useCategories, oldestTransactionDate } from './useData.js'
 import {
   isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS, NO_CATEGORY,
 } from './txnFilter.js'
@@ -85,6 +86,10 @@ export default function LedgerPage() {
     limit: 1000,
   } : { kind, from: month.from, to: month.to })
   const { categories, loading: categoriesLoading } = useCategories(kind)
+  // Whether anything was ever logged (null: nothing; undefined: not known),
+  // rechecked as the live rows change.
+  const [oldest, setOldest] = useState(undefined)
+  useEffect(() => { oldestTransactionDate().then(setOldest) }, [rows])
   const shown = searching ? filterTransactions(rows, { text, ...filters }, baseCurrency) : rows
   // A linked category that isn't in the picker (archived, or another kind's)
   // still shows as selected rather than a misleading "Any".
@@ -99,7 +104,8 @@ export default function LedgerPage() {
   const clearAll = () => setLedger({ ...EMPTY_FILTERS, text: '' }, { own: false })
 
   const net = netBaseMinor(shown, baseCurrency)
-  const head = listHeading({ kind, periodLabel: 'This month', count: shown.length, loading, searching })
+  const head = listHeading({ kind, periodLabel: 'This month', count: shown.length, loading, failed: !!error, searching })
+  const firstRun = isFirstRun({ loading, failed: !!error, count: shown.length, oldest, searching })
 
   return (
     <Stack spacing={5}>
@@ -188,6 +194,8 @@ export default function LedgerPage() {
           )} />
         {error ? <QueryError error={error} onRetry={reload} what="your transactions" /> : loading ? (
           <SkeletonRegion><SkeletonRows count={8} py={2.5} /></SkeletonRegion>
+        ) : firstRun ? (
+          <FirstEntry />
         ) : shown.length === 0 ? (
           <Text color="text.muted" fontSize="sm">
             {searching ? 'No transactions match this search.' : EMPTY_TEXT[type]}

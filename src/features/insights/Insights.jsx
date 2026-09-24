@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Stack, HStack, Text, Button, Box, Divider, Select, Input, SimpleGrid,
   FormControl, FormLabel, useToast, useDisclosure,
@@ -25,7 +25,7 @@ import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
-import { useTransactions } from '../transactions/useData.js'
+import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
 import { lastMonths, shortDate } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -37,7 +37,7 @@ import {
   useGoals, saveGoal, deleteGoal,
 } from './insights.js'
 import {
-  buildTrend, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
+  buildTrend, hasTrendData, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
   goalProgress, goalSavedAfter,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
@@ -74,6 +74,10 @@ export default function Insights() {
   ), [spend, months, thisMonth, baseCurrency])
   // Spending abroad lists actual payments (each at its own rate), not shares.
   const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
+  // Nothing ever logged (null; undefined while unknown): the statement export
+  // has nothing to put in it.
+  const [oldest, setOldest] = useState(undefined)
+  useEffect(() => { oldestTransactionDate().then(setOldest) }, [rows])
 
   return (
     <Stack spacing={5}>
@@ -83,7 +87,7 @@ export default function Insights() {
       <IncomeCard loading={loading} failed={failed} trend={trend} money={money} />
       <NetWorthCard baseCurrency={baseCurrency} />
       <GoalsCard baseCurrency={baseCurrency} />
-      <ReportsCard />
+      <ReportsCard noEntries={oldest === null} />
     </Stack>
   )
 }
@@ -166,12 +170,14 @@ function SpendingCard({ loading, failed, shares, trend, money }) {
               <ShareLegend items={shares} mt={3} />
             </Box>
           )}
-          <Box>
-            <SectionLabel mb={3} aside={`${latest.label}: ${money(latest.expense)}`}>
-              Last 6 months
-            </SectionLabel>
-            <TrendBars bars={trend.map((t) => ({ label: t.label, value: t.expense }))} />
-          </Box>
+          {hasTrendData(trend) && (
+            <Box>
+              <SectionLabel mb={3} aside={`${latest.label}: ${money(latest.expense)}`}>
+                Last 6 months
+              </SectionLabel>
+              <TrendBars bars={trend.map((t) => ({ label: t.label, value: t.expense }))} />
+            </Box>
+          )}
         </Stack>
       )}
     </Panel>
@@ -220,6 +226,11 @@ function IncomeCard({ loading, failed, trend, money }) {
             </BalanceGrid>
             <Figure layout="inline" label="Left over" value={net.text} tone={net.tone} mt={3} />
           </Box>
+          {!hasTrendData(trend) ? (
+            <Text color="text.muted" fontSize="sm">
+              Nothing to compare yet. Your income and spending of the last six months show here.
+            </Text>
+          ) : (
           <Box>
             <SectionLabel mb={3}>Last 6 months</SectionLabel>
             <Box h="220px">
@@ -237,6 +248,7 @@ function IncomeCard({ loading, failed, trend, money }) {
               </ResponsiveContainer>
             </Box>
           </Box>
+          )}
         </Stack>
       )}
     </Panel>

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  buildTrend, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
+  buildTrend, hasTrendData, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
   goalProgress, goalSavedAfter,
 } from '../src/features/insights/insightsMath.js'
 
@@ -126,4 +126,12 @@ test('goalProgress: percent, reached flag and a tenth-of-target step', () => {
 test('goalSavedAfter never goes below zero', () => {
   assert.equal(goalSavedAfter({ saved_minor: 500 }, 1000), 1500)
   assert.equal(goalSavedAfter({ saved_minor: 500 }, -1000), 0)
+})
+
+test('hasTrendData: any income or spending in any month', () => {
+  assert.equal(hasTrendData([]), false)
+  assert.equal(hasTrendData(undefined), false)
+  assert.equal(hasTrendData([{ label: 'Jan', income: 0, expense: 0 }, { label: 'Feb', income: 0, expense: 0 }]), false)
+  assert.equal(hasTrendData([{ label: 'Jan', income: 0, expense: 12.5 }]), true)
+  assert.equal(hasTrendData([{ label: 'Jan', income: 3250, expense: 0 }]), true)
 })

@@ -10,7 +10,8 @@ import { userMessage } from '../../shared/lib/errors.js'
 import { BusyNote, RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 // Financial-statement export (PDF/Excel) for a date range, on the Insights page.
-export default function ReportsCard() {
+// `noEntries`: nothing has been logged yet, so the buttons are off with a hint.
+export default function ReportsCard({ noEntries = false }) {
   const { from: mFrom, to: mTo } = monthRange()
   const [from, setFrom] = useState(mFrom)
   const [to, setTo] = useState(mTo)
@@ -47,15 +48,20 @@ export default function ReportsCard() {
       </SimpleGrid>
       <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3}>
         <Button leftIcon={<FileText size={18} />} onClick={() => generate('pdf')}
-          isLoading={busy === 'pdf'} isDisabled={busy !== null} loadingText="Building…" spinner={<RingSpinner />}>
+          isLoading={busy === 'pdf'} isDisabled={busy !== null || noEntries} loadingText="Building…" spinner={<RingSpinner />}>
           Export PDF
         </Button>
         <Button leftIcon={<FileSpreadsheet size={18} />} onClick={() => generate('xlsx')}
-          isLoading={busy === 'xlsx'} isDisabled={busy !== null} loadingText="Building…" spinner={<RingSpinner />}
+          isLoading={busy === 'xlsx'} isDisabled={busy !== null || noEntries} loadingText="Building…" spinner={<RingSpinner />}
           variant="outline">
           Export Excel
         </Button>
       </SimpleGrid>
+      {noEntries && (
+        <Text fontSize="sm" color="text.muted" mt={3}>
+          Nothing to export yet — add an expense or income first.
+        </Text>
+      )}
       {busy && <BusyNote mt={4}>Preparing your {busy === 'pdf' ? 'PDF' : 'Excel'} statement…</BusyNote>}
     </Panel>
   )

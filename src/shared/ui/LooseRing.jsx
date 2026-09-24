@@ -2,15 +2,18 @@ import { keyframes } from '@emotion/react'
 import { Box } from '@chakra-ui/react'
 import { MARK_ARCS, circumference } from './markGeometry.js'
 
-// The error screens' illustration: the Budgeer mark (public/budgeer-mark.svg,
-// a lowercase "b" whose bowl is a budget ring, amber then coral) with its
-// ring come loose. Per variant (see errorScreens.js):
+// The error screens' and empty states' illustration: the Budgeer mark
+// (public/budgeer-mark.svg, a lowercase "b" whose bowl is a budget ring,
+// amber then coral) with its ring come loose. Per variant (see
+// errorScreens.js):
 //   notFound — the ring rolls away and settles; the stem tilts. Then it rocks.
 //   crash    — the ring cracks into pieces, then reassembles. Loops.
 //   update   — the ring refills to 100% and pops; two sparkles twinkle.
 //   offline  — the mark dims and pulses slowly.
+//   start    — nothing logged yet: an empty ring with just its first amber
+//              sliver filling in, and a sparkle (the first-entry empty state).
 // Reduced motion: no animation, and each variant shows its telling moment
-// (rolled away, cracked apart, full, dimmed). Decorative: aria-hidden.
+// (rolled away, cracked apart, full, dimmed, started). Decorative: aria-hidden.
 
 const C = {
   coral: 'var(--chakra-colors-brand-500)',
@@ -150,6 +153,13 @@ const STYLES = {
     motion: { '.lr-mark': { animation: `${breathe} 3.6s ease-in-out infinite` } },
     still: { '.lr-mark': { opacity: 0.4 } },
   },
+  start: {
+    motion: {
+      '.lr-amber circle': { animation: `${fillAmber} .9s ease-out .3s both` },
+      '.lr-spark': { animation: `${twinkle} 2.4s ease-in-out 1.2s infinite backwards` },
+    },
+    still: {},
+  },
 }
 
 function Sparkle({ x, y, s, className }) {
@@ -193,9 +203,11 @@ export default function LooseRing({ variant = 'notFound', ...props }) {
           ))
         ) : (
           <g className="lr-ring">
-            {variant === 'update' && <Arc from={0} to={CIRC} color={C.track} />}
+            {(variant === 'update' || variant === 'start') && <Arc from={0} to={CIRC} color={C.track} />}
             <g className="lr-amber"><Arc from={AMBER[0]} to={AMBER[1]} color={C.amber} /></g>
-            <g className="lr-coral"><Arc from={CORAL[0]} to={CORAL[1]} color={C.coral} /></g>
+            {variant !== 'start' && (
+              <g className="lr-coral"><Arc from={CORAL[0]} to={CORAL[1]} color={C.coral} /></g>
+            )}
           </g>
         )}
         {variant === 'update' && (
@@ -204,6 +216,7 @@ export default function LooseRing({ variant = 'notFound', ...props }) {
             <Sparkle x={160} y={104} s={5.5} className="lr-spark-2" />
           </>
         )}
+        {variant === 'start' && <Sparkle x={146} y={86} s={8} />}
       </g>
     </Box>
   )

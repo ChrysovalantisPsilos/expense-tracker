@@ -9,13 +9,23 @@ export const countLabel = (n, one = 'entry', many = 'entries') => `${n} ${n === 
 
 //   kind        'expense' | 'income' | undefined (every kind)
 //   periodLabel e.g. 'This month'
-//   count       entries listed (ignored while loading)
+//   count       entries listed (ignored while loading, or when the list
+//               failed to load — `failed` — so it never reads "0 entries")
 //   searching   a search/filter is on: "Search results" + "N results"
-export function listHeading({ kind, periodLabel, count, loading = false, searching = false }) {
+export function listHeading({ kind, periodLabel, count, loading = false, failed = false, searching = false }) {
+  const unknown = loading || failed || count == null
   if (searching) {
-    return { title: 'Search results', subtitle: loading ? 'Searching…' : countLabel(count, 'result', 'results') }
+    return { title: 'Search results', subtitle: loading ? 'Searching…' : unknown ? '' : countLabel(count, 'result', 'results') }
   }
   const title = TITLES[kind] ?? 'All transactions'
-  const subtitle = loading || count == null ? periodLabel : `${periodLabel} · ${countLabel(count)}`
+  const subtitle = unknown ? periodLabel : `${periodLabel} · ${countLabel(count)}`
   return { title, subtitle }
+}
+
+// Nothing logged at all yet (not just in this period): the list loaded
+// empty, no search is on, and the account's first transaction is known not
+// to exist (`oldest` null; undefined while unknown or unreadable). The
+// first-entry empty state shows then, instead of "No expenses in this period".
+export function isFirstRun({ loading, failed, count, oldest, searching = false }) {
+  return !loading && !failed && !searching && count === 0 && oldest === null
 }

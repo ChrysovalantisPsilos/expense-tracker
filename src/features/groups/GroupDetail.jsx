@@ -5,6 +5,9 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useLiveQuery } from '../../shared/lib/db.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import PageHeader from '../../shared/ui/PageHeader.jsx'
+import BackButton from '../../shared/ui/BackButton.jsx'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 import {
   getGroup, createInviteLink, removeMember, deleteGroup, listAuditLog, downloadGroupReport,
 } from './groups.js'
@@ -156,9 +159,20 @@ export default function GroupDetail() {
     finally { setActionBusy(false) }
   }
 
-  if (error) return <QueryError error={error} onRetry={load} what="this group" py={20} />
-  if (loading) return <GroupDetailSkeleton />
-  if (!data) return <Text color="text.muted">Group not found.</Text>
+  if (loading && !error) return <GroupDetailSkeleton />
+  // A failed load or a missing group keeps a page header with the way back.
+  if (error || !data) {
+    return (
+      <Stack spacing={5}>
+        <PageHeader eyebrow="Groups" title="Group" leading={<BackButton fallback="/groups" />} />
+        <Panel>
+          {error
+            ? <QueryError error={error} onRetry={load} what="this group" py={12} />
+            : <Text color="text.muted">Group not found.</Text>}
+        </Panel>
+      </Stack>
+    )
+  }
 
   const { group, members, expenses, settlements } = data
   const isOwner = group.owner_id === user.id
