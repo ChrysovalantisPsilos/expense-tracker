@@ -34,3 +34,6 @@ verify_jwt = false
 
 [functions.privacy-emails]
 verify_jwt = false
+
+[functions.operator-digest]
+verify_jwt = false

@@ -4083,11 +4083,96 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 69. 0079: the operator's sign-up digest. signup_digest() counts yesterday's
+--     (UTC) accounts and the total at the end of that day — not today's, not
+--     soft-deleted ones; a day is claimed once in operator_digest_log (a second
+--     claim is refused, a release frees it); the log is server-only and the
+--     functions are service_role/cron only; the cron job is scheduled.
+-- ---------------------------------------------------------------------------
+do $$
+declare y date := (now() at time zone 'utc')::date - 1; before jsonb; after jsonb;
+        a uuid; b uuid; c uuid; n int; fn text;
+begin
+  begin
+    before := public.signup_digest();
+    if (before->>'day')::date <> y then raise exception 'default day is %, not yesterday (UTC)', before->>'day'; end if;
+    a := pg_temp.zz_user('dg-y');       -- signed up yesterday: counted
+    b := pg_temp.zz_user('dg-today');   -- signed up today: not in yesterday's digest
+    c := pg_temp.zz_user('dg-del');     -- yesterday, but soft-deleted: not counted
+    update auth.users set created_at = (y::timestamp at time zone 'utc') + interval '12 hours' where id in (a, c);
+    update auth.users set deleted_at = now() where id = c;
+    after := public.signup_digest();
+    if (after->>'new_count')::int <> (before->>'new_count')::int + 1 then
+      raise exception 'new_count % → % (expected +1)', before->>'new_count', after->>'new_count';
+    end if;
+    if (after->>'total')::int <> (before->>'total')::int + 1 then
+      raise exception 'total % → % (expected +1)', before->>'total', after->>'total';
+    end if;
+    if (public.signup_digest(y - 1)->>'total')::int >= (after->>'total')::int then
+      raise exception 'the day before counted yesterday''s account';
+    end if;
+
+    -- Once per day.
+    delete from public.operator_digest_log where day = y;
+    if not public.claim_operator_digest(y) then raise exception 'first claim refused'; end if;
+    if public.claim_operator_digest(y) then raise exception 'second claim for the same day accepted'; end if;
+    if not (public.signup_digest()->>'sent')::boolean then raise exception 'claimed day not reported as sent'; end if;
+    perform public.release_operator_digest(y);
+    if (public.signup_digest()->>'sent')::boolean then raise exception 'released day still sent'; end if;
+    if not public.claim_operator_digest(y) then raise exception 'released day could not be claimed again'; end if;
+
+    -- Server-only log, service-only functions.
+    if not (select relrowsecurity from pg_class where oid = 'public.operator_digest_log'::regclass) then
+      raise exception 'RLS off on operator_digest_log';
+    end if;
+    select count(*) into n from pg_policies where schemaname = 'public' and tablename = 'operator_digest_log';
+    if n <> 0 then raise exception 'operator_digest_log has client policies'; end if;
+    if has_table_privilege('authenticated', 'public.operator_digest_log', 'select')
+       or has_table_privilege('authenticated', 'public.operator_digest_log', 'insert')
+       or has_table_privilege('authenticated', 'public.operator_digest_log', 'delete')
+       or has_table_privilege('anon', 'public.operator_digest_log', 'select') then
+      raise exception 'clients have privileges on operator_digest_log';
+    end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', a, 'role', 'authenticated')::text, true);
+    begin
+      execute 'set local role authenticated';
+      perform public.signup_digest();
+      raise exception 'GUARD_MISSED: a user read the sign-up counts';
+    exception when insufficient_privilege then null; end;
+    execute 'reset role';
+    begin
+      execute 'set local role anon';
+      perform public.operator_signup_email();
+      raise exception 'GUARD_MISSED: anon read the operator address';
+    exception when insufficient_privilege then null; end;
+    execute 'reset role';
+    foreach fn in array array['public.signup_digest(date)', 'public.claim_operator_digest(date)',
+        'public.release_operator_digest(date)', 'public.operator_signup_email()', 'public.run_operator_digest()'] loop
+      if has_function_privilege('authenticated', fn, 'execute') or has_function_privilege('anon', fn, 'execute') then
+        raise exception '% callable by clients', fn;
+      end if;
+    end loop;
+    if not (has_function_privilege('service_role', 'public.signup_digest(date)', 'execute')
+            and has_function_privilege('service_role', 'public.claim_operator_digest(date)', 'execute')
+            and has_function_privilege('service_role', 'public.operator_signup_email()', 'execute')) then
+      raise exception 'service_role grants missing';
+    end if;
+    select count(*) into n from cron.job
+     where jobname = 'operator-signup-digest' and schedule = '0 6 * * *' and command like '%run_operator_digest%';
+    if n <> 1 then raise exception 'operator-signup-digest cron job missing'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: operator sign-up digest counts, once per day, service-only';
+    else update _t set fails = fails + 1; raise notice 'FAIL: operator sign-up digest — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 69; f int; p int;  -- tests 1–68 + B-0059
+declare expected_tests constant int := 70; f int; p int;  -- tests 1–69 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

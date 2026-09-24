@@ -211,7 +211,8 @@ too) · `npm run build` · `npm run preview`.
    functions and the schema change together. Use the `verify_jwt` settings in
    `supabase/config.toml`: on for the user-called functions (`generate-report`,
    `send-invite`, `group-report`, `delete-account`, `privacy-request`), off for
-   `notify-user`, `send-reminders`, `purge-inactive` and `privacy-emails`,
+   `notify-user`, `send-reminders`, `purge-inactive`, `privacy-emails` and
+   `operator-digest`,
    which are called by cron or database webhooks and check the `x-cron-secret`
    header instead.
    Function secrets (set per project):
@@ -224,9 +225,16 @@ too) · `npm run build` · `npm run preview`.
    | `PRIVACY_INBOX` | `_shared/sendEmail.ts` | Where `privacy-request` forwards requests (default `privacy@budgeer.com`) |
    | `APP_ORIGIN` | `_shared/http.ts`, `_shared/sendEmail.ts` | The site's origin: links in emails, and an allowed CORS origin |
    | `CORS_ORIGINS` | `_shared/http.ts` | Extra allowed CORS origins, comma-separated |
+   | `OPERATOR_FROM` | `_shared/sendEmail.ts` | Sender for the operator's sign-up digest (default `Budgeer <no-reply@budgeer.com>`) |
 
    `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are
    also read, but Supabase provides them to every function.
+
+   **Operator sign-up digest (PROD only):** a daily email to the operator
+   with yesterday's sign-up count and the account total, no personal data
+   (`operator-digest`, migration 0079). It's off until the recipient exists
+   in Vault; create it on PROD only, so TEST stays silent:
+   `select vault.create_secret('<operator address>', 'operator_signup_email');`
 4. **Configure Auth:** enable Email, Google and passkeys. Turn on **Allow
    manual linking** (Settings → Security's "Connect Google" needs it) and add
    `<origin>/settings/security` to the redirect URLs. Leaked-password

@@ -2,7 +2,7 @@
 // api.resend.com — plus the environment every email needs: the app origin
 // (links and the header mark), the senders and the privacy inbox.
 //
-// Two senders:
+// Three senders:
 //   invite — INVITE_FROM: invites, group event emails, and privacy requests
 //            forwarded to the privacy inbox;
 //   notice — NOTICE_FROM (default "Budgeer <privacy@budgeer.com>", built from
@@ -10,7 +10,9 @@
 //            service notices (_shared/gdprEmails.ts). Recipients can simply
 //            reply — it lands in the privacy inbox (the Reply-To keeps that
 //            true if NOTICE_FROM is ever pointed elsewhere).
-// Both are null without RESEND_API_KEY, so callers skip or fall back cleanly.
+//   operator — OPERATOR_FROM (default "Budgeer <no-reply@budgeer.com>"): the
+//            operator's daily sign-up digest (operator-digest).
+// All are null without RESEND_API_KEY, so callers skip or fall back cleanly.
 //
 // Deno.env is read only inside functions: the unit tests load this file
 // directly (no imports beyond ./contact.ts).
@@ -22,6 +24,7 @@ import { PRIVACY_EMAIL } from './contact.ts'
 export const DEFAULT_ORIGIN = 'https://www.budgeer.com'
 export const DEFAULT_NOTICE_FROM = `Budgeer <${PRIVACY_EMAIL}>`
 const DEFAULT_INVITE_FROM = 'Budgeer <onboarding@resend.dev>'
+export const DEFAULT_OPERATOR_FROM = 'Budgeer <no-reply@budgeer.com>'
 
 // Resend's default rate limit is 2 requests a second; loops pace themselves.
 const SEND_GAP_MS = 550
@@ -52,6 +55,11 @@ export function noticeSender(): Sender | null {
   return apiKey
     ? { apiKey, from: Deno.env.get('NOTICE_FROM') || DEFAULT_NOTICE_FROM, replyTo: PRIVACY_EMAIL }
     : null
+}
+
+export function operatorSender(): Sender | null {
+  const apiKey = Deno.env.get('RESEND_API_KEY')
+  return apiKey ? { apiKey, from: Deno.env.get('OPERATOR_FROM') || DEFAULT_OPERATOR_FROM } : null
 }
 
 export interface Mail { to: string; subject: string; html: string; text: string; replyTo?: string }

@@ -81,6 +81,7 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | `inactive-accounts` | 04:45 daily | `run_inactivity_sweep()` → edge function `purge-inactive`: warns at 23 months without use (one email, recorded), deletes at 24 months and ≥ 28 days after the warning, via the same code as delete-account |
 | `privacy-email-queue` | every 5 min | `run_privacy_email_queue()` → edge function `privacy-emails` (mode `queue`), only when a notice is due |
 | `legal-update-emails` | hourly at :20 | `run_legal_update_sweep()` → edge function `privacy-emails` (mode `legal`), only when someone still needs the update email |
+| `operator-signup-digest` | 06:00 daily | `run_operator_digest()` → edge function `operator-digest`: the operator's sign-up count for the previous UTC day (§ 6b), only when the recipient is set, there was at least one sign-up and that day wasn't sent yet |
 | `purge-expired-invites` | 03:30 daily | invites 7 days after expiry |
 | `purge-rate-limits` | 03:45 daily | rate-limit rows > 2 days; cron run history > 30 days |
 
@@ -122,6 +123,23 @@ why it was sent and names privacy@. Templates:
 Deadline: one month from receipt (extendable by two months with notice,
 Art. 12(3)). Keep a simple log of requests and answers (date received, type,
 date answered) — the privacy inbox thread is the record.
+
+## 6b. Operator sign-up digest (aggregate only)
+
+The operator gets one email a day with the number of accounts created the
+previous UTC day and the total number of accounts: "3 new sign-ups
+yesterday · 1,204 accounts in total". No personal data: no email addresses,
+names or account ids are read for it or sent (`signup_digest()` returns two
+counts; the template, `_shared/operatorDigest.ts`, takes only a date and two
+numbers — `test/operatorDigest.test.js`). Nothing is sent on days without a
+sign-up, and each day at most once (`operator_digest_log`, server-only).
+
+Sent from `OPERATOR_FROM` (default `Budgeer <no-reply@budgeer.com>`) to the
+address in the Vault secret `operator_signup_email`, which is not in the
+repository and exists only on PROD — without it the job does nothing, so TEST
+stays silent. Because the counts are anonymous aggregates, this is not
+processing of personal data about the users and needs no change to the
+Privacy Notice.
 
 ## 7. Security measures (Art. 32)
 
@@ -171,6 +189,9 @@ security suite (`supabase/tests/db_tests.sql`).
   secrets; `NOTICE_FROM` is optional (defaults to `Budgeer <privacy@budgeer.com>`,
   which needs budgeer.com verified as a sending domain in Resend) — leave it
   unset, or set it to that address, so recipients can reply.
+- Operator sign-up digest (§ 6b), PROD only: create the Vault secret
+  `operator_signup_email` holding the address the digest goes to, and deploy
+  `operator-digest`. Leave the secret absent on TEST.
 - Consider shortening Supabase Auth session lifetime / enabling inactivity
   timeout; check that auth audit logs are not kept longer than needed.
 - Keep this record and a request/breach log up to date.
