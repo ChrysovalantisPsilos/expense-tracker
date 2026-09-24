@@ -250,7 +250,9 @@ export default function TransactionForm({
             Delete
           </Button>
         )}
-        <Button type="submit" flex="1" isLoading={busy} isDisabled={!rate}>
+        {/* Grows only in the row layout: a flex-basis of 0 in the phone's
+            column would collapse the button to its padding. */}
+        <Button type="submit" flex={{ sm: 1 }} isLoading={busy} isDisabled={!rate}>
           {isEdit ? 'Save changes' : `Add ${kind === 'income' ? 'income' : 'expense'}`}
         </Button>
       </Stack>
