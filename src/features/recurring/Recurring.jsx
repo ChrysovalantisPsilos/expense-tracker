@@ -5,11 +5,12 @@ import {
   ModalContent, ModalHeader, ModalBody, ModalFooter, Tabs, TabList, Tab, TabPanels, TabPanel, useToast,
   SimpleGrid,
 } from '@chakra-ui/react'
-import { Plus, Pencil, Trash2, Repeat, Bell, Pause, Play } from 'lucide-react'
+import { Plus, Pencil, Trash2, Bell, Pause, Play } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import EmptyState from '../../shared/ui/EmptyState.jsx'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
@@ -24,6 +25,7 @@ import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 
 const TABS = ['expense', 'income']
+const INCOME_INTRO = 'Money that comes in on a schedule, like your salary — it’s added to your income on each date.'
 
 // The Recurring page (/recurring): "Subscriptions" (money going out, by
 // frequency — the same groups as Home's card, each with its total) and
@@ -74,12 +76,9 @@ export default function Recurring() {
       ))}
     </List>
   )
-  const empty = (text) => (
-    <Stack align="center" py={8} spacing={3} color="text.muted" textAlign="center">
-      <Repeat size={28} aria-hidden />
-      <Text>{text}</Text>
-      <Button size="sm" onClick={openNew}>Add your first</Button>
-    </Stack>
+  const empty = (title, text, add) => (
+    <EmptyState title={title} text={text}
+      actions={<Button leftIcon={<Plus size={18} />} onClick={openNew}>{add}</Button>} />
   )
 
   return (
@@ -104,7 +103,9 @@ export default function Recurring() {
             </TabList>
             <TabPanels>
               <TabPanel px={0} pb={0}>
-                {groups.length === 0 ? empty('No subscriptions or bills yet.') : (
+                {groups.length === 0 ? empty('No subscriptions or bills yet',
+                  'Add the bills and subscriptions that repeat, like rent or streaming, and Budgeer logs each one on its date.',
+                  'Add a subscription or bill') : (
                   <GroupTabs groups={groups} label="Subscriptions by frequency">
                     {(g) => (
                       <>
@@ -116,11 +117,11 @@ export default function Recurring() {
                 )}
               </TabPanel>
               <TabPanel px={0} pb={0}>
-                <Text fontSize="sm" color="text.muted" mb={4}>
-                  Money that comes in on a schedule, like your salary — it’s added to your income on each date.
-                </Text>
-                {income.length === 0 ? empty('No recurring income yet.') : (
+                {income.length === 0 ? empty('No recurring income yet',
+                  INCOME_INTRO,
+                  'Add recurring income') : (
                   <>
+                    <Text fontSize="sm" color="text.muted" mb={4}>{INCOME_INTRO}</Text>
                     <Figure label="Recurring income" size="lg" tone="positive" mb={3}
                       value={`≈ ${formatMoney(incomeMonthly, baseCurrency)}/month`} />
                     {list(income)}

@@ -57,6 +57,14 @@ test('the floating Add expense button shows on the four main tabs only', () => {
   }
 })
 
+test('the floating Add expense button steps aside while the page shows an empty state', () => {
+  for (const p of ['/', '/transactions', '/groups', '/budgets']) {
+    assert.equal(showsAddExpense(p, { emptyState: true }), false, p)
+    assert.equal(showsAddExpense(p, { emptyState: false }), true, p)
+  }
+  assert.equal(showsAddExpense('/recurring', { emptyState: false }), false)
+})
+
 test('the form pages never show the floating Add expense button, and light their section', () => {
   const FORMS = {
     '/groups': ['/groups/new', '/groups/g1/settle', '/groups/g1/edit', '/groups/g1/members',

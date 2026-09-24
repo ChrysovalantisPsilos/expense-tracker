@@ -1,5 +1,5 @@
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
-import { Box, Stack, HStack, Text, Button, Center, Icon, useToast } from '@chakra-ui/react'
+import { Box, Stack, HStack, Text, Button, Icon, useToast } from '@chakra-ui/react'
 import { Plus, ChevronRight, Check, X } from 'lucide-react'
 import { listGroups, listGroupSummaries, listMyInvites, respondToInvite } from './groups.js'
 import { myGroupBalance, pluralise } from './groupFormat.js'
@@ -9,6 +9,7 @@ import { useLiveQuery } from '../../shared/lib/db.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import EmptyState from '../../shared/ui/EmptyState.jsx'
 import GroupMark from './GroupMark.jsx'
 import AvatarStack from './AvatarStack.jsx'
 import { GroupsSkeleton } from './GroupSkeletons.jsx'
@@ -97,15 +98,9 @@ export default function Groups() {
         <GroupsSkeleton />
       ) : groups.length === 0 ? (
         <Panel>
-          <Center flexDir="column" py={10} gap={3} textAlign="center">
-            <GroupMark size={56} />
-            <Text fontWeight="600">No groups yet</Text>
-            <Text color="text.muted" fontSize="sm" maxW="sm">
-              Create a group for a trip or household, add the people in it, and
-              start splitting shared expenses.
-            </Text>
-            <Button leftIcon={<Plus size={18} />} onClick={openNew} mt={2}>Create your first group</Button>
-          </Center>
+          <EmptyState variant="split" title="No groups yet"
+            text="Create a group for a trip or household, add the people in it, and start splitting shared expenses."
+            actions={<Button as={RouterLink} to="/groups/new" leftIcon={<Plus size={18} />}>Create your first group</Button>} />
         </Panel>
       ) : (
         <Stack spacing={3}>

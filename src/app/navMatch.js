@@ -20,9 +20,13 @@ export function isNavActive(to, pathname) {
 }
 
 // The phone's floating "Add expense" button: only on the four main tabs'
-// own pages — never over a form, a detail page or Settings.
+// own pages — never over a form, a detail page or Settings. It also steps
+// aside while the page shows an empty state (`emptyState`, shared/ui/
+// EmptyState): that card's own buttons are the next step there, and on a
+// short screen the floating button would sit over them.
 const ADD_EXPENSE_PAGES = new Set(['/', '/transactions', '/groups', '/budgets'])
 
-export function showsAddExpense(pathname) {
+export function showsAddExpense(pathname, { emptyState = false } = {}) {
+  if (emptyState) return false
   return ADD_EXPENSE_PAGES.has(pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname)
 }

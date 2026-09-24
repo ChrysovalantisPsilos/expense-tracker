@@ -12,12 +12,15 @@ import { MARK_ARCS, circumference } from './markGeometry.js'
 //   offline  — the mark dims and pulses slowly.
 //   start    — nothing logged yet: an empty ring with just its first amber
 //              sliver filling in, and a sparkle (the first-entry empty state).
+//   split    — nothing shared yet: the ring fills in three equal slices, one
+//              after another, like a bill split between friends; a sparkle.
 // Reduced motion: no animation, and each variant shows its telling moment
-// (rolled away, cracked apart, full, dimmed, started). Decorative: aria-hidden.
+// (rolled away, cracked apart, full, dimmed, started, split). Decorative: aria-hidden.
 
 const C = {
   coral: 'var(--chakra-colors-brand-500)',
   amber: 'var(--chakra-colors-amber-400)',
+  orange: 'var(--chakra-colors-chart-3)', // between coral and amber
   ground: 'var(--chakra-colors-border-default)',
   track: 'var(--chakra-colors-border-default)',
 }
@@ -115,6 +118,19 @@ const twinkle = keyframes`
   50% { opacity: 1; transform: scale(1) }
 `
 
+// ---- split: three slices ---------------------------------------------------
+// Equal thirds with a small gap between them, filling in turn. The first
+// (amber) starts at 7 o'clock, so the slice against the coral stem is amber
+// and the ring still reads apart from the stem.
+const SLICE_GAP = 7
+const SLICE_START = (CIRC * 7) / 12
+const SLICES = [C.amber, C.orange, C.coral].map((color, i) => ({
+  from: SLICE_START + (i * CIRC) / 3 + SLICE_GAP / 2,
+  to: SLICE_START + ((i + 1) * CIRC) / 3 - SLICE_GAP / 2,
+  color,
+}))
+const fillSlice = fillArc(SLICES[0].to - SLICES[0].from)
+
 // ---- offline: dim and breathe ----------------------------------------------
 const breathe = keyframes`
   0%, 100% { opacity: 0.28 }
@@ -160,6 +176,13 @@ const STYLES = {
     },
     still: {},
   },
+  split: {
+    motion: {
+      ...Object.fromEntries(SLICES.map((_, i) => [`.lr-slice-${i} circle`, { animation: `${fillSlice} .5s ease-out ${(0.3 + i * 0.45).toFixed(2)}s both` }])),
+      '.lr-spark': { animation: `${twinkle} 2.4s ease-in-out 1.8s infinite backwards` },
+    },
+    still: {},
+  },
 }
 
 function Sparkle({ x, y, s, className }) {
@@ -201,6 +224,12 @@ export default function LooseRing({ variant = 'notFound', ...props }) {
               <Arc from={p.from} to={p.to} color={p.color} />
             </g>
           ))
+        ) : variant === 'split' ? (
+          <g className="lr-ring">
+            {SLICES.map((s, i) => (
+              <g key={s.from} className={`lr-slice-${i}`}><Arc from={s.from} to={s.to} color={s.color} /></g>
+            ))}
+          </g>
         ) : (
           <g className="lr-ring">
             {(variant === 'update' || variant === 'start') && <Arc from={0} to={CIRC} color={C.track} />}
@@ -216,7 +245,7 @@ export default function LooseRing({ variant = 'notFound', ...props }) {
             <Sparkle x={160} y={104} s={5.5} className="lr-spark-2" />
           </>
         )}
-        {variant === 'start' && <Sparkle x={146} y={86} s={8} />}
+        {(variant === 'start' || variant === 'split') && <Sparkle x={146} y={86} s={8} />}
       </g>
     </Box>
   )

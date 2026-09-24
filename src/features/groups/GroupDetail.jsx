@@ -138,6 +138,7 @@ export default function GroupDetail() {
         auditLog={auditLog} counts={counts} myMember={myMember} myUserId={user.id} isOwner={isOwner}
         onEdit={(e) => navigate(`/groups/${id}/expenses/${e.id}`)}
         onThread={(itemId) => navigate(`/groups/${id}/comments/${itemId}`)}
+        onAdd={to('expenses/new')} onMembers={to('members')}
         reportBusy={reportBusy} onReport={downloadReport} />
 
       <LeaveGroupModal group={group} isOwner={isOwner} isOpen={leaveModal.isOpen}

@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom'
 import {
   Box, Button, Flex, HStack, VStack, IconButton, Text, Spacer, Tooltip,
@@ -20,6 +20,7 @@ import { useNotificationFeed } from '../features/notifications/notifications.js'
 import { isNavActive, showsAddExpense } from './navMatch.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
 import { MAIN_ID } from '../shared/ui/SkipLink.jsx'
+import { EmptyStateCount } from '../shared/ui/EmptyState.jsx'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
 // desktop sidebar. `tour` names the app tour's stop (data-tour, tourSteps.js).
@@ -111,7 +112,10 @@ export default function AppShell({ hideAddExpense = false }) {
   // One live feed for both bells (mobile top bar + desktop header).
   const feed = useNotificationFeed()
   const location = useLocation()
-  const fab = !hideAddExpense && showsAddExpense(location.pathname)
+  // How many empty states the page shows (EmptyState reports in and out).
+  const [emptyStates, setEmptyStates] = useState(0)
+  const countEmptyState = useCallback((delta) => setEmptyStates((n) => n + delta), [])
+  const fab = !hideAddExpense && showsAddExpense(location.pathname, { emptyState: emptyStates > 0 })
   const [, setTick] = useState(0)
   useEffect(() => { setTick((n) => n + 1) }, [location])
 
@@ -201,7 +205,9 @@ export default function AppShell({ hideAddExpense = false }) {
               Moving to another page tries again. */}
           <ErrorBoundary inline resetKey={location.pathname}>
             <Suspense fallback={<RingLoader />}>
-              <Outlet />
+              <EmptyStateCount.Provider value={countEmptyState}>
+                <Outlet />
+              </EmptyStateCount.Provider>
             </Suspense>
           </ErrorBoundary>
         </Box>

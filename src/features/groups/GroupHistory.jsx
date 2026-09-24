@@ -1,11 +1,12 @@
 import { useSearchParams } from 'react-router-dom'
 import { Stack, HStack, Text, Spacer, Button, Flex, IconButton } from '@chakra-ui/react'
-import { HandCoins, FileDown, MessageSquare, Receipt } from 'lucide-react'
+import { HandCoins, FileDown, MessageSquare, Plus, Receipt, UserPlus } from 'lucide-react'
 import { splitLabel, paidByLabel, isEveryoneEqualSplit, expenseLabel, settlementLabel } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import EmptyState from '../../shared/ui/EmptyState.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
@@ -15,10 +16,12 @@ const TABS = [['expenses', 'Expenses'], ['settlements', 'Settlements'], ['activi
 // `onEdit(expense)`), settlements, and the activity log (with the PDF
 // statement). Expense and settlement rows open their comments via
 // `onThread(itemId)`. The open tab is kept in the address (?tab=), so
-// coming back from a comments page or an expense lands on it again.
+// coming back from a comments page or an expense lands on it again. With no
+// expenses yet, the Expenses tab offers `onAdd` (and `onMembers` while you're
+// the only one in the group).
 export default function GroupHistory({
   group, members, expenses, settlements, auditLog, counts, myMember, myUserId, isOwner,
-  onEdit, onThread, reportBusy, onReport,
+  onEdit, onThread, onAdd, onMembers, reportBusy, onReport,
 }) {
   const [params, setParams] = useSearchParams()
   const tab = TABS.some(([key]) => key === params.get('tab')) ? params.get('tab') : 'expenses'
@@ -37,7 +40,16 @@ export default function GroupHistory({
       </HStack>
 
       {tab === 'expenses' && (expenses.length === 0 ? (
-        <Text color="text.muted" fontSize="sm">No shared expenses yet.</Text>
+        <EmptyState variant="split" title="No shared expenses yet"
+          text="Add what someone paid for the group, and Budgeer works out who owes whom."
+          actions={<>
+            <Button leftIcon={<Plus size={18} />} onClick={onAdd}>Add the first expense</Button>
+            {members.length < 2 && (
+              <Button variant="outline" colorScheme="gray" leftIcon={<UserPlus size={18} />} onClick={onMembers}>
+                Invite people
+              </Button>
+            )}
+          </>} />
       ) : (
         <Stack spacing={0}>
           {expenses.map((e) => {

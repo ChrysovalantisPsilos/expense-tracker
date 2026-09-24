@@ -218,6 +218,24 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     version, offline) are previewed at `/kit` on the dev server; none of
     them shows the technical error message (it goes to the console only).
 
+### K1. Empty states
+
+On a fresh account (and a group with no expenses), at 390px and on desktop,
+light and dark, each of these shows the same card: the Budgeer mark, a
+heading, one muted line and its buttons (full width on the phone).
+
+| Page | Heading | Buttons |
+| --- | --- | --- |
+| Home, Transactions | Nothing logged yet | Add your first expense · Import a bank statement |
+| Groups | No groups yet (ring in three slices) | Create your first group |
+| A group, Expenses tab | No shared expenses yet (three slices) | Add the first expense · Invite people (only while you're alone in it) |
+| Budgets | No budgets yet (the "Set a monthly cap" form under it) | Set your first budget (scrolls to the form, cursor in Category) · Copy last month's budgets (only when last month has caps) |
+| Recurring, each tab | No subscriptions or bills yet / No recurring income yet | Add a subscription or bill / Add recurring income |
+
+While one of these shows, the phone's floating "+" is hidden, so it never
+sits over the card's buttons (on a short phone too); it's back once there's
+an entry, a group or a budget.
+
 ### K2. Form pages (no form dialogs)
 
 Every form that fills in data is its own page with a ← arrow (which is also

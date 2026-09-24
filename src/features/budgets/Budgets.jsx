@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Stack, HStack, Text, Button, FormControl, FormLabel, Select, useToast,
@@ -7,6 +7,7 @@ import {
 import { Target, CalendarDays, Copy, Pencil, Trash2 } from 'lucide-react'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
+import EmptyState from '../../shared/ui/EmptyState.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { toMinor } from '../../shared/lib/currency.js'
@@ -36,6 +37,15 @@ export default function Budgets() {
   const navigate = useNavigate()
   const toast = useToast()
   const { busy: copying, run } = useAsyncSubmit()
+  const formRef = useRef(null)
+  const categoryRef = useRef(null)
+
+  // The empty state's "Set your first budget": bring the form into view and
+  // put the cursor in its first field.
+  function goToForm() {
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    categoryRef.current?.focus({ preventScroll: true })
+  }
 
   async function addBudget(e) {
     e.preventDefault()
@@ -86,64 +96,88 @@ export default function Budgets() {
   const canCopy = !carriedFrom && prev.rows.length > 0
   const copyButton = canCopy && (
     <Button size="xs" variant="ghost" leftIcon={<Copy size={14} />} isLoading={copying}
-      onClick={() => (items.length ? setConfirmCopy(true) : copy())}>
+      onClick={() => setConfirmCopy(true)}>
       Copy last month’s budgets
     </Button>
+  )
+
+  // No caps this month: the empty state leads (what budgets do, and the way
+  // to set one), and the form follows it as that next step, rather than an
+  // empty "This month" card competing with the form above it.
+  const empty = !error && !loading && items.length === 0
+
+  const form = (
+    <Panel ref={formRef} icon={Target} title="Set a monthly cap">
+      <form onSubmit={addBudget} {...unsavedFormAttr(!!(catId || amount))}>
+        <HStack align="end" spacing={3}>
+          <FormControl>
+            <FormLabel>Category</FormLabel>
+            <Select ref={categoryRef} placeholder="Select" value={catId} onChange={(e) => setCatId(e.target.value)}>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </Select>
+          </FormControl>
+          <FormControl maxW="160px">
+            <FormLabel>Monthly cap</FormLabel>
+            <MoneyInput currency={baseCurrency} value={amount} onChange={setAmount} />
+          </FormControl>
+          <Button type="submit">Set</Button>
+        </HStack>
+      </form>
+    </Panel>
   )
 
   return (
     <Stack spacing={5}>
       <PageHeader eyebrow={monthTitle()} title="Budgets" />
 
-      <Panel icon={Target} title="Set a monthly cap">
-        <form onSubmit={addBudget} {...unsavedFormAttr(!!(catId || amount))}>
-          <HStack align="end" spacing={3}>
-            <FormControl>
-              <FormLabel>Category</FormLabel>
-              <Select placeholder="Select" value={catId} onChange={(e) => setCatId(e.target.value)}>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </Select>
-            </FormControl>
-            <FormControl maxW="160px">
-              <FormLabel>Monthly cap</FormLabel>
-              <MoneyInput currency={baseCurrency} value={amount} onChange={setAmount} />
-            </FormControl>
-            <Button type="submit">Set</Button>
-          </HStack>
-        </form>
-      </Panel>
-
-      <Panel icon={CalendarDays} title="This month"
-        subtitle={carriedFrom ? carriedLabel(carriedFrom, periodStart) : undefined}
-        action={items.length > 0 ? copyButton : undefined}>
-        {error ? <QueryError error={error} onRetry={reload} what="budgets" /> : loading ? (
-          <SkeletonRegion><SkeletonRows count={4} progress spacing={5} /></SkeletonRegion>
-        ) : items.length === 0 ? (
-          <Stack spacing={3} align="start">
-            <Text color="text.muted" fontSize="sm">No budgets set for this month yet.</Text>
-            {copyButton}
-          </Stack>
-        ) : (
-          <Stack spacing={5}>
-            <Text color="text.muted" fontSize="sm">
-              Tap a budget to see what you spent and change it.
-            </Text>
-            {carriedFrom && (
-              <Text color="text.muted" fontSize="sm">
-                Budgets roll over until you change them. Edit or delete one and this month gets its own.
-              </Text>
+      {empty ? (
+        <>
+          <Panel>
+            <EmptyState title="No budgets yet"
+              text="Set a monthly cap per category and Budgeer shows how close you are as you spend."
+              actions={<>
+                <Button leftIcon={<Target size={18} />} onClick={goToForm}>Set your first budget</Button>
+                {canCopy && (
+                  <Button variant="outline" colorScheme="gray" leftIcon={<Copy size={18} />}
+                    isLoading={copying} onClick={copy}>
+                    Copy last month’s budgets
+                  </Button>
+                )}
+              </>} />
+          </Panel>
+          {form}
+        </>
+      ) : (
+        <>
+          {form}
+          <Panel icon={CalendarDays} title="This month"
+            subtitle={carriedFrom ? carriedLabel(carriedFrom, periodStart) : undefined}
+            action={items.length > 0 ? copyButton : undefined}>
+            {error ? <QueryError error={error} onRetry={reload} what="budgets" /> : loading ? (
+              <SkeletonRegion><SkeletonRows count={4} progress spacing={5} /></SkeletonRegion>
+            ) : (
+              <Stack spacing={5}>
+                <Text color="text.muted" fontSize="sm">
+                  Tap a budget to see what you spent and change it.
+                </Text>
+                {carriedFrom && (
+                  <Text color="text.muted" fontSize="sm">
+                    Budgets roll over until you change them. Edit or delete one and this month gets its own.
+                  </Text>
+                )}
+                <Stack spacing={5} role="list" aria-label="Budgets">
+                  {items.map((b) => (
+                    <BudgetRow key={b.id} item={b} currency={baseCurrency} actions={[
+                      { label: `Edit ${b.name} budget`, icon: Pencil, onClick: () => startEdit(b) },
+                      { label: `Delete ${b.name} budget`, icon: Trash2, danger: true, onClick: () => remove(b) },
+                    ]} />
+                  ))}
+                </Stack>
+              </Stack>
             )}
-            <Stack spacing={5} role="list" aria-label="Budgets">
-              {items.map((b) => (
-                <BudgetRow key={b.id} item={b} currency={baseCurrency} actions={[
-                  { label: `Edit ${b.name} budget`, icon: Pencil, onClick: () => startEdit(b) },
-                  { label: `Delete ${b.name} budget`, icon: Trash2, danger: true, onClick: () => remove(b) },
-                ]} />
-              ))}
-            </Stack>
-          </Stack>
-        )}
-      </Panel>
+          </Panel>
+        </>
+      )}
 
       <Modal isOpen={confirmCopy} onClose={() => setConfirmCopy(false)} isCentered>
         <ModalOverlay />
