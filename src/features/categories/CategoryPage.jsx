@@ -19,7 +19,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { formatMoney, fromMinor } from '../../shared/lib/currency.js'
+import { formatMoney, minorToInput } from '../../shared/lib/currency.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import TransactionList from '../transactions/TransactionList.jsx'
@@ -195,7 +195,7 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
   const toast = useToast()
   const draft = useCategoryDraft(category, sameKindOthers(all, category))
   const current = budget?.amount_minor ?? null
-  const [amount, setAmount] = useState(current == null ? '' : String(fromMinor(current, baseCurrency)))
+  const [amount, setAmount] = useState(current == null ? '' : minorToInput(current, baseCurrency))
   const amountRef = useRef(null)
   const { busy, run } = useAsyncSubmit()
 

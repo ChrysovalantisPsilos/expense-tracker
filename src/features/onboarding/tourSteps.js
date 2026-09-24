@@ -68,7 +68,7 @@ export const TOUR_STEPS = [
   {
     id: 'privacy', route: '/settings', target: 'settings-privacy',
     title: 'Privacy and security',
-    body: 'How you sign in (password, Google, passkeys), backups of your data, and Privacy: your data rights, consents and requests.',
+    body: 'How you log in (password, Google, passkeys), backups of your data, and Privacy: your data rights, consents and requests.',
   },
   {
     id: 'done',

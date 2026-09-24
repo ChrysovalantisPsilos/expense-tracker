@@ -68,8 +68,8 @@ export function googleDisconnectBlock({ user, identities }) {
   if (!identities.some((i) => i.provider === 'google')) return 'Google isn’t connected.'
   if (identities.length >= 2) return null
   return hasPassword(user)
-    ? 'This account was created with Google, so Google stays connected. You can sign in with either.'
-    : 'Google is your only way to sign in. Set a password first.'
+    ? 'This account was created with Google, so Google stays connected. You can log in with either.'
+    : 'Google is your only way to log in. Set a password first.'
 }
 
 // A user-facing message for a failed link, from supabase-js' error or the

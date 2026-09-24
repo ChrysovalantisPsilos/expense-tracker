@@ -27,6 +27,14 @@ export function fromMinor(minor, currency = 'EUR') {
   return Number(minor) / minorFactor(currency)
 }
 
+// An amount as an edit field shows it: the currency's decimals, a dot, no
+// grouping — "18.50", or "1800" for a zero-decimal currency. It's the raw
+// string MoneyInput and toMinor() take.
+export function minorToInput(minor, currency = 'EUR') {
+  const factor = minorFactor(currency)
+  return (Number(minor) / factor).toFixed(factor === 1 ? 0 : 2)
+}
+
 // Decimals come from our minor units, not ICU's defaults: ICU shows HUF and
 // IDR with 0 decimals although ISO 4217 (and our storage) has 2, which would
 // round 12.50 to "13" on screen.

@@ -14,7 +14,7 @@ import RingLoader from '../../shared/ui/RingLoader.jsx'
 // profiles.yearly_separate (0068). Off (the default) spreads a yearly
 // subscription over the months it covers; on keeps those payments out of every
 // monthly figure — Home, Insights, budgets and the server's budget alerts —
-// (Home's Subscriptions card lists them under Yearly either way).
+// (Home’s Subscriptions card lists them under Yearly either way).
 export default function SpendingSettings() {
   const { user } = useAuth()
   const { profile, separateYearly } = useProfile()

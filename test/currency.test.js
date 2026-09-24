@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { toMinor, fromMinor, formatMoney, toBaseMinor, minorFactor, baseEquivalent } from '../src/shared/lib/currency.js'
+import { toMinor, fromMinor, formatMoney, toBaseMinor, minorFactor, baseEquivalent, minorToInput } from '../src/shared/lib/currency.js'
 
 test('toMinor/fromMinor round-trip (2-decimal currency)', () => {
   assert.equal(toMinor('12.34', 'EUR'), 1234)
@@ -207,4 +207,14 @@ test('withEstimatedRates: the ECB rate on or before the row date, flagged; never
     [1, 1.17, true], [2, 1.18, true], [3, null, false], [4, null, false], [5, 1.2, false],
   ])
   assert.equal(rows[0].exchange_rate, null) // input untouched
+})
+
+test('minorToInput: an edit field shows the currency\'s decimals', () => {
+  assert.equal(minorToInput(1850, 'EUR'), '18.50')
+  assert.equal(minorToInput(1800, 'EUR'), '18.00')
+  assert.equal(minorToInput(5, 'GBP'), '0.05')
+  assert.equal(minorToInput(1800, 'JPY'), '1800')
+  assert.equal(minorToInput(125000, 'KRW'), '125000')
+  assert.equal(minorToInput(-4250, 'EUR'), '-42.50')
+  assert.equal(toMinor(minorToInput(1999, 'EUR'), 'EUR'), 1999) // round-trips
 })

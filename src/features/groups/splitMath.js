@@ -1,6 +1,6 @@
 // Pure helpers for shared-expense splitting and debt simplification.
 // All money is integer minor units.
-import { toBaseMinor, toMinor, fromMinor } from '../../shared/lib/currency.js'
+import { toBaseMinor, toMinor, minorToInput } from '../../shared/lib/currency.js'
 import { distributeByWeights } from '../../../supabase/functions/_shared/breakdown.ts'
 
 // Largest-remainder apportionment and the settle-up plan live with the edge
@@ -58,11 +58,19 @@ export function prefillSplitValues(expense, mode, groupCurrency) {
   const pct = mode === 'percent' && total ? percentsFor(splits.map((s) => Number(s.share_minor))) : null
   const out = {}
   splits.forEach((s, i) => {
-    if (mode === 'exact') out[s.member_id] = String(fromMinor(s.share_minor, groupCurrency))
+    if (mode === 'exact') out[s.member_id] = minorToInput(s.share_minor, groupCurrency)
     else if (mode === 'percent') out[s.member_id] = pct ? pct[i] : ''
     else if (mode === 'shares') out[s.member_id] = String(s.share_minor)
   })
   return out
+}
+
+// A fresh percent split: everyone included gets an even share, in hundredths
+// that add up to exactly 100 (3 people: 33.34 / 33.33 / 33.33).
+// { memberId: '33.34', … }
+export function evenPercents(memberIds) {
+  const units = splitEqually(10000, memberIds.length)
+  return Object.fromEntries(memberIds.map((id, i) => [id, String(units[i] / 100)]))
 }
 
 // Percentages for stored shares that add up to exactly 100 and apportion back

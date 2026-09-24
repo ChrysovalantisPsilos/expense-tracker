@@ -49,7 +49,7 @@ export default function PasskeysCard({ passkeys: query }) {
     }>
       {passkeys.length === 0 ? (
         <Text fontSize="sm" color="text.muted">
-          No passkeys yet. Add one to sign in with Face ID, Touch ID, or your
+          No passkeys yet. Add one to log in with Face ID, Touch ID, or your
           device PIN — no password needed.
         </Text>
       ) : (

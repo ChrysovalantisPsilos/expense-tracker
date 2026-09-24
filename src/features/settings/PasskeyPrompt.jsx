@@ -61,7 +61,7 @@ export default function PasskeyPrompt() {
       toast({ title: 'Couldn’t create passkey', description: userMessage(error), status: 'error' })
       return
     }
-    toast({ title: 'Passkey added — you can use it to sign in next time', status: 'success' })
+    toast({ title: 'Passkey added — you can use it to log in next time', status: 'success' })
     close()
   }
 
@@ -83,7 +83,7 @@ export default function PasskeyPrompt() {
         </ModalHeader>
         <ModalBody>
           <Text color="text.muted">
-            Sign in faster and more securely next time with Face ID, Touch ID, or
+            Log in faster and more securely next time with Face ID, Touch ID, or
             your device PIN — no password to remember.
           </Text>
           <FormControl display="flex" alignItems="center" mt={5}>

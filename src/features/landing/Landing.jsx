@@ -203,7 +203,7 @@ function ClosingCta({ onSignup }) {
             Create your first group and invite friends with a link. No limits, no ads.
           </Text>
           <Button size="lg" onClick={onSignup}>
-            Get started
+            Sign up
           </Button>
         </Stack>
       </Container>
@@ -220,7 +220,7 @@ export default function Landing() {
     <Box minH="100dvh" bg="bg.canvas" overflowX="clip">
       <PublicHeader>
         <Button size="sm" variant="ghost" px={{ base: 2, sm: 3 }} onClick={onLogin}>Log in</Button>
-        <Button size="sm" px={{ base: 3, sm: 4 }} onClick={onSignup}>Get started</Button>
+        <Button size="sm" px={{ base: 3, sm: 4 }} onClick={onSignup}>Sign up</Button>
       </PublicHeader>
       <main id={MAIN_ID}>
         <Hero onLogin={onLogin} onSignup={onSignup} />

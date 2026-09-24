@@ -48,7 +48,7 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
       console.error('[settings] Google link came back with an error:', err)
       toast({ title: 'Google wasn’t connected', description: linkErrorMessage(err), status: 'error' })
     } else if (ids.some((i) => i.provider === 'google')) {
-      toast({ title: 'Google connected', description: 'You can now sign in with Google too.', status: 'success' })
+      toast({ title: 'Google connected', description: 'You can now log in with Google too.', status: 'success' })
     } else {
       toast({ title: 'Google wasn’t connected', status: 'warning' })
     }
@@ -107,7 +107,7 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
 
   return (
     <Panel title="Sign-in methods" icon={LogIn}
-      subtitle="Ways you can sign in to this account. At least one always stays.">
+      subtitle="Ways you can log in to this account. At least one always stays.">
       <Stack spacing={1}>
         {methods.map((m) => (
           <ItemRow key={m.key} media={m.key === 'google' ? <GoogleTile /> : undefined}
@@ -154,7 +154,7 @@ function SetPasswordForm({ email, onCancel, onDone, setFirstPassword, markPasswo
       await markPasswordSet()
       toast({
         title: 'This account already has a password',
-        description: 'Change it under Password below, or use “Forgot password?” on the sign-in page.',
+        description: 'Change it under Password below, or use “Forgot password?” on the log-in page.',
         status: 'info',
       })
       onDone()
@@ -165,14 +165,14 @@ function SetPasswordForm({ email, onCancel, onDone, setFirstPassword, markPasswo
       toast({ title: 'Couldn’t set the password', description: userMessage(error), status: 'error' })
       return
     }
-    toast({ title: 'Password set', description: `You can now also sign in with ${email} and this password.`, status: 'success' })
+    toast({ title: 'Password set', description: `You can now also log in with ${email} and this password.`, status: 'success' })
     onDone()
   }
 
   return (
     <Stack as="form" onSubmit={submit} spacing={3} maxW="sm" mt={4}>
       <Text fontSize="sm" color="text.muted">
-        Sign in with your email ({email}) and a password as well as with Google.
+        Log in with your email ({email}) and a password as well as with Google.
       </Text>
       <FormControl isRequired>
         <FormLabel>New password</FormLabel>

@@ -6,7 +6,7 @@ import {
 } from '@chakra-ui/react'
 import { Repeat, Trash2 } from 'lucide-react'
 import { useCategories } from './useData.js'
-import { toMinor, fromMinor, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
+import { toMinor, minorToInput, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
 import { insertTransaction, updateTransaction } from './writes.js'
@@ -47,7 +47,7 @@ export default function TransactionForm({
   const { categories } = useCategories(kind)
   const toast = useToast()
   const [amount, setAmount] = useState(
-    transaction ? String(fromMinor(transaction.amount_minor, transaction.currency)) : '')
+    transaction ? minorToInput(transaction.amount_minor, transaction.currency) : '')
   const [currency, setCurrency] = useState(transaction?.currency ?? baseCurrency)
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
   const [description, setDescription] = useState(transaction?.description ?? '')

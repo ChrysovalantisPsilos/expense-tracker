@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Stack, HStack, Text, Spacer, Button, Flex, IconButton } from '@chakra-ui/react'
 import { HandCoins, FileDown, MessageSquare, Receipt } from 'lucide-react'
-import { memberName, splitLabel, paidByLabel, isEveryoneEqualSplit } from './groupFormat.js'
+import { viewerName, splitLabel, paidByLabel, isEveryoneEqualSplit } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
@@ -20,7 +20,6 @@ export default function GroupHistory({
 }) {
   const [tab, setTab] = useState('expenses')
   const cur = group.currency
-  const nameOf = (mid) => memberName(members, mid)
 
   return (
     <Panel>
@@ -60,7 +59,8 @@ export default function GroupHistory({
       ) : (
         <Stack spacing={0}>
           {settlements.map((s) => {
-            const label = `${nameOf(s.from_member)} → ${nameOf(s.to_member)}`
+            const who = (mid) => viewerName(members, mid, myMember?.id)
+            const label = `${who(s.from_member)} → ${who(s.to_member)}`
             return (
               <ItemRow key={s.id} icon={HandCoins} title={label} meta={shortDate(s.settled_at)}
                 amount={formatMoney(s.amount_minor, s.currency)}

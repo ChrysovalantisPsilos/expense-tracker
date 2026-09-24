@@ -5,14 +5,13 @@ import {
   InputGroup, InputRightAddon,
 } from '@chakra-ui/react'
 import { Trash2 } from 'lucide-react'
-import {
-  toMinor, fromMinor, formatMoney, parseManualRate, CURRENCIES,
-} from '../../shared/lib/currency.js'
+import { toMinor, formatMoney, parseManualRate, CURRENCIES, minorToInput } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today } from '../../shared/lib/dates.js'
 import {
-  splitEqually, expenseGroupAmount, computeSplit, prefillSplitValues,
+  splitEqually, expenseGroupAmount, computeSplit, prefillSplitValues, evenPercents,
 } from './splitMath.js'
+import { viewerName } from './groupFormat.js'
 import { addSharedExpense, updateSharedExpense, deleteSharedExpense } from './groups.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
@@ -38,7 +37,9 @@ const MODES = [
 // An expense can be paid in any currency: the split is always worked out in
 // the group currency, from the ECB rate for the expense's date (or a rate the
 // user types when none can be fetched) — the same rules as a personal expense.
-export default function GroupExpenseForm({ group, members, defaultPayer, expense, isOpen, onClose, onSaved }) {
+export default function GroupExpenseForm({
+  group, members, myMemberId, defaultPayer, expense, isOpen, onClose, onSaved,
+}) {
   const toast = useToast()
   const isEdit = !!expense
   const cur = group.currency // shares and balances
@@ -50,7 +51,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
   const [description, setDescription] = useState(expense?.description ?? '')
   const [paidCurrency, setPaidCurrency] = useState(expense?.currency ?? cur)
   const [amount, setAmount] = useState(
-    expense ? String(fromMinor(expense.amount_minor, expense.currency ?? cur)) : '')
+    expense ? minorToInput(expense.amount_minor, expense.currency ?? cur) : '')
   const [manualRate, setManualRate] = useState('')
   const [paidBy, setPaidBy] = useState(expense?.paid_by ?? defaultPayer ?? members[0]?.id ?? '')
   const [spentAt, setSpentAt] = useState(expense?.spent_at ?? today)
@@ -82,6 +83,12 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
   // What the split must add up to: the amount in the group currency.
   const totalMinor = expenseGroupAmount(paidMinor, paidCurrency, rate, cur) ?? 0
   const setVal = (id, v) => setValues((s) => ({ ...s, [id]: v }))
+
+  // Switching to Percent starts from an even split of whoever is included.
+  function pickMode(next) {
+    if (next === 'percent' && mode !== 'percent') setValues(evenPercents(includedIds))
+    setMode(next)
+  }
 
   function toggle(id) {
     setSplitWith((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]))
@@ -236,7 +243,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
         <FormControl isRequired isInvalid={!!errors.paidBy}>
           <FormLabel>Paid by</FormLabel>
           <Select ref={refs.paidBy} value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
-            {members.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
+            {members.map((m) => <option key={m.id} value={m.id}>{viewerName(members, m.id, myMemberId)}</option>)}
           </Select>
           <FormErrorMessage>{errors.paidBy}</FormErrorMessage>
         </FormControl>
@@ -246,7 +253,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
           <ButtonGroup size="sm" isAttached variant="outline" mb={3} flexWrap="wrap">
             {MODES.map((m) => (
               <Button key={m.key}
-                onClick={() => setMode(m.key)}
+                onClick={() => pickMode(m.key)}
                 variant={mode === m.key ? 'solid' : 'outline'}
                 colorScheme={mode === m.key ? 'brand' : 'gray'}>
                 {m.label}
@@ -260,7 +267,7 @@ export default function GroupExpenseForm({ group, members, defaultPayer, expense
               return (
                 <HStack key={m.id} spacing={3}>
                   <Checkbox isChecked={on} onChange={() => toggle(m.id)} flex="1" minW={0}>
-                    <Text overflowWrap="anywhere">{m.display_name}</Text>
+                    <Text overflowWrap="anywhere">{viewerName(members, m.id, myMemberId)}</Text>
                   </Checkbox>
                   {on && mode !== 'equal' && (
                     <InputGroup size="sm" maxW="130px">

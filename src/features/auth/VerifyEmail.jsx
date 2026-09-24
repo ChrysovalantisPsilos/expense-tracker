@@ -57,13 +57,13 @@ export default function VerifyEmail() {
       <Text fontSize="sm" color="text.muted" textAlign="center" mt={-2}>
         Open it to confirm your account. If you open it on <b>this</b>{' '}
         device you’ll continue automatically. Confirmed on a different
-        device? Just sign in below. Check spam if it’s not there.
+        device? Just log in below. Check spam if it’s not there.
       </Text>
 
       <Stack spacing={3}>
         <Button variant="outline" colorScheme="gray"
           leftIcon={<LogIn size={16} />} onClick={() => navigate('/login')}>
-          I’ve confirmed — sign in
+          I’ve confirmed — log in
         </Button>
         <Button variant="ghost" isDisabled={cooldown > 0} onClick={resend}>
           {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend email'}

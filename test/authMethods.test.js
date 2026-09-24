@@ -64,7 +64,7 @@ test('signInMethods: while identities load, the providers stand in', () => {
 
 test('googleDisconnectBlock: never the last sign-in identity', () => {
   assert.equal(googleDisconnectBlock({ user: emailUser, identities: [EMAIL_ID, GOOGLE_ID] }), null)
-  assert.match(googleDisconnectBlock({ user: googleUser, identities: [GOOGLE_ID] }), /only way to sign in/)
+  assert.match(googleDisconnectBlock({ user: googleUser, identities: [GOOGLE_ID] }), /only way to log in/)
   assert.match(googleDisconnectBlock({
     user: { ...googleUser, user_metadata: { password_set: true } }, identities: [GOOGLE_ID],
   }), /stays connected/)

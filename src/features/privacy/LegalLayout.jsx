@@ -72,7 +72,7 @@ export default function LegalLayout({ eyebrow, title, intro, version, sections }
     <Box minH="100dvh" bg="bg.canvas" overflowX="clip">
       <PublicHeader>
         <Button as={RouterLink} to="/login" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}>Log in</Button>
-        <Button as={RouterLink} to="/login?signup=1" size="sm" px={{ base: 3, sm: 4 }}>Get started</Button>
+        <Button as={RouterLink} to="/login?signup=1" size="sm" px={{ base: 3, sm: 4 }}>Sign up</Button>
       </PublicHeader>
 
       <Container as="main" id={MAIN_ID} maxW="3xl" px={{ base: 4, md: 6 }} pt={{ base: 4, md: 8 }} pb={{ base: 10, md: 16 }}>

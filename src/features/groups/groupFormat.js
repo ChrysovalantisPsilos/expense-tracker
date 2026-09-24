@@ -39,13 +39,13 @@ export function splitLabel(expense) {
 }
 
 // A member's name as the viewer reads it: "You" for themselves.
-function nameFor(members, id, myMemberId) {
+export function viewerName(members, id, myMemberId) {
   return id === myMemberId ? 'You' : memberName(members, id)
 }
 
 // An expense row's payer line: "Paid by You" / "Paid by Anna".
 export function paidByLabel(members, payerId, myMemberId) {
-  return `Paid by ${nameFor(members, payerId, myMemberId)}`
+  return `Paid by ${viewerName(members, payerId, myMemberId)}`
 }
 
 // The group's total spend (the header's "Total"), in minor units of the
@@ -101,8 +101,8 @@ export function settlePlan(balances, members, myMemberId) {
   const toneOf = (t) => (t.to === myMemberId ? 'positive' : t.from === myMemberId ? 'negative' : 'default')
   return simplifyDebts(balances ?? new Map()).map((t) => ({
     ...t,
-    fromName: nameFor(members, t.from, myMemberId),
-    toName: nameFor(members, t.to, myMemberId),
+    fromName: viewerName(members, t.from, myMemberId),
+    toName: viewerName(members, t.to, myMemberId),
     mine: t.from === myMemberId || t.to === myMemberId,
     tone: toneOf(t),
   }))

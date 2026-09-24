@@ -57,7 +57,7 @@ export const FAQ_SECTIONS = [
       },
       {
         id: 'sign-in-options',
-        q: 'How can I sign in?',
+        q: 'How can I log in?',
         a: [
           'With your email address and a password, with “Sign in with Google”, or with a passkey once you’ve added one on your device.',
         ],
@@ -364,8 +364,8 @@ export const FAQ_SECTIONS = [
         id: 'passkeys',
         q: 'What is a passkey?',
         a: [
-          'A passkey lets you sign in with your fingerprint, face or device PIN instead of a password. It’s saved and synced by your device’s password manager, such as iCloud Keychain, Google Password Manager or 1Password.',
-          'Budgeer only stores the public half of the passkey, which can’t be used to sign in on its own. Add one on each device you use, in Settings → Security.',
+          'A passkey lets you log in with your fingerprint, face or device PIN instead of a password. It’s saved and synced by your device’s password manager, such as iCloud Keychain, Google Password Manager or 1Password.',
+          'Budgeer only stores the public half of the passkey, which can’t be used to log in on its own. Add one on each device you use, in Settings → Security.',
         ],
       },
       {

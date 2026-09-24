@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   memberName, pluralise, splitLabel, settlePlan, sortMembers, avatarStack,
   paidByLabel, groupTotal, memberBalances, balanceHighlight, isEveryoneEqualSplit,
-  myGroupBalance, mySettleSuggestions,
+  myGroupBalance, mySettleSuggestions, viewerName,
 } from '../src/features/groups/groupFormat.js'
 
 const members = [{ id: 'a', display_name: 'Alice' }, { id: 'b', display_name: 'Bob' }]
@@ -204,4 +204,12 @@ test('groupSummaryText: total and who owes whom by name, text only', () => {
   assert.ok(!/You/.test(text))
   const settled = groupSummaryText({ name: 'Flat', total: 0, members: ms, format, balances: new Map() })
   assert.match(settled, /Everyone is settled up\./)
+})
+
+test('viewerName: "You" for the viewer, the member\'s name otherwise', () => {
+  const ms = [{ id: 'y', display_name: 'Alex' }, { id: 'a', display_name: 'Anna' }]
+  assert.equal(viewerName(ms, 'y', 'y'), 'You')
+  assert.equal(viewerName(ms, 'a', 'y'), 'Anna')
+  assert.equal(viewerName(ms, 'y', null), 'Alex')
+  assert.equal(viewerName(ms, 'zzz', 'y'), '—')
 })

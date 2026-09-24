@@ -37,7 +37,7 @@ export default function ForgotPassword() {
         </>}>
         <Button variant="outline" colorScheme="gray"
           leftIcon={<ArrowLeft size={16} />} onClick={() => navigate('/login')}>
-          Back to sign in
+          Back to log in
         </Button>
       </AuthLayout>
     )
@@ -62,7 +62,7 @@ export default function ForgotPassword() {
 
       <Button variant="link" colorScheme="brand" size="sm"
         leftIcon={<ArrowLeft size={14} />} onClick={() => navigate('/login')}>
-        Back to sign in
+        Back to log in
       </Button>
     </AuthLayout>
   )

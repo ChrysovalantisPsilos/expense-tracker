@@ -30,7 +30,7 @@ import { linkBuckets } from '../categories/categoryLinks.js'
 import { lastMonths, shortDate } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { formatMoney, toMinor, fromMinor, minorFactor } from '../../shared/lib/currency.js'
+import { formatMoney, toMinor, minorFactor, minorToInput } from '../../shared/lib/currency.js'
 import { spendRows } from '../../shared/lib/spread.js'
 import {
   useAccounts, saveAccount, deleteAccount,
@@ -343,7 +343,7 @@ function AccountModal({ account, baseCurrency, onClose, onSaved }) {
   const isEdit = !!account
   const [name, setName] = useState(account?.name ?? '')
   const [type, setType] = useState(account?.type ?? 'asset')
-  const [balance, setBalance] = useState(account ? String(fromMinor(account.balance_minor, account.currency)) : '')
+  const [balance, setBalance] = useState(account ? minorToInput(account.balance_minor, account.currency) : '')
   const [currency] = useState(account?.currency ?? baseCurrency)
   const { busy, run } = useAsyncSubmit()
 
@@ -459,8 +459,8 @@ function GoalModal({ goal, baseCurrency, onClose, onSaved }) {
   const toast = useToast()
   const isEdit = !!goal
   const [name, setName] = useState(goal?.name ?? '')
-  const [target, setTarget] = useState(goal ? String(fromMinor(goal.target_minor, goal.currency)) : '')
-  const [saved, setSaved] = useState(goal ? String(fromMinor(goal.saved_minor, goal.currency)) : '0')
+  const [target, setTarget] = useState(goal ? minorToInput(goal.target_minor, goal.currency) : '')
+  const [saved, setSaved] = useState(goal ? minorToInput(goal.saved_minor, goal.currency) : '0')
   const [currency] = useState(goal?.currency ?? baseCurrency)
   const [targetDate, setTargetDate] = useState(goal?.target_date ?? '')
   const { busy, run } = useAsyncSubmit()

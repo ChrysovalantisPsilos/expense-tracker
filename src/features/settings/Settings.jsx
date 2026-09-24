@@ -63,7 +63,7 @@ export default function Settings() {
               description={site.host} />
           </NavList>
           <Text fontSize="sm" color="text.muted" mt={2} px={1}>
-            The live and test sites have separate accounts and data: you sign in separately on each.
+            The live and test sites have separate accounts and data: you log in separately on each.
           </Text>
         </Box>
       )}

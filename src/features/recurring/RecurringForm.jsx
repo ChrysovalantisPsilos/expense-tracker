@@ -3,7 +3,7 @@ import { Stack, HStack, Button, FormControl, FormLabel, Input, Select, useToast 
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import FormModal from '../../shared/ui/FormModal.jsx'
 import { useCategories } from '../transactions/useData.js'
-import { toMinor, fromMinor } from '../../shared/lib/currency.js'
+import { toMinor, minorToInput } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { saveRecurring } from './recurring.js'
@@ -18,7 +18,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
   const isEdit = !!rule
   const [kind, setKind] = useState(rule?.kind ?? initialKind)
   const { categories } = useCategories(kind)
-  const [amount, setAmount] = useState(rule ? String(fromMinor(rule.amount_minor, rule.currency)) : '')
+  const [amount, setAmount] = useState(rule ? minorToInput(rule.amount_minor, rule.currency) : '')
   const [currency] = useState(rule?.currency ?? baseCurrency)
   const [categoryId, setCategoryId] = useState(rule?.category_id ?? '')
   const [description, setDescription] = useState(rule?.description ?? '')

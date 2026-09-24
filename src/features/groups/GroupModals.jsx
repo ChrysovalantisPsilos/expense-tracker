@@ -9,7 +9,7 @@ import {
   inviteExistingUser, createInvite, emailInvite, addSettlement, renameGroup,
   nudgeMember,
 } from './groups.js'
-import { toMinor, fromMinor, formatMoney } from '../../shared/lib/currency.js'
+import { toMinor, formatMoney, minorToInput } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { memberName, mySettleSuggestions } from './groupFormat.js'
@@ -182,7 +182,7 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
   function applySuggestion(t, i) {
     setDirection(t.direction)
     setOtherId(t.otherId)
-    setAmount(String(fromMinor(t.amount, group.currency)))
+    setAmount(minorToInput(t.amount, group.currency))
     setPicked(i)
   }
 
@@ -193,7 +193,7 @@ export function SettleUpModal({ group, members, myMember, balances, isOpen, onCl
     if (!isOpen || !top) return
     setDirection(top.direction)
     setOtherId(top.otherId)
-    setAmount(String(fromMinor(top.amount, group.currency)))
+    setAmount(minorToInput(top.amount, group.currency))
     setPicked(0)
     // Only on opening: later balance updates must not overwrite what's typed.
     // eslint-disable-next-line react-hooks/exhaustive-deps

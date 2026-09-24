@@ -72,7 +72,7 @@ test('a foreign expense splits its group amount exactly (equal split = SQL split
 })
 
 // ---- Form preview: computeSplit / prefillSplitValues ------------------------
-import { computeSplit, prefillSplitValues } from '../src/features/groups/splitMath.js'
+import { computeSplit, prefillSplitValues, evenPercents } from '../src/features/groups/splitMath.js'
 
 test('computeSplit: equal split is the SQL split_equally', () => {
   assert.deepEqual(computeSplit('equal', 1000, ['a', 'b', 'c'], {}, 'EUR'),
@@ -105,7 +105,7 @@ test('prefillSplitValues rebuilds the inputs from stored group-currency shares',
     amount_minor: 900, group_amount_minor: 1000,
     expense_splits: [{ member_id: 'a', share_minor: 750 }, { member_id: 'b', share_minor: 250 }],
   }
-  assert.deepEqual(prefillSplitValues(expense, 'exact', 'EUR'), { a: '7.5', b: '2.5' })
+  assert.deepEqual(prefillSplitValues(expense, 'exact', 'EUR'), { a: '7.50', b: '2.50' })
   assert.deepEqual(prefillSplitValues(expense, 'percent', 'EUR'), { a: '75', b: '25' })
   assert.deepEqual(prefillSplitValues(expense, 'shares', 'EUR'), { a: '750', b: '250' })
   assert.deepEqual(prefillSplitValues(expense, 'equal', 'EUR'), {})
@@ -133,4 +133,16 @@ test('prefillSplitValues: a percent split round-trips to the same shares and pas
   const three = { amount_minor: 10000, expense_splits: [
     { member_id: 'a', share_minor: 3334 }, { member_id: 'b', share_minor: 3333 }, { member_id: 'c', share_minor: 3333 }] }
   assert.deepEqual(prefillSplitValues(three, 'percent', 'EUR'), { a: '33.34', b: '33.33', c: '33.33' })
+})
+
+test('evenPercents: an even percent split that adds up to exactly 100 and passes computeSplit', () => {
+  assert.deepEqual(evenPercents(['a', 'b', 'c']), { a: '33.34', b: '33.33', c: '33.33' })
+  assert.deepEqual(evenPercents(['a', 'b', 'c', 'd']), { a: '25', b: '25', c: '25', d: '25' })
+  assert.deepEqual(evenPercents(['a']), { a: '100' })
+  assert.deepEqual(evenPercents([]), {})
+  for (const n of [2, 3, 6, 7, 9]) {
+    const ids = Array.from({ length: n }, (_, i) => `m${i}`)
+    const values = evenPercents(ids)
+    assert.ok(computeSplit('percent', 10000, ids, values, 'EUR').ok, `${n} people`)
+  }
 })

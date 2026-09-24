@@ -101,11 +101,11 @@ export default function GroupPreview() {
           <Stack spacing={3} bg="bg.surface" borderWidth="1px" borderColor="border.default"
             borderRadius="2xl" p={5} boxShadow="soft">
             <Stack direction={{ base: 'column', sm: 'row' }} spacing={3}>
-              <Button flex={{ sm: 1 }} onClick={goSignup}>Create account &amp; join</Button>
+              <Button flex={{ sm: 1 }} onClick={goSignup}>Sign up</Button>
               <Button flex={{ sm: 1 }} variant="outline" colorScheme="gray" onClick={goLogin}>Log in</Button>
             </Stack>
             <HStack justify="center" color="text.muted" fontSize="xs">
-              <Lock size={12} /><Text>Create a free account to join and add expenses</Text>
+              <Lock size={12} /><Text>Sign up free to join and add expenses</Text>
             </HStack>
           </Stack>
         </Stack>

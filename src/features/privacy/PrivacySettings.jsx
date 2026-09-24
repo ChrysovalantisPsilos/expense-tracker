@@ -61,7 +61,7 @@ export default function PrivacySettings() {
       <NotificationPrefs title="Withdraw or give consent" onChanged={loadConsents} />
 
       <Right icon={UserCheck} title="Automated decisions" article="Art. 22"
-        text="We make no decisions about you based solely on automated processing with legal or similarly significant effects. The one automatic action is deleting accounts unused for 2 years — only after an email warning, and signing in stops it." />
+        text="We make no decisions about you based solely on automated processing with legal or similarly significant effects. The one automatic action is deleting accounts unused for 2 years — only after an email warning, and logging in stops it." />
 
       <Right icon={Scale} title="Complain to a supervisory authority" article="Art. 77"
         text="Belgian Data Protection Authority (APD/GBA), Rue de la Presse 35 / Drukpersstraat 35, 1000 Brussels · contact@apd-gba.be · +32 2 274 48 00 · www.dataprotectionauthority.be — or the authority where you live or work." />

@@ -170,7 +170,7 @@ export default function OnboardingWizard({ profile, onDone }) {
             <Stack spacing={4}>
               <HStack color="accent.fg"><BellRing size={18} /><Heading size="sm">Stay in the loop</Heading></HStack>
               <Text fontSize="sm" color="text.muted">
-                Get a nudge when friends add expenses or bills are due, and sign in faster next time.
+                Get a nudge when friends add expenses or bills are due, and log in faster next time.
               </Text>
               <Button variant="outline" leftIcon={<BellRing size={16} />}
                 onClick={turnOnPush} isDisabled={pushDone || !pushSupported()}>

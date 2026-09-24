@@ -105,7 +105,7 @@ export default function Login() {
     <AuthLayout
       title={mode === 'signin' ? 'Welcome back' : 'Create your account'}
       subtitle={mode === 'signin'
-        ? 'Sign in to your groups and budgets'
+        ? 'Log in to your groups and budgets'
         : 'Free — track your money and split with friends'}>
       {!isSupabaseConfigured && (
         <Text fontSize="sm" color="status.warning" textAlign="center">
@@ -173,7 +173,7 @@ export default function Login() {
             </Alert>
           )}
           <Button type="submit" isLoading={busy} w="full">
-            {mode === 'signin' ? 'Sign in' : 'Sign up'}
+            {mode === 'signin' ? 'Log in' : 'Sign up'}
           </Button>
         </Stack>
       </form>
@@ -196,23 +196,23 @@ export default function Login() {
         </Button>
         {mode === 'signup' && (
           <Text fontSize="xs" color="text.muted" textAlign="center">
-            With Google, you’ll be asked to accept the Terms and Privacy Notice after signing in.
+            With Google, you’ll be asked to accept the Terms and Privacy Notice after logging in.
           </Text>
         )}
         {mode === 'signin' && passkeysSupported && (
           <Button variant="outline" colorScheme="gray" w="full"
             leftIcon={<KeyRound size={18} />} isLoading={passkeyBusy}
             onClick={handlePasskey}>
-            Sign in with a passkey
+            Log in with a passkey
           </Button>
         )}
       </Stack>
 
       <Text fontSize="sm" textAlign="center" color="text.muted">
-        {mode === 'signin' ? "Don't have an account? " : 'Already have one? '}
+        {mode === 'signin' ? 'Don’t have an account? ' : 'Already have one? '}
         <Button variant="link" colorScheme="brand" size="sm"
           onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}>
-          {mode === 'signin' ? 'Sign up' : 'Sign in'}
+          {mode === 'signin' ? 'Sign up' : 'Log in'}
         </Button>
       </Text>
     </AuthLayout>

@@ -11,7 +11,7 @@ export default function ReauthNotice({ what }) {
   return (
     <HStack spacing={3} flexWrap="wrap" justify="space-between">
       <Text fontSize="sm" color="text.muted" flex="1" minW="200px">{reauthMessage(what)}</Text>
-      <Button size="sm" leftIcon={<LogIn size={14} />} onClick={() => signOut()}>Sign in again</Button>
+      <Button size="sm" leftIcon={<LogIn size={14} />} onClick={() => signOut()}>Log in again</Button>
     </HStack>
   )
 }

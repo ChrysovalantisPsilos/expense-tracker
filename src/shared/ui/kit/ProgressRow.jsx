@@ -29,6 +29,7 @@ const OVERLAY_FOCUS = {
 //   tone     bar fill: undefined (brand) | 'warning' | 'negative' | 'positive'
 //            — budgetTone()'s output fits. Defaults to 'negative' when over.
 //   over     defaults to percent > 100; shows `overLabel` as a red pill
+//            under the title, and the percentage turns red
 //   valueLabel overrides the "78%" text
 //   icon / media, actions / actionSlots as in ItemRow; `actionSize` 'lg'
 //            gives the actions 44px targets (RowActions)
@@ -59,12 +60,12 @@ export default function ProgressRow({
             ) : title}
           </Text>
           {meta && <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{meta}</Text>}
+          {/* Under the title, so the name keeps the row's width on a phone. */}
+          {over && <Tag size="sm" colorScheme="red" borderRadius="full" mt={1}>{overLabel}</Tag>}
         </Box>
-        {over ? (
-          <Tag size="sm" colorScheme="red" borderRadius="full" flexShrink={0}>{overLabel}</Tag>
-        ) : (
-          <Text fontSize="sm" fontWeight="700" color="text.muted" flexShrink={0}>{valueLabel}</Text>
-        )}
+        <Text fontSize="sm" fontWeight="700" color={over ? 'status.negative' : 'text.muted'} flexShrink={0}>
+          {valueLabel}
+        </Text>
         {to && <Box color="text.muted" flexShrink={0} aria-hidden><ChevronRight size={16} /></Box>}
         {actions && (to ? (
           // Positioned after the link's stretch, so it paints (and clicks) above it.

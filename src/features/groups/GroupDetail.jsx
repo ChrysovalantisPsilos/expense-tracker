@@ -195,7 +195,7 @@ export default function GroupDetail() {
         onEdit={openEdit} onThread={setThread} reportBusy={reportBusy} onReport={downloadReport} />
 
       <GroupExpenseForm key={editingExpense?.id || 'new'} group={group} members={members}
-        defaultPayer={myMember?.id} expense={editingExpense}
+        myMemberId={myMember?.id} defaultPayer={myMember?.id} expense={editingExpense}
         isOpen={expenseModal.isOpen} onClose={closeExpense} onSaved={load} />
 
       <SettleUpModal group={group} members={members} myMember={myMember} balances={balances}
