@@ -25,7 +25,7 @@ import { fxQueryDate, rateOnOrBefore, toBaseMinor } from '../../shared/lib/curre
 export const BACKUP_FORMAT = 'budgeer-backup'
 export const BACKUP_VERSION = 2
 
-// The profiles.base_currency column default: a "not chosen yet" currency.
+// The profiles.base_currency column default.
 const DEFAULT_CURRENCY = 'EUR'
 const KINDS = ['expense', 'income']
 const ACCOUNT_TYPES = ['asset', 'liability']
@@ -541,12 +541,26 @@ export function planRecurring(backupRules, existingRules, { categoryIdByKey, acc
   return { create, skipped: backupRules.length - create.length }
 }
 
+// What a restore does about the main currency, from the backup's, the
+// account's (null: the column default) and whether the account's is locked
+// (0078: it has entries — transactions, recurring entries, budgets, accounts
+// or goals). 'adopt': an empty account takes the backup's currency, whatever
+// it uses now, so nothing needs converting. 'convert': a locked account keeps
+// its own and the backup's amounts are restated in it (rebaseBackupData).
+// null: same currency, or an old backup that doesn't say. The review screen
+// and planProfile both ask this, so they can't disagree.
+export function currencyChange(backupBase, accountBase, locked) {
+  const target = accountBase || DEFAULT_CURRENCY
+  if (!backupBase || backupBase === target) return null
+  return locked ? 'convert' : 'adopt'
+}
+
 // Profile settings and payment details fill in only what's empty or still at
 // its default; anything the account already set is kept and reported, never
-// overwritten. `emailName` is the email's local part (the signup default for
-// the display name); `emptyAccount` means no entries before the restore (no
-// transactions, recurring entries, budgets, accounts or goals), the only time
-// a default main currency is safe to replace — and allowed (0078).
+// overwritten. The main currency is the exception: an empty account takes the
+// backup's (currencyChange). `emailName` is the email's local part (the signup
+// default for the display name); `emptyAccount` means no entries before the
+// restore (the main currency isn't locked).
 export function planProfile(backup, current, { emailName, emptyAccount }) {
   const patch = {}
   const kept = []
@@ -555,10 +569,9 @@ export function planProfile(backup, current, { emailName, emptyAccount }) {
     if (!current.display_name || current.display_name === emailName) patch.display_name = b.display_name
     else kept.push('display name')
   }
-  if (b.base_currency && b.base_currency !== current.base_currency) {
-    if (emptyAccount && current.base_currency === DEFAULT_CURRENCY) patch.base_currency = b.base_currency
-    else kept.push('main currency')
-  }
+  const currency = currencyChange(b.base_currency, current.base_currency, !emptyAccount)
+  if (currency === 'adopt') patch.base_currency = b.base_currency
+  else if (currency === 'convert') kept.push('main currency')
   // Notifications default to on. Only an untouched "on" follows the backup's
   // "off"; a restore never switches notifications on.
   for (const [field, label] of [['notify_email', 'email notifications'], ['notify_push', 'push notifications']]) {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   BACKUP_FORMAT, BACKUP_VERSION, BackupError, backupFileName, normText, txnKey, groupShareNote,
   buildBackup, serializeBackup, readBackup, unlockBackup, backupContents, mapCategories,
-  matchByName, planRules, planTransactions, planBudgets, planRecurring, planProfile, planPayment,
+  matchByName, planRules, planTransactions, planBudgets, planRecurring, planProfile, planPayment, currencyChange,
   restoreSummary, splitDateRange, rebaseRateSpans, rebaseBackupData,
 } from '../src/features/backup/backupMath.js'
 import { UserError } from '../src/shared/lib/errors.js'
@@ -341,6 +341,32 @@ test('profile: only empty/default values are filled; the rest is reported, never
   const b = planProfile(data, settled, { emailName: 'alex.d', emptyAccount: false })
   assert.deepEqual(b.patch, {})
   assert.deepEqual(b.kept, ['display name', 'main currency'])
+})
+
+test('profile: an empty account takes the backup’s main currency, whatever it uses now', () => {
+  const { data } = fresh() // USD
+  // Everything but the currency matches the backup, so only it can differ.
+  const plan = (current, emptyAccount) => planProfile(data, { ...data.profile, ...current }, { emailName: 'a', emptyAccount })
+  // Not only the EUR default: an empty JPY account switches too.
+  assert.deepEqual(plan({ base_currency: 'JPY' }, true).patch, { base_currency: 'USD' })
+  assert.deepEqual(plan({ base_currency: 'JPY' }, true).kept, [])
+  assert.deepEqual(plan({ base_currency: null }, true).patch, { base_currency: 'USD' }) // unread: the column default
+  // An account with entries keeps its own (the backup's amounts are converted).
+  assert.equal(plan({ base_currency: 'JPY' }, false).patch.base_currency, undefined)
+  assert.deepEqual(plan({ base_currency: 'JPY' }, false).kept, ['main currency'])
+  // Same currency: nothing to change or report.
+  assert.deepEqual(plan({ base_currency: 'USD' }, false), { patch: {}, kept: [] })
+})
+
+test('currencyChange: adopt on an empty account, convert on a locked one, nothing when they match', () => {
+  assert.equal(currencyChange('USD', 'EUR', false), 'adopt')
+  assert.equal(currencyChange('USD', 'JPY', false), 'adopt')
+  assert.equal(currencyChange('USD', 'EUR', true), 'convert')
+  assert.equal(currencyChange('USD', 'USD', true), null)
+  assert.equal(currencyChange('USD', 'USD', false), null)
+  assert.equal(currencyChange(null, 'EUR', true), null) // an old backup that doesn't say
+  assert.equal(currencyChange('EUR', null, true), null) // no currency read: the column default
+  assert.equal(currencyChange('USD', null, true), 'convert')
 })
 
 test('payment: fills an empty IBAN/Revolut, keeps one that is set', () => {

@@ -20,7 +20,7 @@ import { listRules, saveRule, importTransactions } from '../import/importExpense
 import {
   buildBackup, serializeBackup, backupFileName, splitDateRange, mapCategories, matchByName,
   planRules, planTransactions, planBudgets, planRecurring, planProfile, planPayment,
-  rebaseRateSpans, rebaseBackupData,
+  rebaseRateSpans, rebaseBackupData, currencyChange,
 } from './backupMath.js'
 import { UserError } from '../../shared/lib/errors.js'
 
@@ -118,6 +118,20 @@ async function inMainCurrency(data, toBase) {
   return rebaseBackupData(data, { ...opts, seriesByCurrency })
 }
 
+// Whether the account's main currency is locked (0078). A failed check counts
+// as locked: never plan to switch a currency we can't confirm is free.
+const currencyLocked = () => baseCurrencyLocked().catch(() => true)
+
+// For the review screen: what the restore will do about the main currency —
+// { change: 'convert' | 'adopt' | null, from, to } (see currencyChange), `from`
+// the backup's currency and `to` the account's, as restoreBackup decides it.
+export async function restoreCurrencyPlan(userId, backup) {
+  const [profile, locked] = await Promise.all([getProfile(userId, 'base_currency'), currencyLocked()])
+  const from = backup.data.profile.base_currency
+  const to = profile?.base_currency || 'EUR'
+  return { change: currencyChange(from, to, locked), from, to }
+}
+
 // Merge a validated backup into the signed-in account: add what's missing,
 // skip duplicates, never delete or overwrite (budgets for the same month
 // excepted — those upsert). Safe to run twice. Order matters: categories and
@@ -137,7 +151,7 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   // The profile must be read: its main currency decides what the amounts mean.
   const [cats, existingAccounts, existingTxns, current, locked] = await Promise.all([
     listAllCategories(), listAccounts(), allTransactions(),
-    fetchProfile(user.id, PROFILE_FIELDS), baseCurrencyLocked().catch(() => true),
+    fetchProfile(user.id, PROFILE_FIELDS), currencyLocked(),
   ])
 
   // Profile settings go first: the main currency can only change while the

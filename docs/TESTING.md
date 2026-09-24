@@ -180,8 +180,14 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 33. A damaged file (edit an amount to `-1`, or truncate it) is refused with a
     clear message and nothing is saved. Name/currency/notification/payment
     settings already set on the account are kept and listed in the summary.
+    Restoring a USD backup into an empty account on any other main currency
+    (not only EUR): the review says "Your main currency will be set to USD to
+    match this backup." and afterwards the account's main currency is USD,
+    with nothing converted. Same currency on both: no currency line.
     Restoring into an account that already has entries in another main
-    currency (e.g. a EUR backup into a JPY account): every entry keeps its
+    currency (e.g. a EUR backup into a JPY account): the review says the
+    budgets, account balances and savings goals will be converted to JPY, and
+    the main currency stays JPY. Every entry keeps its
     original amount and currency, shows the right ¥ equivalent at that day's
     rate; budget caps, account balances and savings goals come back
     converted to whole yen (recurring entries keep their own currency). Offline, the

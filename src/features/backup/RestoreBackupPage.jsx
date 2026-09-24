@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Stack, Text, Button, FormControl, FormLabel, FormErrorMessage, Input,
   Progress, Box, Flex, HStack, useToast,
@@ -13,7 +13,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { readBackup, unlockBackup, backupContents, restoreSummary } from './backupMath.js'
-import { restoreBackup } from './backup.js'
+import { restoreBackup, restoreCurrencyPlan } from './backup.js'
 import Note from './Note.jsx'
 import { UserError, userMessage } from '../../shared/lib/errors.js'
 import { RingMark, RingSpinner } from '../../shared/ui/RingLoader.jsx'
@@ -140,6 +140,15 @@ function ReviewStep({ backup, setFlow, running }) {
   const [progress, setProgress] = useState({ label: 'Starting', done: 0, total: 0 })
   const contents = backupContents(backup)
   const made = backup.exportedAt ? new Date(backup.exportedAt) : null
+  const [currency, setCurrency] = useState(null) // { change, from, to }
+
+  useEffect(() => {
+    let live = true
+    restoreCurrencyPlan(user.id, backup)
+      .then((plan) => { if (live) setCurrency(plan) })
+      .catch((err) => console.error('[backup] currency check failed:', err))
+    return () => { live = false }
+  }, [user.id, backup])
 
   async function start() {
     setFlow((f) => ({ ...f, step: 'running' }))
@@ -181,6 +190,7 @@ function ReviewStep({ backup, setFlow, running }) {
               Backup made {made.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.
             </Text>
           )}
+          <CurrencyLine plan={currency} />
           <BalanceGrid columns={{ base: 2, sm: 3 }}>
             {CONTENT_ROWS.map(([k, label]) => (
               <BalanceTile key={k} label={label} value={contents[k]}
@@ -195,9 +205,9 @@ function ReviewStep({ backup, setFlow, running }) {
             </Note>
           )}
           <Note icon={Info}>
-            Only what’s missing is added. Your name, currency, notification
-            and payment settings are kept; the backup’s fill in only what’s
-            empty or still at its default.
+            Only what’s missing is added. Your name, notification and payment
+            settings are kept; the backup only fills in what’s empty or
+            still at its default.
           </Note>
         </Stack>
       </Panel>
@@ -206,6 +216,20 @@ function ReviewStep({ backup, setFlow, running }) {
         Restore
       </Button>
     </>
+  )
+}
+
+// One quiet line on what happens to the main currency (backupMath.js
+// currencyChange); nothing when the backup's matches the account's.
+function CurrencyLine({ plan }) {
+  if (!plan?.change) return null
+  const { change, from, to } = plan
+  return (
+    <Text fontSize="sm" color="text.muted">
+      {change === 'adopt'
+        ? `Your main currency will be set to ${from} to match this backup.`
+        : `This backup is in ${from} and your account uses ${to}, so budgets, account balances and savings goals will be converted to ${to} at the European Central Bank rate. Entries keep their original amounts.`}
+    </Text>
   )
 }
 
