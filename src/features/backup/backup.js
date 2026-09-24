@@ -10,14 +10,17 @@ import { listRecurring, saveRecurring } from '../recurring/recurring.js'
 import { listBudgets, budgetPeriods, saveBudget } from '../budgets/budgets.js'
 import { listAccounts, saveAccount, listGoals, saveGoal } from '../insights/insights.js'
 import {
-  baseCurrencyLocked, getProfile, updateProfile, getMyPaymentInfo, savePaymentInfo,
+  baseCurrencyLocked, fetchProfile, getProfile, updateProfile, getMyPaymentInfo, savePaymentInfo,
 } from '../../shared/lib/profile.js'
+import { getRateSeriesMap } from '../../shared/lib/fx.js'
+import { today } from '../../shared/lib/dates.js'
 import { listGroups, getGroup } from '../groups/groups.js'
 import { listComments, commentCounts } from '../groups/comments.js'
 import { listRules, saveRule, importTransactions } from '../import/importExpenses.js'
 import {
   buildBackup, serializeBackup, backupFileName, splitDateRange, mapCategories, matchByName,
   planRules, planTransactions, planBudgets, planRecurring, planProfile, planPayment,
+  rebaseRateSpans, rebaseBackupData,
 } from './backupMath.js'
 import { UserError } from '../../shared/lib/errors.js'
 
@@ -104,15 +107,26 @@ export async function downloadBackup(userId, password, onStep) {
   saveBlob(new Blob([text], { type: 'application/json' }), backupFileName())
 }
 
+// The backup's data restated in the target account's main currency `toBase`
+// (see backupMath.js rebaseBackupData): the ECB rates are fetched the way an
+// import fetches them, one range per currency. Throws before anything is
+// written when a rate is missing.
+async function inMainCurrency(data, toBase) {
+  const opts = { fromBase: data.profile.base_currency, toBase, todayIso: today() }
+  const spans = rebaseRateSpans(data, opts)
+  const seriesByCurrency = spans.size ? await getRateSeriesMap(spans, toBase) : new Map()
+  return rebaseBackupData(data, { ...opts, seriesByCurrency })
+}
+
 // Merge a validated backup into the signed-in account: add what's missing,
 // skip duplicates, never delete or overwrite (budgets for the same month
 // excepted — those upsert). Safe to run twice. Order matters: categories and
 // accounts first (everything else references them), transactions before
 // budgets (so restoring history doesn't fire "budget exceeded" alerts for
-// past months), profile last.
+// past months), profile last. Values in the backup's main currency are
+// converted first when the account's main currency differs.
 // `onProgress({ label, done, total })` drives the progress bar.
 export async function restoreBackup(user, backup, onProgress = () => {}) {
-  const { data } = backup
   const step = (label, done = 0, total = 0) => onProgress({ label, done, total })
   const t = {
     expenses: 0, income: 0, categories: 0, rules: 0, budgets: 0, budgetsUpdated: 0,
@@ -120,16 +134,19 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   }
 
   step('Checking what’s already in your account')
+  // The profile must be read: its main currency decides what the amounts mean.
   const [cats, existingAccounts, existingTxns, current, locked] = await Promise.all([
     listAllCategories(), listAccounts(), allTransactions(),
-    getProfile(user.id, PROFILE_FIELDS), baseCurrencyLocked().catch(() => true),
+    fetchProfile(user.id, PROFILE_FIELDS), baseCurrencyLocked().catch(() => true),
   ])
 
   // Profile settings go first: the main currency can only change while the
   // account has no entries (0078), i.e. before this restore adds any.
-  const prof = planProfile(data, current ?? {}, {
+  const prof = planProfile(backup.data, current ?? {}, {
     emailName: (user.email ?? '').split('@')[0], emptyAccount: !locked,
   })
+  const data = await inMainCurrency(backup.data,
+    prof.patch.base_currency ?? current?.base_currency ?? 'EUR')
   if (Object.keys(prof.patch).length) await updateProfile(user.id, prof.patch)
 
   step('Categories')

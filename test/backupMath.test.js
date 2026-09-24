@@ -4,8 +4,9 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION, BackupError, backupFileName, normText, txnKey, groupShareNote,
   buildBackup, serializeBackup, readBackup, unlockBackup, backupContents, mapCategories,
   matchByName, planRules, planTransactions, planBudgets, planRecurring, planProfile, planPayment,
-  restoreSummary, splitDateRange,
+  restoreSummary, splitDateRange, rebaseRateSpans, rebaseBackupData,
 } from '../src/features/backup/backupMath.js'
+import { UserError } from '../src/shared/lib/errors.js'
 
 // ---- A small source account, in the shapes the data modules return ----------
 const CATS = [
@@ -440,4 +441,104 @@ test('profile: the yearly-subscriptions setting round-trips and fills only the d
   // Older backups without the field leave it alone.
   assert.equal(fresh().data.profile.yearly_separate, null)
   assert.deepEqual(planProfile(fresh().data, blank, { emailName: 'a', emptyAccount: false }).patch.yearly_separate, undefined)
+})
+
+// ---- Main currency: restoring into an account with another one ------------------
+
+const TODAY = '2026-09-24'
+const tx = (currency, amount_minor, spent_at, exchange_rate = 1) => ({
+  kind: 'expense', category: null, account: null, amount_minor, currency, exchange_rate,
+  description: null, notes: null, spent_at,
+})
+const cap = (currency, amount_minor, period_start = '2026-09-01') => ({ category: 'c1', period_start, amount_minor, currency })
+const dataIn = (base, transactions, budgets = []) => ({
+  profile: { base_currency: base }, transactions, budgets,
+  recurring: [{ kind: 'expense', amount_minor: 999, currency: base, frequency: 'monthly' }],
+  goals: [{ name: 'Holiday', target_minor: 100000, saved_minor: 0, currency: base }],
+  accounts: [{ key: 'a1', name: 'Current', balance_minor: 5000, currency: base }],
+})
+const rebase = (data, toBase, series = new Map()) =>
+  rebaseBackupData(data, { fromBase: data.profile.base_currency, toBase, seriesByCurrency: series, todayIso: TODAY })
+
+test('main currency: same as the backup’s (or unknown) changes nothing', () => {
+  const data = dataIn('EUR', [tx('EUR', 450, '2026-09-01'), tx('JPY', 2000, '2026-08-10', 0.0062)], [cap('EUR', 40000)])
+  assert.equal(rebaseRateSpans(data, { fromBase: 'EUR', toBase: 'EUR', todayIso: TODAY }).size, 0)
+  assert.equal(rebase(data, 'EUR'), data)
+  const old = { ...data, profile: { base_currency: null } }
+  assert.equal(rebaseRateSpans(old, { fromBase: null, toBase: 'USD', todayIso: TODAY }).size, 0)
+  assert.equal(rebaseBackupData(old, { fromBase: null, toBase: 'USD', seriesByCurrency: new Map(), todayIso: TODAY }), old)
+})
+
+test('main currency: USD backup into a EUR account — entries keep amounts, rates and caps restated', () => {
+  const data = dataIn('USD', [
+    tx('USD', 1000, '2026-09-01'),
+    tx('EUR', 450, '2026-09-01', 1.1111),          // the target's own currency → 1
+    tx('GBP', 2000, '2026-08-08', 1.3),            // a third currency, on a Saturday
+    tx('USD', 500, '2026-10-01'),                  // future-dated: today's rate
+  ], [cap('USD', 40000), cap('EUR', 7000)])
+  const opts = { fromBase: 'USD', toBase: 'EUR', todayIso: TODAY }
+  assert.deepEqual([...rebaseRateSpans(data, opts)], [
+    ['USD', { first: '2026-09-01', last: '2026-09-24' }],
+    ['GBP', { first: '2026-08-08', last: '2026-08-08' }],
+  ])
+  const series = new Map([
+    ['USD', [['2026-08-31', 0.91], ['2026-09-01', 0.9], ['2026-09-24', 0.85]]],
+    ['GBP', [['2026-08-07', 1.17], ['2026-08-10', 1.18]]],
+  ])
+  const out = rebase(data, 'EUR', series)
+  assert.deepEqual(out.transactions.map((t) => [t.currency, t.amount_minor, t.exchange_rate]), [
+    ['USD', 1000, 0.9], ['EUR', 450, 1], ['GBP', 2000, 1.17], ['USD', 500, 0.85],
+  ])
+  // Budget caps are in the main currency: converted at their month's rate.
+  assert.deepEqual(out.budgets, [cap('EUR', 36000), cap('EUR', 7000)])
+  // Things with their own currency are left alone; the input isn't mutated.
+  assert.equal(out.recurring, data.recurring)
+  assert.equal(out.goals, data.goals)
+  assert.equal(out.accounts, data.accounts)
+  assert.equal(data.transactions[0].exchange_rate, 1)
+  assert.equal(data.budgets[0].currency, 'USD')
+})
+
+test('main currency: zero-decimal target (EUR → JPY)', () => {
+  const data = dataIn('EUR', [tx('EUR', 1234, '2026-09-01'), tx('JPY', 1800, '2026-09-01', 0.0061)], [cap('EUR', 1234)])
+  const out = rebase(data, 'JPY', new Map([['EUR', [['2026-09-01', 163.456]]]]))
+  assert.deepEqual(out.transactions.map((t) => [t.currency, t.amount_minor, t.exchange_rate]),
+    [['EUR', 1234, 163.456], ['JPY', 1800, 1]])
+  // €12.34 × 163.456 = ¥2017.05 → ¥2017 (no fractional yen).
+  assert.deepEqual(out.budgets, [cap('JPY', 2017)])
+})
+
+test('main currency: zero-decimal source (JPY → EUR) rounds half away from zero', () => {
+  const data = dataIn('JPY', [tx('JPY', 2000, '2026-09-01')], [cap('JPY', 2000), cap('JPY', 275, '2026-08-01')])
+  const out = rebase(data, 'EUR', new Map([['JPY', [['2026-08-01', 0.0062], ['2026-09-01', 0.0062]]]]))
+  assert.equal(out.transactions[0].exchange_rate, 0.0062)
+  assert.equal(out.transactions[0].amount_minor, 2000)
+  // ¥2000 → €12.40; ¥275 × 0.0062 = €1.705 → €1.71 (as SQL to_base_minor).
+  assert.deepEqual(out.budgets, [cap('EUR', 1240), cap('EUR', 171, '2026-08-01')])
+})
+
+test('main currency: both zero-decimal (KRW → JPY)', () => {
+  const data = dataIn('KRW', [], [cap('KRW', 12345)])
+  const out = rebase(data, 'JPY', new Map([['KRW', [['2026-09-01', 0.1085]]]]))
+  assert.deepEqual(out.budgets, [cap('JPY', 1339)]) // 1339.43 → 1339
+})
+
+test('main currency: a missing rate stops the restore with a clear message', () => {
+  const data = dataIn('USD', [tx('USD', 1000, '2026-09-01')], [])
+  for (const series of [new Map(), new Map([['USD', [['2026-09-02', 0.9]]]])]) {
+    assert.throws(() => rebase(data, 'EUR', series), (err) =>
+      err instanceof UserError && /exchange rates/.test(err.message))
+  }
+  // A budget alone needs its rate too.
+  assert.throws(() => rebase(dataIn('USD', [], [cap('USD', 100)]), 'EUR'), UserError)
+})
+
+test('main currency: restated rates flow into the rows a restore saves', async () => {
+  const data = dataIn('USD', [tx('GBP', 2000, '2026-08-07', 1.3)])
+  const out = rebase(data, 'EUR', new Map([['GBP', [['2026-08-07', 1.17]]]]))
+  const plan = await planTransactions(out.transactions, [],
+    { userId: 'u', categoryIdByKey: new Map(), accountIdByKey: new Map() })
+  assert.equal(plan.rows[0].exchange_rate, 1.17)
+  assert.equal(plan.rows[0].amount_minor, 2000)
+  assert.equal(plan.rows[0].currency, 'GBP')
 })

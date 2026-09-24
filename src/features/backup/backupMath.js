@@ -20,6 +20,7 @@ import { sealText, openText } from './backupCrypto.js'
 import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import { CATEGORY_ICON_KEYS, CATEGORY_COLOR_KEYS } from '../../shared/lib/categoryStyle.js'
 import { UserError } from '../../shared/lib/errors.js'
+import { fxQueryDate, rateOnOrBefore, toBaseMinor } from '../../shared/lib/currency.js'
 
 export const BACKUP_FORMAT = 'budgeer-backup'
 export const BACKUP_VERSION = 2
@@ -594,6 +595,63 @@ export function planPayment(backup, current) {
       }
       : null,
     kept,
+  }
+}
+
+// ---- Main currency -----------------------------------------------------------------
+// What a backup holds in its main currency — each entry's exchange_rate (the
+// entry's currency → that main currency) and the budget caps — is restated
+// when the target account's main currency differs. Entries keep their own
+// amount and currency; each gets the ECB rate for its date into the target's
+// main currency (1 when it's already in it), as if it were added there. Budget
+// caps have no currency of their own: they're converted at the ECB rate for
+// their month, rounded to the target's minor units (toBaseMinor). Recurring
+// entries, accounts and goals keep their own currency (recurring charges are
+// rated by the server when they run). Same main currency — or an old backup
+// that doesn't say — changes nothing.
+
+const RATES_MISSING = 'Couldn’t get the exchange rates needed to convert this backup to your main currency. Check your connection and try again.'
+
+const needsRebase = (fromBase, toBase) => !!fromBase && !!toBase && fromBase !== toBase
+
+// Which rates a rebase needs: Map<currency, { first, last }> (the dates, as
+// the rate is asked for — never the future), for fx.js getRateSeriesMap.
+// Empty when nothing needs converting.
+export function rebaseRateSpans(data, { fromBase, toBase, todayIso }) {
+  const spans = new Map()
+  if (!needsRebase(fromBase, toBase)) return spans
+  const add = (currency, date) => {
+    if (currency === toBase) return
+    const d = fxQueryDate(date, todayIso)
+    const s = spans.get(currency)
+    if (!s) spans.set(currency, { first: d, last: d })
+    else {
+      if (d < s.first) s.first = d
+      if (d > s.last) s.last = d
+    }
+  }
+  for (const t of data.transactions) add(t.currency, t.spent_at)
+  for (const b of data.budgets) add(b.currency, b.period_start)
+  return spans
+}
+
+// The backup's data restated in `toBase`, using `seriesByCurrency` (Map<currency,
+// [[date, rate]]>, currency → toBase). The same object when nothing needs
+// converting. Any rate missing (offline, API down) rejects the whole restore:
+// a wrong number is worse than none.
+export function rebaseBackupData(data, { fromBase, toBase, seriesByCurrency, todayIso }) {
+  if (!needsRebase(fromBase, toBase)) return data
+  const rateFor = (currency, date) => (currency === toBase ? 1
+    : rateOnOrBefore(seriesByCurrency.get(currency) ?? [], fxQueryDate(date, todayIso))?.rate
+      ?? fail(RATES_MISSING))
+  return {
+    ...data,
+    transactions: data.transactions.map((t) => ({ ...t, exchange_rate: rateFor(t.currency, t.spent_at) })),
+    budgets: data.budgets.map((b) => (b.currency === toBase ? b : {
+      ...b,
+      amount_minor: toBaseMinor(b.amount_minor, rateFor(b.currency, b.period_start), b.currency, toBase),
+      currency: toBase,
+    })),
   }
 }
 

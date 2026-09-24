@@ -64,7 +64,7 @@ async function getRate(from, to, date) {
 
 // Daily from→to rates covering firstDate..lastDate in one request, as a sorted
 // [[date, rate]] list (use rateOnOrBefore to pick a day). [] on failure.
-export async function getRateSeries(from, to, firstDate, lastDate) {
+async function getRateSeries(from, to, firstDate, lastDate) {
   const now = today()
   const last = fxQueryDate(lastDate, now)
   try {
@@ -72,6 +72,14 @@ export async function getRateSeries(from, to, firstDate, lastDate) {
   } catch {
     return []
   }
+}
+
+// One range request per source currency: `spans` is Map<currency, { first,
+// last }> (the dates each currency needs a rate for); returns Map<currency,
+// [[date, rate]]> of currency→`to` series ([] for one that failed).
+export async function getRateSeriesMap(spans, to) {
+  return new Map(await Promise.all([...spans].map(async ([cur, { first, last }]) =>
+    [cur, await getRateSeries(cur, to, first, last)])))
 }
 
 // Transactions whose rate the server hasn't filled in yet (exchange_rate null:
@@ -82,9 +90,7 @@ export async function getRateSeries(from, to, firstDate, lastDate) {
 export async function fillPendingRates(rows, baseCurrency) {
   const spans = pendingRateSpans(rows, baseCurrency)
   if (spans.size === 0) return rows
-  const series = new Map(await Promise.all([...spans].map(async ([cur, { first, last }]) =>
-    [cur, await getRateSeries(cur, baseCurrency, first, last)])))
-  return withEstimatedRates(rows, baseCurrency, series, today())
+  return withEstimatedRates(rows, baseCurrency, await getRateSeriesMap(spans, baseCurrency), today())
 }
 
 // Form helper: the live rate for (from, to, date).

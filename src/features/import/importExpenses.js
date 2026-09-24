@@ -4,7 +4,7 @@
 // user confirms/overrides the mapping before importing.
 import { supabase } from '../../shared/lib/supabase.js'
 import { rateOnOrBefore } from '../../shared/lib/currency.js'
-import { getRateSeries } from '../../shared/lib/fx.js'
+import { getRateSeriesMap } from '../../shared/lib/fx.js'
 import { importFileProblem, rowsToObjects } from './sheetParse.js'
 import { detectMapping, headerSignature, savedMappingFor } from './statementDetect.js'
 // Pure helpers (parsing, drafts, deterministic identity) live in
@@ -151,18 +151,16 @@ export async function buildTransactions({
 }
 
 // One ECB series per foreign currency, spanning that currency's row dates.
-async function fetchSeries(drafts, baseCurrency) {
-  const spans = new Map() // currency -> [first, last]
+function fetchSeries(drafts, baseCurrency) {
+  const spans = new Map() // currency -> { first, last }
   for (const d of drafts) {
     if (d.error || d.skip || d.currency === baseCurrency) continue
-    const [a, b] = spans.get(d.currency) ?? [d.spent_at, d.spent_at]
-    spans.set(d.currency, [d.spent_at < a ? d.spent_at : a, d.spent_at > b ? d.spent_at : b])
+    const s = spans.get(d.currency) ?? { first: d.spent_at, last: d.spent_at }
+    spans.set(d.currency, {
+      first: d.spent_at < s.first ? d.spent_at : s.first, last: d.spent_at > s.last ? d.spent_at : s.last,
+    })
   }
-  const out = new Map()
-  await Promise.all([...spans].map(async ([cur, [first, last]]) => {
-    out.set(cur, await getRateSeries(cur, baseCurrency, first, last))
-  }))
-  return out
+  return getRateSeriesMap(spans, baseCurrency)
 }
 
 // Insert in chunks through the encrypting RPC, skipping rows whose

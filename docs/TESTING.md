@@ -180,6 +180,11 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 33. A damaged file (edit an amount to `-1`, or truncate it) is refused with a
     clear message and nothing is saved. Name/currency/notification/payment
     settings already set on the account are kept and listed in the summary.
+    Restoring into an account that already has entries in another main
+    currency (e.g. a EUR backup into a JPY account): every entry keeps its
+    original amount and currency, shows the right ¥ equivalent at that day's
+    rate, and budget caps come back converted to whole yen. Offline, the
+    restore stops with the exchange-rate message and nothing is added.
 
 ### K. Navigation
 34. Phone width: the bottom bar is exactly Home · Transactions · Groups ·
