@@ -1,8 +1,12 @@
-import { Box, Button, Container, Divider, Heading, HStack, SimpleGrid, Stack, Switch, Text } from '@chakra-ui/react'
+import { useState } from 'react'
+import { Link as RouterLink, useSearchParams } from 'react-router-dom'
+import { Box, Button, Container, Divider, Heading, HStack, Link, SimpleGrid, Stack, Switch, Text } from '@chakra-ui/react'
 import {
   AlertTriangle, Coffee, MessageSquare, Pencil, Plane, Receipt, ShoppingCart, Trash2, TrendingUp, UtensilsCrossed, Wallet,
 } from 'lucide-react'
 import ThemeToggle from '../ThemeToggle.jsx'
+import ErrorScreen from '../ErrorScreen.jsx'
+import { ERROR_VARIANTS } from '../errorScreens.js'
 import Panel from './Panel.jsx'
 import Tile from './Tile.jsx'
 import IconTile from './IconTile.jsx'
@@ -58,7 +62,54 @@ function AnimatedDemo() {
   )
 }
 
+// The error screens, each in a card; "full page" opens one alone
+// (/kit?preview=crash), and "Crash the gallery" throws for real so the app's
+// error boundary shows the actual crash screen.
+const NOOP_HANDLERS = Object.fromEntries(['home', 'help', 'back', 'reload'].map((id) => [id, { onClick: noop }]))
+const SAMPLE_DETAIL = "Cannot read properties of undefined (reading 'amount')"
+const PREVIEWS = [
+  ...ERROR_VARIANTS.map((variant) => ({ variant, signedIn: false })),
+  { variant: 'notFound', signedIn: true },
+]
+
+function Crash() {
+  throw new Error('Kit gallery: deliberate crash to preview the error boundary')
+}
+
+function ErrorScreens() {
+  const [crash, setCrash] = useState(false)
+  return (
+    <Panel title="Error screens" subtitle="LooseRing + ErrorScreen: 404, crash, new version, offline"
+      action={<Button size="xs" variant="outline" colorScheme="gray" onClick={() => setCrash(true)}>Crash the gallery</Button>}>
+      {crash && <Crash />}
+      <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} spacing={4}>
+        {PREVIEWS.map(({ variant, signedIn }) => {
+          const name = `${variant}${signedIn ? ' · signed in' : ''}`
+          return (
+            <Spec key={name} name={name}>
+              <Box borderWidth="1px" borderColor="border.default" borderRadius="xl" bg="bg.canvas">
+                <ErrorScreen variant={variant} signedIn={signedIn} headingAs="h2"
+                  detail={SAMPLE_DETAIL} handlers={NOOP_HANDLERS} />
+              </Box>
+              <Link as={RouterLink} fontSize="xs" color="accent.fg"
+                to={`/kit?preview=${variant}${signedIn ? '&signedIn=1' : ''}`}>Full page</Link>
+            </Spec>
+          )
+        })}
+      </SimpleGrid>
+    </Panel>
+  )
+}
+
 export default function KitGallery() {
+  const [params] = useSearchParams()
+  const preview = params.get('preview')
+  if (ERROR_VARIANTS.includes(preview)) {
+    return (
+      <ErrorScreen variant={preview} signedIn={params.has('signedIn')} fullPage detail={SAMPLE_DETAIL}
+        handlers={{ home: { to: '/kit' }, help: { to: '/kit' }, back: { to: '/kit' } }} />
+    )
+  }
   return (
     <Box minH="100dvh" bg="bg.canvas" py={{ base: 6, md: 10 }}>
       <Container maxW="6xl" px={{ base: 4, md: 6 }}>
@@ -179,6 +230,7 @@ export default function KitGallery() {
 
           <AnimatedDemo />
         </SimpleGrid>
+        <Box mt={6}><ErrorScreens /></Box>
       </Container>
     </Box>
   )

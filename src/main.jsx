@@ -15,6 +15,7 @@ import { ChakraProvider, ColorModeScript } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
 import App from './app/App.jsx'
 import ErrorBoundary from './app/ErrorBoundary.jsx'
+import RootFallback from './app/RootFallback.jsx'
 import theme from './app/theme.js'
 import { AuthProvider } from './shared/auth/AuthProvider.jsx'
 import { ProfileProvider } from './shared/lib/ProfileProvider.jsx'
@@ -25,22 +26,29 @@ import { markEnvironment } from './shared/lib/environment.js'
 // On the test site: "DEV · " tab title and the tagged favicon.
 markEnvironment(document)
 
+// Error boundaries: the themed one (crash / new version / offline screens)
+// sits right inside Chakra, above the router and every provider, so an error
+// anywhere in them still gets a branded screen. AutoUpdate stays outside it,
+// so a crashed tab keeps picking up fixed deploys. The outer one only catches
+// a failure of Chakra itself, with a plain unthemed fallback.
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-    <ChakraProvider theme={theme}>
-      <BrowserRouter>
-        <AppearanceProvider>
-          <AuthProvider>
-            <ProfileProvider>
-              <ErrorBoundary>
-                <App />
-              </ErrorBoundary>
-            </ProfileProvider>
-          </AuthProvider>
-        </AppearanceProvider>
-      </BrowserRouter>
-      <AutoUpdate />
-    </ChakraProvider>
+    <ErrorBoundary fallback={(error) => <RootFallback error={error} />}>
+      <ColorModeScript initialColorMode={theme.config.initialColorMode} />
+      <ChakraProvider theme={theme}>
+        <ErrorBoundary>
+          <BrowserRouter>
+            <AppearanceProvider>
+              <AuthProvider>
+                <ProfileProvider>
+                  <App />
+                </ProfileProvider>
+              </AuthProvider>
+            </AppearanceProvider>
+          </BrowserRouter>
+        </ErrorBoundary>
+        <AutoUpdate />
+      </ChakraProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 )

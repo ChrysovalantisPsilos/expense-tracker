@@ -18,6 +18,7 @@ import SiteSwitch from '../shared/ui/SiteSwitch.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
 import { useNotificationFeed } from '../features/notifications/notifications.js'
 import { isNavActive } from './navMatch.js'
+import ErrorBoundary from './ErrorBoundary.jsx'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
 // desktop sidebar. `tour` names the app tour's stop (data-tour, tourSteps.js).
@@ -169,10 +170,15 @@ export default function AppShell() {
 
         <Box as="main" flex="1" px={{ base: 4, md: 6 }} py={{ base: 4, md: 4 }}
           pb={{ base: '92px', md: 8 }} maxW="900px" w="full" mx="auto">
-          {/* Pages are lazy chunks: the shell stays put while one loads. */}
-          <Suspense fallback={<PageSpinner />}>
-            <Outlet />
-          </Suspense>
+          {/* Pages are lazy chunks: the shell stays put while one loads, and
+              if one fails (a chunk gone after a deploy, offline, a crash) its
+              error screen shows here, with the navigation still around it.
+              Moving to another page tries again. */}
+          <ErrorBoundary inline resetKey={location.pathname}>
+            <Suspense fallback={<PageSpinner />}>
+              <Outlet />
+            </Suspense>
+          </ErrorBoundary>
         </Box>
       </Flex>
 

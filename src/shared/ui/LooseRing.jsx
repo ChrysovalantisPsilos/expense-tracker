@@ -1,0 +1,209 @@
+import { keyframes } from '@emotion/react'
+import { Box } from '@chakra-ui/react'
+
+// The error screens' illustration: the Budgeer mark (public/budgeer-mark.svg,
+// a lowercase "b" whose bowl is a budget ring, amber then coral) with its
+// ring come loose. Per variant (see errorScreens.js):
+//   notFound — the ring rolls away and settles; the stem tilts. Then it rocks.
+//   crash    — the ring cracks into pieces, then reassembles. Loops.
+//   update   — the ring refills to 100% and pops; two sparkles twinkle.
+//   offline  — the mark dims and pulses slowly.
+// Reduced motion: no animation, and each variant shows its telling moment
+// (rolled away, cracked apart, full, dimmed). Decorative: aria-hidden.
+
+const C = {
+  coral: 'var(--chakra-colors-brand-500)',
+  amber: 'var(--chakra-colors-amber-400)',
+  ground: 'var(--chakra-colors-border-default)',
+  track: 'var(--chakra-colors-border-default)',
+}
+
+// Geometry (viewBox 200 × 170): the mark's proportions, ring resting on the
+// ground line at y 152.
+const RING = { cx: 100, cy: 118, r: 23, width: 22 }
+const CIRC = 2 * Math.PI * RING.r // ≈ 144.5
+const AMBER = [0, 40] // arc spans along the circumference, from 12 o'clock
+const CORAL = [44, CIRC]
+const STEM = { x: 66, y: 40, w: 22, h: 100 }
+const STEM_BASE = `${STEM.x + STEM.w / 2}px ${STEM.y + STEM.h}px`
+const RING_CENTER = `${RING.cx}px ${RING.cy}px`
+
+// An arc of the ring from `from` to `to` (circumference units), as a dashed
+// circle rotated so 0 sits at 12 o'clock.
+function Arc({ from, to, color }) {
+  const len = to - from
+  return (
+    <circle cx={RING.cx} cy={RING.cy} r={RING.r} fill="none" strokeWidth={RING.width}
+      transform={`rotate(-90 ${RING.cx} ${RING.cy})`}
+      strokeDasharray={`${len} ${CIRC - len}`} strokeDashoffset={-from}
+      style={{ stroke: color }} />
+  )
+}
+
+// ---- notFound: roll away ---------------------------------------------------
+// Rolling (not sliding): the turn matches the distance over the outer radius.
+const ROLL = 60
+const turn = (dx) => (dx / (RING.r + RING.width / 2)) * (180 / Math.PI)
+const rolled = (dx) => `translateX(${dx}px) rotate(${turn(dx).toFixed(1)}deg)`
+const ROLLED = rolled(ROLL)
+const TILTED = 'rotate(-6deg)'
+const rollAway = keyframes`
+  0%, 12% { transform: none }
+  55% { transform: ${rolled(ROLL + 8)} }
+  72% { transform: ${rolled(ROLL - 5)} }
+  86% { transform: ${rolled(ROLL + 2)} }
+  100% { transform: ${ROLLED} }
+`
+const rock = keyframes`
+  0%, 100% { transform: ${ROLLED} }
+  50% { transform: ${rolled(ROLL - 3)} }
+`
+const tilt = keyframes`
+  0%, 35% { transform: none }
+  58% { transform: rotate(-10deg) }
+  74% { transform: rotate(-4deg) }
+  100% { transform: ${TILTED} }
+`
+const dust = keyframes`
+  0%, 14% { opacity: 0; transform: none }
+  24% { opacity: 1 }
+  50%, 100% { opacity: 0; transform: translate(-16px, -4px) }
+`
+
+// ---- crash: crack and reassemble -------------------------------------------
+// Each piece drifts out from the centre along its own middle angle.
+const PIECES = [
+  { from: AMBER[0], to: AMBER[1], color: C.amber, spin: 10 },
+  { from: 44, to: 78, color: C.coral, spin: -8 },
+  { from: 78, to: 112, color: C.coral, spin: 6 },
+  { from: 112, to: CIRC, color: C.coral, spin: -10 },
+].map((p) => {
+  const mid = (((p.from + p.to) / 2) / CIRC) * 2 * Math.PI
+  const d = 10
+  const apart = `translate(${(Math.sin(mid) * d).toFixed(1)}px, ${(-Math.cos(mid) * d).toFixed(1)}px) rotate(${p.spin}deg)`
+  const crack = keyframes`
+    0%, 22% { transform: none }
+    32%, 62% { transform: ${apart} }
+    80%, 100% { transform: none }
+  `
+  return { ...p, apart, crack }
+})
+const shake = keyframes`
+  0%, 20%, 30%, 100% { transform: none }
+  23% { transform: rotate(-3deg) }
+  26% { transform: rotate(3deg) }
+`
+
+// ---- update: refill --------------------------------------------------------
+const fillArc = (len) => keyframes`
+  from { stroke-dasharray: 0 ${CIRC} }
+  to { stroke-dasharray: ${len} ${CIRC - len} }
+`
+const fillAmber = fillArc(AMBER[1] - AMBER[0])
+const fillCoral = fillArc(CORAL[1] - CORAL[0])
+const pop = keyframes`
+  0%, 100% { transform: none }
+  45% { transform: scale(1.08) }
+`
+// Starts hidden (fill-mode backwards), so the sparkles appear once full.
+const twinkle = keyframes`
+  0%, 100% { opacity: 0; transform: scale(0.4) }
+  50% { opacity: 1; transform: scale(1) }
+`
+
+// ---- offline: dim and breathe ----------------------------------------------
+const breathe = keyframes`
+  0%, 100% { opacity: 0.28 }
+  50% { opacity: 0.6 }
+`
+
+// Per-variant CSS: `motion` runs by default, `still` replaces it under
+// prefers-reduced-motion.
+const STYLES = {
+  notFound: {
+    motion: {
+      '.lr-ring': { animation: `${rollAway} 2.6s cubic-bezier(.45,0,.3,1) .3s both, ${rock} 3.2s ease-in-out 3.2s infinite` },
+      '.lr-stem': { animation: `${tilt} 2.6s ease-in-out .3s both` },
+      '.lr-dust': { animation: `${dust} 2.6s ease-out .3s both` },
+    },
+    still: { '.lr-ring': { transform: ROLLED }, '.lr-stem': { transform: TILTED }, '.lr-dust': { opacity: 0 } },
+  },
+  crash: {
+    motion: {
+      ...Object.fromEntries(PIECES.map((p, i) => [`.lr-piece-${i}`, { animation: `${p.crack} 4.8s cubic-bezier(.5,0,.3,1) infinite` }])),
+      '.lr-stem': { animation: `${shake} 4.8s ease-in-out infinite` },
+    },
+    still: Object.fromEntries(PIECES.map((p, i) => [`.lr-piece-${i}`, { transform: p.apart }])),
+  },
+  update: {
+    motion: {
+      '.lr-amber circle': { animation: `${fillAmber} .7s ease-in .3s both` },
+      '.lr-coral circle': { animation: `${fillCoral} 1.3s cubic-bezier(.3,0,.2,1) 1s both` },
+      '.lr-ring': { animation: `${pop} .5s ease-out 2.3s both` },
+      '.lr-spark': { animation: `${twinkle} 2.4s ease-in-out 2.4s infinite backwards` },
+      '.lr-spark-2': { animationDelay: '3.2s' },
+    },
+    still: {},
+  },
+  offline: {
+    motion: { '.lr-mark': { animation: `${breathe} 3.6s ease-in-out infinite` } },
+    still: { '.lr-mark': { opacity: 0.4 } },
+  },
+}
+
+function Sparkle({ x, y, s, className }) {
+  // A four-point star.
+  const d = `M${x} ${y - s} Q${x} ${y} ${x + s} ${y} Q${x} ${y} ${x} ${y + s} Q${x} ${y} ${x - s} ${y} Q${x} ${y} ${x} ${y - s}Z`
+  return <path className={`lr-spark ${className ?? ''}`} d={d} style={{ fill: C.amber, transformOrigin: `${x}px ${y}px` }} />
+}
+
+export default function LooseRing({ variant = 'notFound', ...props }) {
+  const { motion, still } = STYLES[variant]
+  // The rolled-away ring ends right of centre: start the pair further left so
+  // the settled scene is balanced.
+  const shift = variant === 'notFound' ? -22 : 0
+  return (
+    <Box as="svg" viewBox="0 0 200 170" aria-hidden="true" focusable="false" display="block"
+      sx={{
+        '.lr-ring, .lr-piece': { transformOrigin: RING_CENTER },
+        '.lr-stem': { transformOrigin: STEM_BASE },
+        '@media (prefers-reduced-motion: no-preference)': motion,
+        '@media (prefers-reduced-motion: reduce)': still,
+      }}
+      {...props}>
+      <ellipse cx="100" cy="153" rx="84" ry="5" style={{ fill: C.ground }} />
+      {/* One group, so dimming it (offline) fades stem and ring together
+          without the stem showing through where they overlap. */}
+      <g className="lr-mark" transform={`translate(${shift} 0)`}>
+        <g className="lr-stem">
+          <rect x={STEM.x} y={STEM.y} width={STEM.w} height={STEM.h} rx={STEM.w / 2} style={{ fill: C.coral }} />
+        </g>
+        {variant === 'notFound' && (
+          <g className="lr-dust">
+            <circle cx="94" cy="148" r="3.5" style={{ fill: C.ground }} />
+            <circle cx="86" cy="143" r="2.5" style={{ fill: C.ground }} />
+          </g>
+        )}
+        {variant === 'crash' ? (
+          PIECES.map((p, i) => (
+            <g key={p.from} className={`lr-piece lr-piece-${i}`}>
+              <Arc from={p.from} to={p.to} color={p.color} />
+            </g>
+          ))
+        ) : (
+          <g className="lr-ring">
+            {variant === 'update' && <Arc from={0} to={CIRC} color={C.track} />}
+            <g className="lr-amber"><Arc from={AMBER[0]} to={AMBER[1]} color={C.amber} /></g>
+            <g className="lr-coral"><Arc from={CORAL[0]} to={CORAL[1]} color={C.coral} /></g>
+          </g>
+        )}
+        {variant === 'update' && (
+          <>
+            <Sparkle x={148} y={80} s={9} />
+            <Sparkle x={160} y={104} s={5.5} className="lr-spark-2" />
+          </>
+        )}
+      </g>
+    </Box>
+  )
+}
