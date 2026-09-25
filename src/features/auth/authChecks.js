@@ -12,8 +12,11 @@ export function authErrors({ mode, email, password, accepted }) {
     password: mode === 'signup'
       ? validatePassword(password ?? '')
       : requiredError(password, 'Enter your password.'),
-    consent: mode === 'signup' && !accepted
-      ? 'Please accept the Terms of Use and Privacy Notice'
-      : null,
+    consent: consentError({ mode, accepted }),
   })
+}
+
+// Signing up, by email or with Google, needs the Terms/Privacy tick.
+export function consentError({ mode, accepted }) {
+  return mode === 'signup' && !accepted ? 'Please accept the Terms of Use and Privacy Notice' : null
 }

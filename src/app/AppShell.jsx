@@ -21,6 +21,7 @@ import { isNavActive, showsAddExpense } from './navMatch.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
 import { MAIN_ID } from '../shared/ui/SkipLink.jsx'
 import { EmptyStateCount } from '../shared/ui/EmptyState.jsx'
+import { InAppShell } from '../shared/ui/inAppShell.js'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
 // desktop sidebar. `tour` names the app tour's stop (data-tour, tourSteps.js).
@@ -206,7 +207,9 @@ export default function AppShell({ hideAddExpense = false }) {
           <ErrorBoundary inline resetKey={location.pathname}>
             <Suspense fallback={<RingLoader />}>
               <EmptyStateCount.Provider value={countEmptyState}>
-                <Outlet />
+                <InAppShell.Provider value>
+                  <Outlet />
+                </InAppShell.Provider>
               </EmptyStateCount.Provider>
             </Suspense>
           </ErrorBoundary>

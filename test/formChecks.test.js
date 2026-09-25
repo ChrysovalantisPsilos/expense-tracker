@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   emailError, amountError, requiredError, fieldErrors, firstInvalid,
 } from '../src/shared/lib/formChecks.js'
-import { authErrors, AUTH_FIELDS } from '../src/features/auth/authChecks.js'
+import { authErrors, AUTH_FIELDS, consentError } from '../src/features/auth/authChecks.js'
 import { validatePassword } from '../src/shared/lib/password.js'
 
 test('emailError: empty, malformed and fine', () => {
@@ -60,4 +60,10 @@ test('authErrors: signing up applies the password rules and needs consent', () =
     password: validatePassword('password1'),
   })
   assert.deepEqual(authErrors({ mode: 'signup', email: 'a@b.co', password: 'l0ngEnough', accepted: true }), {})
+})
+
+test('consentError: signing up (by email or Google) needs the tick; logging in doesn’t', () => {
+  assert.equal(consentError({ mode: 'signup', accepted: false }), 'Please accept the Terms of Use and Privacy Notice')
+  assert.equal(consentError({ mode: 'signup', accepted: true }), null)
+  assert.equal(consentError({ mode: 'signin', accepted: false }), null)
 })

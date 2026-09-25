@@ -2,6 +2,7 @@
 // worker (src/sw.js, which fills them) and the app (AuthProvider, which wipes
 // them on any sign-out). Pure module: the Cache/IndexedDB objects are passed
 // in, so the unit tests can hand it fakes.
+import { STORAGE_KEYS } from './keys.js'
 
 // GET /rest/v1 responses (workbox NetworkFirst + ExpirationPlugin).
 export const REST_CACHE = 'supabase-rest'
@@ -19,10 +20,13 @@ export const RPC_CACHE_LIMITS = { maxEntries: 150, maxAgeSeconds: 60 * 60 * 24 }
 // id and the call's arguments), so it goes with the caches.
 export const EXPIRATION_DB = 'workbox-expiration'
 
-// Delete everything cached from the signed-in session. Never throws: a
-// sign-out must not fail because storage is unavailable. The IndexedDB delete
-// isn't awaited (it waits for the worker to close its connection).
-export async function clearUserDataCaches({ caches, indexedDB } = globalThis) {
+// Delete everything cached from the signed-in session, and the device's note
+// of the account's legal acceptance (features/privacy/legalConsentStore.js).
+// Never throws: a sign-out must not fail because storage is unavailable. The
+// IndexedDB delete isn't awaited (it waits for the worker to close its
+// connection).
+export async function clearUserDataCaches({ caches, indexedDB, localStorage } = globalThis) {
+  try { localStorage?.removeItem(STORAGE_KEYS.legalAccepted) } catch { /* unavailable */ }
   try { indexedDB?.deleteDatabase(EXPIRATION_DB) } catch { /* unavailable */ }
   if (!caches) return
   await Promise.all([REST_CACHE, RPC_CACHE].map((name) => caches.delete(name).catch(() => false)))

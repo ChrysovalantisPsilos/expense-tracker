@@ -5,16 +5,20 @@ import {
   clearUserDataCaches, isLegacyRpcKey,
 } from '../src/shared/lib/userDataCaches.js'
 import { offlineReadKey } from '../src/shared/lib/offlineReads.js'
+import { STORAGE_KEYS } from '../src/shared/lib/keys.js'
 
-test('clearUserDataCaches deletes both read caches and the expiry timestamps', async () => {
+test('clearUserDataCaches deletes both read caches, the expiry timestamps and the legal acceptance', async () => {
   const deleted = []
   const dbs = []
+  const removed = []
   await clearUserDataCaches({
     caches: { delete: async (name) => { deleted.push(name); return true } },
     indexedDB: { deleteDatabase: (name) => { dbs.push(name) } },
+    localStorage: { removeItem: (key) => { removed.push(key) } },
   })
   assert.deepEqual(deleted.sort(), [REST_CACHE, RPC_CACHE].sort())
   assert.deepEqual(dbs, ['workbox-expiration'])
+  assert.deepEqual(removed, [STORAGE_KEYS.legalAccepted])
 })
 
 test('clearUserDataCaches never throws (no Cache API, failing deletes, blocked IndexedDB)', async () => {
@@ -22,6 +26,7 @@ test('clearUserDataCaches never throws (no Cache API, failing deletes, blocked I
   await clearUserDataCaches({
     caches: { delete: async () => { throw new Error('SecurityError') } },
     indexedDB: { deleteDatabase: () => { throw new Error('blocked') } },
+    localStorage: { removeItem: () => { throw new Error('SecurityError') } },
   })
 })
 

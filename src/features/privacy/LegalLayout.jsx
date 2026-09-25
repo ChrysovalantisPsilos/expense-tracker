@@ -8,6 +8,7 @@ import HobbyNotice from '../../shared/ui/HobbyNotice.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
+import { useInAppShell } from '../../shared/ui/inAppShell.js'
 import { formatVersion } from './legal.js'
 import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 
@@ -52,14 +53,16 @@ function Document({ intro, version, sections }) {
 }
 
 // The frame shared by the Privacy Notice and the Terms of Use, readable signed
-// in or out. Signed in, it sits in the app shell like Help & FAQ, with a back
-// button to where the user came from (else Settings); signed out, it's on the
-// public layout, with a back button to the previous page (else the landing).
+// in or out. In the app shell it sits like Help & FAQ, with a back button to
+// where the user came from (else Settings); outside it (signed out, or opened
+// from the legal prompt before the app is open) it's on the public layout,
+// with a back button to the previous page (else the landing, or the prompt).
 export default function LegalLayout({ eyebrow, title, intro, version, sections }) {
   const { user } = useAuth()
+  const inShell = useInAppShell()
   const doc = <Document intro={intro} version={version} sections={sections} />
 
-  if (user) {
+  if (inShell) {
     return (
       <Stack spacing={6}>
         <PageHeader eyebrow={eyebrow} title={title} leading={<BackButton fallback="/settings" />} />
@@ -71,8 +74,12 @@ export default function LegalLayout({ eyebrow, title, intro, version, sections }
   return (
     <Box minH="100dvh" bg="bg.canvas" overflowX="clip">
       <PublicHeader>
-        <Button as={RouterLink} to="/login" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}>Log in</Button>
-        <Button as={RouterLink} to="/login?signup=1" size="sm" px={{ base: 3, sm: 4 }}>Sign up</Button>
+        {!user && (
+          <>
+            <Button as={RouterLink} to="/login" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}>Log in</Button>
+            <Button as={RouterLink} to="/login?signup=1" size="sm" px={{ base: 3, sm: 4 }}>Sign up</Button>
+          </>
+        )}
       </PublicHeader>
 
       <Container as="main" id={MAIN_ID} maxW="3xl" px={{ base: 4, md: 6 }} pt={{ base: 4, md: 8 }} pb={{ base: 10, md: 16 }}>

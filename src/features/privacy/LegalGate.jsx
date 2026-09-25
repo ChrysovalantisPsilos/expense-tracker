@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link as RouterLink, useLocation } from 'react-router-dom'
+import { Link as RouterLink } from 'react-router-dom'
 import {
   Button, Link, ListItem, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
   Stack, Text, UnorderedList, useDisclosure, useToast,
@@ -14,11 +14,11 @@ import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 
 // Blocking prompt shown when the user hasn't accepted the Privacy Notice and
 // Terms versions in force: a new account that signed up with Google, or
-// anyone after a version change. They can read both documents (the prompt
-// steps aside on /privacy and /terms), accept, or — if they don't agree —
-// download their data, delete their account, or sign out.
+// anyone after a version change. Nothing of the app is mounted behind it
+// (App.jsx). They can read both documents (the links open them full-page in
+// place of the prompt, whose Back button returns here), accept, or — if they
+// don't agree — download their data, delete their account, or sign out.
 export default function LegalGate({ status, onAccept }) {
-  const { pathname } = useLocation()
   const { user, signOut } = useAuth()
   const toast = useToast()
   const [declined, setDeclined] = useState(false)
@@ -26,7 +26,6 @@ export default function LegalGate({ status, onAccept }) {
   const exporting = useAsyncSubmit()
   const deleteModal = useDisclosure()
 
-  if (pathname === '/privacy' || pathname === '/terms') return null
   const firstTime = !status.privacy_accepted && !status.terms_accepted
   const changes = changesSince(status)
 

@@ -9,6 +9,9 @@ import { useProfile } from '../shared/lib/ProfileProvider.jsx'
 import { useEnsureDefaultCategories } from '../features/transactions/useData.js'
 import { useTour } from '../features/onboarding/tour.js'
 import { useLegalGate } from '../features/privacy/useLegalGate.js'
+import { GATE_VIEW } from '../features/privacy/legalGateMath.js'
+// Not lazy: it's the screen shown when the network is down.
+import LegalCheckError from '../features/privacy/LegalCheckError.jsx'
 import { STORAGE_KEYS } from '../shared/lib/keys.js'
 import RingLoader from '../shared/ui/RingLoader.jsx'
 import SkipLink from '../shared/ui/SkipLink.jsx'
@@ -129,10 +132,6 @@ function AuthedRoutes() {
   // profile without the 0069 column never auto-starts it.)
   const { tour, endTour } = useTour(!profileLoading && !!profile?.onboarded_at && profile.tour_done === false)
 
-  // Privacy Notice / Terms acceptance (Google sign-ups, version changes):
-  // blocks the app, ahead of the setup wizard and the other prompts.
-  const legal = useLegalGate()
-
   // First-login default-category seed (a data hook owned by transactions, so
   // the shared profile code never reaches into a feature).
   useEnsureDefaultCategories()
@@ -217,9 +216,7 @@ function AuthedRoutes() {
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
-      {legal.needs ? (
-        <Suspense fallback={null}><LegalGate status={legal.status} onAccept={legal.accept} /></Suspense>
-      ) : needsOnboarding ? (
+      {needsOnboarding ? (
         <Suspense fallback={null}><OnboardingWizard profile={profile} /></Suspense>
       ) : tour ? (
         <Suspense fallback={null}><ProductTour {...tour} onEnd={endTour} /></Suspense>
@@ -235,6 +232,45 @@ function AuthedRoutes() {
   )
 }
 
+// While the legal prompt or the check's error screen stands in for the app,
+// only the public documents it links to are reachable (full page, with a Back
+// button to it); every other address shows `screen`.
+function LockedRoutes({ screen }) {
+  return (
+    <Suspense fallback={<RingLoader fullScreen />}>
+      <Routes>
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/help" element={<Help />} />
+        <Route path="*" element={screen} />
+      </Routes>
+    </Suspense>
+  )
+}
+
+// Signed in: nothing of the app mounts (no pages, no data hooks, no prompts)
+// until the server says the Privacy Notice and Terms in force are accepted.
+// Consent fails closed: no answer yet → the loader; not accepted → only the
+// prompt; can't reach the server → "Try again", unless this device already
+// saw this account accept the current versions (useLegalGate).
+function SignedIn() {
+  const legal = useLegalGate()
+  switch (legal.view) {
+    case GATE_VIEW.app:
+      return <AuthedRoutes />
+    case GATE_VIEW.gate:
+      return <LockedRoutes screen={<LegalGate status={legal.status} onAccept={legal.accept} />} />
+    case GATE_VIEW.error:
+      return (
+        <LockedRoutes screen={
+          <LegalCheckError error={legal.error} checking={legal.checking} onRetry={legal.retry} />
+        } />
+      )
+    default:
+      return <RingLoader fullScreen />
+  }
+}
+
 export default function App() {
   const { session, loading, recovering } = useAuth()
   if (loading) {
@@ -246,7 +282,7 @@ export default function App() {
   return (
     <>
       <SkipLink />
-      {session ? <AuthedRoutes /> : <PublicRoutes />}
+      {session ? <SignedIn /> : <PublicRoutes />}
     </>
   )
 }

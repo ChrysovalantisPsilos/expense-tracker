@@ -12,11 +12,12 @@ import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { NEXT_PARAM, rememberReturnPath, safeReturnPath } from '../../shared/lib/returnPath.js'
 import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
 import { signupConsentMetadata } from '../privacy/legal.js'
+import { rememberConsentMarker } from '../privacy/legalConsentStore.js'
 import AuthLayout from './AuthLayout.jsx'
 import GoogleIcon from '../../shared/ui/GoogleIcon.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { firstInvalid } from '../../shared/lib/formChecks.js'
-import { AUTH_FIELDS, authErrors } from './authChecks.js'
+import { AUTH_FIELDS, authErrors, consentError } from './authChecks.js'
 
 export default function Login() {
   const { signInWithPassword, signUp, signInWithPasskey, signInWithProvider } = useAuth()
@@ -28,6 +29,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   // Field errors show from the first submit on, and then follow the typing.
   const [tried, setTried] = useState(false)
+  // "Sign up with Google" pressed without the tick: only the tick's error shows.
+  const [googleTried, setGoogleTried] = useState(false)
   // A failed sign-in/up (wrong password, rate limit…), shown above the button.
   const [serverError, setServerError] = useState('')
   const fieldRefs = { email: useRef(null), password: useRef(null), consent: useRef(null) }
@@ -59,11 +62,28 @@ export default function Login() {
   }
 
   const errors = tried ? authErrors({ mode, email, password, accepted }) : {}
+  const consentMsg = errors.consent ?? (googleTried ? consentError({ mode, accepted }) : null)
 
   function switchMode(m) {
     setMode(m)
     setTried(false)
+    setGoogleTried(false)
     setServerError('')
+  }
+
+  // Signing up with Google needs the same tick as by email. Google can't carry
+  // it as account metadata, so the ticked versions wait in this tab until the
+  // app is back and records them (useLegalGate); logging in with Google ticks
+  // nothing, and a new account made that way meets the full prompt instead.
+  function handleGoogle() {
+    if (mode === 'signup' && !accepted) {
+      setGoogleTried(true)
+      fieldRefs.consent.current?.focus()
+      return
+    }
+    rememberConsentMarker(mode === 'signup')
+    rememberReturnPath(next)
+    signInWithProvider('google')
   }
 
   async function handleSubmit(e) {
@@ -144,7 +164,7 @@ export default function Login() {
             <FormErrorMessage>{errors.password}</FormErrorMessage>
           </FormControl>
           {mode === 'signup' && (
-            <FormControl isRequired isInvalid={!!errors.consent}>
+            <FormControl isRequired isInvalid={!!consentMsg}>
               <Checkbox ref={fieldRefs.consent} isChecked={accepted} size="lg"
                 onChange={(e) => setAccepted(e.target.checked)}
                 alignItems="flex-start" colorScheme="brand" spacing={3}>
@@ -155,7 +175,7 @@ export default function Login() {
                   <Link as={RouterLink} to="/privacy" target="_blank" variant="inline">Privacy Notice</Link>.
                 </Text>
               </Checkbox>
-              <FormErrorMessage>{errors.consent}</FormErrorMessage>
+              <FormErrorMessage>{consentMsg}</FormErrorMessage>
             </FormControl>
           )}
           {mode === 'signup' && (
@@ -192,14 +212,9 @@ export default function Login() {
           borderWidth="1px" borderColor="gray.300"
           _hover={{ bg: 'gray.50' }} _active={{ bg: 'gray.100' }}
           leftIcon={<GoogleIcon boxSize={5} />}
-          onClick={() => { rememberReturnPath(next); signInWithProvider('google') }}>
+          onClick={handleGoogle}>
           {mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
         </Button>
-        {mode === 'signup' && (
-          <Text fontSize="xs" color="text.muted" textAlign="center">
-            With Google, you’ll be asked to accept the Terms and Privacy Notice after logging in.
-          </Text>
-        )}
         {mode === 'signin' && passkeysSupported && (
           <Button variant="outline" colorScheme="gray" w="full"
             leftIcon={<KeyRound size={18} />} isLoading={passkeyBusy}

@@ -307,11 +307,22 @@ For each, at 390px and on desktop, light and dark:
     starts with the site's own address (`<site>/auth/confirm?…`, never
     supabase.co); opening one again shows "Link expired or invalid" with a
     way to a fresh link, and a reset link opens "Choose a new password".
-40. Google sign-up (or any account without the current versions, e.g. after a
-    `LEGAL_VERSIONS` bump): a blocking "Before you continue" / "We've updated
-    our terms" prompt lists the changes; /privacy and /terms stay readable;
-    "I don't agree" offers Download my data, Delete my account and Sign out;
-    Accept records it and the prompt doesn't return.
+40. Sign-up screen, "Sign up with Google": unticked, it shows the consent
+    error under the box and doesn't leave; ticked, it goes to Google and, back
+    in the app, no prompt appears and the consent history shows both documents
+    accepted. Any account without the current versions (Google via the Log in
+    screen for a new account, or after a `LEGAL_VERSIONS` bump): the loader,
+    then ONLY a blocking "Before you continue" / "We've updated our terms"
+    prompt listing the changes (no app behind it, nothing reachable by Tab);
+    its Privacy Notice / Terms links open the document full-page, ← returns to
+    the prompt; "I don't agree" offers Download my data, Delete my account and
+    Sign out; Accept records it and the prompt doesn't return.
+    Consent fails closed: signed in, the app never shows before the check
+    answers. Offline (DevTools → Offline) in a fresh browser profile after
+    signing in: "We couldn't check your account" with Try again / Log out;
+    going back online re-checks by itself. Once the app has opened online on
+    this device, an offline reload opens the app (the device remembers the
+    acceptance of the current versions); after Log out it no longer does.
 41. Settings → Privacy: Download my data saves `budgeer-my-data-<date>.json`
     with your profile, consents, notifications, records and your part of each
     group (no other user's ids/emails). "Send a request" opens its own page

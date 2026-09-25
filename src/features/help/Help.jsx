@@ -7,6 +7,7 @@ import {
 } from '@chakra-ui/react'
 import { Link as LinkIcon, Search, X } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
+import { useInAppShell } from '../../shared/ui/inAppShell.js'
 import BackButton from '../../shared/ui/BackButton.jsx'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import HobbyNotice from '../../shared/ui/HobbyNotice.jsx'
@@ -167,11 +168,12 @@ function FaqBody() {
 
 // Help & FAQ, readable signed in or out: inside the app shell (with a way
 // back to where the user came from, else Settings) when signed in, on the
-// public layout when signed out.
+// public layout when signed out or reached from the legal prompt.
 export default function Help() {
   const { user } = useAuth()
+  const inShell = useInAppShell()
 
-  if (user) {
+  if (inShell) {
     return (
       <Stack spacing={5}>
         <PageHeader eyebrow="Help" title="Help & FAQ" description={INTRO}
@@ -184,8 +186,12 @@ export default function Help() {
   return (
     <Box minH="100dvh" bg="bg.canvas" overflowX="clip">
       <PublicHeader>
-        <Button as={RouterLink} to="/login" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}>Log in</Button>
-        <Button as={RouterLink} to="/login?signup=1" size="sm" px={{ base: 3, sm: 4 }}>Sign up</Button>
+        {!user && (
+          <>
+            <Button as={RouterLink} to="/login" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}>Log in</Button>
+            <Button as={RouterLink} to="/login?signup=1" size="sm" px={{ base: 3, sm: 4 }}>Sign up</Button>
+          </>
+        )}
       </PublicHeader>
       <Container as="main" id={MAIN_ID} maxW="3xl" px={{ base: 4, md: 6 }} py={{ base: 10, md: 16 }}>
         <Stack spacing={{ base: 8, md: 10 }}>
