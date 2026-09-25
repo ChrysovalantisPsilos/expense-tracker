@@ -6,7 +6,7 @@ import {
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
-import { claimPromptSlot, releasePromptSlot } from '../../shared/lib/promptGate.js'
+import { claimPromptSlot, releasePromptSlot, whenPromptSlotFree } from '../../shared/lib/promptGate.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { getProfile, updateProfile } from '../../shared/lib/profile.js'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
@@ -43,9 +43,14 @@ export default function PasskeyPrompt() {
       .then((res) => {
         if (!active || !res || res.error) return
         if (toPasskeyList(res.data).length === 0) {
-          markShown()
-          claimPromptSlot() // NotificationPrompt waits its turn
-          setOpen(true)
+          // Waits for its turn if another prompt (What's new) is open; the
+          // notification prompt then waits for this one.
+          whenPromptSlotFree(() => {
+            if (!active) return
+            markShown()
+            claimPromptSlot()
+            setOpen(true)
+          })
         }
       })
       .catch(() => { /* passkeys not enabled — skip */ })

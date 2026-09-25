@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   appearance: 'budge-appearance',      // localStorage — Light/Dark/System (also read by public/theme-boot.js)
   paymentAskDismissed: 'budge:paymentAsk', // localStorage — "Not now" to Settle up's payment-details ask
   notifPrompted: 'budge:notifPrompted', // localStorage — notification prompt answered ("Not now" included)
+  whatsNewSeen: 'budge:whatsNewSeen',  // localStorage — id of the newest "What's new" release seen
   linkingGoogle: 'budge:linkingGoogle', // sessionStorage — a Google link attempt is in flight
   importMappings: 'budgeer:import-mappings:v1', // localStorage — confirmed import column mappings
   importHolder: 'budgeer:import-holder:v1', // localStorage — the holder's name, for own transfers on import

@@ -4,6 +4,7 @@ import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import AppShell from './AppShell.jsx'
 import PasskeyPrompt from '../features/settings/PasskeyPrompt.jsx'
 import NotificationPrompt from '../features/notifications/NotificationPrompt.jsx'
+import WhatsNewPrompt from '../features/whatsnew/WhatsNewPrompt.jsx'
 import { useProfile } from '../shared/lib/ProfileProvider.jsx'
 import { useEnsureDefaultCategories } from '../features/transactions/useData.js'
 import { useTour } from '../features/onboarding/tour.js'
@@ -61,6 +62,7 @@ const Terms = lazy(() => import('../features/privacy/Terms.jsx'))
 const PrivacySettings = lazy(() => import('../features/privacy/PrivacySettings.jsx'))
 const PrivacyRequestPage = lazy(() => import('../features/privacy/PrivacyRequestPage.jsx'))
 const LegalGate = lazy(() => import('../features/privacy/LegalGate.jsx'))
+const WhatsNewPage = lazy(() => import('../features/whatsnew/WhatsNewPage.jsx'))
 const Help = lazy(() => import('../features/help/Help.jsx'))
 const OnboardingWizard = lazy(() => import('../features/onboarding/OnboardingWizard.jsx'))
 const ProductTour = lazy(() => import('../features/onboarding/ProductTour.jsx'))
@@ -195,6 +197,7 @@ function AuthedRoutes() {
           <Route path="settings/data/restore" element={<RestoreBackupPage />} />
           <Route path="settings/privacy" element={<PrivacySettings />} />
           <Route path="settings/privacy/request" element={<PrivacyRequestPage />} />
+          <Route path="settings/whats-new" element={<WhatsNewPage />} />
           <Route path="help" element={<Help />} />
           <Route path="privacy" element={<Privacy />} />
           <Route path="terms" element={<Terms />} />
@@ -220,6 +223,8 @@ function AuthedRoutes() {
         <>
           <PasskeyPrompt />
           <NotificationPrompt />
+          {/* After the profile loads: it needs onboarded_at to tell a new account apart. */}
+          {!profileLoading && profile && <WhatsNewPrompt onboardedAt={profile.onboarded_at} />}
         </>
       )}
     </Suspense>
