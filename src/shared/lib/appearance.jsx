@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { useColorMode } from '@chakra-ui/react'
 import { STORAGE_KEYS } from './keys.js'
+import { resolveMode } from './themePref.js'
 
 // Appearance preference: 'light' | 'dark' | 'system'. Persisted locally and
 // applied to Chakra's colour mode. 'system' follows the OS live (and updates
@@ -17,7 +18,7 @@ export function AppearanceProvider({ children }) {
   useEffect(() => {
     localStorage.setItem(APPEARANCE_KEY, pref)
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const apply = () => setColorMode(pref === 'system' ? (mq.matches ? 'dark' : 'light') : pref)
+    const apply = () => setColorMode(resolveMode(pref, mq.matches))
     apply()
     if (pref === 'system') {
       mq.addEventListener('change', apply)
