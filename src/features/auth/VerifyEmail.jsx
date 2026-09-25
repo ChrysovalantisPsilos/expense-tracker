@@ -8,7 +8,7 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import AuthLayout from './AuthLayout.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
-import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
+import { RingMark } from '../../shared/ui/RingLoader.jsx'
 import { useConfirmWait } from './useConfirmWait.js'
 
 const PENDING_EMAIL = STORAGE_KEYS.pendingEmail
@@ -62,40 +62,42 @@ export default function VerifyEmail() {
         <Text as="span" display="block" fontWeight="700" color="text.primary"
           overflowWrap="anywhere">{email}</Text>
       </>}>
-      <Stack spacing={3} mt={-2} fontSize="sm" color="text.muted" textAlign="center">
-        <Text>
-          {wait.status === 'idle'
-            ? 'Tap the link in it to confirm your account, then log in below.'
-            : 'Tap the link in it to confirm your account. This page continues by itself once you do, on any device.'}
-          {' '}Check spam if it’s not there.
-        </Text>
-        {/* Always mounted, so screen readers hear the change. */}
-        <Text as="div" role="status" aria-live="polite" _empty={{ display: 'none' }}>
-          {waiting && (
-            <HStack as="span" spacing={2} justify="center">
-              <RingSpinner />
-              <span>Waiting for you to confirm…</span>
+      {/* One status block: waiting (continues by itself), or — after a
+          reload or the 15-minute cutoff — a plain "log in" step. Always
+          mounted, so screen readers hear the change. */}
+      <Stack role="status" aria-live="polite" spacing={1} align="center" textAlign="center"
+        bg="bg.subtle" borderRadius="xl" px={4} py={4} mt={-1}>
+        {waiting ? (
+          <>
+            <HStack spacing={3}>
+              <RingMark size={24} />
+              <Text fontWeight="700" color="text.primary">Waiting for you to tap the link…</Text>
             </HStack>
-          )}
-          {gaveUp && 'Still waiting? Log in once you’ve confirmed.'}
-        </Text>
-      </Stack>
-
-      <Stack spacing={3}>
-        <Button variant="outline" colorScheme="gray"
-          leftIcon={<LogIn size={16} />} onClick={() => navigate('/login')}>
-          I’ve confirmed — log in
-        </Button>
-        <Button variant="ghost" isDisabled={cooldown > 0} onClick={resend}>
-          {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend email'}
-        </Button>
+            <Text fontSize="sm" color="text.muted">
+              This page continues by itself once you do — on this or any other device.
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text fontWeight="700" color="text.primary">
+              {gaveUp ? 'Still waiting?' : 'Tapped the link?'}
+            </Text>
+            <Text fontSize="sm" color="text.muted">Once you’ve confirmed, log in to continue.</Text>
+            <Button mt={2} leftIcon={<LogIn size={16} />} onClick={() => navigate('/login')}>Log in</Button>
+          </>
+        )}
       </Stack>
 
       <Text fontSize="sm" textAlign="center" color="text.muted">
-        Wrong email?{' '}
-        <Button variant="link" colorScheme="brand" size="sm" onClick={changeEmail}>
-          Start over
+        No email? Check spam, then{' '}
+        <Button variant="link" colorScheme="brand" size="sm" verticalAlign="baseline"
+          isDisabled={cooldown > 0} onClick={resend}>
+          {cooldown > 0 ? `resend in ${cooldown}s` : 'resend it'}
         </Button>
+        {' '}or{' '}
+        <Button variant="link" colorScheme="brand" size="sm" verticalAlign="baseline" onClick={changeEmail}>
+          use a different email
+        </Button>.
       </Text>
     </AuthLayout>
   )
