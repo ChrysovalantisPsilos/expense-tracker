@@ -22,6 +22,7 @@ import ErrorBoundary from './ErrorBoundary.jsx'
 import { MAIN_ID } from '../shared/ui/SkipLink.jsx'
 import { EmptyStateCount } from '../shared/ui/EmptyState.jsx'
 import { InAppShell } from '../shared/ui/inAppShell.js'
+import { useShortLandscape } from '../shared/ui/useShortLandscape.js'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
 // desktop sidebar. `tour` names the app tour's stop (data-tour, tourSteps.js).
@@ -37,7 +38,8 @@ const SECONDARY = [
   { to: '/insights', label: 'Insights', icon: TrendingUp },
   { to: '/recurring', label: 'Recurring', icon: Repeat },
 ]
-// Mobile bottom bar: the four primary tabs plus a "More" entry.
+// Mobile bottom bar (and a landscape phone's rail): the four primary tabs
+// plus a "More" entry.
 // Which tab is lit for a given page is decided by navMatch.js.
 const MOBILE_NAV = [...PRIMARY, { to: '/more', label: 'More', icon: MoreHorizontal, tour: 'nav-more' }]
 
@@ -73,13 +75,20 @@ function SideItem({ to, label, icon: Icon, tour }) {
   )
 }
 
-function TabItem({ to, label, icon: Icon, tour }) {
+// An icon over a small label: the phone's bottom bar, and (`rail`) the
+// landscape phone's side rail, where the current item also gets the
+// sidebar's tint.
+function TabItem({ to, label, icon: Icon, tour, rail = false }) {
   return (
     <NavItem to={to} data-tour={tour}>
       {(isActive) => (
-        <VStack spacing={0.5} px={2} py={1} minW="60px"
-          color={isActive ? 'accent.fg' : 'text.muted'}>
-          <Icon size={22} strokeWidth={isActive ? 2.4 : 2} />
+        <VStack spacing={0.5} px={rail ? 1 : 2} py={rail ? 0.5 : 1} minW="60px"
+          color={isActive ? 'accent.fg' : 'text.muted'}
+          {...(rail && {
+            w: RAIL_ITEM_W, borderRadius: 'lg', flexShrink: 0, transition: 'all 0.15s',
+            bg: isActive ? 'bg.subtle' : 'transparent', _hover: { bg: 'bg.subtle', color: 'text.primary' },
+          })}>
+          <Icon size={rail ? 20 : 22} strokeWidth={isActive ? 2.4 : 2} />
           <Text fontSize="10px" fontWeight={isActive ? '600' : '500'}>{label}</Text>
         </VStack>
       )}
@@ -92,6 +101,10 @@ function TabItem({ to, label, icon: Icon, tour }) {
 const TAB_BAR_H = '60px'
 const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)'
 const NEW_EXPENSE = '/transactions/new'
+const SAFE_LEFT = 'env(safe-area-inset-left, 0px)'
+const SAFE_RIGHT = 'env(safe-area-inset-right, 0px)'
+const RAIL_W = '76px'
+const RAIL_ITEM_W = '68px'
 
 // Phone only: a round "Add expense" button above the bottom bar, on the main
 // tabs (navMatch.showsAddExpense). The shell hides it while the app tour runs
@@ -107,10 +120,48 @@ function AddExpenseFab() {
   )
 }
 
+// A phone held sideways (useShortLandscape) has the width for the sidebar but
+// not the height: a slim rail stands in for it (and for the phone's top and
+// bottom bars) — the logo, a square Add expense, the bottom bar's tabs with
+// its More, then the phone top bar's account icons (the bell, the theme
+// switch, the live/test switch, your picture for Settings). It scrolls if a
+// very short screen can't fit it all; the left notch inset pads it.
+function NavRail({ feed, profile }) {
+  return (
+    <Flex
+      as="nav" direction="column" align="center" gap={0.5} flexShrink={0}
+      w={`calc(${RAIL_W} + ${SAFE_LEFT})`} pl={SAFE_LEFT} pt={2} pb={`calc(8px + ${SAFE_BOTTOM})`}
+      borderRightWidth="1px" borderColor="border.default" bg="bg.surface"
+      position="sticky" top={0} h="100dvh" overflowY="auto" overflowX="hidden"
+    >
+      <Logo size={24} showWord={false} flexShrink={0} />
+      <Tooltip label="Add expense" placement="right">
+        <IconButton as={RouterLink} to={NEW_EXPENSE} aria-label="Add expense"
+          icon={<Plus size={22} strokeWidth={2.4} />} w="44px" h="40px" minW="44px" borderRadius="xl"
+          my={1} flexShrink={0} />
+      </Tooltip>
+      {MOBILE_NAV.map((n) => <TabItem key={n.to} {...n} rail />)}
+      <Flex direction="column" align="center" gap={1} mt="auto" pt={2} flexShrink={0} data-tour="account">
+        <OfflineIndicator />
+        <HStack spacing={1}>
+          <NotificationBell feed={feed} rail />
+          <ThemeToggle />
+        </HStack>
+        <HStack spacing={1}>
+          <SiteSwitch compact />
+          <Box as={RouterLink} to="/settings" aria-label="Settings" layerStyle="hitArea" display="flex">
+            <UserAvatar size="sm" name={profile?.display_name} src={profile?.avatar_url} highlight />
+          </Box>
+        </HStack>
+      </Flex>
+    </Flex>
+  )
+}
+
 export default function AppShell({ hideAddExpense = false }) {
   const { signOut } = useAuth()
   const { profile } = useProfile()
-  // One live feed for both bells (mobile top bar + desktop header).
+  // One live feed for every bell (mobile top bar, desktop header, rail).
   const feed = useNotificationFeed()
   const location = useLocation()
   // How many empty states the page shows (EmptyState reports in and out).
@@ -119,10 +170,12 @@ export default function AppShell({ hideAddExpense = false }) {
   const fab = !hideAddExpense && showsAddExpense(location.pathname, { emptyState: emptyStates > 0 })
   const [, setTick] = useState(0)
   useEffect(() => { setTick((n) => n + 1) }, [location])
+  const rail = useShortLandscape()
 
   return (
     <Flex minH="100dvh" bg="bg.canvas">
-      {/* Desktop sidebar */}
+      {rail ? <NavRail feed={feed} profile={profile} /> : (
+      /* Desktop sidebar */
       <Flex
         as="nav" direction="column" w="240px" p={4} gap={1}
         borderRightWidth="1px" borderColor="border.default" bg="bg.surface"
@@ -167,10 +220,12 @@ export default function AppShell({ hideAddExpense = false }) {
           </HStack>
         </Flex>
       </Flex>
+      )}
 
       {/* Main column */}
       <Flex direction="column" flex="1" minW={0}>
         {/* Mobile top bar */}
+        {!rail && (
         <Flex
           as="header" align="center" px={4} py={3} gap={3}
           borderBottomWidth="1px" borderColor="border.default" bg="bg.surface"
@@ -190,16 +245,25 @@ export default function AppShell({ hideAddExpense = false }) {
             </Box>
           </Flex>
         </Flex>
+        )}
 
-        {/* Desktop header strip (sync badges + notifications) */}
+        {/* Desktop header strip (sync badges + notifications); the rail
+            holds both on a landscape phone. */}
+        {!rail && (
         <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end" align="center"
           gap={2} px={6} pt={4}>
           <OfflineIndicator />
           <NotificationBell feed={feed} />
         </Flex>
+        )}
 
-        <Box as="main" id={MAIN_ID} flex="1" px={{ base: 4, md: 6 }} py={{ base: 4, md: 4 }}
-          pb={{ base: `calc(${fab ? '164px' : '92px'} + ${SAFE_BOTTOM})`, md: 8 }} maxW="900px" w="full" mx="auto">
+        <Box as="main" id={MAIN_ID} flex="1" maxW="900px" w="full" mx="auto"
+          {...(rail
+            ? { pl: 4, pr: `calc(16px + ${SAFE_RIGHT})`, pt: 3, pb: `calc(24px + ${SAFE_BOTTOM})` }
+            : {
+              px: { base: 4, md: 6 }, py: { base: 4, md: 4 },
+              pb: { base: `calc(${fab ? '164px' : '92px'} + ${SAFE_BOTTOM})`, md: 8 },
+            })}>
           {/* Pages are lazy chunks: the shell stays put while one loads, and
               if one fails (a chunk gone after a deploy, offline, a crash) its
               error screen shows here, with the navigation still around it.
@@ -218,6 +282,7 @@ export default function AppShell({ hideAddExpense = false }) {
 
       {/* Mobile bottom nav (it also holds the floating Add expense button,
           so the button sits in a landmark) */}
+      {!rail && (
       <HStack
         as="nav" spacing={0} justify="space-around" px={2} pt={1.5}
         pb={`calc(6px + ${SAFE_BOTTOM})`}
@@ -228,6 +293,7 @@ export default function AppShell({ hideAddExpense = false }) {
         {MOBILE_NAV.map((n) => <TabItem key={n.to} {...n} />)}
         {fab && <AddExpenseFab />}
       </HStack>
+      )}
     </Flex>
   )
 }

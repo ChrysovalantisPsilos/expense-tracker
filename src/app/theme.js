@@ -1,5 +1,6 @@
 import { extendTheme } from '@chakra-ui/react'
 import { colors, ACCESSIBLE, DARK, FONTS } from '../shared/ui/palette.js'
+import { SHORT_LANDSCAPE } from '../shared/lib/shortLandscape.js'
 
 // Budgeer — warm & playful. Coral accent + amber, warm sand neutrals (never
 // cool grays), rounded cards, soft shadows. Light + dark.
@@ -310,16 +311,25 @@ const theme = extendTheme({
         }),
       },
     },
+    // On a phone held sideways (~390px tall) a dialog keeps a slim margin
+    // instead of Chakra's 64px (a centred one keeps its auto margins, which
+    // fall to 0 when it outgrows the screen, so it scrolls from its top), and
+    // one that scrolls inside may use all but 12px each side of the height,
+    // not 60px — so its body has room and its buttons stay on screen.
     Modal: {
-      baseStyle: {
+      baseStyle: ({ scrollBehavior, isCentered }) => ({
         dialog: {
           ...bothModes({ '--modal-bg': 'colors.bg.surface', '--modal-shadow': 'shadows.lifted' }),
           borderRadius: '2xl',
           borderWidth: '1px',
           borderColor: 'border.default',
+          [SHORT_LANDSCAPE]: {
+            ...(!isCentered && { my: 3 }),
+            ...(scrollBehavior === 'inside' && { maxH: 'calc(100% - 1.5rem)' }),
+          },
         },
         header: { ...popupTitle, fontSize: 'lg' },
-      },
+      }),
     },
     Drawer: {
       baseStyle: {

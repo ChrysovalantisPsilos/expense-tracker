@@ -6,6 +6,7 @@ import {
 import {
   fullyVisible, indexAfterMissing, moveStep, placePopover, spotlightRect, stepsFor,
 } from './spotlightMath.js'
+import { useShortLandscape } from './useShortLandscape.js'
 
 // How long a step waits for its target (a lazy page and its first render)
 // before the tour skips it.
@@ -49,7 +50,10 @@ function waitForTarget(name, isCancelled) {
 // unmounts the Spotlight. Esc skips, ←/→ step, Tab stays inside the popover;
 // focus goes back where it was (or to `returnFocus`, a selector) afterwards.
 export default function Spotlight({ steps, onStep, onClose, returnFocus, label = 'App tour' }) {
-  const desktop = useBreakpointValue({ base: false, md: true }, { ssr: false }) ?? false
+  // A phone held sideways has the phone's navigation (a rail with More and
+  // the account icons), so it takes the phone's steps.
+  const shortLandscape = useShortLandscape()
+  const desktop = (useBreakpointValue({ base: false, md: true }, { ssr: false }) ?? false) && !shortLandscape
   const reduce = usePrefersReducedMotion()
   const [missing, setMissing] = useState(() => new Set())
   const [index, setIndex] = useState(0)

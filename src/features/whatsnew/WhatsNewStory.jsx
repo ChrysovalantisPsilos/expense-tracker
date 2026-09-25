@@ -8,6 +8,7 @@ import {
 import { ArrowRight } from 'lucide-react'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import LooseRing from '../../shared/ui/LooseRing.jsx'
+import { SHORT_LANDSCAPE } from '../../shared/lib/shortLandscape.js'
 import { releaseDay, ringVariant } from './whatsNewMath.js'
 
 // A horizontal swipe this long (px), and more sideways than up/down, turns the page.
@@ -19,6 +20,23 @@ const slideIn = (dx) => keyframes`
 const FROM_RIGHT = slideIn(28)
 const FROM_LEFT = slideIn(-28)
 
+// A phone held sideways (~390px tall) gets a wider centred card with the
+// picture beside the words: the progress bar across the top, then the
+// picture on the left, and the counter, the page and the buttons on the
+// right. Should a page still not fit, the card scrolls, so Next and Skip
+// are always reachable.
+const SHORT_CARD = {
+  [SHORT_LANDSCAPE]: {
+    my: 3, mx: 4, maxW: '640px', h: 'auto', maxH: 'calc(100dvh - 24px)',
+    borderRadius: '2xl', borderWidth: '1px', pt: 4, pb: 4, overflowY: 'auto',
+    display: 'grid', gridTemplateColumns: '170px minmax(0, 1fr)', columnGap: 6,
+    gridTemplateRows: 'auto auto 1fr auto', alignContent: 'start',
+    gridTemplateAreas: '"bar bar" "art count" "art text" "art buttons"',
+  },
+}
+// Each part's place in that grid.
+const area = (name, more) => ({ [SHORT_LANDSCAPE]: { gridArea: name, ...more } })
+
 // Where the page's 1–2 chips float around the ring (LooseRing's ring sits a
 // little below the middle of its picture): top right, then bottom left.
 const CHIP_SPOTS = [
@@ -26,11 +44,15 @@ const CHIP_SPOTS = [
   { top: '77%', right: '52%' },
 ]
 
+// On a phone held sideways the picture is small, so the chips line up under
+// the ring instead of floating over its edges.
+const CHIP_BELOW = { [SHORT_LANDSCAPE]: { position: 'static', fontSize: 'xs', mt: 2, mx: 'auto', maxW: 'full', whiteSpace: 'normal' } }
+
 function Chip({ children, spot }) {
   return (
     <Box position="absolute" {...spot} w="max-content" whiteSpace="nowrap" px={3} py={1.5} borderRadius="full"
       bg="bg.surface" borderWidth="1px" borderColor="border.default" boxShadow="soft"
-      fontSize={{ base: 'xs', md: 'sm' }} fontWeight="700" color="text.primary">
+      fontSize={{ base: 'xs', md: 'sm' }} fontWeight="700" color="text.primary" sx={CHIP_BELOW}>
       {children}
     </Box>
   )
@@ -118,8 +140,8 @@ export default function WhatsNewStory({ release, onClose }) {
         borderRadius={{ base: 0, md: '2xl' }} borderWidth={{ base: 0, md: '1px' }}
         pt={{ base: 'calc(20px + env(safe-area-inset-top, 0px))', md: 6 }}
         pb={{ base: 'calc(20px + env(safe-area-inset-bottom, 0px))', md: 6 }}
-        px={6} display="flex" flexDirection="column" overflow="hidden">
-        <HStack spacing={1.5} aria-hidden="true">
+        px={6} display="flex" flexDirection="column" overflow="hidden" sx={SHORT_CARD}>
+        <HStack spacing={1.5} aria-hidden="true" sx={area('bar', { mb: 3 })}>
           {pages.map((p, i) => (
             <Box key={p.title} flex="1" h="4px" borderRadius="full"
               bg={i <= index ? 'brand.500' : 'border.default'} transition="background .2s" />
@@ -128,13 +150,14 @@ export default function WhatsNewStory({ release, onClose }) {
 
         {/* The picture and the words slide in on a page turn; the counter
             between them stays put, so its live region announces the turn. */}
-        <Flex key={`art-${index}`} flex="1" minH={0} align="center" justify="center" py={4} sx={animate}>
+        <Flex key={`art-${index}`} flex="1" minH={0} align="center" justify="center" py={4}
+          sx={{ ...animate, ...area('art', { py: 0, alignSelf: 'center' }) }}>
           <Illustration page={page} />
         </Flex>
-        <Eyebrow aria-live="polite" aria-atomic="true">
+        <Eyebrow aria-live="polite" aria-atomic="true" sx={area('count')}>
           New · {index + 1} of {pages.length} · {releaseDay(release.date)}
         </Eyebrow>
-        <Box key={`text-${index}`} sx={animate}>
+        <Box key={`text-${index}`} sx={{ ...animate, ...area('text') }}>
           <ModalHeader as="h2" p={0} mt={1.5} fontSize="2xl" lineHeight="1.25">{page.title}</ModalHeader>
           <ModalBody p={0} mt={2}>
             <Text color="text.muted" lineHeight="1.55">{page.body}</Text>
@@ -147,7 +170,7 @@ export default function WhatsNewStory({ release, onClose }) {
           </ModalBody>
         </Box>
 
-        <HStack spacing={3} mt={6}>
+        <HStack spacing={3} mt={6} sx={area('buttons', { mt: 4 })}>
           <Button variant="ghost" color="text.primary" onClick={onClose} px={5}>Skip</Button>
           <Button ref={nextRef} flex="1" onClick={next}>{last ? 'Done' : 'Next'}</Button>
         </HStack>

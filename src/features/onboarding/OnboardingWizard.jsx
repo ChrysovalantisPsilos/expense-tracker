@@ -13,6 +13,7 @@ import { EVENTS, STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { enablePush, pushSupported } from '../../shared/lib/push.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { updateProfile } from '../../shared/lib/profile.js'
+import { SHORT_LANDSCAPE } from '../../shared/lib/shortLandscape.js'
 import { createGroup } from '../groups/groups.js'
 import Logo from '../../shared/ui/Logo.jsx'
 import { startTour } from './tour.js'
@@ -127,8 +128,9 @@ export default function OnboardingWizard({ profile, onDone }) {
           <Progress value={((step + 1) / STEPS.length) * 100} size="xs" mt={3} />
         </ModalHeader>
 
-        {/* One height for every step, so the buttons don't jump about. */}
-        <ModalBody minH="340px">
+        {/* One height for every step, so the buttons don’t jump about (except
+            on a phone held sideways, where the body scrolls instead). */}
+        <ModalBody minH="340px" sx={{ [SHORT_LANDSCAPE]: { minH: 0 } }}>
           {step === 0 && (
             <Stack spacing={4}>
               <HStack color="accent.fg"><Sparkles size={18} /><Heading size="sm">Welcome to Budgeer</Heading></HStack>

@@ -1,6 +1,11 @@
 import { forwardRef } from 'react'
 import { Box, Button, Flex, Heading, HStack, Text } from '@chakra-ui/react'
 import Eyebrow from './Eyebrow.jsx'
+import { SHORT_LANDSCAPE } from '../lib/shortLandscape.js'
+
+// On a phone held sideways the title steps down two sizes, so it doesn't
+// take a fifth of the screen's height.
+const SHORT_TITLE = { [SHORT_LANDSCAPE]: { fontSize: 'xl' } }
 
 // The page's title row: optional coral eyebrow, the page's single <h1>, an
 // optional muted description, and an `action` slot on the right. `leading`
@@ -15,7 +20,7 @@ export default function PageHeader({ title, eyebrow, description, action, leadin
       <Box flex="1" minW={0}>
         {eyebrow && <Eyebrow overflowWrap="anywhere" mb={0.5}>{eyebrow}</Eyebrow>}
         <Heading as="h1" fontSize={{ base: '2xl', md: '3xl' }} letterSpacing="-0.02em"
-          lineHeight="1.2" overflowWrap="anywhere">
+          lineHeight="1.2" overflowWrap="anywhere" sx={SHORT_TITLE}>
           {title}
         </Heading>
         {description && <Text color="text.muted" fontSize="sm" mt={1}>{description}</Text>}

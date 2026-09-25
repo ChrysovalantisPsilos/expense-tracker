@@ -39,6 +39,7 @@ import {
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 import SubscriptionsCard from '../recurring/SubscriptionsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { SkeletonBlock, SkeletonFigure, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
@@ -118,24 +119,21 @@ export default function Dashboard() {
     kind: 'income', periodLabel: period.label, count: income.length, loading, failed: !!error,
   })
   const firstRun = isFirstRun({ loading, failed: !!error, count: rows.length, oldest })
+  // A phone held sideways: the cards sit two by two (Overview beside Spending
+  // by category, and so on), each laid out as on a phone.
+  const twoColumns = useShortLandscape()
+  const overviewColumns = twoColumns ? 1 : { base: 1, md: 2 }
 
-  return (
-    <Stack spacing={5}>
-      <PageHeader title="Overview" action={
-        <Select w={{ base: '140px', sm: '200px' }} size="sm" borderRadius="lg" value={periodValue}
-          aria-label="Period" onChange={(e) => setPeriodValue(e.target.value)}>
-          {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-        </Select>
-      } />
-
+  const cards = (
+    <>
       {error ? (
         // One error (with Retry) for the transactions every card below needs,
         // instead of €0.00 totals that look real.
         <Panel data-tour="overview"><QueryError error={error} onRetry={reload} what="your transactions" /></Panel>
       ) : (
       <Panel data-tour="overview">
-        {loading ? <OverviewSkeleton /> : (
-        <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} alignItems="center">
+        {loading ? <OverviewSkeleton columns={overviewColumns} /> : (
+        <SimpleGrid columns={overviewColumns} spacing={4} alignItems="center">
           <Box>
             <Figure label="Spent" size="hero" value={formatMoney(spentTotal, baseCurrency)} />
             {proj.expense > 0 && (
@@ -281,16 +279,29 @@ export default function Dashboard() {
 
       <SubscriptionsCard rules={rules} fx={ruleFx} loading={rulesLoading} error={rulesError} onRetry={reloadRules}
         baseCurrency={baseCurrency} period={period} charges={{ rows, loading, error, onRetry: reload }} />
+    </>
+  )
+
+  return (
+    <Stack spacing={twoColumns ? 3 : 5}>
+      <PageHeader title="Overview" action={
+        <Select w={{ base: '140px', sm: '200px' }} size="sm" borderRadius="lg" value={periodValue}
+          aria-label="Period" onChange={(e) => setPeriodValue(e.target.value)}>
+          {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </Select>
+      } />
+      {twoColumns ? <SimpleGrid columns={2} spacing={3} alignItems="start">{cards}</SimpleGrid> : cards}
     </Stack>
   )
 }
 
 // The overview's shape while the period's transactions load: Spent, then the
-// Income and Net tiles (instead of €0.00 totals that look real).
-function OverviewSkeleton() {
+// Income and Net tiles (instead of €0.00 totals that look real), in the
+// card's `columns`.
+function OverviewSkeleton({ columns }) {
   return (
     <SkeletonRegion>
-      <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4} alignItems="center">
+      <SimpleGrid columns={columns} spacing={4} alignItems="center">
         <SkeletonFigure size="hero" w="60%" />
         <SimpleGrid columns={2} spacing={2}>
           <SkeletonBlock h="64px" radius="lg" />

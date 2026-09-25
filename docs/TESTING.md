@@ -201,7 +201,14 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     inside a group.
 35. Desktop: the sidebar is Home, Transactions, Groups, Budgets, a divider,
     Insights, Recurring, then the user row (→ Settings), theme toggle and sign
-    out. No More or Search entries.
+    out. No More or Search entries. A phone held sideways (e.g. 844×390,
+    667×375) gets neither: a slim rail on the left with the logo, a square
+    "+" (Add expense), the bottom bar's five tabs with the same one lit, then
+    the bell (its list opens to the right), theme toggle and avatar; no top
+    bar, bottom bar or floating "+". Headings are smaller, Home's cards sit two
+    by two, dialogs, the What's new story (a wide card, picture beside the
+    words) and the legal prompt fit or scroll with their buttons reachable.
+    Tablets, desktops and portrait phones look exactly as before.
 36. Transactions: the Expenses / Income / All switch and the search text are
     in the URL (`?type=…&q=…`) and survive a reload. With no search the list is
     this month; typing searches all history and shows the result count and
