@@ -8,7 +8,8 @@ name = "budgeer-status"
 account_id = "bbac922dbb6c9377e9dc6ae305847594"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
-workers_dev = true
+# Served only at status.budgeer.com (the custom domain); no workers.dev address.
+workers_dev = false
 
 # CSS, the admin preview script and the favicon. Paths that match a file here
 # are served as-is; everything else reaches the Worker.
@@ -39,5 +40,5 @@ migrations_dir = "migrations"
 [vars]
 APP_URL = "https://dev.budgeer.com"
 SUPABASE_URL = "https://ctvdljzybbujuywppixo.supabase.co"
-ACCESS_TEAM_DOMAIN = ""
-ACCESS_AUD = ""
+ACCESS_TEAM_DOMAIN = "sport-outer-0c.cloudflareaccess.com"
+ACCESS_AUD = "6b64889615af76e6eea2bf200c1d173bb9f319e6afa511713fc42c7df3bba79c"
