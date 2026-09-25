@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Stack, Text, Button, useToast,
+  HStack, Stack, Text, Button, useToast,
 } from '@chakra-ui/react'
 import { MailCheck, LogIn } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import AuthLayout from './AuthLayout.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
+import { useConfirmWait } from './useConfirmWait.js'
 
 const PENDING_EMAIL = STORAGE_KEYS.pendingEmail
 const RESEND_COOLDOWN = 60 // seconds
@@ -15,10 +17,15 @@ const RESEND_COOLDOWN = 60 // seconds
 export default function VerifyEmail() {
   const navigate = useNavigate()
   const toast = useToast()
-  const { resendConfirmation } = useAuth()
+  const { resendConfirmation, holdPendingSignIn } = useAuth()
   const email = sessionStorage.getItem(PENDING_EMAIL) || ''
   const [cooldown, setCooldown] = useState(0)
   const timerRef = useRef(null)
+  // Signs in by itself once the link is opened, here or on another device
+  // (not after a reload: the password lived only in memory).
+  const wait = useConfirmWait(holdPendingSignIn)
+  const waiting = wait.status === 'waiting' || wait.status === 'done'
+  const gaveUp = wait.status === 'timedOut' || wait.status === 'failed'
 
   // If someone lands here without a pending signup, send them to login.
   useEffect(() => {
@@ -43,6 +50,7 @@ export default function VerifyEmail() {
   }
 
   function changeEmail() {
+    wait.stop()
     sessionStorage.removeItem(PENDING_EMAIL)
     navigate('/login?signup=1', { replace: true })
   }
@@ -54,11 +62,24 @@ export default function VerifyEmail() {
         <Text as="span" display="block" fontWeight="700" color="text.primary"
           overflowWrap="anywhere">{email}</Text>
       </>}>
-      <Text fontSize="sm" color="text.muted" textAlign="center" mt={-2}>
-        Open it to confirm your account. If you open it on <b>this</b>{' '}
-        device you’ll continue automatically. Confirmed on a different
-        device? Just log in below. Check spam if it’s not there.
-      </Text>
+      <Stack spacing={3} mt={-2} fontSize="sm" color="text.muted" textAlign="center">
+        <Text>
+          {wait.status === 'idle'
+            ? 'Tap the link in it to confirm your account, then log in below.'
+            : 'Tap the link in it to confirm your account. This page continues by itself once you do, on any device.'}
+          {' '}Check spam if it’s not there.
+        </Text>
+        {/* Always mounted, so screen readers hear the change. */}
+        <Text as="div" role="status" aria-live="polite" _empty={{ display: 'none' }}>
+          {waiting && (
+            <HStack as="span" spacing={2} justify="center">
+              <RingSpinner />
+              <span>Waiting for you to confirm…</span>
+            </HStack>
+          )}
+          {gaveUp && 'Still waiting? Log in once you’ve confirmed.'}
+        </Text>
+      </Stack>
 
       <Stack spacing={3}>
         <Button variant="outline" colorScheme="gray"

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase.js'
 import { UserError } from '../lib/errors.js'
 import { clearUserDataCaches } from '../lib/userDataCaches.js'
@@ -40,6 +40,12 @@ export function AuthProvider({ children }) {
   // saved. The link establishes a real session, so without this flag the app
   // would drop the user straight into the dashboard with their password unset.
   const [recovering, setRecovering] = useState(false)
+  // A new account waiting for its confirmation email: the address and the
+  // password just typed, so "Check your inbox" can sign in by itself once the
+  // link is opened (on any device). In memory only, never stored anywhere;
+  // dropped on any sign-in, and when the page lets go of it (holdPendingSignIn).
+  const pendingSignIn = useRef(null)
+  const pendingHolds = useRef(0)
 
   useEffect(() => {
     let mounted = true
@@ -58,6 +64,7 @@ export function AuthProvider({ children }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       if (!mounted) return
       if (event === 'PASSWORD_RECOVERY') setRecovering(true)
+      if (s) pendingSignIn.current = null
       // Any sign-out — explicit, an expired refresh token, another tab, or a
       // deleted account — clears the decrypted reads the service worker cached,
       // and the pages' last answers held in memory.
@@ -86,15 +93,41 @@ export function AuthProvider({ children }) {
 
   // `metadata` is stored on the new user; the sign-up form passes the legal
   // versions accepted, which the database records as consent (0072).
-  const signUp = useCallback(
-    (email, password, metadata) =>
-      supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: window.location.origin, data: metadata },
-      }),
-    [],
-  )
+  // With email confirmation on, a sign-up returns no session: the details are
+  // kept in memory for the "Check your inbox" page (holdPendingSignIn).
+  const signUp = useCallback(async (email, password, metadata) => {
+    const res = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin, data: metadata },
+    })
+    pendingSignIn.current = !res.error && !res.data?.session ? { email, password } : null
+    return res
+  }, [])
+
+  // "Check your inbox" takes the pending sign-up while it's on screen:
+  // { retry } signs in with it (an unconfirmed email answers
+  // email_not_confirmed), release() drops the password. null when there is
+  // none (the page was reloaded). The drop waits a microtask, so React's
+  // StrictMode unmount-and-remount in development keeps it.
+  const holdPendingSignIn = useCallback(() => {
+    if (!pendingSignIn.current) return null
+    pendingHolds.current += 1
+    let held = true
+    return {
+      retry: () => {
+        const p = pendingSignIn.current
+        if (!p) return Promise.resolve({ data: null, error: new Error('No pending sign-in') })
+        return supabase.auth.signInWithPassword({ email: p.email, password: p.password })
+      },
+      release: () => {
+        if (!held) return
+        held = false
+        pendingHolds.current -= 1
+        queueMicrotask(() => { if (pendingHolds.current === 0) pendingSignIn.current = null })
+      },
+    }
+  }, [])
 
   const signInWithProvider = useCallback(
     (provider) =>
@@ -224,6 +257,7 @@ export function AuthProvider({ children }) {
     recovering,
     signInWithPassword,
     signUp,
+    holdPendingSignIn,
     signInWithProvider,
     signOut,
     resendConfirmation,
@@ -241,7 +275,7 @@ export function AuthProvider({ children }) {
     setFirstPassword,
     markPasswordSet,
   }), [
-    session, loading, recovering, signInWithPassword, signUp, signInWithProvider, signOut,
+    session, loading, recovering, signInWithPassword, signUp, holdPendingSignIn, signInWithProvider, signOut,
     resendConfirmation, sendPasswordReset, updatePassword, changePassword, clearRecovery,
     signInWithPasskey, registerPasskey, listPasskeys, deletePasskey,
     getIdentities, linkGoogle, unlinkIdentity, setFirstPassword, markPasswordSet,
