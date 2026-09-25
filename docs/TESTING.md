@@ -209,14 +209,50 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     inside a group.
 35. Desktop: the sidebar is Home, Transactions, Groups, Budgets, a divider,
     Insights, Recurring, then the user row (→ Settings), theme toggle and sign
-    out. No More or Search entries. A phone held sideways (e.g. 844×390,
-    667×375) gets neither: a slim rail on the left with the logo, a square
-    "+" (Add expense), the bottom bar's five tabs with the same one lit, then
-    the bell (its list opens to the right), theme toggle and avatar; no top
-    bar, bottom bar or floating "+". Headings are smaller, Home's cards sit two
-    by two, dialogs, the What's new story (a wide card, picture beside the
-    words) and the legal prompt fit or scroll with their buttons reachable.
-    Tablets, desktops and portrait phones look exactly as before.
+    out. No More or Search entries. Tablets, desktops and portrait phones
+    look exactly as before whatever the sideways layout below does.
+35a. A phone held sideways (landscape, ≤ 500px tall: 844×390, 667×375, and
+    with a notch — in Chrome DevTools, or the capture harness's CDP
+    safe-area override of 47px left/right, 21px bottom):
+    - Rail: 64px, the page's own colour in light and dark (no white slab, no
+      border): logo, one rounded coral "+" (Add expense), then icon-only
+      Home · Transactions · Groups · Budgets · More, the current one on a
+      pale coral pill. Each has a tooltip and its name as its label; every
+      target is at least 44px and the rail doesn't crowd at 375px tall. With
+      a notch the rail widens by the inset with no blank band; content clears
+      the right inset and the home indicator.
+    - Header (~52px, stays put as the page scrolls): the page's title and
+      its controls (Home's period; Transactions' search, filters and ⋯; a
+      form's Save), then the bell and your picture. No theme toggle (it's in
+      Settings › Appearance), no top bar, bottom bar or floating "+". The
+      bell's list opens under it, clear of the rail. The picture opens
+      Settings and is ringed there; More is not lit on Settings pages.
+    - Content: one centred column ≤ 720px; forms (Add expense, Settle up,
+      Settings pages) line up with the lists. Card titles are ~15px:
+      "Spending by category" is one line at 844 (and at 667 or 812, where
+      Home's cards drop their header tiles).
+    - Home: a Spent | Income · Net strip, then two stacks that flow on their
+      own — Spending by category and Budgets on the left; Expenses, Income
+      and Recurring on the right (first run: the way to start, then
+      Recurring). Period, Show all, the savings and salary notes all work.
+      Category bars put the amount beside the name when both fit.
+    - Rows: title and meta one line each, cut with "…", never letter by
+      letter; below ~836px wide (SE, mini) Home's rows fold edit/delete
+      into ⋯. Transactions
+      shows about six rows above the fold at 844×390; its type switch and
+      count sit on one line over the list, and there's no page "Add" (the
+      rail's is the one). The group page has no "Add expense" either.
+    - Add / edit expense: two columns — type, amount, fields on the left; the
+      categories as a grid of tiles on the right (one radio group: arrow
+      keys move, the chosen one is ringed; "Uncategorized" last); Save in
+      the header, Delete (editing) under the form.
+    - Group page: back, photo, name over "N members", total and ⋯ on one
+      header row, even at 667; the balance card shows everyone's tiles on
+      one row and leaves the list in view.
+    - Keyboard: Tab → Skip to content → Enter lands on the page; the next Tab
+      is the page's first header control. Dialogs, the What's new story (a
+      wide card, picture beside the words) and the legal prompt fit or
+      scroll with their buttons reachable.
 36. Transactions: the Expenses / Income / All switch and the search text are
     in the URL (`?type=…&q=…`) and survive a reload. With no search the list is
     this month; typing searches all history and shows the result count and

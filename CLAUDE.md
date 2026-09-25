@@ -43,7 +43,8 @@ aspirations — if a change would break one, fix the cause, don't paper over it.
 | --- | --- |
 | App shell, routing, providers | `src/app/`, `src/main.jsx` (zero data access) |
 | Cross-feature utilities | `src/shared/lib/` (data: `db.js`, `supabase.js`, `realtime.js`, `fx.js`, `profile.js`, `push.js`; pure: `currency.js`, `dates.js`, `moneyParse.js`, `paginate.js`, `offlineReads.js`, `txnRollup.js`, `spread.js`, `ruleFx.js`, `salaryShift.js`, `environment.js`, `localeParse.js`, `queryCache.js`, `shortLandscape.js`, `themePref.js`) |
-| Cross-feature UI | `src/shared/ui/` (design-system kit in `src/shared/ui/kit/`) |
+| Cross-feature UI | `src/shared/ui/` (design-system kit in `src/shared/ui/kit/`; `ShellHeader.jsx` = the sideways header's slots that `PageHeader`/`PageForm` fill) |
+| Sideways phones (landscape ≤ 500px tall) | `shortLandscape.js` (query, shell measurements, `landscapeOnly`, `NARROW_STACK`) + `useShortLandscape`; the rail and header live in `AppShell.jsx`; Home's stacks in `dashboardMath.homeStacks` |
 | Auth context | `src/shared/auth/` |
 | Features | `src/features/{auth,backup,budgets,categories,dashboard,groups,help,import,insights,landing,notifications,onboarding,privacy,recurring,settings,transactions,whatsnew}/` |
 | DB schema & policies | `supabase/migrations/NNNN_*.sql` (append-only, ordered) |
