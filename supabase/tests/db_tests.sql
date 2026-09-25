@@ -5001,11 +5001,71 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 83. 0089: status_snapshot() — the public status page's one door. anon can
+--     call it (deliberately), authenticated can't; it's STABLE SECURITY
+--     DEFINER with a pinned search_path; it returns exactly the four expected
+--     keys; and with a real overdue, retrying queue row in place its answer
+--     still carries no id or email — only a timestamp, a date and counts.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; em text; snap jsonb; keys text[]; fx date;
+begin
+  begin
+    if not has_function_privilege('anon', 'public.status_snapshot()', 'execute') then
+      raise exception 'anon cannot execute status_snapshot';
+    end if;
+    if has_function_privilege('authenticated', 'public.status_snapshot()', 'execute') then
+      raise exception 'authenticated can execute status_snapshot';
+    end if;
+    if not exists (select 1 from pg_proc
+                    where oid = 'public.status_snapshot()'::regprocedure
+                      and prosecdef and provolatile = 's'
+                      and proconfig @> array['search_path=public, pg_temp']) then
+      raise exception 'status_snapshot is not STABLE SECURITY DEFINER with a pinned search_path';
+    end if;
+
+    u := pg_temp.zz_user('snap');
+    select email into em from auth.users where id = u;
+    insert into public.privacy_email_queue (user_id, kind, due_at, last_event_at, pending_events, attempts)
+    values (u, 'consent_change', now() - interval '1 hour', now() - interval '2 hours', 1, 2);
+    select max(rate_date) into fx from public.fx_rates;
+
+    perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+    execute 'set local role anon';
+    snap := public.status_snapshot();
+    execute 'reset role';
+
+    select array_agg(k order by k) into keys from jsonb_object_keys(snap) k;
+    if keys <> array['db_time', 'email_queue_overdue', 'email_queue_retrying', 'fx_latest_date'] then
+      raise exception 'unexpected keys: %', keys;
+    end if;
+    if (snap->>'email_queue_overdue')::int < 1 or (snap->>'email_queue_retrying')::int < 1 then
+      raise exception 'queue row not counted: %', snap;
+    end if;
+    if (snap->>'email_queue_overdue')::int > 100 or (snap->>'email_queue_retrying')::int > 100 then
+      raise exception 'counts not capped: %', snap;
+    end if;
+    if (snap->>'fx_latest_date')::date is distinct from fx then raise exception 'fx_latest_date wrong: %', snap; end if;
+    if snap::text ilike '%' || u::text || '%' or snap::text ilike '%' || em || '%' or snap::text like '%@%' then
+      raise exception 'snapshot leaks personal data: %', snap;
+    end if;
+    if jsonb_typeof(snap->'email_queue_overdue') <> 'number' or jsonb_typeof(snap->'email_queue_retrying') <> 'number'
+       or jsonb_typeof(snap->'db_time') <> 'string' then
+      raise exception 'unexpected value types: %', snap;
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: status_snapshot callable by anon only, expected keys, aggregates only (no ids/emails)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: status_snapshot — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 83; f int; p int;  -- tests 1–82 + B-0059
+declare expected_tests constant int := 84; f int; p int;  -- tests 1–83 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

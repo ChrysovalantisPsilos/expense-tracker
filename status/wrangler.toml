@@ -1,0 +1,42 @@
+# Budgeer public status page — a Cloudflare Worker, deployed by
+# .github/workflows/status-deploy.yml. Not part of the app release.
+#
+# The custom domain (status.budgeer.com) and the Cloudflare Access app in front
+# of /admin are set up once in the Cloudflare dashboard, not here (README →
+# Status page).
+name = "budgeer-status"
+account_id = "bbac922dbb6c9377e9dc6ae305847594"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+# Served only at status.budgeer.com (the custom domain); no workers.dev address.
+workers_dev = false
+
+# CSS, the admin preview script and the favicon. Paths that match a file here
+# are served as-is; everything else reaches the Worker.
+[assets]
+directory = "public"
+
+[triggers]
+crons = ["*/10 * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "budgeer-status"
+database_id = "579136a9-65d2-4417-9a0a-4bd7b0742af1"
+migrations_dir = "migrations"
+
+# Non-secret settings. The Supabase anon key is NOT here: it's the Worker
+# secret SUPABASE_ANON_KEY, set by the deploy workflow from the GitHub secret
+# STATUS_SUPABASE_ANON_KEY (locally: status/.dev.vars, which git ignores).
+#
+# APP_URL and SUPABASE_URL point at PROD, the site the page reports on. To check
+# the TEST project instead, switch both and STATUS_SUPABASE_ANON_KEY to TEST.
+#
+# ACCESS_TEAM_DOMAIN (e.g. "budgeer.cloudflareaccess.com") and ACCESS_AUD (the
+# Access application's audience tag) turn on /admin. While either is empty,
+# /admin answers 403 to everyone.
+[vars]
+APP_URL = "https://www.budgeer.com"
+SUPABASE_URL = "https://tuxfpylowcxazinqtrzx.supabase.co"
+ACCESS_TEAM_DOMAIN = "sport-outer-0c.cloudflareaccess.com"
+ACCESS_AUD = "6b64889615af76e6eea2bf200c1d173bb9f319e6afa511713fc42c7df3bba79c"

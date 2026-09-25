@@ -266,3 +266,37 @@ immutable for a year; `index.html`, SPA routes, the manifest, `sw.js` and
 Vercel deploys a commit without waiting for CI. To hold a production release
 until CI is green, add the GitHub `test` check under the Vercel project's
 Settings → Deployment Checks.
+
+### Status page
+
+`status/` is Budgeer's public status page: a Cloudflare Worker (`budgeer-status`)
+with a D1 database, separate from the app and its release. Every 10 minutes a
+cron checks the app, sign-in, the database (through `status_snapshot()`,
+migration 0089, which returns only aggregate timestamps and counts) and the
+report function, derives the nine parts shown on the page, and keeps 48 hours
+of raw checks and 90 days of daily rollups. `GET /` renders the page;
+`/admin` is where incidents, maintenance and manual overrides are posted.
+
+It deploys through `.github/workflows/status-deploy.yml` on a push to
+`status-page` or `main` that touches `status/` (or by hand): D1 migrations,
+`wrangler deploy`, then the Worker secret `SUPABASE_ANON_KEY` from the GitHub
+secret `STATUS_SUPABASE_ANON_KEY`. The GitHub secret `CLOUDFLARE_API_TOKEN`
+is required. Locally: put `SUPABASE_ANON_KEY=…` in `status/.dev.vars` (git
+ignores it), run `npx wrangler d1 migrations apply budgeer-status --local`, then
+`npx wrangler dev --test-scheduled` in `status/` and trigger the cron with
+`curl "http://localhost:8787/__scheduled?cron=*/10+*+*+*+*"`.
+
+One-time steps in the Cloudflare dashboard:
+
+1. **Custom domain:** Workers → `budgeer-status` → Settings → Domains & Routes →
+   add `status.budgeer.com`.
+2. **Access app:** Zero Trust → Access → Applications → add a self-hosted app
+   for `status.budgeer.com/admin`, with a policy allowing only the owner's
+   email. Copy the team domain (`<team>.cloudflareaccess.com`) and the
+   application's audience (AUD) tag into `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD`
+   in `status/wrangler.toml`. Until both are set, `/admin` answers 403 to
+   everyone; the Worker also verifies the Access JWT itself.
+
+It checks PROD: `APP_URL` and `SUPABASE_URL` in `status/wrangler.toml` name
+budgeer.com and the PROD project, and `STATUS_SUPABASE_ANON_KEY` holds the PROD
+anon key (migration 0089 must be on the project it checks).
