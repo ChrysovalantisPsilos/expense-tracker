@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   notifPrompted: 'budge:notifPrompted', // localStorage — notification prompt answered ("Not now" included)
   linkingGoogle: 'budge:linkingGoogle', // sessionStorage — a Google link attempt is in flight
   importMappings: 'budgeer:import-mappings:v1', // localStorage — confirmed import column mappings
+  importHolder: 'budgeer:import-holder:v1', // localStorage — the holder's name, for own transfers on import
   fxRatePrefix: 'fx2:',                // localStorage — prefix of each cached exchange rate
 }
 

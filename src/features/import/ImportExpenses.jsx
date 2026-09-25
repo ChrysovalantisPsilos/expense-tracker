@@ -18,8 +18,9 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, parseManualRate } from '../../shared/lib/currency.js'
 import {
   parseWorkbook, buildTransactions, importTransactions, listRules, saveRule, rememberMapping,
+  rememberedHolder, rememberHolder,
 } from './importExpenses.js'
-import { previewDrafts } from './importMath.js'
+import { previewDrafts, suggestedHolder, fileHolder } from './importMath.js'
 import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
 import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -33,7 +34,7 @@ export default function ImportExpenses() {
   const navigate = useNavigate()
   const toast = useToast()
   const { user } = useAuth()
-  const { baseCurrency } = useProfile()
+  const { baseCurrency, profile } = useProfile()
   const { categories } = useCategories() // all kinds — rules can target either
 
   const [step, setStep] = useState('upload') // upload | map | rates | review | done
@@ -41,7 +42,7 @@ export default function ImportExpenses() {
   const [headers, setHeaders] = useState([])
   const [rows, setRows] = useState([])
   const [mapping, setMapping] = useState({})
-  const [headerRow, setHeaderRow] = useState(0)
+  const [lines, setLines] = useState([]) // each row's line in the file
   const [detection, setDetection] = useState(null) // { preset, confidence, remembered }
   const [showMapping, setShowMapping] = useState(false)
   const { busy, run } = useAsyncSubmit()
@@ -67,8 +68,9 @@ export default function ImportExpenses() {
       setFileName(file.name)
       setHeaders(parsed.headers)
       setRows(parsed.rows)
-      setHeaderRow(parsed.headerRow)
-      setMapping(parsed.detection.mapping)
+      setLines(parsed.lines)
+      // Files without a holder column (Revolut's) use the name the user gives.
+      setMapping({ ...parsed.detection.mapping, holderName: suggestedHolder(rememberedHolder(), profile?.display_name) })
       setDetection(parsed.detection)
       // Sure enough → straight to the preview; otherwise ask for the columns.
       setShowMapping(parsed.detection.confidence < CONFIDENCE_THRESHOLD)
@@ -95,11 +97,12 @@ export default function ImportExpenses() {
       toast({ title: 'Map Date and Amount (or Debit + Credit) first', status: 'warning' }); return
     }
     rememberMapping(headers, mapping)
+    rememberHolder(fileHolder(rows, mapping) || mapping.holderName)
     await run(async () => {
       const rules = await listRules().catch(() => [])
       const { valid, merchants, errors, skipped, missingRates: missing } = await buildTransactions({
         rows, mapping, userId: user.id, baseCurrency, categories, rules, manualRates,
-        firstRow: headerRow + 2,
+        lines,
       })
       if (missing.length) {
         setMissingRates(missing)
@@ -207,6 +210,17 @@ export default function ImportExpenses() {
                 {showMapping ? 'Hide columns' : 'Adjust columns'}
               </Button>
             </HStack>
+            {!mapping.holder && (
+              <FormControl mt={4}>
+                <FormLabel fontSize="sm" mb={1}>
+                  Your name as banks write it
+                  <Text as="span" color="text.muted" fontWeight="400"> · optional — transfers to and from yourself are left out</Text>
+                </FormLabel>
+                <Input size="sm" maxW="320px" autoComplete="name" maxLength={100}
+                  value={mapping.holderName ?? ''} placeholder="e.g. Jane Doe"
+                  onChange={(e) => setMapping((m) => ({ ...m, holderName: e.target.value }))} />
+              </FormControl>
+            )}
             <Collapse in={showMapping} animateOpacity>
               <Stack spacing={3} pt={4}>
                 <Text fontSize="sm" color="text.muted">
@@ -236,7 +250,7 @@ export default function ImportExpenses() {
               <Text fontSize="xs" color="text.muted" mt={3}>
                 {preview.ownTransfers > 0 && `${plural(preview.ownTransfers, 'transfer')} between your own accounts left out. `}
                 {preview.skipped > 0 && `${plural(preview.skipped, 'line')} left out (pending, declined, balances or notes). `}
-                {preview.errors > 0 && `${plural(preview.errors, 'row')} can’t be read (e.g. row ${preview.firstError.index + headerRow + 2}: ${preview.firstError.reason}).`}
+                {preview.errors > 0 && `${plural(preview.errors, 'row')} can’t be read (e.g. row ${lines[preview.firstError.index]}: ${preview.firstError.reason}).`}
               </Text>
             )}
             <HStack mt={4}>

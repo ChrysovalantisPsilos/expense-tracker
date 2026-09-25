@@ -9,7 +9,7 @@ import { importFileProblem, rowsToObjects } from './sheetParse.js'
 import { detectMapping, headerSignature, savedMappingFor } from './statementDetect.js'
 // Pure helpers (parsing, drafts, deterministic identity) live in
 // importMath.js so they're unit-testable.
-import { deterministicUuid, groupMerchants, rowToDraft, signedConvention } from './importMath.js'
+import { cleanHolderName, deterministicUuid, groupMerchants, rowToDraft, signedConvention } from './importMath.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 
@@ -35,12 +35,35 @@ export function rememberMapping(headers, mapping) {
     const sig = headerSignature(headers)
     delete all[sig]
     const kept = Object.entries(all).slice(-(MAX_REMEMBERED - 1))
-    localStorage.setItem(MAPPINGS_KEY, JSON.stringify(Object.fromEntries([...kept, [sig, mapping]])))
+    const columns = { ...mapping }
+    delete columns.holderName // kept on its own (below), not per layout
+    localStorage.setItem(MAPPINGS_KEY, JSON.stringify(Object.fromEntries([...kept, [sig, columns]])))
   } catch { /* storage full/blocked: just not remembered */ }
 }
 
-// Parse the first sheet into { headers, rows (keyed by header), headerRow,
-// detection }. The file is size-checked first, then parsed in a Web Worker
+// The account holder's name as banks write it — typed on the mapping step or
+// read from a file's holder column (KBC's "Name") — so a file that doesn't
+// name the holder (Revolut's) still recognises transfers between their own
+// accounts. Per device, like the mappings; '' when unknown or unavailable.
+const HOLDER_KEY = STORAGE_KEYS.importHolder
+
+export function rememberedHolder() {
+  try {
+    return cleanHolderName(localStorage.getItem(HOLDER_KEY))
+  } catch {
+    return ''
+  }
+}
+
+export function rememberHolder(name) {
+  try {
+    const clean = cleanHolderName(name)
+    if (clean) localStorage.setItem(HOLDER_KEY, clean)
+  } catch { /* storage full/blocked: just not remembered */ }
+}
+
+// Parse the file into { headers, rows (keyed by header), lines (each row's
+// file line), detection }. The file is size-checked first, then parsed in a Web Worker
 // (SheetJS is loaded only there, so it isn't in the main bundle and a heavy
 // file can't freeze the page). A mapping the user confirmed before for the
 // same header layout wins over detection. Errors come back as clear,
@@ -65,7 +88,7 @@ export async function parseWorkbook(file) {
     const detection = saved
       ? { ...detected, mapping: { holder: detected.mapping.holder, ...saved }, confidence: 1, remembered: true }
       : detected
-    return { headers: res.headers, rows, headerRow: res.headerRow, detection }
+    return { headers: res.headers, rows, lines: res.lines, detection }
   } finally {
     worker.terminate()
   }
@@ -88,7 +111,7 @@ export async function saveRule(userId, pattern, categoryId) {
 // Turn raw rows + a mapping into ready-to-insert transactions, collecting
 // per-row errors for anything unparseable and the lines that aren't
 // transactions (pending/declined, balance lines, footers) as `skipped`.
-// `firstRow` is the file line number of rows[0], for messages. `merchants`
+// `lines` are the rows' file line numbers, for messages. `merchants`
 // maps each uncategorized row's client_uuid to its merchant key: the file's
 // merchant names grouped by groupMerchants, so the "New merchants" list and
 // the rules saved from it use the same keys ('' = none).
@@ -99,13 +122,14 @@ export async function saveRule(userId, pattern, categoryId) {
 //   and positive rows income (the near-universal export format).
 // - Rules: uncategorized rows are matched against the user's saved
 //   "contains → category" rules (longest pattern wins).
-// - Currency: each foreign row is converted at the ECB rate for ITS date (one
+// - Currency: each foreign row is converted at the rate the statement itself
+//   gives (its base-currency column), else at the ECB rate for ITS date (one
 //   range request per currency). Where no rate exists (offline, pre-1999, API
 //   down) `manualRates[currency]` fills in; without one the row is listed in
 //   `missingRates` ([{ currency, count }]) and the caller must ask the user —
 //   a foreign amount is never booked at 1:1.
 export async function buildTransactions({
-  rows, mapping, userId, baseCurrency, categories, rules = [], manualRates = {}, firstRow = 2,
+  rows, mapping, userId, baseCurrency, categories, rules = [], manualRates = {}, lines = [],
 }) {
   const catByName = new Map((categories || []).map((c) => [c.name.toLowerCase(), c.id]))
   const sortedRules = [...rules].sort((a, b) => b.pattern.length - a.pattern.length)
@@ -128,12 +152,12 @@ export async function buildTransactions({
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i]
     const draft = drafts[i]
-    if (draft.skip) { skipped.push({ row: i + firstRow, reason: draft.skip }); continue }
-    if (draft.error) { errors.push({ row: i + firstRow, reason: draft.error }); continue }
+    if (draft.skip) { skipped.push({ row: lines[i], reason: draft.skip }); continue }
+    if (draft.error) { errors.push({ row: lines[i], reason: draft.error }); continue }
     const { spent_at, kind, currency, amount_minor, description } = draft
 
     const exchange_rate = currency === baseCurrency ? 1
-      : rateOnOrBefore(seriesByCurrency.get(currency) ?? [], spent_at)?.rate ?? manualRates[currency] ?? null
+      : draft.rate ?? rateOnOrBefore(seriesByCurrency.get(currency) ?? [], spent_at)?.rate ?? manualRates[currency] ?? null
     if (!exchange_rate) { missing.set(currency, (missing.get(currency) ?? 0) + 1); continue }
 
     const catName = mapping.category ? String(r[mapping.category] ?? '').toLowerCase().trim() : ''
@@ -163,11 +187,12 @@ export async function buildTransactions({
   return { valid, merchants, errors, skipped, missingRates }
 }
 
-// One ECB series per foreign currency, spanning that currency's row dates.
+// One ECB series per foreign currency, spanning the dates of that currency's
+// rows that don't carry the statement's own rate.
 function fetchSeries(drafts, baseCurrency) {
   const spans = new Map() // currency -> { first, last }
   for (const d of drafts) {
-    if (d.error || d.skip || d.currency === baseCurrency) continue
+    if (d.error || d.skip || d.rate || d.currency === baseCurrency) continue
     const s = spans.get(d.currency) ?? { first: d.spent_at, last: d.spent_at }
     spans.set(d.currency, {
       first: d.spent_at < s.first ? d.spent_at : s.first, last: d.spent_at > s.last ? d.spent_at : s.last,

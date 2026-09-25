@@ -3,7 +3,8 @@
 // the SheetJS calls; no DOM, no Supabase.
 import { isoDate } from '../../shared/lib/dates.js'
 import { sniffContainer, decodeText, parseDelimited } from './statementText.js'
-import { findHeaderRow } from './statementDetect.js'
+import { locateHeader } from './statementDetect.js'
+import { matchPreset } from './bankPresets.js'
 import { UserError } from '../../shared/lib/errors.js'
 
 // Statement files are small; anything bigger is almost certainly not one, and
@@ -41,28 +42,99 @@ export function uniqueHeaders(raw) {
 // their LOCAL calendar day as YYYY-MM-DD (SheetJS builds local-midnight Dates).
 const cell = (v) => (v instanceof Date ? (isNaN(v) ? null : isoDate(v)) : v ?? null)
 
-// Parse the first sheet of `buf` into { headers, rows, headerRow } where rows
-// are arrays aligned with headers and headerRow is the header's 0-based line
-// (bank exports often start with account/period preamble lines). Text files
-// (CSV/TSV, whatever their extension) go through our own decoder and parser
-// so every cell stays text — SheetJS would guess "03/04/2026" US-style — and
+const filled = (c) => c != null && String(c).trim() !== ''
+
+// Parse `buf` into { headers, rows, lines }: rows are arrays aligned with
+// headers, lines[i] is the file line rows[i] came from (for messages). The
+// header row is found below any preamble (bank exports often start with
+// account/period lines); blank rows are left out. Text files (CSV/TSV,
+// whatever their extension) go through our own decoder and parser so every
+// cell stays text — SheetJS would guess "03/04/2026" US-style — and
 // Greek/Windows code pages decode correctly. Real workbooks (.xlsx, .xls,
-// HTML-table "Excel" exports) go through SheetJS. Arrays (not header-keyed
-// objects) cross the worker boundary, so a hostile header such as
-// "__proto__" is never used as a key here.
+// HTML-table "Excel" exports) go through SheetJS; of several sheets, the one
+// with the most header-like row is read (the first on a tie). A sectioned
+// report (a preset with `sections`, like Revolut's consolidated statement) is
+// read as all of its transaction tables, on every sheet (see sectionRows).
+// Arrays (not header-keyed objects) cross the worker boundary, so a hostile
+// header such as "__proto__" is never used as a key here.
 export function parseSheet(XLSX, buf) {
   const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf)
   const kind = sniffContainer(bytes)
-  const aoa = kind === 'text' ? parseDelimited(decodeText(bytes).text) : readWorkbook(XLSX, bytes, kind)
-  const headerRow = findHeaderRow(aoa)
-  const headers = uniqueHeaders(aoa[headerRow] ?? [])
-  const rows = aoa.slice(headerRow + 1).map((r) => headers.map((_, i) => cell(r[i])))
-  return { headers, rows, headerRow }
+  const sheets = kind === 'text' ? [parseDelimited(decodeText(bytes).text)] : readWorkbook(XLSX, bytes, kind)
+  const found = sheets.map((aoa) => ({ aoa, ...locateHeader(aoa) }))
+  const { aoa, row } = found.reduce((best, s) => (s.score > best.score ? s : best))
+  const raw = aoa[row] ?? []
+  const { headers, rows, lines } = matchPreset(uniqueHeaders(raw))?.preset.sections
+    ? sectionRows(sheets, raw)
+    : plainRows(aoa, row)
+  return { headers, rows: rows.map((r) => r.map(cell)), lines }
+}
+
+// The rows under the header at `row`, aligned with it.
+function plainRows(aoa, row) {
+  const headers = uniqueHeaders(aoa[row] ?? [])
+  const rows = []
+  const lines = []
+  for (let i = row + 1; i < aoa.length; i++) {
+    const r = aoa[i] ?? []
+    if (!r.some(filled)) continue
+    rows.push(headers.map((_, j) => r[j] ?? null))
+    lines.push(i + 1)
+  }
+  return { headers, rows, lines }
+}
+
+// A row's cells up to its last filled one (CSV exports pad every line).
+function trimmed(r) {
+  let n = r.length
+  while (n && !filled(r[n - 1])) n--
+  return r.slice(0, n)
+}
+
+// The transaction tables of a sectioned report, as one table. A table starts
+// under any row of the same bank layout as `header` — the repeated header, or
+// a variant of it (a non-euro Revolut account doubles every money column) —
+// and ends at a "Total" row or a title or separator row (one filled cell:
+// "Transaction statement", "Personal Account (USD)", "---------").
+// Everything else — account summaries, balances, tables with other headers
+// (savings interest, investments, crypto) and blank rows — is left out. Each
+// table's columns go to the union of the tables' headers, by name ("Money
+// in/out", "Money in/out (2)"), so rows line up whichever variant they came
+// from. Pure: `sheets` are arrays of rows.
+export function sectionRows(sheets, header) {
+  const id = matchPreset(uniqueHeaders(trimmed(header)))?.preset.id
+  const headers = []
+  const rows = []
+  const lines = []
+  for (const aoa of sheets) {
+    let slots = null // column j of the current table → index in headers
+    aoa.forEach((r0, i) => {
+      const r = trimmed(r0 ?? [])
+      const cells = r.filter(filled).length
+      if (!cells) return
+      if (cells === 1 || String(r[0] ?? '').trim().toLowerCase() === 'total') { slots = null; return }
+      const names = uniqueHeaders(r)
+      if (id && matchPreset(names)?.preset.id === id) {
+        slots = names.map((h) => {
+          if (!headers.includes(h)) headers.push(h)
+          return headers.indexOf(h)
+        })
+        return
+      }
+      if (!slots) return
+      const out = []
+      slots.forEach((slot, j) => { out[slot] = r[j] })
+      rows.push(out)
+      lines.push(i + 1)
+    })
+  }
+  return { headers, rows: rows.map((r) => headers.map((_, j) => r[j] ?? null)), lines }
 }
 
 // SheetJS, hardened against files it chokes on — notably Apple Numbers
 // exports, whose metadata can crash the default reader: retry with the extra
-// parsing off, and on real failure throw a clear message.
+// parsing off, and on real failure throw a clear message. Every sheet as rows,
+// blank ones kept so each row's index is its line.
 function readWorkbook(XLSX, bytes, kind) {
   // HTML "spreadsheets" are text: keep their cells as written.
   const base = { type: 'array', cellDates: true, raw: kind === 'html' }
@@ -78,10 +150,14 @@ function readWorkbook(XLSX, bytes, kind) {
       throw new UserError(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
     }
   }
-  const ws = wb.Sheets[wb.SheetNames[0]]
-  if (!ws) return []
   try {
-    return XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false, defval: null })
+    const sheets = wb.SheetNames.map((name) => wb.Sheets[name]).filter(Boolean).map((ws) => {
+      const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: true, defval: null })
+      // Rows above the sheet's used range (it can start below row 1).
+      const top = ws['!ref'] ? XLSX.utils.decode_range(ws['!ref']).s.r : 0
+      return [...Array(top).fill([]), ...aoa]
+    })
+    return sheets.length ? sheets : [[]]
   } catch {
     throw new UserError(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
   }

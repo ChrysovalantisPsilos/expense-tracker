@@ -82,7 +82,8 @@ function countOutsideQuotes(line, d) {
 }
 
 // RFC 4180: quoted fields may hold the delimiter, newlines and "" escapes.
-// Returns an array of rows (arrays of strings); blank lines are dropped.
+// Returns an array of rows (arrays of strings), one per record; a blank line
+// (or one of only delimiters) is an empty row, so indexes stay line numbers.
 export function parseDelimited(text, delimiter = sniffDelimiter(text)) {
   let src = text
   const hint = /^sep=.\r?\n/i.exec(src)
@@ -94,7 +95,7 @@ export function parseDelimited(text, delimiter = sniffDelimiter(text)) {
   let i = 0
   const endRow = () => {
     row.push(field)
-    if (row.some((c) => c.trim() !== '')) rows.push(row)
+    rows.push(row.some((c) => c.trim() !== '') ? row : [])
     row = []
     field = ''
   }

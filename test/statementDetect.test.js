@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import * as XLSX from 'xlsx'
 import { parseSheet, rowsToObjects } from '../src/features/import/sheetParse.js'
 import {
-  findHeaderRow, detectDateOrder, detectDecimal, detectMapping, headerSignature, savedMappingFor,
+  locateHeader, detectDateOrder, detectDecimal, detectMapping, headerSignature, savedMappingFor,
   CONFIDENCE_THRESHOLD,
 } from '../src/features/import/statementDetect.js'
 import { rowToDraft, signedConvention, previewDrafts } from '../src/features/import/importMath.js'
@@ -20,14 +20,20 @@ const csv = (text) => {
 }
 const brief = (d) => (d.skip ? `skip:${d.skip}` : d.error ? `error:${d.error}` : `${d.spent_at} ${d.kind} ${d.amount_minor}`)
 
-test('findHeaderRow: skips account/period preamble lines', () => {
+test('locateHeader: skips account/period preamble lines', () => {
   const aoa = [
     ['Account statement'], ['IBAN', 'CY00 0000'], ['Period', '01/09/2026 - 30/09/2026'], [],
     ['Transaction Date', 'Value Date', 'Description', 'Debit', 'Credit', 'Balance'],
     ['01/09/2026', '01/09/2026', 'Shop', '12,00', '', '100,00'],
   ]
-  assert.equal(findHeaderRow(aoa), 4)
-  assert.equal(findHeaderRow([['x', 'y'], ['1', '2']]), 0)
+  assert.equal(locateHeader(aoa).row, 4)
+  assert.deepEqual(locateHeader([['x', 'y'], ['1', '2']]), { row: 0, score: 0 })
+  // Beyond the first 50 rows only a whole bank layout counts: Revolut's
+  // consolidated statement has hundreds of summary lines first.
+  const summaries = Array.from({ length: 300 }, (_, i) => ['Opening balance', `€${i}.00`])
+  const consolidated = ['Date', 'Description', 'Category', 'Money in/out', 'Balance', 'Tax withheld', 'Other taxes', 'Fees']
+  assert.equal(locateHeader([...summaries, ['Transaction statement'], consolidated]).row, 301)
+  assert.equal(locateHeader([...summaries, ['Date', 'Description', 'Amount']]).row, 0)
 })
 
 test('generic English Debit/Credit statement (Cyprus-style): value date not used, balance ignored', () => {
@@ -151,6 +157,10 @@ test('headerSignature and savedMappingFor: a remembered mapping must still fit',
   assert.equal(savedMappingFor({ [sig]: { ...good, amount: 'Gone' } }, headers), null)
   assert.deepEqual(savedMappingFor({ [sig]: { ...good, evil: 'x', dateOrder: 'zzz' } }, headers),
     { ...good, dateOrder: 'dmy' })
+  // The holder's name lives in its own storage, never in a layout's mapping.
+  assert.deepEqual(savedMappingFor({ [sig]: { ...good, holderName: 'Jane Doe' } }, headers), good)
+  // A statement's own conversion column is remembered like any other field.
+  assert.deepEqual(savedMappingFor({ [sig]: { ...good, baseAmount: 'Bedrag' } }, headers), { ...good, baseAmount: 'Bedrag' })
   assert.equal(savedMappingFor({ [sig]: { date: 'Datum' } }, headers), null)
   assert.equal(savedMappingFor({}, headers), null)
   assert.equal(savedMappingFor(null, headers), null)

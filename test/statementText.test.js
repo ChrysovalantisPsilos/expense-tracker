@@ -43,6 +43,7 @@ test('parseDelimited: quotes, escaped quotes, embedded newlines, CRLF, blank lin
   assert.deepEqual(parseDelimited(text), [
     ['Date', 'Text', 'Amount'],
     ['01/09/2026', 'Say "hi"; now', '-1,00'],
+    [],
     ['02/09/2026', 'two\nlines', '2'],
   ])
   assert.deepEqual(parseDelimited('sep=;\nA;B\n1;2'), [['A', 'B'], ['1', '2']])

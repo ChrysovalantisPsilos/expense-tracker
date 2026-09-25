@@ -21,6 +21,7 @@ export const IMPORT_FIELDS = [
   { key: 'category', label: 'Category' },
   { key: 'status', label: 'Status (pending rows are skipped)' },
   { key: 'fee', label: 'Fee' },
+  { key: 'baseAmount', label: 'Amount in your base currency', hint: 'the bank’s own conversion of a foreign amount' },
 ]
 
 // At or above this, the detected mapping is used as-is (the user can still
@@ -75,16 +76,20 @@ function isKeyword(c) {
   return false
 }
 
-// Index of the header row among the first 50: the most header-like one with
-// at least two known words; row 0 when nothing qualifies (a plain sheet).
-export function findHeaderRow(aoa) {
-  let best = 0
-  let bestScore = 1
-  for (let i = 0; i < Math.min(aoa.length, 50); i++) {
+// The header row: the most header-like one with at least two known words
+// among the first 50 rows, or a whole bank signature further down (Revolut's
+// consolidated statement opens with hundreds of lines of account summaries).
+// { row, score }; row 0 and score 0 when nothing qualifies (a plain sheet).
+const PREAMBLE_ROWS = 50
+const SIGNATURE_ROWS = 5000
+export function locateHeader(aoa) {
+  let row = 0
+  let score = 1
+  for (let i = 0; i < Math.min(aoa.length, SIGNATURE_ROWS); i++) {
     const s = headerScore(aoa[i] ?? [])
-    if (s > bestScore) { best = i; bestScore = s }
+    if (s > score && (i < PREAMBLE_ROWS || s >= 100)) { row = i; score = s }
   }
-  return best
+  return { row, score: score > 1 ? score : 0 }
 }
 
 // 'dmy' | 'mdy' | 'ymd' for a date column: a first part above 12 proves

@@ -123,6 +123,27 @@ const CASH = /^(?:CASH (?:WITHDRAWAL|DEPOSIT)|WITHDRAWAL|DEPOSIT(?: OF CASH)?|GE
 // Card "purchases" that only move the holder's money to their own account
 // elsewhere: a top-up of their Revolut account with their own card.
 const OWN_TOPUP_MERCHANTS = new Set(['REVOLUT'])
+// Revolut's descriptions of money moving between the holder's own balances:
+// a top-up from their own card ("Apple Pay deposit by *1234", "Top-Up by
+// *1234"), a pocket ("To pocket EUR Holidays from EUR", "Pocket
+// Withdrawal"), a currency exchange — listed in both currencies' tables, as
+// "Exchanged to USD" and "To EUR" — a savings, investment or crypto account
+// ("To EUR Savings", "From Savings", "To investment account", "To Robo
+// portfolio", "Transfer to Revolut Digital Assets Europe Ltd") and Revpoints
+// round-ups ("Revpoints Spare change"). A payment from a pocket to a company
+// ("To ENGIE", "To Cambio - …") is real spending and isn't matched.
+const OWN_MOVE = new RegExp([
+  '^(?:(?:apple|google) pay )?(?:deposit|top-?up) by\\b',
+  '^to pocket [a-z]{3}\\b', '^pocket withdrawal$',
+  '^exchanged to [a-z]{3}$', `^to (?:${CURRENCIES.join('|')})$`,
+  '^(?:to|from) (?:[a-z]{3} )?savings$',
+  '^to (?:investment account|.+ portfolio)$',
+  '^transfer (?:to|from) revolut (?:digital assets|securities)\\b',
+  '^revpoints\\b',
+].join('|'), 'i')
+// The other party of a transfer named in the description: "To Jane Doe",
+// "Transfer from JANE DOE", "Payment from MR DOE JANE".
+const DESCRIBED_PARTY = /^(?:(?:TRANSFER|PAYMENT)\s+)?(?:TO|FROM)\s+(.+)$/
 
 // A word's letters, unaccented and upper-cased: "St." → "ST", "Café" → "CAFE".
 const lettersOf = (word) => foldText(word).toUpperCase().replace(/[^\p{L}]/gu, '')
@@ -297,17 +318,48 @@ function isOwnTopUp(description, own) {
   return OWN_TOPUP_MERCHANTS.has(lettersOf(name.split(' ')[0]))
 }
 
-// A transfer between the holder's own accounts: the counterparty column (or,
-// without one, the party named in the description) is the holder, in either
-// word order; or a card top-up of their own Revolut account. Such rows
-// aren't spending or income, so the import leaves them out. Needs the
-// holder column; without it nothing counts as own.
+// The account holder's name: the file's holder column, else the name the
+// user typed (mapping.holderName) for files that have none (Revolut's).
+const holderOf = (row, mapping) => cellOf(row, mapping)('holder') || cleanHolderName(mapping.holderName)
+
+// A typed or stored holder name, whitespace-collapsed and capped.
+export function cleanHolderName(name) {
+  return String(name ?? '').replace(/\s+/g, ' ').trim().slice(0, 100)
+}
+
+// The holder's name to offer on the mapping step when the file has no holder
+// column: the one remembered from an earlier import, else the profile's
+// display name when it looks like a full name (two words or more).
+export function suggestedHolder(remembered, displayName) {
+  const shown = cleanHolderName(displayName)
+  return cleanHolderName(remembered) || (shown.split(' ').length >= 2 ? shown : '')
+}
+
+// The holder's name a file's holder column gives (its first filled cell), or ''.
+export function fileHolder(rows, mapping) {
+  if (!mapping.holder) return ''
+  for (const r of rows) {
+    const name = cleanHolderName(r[mapping.holder])
+    if (name) return name
+  }
+  return ''
+}
+
+// A transfer between the holder's own accounts: one of Revolut's own-balance
+// moves (OWN_MOVE: top-ups, pockets, exchanges, savings); or the
+// counterparty column (or, without one, the party named in the description)
+// is the holder, in either word order; or a card top-up of their own Revolut
+// account. Such rows aren't spending or income, so the import leaves them
+// out. All but the first need the holder's name.
 export function isOwnTransfer(row, mapping) {
   const cell = cellOf(row, mapping)
-  const own = nameWords(cell('holder'))
+  if (OWN_MOVE.test(cell('description'))) return true
+  const own = nameWords(holderOf(row, mapping))
   if (!own.size) return false
   const counterparty = cell('counterparty')
   if (counterparty) return sameWords(nameWords(counterparty), own)
+  const described = DESCRIBED_PARTY.exec(plainText(cell('description')))
+  if (described && sameWords(nameWords(described[1]), own)) return true
   const description = [cell('description'), cell('details')].filter(Boolean).join(' · ')
   if (isOwnTopUp(description, own)) return true
   const party = PARTY.exec(plainText(description))
@@ -320,7 +372,7 @@ export function isOwnTransfer(row, mapping) {
 // transfer between the holder's own accounts — not a merchant — and gets none.
 export function rowMerchantName(row, mapping) {
   const cell = cellOf(row, mapping)
-  const holder = cell('holder')
+  const holder = holderOf(row, mapping)
   const counterparty = cell('counterparty')
   if (counterparty) {
     if (sameWords(nameWords(counterparty), nameWords(holder))) return ''
@@ -330,11 +382,19 @@ export function rowMerchantName(row, mapping) {
   return merchantName([cell('description'), cell('details')].filter(Boolean).join(' · '), { holder })
 }
 
+// A money cell's own amount, without an equivalent in brackets ("$20.00
+// (18.40 EUR)", as Revolut writes foreign amounts) or a trailing currency
+// code the locale parser doesn't strip ("-1,098.67 AED").
+const BRACKETED = /(\d)\s*\([^()]*\)\s*$/
+const CODE_SUFFIX = /^([-+−–]?\s*\d[\d.,\s]*)\s+[A-Z]{3}$/
+
 // A cell as an amount. Spreadsheet numbers pass through; text is parsed with
 // the column's decimal separator when known (see detectDecimal).
 export function parseAmount(v, decimal) {
   if (typeof v === 'number') return v
-  return parseLocaleAmount(v, decimal)
+  if (v == null) return NaN
+  const text = String(v).trim().replace(BRACKETED, '$1')
+  return parseLocaleAmount(CODE_SUFFIX.exec(text)?.[1] ?? text, decimal)
 }
 
 // Excel stores dates as days since 1899-12-30; a date column that SheetJS
@@ -373,11 +433,16 @@ export function directionOf(value) {
 }
 
 // A currency cell as an ISO code: "eur", "€" and " EUR " are all EUR. Blank
-// is ''. Anything else comes back upper-cased (rowToDraft rejects it).
+// is ''. Anything else comes back upper-cased (rowToDraft rejects it). A
+// money cell gives the currency written with its amount: "-€4.40" is EUR,
+// "0.00 CHF" CHF, "$20.00 (18.40 EUR)" USD, a bare "4.40" ''.
 const SYMBOLS = { '€': 'EUR', '$': 'USD', '£': 'GBP', '¥': 'JPY', 'CHF': 'CHF' }
 export function normalizeCurrency(raw) {
   const s = String(raw ?? '').trim().toUpperCase()
-  return SYMBOLS[s] ?? s
+  if (!/\d/.test(s)) return SYMBOLS[s] ?? s
+  const money = s.replace(BRACKETED, '$1')
+  const code = /(?<![A-Z])[A-Z]{3}(?![A-Z])/.exec(money)?.[0]
+  return code ?? SYMBOLS[[...money].find((c) => SYMBOLS[c])] ?? ''
 }
 
 // Rows a bank lists but that aren't (yet) money moving: card holds still
@@ -469,7 +534,21 @@ export function rowToDraft(row, mapping, baseCurrency, { signed = false } = {}) 
     spent_at, kind, currency, amountRaw,
     amount_minor: toMinor(Math.abs(amountRaw), currency), description,
     merchant: rowMerchantName(row, mapping),
+    rate: statementRate(row, mapping, amountRaw, currency, baseCurrency),
   }
+}
+
+// The exchange rate the statement itself used for a foreign row, when it
+// also gives the amount in the base currency (mapping.baseAmount: the euro
+// column of a Revolut non-euro account): base / amount, to the 8 places the
+// ledger keeps. Null when the column is absent, zero, or in another currency
+// — the ECB rate for the day is used then.
+function statementRate(row, mapping, amountRaw, currency, baseCurrency) {
+  if (!mapping.baseAmount || currency === baseCurrency) return null
+  const cell = row[mapping.baseAmount]
+  const base = parseAmount(cell, mapping.decimal)
+  if (!base || !Number.isFinite(base) || normalizeCurrency(cell) !== baseCurrency) return null
+  return Math.round(Math.abs(base / amountRaw) * 1e8) / 1e8
 }
 
 // The live preview under the mapping step: the first `limit` rows as they'd

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import * as XLSX from 'xlsx'
 import {
-  parseSheet, rowsToObjects, uniqueHeaders, importFileProblem, MAX_IMPORT_BYTES,
+  parseSheet, rowsToObjects, uniqueHeaders, importFileProblem, MAX_IMPORT_BYTES, sectionRows,
 } from '../src/features/import/sheetParse.js'
 import { rowToDraft } from '../src/features/import/importMath.js'
 
@@ -56,6 +56,43 @@ test('parseSheet: garbage throws a clear message, not an internal error', () => 
 
 test('uniqueHeaders: blanks named by position, repeats numbered', () => {
   assert.deepEqual(uniqueHeaders(['A', '', null, 'A', ' A ']), ['A', 'Column 2', 'Column 3', 'A (2)', 'A (3)'])
+})
+
+test('sectionRows: every table of the header\'s layout, aligned by column name; the rest left out', () => {
+  const h8 = ['Date', 'Description', 'Category', 'Money in/out', 'Balance', 'Tax withheld', 'Other taxes', 'Fees']
+  const h13 = ['Date', 'Description', 'Category', 'Money in/out', 'Money in/out', 'Balance', 'Balance',
+    'Tax withheld', 'Tax withheld', 'Other taxes', 'Other taxes', 'Fees', 'Fees', '', '']
+  const sheets = [[
+    ['Personal Account (EUR)', null], ['Transaction statement'], h8,
+    ['Jun 4, 2022', 'Shop', 'Merchant', '-€1.00', '€9.00', '€0.00', '€0.00', '€0.00'],
+    [null, '', null], // blank: skipped, the table goes on
+    ['Jun 5, 2022', 'Cafe', 'Merchant', '-€2.00', '€7.00', '€0.00', '€0.00', '€0.00'],
+    ['Total', '', '', '-€3.00'],
+    ['Jun 6, 2022', 'after Total', 'Merchant', '-€9.00', '€0.00'], // outside any table
+    ['---------'],
+    ['Personal Account (USD)'], ['Transaction statement'], h13,
+    ['Jun 7, 2022', 'Diner', 'Merchant', '-$1.00', '-€0.92', '$0.00', '€0.00'],
+    ['Crypto Transaction Statements'],
+    ['Date (of Sale)', 'Date (of Purchase)', 'Description and symbol', 'Units sold', 'Fees'],
+    ['Jul 2, 2022', 'Jun 1, 2022', 'BTC', '0.001', '€0.00'],
+  ], [
+    ['Holidays (EUR)'], h8, ['Jun 8, 2022', 'Pocket', 'Others', '€5.00'],
+  ]]
+  const { headers, rows, lines } = sectionRows(sheets, h13)
+  assert.deepEqual(headers, [...h8, 'Money in/out (2)', 'Balance (2)', 'Tax withheld (2)', 'Other taxes (2)', 'Fees (2)'])
+  assert.deepEqual(rows.map((r) => [r[1], r[3], r[8]]), [
+    ['Shop', '-€1.00', null], ['Cafe', '-€2.00', null], ['Diner', '-$1.00', '-€0.92'], ['Pocket', '€5.00', null],
+  ])
+  assert.deepEqual(lines, [4, 6, 13, 3])
+  assert.equal(rows[2][4], '$0.00') // the USD table's first Balance is Balance
+})
+
+test('parseSheet: of several sheets, the one with the header is read', () => {
+  const wb = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Notes'], ['Exported by the bank']]), 'About')
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Date', 'Amount'], ['2026-09-01', 5]]), 'Data')
+  const { headers, rows, lines } = parseSheet(XLSX, XLSX.write(wb, { type: 'array', bookType: 'xlsx' }))
+  assert.deepEqual([headers, rows, lines], [['Date', 'Amount'], [['2026-09-01', 5]], [2]])
 })
 
 test('importFileProblem: 5 MB cap and Numbers files, before reading', () => {

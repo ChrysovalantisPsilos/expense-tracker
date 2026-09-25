@@ -72,6 +72,8 @@ test('parseDateText: ISO, compact, numeric orders, named months, trailing time',
   assert.equal(parseDateText('1.9.26 08:00'), '2026-09-01')
   assert.equal(parseDateText('21-JUL-26'), '2026-07-21')
   assert.equal(parseDateText('Jul 21, 2026'), '2026-07-21')
+  assert.equal(parseDateText('May 25, 2022'), '2022-05-25') // Revolut's consolidated statement
+  assert.equal(parseDateText('Jun 4, 2022', 'mdy'), '2022-06-04')
   assert.equal(parseDateText('21 Ιουλ 2026'), '2026-07-21')
   assert.equal(parseDateText('31/02/2026'), null)
   assert.equal(parseDateText('12,50'), null)

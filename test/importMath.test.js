@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   merchantKey, merchantName, groupMerchants, rowMerchantName, isOwnTransfer, rowToDraft, previewDrafts, parseAmount,
-  parseDate, deterministicUuid,
+  parseDate, deterministicUuid, normalizeCurrency, cleanHolderName, suggestedHolder, fileHolder,
 } from '../src/features/import/importMath.js'
 
 // A key becomes a "description contains …" rule: it must be in the text.
@@ -300,4 +300,78 @@ test('isOwnTransfer: a card top-up of the holder\'s own Revolut account is left 
   assert.equal(preview.ownTransfers, topUps.length)
   assert.equal(preview.ready, 2)
   assert.equal(preview.skipped, 0)
+})
+
+test('parseAmount / normalizeCurrency: money cells carrying their currency (Revolut)', () => {
+  assert.equal(parseAmount('€4.40'), 4.4)
+  assert.equal(parseAmount('-€4.40'), -4.4)
+  assert.equal(parseAmount('€1,234.56', '.'), 1234.56)
+  assert.equal(parseAmount('-¥9'), -9)
+  assert.equal(parseAmount('-4.50 CHF'), -4.5)
+  assert.equal(parseAmount('-1,098.67 AED', '.'), -1098.67) // a code the locale parser doesn't know
+  assert.equal(parseAmount('$20.00 (77.97 PLN)', '.'), 20) // the bracketed equivalent isn't the amount
+  assert.equal(parseAmount('(12.50)'), -12.5) // accounting negatives still work
+  assert.ok(Number.isNaN(parseAmount('ATM 1234'))) // text isn't an amount
+  assert.equal(normalizeCurrency('-€4.40'), 'EUR')
+  assert.equal(normalizeCurrency('£3.00'), 'GBP')
+  assert.equal(normalizeCurrency('-¥9'), 'JPY')
+  assert.equal(normalizeCurrency('0.00 CHF'), 'CHF')
+  assert.equal(normalizeCurrency('-1,098.67 aed'), 'AED')
+  assert.equal(normalizeCurrency('$20.00 (77.97 PLN)'), 'USD')
+  assert.equal(normalizeCurrency('4.40'), '') // no currency written: the base one
+  assert.equal(normalizeCurrency(' eur '), 'EUR') // plain currency cells as before
+  assert.equal(normalizeCurrency('€'), 'EUR')
+})
+
+test('isOwnTransfer: Revolut\'s moves between the holder\'s own balances, with or without a holder', () => {
+  const mapping = { date: 'Date', amount: 'Amount', description: 'Description' }
+  const row = (description) => ({ Date: 'Jun 4, 2022', Amount: '-€1.00', Description: description })
+  for (const d of ['Apple Pay deposit by *1111', 'Apple Pay deposit by *****', 'Google Pay deposit by *1234',
+    'Top-Up by *1234', 'Apple Pay Top-Up by *1234', 'To pocket EUR Holidays from EUR', 'To pocket PLN Music from PLN',
+    'Pocket Withdrawal', 'Exchanged to USD', 'To EUR', 'To EUR Savings', 'From EUR Savings', 'From Savings',
+    'To investment account', 'To Robo portfolio', 'To Bold Stack portfolio', 'Revpoints Spare change',
+    'Transfer to Revolut Digital Assets Europe Ltd', 'Transfer from Revolut Digital Assets Europe Ltd']) {
+    assert.equal(isOwnTransfer(row(d), mapping), true, d)
+  }
+  // Real spending and income: payments to companies (also from a pocket named
+  // after them), people, a phone top-up, Revolut's own charity.
+  for (const d of ['To ENGIE', 'To Cambio - Car Sharing n.v.', 'To Meli Delicatessen', 'To KBC', 'Transfer to ALEX MORGAN',
+    'Transfer from SAM TAYLOR', 'Payment from TELCO BV', 'Vodafone top-up', 'Metal plan fee',
+    'Transfer to Revolut Donations', 'Cash withdrawal at Main Street ATM']) {
+    assert.equal(isOwnTransfer(row(d), mapping), false, d)
+  }
+  // The holder's name as typed on the mapping step: either word order, titles ignored.
+  const named = { ...mapping, holderName: '  Jane   Doe ' }
+  for (const d of ['To Jane Doe', 'To DOE JANE', 'Payment from MR JANE DOE', 'Transfer to Jane Doe', 'Transfer from DOE JANE']) {
+    assert.equal(isOwnTransfer(row(d), named), true, d)
+    assert.equal(isOwnTransfer(row(d), mapping), false, d)
+  }
+  assert.equal(isOwnTransfer(row('To Jane Smith'), named), false)
+  assert.equal(isOwnTransfer(row('To Mark Doe'), named), false)
+})
+
+test('rowToDraft: the statement\'s own conversion becomes the row\'s rate', () => {
+  const mapping = { date: 'Date', amount: 'A', currency: 'A', baseAmount: 'B', dateOrder: 'mdy', decimal: '.' }
+  const draft = (a, b, base = 'EUR') => rowToDraft({ Date: 'Jun 20, 2022', A: a, B: b }, mapping, base)
+  assert.equal(draft('-$10.00', '-€9.20').rate, 0.92)
+  assert.equal(draft('-¥9', '-€0.06').rate, 0.00666667)
+  assert.equal(draft('-¥9', '-€0.06').amount_minor, 9)
+  assert.equal(draft('-€4.40', null).rate, null) // already the base currency
+  assert.equal(draft('-$10.00', '€0.00').rate, null) // nothing to divide: the ECB rate
+  assert.equal(draft('-$10.00', '-€9.20', 'GBP').rate, null) // the equivalent isn't in the base currency
+  assert.equal(draft('-$10.00', '').rate, null)
+  assert.equal(rowToDraft({ Date: 'Jun 20, 2022', A: '-€1.00' }, { date: 'Date', amount: 'A' }, 'EUR').rate, null)
+})
+
+test('holder name helpers: clean, suggest, read from a holder column', () => {
+  assert.equal(cleanHolderName('  Jane \n  Doe '), 'Jane Doe')
+  assert.equal(cleanHolderName(null), '')
+  assert.equal(cleanHolderName('x'.repeat(300)).length, 100)
+  assert.equal(suggestedHolder('DOE JANE', 'Jane Doe'), 'DOE JANE') // remembered wins
+  assert.equal(suggestedHolder('', 'Jane Doe'), 'Jane Doe')
+  assert.equal(suggestedHolder(null, 'jane'), '') // a single word isn't a full name
+  assert.equal(suggestedHolder(undefined, undefined), '')
+  const rows = [{ Name: ' ' }, { Name: 'DOE  JANE' }]
+  assert.equal(fileHolder(rows, { holder: 'Name' }), 'DOE JANE')
+  assert.equal(fileHolder(rows, {}), '')
 })

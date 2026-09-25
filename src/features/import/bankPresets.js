@@ -167,6 +167,30 @@ export const PRESETS = [
     dateOrder: 'ymd', decimal: '.',
   },
   {
+    // Revolut consolidated statement (CSV, or Excel): hundreds of summary
+    // lines, then a "Transaction statement" table per account — the main
+    // account in each currency and every pocket, each under a title such as
+    // "Personal Account (USD)" or "Holidays (EUR)", closed by a "Total" row —
+    // then savings-interest, investment and crypto tables with other headers
+    // (not imported). Dates "Jun 4, 2022"; amounts carry their currency,
+    // "-€4.40", "£3.00", "-¥9", "0.00 CHF". In a non-euro account every money
+    // column is doubled: the account's currency, then the euro equivalent
+    // (baseAmount). Money in/out already includes the Fees column (each
+    // Balance is the previous one plus Money in/out), so Fees isn't mapped.
+    // "Category" is Revolut's operation type (Deposit/Merchant/Others/…),
+    // not a spending category, so it isn't mapped either.
+    id: 'revolut-consolidated', name: 'Revolut consolidated statement',
+    signature: [['money in out'], ['tax withheld'], ['other taxes']],
+    columns: {
+      date: ['date'],
+      amount: ['money in out'],
+      baseAmount: ['money in out 2'],
+      description: ['description'],
+    },
+    sections: true, currencyInAmount: true,
+    dateOrder: 'mdy', decimal: '.',
+  },
+  {
     // Revolut Business statement CSV: Total amount already includes fees.
     id: 'revolut-business', name: 'Revolut Business',
     signature: [['date started utc'], ['total amount'], ['state']],
@@ -210,6 +234,8 @@ export function matchPreset(headers) {
       mapping[field] = headers[i]
       taken.add(i) // one field per column
     }
+    // The currency is written in the amount cell itself ("-€4.40").
+    if (preset.currencyInAmount && mapping.amount) mapping.currency = mapping.amount
     const score = Object.keys(mapping).length + preset.signature.length
     if (mapping.date && (mapping.amount || (mapping.debit && mapping.credit))
       && (!best || score > best.score)) {
