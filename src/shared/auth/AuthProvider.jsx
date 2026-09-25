@@ -46,6 +46,7 @@ export function AuthProvider({ children }) {
   // dropped on any sign-in, and when the page lets go of it (holdPendingSignIn).
   const pendingSignIn = useRef(null)
   const pendingHolds = useRef(0)
+  const verifying = useRef(new Map())
 
   useEffect(() => {
     let mounted = true
@@ -168,6 +169,16 @@ export function AuthProvider({ children }) {
     [],
   )
 
+  // Use the token of an auth-email link (/auth/confirm): signs in, or for a
+  // password reset starts the recovery (PASSWORD_RECOVERY sets `recovering`).
+  // Tokens are single-use, so each is sent once per page load, whoever asks.
+  const verifyEmailLink = useCallback(({ tokenHash, type }) => {
+    if (!verifying.current.has(tokenHash)) {
+      verifying.current.set(tokenHash, supabase.auth.verifyOtp({ token_hash: tokenHash, type }))
+    }
+    return verifying.current.get(tokenHash)
+  }, [])
+
   // Set a new password on the current (recovery or signed-in) session.
   const updatePassword = useCallback(
     (password) => supabase.auth.updateUser({ password }),
@@ -261,6 +272,7 @@ export function AuthProvider({ children }) {
     signInWithProvider,
     signOut,
     resendConfirmation,
+    verifyEmailLink,
     sendPasswordReset,
     updatePassword,
     changePassword,
@@ -276,7 +288,7 @@ export function AuthProvider({ children }) {
     markPasswordSet,
   }), [
     session, loading, recovering, signInWithPassword, signUp, holdPendingSignIn, signInWithProvider, signOut,
-    resendConfirmation, sendPasswordReset, updatePassword, changePassword, clearRecovery,
+    resendConfirmation, verifyEmailLink, sendPasswordReset, updatePassword, changePassword, clearRecovery,
     signInWithPasskey, registerPasskey, listPasskeys, deletePasskey,
     getIdentities, linkGoogle, unlinkIdentity, setFirstPassword, markPasswordSet,
   ])

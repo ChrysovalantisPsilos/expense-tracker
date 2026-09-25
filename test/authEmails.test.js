@@ -5,7 +5,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { AUTH_EMAILS, renderAuthEmail } from '../scripts/build-auth-emails.mjs'
+import { AUTH_EMAILS, confirmLinkHtml, renderAuthEmail } from '../scripts/build-auth-emails.mjs'
 import { brandEmail } from '../supabase/functions/_shared/email.ts'
 
 const dir = new URL('../supabase/email-templates/', import.meta.url)
@@ -23,12 +23,29 @@ test('templates are paste-ready fragments with the Supabase variables left liter
     const html = renderAuthEmail(def)
     assert.doesNotMatch(html, /<!doctype|<html|<head|<body/i, def.file)
     // Button href, link href and link text; the mark comes from the Site URL.
-    assert.equal(count(html, '{{ .ConfirmationURL }}'), 3, def.file)
+    assert.equal(count(html, confirmLinkHtml(def.type)), 3, def.file)
     assert.equal(count(html, '<img src="{{ .SiteURL }}/email-mark.png"'), 1, def.file)
     assert.doesNotMatch(html, /\.invalid|&#123;|%7B/, def.file)
-    // Only the two variables Supabase provides; nothing else looks templated.
-    assert.deepEqual([...new Set(html.match(/\{\{[^}]*\}\}/g))].sort(), ['{{ .ConfirmationURL }}', '{{ .SiteURL }}'])
+    // Only the variables Supabase provides; nothing else looks templated.
+    assert.deepEqual([...new Set(html.match(/\{\{[^}]*\}\}/g))].sort(), ['{{ .SiteURL }}', '{{ .TokenHash }}'])
   }
+})
+
+test('every link in the templates points at our own site, never at supabase.co', () => {
+  const types = new Map([
+    ['confirm-signup.html', 'signup'], ['reset-password.html', 'recovery'], ['magic-link.html', 'magiclink'],
+  ])
+  for (const def of AUTH_EMAILS) {
+    const html = committed(def.file)
+    assert.doesNotMatch(html, /supabase\.co|ConfirmationURL/i, def.file)
+    const links = [...html.matchAll(/(?:href|src)="([^"]*)"/g)].map((m) => m[1])
+    assert.ok(links.length >= 3, def.file)
+    for (const url of links) assert.ok(url.startsWith('{{ .SiteURL }}/'), `${def.file}: ${url}`)
+    assert.ok(html.includes(
+      `href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&amp;type=${types.get(def.file)}"`,
+    ), def.file)
+  }
+  assert.deepEqual(AUTH_EMAILS.map((d) => d.file).sort(), [...types.keys()].sort())
 })
 
 test('templates keep the shared layout: dark palette, heading, copy and footer', () => {

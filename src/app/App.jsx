@@ -22,6 +22,7 @@ import { isSignedInRoute } from './routes.js'
 const Landing = lazy(() => import('../features/landing/Landing.jsx'))
 const Login = lazy(() => import('../features/auth/Login.jsx'))
 const VerifyEmail = lazy(() => import('../features/auth/VerifyEmail.jsx'))
+const ConfirmLink = lazy(() => import('../features/auth/ConfirmLink.jsx'))
 const ForgotPassword = lazy(() => import('../features/auth/ForgotPassword.jsx'))
 const ResetPassword = lazy(() => import('../features/auth/ResetPassword.jsx'))
 const Dashboard = lazy(() => import('../features/dashboard/Dashboard.jsx'))
@@ -100,6 +101,7 @@ function PublicRoutes() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/auth/confirm" element={<ConfirmLink />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/join/:token" element={<GroupPreview />} />
@@ -154,7 +156,9 @@ function AuthedRoutes() {
       <Routes>
         <Route path="/join/:token" element={<JoinGroup />} />
         <Route path="/login" element={<SignedInLogin />} />
-        {['/verify-email', '/forgot-password', '/reset-password'].map((path) => (
+        {/* Signed-out pages. /auth/confirm lands here the moment its link
+            signs in, and the effect above picks the page to go on to. */}
+        {['/verify-email', '/auth/confirm', '/forgot-password', '/reset-password'].map((path) => (
           <Route key={path} path={path} element={<Navigate to="/" replace />} />
         ))}
         {kitRoute}

@@ -300,6 +300,13 @@ For each, at 390px and on desktop, light and dark:
     no-financial-advice line sits under it. After confirming the email and
     signing in, no legal prompt appears, and Settings → Privacy → consent
     history shows both documents "accepted when you signed up".
+    "Check your inbox" shows "Waiting for you to confirm…"; opening the
+    link on another device (a phone) signs this tab in by itself within
+    ~15 s, and after 15 minutes the line reads "Still waiting? Log in once
+    you've confirmed." Every link in the auth emails (confirm, reset, sign-in)
+    starts with the site's own address (`<site>/auth/confirm?…`, never
+    supabase.co); opening one again shows "Link expired or invalid" with a
+    way to a fresh link, and a reset link opens "Choose a new password".
 40. Google sign-up (or any account without the current versions, e.g. after a
     `LEGAL_VERSIONS` bump): a blocking "Before you continue" / "We've updated
     our terms" prompt lists the changes; /privacy and /terms stay readable;

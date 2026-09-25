@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import {
   Stack, Button, FormControl, FormLabel, Input, FormHelperText, useToast,
 } from '@chakra-ui/react'
-import { KeyRound, AlertTriangle } from 'lucide-react'
+import { KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { validatePassword } from '../../shared/lib/password.js'
 import AuthLayout from './AuthLayout.jsx'
+import LinkExpired from './LinkExpired.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 
 export default function ResetPassword() {
@@ -39,18 +40,7 @@ export default function ResetPassword() {
     navigate('/', { replace: true })
   }
 
-  if (!canReset) {
-    return (
-      <AuthLayout icon={<AlertTriangle size={28} />} iconColor="status.warning"
-        title="Link expired or invalid"
-        subtitle={<>
-          This password-reset link isn’t valid anymore. Reset links are
-          single-use and expire after a while — request a fresh one.
-        </>}>
-        <Button onClick={() => navigate('/forgot-password')}>Request a new link</Button>
-      </AuthLayout>
-    )
-  }
+  if (!canReset) return <LinkExpired type="recovery" />
 
   return (
     <AuthLayout icon={<KeyRound size={28} />} title="Choose a new password"

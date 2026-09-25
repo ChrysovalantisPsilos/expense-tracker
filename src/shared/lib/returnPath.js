@@ -20,7 +20,7 @@ const MAX_LENGTH = 2048
 const hasUnsafeChar = (s) => /[\s\\]/.test(s)
   || [...s].some((c) => c.charCodeAt(0) < 0x20 || c.charCodeAt(0) === 0x7f)
 // Pages that only make sense signed out: returning to them would loop.
-const AUTH_PAGES = ['/login', '/verify-email', '/forgot-password', '/reset-password']
+const AUTH_PAGES = ['/login', '/verify-email', '/auth/confirm', '/forgot-password', '/reset-password']
 const BASE = 'https://budgeer.invalid'
 
 // `raw` → a normalised app path ("/groups/abc?tab=1#x"), or null when it is

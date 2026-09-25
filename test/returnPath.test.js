@@ -54,7 +54,7 @@ test('safeReturnPath: rejects non-strings, empty and oversized input', () => {
 })
 
 test('safeReturnPath: never returns to a sign-in page (no loops)', () => {
-  for (const bad of ['/login', '/login?next=/x', '/LOGIN', '/login/', '/verify-email', '/forgot-password', '/reset-password']) {
+  for (const bad of ['/login', '/login?next=/x', '/LOGIN', '/login/', '/verify-email', '/auth/confirm', '/auth/confirm?token_hash=x', '/forgot-password', '/reset-password']) {
     assert.equal(safeReturnPath(bad), null, bad)
   }
   assert.equal(safeReturnPath('/loginx'), '/loginx')

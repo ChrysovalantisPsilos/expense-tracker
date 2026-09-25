@@ -29,9 +29,13 @@ Templates can't be applied via tooling. Do this on **both** projects —
 1. Open the project in the Supabase dashboard.
 2. **Authentication → URL Configuration**: check the **Site URL** is the app
    origin with no trailing slash — `https://dev.budgeer.com` on TEST,
-   `https://www.budgeer.com` on PROD. The header mark is loaded from
-   `{{ .SiteURL }}/email-mark.png`, so opening that address in a browser
-   should show the budgeer mark.
+   `https://www.budgeer.com` on PROD. Every link in the emails is built from
+   it: the buttons go to `{{ .SiteURL }}/auth/confirm?…` and the header mark
+   is loaded from `{{ .SiteURL }}/email-mark.png`, so opening that address in
+   a browser should show the budgeer mark. The **Redirect URLs** list needs
+   no new entry for these links (the app verifies the token itself; nothing
+   redirects through Supabase). Keep the entries that are there: links in
+   emails sent before the switch still go through Supabase and redirect back.
 3. **Authentication → Emails → Templates**. For each row in the table:
    1. Pick the template.
    2. Set the **Subject** to the suggested subject.
@@ -61,9 +65,21 @@ Templates can't be applied via tooling. Do this on **both** projects —
   `<head>` to put it in. Clients that honour `prefers-color-scheme` get the
   dark palette from it; clients that drop a `<style>` block (e.g. some
   webmail) keep the inline light styles, which read fine on their own.
-- `{{ .ConfirmationURL }}` (button and the "paste this link" line) and
-  `{{ .SiteURL }}` (header mark) are Supabase variables — they must stay
-  exactly as written. The generator puts them in after rendering, so the
-  layout's HTML escaping never touches them.
+- The button and the "paste this link" line go to our own site —
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=<type>`
+  (`signup`, `recovery`, `magiclink`) — not to Supabase's
+  `{{ .ConfirmationURL }}`, which points at `<project>.supabase.co`: a link to
+  another domain than the sender's (budgeer.com) is a classic phishing
+  signal, and it put the emails in Outlook's junk folder. The app's
+  `/auth/confirm` page verifies the token with Supabase Auth
+  (`src/features/auth/confirmLink.js`, `ConfirmLink.jsx`). The test fails if
+  a template links anywhere but `{{ .SiteURL }}`.
+- `{{ .SiteURL }}` and `{{ .TokenHash }}` are Supabase variables — they must
+  stay exactly as written. The generator puts them in after rendering, so the
+  layout's HTML escaping never touches them (the `&` between the link's
+  parameters is written `&amp;`, as HTML wants; mail clients show `&`).
+- The app uses no invite or change-email emails from Supabase Auth (group
+  invites are sent by the `send-invite` edge function), so those templates
+  are left at Supabase's defaults.
 - The leading `<!-- Generated … -->` comment is harmless: mail clients don't
   show HTML comments.

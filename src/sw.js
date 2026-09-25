@@ -20,8 +20,10 @@ precacheAndRoute(self.__WB_MANIFEST)
 // exclusions as vercel.json's rewrite: /assets/ and any path with a dot in it
 // (robots.txt, sitemap.xml, images…) go to the network, not the app shell.
 // Workbox matches pathname + search, so the dot test stops at the "?".
+// /auth/confirm (the auth emails' links) always loads the current page from
+// the network: a shell cached before that route existed would show a 404.
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), {
-  denylist: [/^\/assets\//, /^[^?]*\./],
+  denylist: [/^\/assets\//, /^[^?]*\./, /^\/auth\/confirm(?:[/?]|$)/],
 }))
 
 // Supabase REST reads: serve cached data while offline (or when the network
