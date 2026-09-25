@@ -60,7 +60,11 @@ export async function parseWorkbook(file) {
     const rows = rowsToObjects(res.headers, res.rows)
     const detected = detectMapping(res.headers, rows)
     const saved = savedMappingFor(rememberedMappings(), res.headers)
-    const detection = saved ? { ...detected, mapping: saved, confidence: 1, remembered: true } : detected
+    // A mapping remembered before the holder field existed still gets the
+    // detected one, so own-account transfers are recognised.
+    const detection = saved
+      ? { ...detected, mapping: { holder: detected.mapping.holder, ...saved }, confidence: 1, remembered: true }
+      : detected
     return { headers: res.headers, rows, headerRow: res.headerRow, detection }
   } finally {
     worker.terminate()
@@ -84,7 +88,8 @@ export async function saveRule(userId, pattern, categoryId) {
 // Turn raw rows + a mapping into ready-to-insert transactions, collecting
 // per-row errors for anything unparseable and the lines that aren't
 // transactions (pending/declined, balance lines, footers) as `skipped`.
-// `firstRow` is the file line number of rows[0], for messages.
+// `firstRow` is the file line number of rows[0], for messages. `merchants`
+// maps each valid row's client_uuid to its merchant key (see rowMerchant).
 //
 // Bank-statement conventions handled automatically:
 // - Sign: a debit/credit marker column or Debit/Credit columns decide the
@@ -114,6 +119,7 @@ export async function buildTransactions({
   const missing = new Map() // currency -> rows without a rate
 
   const valid = []
+  const merchants = new Map() // client_uuid -> merchant key ('' = none)
   const errors = []
   const skipped = []
   const seen = new Map() // identity key -> occurrence count
@@ -134,7 +140,9 @@ export async function buildTransactions({
     const key = `${spent_at}|${amount_minor}|${currency}|${kind}|${description ?? ''}`
     const occurrence = seen.get(key) ?? 0
     seen.set(key, occurrence + 1)
+    const client_uuid = await deterministicUuid(['import', userId, key, occurrence])
 
+    merchants.set(client_uuid, draft.merchant)
     valid.push({
       user_id: userId,
       kind,
@@ -144,11 +152,11 @@ export async function buildTransactions({
       exchange_rate,
       description,
       spent_at,
-      client_uuid: await deterministicUuid(['import', userId, key, occurrence]),
+      client_uuid,
     })
   }
   const missingRates = [...missing].map(([currency, count]) => ({ currency, count }))
-  return { valid, errors, skipped, missingRates }
+  return { valid, merchants, errors, skipped, missingRates }
 }
 
 // One ECB series per foreign currency, spanning that currency's row dates.

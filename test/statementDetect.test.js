@@ -169,3 +169,18 @@ test('previewDrafts: first rows plus ready / skipped / error counts', () => {
   assert.equal(previewDrafts(r.objs, r.detection.mapping, 'EUR').rows[1].kind, 'income')
   assert.equal(previewDrafts(r.objs, {}, 'EUR').ready, 0)
 })
+
+test('generic mapping: a name that is the same on every row is the holder, not the payee', () => {
+  const r = csv([
+    'Date;Name;Payee;Amount',
+    '01/09/2026;DOE JANE;Bakery;-3,20',
+    '02/09/2026;DOE JANE;JANE DOE;-100,00',
+    '03/09/2026;DOE JANE;Grocer;-20,00',
+  ].join('\n'))
+  assert.equal(r.detection.mapping.counterparty, 'Payee')
+  assert.equal(r.detection.mapping.holder, 'Name')
+  assert.deepEqual(r.drafts.map((d) => d.merchant), ['BAKERY', '', 'GROCER'])
+  const lone = csv(['Date;Name;Amount', '01/09/2026;DOE JANE;-3,20', '02/09/2026;DOE JANE;-4,00', '03/09/2026;DOE JANE;-5,00'].join('\n'))
+  assert.equal(lone.detection.mapping.counterparty, undefined)
+  assert.equal(lone.detection.mapping.holder, 'Name')
+})

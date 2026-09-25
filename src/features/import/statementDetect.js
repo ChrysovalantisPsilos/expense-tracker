@@ -14,6 +14,7 @@ export const IMPORT_FIELDS = [
   { key: 'credit', label: 'Credit / money in' },
   { key: 'type', label: 'Debit/credit marker (D/C, Af/Bij, Χ/Π, income/expense)' },
   { key: 'counterparty', label: 'Payee / counterparty' },
+  { key: 'holder', label: 'Account holder (your own name)', hint: 'transfers to it aren’t merchants' },
   { key: 'description', label: 'Description' },
   { key: 'details', label: 'More details' },
   { key: 'currency', label: 'Currency' },
@@ -42,6 +43,8 @@ const KEYWORDS = {
   counterparty: ['counterparty', 'name of the counterparty', 'counterparty name', 'naam tegenpartij',
     'naam van de tegenpartij', 'nom de la contrepartie', 'nom contrepartie', 'payee', 'merchant', 'beneficiary',
     'naam omschrijving', 'name'],
+  holder: ['account holder', 'account holder name', 'rekeninghouder', 'titulaire du compte', 'titulaire',
+    'name', 'naam', 'nom'],
   description: ['description', 'omschrijving', 'libelle', 'libelles', 'περιγραφη', 'αιτιολογια',
     'mededeling', 'communication', 'memo', 'narrative', 'desc', 'note', 'notes', 'reference', 'details'],
   details: ['details', 'detail', 'mededelingen', 'message', 'bericht', 'additional information'],
@@ -197,7 +200,14 @@ function genericMapping(headers, rows) {
   pick('currency', (vals) => share(vals, (v) => /^[A-Z]{3}$/.test(normalizeCurrency(v))) >= 0.8
     && share(vals, (v) => CURRENCIES.includes(normalizeCurrency(v))) >= 0.5)
   pick('status')
-  pick('counterparty')
+  // The same name on every row is the account holder, not a payee (KBC's
+  // "Name" column); a counterparty column varies.
+  const constant = (vals) => {
+    const filled = vals.map((v) => String(v ?? '').trim()).filter(Boolean)
+    return filled.length >= 3 && new Set(filled).size === 1
+  }
+  pick('counterparty', (vals) => !constant(vals))
+  pick('holder', constant)
   pick('description')
   pick('details')
   pick('category')

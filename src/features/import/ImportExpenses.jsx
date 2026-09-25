@@ -19,7 +19,7 @@ import { formatMoney, parseManualRate } from '../../shared/lib/currency.js'
 import {
   parseWorkbook, buildTransactions, importTransactions, listRules, saveRule, rememberMapping,
 } from './importExpenses.js'
-import { previewDrafts, merchantKey } from './importMath.js'
+import { previewDrafts } from './importMath.js'
 import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
 import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -97,7 +97,7 @@ export default function ImportExpenses() {
     rememberMapping(headers, mapping)
     await run(async () => {
       const rules = await listRules().catch(() => [])
-      const { valid, errors, skipped, missingRates: missing } = await buildTransactions({
+      const { valid, merchants, errors, skipped, missingRates: missing } = await buildTransactions({
         rows, mapping, userId: user.id, baseCurrency, categories, rules, manualRates,
         firstRow: headerRow + 2,
       })
@@ -114,7 +114,7 @@ export default function ImportExpenses() {
       const byMerchant = new Map()
       for (const t of valid) {
         if (t.category_id || !t.description) continue
-        const key = merchantKey(t.description)
+        const key = merchants.get(t.client_uuid)
         if (!key) continue
         byMerchant.set(key, (byMerchant.get(key) ?? 0) + 1)
       }
@@ -122,9 +122,9 @@ export default function ImportExpenses() {
         .map(([pattern, count]) => ({ pattern, count }))
         .sort((a, b) => b.count - a.count)
       if (groups.length === 0) {
-        await finishImport(valid, errors, skipped, {})
+        await finishImport(valid, merchants, errors, skipped, {})
       } else {
-        setPending({ valid, errors, skipped, groups })
+        setPending({ valid, merchants, errors, skipped, groups })
         setAssign({})
         setStep('review')
       }
@@ -133,7 +133,7 @@ export default function ImportExpenses() {
 
   // Apply review choices (as both this-import categories and saved rules),
   // then insert. Duplicate-proof: re-imports are skipped server-side.
-  async function finishImport(valid, errors, skipped, assignments) {
+  async function finishImport(valid, merchants, errors, skipped, assignments) {
     await run(async () => {
       const chosen = Object.entries(assignments).filter(([, catId]) => catId)
       for (const [pattern, catId] of chosen) {
@@ -141,7 +141,7 @@ export default function ImportExpenses() {
       }
       const withCats = valid.map((t) => {
         if (t.category_id || !t.description) return t
-        const hit = chosen.find(([pattern]) => merchantKey(t.description) === pattern)
+        const hit = chosen.find(([pattern]) => merchants.get(t.client_uuid) === pattern)
         return hit ? { ...t, category_id: hit[1] } : t
       })
       const { inserted, duplicates } = await importTransactions(withCats)
@@ -309,7 +309,7 @@ export default function ImportExpenses() {
             {busy && <BusyNote>Importing {plural(pending.valid.length, 'row')}…</BusyNote>}
             <Spacer />
             <Button leftIcon={<Check size={16} />} isLoading={busy} spinner={<RingSpinner />}
-              onClick={() => finishImport(pending.valid, pending.errors, pending.skipped, assign)}>
+              onClick={() => finishImport(pending.valid, pending.merchants, pending.errors, pending.skipped, assign)}>
               Import {pending.valid.length} rows
             </Button>
           </HStack>

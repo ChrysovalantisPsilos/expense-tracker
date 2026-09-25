@@ -7,7 +7,8 @@
 //
 // Field keys (see IMPORT_FIELDS in statementDetect.js): date, amount, debit,
 // credit, type (a debit/credit marker column), currency, counterparty,
-// description, details, category, status, fee.
+// holder (the account holder's own name), description, details, category,
+// status, fee.
 import { foldText } from '../../shared/lib/localeParse.js'
 
 export function normHeader(h) {
@@ -53,18 +54,30 @@ export const PRESETS = [
     dateOrder: 'dmy', decimal: ',',
   },
   {
-    // KBC/CBC Touch CSV (18 columns): ";" decimal commas, dd/mm/yyyy. NB in
-    // the Dutch file "Valuta" is the VALUE DATE; the currency is "Munt".
+    // KBC/CBC Touch & Mobile CSV: ";" decimal commas, dd/mm/yyyy, signed
+    // amounts, lines often ending in a bare CR. Rekeningnummer; Rubrieknaam;
+    // Naam; Munt; Afschriftnummer; Datum; Omschrijving; Valuta; Bedrag;
+    // Saldo; credit; debet; rekeningnummer tegenpartij; BIC tegenpartij;
+    // Naam tegenpartij; Adres tegenpartij; gestructureerde mededeling; Vrije
+    // mededeling (EN: Account number; Heading; Name; Currency; Statement
+    // number; Date; Description; Value date; Amount; … Counterparty name; …
+    // Free-format reference). Some exports leave out the Heading column.
+    // NB in the Dutch file "Valuta" is the VALUE DATE; the currency is
+    // "Munt". "Naam"/"Name" is the ACCOUNT HOLDER on every row, never the
+    // counterparty — card rows leave the counterparty columns empty.
     id: 'kbc', name: 'KBC / CBC',
     signature: [
       ['afschriftnummer', 'numero d extrait', 'statement number'],
-      ['rubrieknaam', 'nom de la rubrique', 'heading'],
+      ['vrije mededeling', 'communication libre', 'free format reference',
+        'gestructureerde mededeling', 'communication structuree', 'standard format reference'],
     ],
     columns: {
       date: ['datum', 'date'],
       amount: ['bedrag', 'montant', 'amount'],
       currency: ['munt', 'devise', 'currency'],
-      counterparty: ['naam tegenpartij', 'nom contrepartie', 'counterparty s name', 'name counterparty'],
+      counterparty: ['naam tegenpartij', 'nom contrepartie', 'nom de la contrepartie', 'counterparty name',
+        'counterparty s name', 'name counterparty'],
+      holder: ['naam', 'nom', 'name'],
       description: ['omschrijving', 'description'],
       details: ['vrije mededeling', 'communication libre', 'free format reference'],
     },

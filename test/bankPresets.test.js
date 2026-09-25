@@ -75,6 +75,36 @@ test('KBC: "Valuta" is the value date — currency comes from "Munt"', () => {
     ['2026-09-18', 'income', 25000, 'EUR'],
   ])
   assert.match(r.booked[1].description, /^K\. DE SMET · EUROPESE OVERSCHRIJVING VAN · Verjaardag$/)
+  assert.equal(r.detection.mapping.holder, 'Naam')
+  assert.deepEqual(r.booked.map((d) => d.merchant), ['ALDI', 'DE SMET'])
+})
+
+// The English KBC header as exported (with Heading), and as some exports
+// write it (no Heading column). Lines end in a bare CR, as KBC's do.
+const KBC_EN = 'Account number;Heading;Name;Currency;Statement number;Date;Description;Value date;Amount;Balance;credit;debit;counterparty\'s account number;Counterparty BIC;Counterparty name;Counterparty address;standard-format reference;Free-format reference'
+const kbcEn = (header, cells) => read(new TextEncoder().encode([header, ...cells].join('\r') + '\r'))
+const kbcRows = (heading) => [
+  ['PAYMENT VIA BANCONTACT 06-01-2026 AT 10.54 TIME LIDL 1153 LEUVEN BE3000 LEUVEN WITH KBC DEBIT CARD 5127 88XX XXXX 1234 CARDHOLDER: DOE JANE', '-8,00', '', '', ''],
+  ["SENDING MONEY INSTANTLY TO BE00 6500 0000 0002 BENEFICIARY'S BANK: REVOBEB2XXX JANE DOE AT 17.05 WITH KBC MOBILE", '-150,00', 'BE00 6500 0000 0002', 'REVOBEB2XXX', 'JANE DOE'],
+  ['EUROPEAN TRANSFER FROM BE00 3100 0000 0003', '3233,60', 'BE00 3100 0000 0003', 'BBRUBEBB', 'ACME CLINICAL RESEARCH BV'],
+].map(([desc, amount, acc, bic, name]) => ['BE00 7300 0000 0001', ...(heading ? [''] : []), 'DOE JANE', 'EUR', '2026001',
+  '06/01/2026', desc, '06/01/2026', amount, '1000,00', '', '', acc, bic, name, '', '', ''].join(';'))
+
+test('KBC (EN): "Name" is the account holder, "Counterparty name" the payee', () => {
+  for (const heading of [true, false]) {
+    const header = heading ? KBC_EN : KBC_EN.replace('Heading;', '')
+    const r = kbcEn(header, kbcRows(heading))
+    assertRecognised(r, 'kbc')
+    assert.equal(r.detection.mapping.holder, 'Name')
+    assert.equal(r.detection.mapping.counterparty, 'Counterparty name')
+    assert.deepEqual(r.booked.map(brief), [
+      ['2026-01-06', 'expense', 800, 'EUR'],
+      ['2026-01-06', 'expense', 15000, 'EUR'],
+      ['2026-01-06', 'income', 323360, 'EUR'],
+    ])
+    // Card merchant; own transfer (no merchant); employer.
+    assert.deepEqual(r.booked.map((d) => d.merchant), ['LIDL', '', 'ACME'])
+  }
 })
 
 test('Crelan: counterparty + message', () => {
