@@ -65,15 +65,17 @@ export function categoryPatch(category, { name, icon, color }) {
 //            yearly subscription paid earlier isn't listed)
 //   total  — base-currency minor units counted in the period: a spread
 //            yearly subscription counts its monthly parts (or nothing when
-//            `separateYearly`), exactly as the budget bars and Home count it
+//            `separateYearly`), and a salary paid late in the month counts
+//            toward the next (`salaryShift`), exactly as the budget bars and
+//            Home count it
 // `categoryId` NO_CATEGORY keeps personal rows with no category (group
 // shares bucket under their group instead); any other id keeps that
 // category's rows.
-export function categoryPeriod(rows, { categoryId, from, to, baseCurrency, separateYearly = false }) {
+export function categoryPeriod(rows, { categoryId, from, to, baseCurrency, separateYearly = false, salaryShift = null }) {
   const mine = (rows ?? []).filter((r) => (categoryId === NO_CATEGORY
     ? !r.category_id && !r.group_expense_id
     : r.category_id === categoryId))
-  const total = spendRows(mine, baseCurrency, from, to, { separateYearly })
+  const total = spendRows(mine, baseCurrency, from, to, { separateYearly, salaryShift })
     .reduce((sum, r) => sum + toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency), 0)
   return { listed: paidInWindow(mine, from, to), total }
 }

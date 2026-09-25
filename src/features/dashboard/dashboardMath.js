@@ -31,10 +31,11 @@ export function periodTotals(rows, baseCurrency) {
 // Recurring charges still to come in a period, folded into its projection —
 // only while the period is ongoing (it ends today or later). Past periods and
 // "all time" (no end) stay purely actual. `separateYearly`: the user keeps
-// yearly subscriptions out of monthly spending (0068).
-export function periodProjection(rules, periodTo, todayISO, separateYearly = false) {
+// yearly subscriptions out of monthly spending (0068); `salaryShift`: salary
+// due late in the month counts toward the next (0081).
+export function periodProjection(rules, periodTo, todayISO, separateYearly = false, salaryShift = null) {
   if (!periodTo || periodTo < todayISO) return { expense: 0, income: 0 }
-  return expectedInWindow(rules, todayISO, periodTo, separateYearly)
+  return expectedInWindow(rules, todayISO, periodTo, separateYearly, salaryShift)
 }
 
 // Headline figures: actual totals plus the projection, and the net.

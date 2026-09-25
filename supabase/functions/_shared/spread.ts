@@ -22,6 +22,7 @@
 // section instead). countsMonthly ≡ public.counts_in_month (0068).
 
 import { toBaseMinor } from './money.ts'
+import { countedRow, type SalaryShift } from './salaryShift.ts'
 
 // deno-lint-ignore no-explicit-any
 type Row = any
@@ -96,16 +97,19 @@ export const paidInWindow = (rows: Row[], from: string | null, to: string | null
 // month's day, so the existing sums (toBaseMinor, bucketOf, month keys) need
 // no special case and add up to the cent with the server's month_share.
 // `separateYearly` (the user's 0068 setting) drops spread rows instead
-// (countsMonthly).
+// (countsMonthly). `salaryShift` (0081, salaryShift.ts) re-dates a salary paid
+// late in a month to the 1st of the next one, and the window is tested on that
+// counted date: a salary paid 30 Sep counts in October, not September.
 export function spendRows(
   rows: Row[], baseCurrency: string, from: string | null = null, to: string | null = null,
-  { separateYearly = false }: { separateYearly?: boolean } = {},
+  { separateYearly = false, salaryShift = null }: { separateYearly?: boolean; salaryShift?: SalaryShift | null } = {},
 ): Row[] {
   const out: Row[] = []
   for (const r of rows) {
     if (!countsMonthly(r, separateYearly)) continue
     if (!isSpread(r)) {
-      if (inWindow(r.spent_at, from, to)) out.push(r)
+      const c = countedRow(r, salaryShift)
+      if (inWindow(c.spent_at, from, to)) out.push(c)
       continue
     }
     const n = r.spread_months

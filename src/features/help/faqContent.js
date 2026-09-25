@@ -206,6 +206,15 @@ export const FAQ_SECTIONS = [
         },
       },
       {
+        id: 'salary-next-month',
+        q: 'My salary arrives at the end of the month for the next one. Can it count for the next month?',
+        a: [
+          'Yes. In Settings → Monthly spending, turn on “Count salary paid late in the month toward the next month”, pick the day it starts from (the 25th by default; in shorter months a late day means their last day) and which income category is your salary.',
+          'Salary paid from that day to the month’s end then counts for the next month in your totals on Home, in Insights and in the statement: a salary paid on 30 September counts for October. Salary paid earlier in the month stays in its own month.',
+          'Lists keep the real payment date and mark the entry “Counts for October”. Budgets only look at spending, so they don’t change.',
+        ],
+      },
+      {
         id: 'payment-reminders',
         q: 'Can Budgeer remind me before a bill is due?',
         a: [

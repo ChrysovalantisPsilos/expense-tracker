@@ -4206,11 +4206,135 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 70. 0081: the salary shift (profiles.salary_shift_from_day +
+--     salary_category_id). Both default to null (off). The owner sets them;
+--     another user can't (RLS: 0 rows). The day is 1–31 (check); the category
+--     must be one of the row owner's own INCOME categories — another user's
+--     income category and the owner's own expense category are refused by
+--     profiles_salary_category_guard (not client-callable). Deleting the
+--     category clears the setting (on delete set null).
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; inc1 uuid; inc2 uuid; exp2 uuid; n int; d smallint; c uuid;
+begin
+  begin
+    u1 := pg_temp.zz_user('ss-other');
+    u2 := pg_temp.zz_user('ss-owner');
+    -- Claims first: category inserts take their owner from them (0060).
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZT other salary', 'income') returning id into inc1;
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    insert into public.categories (user_id, name, kind) values (u2, 'ZZT salary', 'income') returning id into inc2;
+    insert into public.categories (user_id, name, kind) values (u2, 'ZZT rent', 'expense') returning id into exp2;
+
+    select salary_shift_from_day, salary_category_id into d, c from public.profiles where id = u2;
+    if d is not null or c is not null then raise exception 'salary shift not off by default'; end if;
+
+    execute 'set local role authenticated';
+    -- Another user's income category.
+    begin
+      update public.profiles set salary_category_id = inc1 where id = u2;
+      raise exception 'GUARD_MISSED: another user''s category';
+    exception when others then
+      if sqlerrm not like 'Choose one of your own income categories%' then raise; end if;
+    end;
+    -- The owner's own expense category.
+    begin
+      update public.profiles set salary_category_id = exp2 where id = u2;
+      raise exception 'GUARD_MISSED: an expense category';
+    exception when others then
+      if sqlerrm not like 'Choose one of your own income categories%' then raise; end if;
+    end;
+    -- The day range.
+    begin
+      update public.profiles set salary_shift_from_day = 0 where id = u2;
+      raise exception 'GUARD_MISSED: day 0';
+    exception when check_violation then null;
+    end;
+    begin
+      update public.profiles set salary_shift_from_day = 32 where id = u2;
+      raise exception 'GUARD_MISSED: day 32';
+    exception when check_violation then null;
+    end;
+    -- The owner sets it (both ends of the range work).
+    update public.profiles set salary_shift_from_day = 1 where id = u2;
+    update public.profiles set salary_shift_from_day = 31 where id = u2;
+    update public.profiles set salary_shift_from_day = 25, salary_category_id = inc2 where id = u2;
+    get diagnostics n = row_count;
+    if n <> 1 then raise exception 'owner could not set the salary shift'; end if;
+    -- Nobody else's row (RLS: 0 rows), even with their own category.
+    update public.profiles set salary_shift_from_day = 25, salary_category_id = inc2 where id = u1;
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if n <> 0 then raise exception 'set another user''s salary shift'; end if;
+    select salary_shift_from_day, salary_category_id into d, c from public.profiles where id = u1;
+    if d is not null or c is not null then raise exception 'salary shift leaked onto another user'; end if;
+    select salary_shift_from_day, salary_category_id into d, c from public.profiles where id = u2;
+    if d is distinct from 25 or c is distinct from inc2 then raise exception 'salary shift not stored (%, %)', d, c; end if;
+
+    -- Deleting the category clears it; the day stays (the app reads that as off).
+    delete from public.categories where id = inc2;
+    select salary_category_id into c from public.profiles where id = u2;
+    if c is not null then raise exception 'deleted category still set as the salary'; end if;
+
+    if has_function_privilege('authenticated', 'public.profiles_salary_category_guard()', 'execute')
+       or has_function_privilege('anon', 'public.profiles_salary_category_guard()', 'execute') then
+      raise exception 'profiles_salary_category_guard callable by clients';
+    end if;
+    if not (has_column_privilege('authenticated', 'public.profiles', 'salary_shift_from_day', 'UPDATE')
+            and has_column_privilege('authenticated', 'public.profiles', 'salary_category_id', 'UPDATE')) then
+      raise exception 'salary shift columns not updatable by their owner';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: salary shift owner-only, own income category, day 1–31';
+    else update _t set fails = fails + 1; raise notice 'FAIL: salary shift — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 71. 0081: seed_default_categories() gives a new account the income
+--     categories Salary, Friend Transfer and Bonus (with the expense
+--     defaults, 12 in all), only for the caller, and is safe to run twice.
+--     Clients may call it (authenticated), anon may not.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; other uuid; n int;
+begin
+  begin
+    u := pg_temp.zz_user('seed');
+    other := pg_temp.zz_user('seed-other');
+    delete from public.categories where user_id in (u, other);
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.seed_default_categories();
+    perform public.seed_default_categories();
+    execute 'reset role';
+    select count(*) into n from public.categories where user_id = u;
+    if n <> 12 then raise exception 'seeded % categories (want 12)', n; end if;
+    select count(*) into n from public.categories
+     where user_id = u and kind = 'income'
+       and (name, icon) in (('Salary', 'salary'), ('Friend Transfer', 'transfer'), ('Bonus', 'salary'));
+    if n <> 3 then raise exception 'income defaults: % of 3', n; end if;
+    select count(*) into n from public.categories where user_id = other;
+    if n <> 0 then raise exception 'seeded another account'; end if;
+    if has_function_privilege('anon', 'public.seed_default_categories()', 'execute')
+       or not has_function_privilege('authenticated', 'public.seed_default_categories()', 'execute') then
+      raise exception 'wrong grants on seed_default_categories';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: default categories include Friend Transfer and Bonus';
+    else update _t set fails = fails + 1; raise notice 'FAIL: default categories — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 70; f int; p int;  -- tests 1–69 + B-0059
+declare expected_tests constant int := 72; f int; p int;  -- tests 1–71 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

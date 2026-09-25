@@ -44,7 +44,7 @@ import { userMessage } from '../../shared/lib/errors.js'
 const ABROAD_ROWS = 5
 
 export default function Insights() {
-  const { baseCurrency = 'EUR', separateYearly } = useProfile()
+  const { baseCurrency = 'EUR', separateYearly, salaryShift } = useProfile()
   const months = useMemo(() => lastMonths(6), [])
   const from = months[0].from
   const to = months[months.length - 1].to
@@ -53,8 +53,8 @@ export default function Insights() {
   // all when the user keeps yearly subscriptions separate.
   const { rows, loading, error, reload } = useTransactions({ from, to, spread: true })
   const spend = useMemo(
-    () => spendRows(rows, baseCurrency, from, to, { separateYearly }),
-    [rows, baseCurrency, from, to, separateYearly])
+    () => spendRows(rows, baseCurrency, from, to, { separateYearly, salaryShift }),
+    [rows, baseCurrency, from, to, separateYearly, salaryShift])
   const failed = error ? <QueryError error={error} onRetry={reload} what="your transactions" /> : null
   const thisMonth = months[months.length - 1].key
 

@@ -20,7 +20,10 @@ import {
   parseWorkbook, buildTransactions, importTransactions, listRules, saveRule, rememberMapping,
   rememberedHolder, rememberHolder,
 } from './importExpenses.js'
-import { previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder } from './importMath.js'
+import {
+  previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder, newIncomeOptions, suggestionFor,
+} from './importMath.js'
+import { ensureCategory } from '../categories/categories.js'
 import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
 import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -36,6 +39,8 @@ export default function ImportExpenses() {
   const { user } = useAuth()
   const { baseCurrency, profile } = useProfile()
   const { categories } = useCategories() // all kinds — rules can target either
+  // Income categories to offer as "(new)" — the defaults the user lacks.
+  const newIncome = useMemo(() => newIncomeOptions(categories), [categories])
 
   const [step, setStep] = useState('upload') // upload | map | rates | review | done
   const [fileName, setFileName] = useState('')
@@ -130,6 +135,14 @@ export default function ImportExpenses() {
   async function finishImport(valid, merchants, errors, skipped, assignments, groups) {
     await run(async () => {
       const chosen = new Map(Object.entries(assignments).filter(([, catId]) => catId))
+      // A "(new)" suggestion becomes a real category first (once per name).
+      const made = new Map()
+      for (const [groupId, value] of chosen) {
+        const s = suggestionFor(value)
+        if (!s) continue
+        if (!made.has(s.name)) made.set(s.name, await ensureCategory({ ...s, kind: 'income' }))
+        chosen.set(groupId, made.get(s.name))
+      }
       for (const g of groups) {
         const catId = chosen.get(g.id)
         if (catId) await saveRule(user.id, g.pattern, catId).catch(() => {}) // rule is a bonus, not a blocker
@@ -315,6 +328,7 @@ export default function ImportExpenses() {
                     onChange={(e) => setAssign((a) => ({ ...a, [g.id]: e.target.value }))}>
                     {categories.filter((c) => c.kind === g.kind && !c.is_archived)
                       .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {g.kind === 'income' && newIncome.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </Select>
                 </HStack>
               </Tile>

@@ -17,6 +17,11 @@
 // the period); kept separate, they're left out of the totals and get their own
 // section, with the active yearly rules' cost (my_recurring_rules).
 //
+// Salary paid late in the month follows the caller's setting too (profiles.
+// salary_shift_from_day/salary_category_id, 0081): from day D it counts toward
+// the next month's totals, so the fetch starts at day D of the month before
+// `from` (shiftFetchFrom) and the list still shows only the period's payments.
+//
 // Excel is SheetJS (0.18.5: the edge bundler only fetches allow-listed hosts,
 // and the app's 0.20.3 build is served from cdn.sheetjs.com alone, so it can't
 // be imported here; writing a workbook is unaffected); the PDF uses the shared
@@ -29,8 +34,9 @@ import { loadBrandFonts, money, Statement } from '../_shared/pdf.ts'
 import { withCors, json, callerClient } from '../_shared/http.ts'
 import { fileResponse } from '../_shared/files.ts'
 import { categoryBars } from '../_shared/breakdown.ts'
+import { salaryShiftOf, shiftFetchFrom } from '../_shared/salaryShift.ts'
 import {
-  buildStatement, pendingNote, statementSheets, yearlyLabel, yearlyNote,
+  buildStatement, pendingNote, salaryNote, statementSheets, yearlyLabel, yearlyNote,
   type Sheet, type Statement as StatementData, type StatementRow,
 } from './statementMath.ts'
 
@@ -61,14 +67,15 @@ Deno.serve(withCors(async (req) => {
     if (allowed !== true) return json({ error: 'Too many report requests. Please try again later.' }, 429)
 
     const { data: profile } = await supabase.from('profiles')
-      .select('base_currency, display_name, yearly_separate').single()
+      .select('base_currency, display_name, yearly_separate, salary_shift_from_day, salary_category_id').single()
     const base = profile?.base_currency ?? 'USD'
     const separateYearly = profile?.yearly_separate === true
+    const salaryShift = salaryShiftOf(profile)
 
     // p_spread: also the yearly charges paid before `from` that still cover
     // the period (only their monthly parts count; the list shows the period).
     const { data: txns, error } = await supabase
-      .rpc('my_transactions', { p_from: from, p_to: to, p_spread: true })
+      .rpc('my_transactions', { p_from: shiftFetchFrom(from, salaryShift), p_to: to, p_spread: true })
     if (error) throw error
     let rules: unknown[] = []
     if (separateYearly) {
@@ -79,8 +86,9 @@ Deno.serve(withCors(async (req) => {
 
     // Oldest first; foreign rows whose rate is still pending are listed but
     // kept out of every total (see statementMath.ts).
-    const stmt = buildStatement(txns ?? [], base, { from, to, separateYearly, rules })
-    const notes = [pendingNote(stmt.pending), yearlyNote(stmt.yearlyMode)].filter(Boolean) as string[]
+    const stmt = buildStatement(txns ?? [], base, { from, to, separateYearly, rules, salaryShift })
+    const notes = [pendingNote(stmt.pending), yearlyNote(stmt.yearlyMode), salaryNote(stmt.salaryShiftDay)]
+      .filter(Boolean) as string[]
 
     const bytes = format === 'pdf'
       ? await buildPdf({ from, to, base, stmt, notes, name: profile?.display_name })

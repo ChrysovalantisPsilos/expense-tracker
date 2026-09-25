@@ -2,6 +2,7 @@
 // test/statementMath.test.js (Node strips the types).
 import { fmtMinor, minorFactor, toBaseMinor } from '../_shared/money.ts'
 import { isSpread, monthlyShare, paidInWindow, perYearMinor, spendRows, yearlyRules } from '../_shared/spread.ts'
+import { isShifted, type SalaryShift } from '../_shared/salaryShift.ts'
 
 // One statement line. `base_amount` is in the base currency (major units),
 // or null while the row's exchange rate is pending. `yearly` marks a yearly
@@ -41,6 +42,9 @@ export interface Statement {
   // when the period has none.
   yearlyMode: 'spread' | 'separate' | null
   yearly: YearlySection | null // only when yearly subscriptions are kept separate
+  // The salary shift's day D when some salary paid or counted in the period
+  // counts in another month than it was paid in (0081), else null.
+  salaryShiftDay: number | null
 }
 
 export interface StatementOptions {
@@ -50,6 +54,9 @@ export interface StatementOptions {
   separateYearly?: boolean
   // my_recurring_rules rows (only read when separateYearly).
   rules?: any[]
+  // profiles.salary_shift_from_day/salary_category_id (0081, salaryShiftOf):
+  // salary paid from day D counts toward the next month's totals.
+  salaryShift?: SalaryShift | null
 }
 
 // Build the statement from my_transactions rows (newest first, as the RPC
@@ -62,7 +69,9 @@ export interface StatementOptions {
 // charge paid before it — at the exact integer split of the Overview and
 // budgets; with `separateYearly` yearly rows are left out and listed in their
 // own section. The transaction list always shows each real payment in the
-// period, marked as yearly.
+// period, marked as yearly. With the salary shift on, a salary paid from day
+// D counts in the next month's totals (the fetch reaches back for the one paid
+// late in the month before `from`); the list keeps its real date.
 //
 // A foreign row with exchange_rate NULL is "pending": the server rates it from
 // its ECB cache (fx_sync, every few minutes) as soon as the cache covers its
@@ -71,7 +80,7 @@ export interface StatementOptions {
 // with no base amount and reported under `pending` (as is an earlier yearly
 // payment whose parts would have counted).
 export function buildStatement(txns: any[], base: string, opts: StatementOptions = {}): Statement {
-  const { from = null, to = null, separateYearly = false, rules = [] } = opts
+  const { from = null, to = null, separateYearly = false, rules = [], salaryShift = null } = opts
   const bf = minorFactor(base)
   // Oldest first; a base-currency row with no rate is itself (rate 1).
   const all = txns.slice().reverse().map((t) => ({
@@ -85,7 +94,7 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
   }))
   const listed = paidInWindow(all, from, to)
   const rated = all.filter((t) => t.exchange_rate != null)
-  const spend = spendRows(rated, base, from, to, { separateYearly })
+  const spend = spendRows(rated, base, from, to, { separateYearly, salaryShift })
 
   const baseMinor = (t: any) => toBaseMinor(t.amount_minor, t.exchange_rate, t.currency, base)
   const rows: StatementRow[] = listed.map((t) => {
@@ -103,11 +112,12 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
     }
   })
 
-  // Pending: every listed row without a rate, and — when yearly rows count
-  // monthly — an earlier yearly payment without one that covers the period.
+  // Pending: every listed row without a rate, and an earlier payment without
+  // one that would count in the period — a yearly payment covering it (when
+  // yearly rows count monthly) or a salary paid late in the month before.
   const unrated = all.filter((t) => t.exchange_rate == null)
-  const earlierPending = separateYearly ? []
-    : unrated.filter((t) => !listed.includes(t) && spendRows([t], base, from, to).length > 0)
+  const earlierPending = unrated.filter((t) => !listed.includes(t)
+    && spendRows([t], base, from, to, { separateYearly, salaryShift }).length > 0)
   const pendingRows = [...listed.filter((t) => t.exchange_rate == null), ...earlierPending]
 
   let spent = 0
@@ -121,6 +131,11 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
   }
   const byCategory: Record<string, number> = {}
   for (const [k, v] of Object.entries(byMinor)) byCategory[k] = v / bf
+
+  // A shifted salary touches this period when it was paid in it (and counts
+  // in the next) or counts in it (paid late in the month before).
+  const shiftTouches = all.some((t) => isShifted(t, salaryShift)
+    && (paidInWindow([t], from, to).length > 0 || spendRows([t], base, from, to, { salaryShift }).length > 0))
 
   let yearly: YearlySection | null = null
   if (separateYearly) {
@@ -152,6 +167,7 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
       ? (yearly!.payments.length > 0 || yearly!.rules.length > 0 ? 'separate' : null)
       : ([...spend, ...pendingRows].some(isSpread) ? 'spread' : null),
     yearly,
+    salaryShiftDay: shiftTouches ? salaryShift!.fromDay : null,
   }
 }
 
@@ -173,6 +189,13 @@ export function yearlyNote(mode: Statement['yearlyMode']): string | null {
   }
   if (mode === 'separate') return 'Yearly subscriptions are kept out of the totals (see Yearly subscriptions).'
   return null
+}
+
+// How the totals treat salary paid late in the month — one short line, or
+// null when no such salary touches the period.
+export function salaryNote(fromDay: Statement['salaryShiftDay']): string | null {
+  if (fromDay == null) return null
+  return `Salary paid from day ${fromDay} of a month counts toward the next month's totals.`
 }
 
 // The list's mark on a yearly payment: "Yearly · 10.00 EUR/mo" ("≈" when the

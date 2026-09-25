@@ -3,8 +3,10 @@ import assert from 'node:assert/strict'
 import {
   merchantKey, merchantName, groupMerchants, rowMerchantName, isOwnTransfer, rowToDraft, previewDrafts, parseAmount,
   parseDate, deterministicUuid, normalizeCurrency, cleanHolderName, suggestedHolder, fileHolder,
-  merchantGroups, groupIdOf, ruleCategory,
+  merchantGroups, groupIdOf, ruleCategory, SUGGESTED_INCOME_CATEGORIES, newIncomeOptions, suggestionFor,
 } from '../src/features/import/importMath.js'
+import { CATEGORY_ICON_KEYS } from '../src/shared/lib/categoryStyle.js'
+import { latestSql } from './migrations.js'
 
 // A key becomes a "description contains …" rule: it must be in the text.
 const key = (description, opts) => {
@@ -408,4 +410,36 @@ test('ruleCategory: a rule only files rows of its category\'s kind', () => {
   assert.equal(ruleCategory(rules, kindOf, 'lidl leuven', 'expense'), 'food')
   assert.equal(ruleCategory(rules, kindOf, 'LIDL RETURN', 'income'), null)
   assert.equal(ruleCategory(rules, kindOf, '', 'expense'), null)
+})
+
+test('New merchants: income suggestions the user lacks are offered as "(new)"', () => {
+  assert.deepEqual(newIncomeOptions([]).map((o) => o.label), ['Salary (new)', 'Friend Transfer (new)', 'Bonus (new)'])
+  const cats = [
+    { id: '1', name: ' salary ', kind: 'income' }, // names compare trimmed and case-blind
+    { id: '2', name: 'Bonus', kind: 'expense' }, // an expense "Bonus" isn't the income one
+    { id: '3', name: 'Groceries', kind: 'expense' },
+  ]
+  assert.deepEqual(newIncomeOptions(cats), [
+    { value: 'new:Friend Transfer', label: 'Friend Transfer (new)' },
+    { value: 'new:Bonus', label: 'Bonus (new)' },
+  ])
+  assert.deepEqual(newIncomeOptions([...cats, { id: '4', name: 'Friend Transfer', kind: 'income' },
+    { id: '5', name: 'BONUS', kind: 'income' }]), [])
+  assert.deepEqual(suggestionFor('new:Bonus'), { name: 'Bonus', icon: 'salary' })
+  assert.deepEqual(suggestionFor('new:Friend Transfer'), { name: 'Friend Transfer', icon: 'transfer' })
+  assert.equal(suggestionFor('new:Rent'), null) // only the listed ones
+  assert.equal(suggestionFor('0b7c7a8e-1111-4c1d-9a55-0f2d5b0c1e11'), null) // an existing category id
+  assert.equal(suggestionFor(''), null)
+})
+
+test('the suggested income categories are the seeded defaults (0081), icon for icon', () => {
+  const seed = latestSql('seed_default_categories')
+  for (const { name, icon } of SUGGESTED_INCOME_CATEGORIES) {
+    assert.ok(CATEGORY_ICON_KEYS.includes(icon), icon)
+    assert.match(seed, new RegExp(`\\(uid, '${name}',\\s*'${icon}',\\s*'income'\\)`), name)
+  }
+  // Every seeded icon is one the app (and the DB check) knows.
+  const icons = [...seed.matchAll(/\(uid, '[^']+',\s*'([a-z-]+)'/g)].map((m) => m[1])
+  assert.equal(icons.length, 12)
+  for (const icon of icons) assert.ok(CATEGORY_ICON_KEYS.includes(icon), icon)
 })

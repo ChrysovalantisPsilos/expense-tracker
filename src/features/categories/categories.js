@@ -26,6 +26,22 @@ export async function createCategory({ name, kind, icon, color }) {
   if (error) throw friendly(error)
 }
 
+// The id of the user's `kind` category called `name`, creating it when they
+// have none (the import's "(new)" suggestions). Names are unique per kind, so
+// an archived one of that name is brought back rather than duplicated.
+export async function ensureCategory({ name, kind, icon }) {
+  const clean = name.trim()
+  const { data, error } = await supabase.from('categories')
+    .insert({ name: clean, kind, icon: icon ?? null }).select('id').single()
+  if (!error) return data.id
+  if (error.code !== '23505') throw dbError(error)
+  const { data: found, error: findErr } = await supabase.from('categories')
+    .select('id, is_archived').eq('name', clean).eq('kind', kind).single()
+  if (findErr) throw dbError(findErr)
+  if (found.is_archived) await updateCategory(found.id, { is_archived: false })
+  return found.id
+}
+
 // patch: any of { name, icon, color, is_archived }.
 export async function updateCategory(id, patch) {
   const { error } = await supabase.from('categories')

@@ -4,6 +4,7 @@ import { useLiveQuery, useOwnedQuery } from '../../shared/lib/db.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { fillPendingRates } from '../../shared/lib/fx.js'
+import { shiftFetchFrom } from '../../shared/lib/salaryShift.js'
 import { dbError } from '../../shared/lib/errors.js'
 
 // Categories for the current user (optionally filtered by kind).
@@ -33,13 +34,16 @@ export function useCategories(kind) {
 // `spread: true` (monthly-spend views) also returns the yearly-subscription
 // rows paid before `from` that still count in the range (spread_months, 0067):
 // feed the rows to shared/lib/spread.js — spendRows for totals, paidInWindow
-// for what to list.
+// for what to list. With the salary shift on (0081) it also reaches back to
+// the previous month's salary that counts in the range (shiftFetchFrom);
+// spendRows counts it there, paidInWindow leaves it out of lists.
 export function useTransactions({ kind, from, to, categoryId, limit, spread = false } = {}) {
-  const { baseCurrency } = useProfile()
+  const { baseCurrency, salaryShift } = useProfile()
+  const fetchFrom = spread && kind !== 'expense' ? shiftFetchFrom(from, salaryShift) : from
   return useOwnedQuery('transactions', {
     cacheAs: 'transactions',
-    fetch: () => listTransactions({ kind, from, to, categoryId, limit, spread, baseCurrency }),
-    deps: [kind, from, to, categoryId, limit, spread, baseCurrency],
+    fetch: () => listTransactions({ kind, from: fetchFrom, to, categoryId, limit, spread, baseCurrency }),
+    deps: [kind, fetchFrom, to, categoryId, limit, spread, baseCurrency],
   })
 }
 

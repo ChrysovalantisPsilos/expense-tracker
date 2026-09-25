@@ -146,6 +146,7 @@ export const SQL_USER_MESSAGES = new Map([
   ['A PayPal.me name is up to 20 letters and numbers.', null],
   ['Your base currency is fixed once you’ve added entries, so past amounts stay correct.', null],
   ['Payment details are too long.', null],
+  ['Choose one of your own income categories for your salary.', null],
   // Rate limits
   ['Too many changes — please try again later.', null],
   ['Too many comments — please slow down.', null],

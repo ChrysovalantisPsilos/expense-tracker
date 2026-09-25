@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthProvider.jsx'
 import { useLiveQuery } from './db.js'
 import { fetchProfile } from './profile.js'
 import { EVENTS } from './keys.js'
+import { salaryShiftOf } from './salaryShift.js'
 
 const ProfileContext = createContext(null)
 
@@ -29,15 +30,24 @@ export function ProfileProvider({ children }) {
     return () => window.removeEventListener(EVENTS.profileUpdated, reload)
   }, [uid, reload])
 
+  // Salary paid late in the month counts toward the next (0081; null = off).
+  // Memoised on its two columns so a profile refetch keeps the same object.
+  const shiftDay = uid ? profile?.salary_shift_from_day : null
+  const shiftCat = uid ? profile?.salary_category_id : null
+  const salaryShift = useMemo(
+    () => salaryShiftOf({ salary_shift_from_day: shiftDay, salary_category_id: shiftCat }),
+    [shiftDay, shiftCat])
+
   const value = useMemo(() => ({
     profile: uid ? profile : null,
     baseCurrency: (uid && profile?.base_currency) || 'EUR',
     // Keep yearly subscriptions out of monthly spending (0068; off by default).
     separateYearly: !!(uid && profile?.yearly_separate),
+    salaryShift,
     loading,
     error,
     reload,
-  }), [uid, profile, loading, error, reload])
+  }), [uid, profile, salaryShift, loading, error, reload])
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>
 }

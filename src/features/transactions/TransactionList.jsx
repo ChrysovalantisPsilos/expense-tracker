@@ -9,6 +9,8 @@ import { formatMoney, baseEquivalent } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { monthlyShare } from '../../shared/lib/spread.js'
+import { countsForLabel } from '../../shared/lib/salaryShift.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { frequencyLabel } from '../recurring/recurringMath.js'
@@ -19,7 +21,9 @@ import { frequencyLabel } from '../recurring/recurringMath.js'
 // Tapping a row (or Edit) opens it on the transaction page, where it can also
 // be set to repeat. Rows that belong to a rule say "Repeats every month", and
 // a yearly subscription's payment adds "Spread over 12 months" (it counts in
-// monthly spend a twelfth at a time; the row itself is the real payment).
+// monthly spend a twelfth at a time; the row itself is the real payment), and
+// a salary paid late in the month says "Counts for October" when the user
+// counts it toward the next month (0081; the row keeps its real date).
 // On phones the row actions fold into a ⋯ menu.
 // Each row's income/expense styling follows its own `kind`, so the same
 // list renders every mode of the Transactions page (Expenses, Income, All).
@@ -91,7 +95,9 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
 // The muted line under a row's title: date · category · note, then the
 // group's tag on group-share rows.
 function RowMeta({ row: r, shared }) {
+  const { salaryShift } = useProfile()
   const share = monthlyShare(r)
+  const countsFor = countsForLabel(r, salaryShift)
   return (
     <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted">
       <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
@@ -118,6 +124,7 @@ function RowMeta({ row: r, shared }) {
           · {share.exact ? '' : '≈ '}{formatMoney(share.perMonth, r.currency)}/month over {share.months} months
         </Text>
       )}
+      {countsFor && <Text whiteSpace="nowrap">· {countsFor}</Text>}
     </Flex>
   )
 }

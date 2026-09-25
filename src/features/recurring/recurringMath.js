@@ -3,6 +3,7 @@ import {
   monthlyMinor, monthlyShare, perYearMinor, ruleSpreadMonths, ruleCountsMonthly, spreadDates, spreadPart,
 } from '../../shared/lib/spread.js'
 import { toBaseMinor } from '../../shared/lib/currency.js'
+import { countedDate } from '../../shared/lib/salaryShift.js'
 
 // A rule's cost in monthly minor units (shared with the statement).
 export { monthlyMinor }
@@ -105,7 +106,9 @@ export function monthlyBudgetShare(rule) {
 // A yearly expense counts only its monthly parts that fall in the window, as
 // its charge will once it's made (shared/lib/spread.js) — or nothing at all
 // with `separateYearly` (the user keeps yearly subscriptions separate, 0068).
-export function expectedInWindow(rules, fromISO, toISO, separateYearly = false) {
+// `salaryShift` (0081): an upcoming salary due from day D counts on the 1st of
+// the next month, so one due 30 Sep isn't in September's projection.
+export function expectedInWindow(rules, fromISO, toISO, separateYearly = false, salaryShift = null) {
   if (!fromISO || !toISO) return { expense: 0, income: 0 }
   let expense = 0
   let income = 0
@@ -120,7 +123,7 @@ export function expectedInWindow(rules, fromISO, toISO, separateYearly = false) 
         spreadDates(d, n).forEach((p, i) => {
           if (p >= fromISO && p <= toISO) expense += spreadPart(r.amount_minor, n, i)
         })
-      } else if (d >= fromISO) {
+      } else if (d >= fromISO && countedDate({ ...r, spent_at: d }, salaryShift) <= toISO) {
         if (r.kind === 'income') income += r.amount_minor
         else expense += r.amount_minor
       }

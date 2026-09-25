@@ -42,7 +42,7 @@ const VIEW_KEY = STORAGE_KEYS.overviewView
 const UNAVAILABLE = 'Not available until your transactions load.'
 
 export default function Dashboard() {
-  const { baseCurrency, separateYearly } = useProfile()
+  const { baseCurrency, separateYearly, salaryShift } = useProfile()
   const { rules, loading: rulesLoading, error: rulesError, reload: reloadRules } = useRecurring()
   // undefined until known (null: no transactions at all)
   const [oldest, setOldest] = useState(undefined)
@@ -65,8 +65,8 @@ export default function Dashboard() {
   // Spread yearly charges count as their monthly parts in every total — or,
   // when the user keeps them separate, not at all (the Subscriptions card lists them).
   const spend = useMemo(
-    () => spendRows(rows, baseCurrency, period.from, period.to, { separateYearly }),
-    [rows, baseCurrency, period.from, period.to, separateYearly])
+    () => spendRows(rows, baseCurrency, period.from, period.to, { separateYearly, salaryShift }),
+    [rows, baseCurrency, period.from, period.to, separateYearly, salaryShift])
   const totals = useMemo(() => periodTotals(spend, baseCurrency), [spend, baseCurrency])
   const { byCategory, bucketRow } = totals
   const paid = useMemo(() => paidInWindow(rows, period.from, period.to), [rows, period.from, period.to])
@@ -82,8 +82,8 @@ export default function Dashboard() {
   // periods and "all time" stay purely actual.
   const todayISO = useMemo(() => today(), [])
   const proj = useMemo(
-    () => periodProjection(rules, period.to, todayISO, separateYearly),
-    [rules, period.to, todayISO, separateYearly])
+    () => periodProjection(rules, period.to, todayISO, separateYearly, salaryShift),
+    [rules, period.to, todayISO, separateYearly, salaryShift])
   const { spentTotal, earnedTotal, netTotal } = projectedTotals(totals, proj)
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
 

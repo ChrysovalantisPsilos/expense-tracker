@@ -298,6 +298,37 @@ export function merchantGroups(valid, merchants) {
   return [...byId.values()].sort((a, b) => b.count - a.count)
 }
 
+// The income categories the "New merchants" step suggests to someone who
+// doesn't have them yet: a money-in group's dropdown lists them as
+// "Bonus (new)", and picking one creates that category on import. Each is one
+// of the defaults new accounts get (seed_default_categories, 0081), with the
+// same icon — test/importMath.test.js keeps the two in lockstep. Existing
+// accounts are never backfilled; this is how they get them.
+export const SUGGESTED_INCOME_CATEGORIES = [
+  { name: 'Salary', icon: 'salary' },
+  { name: 'Friend Transfer', icon: 'transfer' },
+  { name: 'Bonus', icon: 'salary' },
+]
+const NEW_PREFIX = 'new:'
+const nameKey = (n) => String(n ?? '').trim().toLowerCase()
+
+// The suggestions missing from `categories` (the user's income ones; names
+// compared trimmed and case-blind), as dropdown options
+// { value: 'new:Bonus', label: 'Bonus (new)' }.
+export function newIncomeOptions(categories) {
+  const have = new Set((categories ?? []).filter((c) => c.kind === 'income').map((c) => nameKey(c.name)))
+  return SUGGESTED_INCOME_CATEGORIES.filter((s) => !have.has(nameKey(s.name)))
+    .map((s) => ({ value: NEW_PREFIX + s.name, label: `${s.name} (new)` }))
+}
+
+// The suggestion a dropdown value picks ({ name, icon }), or null for an
+// existing category's id (or nothing).
+export function suggestionFor(value) {
+  if (!String(value ?? '').startsWith(NEW_PREFIX)) return null
+  const name = value.slice(NEW_PREFIX.length)
+  return SUGGESTED_INCOME_CATEGORIES.find((s) => s.name === name) ?? null
+}
+
 // The saved rule that categorizes a row: the longest "description contains
 // pattern" whose category is of the row's kind — a rule made for income
 // never files an expense (and vice versa). `rules` sorted longest first;

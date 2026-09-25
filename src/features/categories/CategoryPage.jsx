@@ -47,7 +47,7 @@ export default function CategoryPage() {
   const { id } = useParams()
   const [params, setParams] = useSearchParams()
   const location = useLocation()
-  const { baseCurrency = 'EUR', separateYearly } = useProfile()
+  const { baseCurrency = 'EUR', separateYearly, salaryShift } = useProfile()
   const { categoryId, period } = parseCategoryRoute(id, params)
   const uncategorised = categoryId === NO_CATEGORY
 
@@ -68,8 +68,8 @@ export default function CategoryPage() {
     from: period.from ?? undefined, to: period.to ?? undefined, spread: true,
   })
   const { listed, total } = useMemo(() => categoryPeriod(txns.rows, {
-    categoryId, from: period.from, to: period.to, baseCurrency, separateYearly,
-  }), [txns.rows, categoryId, period.from, period.to, baseCurrency, separateYearly])
+    categoryId, from: period.from, to: period.to, baseCurrency, separateYearly, salaryShift,
+  }), [txns.rows, categoryId, period.from, period.to, baseCurrency, separateYearly, salaryShift])
   const paged = usePaged(listed, 10, period.value)
   const listHead = listHeading({ kind: kind ?? 'expense', periodLabel: period.label, count: listed.length, loading: txns.loading })
 
