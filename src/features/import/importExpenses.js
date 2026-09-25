@@ -9,7 +9,9 @@ import { importFileProblem, rowsToObjects } from './sheetParse.js'
 import { detectMapping, headerSignature, savedMappingFor } from './statementDetect.js'
 // Pure helpers (parsing, drafts, deterministic identity) live in
 // importMath.js so they're unit-testable.
-import { cleanHolderName, deterministicUuid, groupMerchants, rowToDraft, signedConvention } from './importMath.js'
+import {
+  cleanHolderName, deterministicUuid, groupMerchants, ruleCategory, rowToDraft, signedConvention,
+} from './importMath.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 
@@ -121,7 +123,7 @@ export async function saveRule(userId, pattern, categoryId) {
 //   kind; otherwise, when both signs are present, negative rows are expenses
 //   and positive rows income (the near-universal export format).
 // - Rules: uncategorized rows are matched against the user's saved
-//   "contains → category" rules (longest pattern wins).
+//   "contains → category" rules (longest pattern wins, same kind only).
 // - Currency: each foreign row is converted at the rate the statement itself
 //   gives (its base-currency column), else at the ECB rate for ITS date (one
 //   range request per currency). Where no rate exists (offline, pre-1999, API
@@ -132,12 +134,8 @@ export async function buildTransactions({
   rows, mapping, userId, baseCurrency, categories, rules = [], manualRates = {}, lines = [],
 }) {
   const catByName = new Map((categories || []).map((c) => [c.name.toLowerCase(), c.id]))
+  const kindOf = new Map((categories || []).map((c) => [c.id, c.kind]))
   const sortedRules = [...rules].sort((a, b) => b.pattern.length - a.pattern.length)
-  const ruleFor = (desc) => {
-    if (!desc) return null
-    const upper = desc.toUpperCase()
-    return sortedRules.find((r) => upper.includes(r.pattern.toUpperCase()))?.category_id ?? null
-  }
 
   const signed = signedConvention(rows, mapping)
   const drafts = rows.map((r) => rowToDraft(r, mapping, baseCurrency, { signed }))
@@ -161,7 +159,8 @@ export async function buildTransactions({
     if (!exchange_rate) { missing.set(currency, (missing.get(currency) ?? 0) + 1); continue }
 
     const catName = mapping.category ? String(r[mapping.category] ?? '').toLowerCase().trim() : ''
-    const category_id = (catName ? (catByName.get(catName) ?? null) : null) ?? ruleFor(description)
+    const category_id = (catName ? (catByName.get(catName) ?? null) : null)
+      ?? ruleCategory(sortedRules, kindOf, description, kind)
 
     const key = `${spent_at}|${amount_minor}|${currency}|${kind}|${description ?? ''}`
     const occurrence = seen.get(key) ?? 0

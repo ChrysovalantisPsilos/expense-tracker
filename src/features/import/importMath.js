@@ -278,6 +278,37 @@ function headSize(words) {
 // on its first two words. A trailing one- or two-letter word is dropped
 // ("MCDONALD S" → "MCDONALD"). A bank label (a name that starts with a bank
 // word: "CASH WITHDRAWAL", "SETTLEMENT KBC") is its own key.
+// The "New merchants" list: uncategorized rows grouped by merchant key AND
+// kind, so a payer (salary from an employer) is never offered alongside
+// shops, nor given an expense category. `merchants` maps client_uuid → key.
+// Returns [{ id, pattern, kind, count }], most rows first; `id` is what
+// groupIdOf gives each row of the group.
+export const groupIdOf = (t, merchants) => `${t.kind}|${merchants.get(t.client_uuid) ?? ''}`
+export function merchantGroups(valid, merchants) {
+  const byId = new Map()
+  for (const t of valid) {
+    if (t.category_id || !t.description) continue
+    const pattern = merchants.get(t.client_uuid)
+    if (!pattern) continue
+    const id = groupIdOf(t, merchants)
+    const g = byId.get(id) ?? { id, pattern, kind: t.kind, count: 0 }
+    g.count++
+    byId.set(id, g)
+  }
+  return [...byId.values()].sort((a, b) => b.count - a.count)
+}
+
+// The saved rule that categorizes a row: the longest "description contains
+// pattern" whose category is of the row's kind — a rule made for income
+// never files an expense (and vice versa). `rules` sorted longest first;
+// `kindOf` maps category id → kind.
+export function ruleCategory(rules, kindOf, description, kind) {
+  if (!description) return null
+  const upper = description.toUpperCase()
+  return rules.find((r) => kindOf.get(r.category_id) === kind && upper.includes(r.pattern.toUpperCase()))
+    ?.category_id ?? null
+}
+
 export function groupMerchants(names) {
   const keys = new Map()
   const groups = new Map() // head -> [words of each distinct name]

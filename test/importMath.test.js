@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   merchantKey, merchantName, groupMerchants, rowMerchantName, isOwnTransfer, rowToDraft, previewDrafts, parseAmount,
   parseDate, deterministicUuid, normalizeCurrency, cleanHolderName, suggestedHolder, fileHolder,
+  merchantGroups, groupIdOf, ruleCategory,
 } from '../src/features/import/importMath.js'
 
 // A key becomes a "description contains …" rule: it must be in the text.
@@ -374,4 +375,37 @@ test('holder name helpers: clean, suggest, read from a holder column', () => {
   const rows = [{ Name: ' ' }, { Name: 'DOE  JANE' }]
   assert.equal(fileHolder(rows, { holder: 'Name' }), 'DOE JANE')
   assert.equal(fileHolder(rows, {}), '')
+})
+
+test('merchantGroups: money in and money out never share a group', () => {
+  const merchants = new Map([['a', 'ACME'], ['b', 'ACME'], ['c', 'LIDL'], ['d', 'LIDL'], ['e', 'ACME'], ['f', '']])
+  const valid = [
+    { client_uuid: 'a', kind: 'income', description: 'ACME SALARY' },
+    { client_uuid: 'b', kind: 'income', description: 'ACME SALARY' },
+    { client_uuid: 'e', kind: 'expense', description: 'ACME SHOP' },
+    { client_uuid: 'c', kind: 'expense', description: 'LIDL' },
+    { client_uuid: 'd', kind: 'expense', description: 'LIDL', category_id: 'cat' }, // already categorized
+    { client_uuid: 'f', kind: 'expense', description: 'x' }, // no key
+  ]
+  assert.deepEqual(merchantGroups(valid, merchants), [
+    { id: 'income|ACME', pattern: 'ACME', kind: 'income', count: 2 },
+    { id: 'expense|ACME', pattern: 'ACME', kind: 'expense', count: 1 },
+    { id: 'expense|LIDL', pattern: 'LIDL', kind: 'expense', count: 1 },
+  ])
+  assert.equal(groupIdOf(valid[0], merchants), 'income|ACME')
+})
+
+test('ruleCategory: a rule only files rows of its category\'s kind', () => {
+  const kindOf = new Map([['salary', 'income'], ['shop', 'expense'], ['food', 'expense']])
+  const rules = [
+    { pattern: 'ACME CLINICAL', category_id: 'salary' },
+    { pattern: 'ACME', category_id: 'shop' },
+    { pattern: 'LIDL', category_id: 'food' },
+  ]
+  assert.equal(ruleCategory(rules, kindOf, 'ACME CLINICAL RESEARCH SALARY', 'income'), 'salary')
+  // The longer income rule is passed over for an expense row.
+  assert.equal(ruleCategory(rules, kindOf, 'ACME CLINICAL RESEARCH REFUND', 'expense'), 'shop')
+  assert.equal(ruleCategory(rules, kindOf, 'lidl leuven', 'expense'), 'food')
+  assert.equal(ruleCategory(rules, kindOf, 'LIDL RETURN', 'income'), null)
+  assert.equal(ruleCategory(rules, kindOf, '', 'expense'), null)
 })

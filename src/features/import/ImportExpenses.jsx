@@ -20,7 +20,7 @@ import {
   parseWorkbook, buildTransactions, importTransactions, listRules, saveRule, rememberMapping,
   rememberedHolder, rememberHolder,
 } from './importExpenses.js'
-import { previewDrafts, suggestedHolder, fileHolder } from './importMath.js'
+import { previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder } from './importMath.js'
 import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
 import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -113,19 +113,10 @@ export default function ImportExpenses() {
         toast({ title: 'Nothing to import', description: 'No rows had a valid date + amount.', status: 'warning' })
         return
       }
-      // Unknown merchants: uncategorized rows grouped by merchant key.
-      const byMerchant = new Map()
-      for (const t of valid) {
-        if (t.category_id || !t.description) continue
-        const key = merchants.get(t.client_uuid)
-        if (!key) continue
-        byMerchant.set(key, (byMerchant.get(key) ?? 0) + 1)
-      }
-      const groups = [...byMerchant.entries()]
-        .map(([pattern, count]) => ({ pattern, count }))
-        .sort((a, b) => b.count - a.count)
+      // Unknown merchants: uncategorized rows grouped by merchant key + kind.
+      const groups = merchantGroups(valid, merchants)
       if (groups.length === 0) {
-        await finishImport(valid, merchants, errors, skipped, {})
+        await finishImport(valid, merchants, errors, skipped, {}, [])
       } else {
         setPending({ valid, merchants, errors, skipped, groups })
         setAssign({})
@@ -136,16 +127,17 @@ export default function ImportExpenses() {
 
   // Apply review choices (as both this-import categories and saved rules),
   // then insert. Duplicate-proof: re-imports are skipped server-side.
-  async function finishImport(valid, merchants, errors, skipped, assignments) {
+  async function finishImport(valid, merchants, errors, skipped, assignments, groups) {
     await run(async () => {
-      const chosen = Object.entries(assignments).filter(([, catId]) => catId)
-      for (const [pattern, catId] of chosen) {
-        await saveRule(user.id, pattern, catId).catch(() => {}) // rule is a bonus, not a blocker
+      const chosen = new Map(Object.entries(assignments).filter(([, catId]) => catId))
+      for (const g of groups) {
+        const catId = chosen.get(g.id)
+        if (catId) await saveRule(user.id, g.pattern, catId).catch(() => {}) // rule is a bonus, not a blocker
       }
       const withCats = valid.map((t) => {
         if (t.category_id || !t.description) return t
-        const hit = chosen.find(([pattern]) => merchants.get(t.client_uuid) === pattern)
-        return hit ? { ...t, category_id: hit[1] } : t
+        const catId = chosen.get(groupIdOf(t, merchants))
+        return catId ? { ...t, category_id: catId } : t
       })
       const { inserted, duplicates } = await importTransactions(withCats)
       const own = skipped.filter((s) => s.reason === 'own transfer').length
@@ -302,22 +294,27 @@ export default function ImportExpenses() {
       {step === 'review' && pending && (
         <Panel icon={Store} title="New merchants">
           <Text fontSize="sm" color="text.muted" mb={4}>
-            Pick categories for merchants Budgeer hasn’t seen before — each choice
-            is remembered as a rule and applied automatically on every future
-            import. Leave any blank to import those rows uncategorized.
+            Pick categories for merchants and payers Budgeer hasn’t seen before —
+            money in (like a salary) gets an income category, money out an expense
+            one. Each choice is remembered as a rule and applied automatically on
+            every future import. Leave any blank to import those rows uncategorized.
           </Text>
           <Stack spacing={2}>
             {pending.groups.map((g) => (
-              <Tile key={g.pattern}>
+              <Tile key={g.id}>
                 <HStack spacing={3}>
                   <Text fontSize="sm" fontWeight="600" flex="1" minW={0} overflowWrap="anywhere">
                     {g.pattern}
-                    <Text as="span" color="text.muted" fontWeight="400"> · {g.count} row{g.count === 1 ? '' : 's'}</Text>
+                    <Text as="span" color="text.muted" fontWeight="400">
+                      {' · '}{plural(g.count, 'row')} · {g.kind === 'income' ? 'money in' : 'money out'}
+                    </Text>
                   </Text>
                   <Select size="sm" maxW="200px" bg="bg.surface" placeholder="Uncategorized"
-                    value={assign[g.pattern] || ''}
-                    onChange={(e) => setAssign((a) => ({ ...a, [g.pattern]: e.target.value }))}>
-                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    aria-label={`Category for ${g.pattern} (${g.kind})`}
+                    value={assign[g.id] || ''}
+                    onChange={(e) => setAssign((a) => ({ ...a, [g.id]: e.target.value }))}>
+                    {categories.filter((c) => c.kind === g.kind && !c.is_archived)
+                      .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </Select>
                 </HStack>
               </Tile>
@@ -328,7 +325,7 @@ export default function ImportExpenses() {
             {busy && <BusyNote>Importing {plural(pending.valid.length, 'row')}…</BusyNote>}
             <Spacer />
             <Button leftIcon={<Check size={16} />} isLoading={busy} spinner={<RingSpinner />}
-              onClick={() => finishImport(pending.valid, pending.merchants, pending.errors, pending.skipped, assign)}>
+              onClick={() => finishImport(pending.valid, pending.merchants, pending.errors, pending.skipped, assign, pending.groups)}>
               Import {pending.valid.length} rows
             </Button>
           </HStack>
