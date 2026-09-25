@@ -3,6 +3,7 @@ import { Link as RouterLink, useLocation, useNavigate, useParams, useSearchParam
 import { Button, IconButton, Stack, Text, useToast } from '@chakra-ui/react'
 import { ArrowLeft, Users } from 'lucide-react'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
+import { FORM_COLUMN } from '../../shared/ui/FormPage.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -105,7 +106,7 @@ export default function TransactionPage() {
   }
 
   return (
-    <Stack spacing={5} maxW="640px">
+    <Stack spacing={5} {...FORM_COLUMN}>
       <PageHeader eyebrow="Transactions" title={title} leading={
         <IconButton aria-label="Back" variant="ghost" size="sm" ml={-2} flexShrink={0}
           icon={<ArrowLeft size={18} />} onClick={back} />

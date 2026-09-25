@@ -9,10 +9,13 @@ import HighlightPill from '../../shared/ui/kit/HighlightPill.jsx'
 import TransferRow from '../../shared/ui/kit/TransferRow.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
+import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 
 // Where the group stands: your balance (with Settle up), everyone's net, the
 // line that matters most to you, then the whole group's settle-up plan
-// (fewest payments) when anyone still owes.
+// (fewest payments) when anyone still owes. On a phone held sideways the
+// card is compact — a smaller balance, everyone's tiles on one row (up to
+// four) — so it doesn't fill the screen.
 export default function GroupBalances({ group, members, balances, myMember, myUserId, onSettle }) {
   const money = (minor) => formatMoney(minor, group.currency)
   const plan = settlePlan(balances, members, myMember?.id)
@@ -20,19 +23,20 @@ export default function GroupBalances({ group, members, balances, myMember, myUs
   const memberNets = memberBalances(balances, members, myUserId)
   const avatarOf = (mid) => members.find((m) => m.id === mid)?.avatar_url
   const mine = signedAmount(myMember ? (balances.get(myMember.id) ?? 0) : 0, money)
+  const sideways = useShortLandscape()
 
   return (
     <>
       <Panel>
         <HStack align="center" spacing={3}>
-          <Figure label="Your balance" value={mine.text} tone={mine.tone} size="xl" flex="1" />
+          <Figure label="Your balance" value={mine.text} tone={mine.tone} size={sideways ? 'lg' : 'xl'} flex="1" />
           <Button size="sm" variant="outline" leftIcon={<HandCoins size={16} />} flexShrink={0}
             onClick={onSettle}>Settle up</Button>
         </HStack>
         {memberNets.length > 1 && (
           <>
-            <SectionLabel mt={4} mb={2}>Balances</SectionLabel>
-            <BalanceGrid>
+            <SectionLabel mt={sideways ? 3 : 4} mb={2}>Balances</SectionLabel>
+            <BalanceGrid columns={sideways ? Math.min(memberNets.length, 4) : undefined}>
               {memberNets.map((b) => {
                 const { text, tone } = signedAmount(b.net, money)
                 return <BalanceTile key={b.id} label={b.label} value={text} tone={tone} />

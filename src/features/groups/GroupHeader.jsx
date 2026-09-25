@@ -12,6 +12,11 @@ import Figure from '../../shared/ui/kit/Figure.jsx'
 import GroupMark from './GroupMark.jsx'
 import AvatarStack from './AvatarStack.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { ShellSlot, useShellHeader } from '../../shared/ui/ShellHeader.jsx'
+import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
+
+// The photo button on a small (sideways header) photo: smaller, tucked in.
+const SMALL_CAMERA = { boxSize: '20px', minW: '20px', bottom: '-4px', right: '-4px' }
 
 // The group page's header, styled after the landing's trip card: the group
 // photo (owner can replace it) or a solid brand tile, the name over a
@@ -19,7 +24,8 @@ import { userMessage } from '../../shared/lib/errors.js'
 // "Total" on the right. Back, "Add expense" and the ⋯ menu sit on the same
 // row from `md` up; on phones they form a toolbar above it so the name and
 // total keep their room. Menu actions are callbacks; `onLeave` is omitted
-// when the viewer isn't a member. `total` is a formatted string.
+// when the viewer isn't a member. `total` is a formatted string. On a phone
+// held sideways it's one row in the shell's slim header instead.
 export default function GroupHeader({
   group, members, myUserId, isOwner, total, onPhotoChanged,
   onAdd, onMembers, onReport, onShare, onRename, onLeave, onDelete,
@@ -28,6 +34,7 @@ export default function GroupHeader({
   const toast = useToast()
   const imgRef = useRef(null)
   const [uploading, setUploading] = useState(false)
+  const sideways = !!useShellHeader()
 
   async function onGroupImage(e) {
     const file = e.target.files?.[0]
@@ -45,25 +52,79 @@ export default function GroupHeader({
     finally { setUploading(false) }
   }
 
+  // The group photo; the owner can replace it.
+  const photo = (size) => (
+    <Box position="relative" flexShrink={0}>
+      <GroupMark name={group.name} src={group.image_url} size={size} />
+      {isOwner && (
+        <>
+          <IconButton aria-label="Change group photo" icon={<Camera size={size < 40 ? 10 : 12} />}
+            size="xs" borderRadius="full" position="absolute"
+            {...(size < 40 ? SMALL_CAMERA : { bottom: '-6px', right: '-6px' })}
+            isLoading={uploading} onClick={() => imgRef.current?.click()} />
+          <input ref={imgRef} type="file" accept="image/*" hidden onChange={onGroupImage} />
+        </>
+      )}
+    </Box>
+  )
+  const back = (props) => (
+    <IconButton aria-label="Back" variant="ghost" size="sm" ml={-2} {...props}
+      icon={<ArrowLeft size={18} />} onClick={() => navigate('/groups')} />
+  )
+  const menu = (
+    <Menu>
+      <MenuButton as={IconButton} aria-label="Group options" size="sm" mr={-2}
+        variant="ghost" icon={<MoreVertical size={18} />} />
+      <MenuList>
+        <MenuItem icon={<Share2 size={16} />} onClick={onShare}>Share summary</MenuItem>
+        <MenuItem icon={<FileDown size={16} />} onClick={onReport}>
+          Download statement (PDF)
+        </MenuItem>
+        {isOwner && (
+          <MenuItem icon={<Pencil size={16} />} onClick={onRename}>Rename group</MenuItem>
+        )}
+        {onLeave && (
+          <MenuItem icon={<LogOut size={16} />} onClick={onLeave}>Leave group</MenuItem>
+        )}
+        {isOwner && (
+          <MenuItem icon={<Trash2 size={16} />} color="status.negative" onClick={onDelete}>
+            Delete group
+          </MenuItem>
+        )}
+      </MenuList>
+    </Menu>
+  )
+
+  // A phone held sideways: one row in the shell's slim header — back, a
+  // smaller photo, the name over the member count, the total and the ⋯
+  // menu. The rail's Add is the page's only one there.
+  if (sideways) {
+    return (
+      <ShellSlot slot="title">
+        <HStack spacing={3} flex="1" minW={0}>
+          {back({ flexShrink: 0 })}
+          {photo(32)}
+          <Box flex="1" minW={0}>
+            <Heading as="h1" fontSize="md" letterSpacing="-0.01em" lineHeight="1.25" sx={ONE_LINE}>
+              {group.name}
+            </Heading>
+            <MemberStack members={members} myUserId={myUserId} onClick={onMembers} compact />
+          </Box>
+          <Figure label="Total" value={total} size="md" align="right" flexShrink={0} lineHeight="1.2" />
+          {menu}
+        </HStack>
+      </ShellSlot>
+    )
+  }
+
   return (
     <Grid alignItems="center" columnGap={3} rowGap={2}
       templateColumns={{ base: '1fr auto', md: 'auto 1fr auto' }}
       templateAreas={{ base: '"back actions" "hero hero"', md: '"back hero actions"' }}>
-      <IconButton gridArea="back" justifySelf="start" aria-label="Back" variant="ghost" size="sm" ml={-2}
-        icon={<ArrowLeft size={18} />} onClick={() => navigate('/groups')} />
+      {back({ gridArea: 'back', justifySelf: 'start' })}
 
       <HStack gridArea="hero" spacing={3} minW={0}>
-        <Box position="relative" flexShrink={0}>
-          <GroupMark name={group.name} src={group.image_url} size={48} />
-          {isOwner && (
-            <>
-              <IconButton aria-label="Change group photo" icon={<Camera size={12} />}
-                size="xs" borderRadius="full" position="absolute" bottom="-6px" right="-6px"
-                isLoading={uploading} onClick={() => imgRef.current?.click()} />
-              <input ref={imgRef} type="file" accept="image/*" hidden onChange={onGroupImage} />
-            </>
-          )}
-        </Box>
+        {photo(48)}
         <Box flex="1" minW={0}>
           <Heading as="h1" fontSize={{ base: 'xl', md: '2xl' }} letterSpacing="-0.02em"
             lineHeight="1.25" overflowWrap="anywhere">
@@ -78,42 +139,24 @@ export default function GroupHeader({
 
       <HStack gridArea="actions" spacing={2}>
         <PageAction icon={<Plus size={16} />} label="Add expense" onClick={onAdd} />
-        <Menu>
-          <MenuButton as={IconButton} aria-label="Group options" size="sm" mr={-2}
-            variant="ghost" icon={<MoreVertical size={18} />} />
-          <MenuList>
-            <MenuItem icon={<Share2 size={16} />} onClick={onShare}>Share summary</MenuItem>
-            <MenuItem icon={<FileDown size={16} />} onClick={onReport}>
-              Download statement (PDF)
-            </MenuItem>
-            {isOwner && (
-              <MenuItem icon={<Pencil size={16} />} onClick={onRename}>Rename group</MenuItem>
-            )}
-            {onLeave && (
-              <MenuItem icon={<LogOut size={16} />} onClick={onLeave}>Leave group</MenuItem>
-            )}
-            {isOwner && (
-              <MenuItem icon={<Trash2 size={16} />} color="status.negative" onClick={onDelete}>
-                Delete group
-              </MenuItem>
-            )}
-          </MenuList>
-        </Menu>
+        {menu}
       </HStack>
     </Grid>
   )
 }
 
 // The avatar stack and member count — one button that opens the Members page.
-function MemberStack({ members, myUserId, onClick }) {
+// `compact`: just the count, in small type (the sideways header).
+function MemberStack({ members, myUserId, onClick, compact = false }) {
+  const count = pluralise(members.length, 'member')
   return (
     <HStack as="button" type="button" onClick={onClick} spacing={2} maxW="100%"
-      aria-label={`${pluralise(members.length, 'member')} — show members`}
+      aria-label={`${count} — show members`}
       borderRadius="full" pr={2} ml={-0.5} layerStyle="hitArea" _hover={{ bg: 'bg.subtle' }}
       _focusVisible={{ boxShadow: 'outline' }} transition="background 0.1s">
-      <AvatarStack members={members} myUserId={myUserId} />
-      <Text as="span" fontSize="sm" color="text.muted" fontWeight="500" whiteSpace="nowrap">
-        {pluralise(members.length, 'member')}
+      {!compact && <AvatarStack members={members} myUserId={myUserId} />}
+      <Text as="span" fontSize={compact ? 'xs' : 'sm'} color="text.muted" fontWeight="500" whiteSpace="nowrap">
+        {count}
       </Text>
     </HStack>
   )

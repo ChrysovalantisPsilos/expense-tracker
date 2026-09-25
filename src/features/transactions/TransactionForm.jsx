@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Button, FormControl, FormErrorMessage, FormHelperText, FormLabel, HStack, Input, Link, Select, Stack,
-  Switch, Text, Textarea, useToast,
+  SimpleGrid, Switch, Text, Textarea, useToast,
 } from '@chakra-ui/react'
 import { Repeat, Trash2 } from 'lucide-react'
 import { useCategories } from './useData.js'
@@ -22,6 +22,8 @@ import FxPreview from '../../shared/ui/FxPreview.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { PageForm } from '../../shared/ui/FormPage.jsx'
+import { useShellHeader } from '../../shared/ui/ShellHeader.jsx'
+import CategoryGrid from './CategoryGrid.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 
@@ -46,7 +48,8 @@ const KIND_LABEL = Object.fromEntries(KINDS)
 // An expense asks whether it was "Paid from savings" (0085: still spending,
 // but not against the Net) once the user has a savings category — off for a
 // new entry, as stored when editing (shown while it's on, whatever the
-// categories).
+// categories). On a phone held sideways the fields take the left column and
+// the categories a grid of tiles on the right (CategoryGrid).
 export default function TransactionForm({
   kind: initialKind = 'expense', baseCurrency = 'EUR', transaction = null, rule = null, onSaved, onDelete,
 }) {
@@ -131,6 +134,8 @@ export default function TransactionForm({
   }
 
   const errors = tried ? checkFields({ amount, spentAt }) : {}
+  // A phone held sideways lays the form out in two columns.
+  const sideways = !!useShellHeader()
 
   async function submit() {
     const first = firstInvalid(checkFields({ amount, spentAt }), FIELDS)
@@ -184,6 +189,73 @@ export default function TransactionForm({
       draft.nextRun < today() ? ' Any missed since then are added tonight.' : ''}`
     : undefined
 
+  const kindField = isEdit ? (
+    <FormControl>
+      <FormLabel>Type</FormLabel>
+      <Text fontWeight="600">{KIND_LABEL[kind]}</Text>
+      <FormHelperText>
+        A saved entry keeps its type. To record it as {kind === 'income' ? 'an expense' : 'income'},
+        delete it and add a new one.
+      </FormHelperText>
+    </FormControl>
+  ) : (
+    <SegmentedControl label="Kind" options={KINDS} value={kind} onChange={pickKind}
+      size="sm" isFitted />
+  )
+  const amountFields = (
+    <>
+      {kind === 'expense' && !isEdit && <ReceiptScanner onScan={handleScan} />}
+
+      <HStack align="start">
+        <FormControl isRequired isInvalid={!!errors.amount}>
+          <FormLabel>Amount</FormLabel>
+          <MoneyInput ref={amountRef} currency={currency} value={amount} onChange={setAmount} />
+          <FormErrorMessage>{errors.amount}</FormErrorMessage>
+        </FormControl>
+        <FormControl maxW="110px">
+          <FormLabel>Currency</FormLabel>
+          <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </Select>
+        </FormControl>
+      </HStack>
+      {needsFx && (
+        <FxPreview from={currency} to={baseCurrency} amountMinor={amountMinor}
+          fx={fx} captured={keepCaptured ? captured : null} rate={rate}
+          manual={manualRate} onManual={setManualRate} />
+      )}
+    </>
+  )
+  const manageCategories = (
+    <Link as={RouterLink} to="/settings/categories" color="accent.fg">Manage categories</Link>
+  )
+  const savingsSwitches = (
+    <>
+      {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
+      {showFromSavings && <PaidFromSavingsSwitch value={fromSavings} onChange={setFromSavings} />}
+    </>
+  )
+  const otherFields = (
+    <>
+      <FormControl>
+        <FormLabel>Description</FormLabel>
+        <Input value={description} onChange={(e) => setDescription(e.target.value)}
+          placeholder={kind === 'income' ? 'Paycheck' : 'Coffee'} />
+      </FormControl>
+
+      <FormControl isRequired isInvalid={!!errors.date}>
+        <FormLabel>Date</FormLabel>
+        <Input ref={dateRef} type="date" value={spentAt} onChange={(e) => changeDate(e.target.value)} />
+        <FormErrorMessage>{errors.date}</FormErrorMessage>
+      </FormControl>
+
+      <FormControl>
+        <FormLabel>Notes</FormLabel>
+        <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
+      </FormControl>
+    </>
+  )
+
   return (
     <PageForm bare onSubmit={submit} noValidate busy={busy} submitProps={{ isDisabled: !rate || savingsLoading }}
       submitLabel={isEdit ? 'Save changes' : `Add ${kind === 'income' ? 'income' : 'expense'}`}
@@ -192,41 +264,31 @@ export default function TransactionForm({
           Delete
         </Button>
       )}>
+      {sideways ? (
+        // A phone held sideways: the amount and the fields on the left, the
+        // categories as a grid of tiles on the right.
+        <SimpleGrid columns={2} spacing={3} alignItems="start">
+          <Panel>
+            <Stack spacing={4}>
+              {kindField}
+              {amountFields}
+              {savingsSwitches}
+              {otherFields}
+            </Stack>
+          </Panel>
+          <Panel>
+            <Text fontSize="sm" fontWeight="600" color="text.muted" mb={3}>
+              Category
+            </Text>
+            <CategoryGrid categories={categories} value={categoryId} onChange={setCategoryId} kind={kind} />
+            <Text fontSize="sm" mt={3}>{manageCategories}</Text>
+          </Panel>
+        </SimpleGrid>
+      ) : (
       <Panel>
         <Stack spacing={4}>
-          {isEdit ? (
-            <FormControl>
-              <FormLabel>Type</FormLabel>
-              <Text fontWeight="600">{KIND_LABEL[kind]}</Text>
-              <FormHelperText>
-                A saved entry keeps its type. To record it as {kind === 'income' ? 'an expense' : 'income'},
-                delete it and add a new one.
-              </FormHelperText>
-            </FormControl>
-          ) : (
-            <SegmentedControl label="Kind" options={KINDS} value={kind} onChange={pickKind}
-              size="sm" isFitted />
-          )}
-          {kind === 'expense' && !isEdit && <ReceiptScanner onScan={handleScan} />}
-
-          <HStack align="start">
-            <FormControl isRequired isInvalid={!!errors.amount}>
-              <FormLabel>Amount</FormLabel>
-              <MoneyInput ref={amountRef} currency={currency} value={amount} onChange={setAmount} />
-              <FormErrorMessage>{errors.amount}</FormErrorMessage>
-            </FormControl>
-            <FormControl maxW="110px">
-              <FormLabel>Currency</FormLabel>
-              <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </Select>
-            </FormControl>
-          </HStack>
-          {needsFx && (
-            <FxPreview from={currency} to={baseCurrency} amountMinor={amountMinor}
-              fx={fx} captured={keepCaptured ? captured : null} rate={rate}
-              manual={manualRate} onManual={setManualRate} />
-          )}
+          {kindField}
+          {amountFields}
 
           <FormControl>
             <FormLabel>Category</FormLabel>
@@ -234,31 +296,13 @@ export default function TransactionForm({
               onChange={(e) => setCategoryId(e.target.value)}>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
-            <FormHelperText>
-              <Link as={RouterLink} to="/settings/categories" color="accent.fg">Manage categories</Link>
-            </FormHelperText>
+            <FormHelperText>{manageCategories}</FormHelperText>
           </FormControl>
-          {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
-          {showFromSavings && <PaidFromSavingsSwitch value={fromSavings} onChange={setFromSavings} />}
-
-          <FormControl>
-            <FormLabel>Description</FormLabel>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)}
-              placeholder={kind === 'income' ? 'Paycheck' : 'Coffee'} />
-          </FormControl>
-
-          <FormControl isRequired isInvalid={!!errors.date}>
-            <FormLabel>Date</FormLabel>
-            <Input ref={dateRef} type="date" value={spentAt} onChange={(e) => changeDate(e.target.value)} />
-            <FormErrorMessage>{errors.date}</FormErrorMessage>
-          </FormControl>
-
-          <FormControl>
-            <FormLabel>Notes</FormLabel>
-            <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </FormControl>
+          {savingsSwitches}
+          {otherFields}
         </Stack>
       </Panel>
+      )}
 
       <Panel icon={Repeat} title="Repeat"
         subtitle={rule ? 'Part of a recurring series' : 'Log it again on a schedule'}

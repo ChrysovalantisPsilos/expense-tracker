@@ -29,6 +29,8 @@ import { formatMoney } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
+import { useShellHeader } from '../../shared/ui/ShellHeader.jsx'
+import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
 
 const OWN_EDIT = { ownEdit: true }
 const TYPES = [['expense', 'Expenses'], ['income', 'Income'], ['all', 'All']]
@@ -109,92 +111,128 @@ export default function LedgerPage() {
   const net = netBaseMinor(shown, baseCurrency, savingsIds)
   const head = listHeading({ kind, periodLabel: 'This month', count: shown.length, loading, failed: !!error, searching })
   const firstRun = isFirstRun({ loading, failed: !!error, count: shown.length, oldest, searching })
+  // A phone held sideways: the page's controls move up into the shell's header.
+  const sideways = !!useShellHeader()
+
+  // The list's heading line: "This month · 13 entries", with the net of a
+  // search.
+  const summary = searching && !loading && !savingsLoading && shown.length > 0
+    ? `${head.subtitle} · Net ${net < 0 ? '−' : ''}${formatMoney(Math.abs(net), baseCurrency)}`
+    : head.subtitle
+  const clear = searching && (
+    <Button size="xs" variant="ghost" leftIcon={<X size={14} />} onClick={clearAll}>
+      Clear
+    </Button>
+  )
+  const typeSwitch = (props) => (
+    <SegmentedControl label="Transaction type" options={TYPES} value={type}
+      onChange={switchType} size="sm" {...props} />
+  )
+  const moreMenu = (
+    <Menu placement="bottom-end" isLazy>
+      <MenuButton as={IconButton} aria-label="More actions" size="sm" variant="ghost"
+        icon={<MoreHorizontal size={18} />} />
+      <MenuList minW="180px">
+        <MenuItem icon={<FileSpreadsheet size={16} />} onClick={() => navigate('/import')}>
+          Import file
+        </MenuItem>
+      </MenuList>
+    </Menu>
+  )
+  const search = (
+    <HStack spacing={2} data-tour="ledger-search" flex={sideways ? '1' : undefined} minW={sideways ? 0 : undefined}
+      maxW={sideways ? '360px' : undefined}>
+      <InputGroup size={sideways ? 'sm' : undefined}>
+        <InputLeftElement pointerEvents="none" color="text.muted"><Search size={16} /></InputLeftElement>
+        <Input ref={searchRef} enterKeyHint="search" aria-label="Search transactions"
+          placeholder="Search transactions…" borderRadius={sideways ? 'lg' : undefined}
+          value={text} onChange={(e) => setLedger({ text: e.target.value })} />
+        {text && (
+          <InputRightElement>
+            <IconButton aria-label="Clear search" size="xs" variant="ghost"
+              icon={<X size={14} />} onClick={() => setLedger({ text: '' })} />
+          </InputRightElement>
+        )}
+      </InputGroup>
+      <Box position="relative" flexShrink={0}>
+        <IconButton aria-label={hasFilters ? 'Filters (active)' : 'Filters'}
+          aria-expanded={filtersPanel.isOpen} size={sideways ? 'sm' : undefined}
+          variant={filtersPanel.isOpen ? 'solid' : 'outline'}
+          colorScheme={filtersPanel.isOpen ? 'brand' : 'gray'}
+          icon={<SlidersHorizontal size={16} />} onClick={filtersPanel.onToggle} />
+        {hasFilters && !filtersPanel.isOpen && (
+          <Box position="absolute" top="-2px" right="-2px" boxSize="10px" borderRadius="full"
+            bg="brand.500" borderWidth="2px" borderColor="bg.surface" pointerEvents="none" />
+        )}
+      </Box>
+    </HStack>
+  )
+  const filterFields = (
+    <Collapse in={filtersPanel.isOpen} animateOpacity>
+      <SimpleGrid key={fieldsKey} columns={{ base: 2, md: 3 }} spacing={3} pt={4}>
+        <FormControl gridColumn={{ base: 'span 2', md: 'auto' }}>
+          <FormLabel fontSize="xs" color="text.muted">Category</FormLabel>
+          <Select placeholder="Any" value={filters.categoryId}
+            onChange={(e) => setFilter('categoryId')(e.target.value)}>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {unlistedCategory && <option value={filters.categoryId}>{unlistedCategory}</option>}
+            <option value={NO_CATEGORY}>Uncategorized</option>
+          </Select>
+        </FormControl>
+        <FormControl>
+          <FormLabel fontSize="xs" color="text.muted">Min ({baseCurrency})</FormLabel>
+          <MoneyInput currency={baseCurrency} placeholder="0" value={filters.min} onChange={setFilter('min')} />
+        </FormControl>
+        <FormControl>
+          <FormLabel fontSize="xs" color="text.muted">Max ({baseCurrency})</FormLabel>
+          <MoneyInput currency={baseCurrency} placeholder="∞" value={filters.max} onChange={setFilter('max')} />
+        </FormControl>
+        <FormControl>
+          <OptionalDate label="From" value={filters.from} onChange={setFilter('from')} />
+        </FormControl>
+        <FormControl>
+          <OptionalDate label="To" value={filters.to} onChange={setFilter('to')} />
+        </FormControl>
+      </SimpleGrid>
+    </Collapse>
+  )
 
   return (
-    <Stack spacing={5}>
-      <PageHeader title="Transactions" leading={openedFiltered ? <BackButton /> : undefined} action={<>
+    <Stack spacing={sideways ? 3 : 5}>
+      {/* Sideways, the search and its filters sit in the slim header, and
+          the rail's Add is the page's only one. */}
+      <PageHeader title="Transactions" leading={openedFiltered ? <BackButton /> : undefined} action={sideways ? (
+        <>{search}{moreMenu}</>
+      ) : (<>
         <PageAction icon={<Plus size={16} />} data-tour="add-expense" label={ADD_LABEL[type]}
           onClick={() => navigate(`/transactions/new?kind=${kind ?? 'expense'}`)} />
-        <Menu placement="bottom-end" isLazy>
-          <MenuButton as={IconButton} aria-label="More actions" size="sm" variant="ghost"
-            icon={<MoreHorizontal size={18} />} />
-          <MenuList minW="180px">
-            <MenuItem icon={<FileSpreadsheet size={16} />} onClick={() => navigate('/import')}>
-              Import file
-            </MenuItem>
-          </MenuList>
-        </Menu>
-      </>} />
+        {moreMenu}
+      </>)} />
 
-      <SegmentedControl label="Transaction type" options={TYPES} value={type}
-        onChange={switchType} size="sm" isFitted w={{ base: 'full', sm: 'sm' }} />
+      {!sideways && typeSwitch({ isFitted: true, w: { base: 'full', sm: 'sm' } })}
 
       <Panel>
-        <Box mb={5}>
-          <HStack spacing={2} data-tour="ledger-search">
-            <InputGroup>
-              <InputLeftElement pointerEvents="none" color="text.muted"><Search size={16} /></InputLeftElement>
-              <Input ref={searchRef} enterKeyHint="search" aria-label="Search transactions"
-                placeholder="Search transactions…"
-                value={text} onChange={(e) => setLedger({ text: e.target.value })} />
-              {text && (
-                <InputRightElement>
-                  <IconButton aria-label="Clear search" size="xs" variant="ghost"
-                    icon={<X size={14} />} onClick={() => setLedger({ text: '' })} />
-                </InputRightElement>
-              )}
-            </InputGroup>
-            <Box position="relative" flexShrink={0}>
-              <IconButton aria-label={hasFilters ? 'Filters (active)' : 'Filters'}
-                aria-expanded={filtersPanel.isOpen}
-                variant={filtersPanel.isOpen ? 'solid' : 'outline'}
-                colorScheme={filtersPanel.isOpen ? 'brand' : 'gray'}
-                icon={<SlidersHorizontal size={16} />} onClick={filtersPanel.onToggle} />
-              {hasFilters && !filtersPanel.isOpen && (
-                <Box position="absolute" top="-2px" right="-2px" boxSize="10px" borderRadius="full"
-                  bg="brand.500" borderWidth="2px" borderColor="bg.surface" pointerEvents="none" />
-              )}
+        {sideways ? (
+          // One line over the list: the type, then how many (and Clear).
+          <Box pb={2} mb={1} borderBottomWidth="1px" borderColor="border.default">
+            <HStack spacing={3}>
+              {typeSwitch({ size: 'xs', p: 0.5, flexShrink: 0 })}
+              <Text flex="1" minW={0} fontSize="xs" color="text.muted" textAlign="right" sx={ONE_LINE}>
+                {summary}
+              </Text>
+              {clear}
+            </HStack>
+            {filterFields}
+          </Box>
+        ) : (
+          <>
+            <Box mb={5}>
+              {search}
+              {filterFields}
             </Box>
-          </HStack>
-
-          <Collapse in={filtersPanel.isOpen} animateOpacity>
-            <SimpleGrid key={fieldsKey} columns={{ base: 2, md: 3 }} spacing={3} pt={4}>
-              <FormControl gridColumn={{ base: 'span 2', md: 'auto' }}>
-                <FormLabel fontSize="xs" color="text.muted">Category</FormLabel>
-                <Select placeholder="Any" value={filters.categoryId}
-                  onChange={(e) => setFilter('categoryId')(e.target.value)}>
-                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  {unlistedCategory && <option value={filters.categoryId}>{unlistedCategory}</option>}
-                  <option value={NO_CATEGORY}>Uncategorized</option>
-                </Select>
-              </FormControl>
-              <FormControl>
-                <FormLabel fontSize="xs" color="text.muted">Min ({baseCurrency})</FormLabel>
-                <MoneyInput currency={baseCurrency} placeholder="0" value={filters.min} onChange={setFilter('min')} />
-              </FormControl>
-              <FormControl>
-                <FormLabel fontSize="xs" color="text.muted">Max ({baseCurrency})</FormLabel>
-                <MoneyInput currency={baseCurrency} placeholder="∞" value={filters.max} onChange={setFilter('max')} />
-              </FormControl>
-              <FormControl>
-                <OptionalDate label="From" value={filters.from} onChange={setFilter('from')} />
-              </FormControl>
-              <FormControl>
-                <OptionalDate label="To" value={filters.to} onChange={setFilter('to')} />
-              </FormControl>
-            </SimpleGrid>
-          </Collapse>
-        </Box>
-
-        <CardHeader icon={ReceiptText} title={head.title} divider
-          subtitle={searching && !loading && !savingsLoading && shown.length > 0
-            ? `${head.subtitle} · Net ${net < 0 ? '−' : ''}${formatMoney(Math.abs(net), baseCurrency)}`
-            : head.subtitle}
-          action={searching && (
-            <Button size="xs" variant="ghost" leftIcon={<X size={14} />} onClick={clearAll}>
-              Clear
-            </Button>
-          )} />
+            <CardHeader icon={ReceiptText} title={head.title} divider subtitle={summary} action={clear} />
+          </>
+        )}
         {error ? <QueryError error={error} onRetry={reload} what="your transactions" /> : loading ? (
           <SkeletonRegion><SkeletonRows count={8} py={2.5} /></SkeletonRegion>
         ) : firstRun ? (
