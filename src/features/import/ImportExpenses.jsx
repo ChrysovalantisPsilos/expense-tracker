@@ -21,9 +21,10 @@ import {
   rememberedHolder, rememberHolder,
 } from './importExpenses.js'
 import {
-  previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder, newIncomeOptions, suggestionFor,
+  previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder,
 } from './importMath.js'
 import { ensureCategory } from '../categories/categories.js'
+import { newIncomeOptions, suggestionFor } from '../categories/categoryMath.js'
 import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
 import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'

@@ -3,8 +3,9 @@ import assert from 'node:assert/strict'
 import {
   merchantKey, merchantName, groupMerchants, rowMerchantName, isOwnTransfer, rowToDraft, previewDrafts, parseAmount,
   parseDate, deterministicUuid, normalizeCurrency, cleanHolderName, suggestedHolder, fileHolder,
-  merchantGroups, groupIdOf, ruleCategory, SUGGESTED_INCOME_CATEGORIES, newIncomeOptions, suggestionFor,
+  merchantGroups, groupIdOf, ruleCategory,
 } from '../src/features/import/importMath.js'
+import { SUGGESTED_INCOME_CATEGORIES, newIncomeOptions, suggestionFor } from '../src/features/categories/categoryMath.js'
 import { CATEGORY_ICON_KEYS } from '../src/shared/lib/categoryStyle.js'
 import { latestSql } from './migrations.js'
 
@@ -412,7 +413,7 @@ test('ruleCategory: a rule only files rows of its category\'s kind', () => {
   assert.equal(ruleCategory(rules, kindOf, '', 'expense'), null)
 })
 
-test('New merchants: income suggestions the user lacks are offered as "(new)"', () => {
+test('income suggestions the user lacks are offered as "(new)" (import + income form)', () => {
   assert.deepEqual(newIncomeOptions([]).map((o) => o.label), ['Salary (new)', 'Friend Transfer (new)', 'Bonus (new)'])
   const cats = [
     { id: '1', name: ' salary ', kind: 'income' }, // names compare trimmed and case-blind

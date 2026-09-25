@@ -79,3 +79,34 @@ export function categoryPeriod(rows, { categoryId, from, to, baseCurrency, separ
     .reduce((sum, r) => sum + toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency), 0)
   return { listed: paidInWindow(mine, from, to), total }
 }
+
+// The income categories suggested to someone who doesn't have them yet: the
+// import's money-in dropdowns and the income form's category picker list them
+// as "Bonus (new)", and picking one creates that category on save. Each is one
+// of the defaults new accounts get (seed_default_categories, 0081), with the
+// same icon — test/importMath.test.js keeps the two in lockstep. Existing
+// accounts are never backfilled; this is how they get them.
+export const SUGGESTED_INCOME_CATEGORIES = [
+  { name: 'Salary', icon: 'salary' },
+  { name: 'Friend Transfer', icon: 'transfer' },
+  { name: 'Bonus', icon: 'salary' },
+]
+const NEW_PREFIX = 'new:'
+const nameKey = (n) => String(n ?? '').trim().toLowerCase()
+
+// The suggestions missing from `categories` (the user's income ones; names
+// compared trimmed and case-blind), as dropdown options
+// { value: 'new:Bonus', label: 'Bonus (new)' }.
+export function newIncomeOptions(categories) {
+  const have = new Set((categories ?? []).filter((c) => c.kind === 'income').map((c) => nameKey(c.name)))
+  return SUGGESTED_INCOME_CATEGORIES.filter((s) => !have.has(nameKey(s.name)))
+    .map((s) => ({ value: NEW_PREFIX + s.name, label: `${s.name} (new)` }))
+}
+
+// The suggestion a dropdown value picks ({ name, icon }), or null for an
+// existing category's id (or nothing).
+export function suggestionFor(value) {
+  if (!String(value ?? '').startsWith(NEW_PREFIX)) return null
+  const name = value.slice(NEW_PREFIX.length)
+  return SUGGESTED_INCOME_CATEGORIES.find((s) => s.name === name) ?? null
+}
