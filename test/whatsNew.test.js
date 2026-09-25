@@ -207,6 +207,17 @@ test('releases.js: every page is complete, and every action opens a real page', 
   }
 })
 
+test('this release (2026-09-26): three pages, the status page has no action', () => {
+  const r = RELEASES[0]
+  assert.equal(r.id, '2026-09-26')
+  assert.equal(r.pages.length, 3)
+  assert.deepEqual(r.pages.map((p) => p.title),
+    ['Sideways phones, redesigned', 'Service status', 'And a few more'])
+  // status.budgeer.com is outside the app, and actions only open in-app pages.
+  assert.equal(r.pages[1].action, undefined)
+  assert.match(r.pages[1].body, /status\.budgeer\.com/)
+})
+
 test('this release: five pages, the salary page opens Monthly spending', () => {
   const r = RELEASES.find((x) => x.id === '2026-09-25')
   assert.equal(r.pages.length, 5)

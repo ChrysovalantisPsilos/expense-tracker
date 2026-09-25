@@ -77,6 +77,7 @@ wrapping Supabase calls), and its pure math module where applicable.
   `ALL DATABASE TESTS PASSED`.
 - **Manual:** `npm run dev`, exercise the changed feature; for schema changes,
   apply the migration to TEST first and verify, then PROD.
+- **Release notes:** every production release adds a new entry at the top of `src/features/whatsnew/releases.js` (dated the release day; ids are unique `YYYY-MM-DD`).
 - See `docs/TESTING.md` for the full manual plan.
 
 When you change the schema or a policy, add the matching rolled-back assertion

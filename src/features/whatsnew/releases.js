@@ -9,6 +9,30 @@
 //     action      — optional { label, to }: a button that opens that page
 export const RELEASES = [
   {
+    id: '2026-09-26',
+    date: '2026-09-26',
+    pages: [
+      {
+        title: 'Sideways phones, redesigned',
+        body: 'Turn your phone on its side for a slim rail, a header that stays put, and a summary strip across the top of Home. Entries sit on one line, and adding an expense puts the amount beside the categories.',
+        chips: ['Spent · Income · Net', 'One line'],
+        variant: 'update',
+      },
+      {
+        title: 'Service status',
+        body: 'status.budgeer.com shows whether everything in Budgeer is working, checked every 10 minutes. Find it in Settings › Help, on the Help page and in the site footer.',
+        chips: ['All working', 'Every 10 min'],
+        variant: 'start',
+      },
+      {
+        title: 'And a few more',
+        body: 'Backups now include your salary setting. And tapping the sun or moon button back to your device’s theme makes the app follow your device again.',
+        chips: ['Backups', 'Match device'],
+        variant: 'split',
+      },
+    ],
+  },
+  {
     id: '2026-09-25',
     date: '2026-09-25',
     pages: [
