@@ -57,8 +57,8 @@ export const TOUR_STEPS = [
   },
   {
     id: 'account', media: 'mobile', target: 'account',
-    title: 'Updates, theme and Settings',
-    body: 'The bell shows what’s new, the moon switches light and dark, and your picture opens Settings.',
+    title: 'Updates and Settings',
+    body: 'The bell shows what’s new, and your picture opens Settings, where you can also pick light or dark.',
   },
   {
     id: 'account', media: 'desktop', target: 'account', prefer: NAV,
