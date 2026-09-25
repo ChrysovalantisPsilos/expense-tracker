@@ -3,12 +3,43 @@ import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
   Stack, Text, FormControl, FormLabel, Input, Button, Checkbox,
 } from '@chakra-ui/react'
+import { Users } from 'lucide-react'
 
 // The group's confirmation dialogs (its forms are full pages).
 
-export function DeleteGroupModal({ group, isOpen, onClose, busy, onConfirm }) {
+// Delete confirm (type-to-confirm). While others are still in the group
+// (`check` from groupDeleteCheck) it explains instead, with a way to the
+// members list; delete_group refuses the same case on the server.
+export function DeleteGroupModal({ group, check, isOpen, onClose, busy, onConfirm, onMembers }) {
   const [text, setText] = useState('')
   const match = text.trim() === group.name
+  if (!check.canDelete) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent mx={4}>
+          <ModalHeader>Can’t delete “{group.name}” yet</ModalHeader>
+          <ModalBody>
+            <Stack spacing={3}>
+              <Text color="text.muted">
+                You can only delete a group once everyone else has left. Remove
+                the other members (or ask them to leave) first.
+              </Text>
+              {check.others.length > 0 && (
+                <Text fontSize="sm">
+                  Still in the group: <b>{check.others.map((m) => m.display_name).join(', ')}</b>
+                </Text>
+              )}
+            </Stack>
+          </ModalBody>
+          <ModalFooter gap={2}>
+            <Button variant="ghost" onClick={onClose}>Close</Button>
+            <Button leftIcon={<Users size={16} />} onClick={onMembers}>Manage members</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    )
+  }
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay />

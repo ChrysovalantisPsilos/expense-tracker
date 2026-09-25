@@ -10,7 +10,7 @@ import BackButton from '../../shared/ui/BackButton.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useGroup, removeMember, deleteGroup, downloadGroupReport } from './groups.js'
 import { commentCounts } from './comments.js'
-import { groupTotal, groupSummaryText } from './groupFormat.js'
+import { groupDeleteCheck, groupTotal, groupSummaryText } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import GroupHeader from './GroupHeader.jsx'
 import GroupBalances from './GroupBalances.jsx'
@@ -144,9 +144,10 @@ export default function GroupDetail() {
       <LeaveGroupModal group={group} isOwner={isOwner} isOpen={leaveModal.isOpen}
         onClose={leaveModal.onClose} busy={actionBusy} onConfirm={doLeave} />
 
-      {/* Delete confirm (type-to-confirm) */}
-      <DeleteGroupModal group={group} isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}
-        busy={actionBusy} onConfirm={doDelete} />
+      {/* Delete confirm (type-to-confirm), or why not yet while others are in */}
+      <DeleteGroupModal group={group} check={groupDeleteCheck(group, members, user.id)}
+        isOpen={deleteModal.isOpen} onClose={deleteModal.onClose}
+        busy={actionBusy} onConfirm={doDelete} onMembers={to('members')} />
     </Stack>
   )
 }

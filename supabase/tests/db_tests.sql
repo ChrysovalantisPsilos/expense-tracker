@@ -4815,11 +4815,121 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 81. 0088: a group can't be deleted while other people are still in it.
+--     The owner is refused while another joined member is in; a non-owner is
+--     refused outright; someone who left with history (detached row) or whose
+--     account was deleted ("Former member") doesn't hold it up; once alone the
+--     owner deletes it and its pending invites go with it. The server-side
+--     account-deletion path (accountDeletion.ts: hand the group to the next
+--     linked member, then delete the auth user; sole-owner groups cascade)
+--     still works, and a direct DELETE stays closed.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; u3 uuid; u4 uuid; gid uuid; g2 uuid; m1 uuid; m2 uuid; m4 uuid;
+        n int; tok text := 'zztest_' || md5(random()::text);
+begin
+  begin
+    u1 := pg_temp.zz_user('gdo');
+    u2 := pg_temp.zz_user('gdm');
+    u3 := pg_temp.zz_user('gdx');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    gid := public.create_group('ZZT delete needs empty', 'EUR');
+    execute 'reset role';
+    select id into m1 from public.group_members where group_id = gid and user_id = u1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Joined') returning id into m2;
+    -- m2 has history (a zero-net footprint), so leaving keeps a detached row.
+    insert into public.group_expenses (group_id, paid_by, amount_enc, currency, description_enc, spent_at)
+    values (gid, m2, public.enc_minor(0), 'EUR', public.enc_text('zz footprint'), current_date);
+    insert into public.group_invites (group_id, token, created_by) values (gid, tok, u1);
+
+    -- (a) Owner, with a joined member still in: refused with the user copy.
+    begin
+      execute 'set local role authenticated';
+      perform public.delete_group(gid);
+      raise exception 'GUARD_MISSED: deleted with a joined member in';
+    exception when others then
+      if sqlerrm <> 'Remove the other members before deleting this group.' then
+        raise exception 'owner refusal was: %', sqlerrm;
+      end if;
+    end;
+    execute 'reset role';
+
+    -- (b) A non-owner member: refused outright.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    begin
+      execute 'set local role authenticated';
+      perform public.delete_group(gid);
+      raise exception 'GUARD_MISSED: a non-owner deleted the group';
+    exception when others then
+      if sqlerrm <> 'only the owner can delete this group' then raise exception 'non-owner refusal was: %', sqlerrm; end if;
+    end;
+    execute 'reset role';
+
+    -- (c) A direct DELETE is still closed to API roles (0058).
+    begin
+      execute 'set local role authenticated';
+      delete from public.groups where id = gid;
+      raise exception 'GUARD_MISSED: direct delete';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+    if not exists (select 1 from public.groups where id = gid) then raise exception 'group gone after refusals'; end if;
+
+    -- (d) The member leaves (history keeps a detached row): no longer in the
+    --     way, and neither is a deleted account's "Former member" row.
+    execute 'set local role authenticated';
+    perform public.remove_group_member(m2, true);
+    execute 'reset role';
+    if not exists (select 1 from public.group_members where id = m2 and user_id is null and former_user_id = u2) then
+      raise exception 'leaving with history did not detach the row';
+    end if;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u3, 'Deleter');
+    delete from auth.users where id = u3;   -- anonymises the row, user_id → null
+    if not exists (select 1 from public.group_members where group_id = gid and display_name = 'Former member' and user_id is null) then
+      raise exception 'account deletion did not leave a Former member row';
+    end if;
+
+    -- (e) Alone, the owner deletes it; the pending invite goes with it.
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.delete_group(gid);
+    execute 'reset role';
+    if exists (select 1 from public.groups where id = gid) then raise exception 'owner alone could not delete'; end if;
+    select count(*) into n from public.group_invites where group_id = gid;
+    if n <> 0 then raise exception 'pending invite survived the delete'; end if;
+
+    -- (f) Server path: the owner deletes their account while a joined member
+    --     is in. accountDeletion.ts hands the group over first (done here as
+    --     the service role does), then the auth user goes: the group survives
+    --     with the new owner. The owner's other, sole-member group cascades.
+    u4 := pg_temp.zz_user('gdn');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    gid := public.create_group('ZZT handed over', 'EUR');
+    g2  := public.create_group('ZZT sole owner', 'EUR');
+    execute 'reset role';
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u4, 'Heir') returning id into m4;
+    update public.groups set owner_id = u4 where id = gid;
+    update public.group_members set role = 'owner' where id = m4;
+    delete from auth.users where id = u1;
+    if not exists (select 1 from public.groups where id = gid and owner_id = u4) then
+      raise exception 'handed-over group did not survive its old owner''s deletion';
+    end if;
+    if exists (select 1 from public.groups where id = g2) then raise exception 'sole-owner group survived account deletion'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: delete_group refused while others are in (owner/non-owner), works alone; account deletion unaffected';
+    else update _t set fails = fails + 1; raise notice 'FAIL: delete_group needs an empty group — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 81; f int; p int;  -- tests 1–80 + B-0059
+declare expected_tests constant int := 82; f int; p int;  -- tests 1–81 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

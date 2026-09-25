@@ -16,6 +16,17 @@ export function sortMembers(members, myUserId) {
     .map(([m]) => m)
 }
 
+// Can the viewer delete this group? Only the owner, and only once nobody else
+// is still in it: every member linked to another account has to leave (or be
+// removed) first. A row with no account is someone who already left (or
+// deleted their account) and is kept only for the group's history, so it
+// doesn't count. Mirrors delete_group (0088), which stays the authority.
+// { canDelete, others } — `others` are the members still in the way.
+export function groupDeleteCheck(group, members, myUserId) {
+  const others = (members ?? []).filter((m) => m.user_id && m.user_id !== myUserId)
+  return { canDelete: !!myUserId && group?.owner_id === myUserId && others.length === 0, others }
+}
+
 // The header's avatar stack: the first `max` members to draw, and how many
 // more sit behind a "+N" chip. { shown, overflow }
 export function avatarStack(members, max = 4) {

@@ -4,7 +4,9 @@ import {
   memberName, pluralise, splitLabel, settlePlan, sortMembers, avatarStack,
   paidByLabel, groupTotal, memberBalances, balanceHighlight, isEveryoneEqualSplit,
   myGroupBalance, mySettleSuggestions, viewerName, expenseLabel, settlementLabel, commentTarget,
+  groupDeleteCheck,
 } from '../src/features/groups/groupFormat.js'
+import { latestSql } from './migrations.js'
 
 const members = [{ id: 'a', display_name: 'Alice' }, { id: 'b', display_name: 'Bob' }]
 
@@ -235,4 +237,35 @@ test('commentTarget: finds an expense or a settlement by id, null otherwise', ()
   assert.deepEqual(commentTarget(ledger, 's1', 'y'), { type: 'settlement', id: 's1', label: 'Anna → You' })
   assert.equal(commentTarget(ledger, 'gone', 'y'), null)
   assert.equal(commentTarget({}, 'e1', 'y'), null)
+})
+
+test('groupDeleteCheck: the owner can delete only once nobody else is in the group', () => {
+  const group = { id: 'g', owner_id: 'u1' }
+  const me = { id: 'm1', user_id: 'u1', display_name: 'Me', role: 'owner' }
+  const ana = { id: 'm2', user_id: 'u2', display_name: 'Ana' }
+  // Someone who left (or deleted their account): the row stays for history only.
+  const left = { id: 'm3', user_id: null, former_user_id: 'u3', display_name: 'Ben' }
+  const gone = { id: 'm4', user_id: null, former_user_id: null, display_name: 'Former member' }
+
+  // Alone → yes.
+  assert.deepEqual(groupDeleteCheck(group, [me], 'u1'), { canDelete: true, others: [] })
+  // A joined member still in it → no, and they're named.
+  assert.deepEqual(groupDeleteCheck(group, [me, ana], 'u1'), { canDelete: false, others: [ana] })
+  // People who already left don't hold it up (they can't be removed: their history stays).
+  assert.deepEqual(groupDeleteCheck(group, [me, left, gone], 'u1'), { canDelete: true, others: [] })
+  assert.deepEqual(groupDeleteCheck(group, [me, left, ana], 'u1').others, [ana])
+  // Not the owner → no, even as the only one left.
+  assert.equal(groupDeleteCheck(group, [ana], 'u2').canDelete, false)
+  assert.equal(groupDeleteCheck({ owner_id: 'u2' }, [me], 'u1').canDelete, false)
+  // Nothing loaded / signed out → no.
+  assert.equal(groupDeleteCheck(null, [], 'u1').canDelete, false)
+  assert.equal(groupDeleteCheck({ owner_id: null }, [], null).canDelete, false)
+  assert.deepEqual(groupDeleteCheck(group, undefined, 'u1'), { canDelete: true, others: [] })
+})
+
+test('groupDeleteCheck mirrors delete_group: linked members other than the caller block it', () => {
+  const sql = latestSql('delete_group')
+  assert.match(sql, /m\.user_id is not null and m\.user_id <> uid/)
+  assert.match(sql, /raise exception 'Remove the other members before deleting this group\.'/)
+  assert.match(sql, /owner_id = uid/)
 })

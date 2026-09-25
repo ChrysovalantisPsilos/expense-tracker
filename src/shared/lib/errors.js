@@ -114,6 +114,7 @@ export const SQL_USER_MESSAGES = new Map([
   ["Split member is not in this expense's group", null],
   // Leaving, removing, deleting
   ['Everyone must be settled up before the group can be deleted.', null],
+  ['Remove the other members before deleting this group.', null],
   ['This member still has an outstanding balance — settle up first.', null],
   ["This person has expense history and can't be removed individually — delete the group instead.", null],
   ['You are the only member — delete the group instead.', null],
