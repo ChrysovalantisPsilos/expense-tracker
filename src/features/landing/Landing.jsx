@@ -14,7 +14,7 @@ import { DISCLAIMER, HOBBY_BADGE, HOBBY_NOTICE_TITLE } from '../../shared/lib/di
 import TripSplitMock from './TripSplitMock.jsx'
 import BudgetsMock from './BudgetsMock.jsx'
 import InsightsMock from './InsightsMock.jsx'
-import { SUPPORT_EMAIL } from '../../shared/lib/contact.js'
+import { STATUS_URL, SUPPORT_EMAIL } from '../../shared/lib/contact.js'
 import CurrencyMock from './CurrencyMock.jsx'
 import SectionHeading from './SectionHeading.jsx'
 import HowItWorks from './HowItWorks.jsx'
@@ -239,6 +239,7 @@ export default function Landing() {
               <Link as={RouterLink} to="/help#install-app">Install the app</Link>
               <Link as={RouterLink} to="/privacy">Privacy</Link>
               <Link as={RouterLink} to="/terms">Terms</Link>
+              <Link href={STATUS_URL} isExternal>Status</Link>
               <Link href={`mailto:${SUPPORT_EMAIL}`}>Contact</Link>
             </HStack>
             <ThemeToggle />
