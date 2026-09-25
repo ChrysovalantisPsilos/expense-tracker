@@ -10,7 +10,7 @@ import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { monthlyShare } from '../../shared/lib/spread.js'
 import { countsForLabel } from '../../shared/lib/salaryShift.js'
-import { savingsSource } from '../../shared/lib/savings.js'
+import { savingsNoteOf } from '../../shared/lib/savings.js'
 import { useSavingsIds } from '../categories/categories.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { deleteTransaction } from './writes.js'
@@ -27,7 +27,7 @@ import { frequencyLabel } from '../recurring/recurringMath.js'
 // a salary paid late in the month says "Counts for October" when the user
 // counts it toward the next month (0081; the row keeps its real date). A
 // savings entry (0084) says where its money came from: "from income" or
-// "received".
+// "received"; an expense paid from savings (0085) says "from savings".
 // On phones the row actions fold into a ⋯ menu.
 // Each row's income/expense styling follows its own `kind`, so the same
 // list renders every mode of the Transactions page (Expenses, Income, All).
@@ -71,7 +71,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
               <ItemRow py={2.5} onClick={shared ? undefined : () => open(r)}
                 media={<CategoryBadge category={r.categories} kind={rk} size={32} />}
                 title={r.description || r.categories?.name || (rk === 'income' ? 'Income' : 'Expense')}
-                meta={<RowMeta row={r} shared={shared} saved={savingsSource(r, savingsIds)} />}
+                meta={<RowMeta row={r} shared={shared} saved={savingsNoteOf(r, savingsIds)} />}
                 amount={`${rk === 'income' ? '+' : ''}${formatMoney(r.amount_minor, r.currency)}`}
                 amountTone={rk === 'income' ? 'positive' : 'default'}
                 amountMeta={conv && (

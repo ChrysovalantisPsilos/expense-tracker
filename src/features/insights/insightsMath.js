@@ -1,6 +1,6 @@
 import { toBaseMinor, minorFactor, baseEquivalent } from '../../shared/lib/currency.js'
 import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
-import { netSign, rowEffect } from '../../shared/lib/savings.js'
+import { isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { categoryBars } from '../dashboard/categoryBars.js'
 
 // Income/expense trend in MAJOR base-currency units, one entry per month bucket
@@ -9,7 +9,8 @@ import { categoryBars } from '../dashboard/categoryBars.js'
 // spendRows output (shared/lib/spread.js) so a yearly subscription counts its
 // monthly share in each month. Savings entries (in `savingsIds`, 0084) are
 // neither income nor spending; `net` (what's left over: income − expenses −
-// savings taken from income) is the one figure they touch.
+// savings taken from income) is the one figure they touch. An expense paid
+// from savings (0085) is spending, but leaves `net` alone.
 export function buildTrend(rows, months, baseCurrency, savingsIds = new Set()) {
   const factor = minorFactor(baseCurrency)
   const by = new Map(months.map((m) => [m.key, { label: m.label, income: 0, expense: 0, net: 0 }]))
@@ -20,7 +21,7 @@ export function buildTrend(rows, months, baseCurrency, savingsIds = new Set()) {
     const base = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency) / factor
     const effect = rowEffect(r, savingsIds)
     if (effect === 'income') bucket.income += base
-    else if (effect === 'expense') bucket.expense += base
+    else if (isSpending(effect)) bucket.expense += base
     bucket.net += netSign(effect) * base
   }
   return [...by.values()]
@@ -42,10 +43,12 @@ export function spendDelta(trend) {
 }
 
 // Split account balances (minor units) into assets vs liabilities, plus net.
-// `savings` — every savings entry ever made, in the base currency (savedMinor
-// over all time, 0084) — is one more asset: the read-only "Savings" line.
+// `savings` — the savings pot in the base currency (savingsPotMinor over all
+// time: every savings entry, 0084, minus every expense paid from savings,
+// 0085) — is the read-only "Savings" line: an asset, or, once more was paid
+// from savings than was recorded going in, a liability of the shortfall.
 export function netWorth(accounts, savings = 0) {
-  let assets = savings, liabilities = 0
+  let assets = Math.max(0, savings), liabilities = Math.max(0, -savings)
   for (const acc of accounts) {
     if (acc.type === 'liability') liabilities += acc.balance_minor
     else assets += acc.balance_minor

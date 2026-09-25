@@ -51,8 +51,9 @@ export function filterTransactions(rows, { text = '', min = '', max = '', catego
 }
 
 // Income minus expenses across `rows`, in base-currency minor units — the
-// same net as Home's: savings (in `savingsIds`, 0084) aren't income, and those
-// taken from income take away (rowEffect / netSign).
+// same net as Home's: savings (in `savingsIds`, 0084) aren't income, those
+// taken from income take away, and expenses paid from savings (0085) don't
+// (rowEffect / netSign).
 export function netBaseMinor(rows, baseCurrency, savingsIds = new Set()) {
   return rows.reduce((s, r) => {
     const b = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)

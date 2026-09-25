@@ -8,8 +8,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  savingsIdsOf, isSavingsRow, rowEffect, savingsSource, netSign, withoutSavings, savedMinor,
+  EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, savingsNoteOf, isSpending, netSign, savingsPotMinor,
 } from '../src/shared/lib/savings.js'
+import { potSign, savingsSource } from '../supabase/functions/_shared/savings.ts'
 import { formatMoney } from '../src/shared/lib/currency.js'
 import { spendRows } from '../src/shared/lib/spread.js'
 import {
@@ -20,7 +21,7 @@ import { netBaseMinor } from '../src/features/transactions/txnFilter.js'
 import { incomePerMonth, planRepeat, repeatDraft, ruleFromTransaction } from '../src/features/recurring/recurringMath.js'
 import { periodFromValue } from '../src/features/transactions/periods.js'
 import {
-  buildStatement, savingsNote, statementSheets,
+  buildStatement, fromSavingsNote, savingsNote, statementSheets,
 } from '../supabase/functions/generate-report/statementMath.ts'
 
 const SAV = 'cat-savings'
@@ -69,18 +70,16 @@ test('rowEffect: income, expense, savings taken from income, savings received', 
   assert.deepEqual(rows.map((r) => savingsSource(r, IDS)), [null, 'from income', 'received', null])
 })
 
-test('isSavingsRow / withoutSavings / savedMinor', () => {
+test('isSavingsRow / savingsPotMinor', () => {
   assert.equal(isSavingsRow(rows[1], IDS), true)
   assert.equal(isSavingsRow(rows[0], IDS), false)
   assert.equal(isSavingsRow(row({ category_id: SAV }), IDS), false) // an expense never is
   assert.equal(isSavingsRow(null, IDS), false)
-  assert.deepEqual(withoutSavings(rows, IDS).map((r) => r.id), ['sal', 'food'])
-  assert.equal(withoutSavings(rows, new Set()), rows) // nothing marked: the same array
   // Both kinds, each at its own captured rate: €300 + £100 × 1.2.
-  assert.equal(savedMinor(rows, IDS, 'EUR'), 30000 + 12000)
-  assert.equal(savedMinor(rows, new Set(), 'EUR'), 0)
+  assert.equal(savingsPotMinor(rows, IDS, 'EUR'), 30000 + 12000)
+  assert.equal(savingsPotMinor(rows, new Set(), 'EUR'), 0)
   // Zero-decimal base: ¥ has no minor part.
-  assert.equal(savedMinor([row({ kind: 'income', category_id: SAV, amount_minor: 1000, exchange_rate: 160 })], IDS, 'JPY'), 1600)
+  assert.equal(savingsPotMinor([row({ kind: 'income', category_id: SAV, amount_minor: 1000, exchange_rate: 160 })], IDS, 'JPY'), 1600)
 })
 
 test('Home: savings aren\'t income; the net takes away only those taken from income', () => {
@@ -91,7 +90,7 @@ test('Home: savings aren\'t income; the net takes away only those taken from inc
   assert.equal(t.saved, 42000) // both kinds
   assert.equal(t.savedFromIncome, 30000)
   assert.deepEqual(t.byCategory, [{ name: 'Food', value: 45000 }]) // savings aren't spending either
-  const none = { expense: 0, income: 0, savedFromIncome: 0 }
+  const none = periodProjection([], '2026-08-31', '2026-09-25') // a past period: nothing ahead
   const totals = projectedTotals(t, none)
   assert.equal(totals.earnedTotal, 200000)
   assert.equal(totals.fromIncomeTotal, 30000)
@@ -105,11 +104,13 @@ test('Home: savings aren\'t income; the net takes away only those taken from inc
 })
 
 test('Home: the Net tile says what it takes away', () => {
-  const none = { expense: 0, income: 0, savedFromIncome: 0 }
-  assert.equal(netNote(none, 0), 'income − expenses')
-  assert.equal(netNote(none, 30000), 'income − expenses − savings')
-  assert.equal(netNote({ ...none, savedFromIncome: 30000 }, 30000), 'incl. upcoming recurring')
-  assert.equal(netNote({ ...none, expense: 100 }, 0), 'incl. upcoming recurring')
+  const none = periodProjection([], null, '2026-09-25')
+  assert.equal(netNote(none, 0, 0), 'income − expenses')
+  assert.equal(netNote(none, 30000, 0), 'income − expenses − savings')
+  assert.equal(netNote(none, 0, 90000), 'excl. spending from savings')
+  assert.equal(netNote(none, 30000, 90000), 'excl. spending from savings')
+  assert.equal(netNote({ ...none, savedFromIncome: 30000 }, 30000, 0), 'incl. upcoming recurring')
+  assert.equal(netNote({ ...none, expense: 100 }, 0, 0), 'incl. upcoming recurring')
 })
 
 test('Home: a late-month salary shift still leaves savings out', () => {
@@ -132,10 +133,12 @@ test('Home: upcoming recurring savings aren\'t income; those from income lower t
     rule({ kind: 'expense', category_id: 'cat-rent', amount_minor: 90000, next_run: '2026-09-29' }),
   ]
   const proj = periodProjection(rules, '2026-09-30', '2026-09-25', false, null, IDS)
-  assert.deepEqual(proj, { expense: 90000, income: 200000, savedFromIncome: 30000 })
-  assert.equal(projectedTotals({ spent: 0, earned: 0 }, proj).netTotal, 200000 - 90000 - 30000)
+  assert.deepEqual(proj,
+    { expense: 90000, income: 200000, expenseFromSavings: 0, savedFromIncome: 30000, net: 200000 - 90000 - 30000 })
+  assert.equal(projectedTotals(periodTotals([], 'EUR', IDS), proj).netTotal, 200000 - 90000 - 30000)
   // Without savings categories they're income, as before.
-  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-25'), { expense: 90000, income: 235000, savedFromIncome: 0 })
+  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-25'),
+    { expense: 90000, income: 235000, expenseFromSavings: 0, savedFromIncome: 0, net: 235000 - 90000 })
   // The Recurring page's income per month leaves both kinds out.
   assert.equal(incomePerMonth(rules, IDS), 200000)
   assert.equal(incomePerMonth(rules), 235000)
@@ -178,7 +181,7 @@ test('Insights: net worth adds the savings line (both kinds) to assets and net',
   assert.deepEqual(netWorth(accounts, 42000), { assets: 142000, liabilities: 40000, net: 102000 })
   assert.deepEqual(netWorth(accounts), { assets: 100000, liabilities: 40000, net: 60000 })
   // Savings alone (no accounts yet).
-  assert.deepEqual(netWorth([], savedMinor(rows, IDS, 'EUR')), { assets: 42000, liabilities: 0, net: 42000 })
+  assert.deepEqual(netWorth([], savingsPotMinor(rows, IDS, 'EUR')), { assets: 42000, liabilities: 0, net: 42000 })
 })
 
 test('Transactions: a search\'s net is Home\'s net', () => {
@@ -195,6 +198,8 @@ test('statement: savings totalled as saved (both subtotals), never as income; th
   assert.deepEqual(s.saved, { total: 420, fromIncome: 300, received: 120 })
   assert.deepEqual(s.byCategory, { Food: 450 })
   assert.deepEqual(s.rows.map((r) => r.saved), [null, 'from income', 'received', null])
+  assert.equal(s.spentFromSavings, 0)
+  assert.equal(fromSavingsNote(s.spentFromSavings), null)
   assert.equal(savingsNote(s.saved), 'Savings aren’t income; those taken from your income are subtracted from the net.')
   const [summary, list] = statementSheets(s, 'EUR', [])
   const cells = Object.fromEntries(summary.rows.filter((r) => r.length === 2))
@@ -222,4 +227,127 @@ test('statement: savings totalled as saved (both subtotals), never as income; th
   assert.equal(plain.saved, null)
   assert.equal(savingsNote(plain.saved), null)
   assert.ok(!statementSheets(plain, 'EUR', [])[0].rows.some((r) => String(r[0]).startsWith('Saved')))
+})
+
+// ---- Expenses paid from savings (0085): spending, not Net --------------------
+// September as above, plus a €900 laptop paid from savings.
+const laptop = row({ id: 'laptop', category_id: 'cat-tech', amount_minor: 90000, paid_from_savings: true,
+  categories: { name: 'Tech' } })
+const withLaptop = [...rows, laptop]
+
+test('rowEffect: an expense paid from savings; how every effect moves spending, the net and the pot', () => {
+  assert.equal(rowEffect(laptop, IDS), 'expense-from-savings')
+  // The flag is on the row: it holds without savings categories too.
+  assert.equal(rowEffect(laptop, new Set()), 'expense-from-savings')
+  assert.equal(rowEffect(row({ paid_from_savings: false }), IDS), 'expense')
+  // It means nothing on income (the CHECK keeps it off; never trusted).
+  assert.equal(rowEffect(row({ kind: 'income', category_id: 'cat-salary', paid_from_savings: true }), IDS), 'income')
+  assert.equal(rowEffect(row({ kind: 'income', category_id: SAV, paid_from_savings: true }), IDS), 'saved-received')
+  assert.deepEqual(EFFECTS, ['income', 'expense', 'expense-from-savings', 'saved-from-income', 'saved-received'])
+  assert.deepEqual(EFFECTS.map(isSpending), [false, true, true, false, false])
+  assert.deepEqual(EFFECTS.map(netSign), [1, -1, 0, -1, 0])
+  assert.deepEqual(EFFECTS.map(potSign), [0, 0, -1, 1, 1])
+  // The lists' note: "from savings" on it, the savings entries' source otherwise.
+  assert.deepEqual(withLaptop.map((r) => savingsNoteOf(r, IDS)), [null, 'from income', 'received', null, 'from savings'])
+  assert.equal(savingsSource(laptop, IDS), null) // not a savings entry
+})
+
+test('Home: an expense paid from savings is spent, but the net leaves it out', () => {
+  const spend = spendRows(withLaptop, 'EUR', '2026-09-01', '2026-09-30')
+  const t = periodTotals(spend, 'EUR', IDS)
+  assert.equal(t.spent, 45000 + 90000) // Spent includes it
+  assert.equal(t.spentFromSavings, 90000)
+  assert.deepEqual(t.byCategory, [{ name: 'Tech', value: 90000 }, { name: 'Food', value: 45000 }])
+  assert.equal(t.earned, 200000)
+  assert.equal(t.saved, 42000) // the Saved note is what went in, unchanged
+  assert.equal(t.net, 200000 - 45000 - 30000) // as without the laptop
+  const totals = projectedTotals(t, periodProjection([], '2026-08-31', '2026-09-25'))
+  assert.equal(totals.spentTotal, 135000)
+  assert.equal(totals.fromSavingsTotal, 90000)
+  assert.equal(totals.netTotal, 200000 - 45000 - 30000)
+  // A foreign one counts at its captured rate: $100 at 0.9 → €90 spent, net unchanged.
+  const usd = periodTotals([...spend, row({ amount_minor: 10000, currency: 'USD', exchange_rate: 0.9, paid_from_savings: true })], 'EUR', IDS)
+  assert.equal(usd.spent - t.spent, 9000)
+  assert.equal(usd.net, t.net)
+})
+
+test('Home: an upcoming expense paid from savings is projected spending, not against the projected net', () => {
+  const rule = (o) => ({ frequency: 'monthly', interval_n: 1, is_active: true, next_run: '2026-09-28', ...o })
+  const rules = [
+    rule({ kind: 'income', category_id: 'cat-salary', amount_minor: 200000 }),
+    rule({ kind: 'expense', category_id: 'cat-rent', amount_minor: 90000, next_run: '2026-09-29' }),
+    rule({ kind: 'expense', category_id: 'cat-gym', amount_minor: 5000, paid_from_savings: true }),
+  ]
+  const proj = periodProjection(rules, '2026-09-30', '2026-09-25', false, null, IDS)
+  assert.deepEqual(proj,
+    { expense: 95000, income: 200000, expenseFromSavings: 5000, savedFromIncome: 0, net: 200000 - 90000 })
+  const t = periodTotals(spendRows(withLaptop, 'EUR', '2026-09-01', '2026-09-30'), 'EUR', IDS)
+  const totals = projectedTotals(t, proj)
+  assert.equal(totals.spentTotal, 135000 + 95000)
+  assert.equal(totals.fromSavingsTotal, 95000)
+  assert.equal(totals.netTotal, (200000 - 45000 - 30000) + (200000 - 90000))
+})
+
+test('Insights: spending counts it, "Left over" doesn\'t; the Savings line takes it away', () => {
+  const months = [{ key: '2026-09', label: 'Sep' }]
+  assert.deepEqual(buildTrend(withLaptop, months, 'EUR', IDS),
+    [{ label: 'Sep', income: 2000, expense: 1350, net: 2000 - 450 - 300 }])
+  // The pot: €420 in, €900 out → −€480. Shown with a minus, as a debt.
+  const pot = savingsPotMinor(withLaptop, IDS, 'EUR')
+  assert.equal(pot, 42000 - 90000)
+  const accounts = [{ type: 'asset', balance_minor: 100000 }, { type: 'liability', balance_minor: 40000 }]
+  assert.deepEqual(netWorth(accounts, pot), { assets: 100000, liabilities: 40000 + 48000, net: 100000 - 40000 - 48000 })
+  assert.deepEqual(netWorth([], pot), { assets: 0, liabilities: 48000, net: -48000 })
+  // Less paid out than saved: still an asset, reduced.
+  const small = [...rows, { ...laptop, amount_minor: 10000 }]
+  assert.equal(savingsPotMinor(small, IDS, 'EUR'), 32000)
+  assert.deepEqual(netWorth([], savingsPotMinor(small, IDS, 'EUR')), { assets: 32000, liabilities: 0, net: 32000 })
+  // Exactly used up: zero (the line is hidden).
+  assert.equal(savingsPotMinor([...rows, { ...laptop, amount_minor: 42000 }], IDS, 'EUR'), 0)
+  // Each at its captured rate: £100 × 1.2 in, $50 × 0.9 out.
+  const fx = [rows[2], { ...laptop, amount_minor: 5000, currency: 'USD', exchange_rate: 0.9 }]
+  assert.equal(savingsPotMinor(fx, IDS, 'EUR'), 12000 - 4500)
+})
+
+test('Transactions: a search\'s net leaves an expense paid from savings out', () => {
+  assert.equal(netBaseMinor(withLaptop, 'EUR', IDS), 200000 - 45000 - 30000)
+  assert.equal(netBaseMinor([laptop], 'EUR', IDS), 0)
+})
+
+test('Recurring: a rule made from an expense paid from savings keeps it; switching it updates the rule', () => {
+  const entry = { id: 't1', kind: 'expense', amount_minor: 5000, currency: 'EUR', category_id: null, spent_at: '2026-09-02' }
+  assert.equal(ruleFromTransaction({ ...entry, paid_from_savings: true }).paid_from_savings, true)
+  assert.equal(ruleFromTransaction(entry).paid_from_savings, false)
+  const rule = { ...entry, id: 'r1', frequency: 'monthly', interval_n: 1, next_run: '2026-10-02', is_active: true }
+  const before = { ...entry, savings_from_income: false, paid_from_savings: false }
+  assert.deepEqual(planRepeat({ rule, repeat: true, draft: repeatDraft(rule), before, entry: { ...before, paid_from_savings: true } }),
+    { action: 'update', id: 'r1', fields: { paid_from_savings: true } })
+})
+
+test('statement: an expense paid from savings is spending, left out of the net, with one note', () => {
+  const txns = withLaptop.slice().reverse() // my_transactions: newest first
+  const s = buildStatement(txns, 'EUR', { from: '2026-09-01', to: '2026-09-30', savingsIds: IDS })
+  assert.equal(s.totalSpent, 450 + 900)
+  assert.equal(s.spentFromSavings, 900)
+  assert.equal(s.totalIncome, 2000)
+  assert.equal(s.net, 2000 - 450 - 300)
+  assert.deepEqual(s.byCategory, { Food: 450, Tech: 900 })
+  assert.deepEqual(s.saved, { total: 420, fromIncome: 300, received: 120 }) // what went in, unchanged
+  assert.deepEqual(s.rows.map((r) => r.fromSavings), [false, false, false, false, true])
+  assert.equal(fromSavingsNote(s.spentFromSavings), 'Expenses paid from savings count as spending but not against your income.')
+  const [summary, list] = statementSheets(s, 'EUR', [fromSavingsNote(s.spentFromSavings)])
+  const cells = Object.fromEntries(summary.rows.filter((r) => r.length === 2))
+  assert.equal(cells['Total expenses'], 1350)
+  assert.equal(cells['Of which paid from savings'], 900)
+  assert.equal(cells.Net, 2000 - 450 - 300)
+  assert.ok(summary.rows.some((r) => r.length === 1 && r[0].startsWith('Expenses paid from savings')))
+  assert.deepEqual(list.rows.slice(1).map((r) => r[1]),
+    ['income', 'saved (from income)', 'saved (received)', 'expense', 'expense (from savings)'])
+  // A description that looks like a formula stays text, flag or not.
+  const risky = buildStatement([{ ...laptop, description: '=HYPERLINK("x")' }], 'EUR', { from: '2026-09-01', to: '2026-09-30' })
+  assert.equal(statementSheets(risky, 'EUR', [])[1].rows[1][3], '\'=HYPERLINK("x")')
+  // None in the period: no line, no note.
+  const none = buildStatement(rows.slice().reverse(), 'EUR', { from: '2026-09-01', to: '2026-09-30', savingsIds: IDS })
+  assert.equal(none.spentFromSavings, 0)
+  assert.ok(!statementSheets(none, 'EUR', [])[0].rows.some((r) => r[0] === 'Of which paid from savings'))
 })

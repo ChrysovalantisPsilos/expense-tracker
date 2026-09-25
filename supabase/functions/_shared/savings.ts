@@ -22,13 +22,23 @@
 // my_recurring_rules embed only its name/icon/colour), so it's derived from
 // the user's own categories: savingsIdsOf(categories) once, then per row.
 // Archived categories count too — their entries are still savings.
+//
+// An EXPENSE can be "Paid from savings" (paid_from_savings, 0085): money taken
+// out of the pot, not out of this period's income. It's still spending
+// everywhere spending is counted (Home's Spent, spending by category,
+// budgets, Insights, the statement), but it doesn't lower the net, and it
+// takes away from net worth's Savings line. The flag is on the row itself, so
+// it doesn't depend on the savings categories.
 
 import { toBaseMinor } from './money.ts'
 
 // deno-lint-ignore no-explicit-any
 type Row = any
 
-export type Effect = 'income' | 'expense' | 'saved-from-income' | 'saved-received'
+export type Effect = 'income' | 'expense' | 'expense-from-savings' | 'saved-from-income' | 'saved-received'
+
+// Every effect, for sums keyed by effect.
+export const EFFECTS: readonly Effect[] = ['income', 'expense', 'expense-from-savings', 'saved-from-income', 'saved-received']
 
 // The ids of the user's savings categories (income ones marked is_savings).
 export function savingsIdsOf(categories: Row[] | null | undefined): Set<string> {
@@ -40,10 +50,10 @@ export const isSavingsRow = (row: Row, savingsIds: Set<string>): boolean =>
   row?.kind === 'income' && !!row.category_id && savingsIds.has(row.category_id)
 
 // What a transaction (or recurring rule) is to the totals: income, an
-// expense (anything that isn't income, as everywhere else), or savings —
-// taken from income or received.
+// expense (anything that isn't income, as everywhere else) — paid from
+// income or from savings — or savings, taken from income or received.
 export function rowEffect(row: Row, savingsIds: Set<string>): Effect {
-  if (row?.kind !== 'income') return 'expense'
+  if (row?.kind !== 'income') return row?.paid_from_savings === true ? 'expense-from-savings' : 'expense'
   if (!isSavingsRow(row, savingsIds)) return 'income'
   return row.savings_from_income === true ? 'saved-from-income' : 'saved-received'
 }
@@ -56,18 +66,30 @@ export function savingsSource(row: Row, savingsIds: Set<string>): 'from income' 
   return effect === 'saved-from-income' ? 'from income' : effect === 'saved-received' ? 'received' : null
 }
 
-// How an effect moves the net: income adds, expenses and savings taken from
-// income take away, received savings leave it alone.
+// The lists' note on a row that touches savings: where a savings entry's
+// money came from, or "from savings" on an expense paid from savings; null
+// otherwise.
+export const savingsNoteOf = (row: Row, savingsIds: Set<string>): string | null =>
+  savingsSource(row, savingsIds) ?? (rowEffect(row, savingsIds) === 'expense-from-savings' ? 'from savings' : null)
+
+// Is it spending? Every expense is, whatever paid for it.
+export const isSpending = (effect: Effect): boolean => effect === 'expense' || effect === 'expense-from-savings'
+
+// How an effect moves the net: income adds, expenses paid from income and
+// savings taken from income take away; received savings and expenses paid
+// from savings leave it alone.
 export const netSign = (effect: Effect): number =>
-  (effect === 'income' ? 1 : effect === 'saved-received' ? 0 : -1)
+  (effect === 'income' ? 1 : effect === 'saved-received' || effect === 'expense-from-savings' ? 0 : -1)
 
-// The rows without the savings entries (the same array when there are none).
-export const withoutSavings = (rows: Row[], savingsIds: Set<string>): Row[] =>
-  (savingsIds.size ? rows.filter((r) => !isSavingsRow(r, savingsIds)) : rows)
+// How an effect moves the savings pot (net worth's Savings line): every
+// savings entry adds, an expense paid from savings takes away.
+export const potSign = (effect: Effect): number =>
+  (effect === 'saved-from-income' || effect === 'saved-received' ? 1 : effect === 'expense-from-savings' ? -1 : 0)
 
-// What the savings entries among `rows` add up to — both kinds — in
-// base-currency minor units at each entry's captured exchange rate.
-export const savedMinor = (rows: Row[], savingsIds: Set<string>, baseCurrency: string): number =>
-  rows.reduce((sum, r) => (isSavingsRow(r, savingsIds)
-    ? sum + toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
-    : sum), 0)
+// The savings pot across `rows`: the savings entries (both kinds) minus the
+// expenses paid from savings, in base-currency minor units at each row's
+// captured exchange rate. It can be negative (more paid from savings than
+// recorded going in).
+export const savingsPotMinor = (rows: Row[], savingsIds: Set<string>, baseCurrency: string): number =>
+  rows.reduce((sum, r) => sum
+    + potSign(rowEffect(r, savingsIds)) * toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency), 0)

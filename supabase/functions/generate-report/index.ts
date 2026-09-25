@@ -26,7 +26,8 @@
 // categories (read with their JWT, own rows only) is totalled as "Saved" —
 // its own section and summary lines — and never as income, like the app;
 // the part taken from income (transactions.savings_from_income) lowers the
-// net.
+// net. An expense paid from savings (transactions.paid_from_savings, 0085) is
+// spending like any other, but leaves the net alone; a note says so.
 //
 // Excel is SheetJS (0.18.5: the edge bundler only fetches allow-listed hosts,
 // and the app's 0.20.3 build is served from cdn.sheetjs.com alone, so it can't
@@ -43,7 +44,7 @@ import { categoryBars } from '../_shared/breakdown.ts'
 import { salaryShiftOf, shiftFetchFrom } from '../_shared/salaryShift.ts'
 import { savingsIdsOf } from '../_shared/savings.ts'
 import {
-  buildStatement, pendingNote, salaryNote, savingsNote, statementSheets, yearlyLabel, yearlyNote,
+  buildStatement, fromSavingsNote, pendingNote, salaryNote, savingsNote, statementSheets, yearlyLabel, yearlyNote,
   type Sheet, type Statement as StatementData, type StatementRow,
 } from './statementMath.ts'
 
@@ -100,6 +101,7 @@ Deno.serve(withCors(async (req) => {
     const stmt = buildStatement(txns ?? [], base, { from, to, separateYearly, rules, salaryShift, savingsIds })
     const notes = [
       pendingNote(stmt.pending), yearlyNote(stmt.yearlyMode), salaryNote(stmt.salaryShiftDay), savingsNote(stmt.saved),
+      fromSavingsNote(stmt.spentFromSavings),
     ].filter(Boolean) as string[]
 
     const bytes = format === 'pdf'
@@ -214,8 +216,9 @@ async function buildPdf({ from, to, base, stmt, notes, name }: {
       ],
       rows.map((r) => {
         // Yearly payments carry their mark (the totals count them per the
-        // note up top); the description is truncated before the mark is.
-        const mark = yearlyLabel(r)
+        // note up top), as do expenses paid from savings; the description is
+        // truncated before the mark is.
+        const mark = [yearlyLabel(r), r.fromSavings ? 'From savings' : null].filter(Boolean).join('  ·  ')
         const income = r.kind === 'income' && !r.saved
         return [
           r.date,

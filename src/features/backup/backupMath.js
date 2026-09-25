@@ -14,8 +14,9 @@
 // Version 2 added payment.paypal (the PayPal.me name); version 1 files still
 // read (no PayPal name). A category's optional `savings` flag (0084: its
 // income entries are savings, not income) and an income entry's or recurring
-// entry's optional `from_income` (0084: savings taken from income) read as
-// false when absent, so older files still read too. Names the server caps at 60 characters (display
+// entry's optional `from_income` (0084: savings taken from income) and an
+// expense's or recurring expense's optional `from_savings` (0085: paid from
+// savings) read as false when absent, so older files still read too. Names the server caps at 60 characters (display
 // name, category names, group names) are trimmed to fit instead of failing.
 import { deterministicUuid } from '../import/importMath.js'
 import { FREQUENCIES } from '../recurring/recurringMath.js'
@@ -137,6 +138,7 @@ export function buildBackup({
         end_date: r.end_date ?? null, is_active: r.is_active !== false,
         remind_days_before: r.remind_days_before ?? null,
         ...(r.savings_from_income ? { from_income: true } : {}),
+        ...(r.paid_from_savings ? { from_savings: true } : {}),
       })),
       transactions: transactions.map((t) => {
         const shared = !!(t.group_expense_id || t.is_shared)
@@ -146,6 +148,7 @@ export function buildBackup({
           exchange_rate: Number(t.exchange_rate ?? 1), description: t.description ?? null,
           notes: t.notes ?? null, spent_at: t.spent_at,
           ...(t.savings_from_income ? { from_income: true } : {}),
+          ...(t.paid_from_savings ? { from_savings: true } : {}),
           ...(shared ? {
             group: t.group_expenses?.groups?.name ?? groupNames.get(t.group_id) ?? null,
           } : {}),
@@ -275,10 +278,14 @@ function checker(where) {
   }
 }
 
-// An entry's optional `from_income` (0084: savings taken from income), kept
-// only on income — the server's CHECK refuses it on an expense.
-function fromIncome(v, entry) {
-  return v.bool(entry.from_income ?? false, 'from income') && entry.kind === 'income' ? { from_income: true } : {}
+// An entry's optional savings flags, each kept only on the kind the server's
+// CHECK allows it on: `from_income` (0084: savings taken from income) on
+// income, `from_savings` (0085: paid from savings) on an expense.
+function savingsFlags(v, entry) {
+  return {
+    ...(v.bool(entry.from_income ?? false, 'from income') && entry.kind === 'income' ? { from_income: true } : {}),
+    ...(v.bool(entry.from_savings ?? false, 'from savings') && entry.kind === 'expense' ? { from_savings: true } : {}),
+  }
 }
 
 function validateBackup(doc) {
@@ -384,7 +391,7 @@ function validateBackup(doc) {
       end_date: v.date(r.end_date, 'end date', { optional: true }),
       is_active: v.bool(r.is_active ?? true, 'active'),
       remind_days_before: v.int(r.remind_days_before, 'reminder', 0, 365, { optional: true }),
-      ...fromIncome(v, r),
+      ...savingsFlags(v, r),
     }
   })
 
@@ -403,7 +410,7 @@ function validateBackup(doc) {
       description: v.text(t.description, 'description', { max: 10000 }),
       notes: v.text(t.notes, 'notes', { max: 10000 }),
       spent_at: v.date(t.spent_at, 'date'),
-      ...fromIncome(v, t),
+      ...savingsFlags(v, t),
       ...('group' in t ? { group: clipName(v.text(t.group, 'group', { max: 10000 })) } : {}),
     }
   })
@@ -513,6 +520,7 @@ export async function planTransactions(backupTxns, existingTxns, { userId, categ
       notes: 'group' in t ? groupShareNote(t.notes, t.group) : t.notes,
       spent_at: t.spent_at,
       ...(t.from_income ? { savings_from_income: true } : {}),
+      ...(t.from_savings ? { paid_from_savings: true } : {}),
     })
   }
   return { rows, duplicates }
@@ -554,6 +562,7 @@ export function planRecurring(backupRules, existingRules, { categoryIdByKey, acc
       frequency: r.frequency, interval_n: r.interval_n, next_run: r.next_run,
       end_date: r.end_date, is_active: r.is_active, remind_days_before: r.remind_days_before,
       ...(r.from_income ? { savings_from_income: true } : {}),
+      ...(r.from_savings ? { paid_from_savings: true } : {}),
     })
   }
   return { create, skipped: backupRules.length - create.length }

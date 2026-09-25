@@ -36,15 +36,18 @@ const rules = [
 ]
 
 test('periodProjection: only ongoing periods fold in upcoming recurring', () => {
-  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-23'), { expense: 999, income: 10000, savedFromIncome: 0 })
-  const none = { expense: 0, income: 0, savedFromIncome: 0 }
+  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-23'),
+    { expense: 999, income: 10000, expenseFromSavings: 0, savedFromIncome: 0, net: 10000 - 999 })
+  const none = { expense: 0, income: 0, expenseFromSavings: 0, savedFromIncome: 0, net: 0 }
   assert.deepEqual(periodProjection(rules, '2026-08-31', '2026-09-23'), none) // past
   assert.deepEqual(periodProjection(rules, null, '2026-09-23'), none) // all time
 })
 
 test('projectedTotals adds the projection and nets income − spend', () => {
-  assert.deepEqual(projectedTotals({ spent: 3000, earned: 1000 }, { expense: 500, income: 200 }),
-    { spentTotal: 3500, earnedTotal: 1200, fromIncomeTotal: 0, netTotal: -2300 })
+  const totals = { spent: 3000, spentFromSavings: 0, earned: 1000, savedFromIncome: 0, net: -2000 }
+  const proj = { expense: 500, income: 200, expenseFromSavings: 0, savedFromIncome: 0, net: -300 }
+  assert.deepEqual(projectedTotals(totals, proj),
+    { spentTotal: 3500, earnedTotal: 1200, fromIncomeTotal: 0, fromSavingsTotal: 0, netTotal: -2300 })
 })
 
 // ---- Yearly subscriptions kept separate (0068) -------------------------------
@@ -54,8 +57,10 @@ const withYearly = [
 ]
 
 test('periodProjection: separateYearly leaves yearly rules out', () => {
-  assert.deepEqual(periodProjection(withYearly, '2026-09-30', '2026-09-23'), { expense: 999 + 1000, income: 10000, savedFromIncome: 0 })
-  assert.deepEqual(periodProjection(withYearly, '2026-09-30', '2026-09-23', true), { expense: 999, income: 10000, savedFromIncome: 0 })
+  assert.deepEqual(periodProjection(withYearly, '2026-09-30', '2026-09-23'),
+    { expense: 999 + 1000, income: 10000, expenseFromSavings: 0, savedFromIncome: 0, net: 10000 - 999 - 1000 })
+  assert.deepEqual(periodProjection(withYearly, '2026-09-30', '2026-09-23', true),
+    { expense: 999, income: 10000, expenseFromSavings: 0, savedFromIncome: 0, net: 10000 - 999 })
 })
 
 test('visibleBars: top 5 until "Show all", then every category', () => {

@@ -47,3 +47,11 @@ test('isFirstRun: only a loaded, empty list with no first transaction at all', (
   assert.equal(isFirstRun({ ...base, oldest: '2026-01-04' }), false) // entries in other periods
   assert.equal(isFirstRun({ ...base, oldest: undefined }), false) // not known (yet, or unreadable)
 })
+
+test('listHeading: a savings category\'s list is "Savings", like its "Saved" total', () => {
+  assert.deepEqual(listHeading({ kind: 'income', savings: true, periodLabel: 'This month', count: 2 }),
+    { title: 'Savings', subtitle: 'This month · 2 entries' })
+  assert.equal(listHeading({ kind: 'income', periodLabel: 'This month', count: 2 }).title, 'Income')
+  // Only income can be savings.
+  assert.equal(listHeading({ kind: 'expense', savings: true, periodLabel: 'This month', count: 2 }).title, 'Expenses')
+})

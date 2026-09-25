@@ -4573,11 +4573,159 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 77. 0085: "Paid from savings" (transactions.paid_from_savings) round-trips
+--     through save_transactions (insert and a retried submit),
+--     update_transaction and my_transactions for the owner; it defaults to
+--     false (a CSV import, an older client) and is dropped on income; the
+--     CHECK keeps it off income; my_transactions(p_paid_from_savings) returns
+--     only the flagged expenses; another user can neither read nor change it
+--     (RPC: not found; direct UPDATE: no privilege).
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; cu uuid := gen_random_uuid(); cu2 uuid := gen_random_uuid();
+        cu3 uuid := gen_random_uuid(); tid uuid; iid uuid; flag boolean; n int;
+begin
+  begin
+    u1 := pg_temp.zz_user('pfs-owner');
+    u2 := pg_temp.zz_user('pfs-other');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(
+      jsonb_build_object('client_uuid', cu, 'kind', 'expense', 'amount_minor', 90000,
+                         'currency', 'EUR', 'spent_at', current_date, 'paid_from_savings', true),
+      -- No flag (an import, an older client): paid from income.
+      jsonb_build_object('client_uuid', cu2, 'kind', 'expense', 'amount_minor', 500,
+                         'currency', 'EUR', 'spent_at', current_date),
+      -- Income can't carry it: dropped, not refused.
+      jsonb_build_object('client_uuid', cu3, 'kind', 'income', 'amount_minor', 700,
+                         'currency', 'EUR', 'spent_at', current_date, 'paid_from_savings', true)));
+    select t.id, t.paid_from_savings into tid, flag from public.my_transactions() t where t.client_uuid = cu;
+    if flag is distinct from true then raise exception 'flag not stored/read (%)', flag; end if;
+    select t.paid_from_savings into flag from public.my_transactions() t where t.client_uuid = cu2;
+    if flag is distinct from false then raise exception 'missing flag not false (%)', flag; end if;
+    select t.id, t.paid_from_savings into iid, flag from public.my_transactions() t where t.client_uuid = cu3;
+    if flag is distinct from false then raise exception 'income kept the flag'; end if;
+
+    -- The filter: only the flagged expense.
+    select count(*) into n from public.my_transactions(p_kind => 'expense', p_paid_from_savings => true) t;
+    if n <> 1 then raise exception 'p_paid_from_savings returned % rows (want 1)', n; end if;
+    select count(*) into n from public.my_transactions() t;
+    if n <> 3 then raise exception 'unfiltered read returned % rows (want 3)', n; end if;
+
+    -- A retried submit (same client_uuid) carries it too.
+    perform public.save_transactions(jsonb_build_array(
+      jsonb_build_object('client_uuid', cu, 'kind', 'expense', 'amount_minor', 90000,
+                         'currency', 'EUR', 'spent_at', current_date, 'paid_from_savings', false)));
+    select t.paid_from_savings into flag from public.my_transactions() t where t.id = tid;
+    if flag then raise exception 'retried submit did not update the flag'; end if;
+
+    -- update_transaction: set, keep when absent from the patch, clear.
+    perform public.update_transaction(tid, '{"paid_from_savings": true}'::jsonb);
+    perform public.update_transaction(tid, '{"notes": "zz"}'::jsonb);
+    select t.paid_from_savings into flag from public.my_transactions() t where t.id = tid;
+    if flag is distinct from true then raise exception 'update did not set / patch cleared it'; end if;
+    perform public.update_transaction(iid, '{"paid_from_savings": true}'::jsonb);
+    select t.paid_from_savings into flag from public.my_transactions() t where t.id = iid;
+    if flag then raise exception 'income flagged through update_transaction'; end if;
+
+    -- Another user.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    select count(*) into n from public.my_transactions(p_paid_from_savings => true) t;
+    if n <> 0 then raise exception 'outsider read the flagged entry'; end if;
+    begin
+      perform public.update_transaction(tid, '{"paid_from_savings": false}'::jsonb);
+      raise exception 'GUARD_MISSED: outsider changed the flag';
+    exception when others then
+      if sqlerrm like '%not found%' then null; else raise; end if;
+    end;
+    begin
+      update public.transactions set paid_from_savings = false where id = tid;
+      raise exception 'GUARD_MISSED: direct update allowed';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+    select paid_from_savings into flag from public.transactions where id = tid;
+    if flag is distinct from true then raise exception 'flag changed by another user'; end if;
+
+    -- The CHECK: never on income, whoever writes.
+    begin
+      update public.transactions set paid_from_savings = true where id = iid;
+      raise exception 'GUARD_MISSED: income flagged';
+    exception when check_violation then null;
+    end;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: paid_from_savings round-trips, owner-only, expense-only';
+    else update _t set fails = fails + 1; raise notice 'FAIL: paid_from_savings — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 78. 0085: recurring expenses carry "Paid from savings": save_recurring_rule
+--     stores it, my_recurring_rules returns it, the materializer copies it
+--     onto each entry, a rule switched to income drops it, another user
+--     can't change it, and the CHECK keeps it off income rules.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; inc uuid; rid uuid; flag boolean; n int;
+begin
+  begin
+    u1 := pg_temp.zz_user('rpfs-owner');
+    u2 := pg_temp.zz_user('rpfs-other');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZT wages', 'income') returning id into inc;
+
+    execute 'set local role authenticated';
+    rid := public.save_recurring_rule(null, jsonb_build_object(
+      'kind', 'expense', 'amount_minor', 5000, 'currency', 'EUR', 'description', 'ZZ gym',
+      'frequency', 'monthly', 'interval_n', 1, 'next_run', current_date - 1, 'paid_from_savings', true));
+    select x.paid_from_savings into flag from public.my_recurring_rules() x where x.id = rid;
+    if flag is distinct from true then raise exception 'rule flag not stored/read (%)', flag; end if;
+    execute 'reset role';
+
+    perform public.materialize_recurring_rules();
+    select count(*) into n from public.transactions
+     where user_id = u1 and recurring_rule_id = rid and paid_from_savings and kind = 'expense';
+    if n <> 1 then raise exception 'materializer made % flagged entries (want 1)', n; end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.save_recurring_rule(rid, '{"paid_from_savings": false}'::jsonb);
+      raise exception 'GUARD_MISSED: outsider changed the rule';
+    exception when others then
+      if sqlerrm like '%not found%' then null; else raise; end if;
+    end;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    select x.paid_from_savings into flag from public.my_recurring_rules() x where x.id = rid;
+    if flag is distinct from true then raise exception 'rule flag changed by another user'; end if;
+    -- Switched to income, the flag goes (even when the patch asks to keep it).
+    perform public.save_recurring_rule(rid, jsonb_build_object('kind', 'income', 'category_id', inc,
+      'paid_from_savings', true));
+    select x.paid_from_savings into flag from public.my_recurring_rules() x where x.id = rid;
+    execute 'reset role';
+    if flag then raise exception 'income rule kept the flag'; end if;
+
+    -- The CHECK: never on an income rule, whoever writes.
+    begin
+      update public.recurring_rules set paid_from_savings = true where id = rid;
+      raise exception 'GUARD_MISSED: income rule flagged';
+    exception when check_violation then null;
+    end;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: recurring paid_from_savings stored, materialized, owner-only';
+    else update _t set fails = fails + 1; raise notice 'FAIL: recurring paid_from_savings — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 77; f int; p int;  -- tests 1–76 + B-0059
+declare expected_tests constant int := 79; f int; p int;  -- tests 1–78 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

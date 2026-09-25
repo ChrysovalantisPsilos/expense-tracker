@@ -100,7 +100,7 @@ export default function Dashboard() {
   const proj = useMemo(
     () => periodProjection(rules, period.to, todayISO, separateYearly, salaryShift, savingsIds),
     [rules, period.to, todayISO, separateYearly, salaryShift, savingsIds])
-  const { spentTotal, earnedTotal, fromIncomeTotal, netTotal } = projectedTotals(totals, proj)
+  const { spentTotal, earnedTotal, fromIncomeTotal, fromSavingsTotal, netTotal } = projectedTotals(totals, proj)
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
   const saved = savedNote(totals.saved, period, baseCurrency)
 
@@ -139,12 +139,19 @@ export default function Dashboard() {
                 incl. {formatMoney(proj.expense, baseCurrency)} upcoming
               </Text>
             )}
+            {/* Expenses paid from savings (0085) are spending, but not
+                against the Net. */}
+            {fromSavingsTotal > 0 && (
+              <Text fontSize="xs" color="text.muted" mt={proj.expense > 0 ? 0 : 1}>
+                incl. {formatMoney(fromSavingsTotal, baseCurrency)} paid from savings
+              </Text>
+            )}
           </Box>
           <SimpleGrid columns={2} spacing={2}>
             <BalanceTile size="md" label="Income" value={formatMoney(earnedTotal, baseCurrency)} tone="positive"
               note={proj.income > 0 ? `incl. ${formatMoney(proj.income, baseCurrency)} upcoming` : undefined} />
             <BalanceTile size="md" label="Net" value={net.text} tone={net.tone}
-              note={netNote(proj, fromIncomeTotal)} />
+              note={netNote(proj, fromIncomeTotal, fromSavingsTotal)} />
             {/* Savings aren't income (those taken from it lower the net): a quiet
                 line says what was put aside, both kinds. */}
             {saved && (

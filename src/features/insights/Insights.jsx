@@ -29,7 +29,7 @@ import { lastMonths, shortDate } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, minorFactor } from '../../shared/lib/currency.js'
 import { spendRows } from '../../shared/lib/spread.js'
-import { savedMinor } from '../../shared/lib/savings.js'
+import { savingsPotMinor } from '../../shared/lib/savings.js'
 import {
   useAccounts, deleteAccount,
   useGoals, saveGoal, deleteGoal,
@@ -275,18 +275,22 @@ function SpendDelta({ delta }) {
 }
 
 // ── Net worth ───────────────────────────────────────────────────────────────
-// The user's accounts, plus a read-only "Savings" asset: every savings entry
-// ever made (0084), in the base currency at each entry's captured rate.
+// The user's accounts, plus a read-only "Savings" line: every savings entry
+// ever made (0084) minus every expense paid from savings (0085), in the base
+// currency at each entry's captured rate. It can go below zero (shown with a
+// minus, as a debt); it's hidden only when it's exactly zero.
 function NetWorthCard({ baseCurrency, savingsIds, savingsLoading }) {
   const { accounts, loading: accountsLoading, error, reload } = useAccounts()
   const income = useTransactions({ kind: 'income' })
+  const fromSavings = useTransactions({ kind: 'expense', paidFromSavings: true })
   const toast = useToast()
   const navigate = useNavigate()
 
   const savings = useMemo(
-    () => savedMinor(income.rows, savingsIds, baseCurrency), [income.rows, savingsIds, baseCurrency])
+    () => savingsPotMinor([...income.rows, ...fromSavings.rows], savingsIds, baseCurrency),
+    [income.rows, fromSavings.rows, savingsIds, baseCurrency])
   const { assets, liabilities, net } = useMemo(() => netWorth(accounts, savings), [accounts, savings])
-  const loading = accountsLoading || savingsLoading || income.loading
+  const loading = accountsLoading || savingsLoading || income.loading || fromSavings.loading
 
   async function remove(acc) {
     try { await deleteAccount(acc.id); reload() }
@@ -317,8 +321,10 @@ function NetWorthCard({ baseCurrency, savingsIds, savingsLoading }) {
             <Box>
               <SectionLabel mb={1}>Accounts</SectionLabel>
               {savings !== 0 && (
-                <ItemRow icon={PiggyBank} title="Savings" meta="From your savings entries"
-                  amount={formatMoney(savings, baseCurrency)} />
+                <ItemRow icon={PiggyBank} title="Savings"
+                  meta={savings < 0 ? 'More paid from savings than saved' : 'From your savings entries'}
+                  amount={`${savings < 0 ? '−' : ''}${formatMoney(Math.abs(savings), baseCurrency)}`}
+                  amountTone={savings < 0 ? 'negative' : 'default'} />
               )}
               {accounts.map((acc) => {
                 const debt = acc.type === 'liability'

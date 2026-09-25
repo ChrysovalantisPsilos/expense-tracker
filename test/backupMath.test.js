@@ -650,3 +650,43 @@ test('backup: "Taken from my income" on savings entries and recurring savings ro
   const { create } = planRecurring(backup.data.recurring, [], maps)
   assert.equal(create[0].savings_from_income, true)
 })
+
+test('backup: "Paid from savings" on expenses and recurring expenses round-trips; older files read as off', async () => {
+  const entry = (o) => ({ kind: 'expense', category_id: null, account_id: null, amount_minor: 90000,
+    currency: 'EUR', exchange_rate: 1, description: 'New laptop', notes: null, spent_at: '2026-09-02', ...o })
+  const doc = buildBackup({
+    exportedAt: '2026-09-22T12:00:00.000Z', userId: 'u-source',
+    profile: { base_currency: 'EUR' }, payment: {},
+    categories: [],
+    transactions: [
+      entry({ id: 'a', paid_from_savings: true }),
+      entry({ id: 'b', paid_from_savings: false, description: 'Groceries' }),
+    ],
+    recurring: [{ kind: 'expense', category_id: null, amount_minor: 5000, currency: 'EUR', description: 'Gym',
+      frequency: 'monthly', interval_n: 1, next_run: '2026-10-02', is_active: true, paid_from_savings: true }],
+  })
+  // Only set flags are written (older readers ignore the key).
+  assert.deepEqual(doc.data.transactions.map((t) => t.from_savings), [true, undefined])
+  assert.equal(doc.data.recurring[0].from_savings, true)
+  // Income can't carry it (the server's CHECK): dropped on read.
+  doc.data.transactions.push({ ...doc.data.transactions[1], kind: 'income', from_savings: true })
+  const { backup } = readBackup(JSON.stringify(doc))
+  assert.deepEqual(backup.data.transactions.map((t) => t.from_savings), [true, undefined, undefined])
+  const maps = { userId: 'u-target', categoryIdByKey: new Map(), accountIdByKey: new Map() }
+  const { rows } = await planTransactions(backup.data.transactions, [], maps)
+  assert.deepEqual(rows.map((r) => r.paid_from_savings), [true, undefined, undefined])
+  assert.equal(planRecurring(backup.data.recurring, [], maps).create[0].paid_from_savings, true)
+
+  // A file from before 0085 (no key anywhere) still reads, every flag off.
+  const older = JSON.parse(JSON.stringify(doc))
+  for (const t of older.data.transactions) delete t.from_savings
+  delete older.data.recurring[0].from_savings
+  const old = readBackup(JSON.stringify(older)).backup
+  assert.ok(old.data.transactions.every((t) => !('from_savings' in t)))
+  assert.deepEqual((await planTransactions(old.data.transactions, [], maps)).rows.map((r) => r.paid_from_savings),
+    [undefined, undefined, undefined])
+  assert.equal(planRecurring(old.data.recurring, [], maps).create[0].paid_from_savings, undefined)
+  // A malformed flag is refused, like any other damaged field.
+  older.data.transactions[0].from_savings = 'yes'
+  assert.throws(() => readBackup(JSON.stringify(older)), UserError)
+})

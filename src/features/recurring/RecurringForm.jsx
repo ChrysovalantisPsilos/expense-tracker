@@ -4,7 +4,7 @@ import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import { PageForm } from '../../shared/ui/FormPage.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { useSavingsIds } from '../categories/categories.js'
-import SavingsSourceSwitch from '../../shared/ui/SavingsSourceSwitch.jsx'
+import { PaidFromSavingsSwitch, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
 import { toMinor, minorToInput } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -17,7 +17,9 @@ import RepeatFields from './RepeatFields.jsx'
 // Recurring page's rows, so the schedule here has no Paused switch.
 // Recurring income in a savings category (0084) asks "Taken from my income"
 // (on for a new rule, as stored when editing); each entry the rule adds
-// carries it. `onSaved` runs after a successful save.
+// carries it. A recurring expense asks "Paid from savings" (0085; off for a
+// new rule, as stored when editing) once the user has a savings category, and
+// hands it to its entries the same way. `onSaved` runs after a successful save.
 export default function RecurringForm({ rule, kind: initialKind = 'expense', baseCurrency, onSaved }) {
   const toast = useToast()
   const isEdit = !!rule
@@ -31,6 +33,8 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
   const isSavings = kind === 'income' && savingsIds.has(categoryId)
   const [fromIncome, setFromIncome] = useState(rule ? !!rule.savings_from_income : true)
+  const [fromSavings, setFromSavings] = useState(!!rule?.paid_from_savings)
+  const showFromSavings = kind === 'expense' && (savingsIds.size > 0 || !!rule?.paid_from_savings)
   const { busy, run } = useAsyncSubmit()
 
   async function submit() {
@@ -44,6 +48,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
         currency,
         description: description || null,
         savings_from_income: isSavings && fromIncome,
+        paid_from_savings: showFromSavings && fromSavings,
         ...repeatRuleFields(draft),
       })
       toast({ title: isEdit ? 'Recurring entry updated' : 'Recurring entry added', status: 'success' })
@@ -85,6 +90,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
           </Select>
         </FormControl>
         {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
+        {showFromSavings && <PaidFromSavingsSwitch value={fromSavings} onChange={setFromSavings} />}
 
         <RepeatFields value={draft} onChange={(c) => setDraft((d) => editRepeat(d, c))}
           kind={kind} currency={currency} amountMinor={Number(amount) > 0 ? toMinor(amount, currency) : 0}

@@ -20,7 +20,9 @@ export function useCategories(kind) {
 }
 
 // Transactions in a date range (defaults to current month). Optional
-// `categoryId` and `limit` narrow the query server-side (used by search).
+// `categoryId` and `limit` narrow the query server-side (used by search);
+// `paidFromSavings` keeps only expenses paid from savings (0085: net worth's
+// Savings line).
 // `mutate` lets callers optimistically update the list (edit/delete).
 //
 // Amounts, descriptions and notes are encrypted at rest, so rows come from the
@@ -37,22 +39,30 @@ export function useCategories(kind) {
 // for what to list. With the salary shift on (0081) it also reaches back to
 // the previous month's salary that counts in the range (shiftFetchFrom);
 // spendRows counts it there, paidInWindow leaves it out of lists.
-export function useTransactions({ kind, from, to, categoryId, limit, spread = false } = {}) {
+export function useTransactions({
+  kind, from, to, categoryId, limit, spread = false, paidFromSavings = false,
+} = {}) {
   const { baseCurrency, salaryShift } = useProfile()
   const fetchFrom = spread && kind !== 'expense' ? shiftFetchFrom(from, salaryShift) : from
   return useOwnedQuery('transactions', {
     cacheAs: 'transactions',
-    fetch: () => listTransactions({ kind, from: fetchFrom, to, categoryId, limit, spread, baseCurrency }),
-    deps: [kind, fetchFrom, to, categoryId, limit, spread, baseCurrency],
+    fetch: () => listTransactions({
+      kind, from: fetchFrom, to, categoryId, limit, spread, paidFromSavings, baseCurrency,
+    }),
+    deps: [kind, fetchFrom, to, categoryId, limit, spread, paidFromSavings, baseCurrency],
   })
 }
 
 // One-shot read behind useTransactions (same filters, same row shape). Pass
 // `baseCurrency` to have pending rates estimated.
-export async function listTransactions({ kind, from, to, categoryId, limit, spread = false, baseCurrency } = {}) {
+export async function listTransactions({
+  kind, from, to, categoryId, limit, spread = false, paidFromSavings = false, baseCurrency,
+} = {}) {
   const { data, error } = await supabase.rpc('my_transactions', {
     p_kind: kind ?? null, p_from: from ?? null, p_to: to ?? null,
     p_category: categoryId ?? null, p_limit: limit ?? null, p_spread: spread,
+    // Sent only when set, so every other read keeps its cache key (offline).
+    ...(paidFromSavings ? { p_paid_from_savings: true } : {}),
   })
   if (error) throw dbError(error)
   return baseCurrency ? fillPendingRates(data ?? [], baseCurrency) : data ?? []

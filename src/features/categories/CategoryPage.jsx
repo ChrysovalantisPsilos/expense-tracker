@@ -43,7 +43,8 @@ import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
 //
 // Totals follow the app's spread rule (a yearly subscription counts its
 // monthly share, or nothing when kept separate); the list shows real payments.
-// A savings category's total is what was saved (0084), never "Earned".
+// A savings category's total is what was saved (0084), never "Earned", and
+// its list is headed "Savings", never "Income".
 export default function CategoryPage() {
   const { id } = useParams()
   const [params, setParams] = useSearchParams()
@@ -72,7 +73,10 @@ export default function CategoryPage() {
     categoryId, from: period.from, to: period.to, baseCurrency, separateYearly, salaryShift,
   }), [txns.rows, categoryId, period.from, period.to, baseCurrency, separateYearly, salaryShift])
   const paged = usePaged(listed, 10, period.value)
-  const listHead = listHeading({ kind: kind ?? 'expense', periodLabel: period.label, count: listed.length, loading: txns.loading })
+  const listHead = listHeading({
+    kind: kind ?? 'expense', savings: !!category?.is_savings,
+    periodLabel: period.label, count: listed.length, loading: txns.loading,
+  })
 
   // Budgets are monthly and expense-only. Past months are shown as they
   // were; only this month's cap can be changed (edit_budget's carry-over

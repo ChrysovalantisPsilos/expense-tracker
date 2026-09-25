@@ -8,16 +8,20 @@ const TITLES = { expense: 'Expenses', income: 'Income' }
 export const countLabel = (n, one = 'entry', many = 'entries') => `${n} ${n === 1 ? one : many}`
 
 //   kind        'expense' | 'income' | undefined (every kind)
+//   savings     the entries are a savings category's (0084): "Savings", not
+//               "Income", matching the page's "Saved" total
 //   periodLabel e.g. 'This month'
 //   count       entries listed (ignored while loading, or when the list
 //               failed to load — `failed` — so it never reads "0 entries")
 //   searching   a search/filter is on: "Search results" + "N results"
-export function listHeading({ kind, periodLabel, count, loading = false, failed = false, searching = false }) {
+export function listHeading({
+  kind, savings = false, periodLabel, count, loading = false, failed = false, searching = false,
+}) {
   const unknown = loading || failed || count == null
   if (searching) {
     return { title: 'Search results', subtitle: loading ? 'Searching…' : unknown ? '' : countLabel(count, 'result', 'results') }
   }
-  const title = TITLES[kind] ?? 'All transactions'
+  const title = savings && kind === 'income' ? 'Savings' : TITLES[kind] ?? 'All transactions'
   const subtitle = unknown ? periodLabel : `${periodLabel} · ${countLabel(count)}`
   return { title, subtitle }
 }

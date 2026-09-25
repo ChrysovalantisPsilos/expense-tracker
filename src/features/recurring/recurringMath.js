@@ -69,7 +69,8 @@ export function nextRunAfter(iso, frequency, n = 1) {
 
 // A new recurring rule made from a transaction (the transaction page's Repeat
 // section, see planRepeat): same kind, amount, currency, category, account,
-// description and "taken from my income" (a savings entry, 0084); the next charge is one period after the transaction's date, so
+// description, "taken from my income" (a savings entry, 0084) and "paid from
+// savings" (an expense, 0085); the next charge is one period after the transaction's date, so
 // the transaction itself is the first occurrence. The server links the two
 // through `source_transaction_id` (a listed row) or `source_client_uuid` (an
 // entry just saved, whose id the client doesn't have). The rule stores no
@@ -83,6 +84,7 @@ export function ruleFromTransaction(t, { frequency = 'monthly', interval_n: n = 
     account_id: t.account_id ?? null,
     description: t.description ?? null,
     savings_from_income: t.savings_from_income === true,
+    paid_from_savings: t.paid_from_savings === true,
     frequency,
     interval_n: Math.max(1, Number(n) || 1),
     next_run: nextRunAfter(t.spent_at, frequency, n),
@@ -186,7 +188,9 @@ export function repeatRuleFields(d) {
 
 // The fields an entry and its rule share: editing one of them on an entry
 // that repeats changes the rule's future charges too.
-const SHARED_FIELDS = ['kind', 'amount_minor', 'currency', 'category_id', 'description', 'savings_from_income']
+const SHARED_FIELDS = [
+  'kind', 'amount_minor', 'currency', 'category_id', 'description', 'savings_from_income', 'paid_from_savings',
+]
 const pickShared = (o) => Object.fromEntries(SHARED_FIELDS.map((k) => [k, o?.[k] ?? null]))
 
 // What saving the transaction page does to the entry's recurring rule, once

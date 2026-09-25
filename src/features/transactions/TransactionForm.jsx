@@ -7,7 +7,7 @@ import {
 import { Repeat, Trash2 } from 'lucide-react'
 import { useCategories } from './useData.js'
 import { useSavingsIds } from '../categories/categories.js'
-import SavingsSourceSwitch from '../../shared/ui/SavingsSourceSwitch.jsx'
+import { PaidFromSavingsSwitch, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
 import { toMinor, minorToInput, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
@@ -43,6 +43,10 @@ const KIND_LABEL = Object.fromEntries(KINDS)
 // is fixed (the server rejects a change, 0077), so editing shows it as a
 // label and never sends it. Income in a savings category (0084) asks whether
 // it was "Taken from my income": on for a new entry, as stored when editing.
+// An expense asks whether it was "Paid from savings" (0085: still spending,
+// but not against the Net) once the user has a savings category — off for a
+// new entry, as stored when editing (shown while it's on, whatever the
+// categories).
 export default function TransactionForm({
   kind: initialKind = 'expense', baseCurrency = 'EUR', transaction = null, rule = null, onSaved, onDelete,
 }) {
@@ -60,6 +64,8 @@ export default function TransactionForm({
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
   const isSavings = kind === 'income' && savingsIds.has(categoryId)
   const [fromIncome, setFromIncome] = useState(transaction ? !!transaction.savings_from_income : true)
+  const [fromSavings, setFromSavings] = useState(!!transaction?.paid_from_savings)
+  const showFromSavings = kind === 'expense' && (savingsIds.size > 0 || !!transaction?.paid_from_savings)
   const [busy, setBusy] = useState(false)
   // Inline field errors, shown from the first submit on.
   const [tried, setTried] = useState(false)
@@ -152,6 +158,7 @@ export default function TransactionForm({
       notes: notes || null,
       spent_at: spentAt,
       savings_from_income: isSavings && fromIncome,
+      paid_from_savings: showFromSavings && fromSavings,
     }
     setBusy(true)
     try {
@@ -232,6 +239,7 @@ export default function TransactionForm({
             </FormHelperText>
           </FormControl>
           {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
+          {showFromSavings && <PaidFromSavingsSwitch value={fromSavings} onChange={setFromSavings} />}
 
           <FormControl>
             <FormLabel>Description</FormLabel>
