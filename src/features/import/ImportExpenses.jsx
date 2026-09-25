@@ -2,7 +2,7 @@ import { useState, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Heading, Stack, HStack, Text, Button, Spacer, Select,
-  FormControl, FormLabel, useToast, IconButton, Input, Collapse,
+  FormControl, FormLabel, useToast, IconButton, Input, Collapse, Box,
 } from '@chakra-ui/react'
 import {
   ArrowLeft, UploadCloud, FileSpreadsheet, Check, Eye, Store, ArrowRightLeft, SlidersHorizontal,
@@ -315,14 +315,15 @@ export default function ImportExpenses() {
           <Stack spacing={2}>
             {pending.groups.map((g) => (
               <Tile key={g.id}>
-                <HStack spacing={3}>
-                  <Text fontSize="sm" fontWeight="600" flex="1" minW={0} overflowWrap="anywhere">
-                    {g.pattern}
-                    <Text as="span" color="text.muted" fontWeight="400">
-                      {' · '}{plural(g.count, 'row')} · {g.kind === 'income' ? 'money in' : 'money out'}
+                <Stack direction={{ base: 'column', sm: 'row' }} spacing={{ base: 2, sm: 3 }}
+                  align={{ base: 'stretch', sm: 'center' }}>
+                  <Box flex="1" minW={0}>
+                    <Text fontSize="sm" fontWeight="600" overflowWrap="break-word">{g.pattern}</Text>
+                    <Text fontSize="xs" color="text.muted">
+                      {plural(g.count, 'row')} · {g.kind === 'income' ? 'money in' : 'money out'}
                     </Text>
-                  </Text>
-                  <Select size="sm" maxW="200px" bg="bg.surface" placeholder="Uncategorized"
+                  </Box>
+                  <Select size="sm" maxW={{ base: 'full', sm: '200px' }} bg="bg.surface" placeholder="Uncategorized"
                     aria-label={`Category for ${g.pattern} (${g.kind})`}
                     value={assign[g.id] || ''}
                     onChange={(e) => setAssign((a) => ({ ...a, [g.id]: e.target.value }))}>
@@ -330,7 +331,7 @@ export default function ImportExpenses() {
                       .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     {g.kind === 'income' && newIncome.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </Select>
-                </HStack>
+                </Stack>
               </Tile>
             ))}
           </Stack>
