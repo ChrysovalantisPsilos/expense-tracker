@@ -15,12 +15,12 @@ import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
-import { useRecurring, setRecurringActive, deleteRecurring } from './recurring.js'
+import { useRecurring, useRuleRates, setRecurringActive, deleteRecurring } from './recurring.js'
 import { useSavingsIds } from '../categories/categories.js'
 import {
   frequencyLabel, incomePerMonth, monthlyBudgetShare, subscriptionGroups,
 } from './recurringMath.js'
-import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
+import { GroupTabs, GroupTotal, RatesNote, baseHint } from './SubscriptionGroups.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
@@ -35,7 +35,10 @@ const INCOME_INTRO = 'Money that comes in on a schedule, like your salary — it
 // address (?tab=income), so coming back from a rule's page lands on it.
 export default function Recurring() {
   const { baseCurrency = 'EUR' } = useProfile()
-  const { rules, loading, error, reload } = useRecurring()
+  const { rules, loading: rulesLoading, error, reload } = useRecurring()
+  // Totals count foreign rules at today's ECB rate; rows keep their currency.
+  const { rates, loading: ratesLoading } = useRuleRates(rules, baseCurrency)
+  const loading = rulesLoading || ratesLoading
   const toast = useToast()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -43,11 +46,12 @@ export default function Recurring() {
   const setTab = (i) => setParams(TABS[i] === 'income' ? { tab: 'income' } : {}, { replace: true })
   const [removing, setRemoving] = useState(null)
 
-  const groups = useMemo(() => subscriptionGroups(rules, baseCurrency), [rules, baseCurrency])
+  const groups = useMemo(() => subscriptionGroups(rules, baseCurrency, { rates }), [rules, baseCurrency, rates])
   const income = useMemo(() => rules.filter((r) => r.kind === 'income'), [rules])
   // Recurring savings are listed with the income rules but not summed as income.
   const { savingsIds } = useSavingsIds()
-  const incomeMonthly = useMemo(() => incomePerMonth(rules, savingsIds), [rules, savingsIds])
+  const incomeMonthly = useMemo(
+    () => incomePerMonth(rules, savingsIds, baseCurrency, rates), [rules, savingsIds, baseCurrency, rates])
 
   const openNew = () => navigate(`/recurring/new?kind=${TABS[tab]}`)
   const openEdit = (r) => navigate(`/recurring/${r.id}`, { state: { rule: r } })
@@ -74,7 +78,7 @@ export default function Recurring() {
     <List spacing={0}>
       {rows.map((r) => (
         <ListItem key={r.id}>
-          <RuleRow rule={r} onToggle={() => toggle(r)} onEdit={() => openEdit(r)} onRemove={() => setRemoving(r)} />
+          <RuleRow rule={r} hint={baseHint(r, baseCurrency, rates)} onToggle={() => toggle(r)} onEdit={() => openEdit(r)} onRemove={() => setRemoving(r)} />
         </ListItem>
       ))}
     </List>
@@ -125,8 +129,11 @@ export default function Recurring() {
                   'Add recurring income') : (
                   <>
                     <Text fontSize="sm" color="text.muted" mb={4}>{INCOME_INTRO}</Text>
-                    <Figure label="Recurring income" size="lg" tone="positive" mb={3}
-                      value={`≈ ${formatMoney(incomeMonthly, baseCurrency)}/month`} />
+                    <Box mb={3}>
+                      <Figure label="Recurring income" size="lg" tone="positive"
+                        value={`≈ ${formatMoney(incomeMonthly.perMonth, baseCurrency)}/month`} />
+                      <RatesNote converted={incomeMonthly.converted} missing={incomeMonthly.missing} mt={1} />
+                    </Box>
                     {list(income)}
                   </>
                 )}
@@ -157,13 +164,14 @@ export default function Recurring() {
 }
 
 // One rule: what it charges, how often and when next, with pause/edit/delete.
-function RuleRow({ rule: r, onToggle, onEdit, onRemove }) {
+// `hint`: a foreign rule's charge in the base currency at today's rate.
+function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
   return (
     <ItemRow py={2.5} dimmed={!r.is_active}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
       title={r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
       meta={<RuleMeta rule={r} />}
-      amount={formatMoney(r.amount_minor, r.currency)}
+      amount={formatMoney(r.amount_minor, r.currency)} amountMeta={hint}
       amountTone={r.kind === 'income' ? 'positive' : 'default'}
       trailing={
         <Box display={{ base: 'none', sm: 'block' }} flexShrink={0}>

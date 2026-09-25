@@ -140,8 +140,8 @@ test('Home: upcoming recurring savings aren\'t income; those from income lower t
   assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-25'),
     { expense: 90000, income: 235000, expenseFromSavings: 0, savedFromIncome: 0, net: 235000 - 90000 })
   // The Recurring page's income per month leaves both kinds out.
-  assert.equal(incomePerMonth(rules, IDS), 200000)
-  assert.equal(incomePerMonth(rules), 235000)
+  assert.equal(incomePerMonth(rules, IDS).perMonth, 200000)
+  assert.equal(incomePerMonth(rules).perMonth, 235000)
 })
 
 test('Recurring: a rule made from a savings entry keeps "Taken from my income"', () => {

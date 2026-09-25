@@ -18,7 +18,7 @@ import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { isCurrentPeriod, isMonthPeriod } from '../transactions/periods.js'
 import { chargedGroups, chargedWording, frequencyLabel, subscriptionGroups } from './recurringMath.js'
-import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
+import { GroupTabs, GroupTotal, baseHint } from './SubscriptionGroups.jsx'
 
 // Home's "Recurring" card, following Home's `period` (periods.js):
 //  * this month: today's view — the active recurring expenses by how often
@@ -26,20 +26,22 @@ import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
 //    user has), each with its total per period, about how much a month, and
 //    the next few charges. `rules` are the useRecurring() rows; `loading`
 //    while they're on their way; `error` (with `onRetry`) when they couldn't
-//    be read — never shown as "No subscriptions yet".
+//    be read — never shown as "No subscriptions yet". Foreign rules count in
+//    the totals at `fx` = useRuleRates() ({ rates, loading }).
 //  * any other period: what was actually charged in it
 //    (recurringMath.chargedGroups), from Home's own rows for the period —
 //    `charges` = { rows, loading, error, onRetry } — so it costs no query.
 // Informational either way: it never feeds Home's totals, whichever way the
 // yearly-subscription setting is set (the Yearly tab just says how those count).
-export default function SubscriptionsCard({ rules, loading, error, onRetry, baseCurrency, period, charges }) {
+export default function SubscriptionsCard({ rules, fx, loading, error, onRetry, baseCurrency, period, charges }) {
   const upcoming = !period || (isMonthPeriod(period) && isCurrentPeriod(period, today()))
   return (
     <Panel data-tour="subscriptions" icon={Repeat} title="Recurring"
       subtitle={upcoming ? undefined : chargedWording(period).subtitle}
       action={<Button as={RouterLink} to="/recurring" size="xs" variant="ghost">Manage</Button>}>
       {upcoming
-        ? <Upcoming rules={rules} loading={loading} error={error} onRetry={onRetry} baseCurrency={baseCurrency} />
+        ? <Upcoming rules={rules} rates={fx.rates} loading={loading || fx.loading} error={error} onRetry={onRetry}
+          baseCurrency={baseCurrency} />
         : <Charged period={period} {...charges} baseCurrency={baseCurrency} />}
     </Panel>
   )
@@ -57,9 +59,9 @@ function YearlyNote() {
   )
 }
 
-function Upcoming({ rules, loading, error, onRetry, baseCurrency }) {
+function Upcoming({ rules, rates, loading, error, onRetry, baseCurrency }) {
   const groups = useMemo(
-    () => subscriptionGroups(rules, baseCurrency, { upcomingOnly: true }), [rules, baseCurrency])
+    () => subscriptionGroups(rules, baseCurrency, { upcomingOnly: true, rates }), [rules, baseCurrency, rates])
   if (error) return <QueryError error={error} onRetry={onRetry} what="your recurring payments" />
   if (loading) return <SkeletonRegion><SkeletonRows count={3} /></SkeletonRegion>
   if (groups.length === 0) {
@@ -81,7 +83,7 @@ function Upcoming({ rules, loading, error, onRetry, baseCurrency }) {
                 media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
                 title={r.description || r.categories?.name || 'Expense'}
                 meta={`${shortDate(r.next_run)} · ${frequencyLabel(r)}`}
-                amount={formatMoney(r.amount_minor, r.currency)} />
+                amount={formatMoney(r.amount_minor, r.currency)} amountMeta={baseHint(r, baseCurrency, rates)} />
             ))}
           </Box>
         </>

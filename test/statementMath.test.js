@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  buildStatement, pendingNote, yearlyLabel, yearlyNote,
+  buildStatement, pendingNote, statementSheets, yearlyLabel, yearlyNote,
 } from '../supabase/functions/generate-report/statementMath.ts'
 import { subscriptionGroups } from '../src/features/recurring/recurringMath.js'
 
@@ -119,7 +119,8 @@ test('yearly kept separate: out of the totals, in their own section', () => {
     { is_active: false, kind: 'expense', frequency: 'yearly', interval_n: 1, amount_minor: 5000, currency: 'EUR',
       next_run: '2026-10-01' },
   ]
-  const s = buildStatement(yearlyTxns, 'EUR', { ...SEP, separateYearly: true, rules })
+  const rates = { USD: 0.9 }
+  const s = buildStatement(yearlyTxns, 'EUR', { ...SEP, separateYearly: true, rules, rates })
   // Still listed and marked; only the plain €50 is in the totals.
   assert.deepEqual(s.rows.map((r) => r.description || r.category), ['Insurance', 'Food'])
   assert.equal(yearlyLabel(s.rows[0]), 'Yearly · ≈20.01 EUR/mo')
@@ -132,13 +133,51 @@ test('yearly kept separate: out of the totals, in their own section', () => {
   // The section: the period's payments and the Home card's figures.
   assert.deepEqual(s.yearly.payments.map((r) => r.description), ['Insurance'])
   assert.equal(s.yearly.paidTotal, 240.05)
-  const card = subscriptionGroups(rules, 'EUR').find((g) => g.key === 'yearly')
-  assert.equal(s.yearly.perYear, card.total / 100) // 120 + 100/2
-  assert.equal(s.yearly.perYear, 170)
+  // Foreign rules at the latest rate, as the card counts them: $100 every 2
+  // years at 0.9 = €90 → €45 a year.
+  const card = subscriptionGroups(rules, 'EUR', { rates }).find((g) => g.key === 'yearly')
+  assert.equal(s.yearly.perYear, card.total / 100)
+  assert.equal(s.yearly.perYear, 120 + 45)
   assert.equal(s.yearly.perMonth, card.perMonth / 100)
-  assert.equal(s.yearly.foreign, true)
+  assert.equal(s.yearly.perMonth, 10 + 3.75)
+  assert.deepEqual(s.yearly.notes, ['Other currencies converted at today’s rate.'])
+  const sheet = statementSheets(s, 'EUR', []).find((x) => x.name === 'Yearly subscriptions')
+  assert.ok(sheet.rows.some((r) => r[0] === 'Other currencies converted at today’s rate.'))
   assert.deepEqual(s.yearly.rules.map((r) => [r.name, r.nextRun, r.amount, r.perYear]),
     [['Software', '2026-12-01', 100, 50], ['Gym', '2027-03-15', 120, 120]])
+})
+
+test('yearly kept separate: a rule with no rate is left out of the cost and named, as in the app', () => {
+  const rules = [
+    { is_active: true, kind: 'expense', frequency: 'yearly', interval_n: 1, amount_minor: 12000, currency: 'EUR',
+      next_run: '2027-03-15', description: 'Gym' },
+    { is_active: true, kind: 'expense', frequency: 'yearly', interval_n: 1, amount_minor: 2999, currency: 'PLN',
+      next_run: '2026-12-01', description: 'Music' },
+    { is_active: true, kind: 'expense', frequency: 'yearly', interval_n: 1, amount_minor: 5000, currency: 'JPY',
+      next_run: '2026-11-01', description: 'App' },
+  ]
+  const rates = { JPY: 0.0062 } // no PLN rate in the server's cache
+  const s = buildStatement([], 'EUR', { ...SEP, separateYearly: true, rules, rates })
+  // ¥5000 × 0.0062 = €31.00; the PLN rule counts nowhere (never at face value).
+  assert.equal(s.yearly.perYear, 120 + 31)
+  assert.deepEqual(s.yearly.notes, [
+    'Other currencies converted at today’s rate.',
+    '29.99 PLN not included — no exchange rate right now.',
+  ])
+  // Still listed, in its own currency.
+  assert.deepEqual(s.yearly.rules.map((r) => [r.name, r.currency, r.amount]),
+    [['App', 'JPY', 5000], ['Music', 'PLN', 29.99], ['Gym', 'EUR', 120]])
+  const card = subscriptionGroups(rules, 'EUR', { rates }).find((g) => g.key === 'yearly')
+  assert.equal(s.yearly.perYear, card.total / 100)
+  assert.deepEqual(card.missing.map((r) => r.description), ['Music'])
+  // All in the base currency: no notes, nothing converted.
+  const same = buildStatement([], 'EUR', { ...SEP, separateYearly: true, rules: [rules[0]] })
+  assert.deepEqual(same.yearly.notes, [])
+  assert.equal(same.yearly.perYear, 120)
+  // A zero-decimal base: $10.00 at 150.123 = ¥1501 (rounded), whole yen.
+  const yen = buildStatement([], 'JPY', { ...SEP, separateYearly: true, rates: { USD: 150.123 },
+    rules: [{ ...rules[0], currency: 'USD', amount_minor: 1000 }] })
+  assert.equal(yen.yearly.perYear, 1501)
 })
 
 test('yearly kept separate: a pending yearly payment is listed as pending, not totalled', () => {

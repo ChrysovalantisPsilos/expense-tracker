@@ -199,7 +199,8 @@ test('subscriptionGroups: yearly totals per year and per month, soonest next thr
   // y2 = 10000/2/12 = 416.67 → 417; y3 = 499.92 → 500.
   assert.equal(y.perMonth, 1000 + 417 + 500 + 200)
   assert.deepEqual(y.next.map((r) => r.id), ['y3', 'y2', 'y4'])
-  assert.equal(y.foreign, false)
+  assert.equal(y.converted, false)
+  assert.deepEqual(y.missing, [])
   // The list keeps paused and ended rules (to resume or edit them); totals don't.
   assert.deepEqual(y.rules.map((r) => r.id), ['y1', 'y2', 'y3', 'y4', 'off', 'ended'])
   const more = subscriptionGroups(mix, 'EUR', { limit: 10 }).find((g) => g.key === 'yearly')
@@ -212,18 +213,48 @@ test('subscriptionGroups: upcomingOnly hides a group whose rules are all paused 
   assert.deepEqual(subscriptionGroups(paused, 'EUR', { upcomingOnly: true }).map((g) => g.key), ['monthly'])
 })
 
-test('subscriptionGroups: other currencies are summed at face value and flagged', () => {
-  const [y] = subscriptionGroups([{ ...mix[2], currency: 'USD' }, mix[3]], 'EUR')
-  assert.equal(y.total, 12000 + 5000)
-  assert.equal(y.foreign, true)
-  // Zero-decimal base: whole units stay whole.
-  const [yen] = subscriptionGroups([{ ...mix[2], currency: 'JPY', amount_minor: 10001, interval_n: 2 }], 'JPY')
-  assert.ok(Number.isInteger(yen.total) && Number.isInteger(yen.perMonth))
+test('subscriptionGroups: other currencies count at the latest rate; one with no rate is left out and named', () => {
+  // YouTube Premium PLN 29.99 at 0.2327 = €6.98, not €29.99.
+  const yt = rule({ id: 'yt', frequency: 'monthly', amount_minor: 2999, currency: 'PLN' })
+  const usd = rule({ id: 'usd', frequency: 'monthly', amount_minor: 1000, currency: 'USD' })
+  const yen = rule({ id: 'yen', frequency: 'monthly', amount_minor: 1500, currency: 'JPY' })
+  const rates = { PLN: 0.2327, USD: 0.9, JPY: 0.0062 }
+  const [m] = subscriptionGroups([mix[0], yt, usd, yen], 'EUR', { rates })
+  assert.equal(m.total, 999 + 698 + 900 + 930) // ¥1500 × 0.0062 = €9.30
+  assert.equal(m.perMonth, m.total)
+  assert.equal(m.converted, true)
+  assert.deepEqual(m.missing, [])
+  // Rows stay as they are, in their own currency.
+  assert.deepEqual(m.next.map((r) => [r.id, r.currency, r.amount_minor]).slice(0, 2), [['m', 'EUR', 999], ['yt', 'PLN', 2999]])
+  // No PLN rate (offline): never at face value — left out and reported.
+  const [off] = subscriptionGroups([mix[0], yt, usd], 'EUR', { rates: { USD: 0.9 } })
+  assert.equal(off.total, 999 + 900)
+  assert.deepEqual(off.missing.map((r) => r.id), ['yt'])
+  assert.equal(off.count, 3)
+  // Nothing foreign: unchanged.
+  const [eur] = subscriptionGroups([mix[0]], 'EUR')
+  assert.equal(eur.total, 999)
+  assert.equal(eur.converted, false)
+  // Converted before the per-period split: every 2 years $100 at 0.9 = €90 → €45/year.
+  const [y] = subscriptionGroups([{ ...mix[3], currency: 'USD' }, mix[2]], 'EUR', { rates })
+  assert.equal(y.total, 12000 + 4500)
+  // Zero-decimal base: whole yen, rounded half away from zero ($9.99 at 150.5 = ¥1503.495 → ¥1503).
+  const [jp] = subscriptionGroups([rule({ frequency: 'monthly', amount_minor: 999, currency: 'USD' })], 'JPY',
+    { rates: { USD: 150.5 } })
+  assert.equal(jp.total, 1503)
+  const [yearlyYen] = subscriptionGroups([{ ...mix[2], currency: 'JPY', amount_minor: 10001, interval_n: 2 }], 'JPY')
+  assert.ok(Number.isInteger(yearlyYen.total) && Number.isInteger(yearlyYen.perMonth))
 })
 
-test('incomePerMonth: active income rules only', () => {
+test('incomePerMonth: active income rules only, foreign ones at the latest rate', () => {
   const salary = rule({ kind: 'income', frequency: 'monthly', amount_minor: 250000 })
-  assert.equal(incomePerMonth([...mix, salary, { ...salary, is_active: false }]), 5000 + 250000)
+  assert.deepEqual(incomePerMonth([...mix, salary, { ...salary, is_active: false }]),
+    { perMonth: 5000 + 250000, converted: false, missing: [] })
+  const gbp = rule({ id: 'gbp', kind: 'income', frequency: 'monthly', amount_minor: 10000, currency: 'GBP' })
+  assert.equal(incomePerMonth([salary, gbp], undefined, 'EUR', { GBP: 1.15 }).perMonth, 250000 + 11500)
+  const off = incomePerMonth([salary, gbp], undefined, 'EUR', {})
+  assert.equal(off.perMonth, 250000)
+  assert.deepEqual(off.missing.map((r) => r.id), ['gbp'])
 })
 
 // ---- Repeat choices and the Repeat section -----------------------------------

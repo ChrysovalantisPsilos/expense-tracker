@@ -4721,11 +4721,51 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 79. 0086: latest_fx_rates gives a signed-in caller today's ECB rate into
+--     their base per asked currency (for the statement's recurring totals):
+--     only well-formed codes, only those with a rate, read-only; anon can't
+--     call it and the cache itself stays closed.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; got jsonb; n int;
+begin
+  begin
+    insert into public.fx_rates (rate_date, currency, per_eur) values (current_date, 'EUR', 1)
+    on conflict (rate_date, currency) do nothing;
+    insert into public.fx_rates (rate_date, currency, per_eur) values (current_date, 'ZZQ', 4)
+    on conflict (rate_date, currency) do update set per_eur = excluded.per_eur;
+    delete from public.fx_rates where currency = 'ZZW';
+    u := pg_temp.zz_user('lfx');
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select jsonb_object_agg(currency, rate) into got
+      from public.latest_fx_rates(array['zzq', 'EUR', 'ZZW', 'bad!', 'ZZQ'], 'eur');
+    select count(*) into n from public.latest_fx_rates(array['ZZQ'], 'nope');
+    execute 'reset role';
+    if got is distinct from '{"ZZQ": 0.25, "EUR": 1}'::jsonb then raise exception 'rates %', got; end if;
+    if n <> 0 then raise exception 'bad base answered % rows', n; end if;
+    if has_function_privilege('anon', 'public.latest_fx_rates(text[], text)', 'execute')
+       or not has_function_privilege('authenticated', 'public.latest_fx_rates(text[], text)', 'execute')
+       or has_table_privilege('authenticated', 'public.fx_rates', 'SELECT') then
+      raise exception 'latest_fx_rates grants wrong';
+    end if;
+    if not exists (select 1 from pg_proc where proname = 'latest_fx_rates'
+                   and prosecdef and 'search_path=public, pg_temp' = any(proconfig)) then
+      raise exception 'latest_fx_rates not a definer with a pinned search_path';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: latest_fx_rates (today''s ECB rates, well-formed codes only, authenticated only)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: latest_fx_rates — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 79; f int; p int;  -- tests 1–78 + B-0059
+declare expected_tests constant int := 80; f int; p int;  -- tests 1–79 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

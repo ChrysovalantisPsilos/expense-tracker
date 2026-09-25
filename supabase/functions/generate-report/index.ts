@@ -15,7 +15,8 @@
 // yearly_separate, 0068): by default the totals count them month by month,
 // like the app (so the fetch includes earlier yearly charges that still cover
 // the period); kept separate, they're left out of the totals and get their own
-// section, with the active yearly rules' cost (my_recurring_rules).
+// section, with the active yearly rules' cost (my_recurring_rules; foreign
+// rules at the latest rate in the server's ECB cache, latest_fx_rates).
 //
 // Salary paid late in the month follows the caller's setting too (profiles.
 // salary_shift_from_day/salary_category_id, 0081): from day D it counts toward
@@ -43,6 +44,7 @@ import { fileResponse } from '../_shared/files.ts'
 import { categoryBars } from '../_shared/breakdown.ts'
 import { salaryShiftOf, shiftFetchFrom } from '../_shared/salaryShift.ts'
 import { savingsIdsOf } from '../_shared/savings.ts'
+import { foreignCurrencies, type Rates } from '../_shared/ruleFx.ts'
 import {
   buildStatement, fromSavingsNote, pendingNote, salaryNote, savingsNote, statementSheets, yearlyLabel, yearlyNote,
   type Sheet, type Statement as StatementData, type StatementRow,
@@ -89,16 +91,27 @@ Deno.serve(withCors(async (req) => {
       .select('id, kind, is_savings').eq('is_savings', true)
     if (catsErr) throw catsErr
     const savingsIds = savingsIdsOf(savingsCats)
-    let rules: unknown[] = []
+    let rules: { currency: string }[] = []
+    let rates: Rates = {}
     if (separateYearly) {
       const { data, error: rulesErr } = await supabase.rpc('my_recurring_rules')
       if (rulesErr) throw rulesErr
       rules = data ?? []
+      // Rules carry no rate: foreign ones count at the latest rate in the
+      // server's ECB cache (latest_fx_rates, 0086), as the app counts them.
+      const currencies = foreignCurrencies(rules, base)
+      if (currencies.length) {
+        const { data: fx, error: fxErr } = await supabase
+          .rpc('latest_fx_rates', { p_currencies: currencies, p_base: base })
+        if (fxErr) throw fxErr
+        rates = Object.fromEntries((fx ?? []).map((r: { currency: string; rate: string | number }) =>
+          [r.currency, Number(r.rate)]))
+      }
     }
 
     // Oldest first; foreign rows whose rate is still pending are listed but
     // kept out of every total (see statementMath.ts).
-    const stmt = buildStatement(txns ?? [], base, { from, to, separateYearly, rules, salaryShift, savingsIds })
+    const stmt = buildStatement(txns ?? [], base, { from, to, separateYearly, rules, rates, salaryShift, savingsIds })
     const notes = [
       pendingNote(stmt.pending), yearlyNote(stmt.yearlyMode), salaryNote(stmt.salaryShiftDay), savingsNote(stmt.saved),
       fromSavingsNote(stmt.spentFromSavings),
@@ -173,7 +186,7 @@ async function buildPdf({ from, to, base, stmt, notes, name }: {
       { label: 'Active subscriptions, per year', value: money(yearly.perYear, base), tone: 'accent' },
       { label: 'Per month', value: `≈ ${money(yearly.perMonth, base)}` },
     ], { size: 13 })
-    if (yearly.foreign) doc.muted('Other currencies are added at face value (recurring entries have no exchange rate).')
+    for (const n of yearly.notes) doc.muted(n)
     if (yearly.payments.length > 0) {
       doc.table(
         [

@@ -3,6 +3,7 @@ import {
   monthlyMinor, monthlyShare, perYearMinor, ruleSpreadMonths, ruleCountsMonthly, spreadDates, spreadPart,
 } from '../../shared/lib/spread.js'
 import { toBaseMinor } from '../../shared/lib/currency.js'
+import { rulesInBase } from '../../shared/lib/ruleFx.js'
 import { countedDate } from '../../shared/lib/salaryShift.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
 
@@ -106,7 +107,8 @@ export function monthlyBudgetShare(rule) {
 // subscriptions into the dashboard's projected spend. Occurrences are stepped
 // from each rule's next_run, so a charge that has already materialised (its
 // next_run has advanced past the window) is naturally excluded — no double
-// counting. Amounts are treated as base currency (rules carry no FX rate).
+// counting. Pass rules already in the base currency (ruleFx.rulesInBase: each
+// foreign rule at the latest ECB rate, one without a rate left out).
 // A yearly expense counts only its monthly parts that fall in the window, as
 // its charge will once it's made (shared/lib/spread.js) — or nothing at all
 // with `separateYearly` (the user keeps yearly subscriptions separate, 0068).
@@ -254,32 +256,37 @@ export function periodMinor(rule) {
 const upcoming = (r) => r.is_active && (!r.end_date || r.next_run <= r.end_date)
 
 // The groups the user has, in SUBSCRIPTION_GROUPS order, each with:
-//   rules     every expense rule in the group, paused and ended ones included
-//             (the Recurring page lists them to resume or edit), input order
-//   total     Σ periodMinor of its upcoming rules: the cost per `unit`
-//   perMonth  Σ monthlyMinor of them (the same per-rule rounding as the
-//             statement's yearly section, so both agree)
-//   next      the `limit` soonest upcoming rules
-//   count     how many upcoming rules
-//   foreign   some upcoming rule is in another currency than `baseCurrency`
-//             (rules carry no exchange rate, so they're summed at face value)
+//   rules      every expense rule in the group, paused and ended ones included
+//              (the Recurring page lists them to resume or edit), input order
+//   total      Σ periodMinor of its upcoming rules in `baseCurrency`: the cost
+//              per `unit`
+//   perMonth   Σ monthlyMinor of them (the same per-rule rounding as the
+//              statement's yearly section, so both agree)
+//   next       the `limit` soonest upcoming rules (as they are, own currency)
+//   count      how many upcoming rules
+//   converted  some upcoming rule in another currency was converted
+//   missing    the upcoming foreign rules left out of the totals: no rate
+// Foreign rules count at `rates` (currency → rate into the base currency, the
+// latest ECB rates: fx.js useLatestRates), never at face value (ruleFx.ts).
 // `upcomingOnly` leaves out groups with nothing to come (Home's card).
 // Income isn't a subscription: only expense rules count.
-export function subscriptionGroups(rules, baseCurrency, { limit = 3, upcomingOnly = false } = {}) {
+export function subscriptionGroups(rules, baseCurrency, { limit = 3, upcomingOnly = false, rates = {} } = {}) {
   const out = []
   for (const g of SUBSCRIPTION_GROUPS) {
     const all = rules.filter((r) => r.kind !== 'income' && subscriptionGroup(r) === g.key)
     const live = all.filter(upcoming)
       .sort((a, b) => (a.next_run < b.next_run ? -1 : a.next_run > b.next_run ? 1 : 0))
     if (!all.length || (upcomingOnly && !live.length)) continue
+    const fx = rulesInBase(live, baseCurrency, rates)
     out.push({
       ...g,
       rules: all,
-      total: live.reduce((s, r) => s + periodMinor(r), 0),
-      perMonth: live.reduce((s, r) => s + monthlyMinor(r), 0),
+      total: fx.rules.reduce((s, r) => s + periodMinor(r), 0),
+      perMonth: fx.rules.reduce((s, r) => s + monthlyMinor(r), 0),
       next: live.slice(0, limit),
       count: live.length,
-      foreign: live.some((r) => r.currency !== baseCurrency),
+      converted: fx.converted,
+      missing: fx.missing,
     })
   }
   return out
@@ -322,8 +329,11 @@ export function chargedWording(period) {
 }
 
 // What the active income rules bring in per month (the Recurring page's
-// Income tab). Recurring savings (rules in a savings category, 0084) aren't
-// income, so they're left out.
-export const incomePerMonth = (rules, savingsIds = new Set()) => rules
-  .filter((r) => r.kind === 'income' && upcoming(r) && !isSavingsRow(r, savingsIds))
-  .reduce((s, r) => s + monthlyMinor(r), 0)
+// Income tab), in the base currency: { perMonth, converted, missing } — foreign
+// rules at `rates`, as subscriptionGroups. Recurring savings (rules in a
+// savings category, 0084) aren't income, so they're left out.
+export function incomePerMonth(rules, savingsIds = new Set(), baseCurrency = 'EUR', rates = {}) {
+  const fx = rulesInBase(rules.filter((r) => r.kind === 'income' && upcoming(r) && !isSavingsRow(r, savingsIds)),
+    baseCurrency, rates)
+  return { perMonth: fx.rules.reduce((s, r) => s + monthlyMinor(r), 0), converted: fx.converted, missing: fx.missing }
+}

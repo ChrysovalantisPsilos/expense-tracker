@@ -120,3 +120,46 @@ export function useFxRate(from, to, date, { skip = false } = {}) {
   if (skip) return { status: 'skipped' }
   return state
 }
+
+// Today's rate per currency→base, one request each, shared by every caller
+// (Home's Recurring card and the Overview both ask on the same render) and
+// kept for the page's life; a failure isn't kept, so the next mount retries.
+const latest = new Map()
+function latestRate(from, to) {
+  const key = `${from}:${to}:${today()}`
+  if (!latest.has(key)) {
+    latest.set(key, getRate(from, to).then((answer) => {
+      if (!answer) latest.delete(key)
+      return answer
+    }))
+  }
+  return latest.get(key)
+}
+
+const NO_RATES = {}
+
+// The latest ECB rates for `currencies` (ruleFx.foreignCurrencies) into
+// `base`, for totals built from recurring rules: { rates: { PLN: 0.2327, … },
+// loading }. A currency with no rate (offline, unknown) is simply absent —
+// never 1.
+export function useLatestRates(currencies, base) {
+  const wanted = base ? [...new Set(currencies)].filter((c) => c !== base).sort().join(',') : ''
+  const key = wanted && `${wanted}>${base}`
+  const [state, setState] = useState({ key: '', rates: {} })
+
+  useEffect(() => {
+    if (!key) return undefined
+    let live = true
+    const list = wanted.split(',')
+    Promise.all(list.map((c) => latestRate(c, base))).then((answers) => {
+      if (!live) return
+      const rates = {}
+      list.forEach((c, i) => { if (answers[i]) rates[c] = answers[i].rate })
+      setState({ key, rates })
+    })
+    return () => { live = false }
+  }, [key, wanted, base])
+
+  if (!key) return { rates: NO_RATES, loading: false }
+  return state.key === key ? { rates: state.rates, loading: false } : { rates: NO_RATES, loading: true }
+}

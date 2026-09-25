@@ -14,9 +14,10 @@ import { linkBuckets } from '../categories/categoryLinks.js'
 import { useSavingsIds } from '../categories/categories.js'
 import { today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { useRecurring } from '../recurring/recurring.js'
+import { useRecurring, useRuleRates } from '../recurring/recurring.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { spendRows, paidInWindow } from '../../shared/lib/spread.js'
+import { rulesInBase } from '../../shared/lib/ruleFx.js'
 import { countedInWindow } from '../../shared/lib/salaryShift.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
@@ -47,6 +48,8 @@ const UNAVAILABLE = 'Not available until your transactions load.'
 export default function Dashboard() {
   const { baseCurrency, separateYearly, salaryShift } = useProfile()
   const { rules, loading: rulesLoading, error: rulesError, reload: reloadRules } = useRecurring()
+  // Foreign rules count at today's ECB rate (the projection, the Recurring card).
+  const ruleFx = useRuleRates(rules, baseCurrency)
   // undefined until known (null: no transactions at all)
   const [oldest, setOldest] = useState(undefined)
   const periods = useMemo(() => buildPeriods(oldest), [oldest])
@@ -98,8 +101,9 @@ export default function Dashboard() {
   // periods and "all time" stay purely actual.
   const todayISO = useMemo(() => today(), [])
   const proj = useMemo(
-    () => periodProjection(rules, period.to, todayISO, separateYearly, salaryShift, savingsIds),
-    [rules, period.to, todayISO, separateYearly, salaryShift, savingsIds])
+    () => periodProjection(rulesInBase(rules, baseCurrency, ruleFx.rates).rules, period.to, todayISO,
+      separateYearly, salaryShift, savingsIds),
+    [rules, baseCurrency, ruleFx.rates, period.to, todayISO, separateYearly, salaryShift, savingsIds])
   const { spentTotal, earnedTotal, fromIncomeTotal, fromSavingsTotal, netTotal } = projectedTotals(totals, proj)
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
   const saved = savedNote(totals.saved, period, baseCurrency)
@@ -275,7 +279,7 @@ export default function Dashboard() {
       </Panel>
       )}
 
-      <SubscriptionsCard rules={rules} loading={rulesLoading} error={rulesError} onRetry={reloadRules}
+      <SubscriptionsCard rules={rules} fx={ruleFx} loading={rulesLoading} error={rulesError} onRetry={reloadRules}
         baseCurrency={baseCurrency} period={period} charges={{ rows, loading, error, onRetry: reload }} />
     </Stack>
   )

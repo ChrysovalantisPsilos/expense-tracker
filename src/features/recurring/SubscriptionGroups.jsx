@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Box, HStack, Tab, TabList, TabPanel, TabPanels, Tabs, Text } from '@chakra-ui/react'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
+import { CONVERTED_NOTE, missingRatesNote, ruleInBase } from '../../shared/lib/ruleFx.js'
 
 // Frequency chips over subscriptionGroups() (recurringMath.js) — Home's
 // Recurring card and the Recurring page's Subscriptions tab. One tab per
@@ -27,8 +28,8 @@ export function GroupTabs({ groups, label, children }) {
 
 // A group's headline: what it costs per period ("€29.97 a month"), and, for
 // the other periods, about how much that is a month. Rules in other
-// currencies are summed at face value (they carry no exchange rate), and the
-// line under it says so.
+// currencies count at today's rate (subscriptionGroups); the line under it
+// says so, and names any left out for want of a rate.
 export function GroupTotal({ group: g, baseCurrency, ...props }) {
   return (
     <Box {...props}>
@@ -38,11 +39,28 @@ export function GroupTotal({ group: g, baseCurrency, ...props }) {
           <Text fontSize="sm" color="text.muted">≈ {formatMoney(g.perMonth, baseCurrency)}/month</Text>
         )}
       </HStack>
-      {g.foreign && (
-        <Text fontSize="xs" color="text.muted" mt={1}>
-          Other currencies are added at face value (recurring entries have no exchange rate).
-        </Text>
-      )}
+      <RatesNote converted={g.converted} missing={g.missing} mt={1} />
     </Box>
   )
+}
+
+// The notes under a total built from rules: foreign ones converted at today's
+// rate, and those left out because there's no rate right now.
+export function RatesNote({ converted, missing, ...props }) {
+  const left = missingRatesNote(missing, formatMoney)
+  if (!converted && !left) return null
+  return (
+    <Box fontSize="xs" color="text.muted" {...props}>
+      {converted && <Text>{CONVERTED_NOTE}</Text>}
+      {left && <Text>{left}</Text>}
+    </Box>
+  )
+}
+
+// What a foreign rule's charge is in the base currency at today's rate
+// ("≈ €6.98"), shown under its own amount; undefined for a base-currency rule
+// or one with no rate.
+export function baseHint(rule, baseCurrency, rates) {
+  const b = rule.currency !== baseCurrency && ruleInBase(rule, baseCurrency, rates)
+  return b ? `≈ ${formatMoney(b.amount_minor, baseCurrency)}` : undefined
 }

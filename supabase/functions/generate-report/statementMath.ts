@@ -3,6 +3,7 @@
 import { fmtMinor, minorFactor, toBaseMinor } from '../_shared/money.ts'
 import { isSpread, monthlyShare, paidInWindow, perYearMinor, spendRows, yearlyRules } from '../_shared/spread.ts'
 import { isShifted, type SalaryShift } from '../_shared/salaryShift.ts'
+import { CONVERTED_NOTE, missingRatesNote, type Rates, rulesInBase } from '../_shared/ruleFx.ts'
 import { EFFECTS, type Effect, isSpending, netSign, rowEffect, savingsSource } from '../_shared/savings.ts'
 
 // One statement line. `base_amount` is in the base currency (major units),
@@ -30,10 +31,13 @@ export interface StatementRow {
 export interface YearlySection {
   payments: StatementRow[]
   paidTotal: number // rated payments, base currency
-  perYear: number // active yearly rules, face value as base currency (major)
+  // What the active yearly rules cost in the base currency (major): foreign
+  // ones at the latest ECB rate, those with no rate left out (ruleFx.ts).
+  perYear: number
   perMonth: number
   rules: { name: string; nextRun: string; currency: string; amount: number; perYear: number }[]
-  foreign: boolean // some rule is in another currency (summed at face value)
+  // The lines under those totals: foreign rules converted, and any left out.
+  notes: string[]
 }
 
 export interface Statement {
@@ -68,6 +72,8 @@ export interface StatementOptions {
   separateYearly?: boolean
   // my_recurring_rules rows (only read when separateYearly).
   rules?: any[]
+  // The latest ECB rate into `base` per foreign rule currency (latest_fx_rates).
+  rates?: Rates
   // profiles.salary_shift_from_day/salary_category_id (0081, salaryShiftOf):
   // salary paid from day D counts toward the next month's totals.
   salaryShift?: SalaryShift | null
@@ -101,7 +107,8 @@ export interface StatementOptions {
 // payment whose parts would have counted).
 export function buildStatement(txns: any[], base: string, opts: StatementOptions = {}): Statement {
   const {
-    from = null, to = null, separateYearly = false, rules = [], salaryShift = null, savingsIds = new Set<string>(),
+    from = null, to = null, separateYearly = false, rules = [], rates = {}, salaryShift = null,
+    savingsIds = new Set<string>(),
   } = opts
   const bf = minorFactor(base)
   // Oldest first; a base-currency row with no rate is itself (rate 1).
@@ -167,11 +174,13 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
   if (separateYearly) {
     const payments = rows.filter((r) => r.yearly && r.kind === 'expense')
     const y = yearlyRules(rules)
+    const fx = rulesInBase(y.rules, base, rates)
+    const cost = yearlyRules(fx.rules)
     yearly = {
       payments,
       paidTotal: payments.reduce((s, r) => s + (r.base_amount ?? 0), 0),
-      perYear: y.perYear / bf,
-      perMonth: y.perMonth / bf,
+      perYear: cost.perYear / bf,
+      perMonth: cost.perMonth / bf,
       rules: y.rules.map((r) => ({
         name: r.description || r.categories?.name || 'Expense',
         nextRun: r.next_run,
@@ -179,7 +188,10 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
         amount: r.amount_minor / minorFactor(r.currency),
         perYear: perYearMinor(r) / minorFactor(r.currency),
       })),
-      foreign: y.rules.some((r) => r.currency !== base),
+      notes: [
+        ...(fx.converted ? [CONVERTED_NOTE] : []),
+        missingRatesNote(fx.missing, fmtMinor),
+      ].filter((n): n is string => n != null),
     }
   }
 
@@ -312,7 +324,7 @@ export function statementSheets(stmt: Statement, base: string, notes: string[]):
         [`Paid in this period (${base})`, yearly.paidTotal],
         [`Active subscriptions per year (${base})`, yearly.perYear],
         [`Per month (${base})`, yearly.perMonth],
-        ...(yearly.foreign ? [['Other currencies are added at face value (recurring entries have no exchange rate).']] : []),
+        ...yearly.notes.map((n) => [n]),
         [],
         ['Payments in this period'],
         ['Date', 'Description', 'Currency', 'Amount', `Amount (${base})`],

@@ -160,7 +160,8 @@ export const perYearMinor = (rule: Row): number =>
 //   perYear   Σ perYearMinor
 //   perMonth  Σ monthlyMinor — the same per-rule rounding the Recurring page's
 //             monthly figures use, so every page agrees
-// Rules carry no exchange rate, so amounts are summed at face value.
+// Rules carry no exchange rate: pass them through ruleFx.rulesInBase first
+// (foreign ones at the latest ECB rate) for totals in the base currency.
 export function yearlyRules(rules: Row[]): { rules: Row[]; perYear: number; perMonth: number } {
   const yearly = rules
     .filter((r) => r.is_active && ruleSpreadMonths(r) && (!r.end_date || r.next_run <= r.end_date))

@@ -1,6 +1,8 @@
 import { useOwnedQuery, removeRow } from '../../shared/lib/db.js'
 import { supabase } from '../../shared/lib/supabase.js'
 import { dbError } from '../../shared/lib/errors.js'
+import { useLatestRates } from '../../shared/lib/fx.js'
+import { foreignCurrencies } from '../../shared/lib/ruleFx.js'
 
 // A rule's amount and description are encrypted at rest, so reads go through
 // the decrypting `my_recurring_rules` RPC (active first, then by next charge
@@ -13,6 +15,12 @@ export function useRecurring() {
   })
   return { rules, loading, error, reload }
 }
+
+// The latest ECB rates for the rules' foreign currencies into the base
+// currency — what totals built from rules convert at (ruleFx.js):
+// { rates, loading }.
+export const useRuleRates = (rules, baseCurrency) =>
+  useLatestRates(foreignCurrencies(rules, baseCurrency), baseCurrency)
 
 export async function listRecurring() {
   const { data, error } = await supabase.rpc('my_recurring_rules')
