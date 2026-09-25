@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  salaryShiftOf, isShifted, countedDate, countedRow, shiftFetchFrom, countsForLabel,
+  salaryShiftOf, isShifted, countedDate, countedRow, countedInWindow, shiftFetchFrom, countsForLabel,
 } from '../supabase/functions/_shared/salaryShift.ts'
 import { spendRows, paidInWindow } from '../src/shared/lib/spread.js'
 import { periodTotals, periodProjection } from '../src/features/dashboard/dashboardMath.js'
@@ -206,4 +206,21 @@ test('settings: the day picker, the default category and the patch', () => {
     { salary_shift_from_day: 28, salary_category_id: 'f' })
   assert.deepEqual(salaryShiftPatch(false, { fromDay: 25, categoryId: 's', categories: cats }),
     { salary_shift_from_day: null })
+})
+
+test('countedInWindow: a late-month salary is listed in the month it counts for', () => {
+  const shift = { fromDay: 25, categoryId: 'sal' }
+  const salary = { kind: 'income', category_id: 'sal', spent_at: '2026-08-28' }
+  const early = { kind: 'income', category_id: 'sal', spent_at: '2026-08-20' }
+  const gift = { kind: 'income', category_id: 'gift', spent_at: '2026-08-28' }
+  const rows = [salary, early, gift]
+  assert.deepEqual(countedInWindow(rows, '2026-08-01', '2026-08-31', shift), [early, gift])
+  assert.deepEqual(countedInWindow(rows, '2026-09-01', '2026-09-30', shift), [salary])
+  // December's salary is listed in January of the next year.
+  const dec = { ...salary, spent_at: '2025-12-30' }
+  assert.deepEqual(countedInWindow([dec], '2026-01-01', '2026-12-31', shift), [dec])
+  assert.deepEqual(countedInWindow([dec], '2025-01-01', '2025-12-31', shift), [])
+  // Setting off, or all time: by the real date / everything.
+  assert.deepEqual(countedInWindow(rows, '2026-08-01', '2026-08-31', null), rows)
+  assert.deepEqual(countedInWindow(rows, null, null, shift), rows)
 })

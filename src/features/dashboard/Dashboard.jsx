@@ -16,6 +16,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring } from '../recurring/recurring.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { spendRows, paidInWindow } from '../../shared/lib/spread.js'
+import { countedInWindow } from '../../shared/lib/salaryShift.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
@@ -71,7 +72,11 @@ export default function Dashboard() {
   const { byCategory, bucketRow } = totals
   const paid = useMemo(() => paidInWindow(rows, period.from, period.to), [rows, period.from, period.to])
   const expenses = useMemo(() => paid.filter((r) => r.kind !== 'income'), [paid])
-  const income = useMemo(() => paid.filter((r) => r.kind === 'income'), [paid])
+  // Income is listed by the month it counts for: a late-month salary (the
+  // salary setting) shows under the next month, with its real date.
+  const income = useMemo(
+    () => countedInWindow(rows.filter((r) => r.kind === 'income'), period.from, period.to, salaryShift),
+    [rows, period.from, period.to, salaryShift])
   // Each bar drills down to its expenses for this period (a group share to its
   // group); the folded "Other" merges several buckets, so it has no link.
   const bars = useMemo(

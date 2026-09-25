@@ -84,6 +84,19 @@ export function shiftFetchFrom(from: string | null | undefined, shift: SalaryShi
   return start < from ? start : from
 }
 
+// The rows that count in [from, to] (either bound may be null): each by its
+// counted date, so a shifted salary is listed in the month it counts for
+// (Home's Income card shows 28 Aug's salary under September, with its real
+// date and a "Counts for September" note) and not in the month it was paid.
+export function countedInWindow(
+  rows: Row[], from: string | null | undefined, to: string | null | undefined, shift: SalaryShift | null,
+): Row[] {
+  return rows.filter((r) => {
+    const d = countedDate(r, shift)
+    return (!from || d >= from) && (!to || d <= to)
+  })
+}
+
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
   'September', 'October', 'November', 'December']
 

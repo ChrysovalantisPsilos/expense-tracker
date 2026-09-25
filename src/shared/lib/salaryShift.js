@@ -3,5 +3,5 @@
 // total the same months as the app): see supabase/functions/_shared/
 // salaryShift.ts for the rule and its edge cases.
 export {
-  salaryShiftOf, countedDate, shiftFetchFrom, countsForLabel,
+  salaryShiftOf, countedDate, countedInWindow, shiftFetchFrom, countsForLabel,
 } from '../../../supabase/functions/_shared/salaryShift.ts'
