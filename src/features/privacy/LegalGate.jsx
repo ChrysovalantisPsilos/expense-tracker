@@ -26,8 +26,10 @@ export default function LegalGate({ status, onAccept }) {
   const exporting = useAsyncSubmit()
   const deleteModal = useDisclosure()
 
+  // An account that never accepted anything gets a plain "please accept";
+  // the "what changed" list is for people who accepted an earlier version.
   const firstTime = !status.privacy_accepted && !status.terms_accepted
-  const changes = changesSince(status)
+  const changes = firstTime ? [] : changesSince(status)
 
   const accept = () => run(onAccept, { errorTitle: 'Couldn’t save your acceptance' })
   const download = () => exporting.run(async () => {
@@ -42,7 +44,7 @@ export default function LegalGate({ status, onAccept }) {
         <ModalOverlay />
         <ModalContent mx={4}>
           <ModalHeader>
-            {firstTime ? 'Before you continue' : 'We’ve updated our terms'}
+            {firstTime ? 'Please accept to continue' : 'We’ve updated our terms'}
           </ModalHeader>
           <ModalBody>
             <Stack spacing={4}>
@@ -64,12 +66,15 @@ export default function LegalGate({ status, onAccept }) {
               {declined && (
                 <Stack spacing={2} borderWidth="1px" borderColor="border.default" borderRadius="xl" p={3}>
                   <Text fontSize="sm" color="text.muted">
-                    Without accepting, you can’t keep using Budgeer. You can still take your data
-                    with you or delete your account.
+                    {firstTime
+                      ? 'Without accepting, you can’t use Budgeer. You can delete the account you just created or sign out.'
+                      : 'Without accepting, you can’t keep using Budgeer. You can still take your data with you or delete your account.'}
                   </Text>
-                  <Button size="sm" variant="outline" leftIcon={<Download size={16} />}
-                    isLoading={exporting.busy} loadingText="Gathering your data…" spinner={<RingSpinner />}
-                    onClick={download}>Download my data</Button>
+                  {!firstTime && (
+                    <Button size="sm" variant="outline" leftIcon={<Download size={16} />}
+                      isLoading={exporting.busy} loadingText="Gathering your data…" spinner={<RingSpinner />}
+                      onClick={download}>Download my data</Button>
+                  )}
                   <Button size="sm" variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />}
                     onClick={deleteModal.onOpen}>Delete my account</Button>
                   <Button size="sm" variant="ghost" leftIcon={<LogOut size={16} />} onClick={signOut}>
