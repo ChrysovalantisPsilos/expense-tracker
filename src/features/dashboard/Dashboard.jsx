@@ -4,7 +4,7 @@ import {
   SimpleGrid, Box, Text, Stack, HStack, IconButton, Button,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
-import { ChartBarDecreasing, PiggyBank, Table as TableIcon, ReceiptText, Users, Wallet } from 'lucide-react'
+import { ChartBarDecreasing, ChevronDown, ChevronUp, PiggyBank, Table as TableIcon, ReceiptText, Users, Wallet } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
 import FirstEntry from '../transactions/FirstEntry.jsx'
 import { isFirstRun, listHeading } from '../transactions/listHeading.js'
@@ -224,8 +224,9 @@ export default function Dashboard() {
             ))}
           </Stack>
           {(shownBars.hidden > 0 || showAllBars) && bars.length > TOP_CATEGORIES && (
-            <Button size="sm" variant="ghost" alignSelf="center" aria-controls="spending-bars"
-              aria-expanded={showAllBars} onClick={() => setShowAllBars((v) => !v)}>
+            <Button size="sm" variant="outline" colorScheme="gray" w="full" aria-controls="spending-bars"
+              aria-expanded={showAllBars} onClick={() => setShowAllBars((v) => !v)}
+              rightIcon={showAllBars ? <ChevronUp size={16} /> : <ChevronDown size={16} />}>
               {showAllBars ? `Show top ${TOP_CATEGORIES}` : `Show all ${bars.length} categories`}
             </Button>
           )}
