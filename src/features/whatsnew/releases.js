@@ -1,6 +1,6 @@
 // The "What's new" story's content: one entry per production release, newest
 // first. Add the new release at the top when shipping; whatsNewMath.js shows
-// it once per device (test/whatsNewReleases.test.js checks the shape).
+// it once per account (test/whatsNew.test.js checks the shape).
 //   id, date  — the release day, 'YYYY-MM-DD' (the id is what's remembered)
 //   pages     — 1–5 pages, one change each:
 //     title, body — short and plain

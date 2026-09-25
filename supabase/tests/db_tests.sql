@@ -4761,11 +4761,65 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 80. 0087: profiles.whats_new_seen (the newest "What's new" release the
+--     account has seen). Starts null; the owner sets it and reads it back;
+--     another user can't change it (RLS: 0 rows), nor can anon (no column
+--     grant); only a release id ('YYYY-MM-DD') is accepted.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; v text; n int;
+begin
+  begin
+    u1 := pg_temp.zz_user('wn');
+    u2 := pg_temp.zz_user('wnx');
+    if (select whats_new_seen from public.profiles where id = u1) is not null then
+      raise exception 'whats_new_seen starts set';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set whats_new_seen = '2026-09-26' where id = u1;
+    select whats_new_seen into v from public.profiles where id = u1;
+    if v is distinct from '2026-09-26' then execute 'reset role'; raise exception 'owner read back %', v; end if;
+    update public.profiles set whats_new_seen = '2026-09-26' where id = u2;  -- RLS: 0 rows
+    get diagnostics n = row_count;
+    if n <> 0 then execute 'reset role'; raise exception 'set another user''s whats_new_seen'; end if;
+    foreach v in array array['2026-9-26', '2026-13-01', '2026-09-32', 'latest', '2026-09-26x', ''] loop
+      begin
+        update public.profiles set whats_new_seen = v where id = u1;
+        execute 'reset role';
+        raise exception 'GUARD_MISSED: stored %', v;
+      exception when check_violation then null;
+      end;
+    end loop;
+    execute 'reset role';
+    if (select whats_new_seen from public.profiles where id = u2) is not null then
+      raise exception 'whats_new_seen leaked onto another user';
+    end if;
+
+    perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+    begin
+      execute 'set local role anon';
+      update public.profiles set whats_new_seen = '2026-09-26' where id = u2;
+      execute 'reset role';
+      raise exception 'anon could update whats_new_seen';
+    exception when insufficient_privilege then
+      execute 'reset role';
+    end;
+    if (select whats_new_seen from public.profiles where id = u2) is not null then raise exception 'anon set whats_new_seen'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: whats_new_seen owner-only (not other users, not anon), release ids only';
+    else update _t set fails = fails + 1; raise notice 'FAIL: whats_new_seen — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 80; f int; p int;  -- tests 1–79 + B-0059
+declare expected_tests constant int := 81; f int; p int;  -- tests 1–80 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

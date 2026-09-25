@@ -38,7 +38,7 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | `auth.sessions`, `auth.refresh_tokens` | IP, user agent, timestamps | Keep users signed in, security | (f) security | until sign-out/expiry (Supabase-managed) | Supabase, operator |
 | `auth.webauthn_credentials` | passkey name, public key, last used | Passkey sign-in | (b) | account | owner, operator |
 | `auth.audit_log_entries` | sign-in events, IP | Security | (f) | 30 days (0073 purge, if stored in DB) | operator |
-| `profiles` | display_name, avatar_url, base_currency, notification switches (`notify_email`, `notify_push`, `notify_digest`), onboarding/tour/pref flags, payment IBAN/Revolut/PayPal (enc) | Profile, settings, settling up | (b); digest (a) consent | account | owner; co-members see name/picture and payment details |
+| `profiles` | display_name, avatar_url, base_currency, notification switches (`notify_email`, `notify_push`, `notify_digest`), onboarding/tour/pref flags, the last “What’s new” seen (`whats_new_seen`), payment IBAN/Revolut/PayPal (enc) | Profile, settings, settling up | (b); digest (a) consent | account | owner; co-members see name/picture and payment details |
 | `consents` (0072) | purpose, version, granted, source, server timestamp | Prove acceptance/consent (Art. 7(1)) | (c) | account | owner (read), written only by server paths |
 | `categories`, `category_rules` | names, patterns | Organise own records | (b) | account | owner |
 | `transactions` | amount/description/notes (enc), currency, rate, date, category, account, group link | Expense/income tracking | (b) | account | owner |

@@ -3,11 +3,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  pickRelease, readSeen, writeSeen, ringVariant, releaseDay, releaseDate,
+  pickRelease, createSeenTracker, ringVariant, releaseDay, releaseDate,
 } from '../src/features/whatsnew/whatsNewMath.js'
 import { RELEASES } from '../src/features/whatsnew/releases.js'
 import { isSignedInRoute } from '../src/app/routes.js'
-import { STORAGE_KEYS } from '../src/shared/lib/keys.js'
+import { RETIRED_STORAGE_KEYS } from '../src/shared/lib/keys.js'
 import { readFileSync, readdirSync } from 'node:fs'
 
 const page = (title) => ({ title, body: 'b', chips: ['x'] })
@@ -25,7 +25,7 @@ test('first visit of a brand-new account: nothing shown, newest marked seen sile
   assert.deepEqual(pickRelease(ALL, { seenId: null, onboardedAt: '2026-12-24T08:00:00Z' }), { show: null, markSeen: R3.id })
 })
 
-test('nothing recorded on this device, account from before the release: the newest shows', () => {
+test('nothing recorded on the profile, account from before the release: the newest shows', () => {
   assert.deepEqual(pickRelease(ALL, { seenId: null, onboardedAt: OLD_USER }), { show: R3, markSeen: R3.id })
   assert.deepEqual(pickRelease(ALL, { seenId: null, onboardedAt: '2026-10-31T23:00:00Z' }).show, R3)
 })
@@ -34,7 +34,7 @@ test('an unseen release shows, and is then the one remembered', () => {
   assert.deepEqual(pickRelease(ALL, { seenId: R2.id, onboardedAt: OLD_USER }), { show: R3, markSeen: R3.id })
 })
 
-test('already seen: nothing, at most once per release per device', () => {
+test('already seen: nothing, at most once per release per account', () => {
   assert.deepEqual(pickRelease(ALL, { seenId: R3.id, onboardedAt: OLD_USER }), { show: null, markSeen: null })
   // Another visit after marking it seen gives the same answer.
   const { markSeen } = pickRelease(ALL, { seenId: R2.id, onboardedAt: OLD_USER })
@@ -54,24 +54,115 @@ test('a release without pages never shows; the newest unseen one with pages does
   assert.deepEqual(pickRelease([], { seenId: null, onboardedAt: OLD_USER }), { show: null, markSeen: null })
 })
 
-test('storage unreadable or throwing: nothing shows, nothing breaks', () => {
-  const throwing = () => { throw new Error('SecurityError') }
-  const badGet = () => ({ getItem() { throw new Error('denied') }, setItem() { throw new Error('quota') } })
-  assert.equal(readSeen(throwing), undefined)
-  assert.equal(readSeen(badGet), undefined)
-  assert.equal(readSeen(() => undefined), undefined)
-  assert.doesNotThrow(() => writeSeen('x', throwing))
-  assert.doesNotThrow(() => writeSeen('x', badGet))
-  assert.deepEqual(pickRelease(ALL, { seenId: readSeen(throwing), onboardedAt: OLD_USER }), { show: null, markSeen: null })
+test('profile value unknown (no such column): nothing shows, nothing is marked', () => {
+  assert.deepEqual(pickRelease(ALL, { seenId: undefined, onboardedAt: OLD_USER }), { show: null, markSeen: null })
 })
 
-test('readSeen / writeSeen round-trip under the STORAGE_KEYS entry', () => {
-  const map = new Map()
-  const store = () => ({ getItem: (k) => (map.has(k) ? map.get(k) : null), setItem: (k, v) => map.set(k, v) })
-  assert.equal(readSeen(store), null)
-  writeSeen(R3.id, store)
-  assert.equal(map.get(STORAGE_KEYS.whatsNewSeen), R3.id)
-  assert.equal(readSeen(store), R3.id)
+// A profile-backed tracker: `rows` is the server's whats_new_seen per user;
+// `offline` makes every write fail. The device's localStorage is a Map.
+function fixture({ stored, offline = false } = {}) {
+  const rows = new Map()
+  const saves = []
+  const device = new Map(stored === undefined ? [] : [[RETIRED_STORAGE_KEYS.whatsNewSeen, stored]])
+  const storage = {
+    getItem: (k) => (device.has(k) ? device.get(k) : null),
+    removeItem: (k) => device.delete(k),
+  }
+  const tracker = createSeenTracker({
+    save: async (uid, id) => {
+      saves.push([uid, id])
+      if (offline) throw new Error('offline')
+      rows.set(uid, id)
+    },
+    getStorage: () => storage,
+  })
+  return { rows, saves, device, tracker }
+}
+// One app start: read the profile, decide, mark (as WhatsNewPrompt does).
+async function visit(f, uid, onboardedAt = OLD_USER) {
+  const seenId = await f.tracker.load(uid, f.rows.has(uid) ? f.rows.get(uid) : null)
+  const pick = pickRelease(ALL, { seenId, onboardedAt })
+  if (pick.markSeen) await f.tracker.mark(uid, pick.markSeen)
+  return pick.show
+}
+
+test('seen is per account: marked on the profile, so another device doesn\'t show it again', async () => {
+  const phone = fixture()
+  phone.rows.set('u1', R2.id)
+  assert.equal(await visit(phone, 'u1'), R3)
+  assert.equal(phone.rows.get('u1'), R3.id)
+  // A second device of the same account reads the same profile.
+  const laptop = fixture()
+  laptop.rows.set('u1', phone.rows.get('u1'))
+  assert.equal(await visit(laptop, 'u1'), null)
+  assert.deepEqual(laptop.saves, [])
+})
+
+test('first visit of a new account marks the newest on the profile silently; several missed show only the newest', async () => {
+  const f = fixture()
+  assert.equal(await visit(f, 'new', null), null)
+  assert.equal(f.rows.get('new'), R3.id)
+  f.rows.set('old', R1.id)
+  assert.equal(await visit(f, 'old'), R3)
+  assert.equal(f.rows.get('old'), R3.id)
+  assert.equal(await visit(f, 'old'), null)
+})
+
+test('a failed write (offline) keeps it hidden for the rest of the session, and is made again next load', async () => {
+  const f = fixture({ offline: true })
+  f.rows.set('u1', R2.id)
+  assert.equal(await visit(f, 'u1'), R3)
+  assert.equal(f.rows.get('u1'), R2.id, 'nothing reached the server')
+  assert.equal(await visit(f, 'u1'), null, 'shown twice in one session')
+  // Another account on the same tab starts from its own profile.
+  f.rows.set('u2', R2.id)
+  assert.equal(await visit(f, 'u2'), R3)
+  // Next load: a new session (a new tracker) decides again and writes again.
+  const next = fixture()
+  next.rows.set('u1', R2.id)
+  assert.equal(await visit(next, 'u1'), R3)
+  assert.equal(next.rows.get('u1'), R3.id)
+})
+
+test('the old per-device value moves to an empty profile once, then its key is deleted', async () => {
+  const f = fixture({ stored: R3.id })
+  assert.equal(await visit(f, 'u1'), null, 'already seen on this device')
+  assert.deepEqual(f.saves, [['u1', R3.id]])
+  assert.equal(f.rows.get('u1'), R3.id)
+  assert.equal(f.device.size, 0)
+  // An older value still moves, and the newer release shows.
+  const g = fixture({ stored: R2.id })
+  assert.equal(await visit(g, 'u1'), R3)
+  assert.deepEqual(g.saves, [['u1', R2.id], ['u1', R3.id]])
+  assert.equal(g.device.size, 0)
+})
+
+test('the old value: kept when the move fails, dropped when the profile has one or it is malformed', async () => {
+  const f = fixture({ stored: R3.id, offline: true })
+  assert.equal(await visit(f, 'u1'), null)
+  assert.equal(f.device.get(RETIRED_STORAGE_KEYS.whatsNewSeen), R3.id, 'kept for the next load')
+  await visit(f, 'u1')
+  assert.equal(f.saves.length, 1, 'moved at most once per session')
+
+  const g = fixture({ stored: R1.id })
+  g.rows.set('u1', R2.id)
+  assert.equal(await visit(g, 'u1'), R3, 'the profile wins over the device')
+  assert.deepEqual(g.saves, [['u1', R3.id]])
+  assert.equal(g.device.size, 0)
+
+  const h = fixture({ stored: 'junk' })
+  assert.equal(await visit(h, 'u1'), R3)
+  assert.deepEqual(h.saves, [['u1', R3.id]])
+  assert.equal(h.device.size, 0)
+})
+
+test('storage unreadable, or a profile without the column: nothing breaks, the device key is left alone', async () => {
+  const throwing = createSeenTracker({ save: async () => {}, getStorage: () => { throw new Error('SecurityError') } })
+  assert.equal(await throwing.load('u1', R2.id), R2.id)
+  const f = fixture({ stored: R3.id })
+  assert.equal(await f.tracker.load('u1', undefined), undefined)
+  assert.equal(f.device.size, 1)
+  assert.deepEqual(f.saves, [])
 })
 
 test('ring picture and dates', () => {

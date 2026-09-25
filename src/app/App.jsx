@@ -225,7 +225,7 @@ function AuthedRoutes() {
           <PasskeyPrompt />
           <NotificationPrompt />
           {/* After the profile loads: it needs onboarded_at to tell a new account apart. */}
-          {!profileLoading && profile && <WhatsNewPrompt onboardedAt={profile.onboarded_at} />}
+          {!profileLoading && profile && <WhatsNewPrompt profile={profile} />}
         </>
       )}
     </Suspense>

@@ -12,13 +12,20 @@ export const STORAGE_KEYS = {
   appearance: 'budge-appearance',      // localStorage — Light/Dark/System (also read by public/theme-boot.js)
   paymentAskDismissed: 'budge:paymentAsk', // localStorage — "Not now" to Settle up's payment-details ask
   notifPrompted: 'budge:notifPrompted', // localStorage — notification prompt answered ("Not now" included)
-  whatsNewSeen: 'budge:whatsNewSeen',  // localStorage — id of the newest "What's new" release seen
   linkingGoogle: 'budge:linkingGoogle', // sessionStorage — a Google link attempt is in flight
   legalConsentPending: 'budge:legalConsentPending', // sessionStorage — Terms/Privacy versions ticked before a Google sign-up
   legalAccepted: 'budge:legalAccepted', // localStorage — account + Terms/Privacy versions it accepted (offline check)
   importMappings: 'budgeer:import-mappings:v1', // localStorage — confirmed import column mappings
   importHolder: 'budgeer:import-holder:v1', // localStorage — the holder's name, for own transfers on import
   fxRatePrefix: 'fx2:',                // localStorage — prefix of each cached exchange rate
+}
+
+// Keys the app no longer writes, kept only so the app can move an old value
+// and then remove it (test/storageKeys.test.js checks nothing writes them).
+export const RETIRED_STORAGE_KEYS = {
+  // The newest "What's new" release seen on this device, before it moved to
+  // the account (profiles.whats_new_seen, 0087). Read once, then deleted.
+  whatsNewSeen: 'budge:whatsNewSeen',
 }
 
 export const EVENTS = {
