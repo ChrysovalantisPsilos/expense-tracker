@@ -4,7 +4,7 @@ import {
   SimpleGrid, Box, Text, Stack, HStack, IconButton, Button,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
-import { ChartBarDecreasing, Table as TableIcon, ReceiptText, Users } from 'lucide-react'
+import { ChartBarDecreasing, Table as TableIcon, ReceiptText, Users, Wallet } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
 import FirstEntry from '../transactions/FirstEntry.jsx'
 import { isFirstRun, listHeading } from '../transactions/listHeading.js'
@@ -69,9 +69,9 @@ export default function Dashboard() {
     [rows, baseCurrency, period.from, period.to, separateYearly])
   const totals = useMemo(() => periodTotals(spend, baseCurrency), [spend, baseCurrency])
   const { byCategory, bucketRow } = totals
-  const expenses = useMemo(
-    () => paidInWindow(rows, period.from, period.to).filter((r) => r.kind !== 'income'),
-    [rows, period.from, period.to])
+  const paid = useMemo(() => paidInWindow(rows, period.from, period.to), [rows, period.from, period.to])
+  const expenses = useMemo(() => paid.filter((r) => r.kind !== 'income'), [paid])
+  const income = useMemo(() => paid.filter((r) => r.kind === 'income'), [paid])
   // Each bar drills down to its expenses for this period (a group share to its
   // group); the folded "Other" merges several buckets, so it has no link.
   const bars = useMemo(
@@ -91,6 +91,10 @@ export default function Dashboard() {
   const expPage = usePaged(expenses, 10, periodValue)
   const expHead = listHeading({
     kind: 'expense', periodLabel: period.label, count: expenses.length, loading, failed: !!error,
+  })
+  const incPage = usePaged(income, 10, periodValue)
+  const incHead = listHeading({
+    kind: 'income', periodLabel: period.label, count: income.length, loading, failed: !!error,
   })
   const firstRun = isFirstRun({ loading, failed: !!error, count: rows.length, oldest })
 
@@ -209,6 +213,22 @@ export default function Dashboard() {
             <TransactionList rows={expPage.pageItems} kind="expense" baseCurrency={baseCurrency}
               mutate={mutate} reload={reload} />
             <Paginator page={expPage.page} count={expPage.count} onPage={expPage.setPage} />
+          </>
+        )}
+      </Panel>
+      )}
+
+      {!firstRun && (
+      <Panel icon={Wallet} title={incHead.title} subtitle={incHead.subtitle} divider>
+        {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
+          <SkeletonRegion><SkeletonRows count={3} py={2.5} /></SkeletonRegion>
+        ) : income.length === 0 ? (
+          <Text color="text.muted" fontSize="sm">No income in this period.</Text>
+        ) : (
+          <>
+            <TransactionList rows={incPage.pageItems} kind="income" baseCurrency={baseCurrency}
+              mutate={mutate} reload={reload} />
+            <Paginator page={incPage.page} count={incPage.count} onPage={incPage.setPage} />
           </>
         )}
       </Panel>
