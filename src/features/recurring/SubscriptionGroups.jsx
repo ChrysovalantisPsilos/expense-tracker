@@ -4,7 +4,7 @@ import Figure from '../../shared/ui/kit/Figure.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 
 // Frequency chips over subscriptionGroups() (recurringMath.js) — Home's
-// Subscriptions card and the Recurring page's Subscriptions tab. One tab per
+// Recurring card and the Recurring page's Subscriptions tab. One tab per
 // group the user has; with a single group there is no tab bar, just its
 // content. `children(group)` renders a group's panel. The picked group is
 // remembered by key, so adding a rule that inserts a new tab keeps it.

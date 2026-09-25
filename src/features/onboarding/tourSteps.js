@@ -22,7 +22,7 @@ export const TOUR_STEPS = [
   },
   {
     id: 'subscriptions', route: '/', target: 'subscriptions',
-    title: 'Subscriptions',
+    title: 'Recurring',
     body: 'Your recurring bills by how often they charge — weekly, monthly, quarterly or yearly — with the next charges. Manage opens Recurring.',
   },
   {

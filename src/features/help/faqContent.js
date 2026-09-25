@@ -189,7 +189,7 @@ export const FAQ_SECTIONS = [
         q: 'Where do I see my subscriptions and regular income?',
         a: [
           'On the Recurring page (under More on a phone). The Subscriptions tab lists what you pay regularly; the Income tab lists money that comes in regularly, such as a salary.',
-          'Home also has a Subscriptions card with tabs for each frequency, so you can see what your weekly, monthly or yearly payments add up to.',
+          'Home also has a Recurring card with tabs for each frequency, so you can see what your weekly, monthly or yearly payments add up to.',
         ],
       },
       {
@@ -202,7 +202,7 @@ export const FAQ_SECTIONS = [
         media: {
           type: 'clip',
           name: 'yearly-subscription',
-          alt: 'Screen recording: adding a car insurance of 480 euros that repeats yearly; the form shows it counts as 40 euros a month in budgets. Then Home’s Subscriptions card is switched to its Yearly tab.',
+          alt: 'Screen recording: adding a car insurance of 480 euros that repeats yearly; the form shows it counts as 40 euros a month in budgets. Then Home’s Recurring card is switched to its Yearly tab.',
         },
       },
       {

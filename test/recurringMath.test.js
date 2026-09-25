@@ -355,11 +355,11 @@ test('chargedGroups: a zero-decimal base stays whole', () => {
 test('chargedWording: subtitle and empty line per period', () => {
   const d = new Date(2026, 8, 25)
   assert.deepEqual(chargedWording(periodFromValue('m:2025-3', d)),
-    { subtitle: 'Charged in March 2025', empty: 'No subscription charges in March 2025.' })
+    { subtitle: 'Charged in March 2025', empty: 'No recurring charges in March 2025.' })
   assert.deepEqual(chargedWording(periodFromValue('y:2025', d)),
-    { subtitle: 'Charged in 2025', empty: 'No subscription charges in 2025.' })
+    { subtitle: 'Charged in 2025', empty: 'No recurring charges in 2025.' })
   assert.deepEqual(chargedWording(periodFromValue('y:2026', d)),
-    { subtitle: 'Charged this year', empty: 'No subscription charges this year.' })
+    { subtitle: 'Charged this year', empty: 'No recurring charges this year.' })
   assert.deepEqual(chargedWording(periodFromValue('all', d)),
-    { subtitle: 'Charged so far', empty: 'No subscription charges yet.' })
+    { subtitle: 'Charged so far', empty: 'No recurring charges yet.' })
 })

@@ -70,7 +70,7 @@ export default function Dashboard() {
   function chooseView(v) { setView(v); localStorage.setItem(VIEW_KEY, v) }
 
   // Spread yearly charges count as their monthly parts in every total — or,
-  // when the user keeps them separate, not at all (the Subscriptions card lists them).
+  // when the user keeps them separate, not at all (the Recurring card lists them).
   const spend = useMemo(
     () => spendRows(rows, baseCurrency, period.from, period.to, { separateYearly, salaryShift }),
     [rows, baseCurrency, period.from, period.to, separateYearly, salaryShift])

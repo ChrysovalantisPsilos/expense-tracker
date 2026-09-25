@@ -20,7 +20,7 @@ import { isCurrentPeriod, isMonthPeriod } from '../transactions/periods.js'
 import { chargedGroups, chargedWording, frequencyLabel, subscriptionGroups } from './recurringMath.js'
 import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
 
-// Home's "Subscriptions" card, following Home's `period` (periods.js):
+// Home's "Recurring" card, following Home's `period` (periods.js):
 //  * this month: today's view — the active recurring expenses by how often
 //    they charge (Weekly · Monthly · Quarterly · Yearly, only the groups the
 //    user has), each with its total per period, about how much a month, and
@@ -35,7 +35,7 @@ import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
 export default function SubscriptionsCard({ rules, loading, error, onRetry, baseCurrency, period, charges }) {
   const upcoming = !period || (isMonthPeriod(period) && isCurrentPeriod(period, today()))
   return (
-    <Panel data-tour="subscriptions" icon={Repeat} title="Subscriptions"
+    <Panel data-tour="subscriptions" icon={Repeat} title="Recurring"
       subtitle={upcoming ? undefined : chargedWording(period).subtitle}
       action={<Button as={RouterLink} to="/recurring" size="xs" variant="ghost">Manage</Button>}>
       {upcoming
@@ -60,16 +60,16 @@ function YearlyNote() {
 function Upcoming({ rules, loading, error, onRetry, baseCurrency }) {
   const groups = useMemo(
     () => subscriptionGroups(rules, baseCurrency, { upcomingOnly: true }), [rules, baseCurrency])
-  if (error) return <QueryError error={error} onRetry={onRetry} what="your subscriptions" />
+  if (error) return <QueryError error={error} onRetry={onRetry} what="your recurring payments" />
   if (loading) return <SkeletonRegion><SkeletonRows count={3} /></SkeletonRegion>
   if (groups.length === 0) {
     return (
-      <CardEmptyState text="No subscriptions yet. Set an expense to repeat, or add bills and subscriptions in Recurring."
-        action={<Button as={RouterLink} to="/recurring/new" size="sm" variant="outline">Add a subscription</Button>} />
+      <CardEmptyState text="No recurring payments yet. Set an expense to repeat, or add bills and subscriptions in Recurring."
+        action={<Button as={RouterLink} to="/recurring/new" size="sm" variant="outline">Add a recurring payment</Button>} />
     )
   }
   return (
-    <GroupTabs groups={groups} label="Subscriptions by frequency">
+    <GroupTabs groups={groups} label="Recurring payments by frequency">
       {(g) => (
         <>
           <GroupTotal group={g} baseCurrency={baseCurrency} />
@@ -94,11 +94,11 @@ function Charged({ period, rows = [], loading, error, onRetry, baseCurrency }) {
   const groups = useMemo(
     () => chargedGroups(paidInWindow(rows, period.from, period.to), baseCurrency),
     [rows, period.from, period.to, baseCurrency])
-  if (error) return <QueryError error={error} onRetry={onRetry} what="your subscription charges" />
+  if (error) return <QueryError error={error} onRetry={onRetry} what="your recurring charges" />
   if (loading) return <SkeletonRegion><SkeletonRows count={3} /></SkeletonRegion>
   if (groups.length === 0) return <CardEmptyState text={chargedWording(period).empty} />
   return (
-    <GroupTabs groups={groups} label="Subscription charges by frequency">
+    <GroupTabs groups={groups} label="Recurring charges by frequency">
       {(g) => (
         <>
           <Figure label={`${g.label} charged`} size="lg" value={formatMoney(g.total, baseCurrency)} />

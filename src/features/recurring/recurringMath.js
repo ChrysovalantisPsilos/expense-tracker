@@ -282,7 +282,7 @@ export function subscriptionGroups(rules, baseCurrency, { limit = 3, upcomingOnl
 }
 
 // ---- What subscriptions charged in a period (Home card, other periods) ------
-// Home's Subscriptions card shows today's rules only for the current month;
+// Home's Recurring card shows today's rules only for the current month;
 // any other period (a past month or year, this year, all time) shows what
 // was actually charged in it: the expense rows linked to a recurring rule
 // (transactions.recurring_rule_id, 0065 — the materializer's charges and the
@@ -312,9 +312,9 @@ export function chargedGroups(rows, baseCurrency) {
 
 // The card's wording for a period's charges: { subtitle, empty }.
 export function chargedWording(period) {
-  if (period.value === 'all') return { subtitle: 'Charged so far', empty: 'No subscription charges yet.' }
+  if (period.value === 'all') return { subtitle: 'Charged so far', empty: 'No recurring charges yet.' }
   const when = period.label === 'This year' ? 'this year' : `in ${period.label}`
-  return { subtitle: `Charged ${when}`, empty: `No subscription charges ${when}.` }
+  return { subtitle: `Charged ${when}`, empty: `No recurring charges ${when}.` }
 }
 
 // What the active income rules bring in per month (the Recurring page's

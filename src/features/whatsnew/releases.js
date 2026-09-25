@@ -20,7 +20,7 @@ export const RELEASES = [
       },
       {
         title: 'Home follows the period you pick',
-        body: 'Budgets and Subscriptions now change with the month or year you select. And there’s a new Income list, right under Expenses.',
+        body: 'Budgets and Recurring now change with the month or year you select. And there’s a new Income list, right under Expenses.',
         chips: ['August 2025', 'Income'],
         variant: 'update',
       },
