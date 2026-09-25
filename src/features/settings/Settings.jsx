@@ -1,14 +1,14 @@
 import { Box, Stack, Text } from '@chakra-ui/react'
 import {
   BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass, CircleHelp, Mail,
-  Scale, UserCheck, ArrowLeftRight, Sparkles,
+  Scale, UserCheck, ArrowLeftRight, Sparkles, Activity,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { NavList, NavRow } from '../../shared/ui/NavList.jsx'
-import { SUPPORT_EMAIL } from '../../shared/lib/contact.js'
+import { STATUS_URL, SUPPORT_EMAIL } from '../../shared/lib/contact.js'
 import { useSiteSwitch } from '../../shared/lib/useSiteSwitch.js'
 import { startTour } from '../onboarding/tour.js'
 
@@ -31,8 +31,8 @@ const rows = (items) => items.map(({ to, label, desc, icon }) => (
 ))
 
 // The Settings list: who you are at the top (taps into Account), then the
-// sub-pages in labelled groups, help (the FAQ, What's new and replaying the
-// app tour),
+// sub-pages in labelled groups, help (the FAQ, What's new, the service status
+// page and replaying the app tour),
 // the live/test site switch for developer accounts, then sign-out.
 export default function Settings() {
   const { user, signOut } = useAuth()
@@ -55,6 +55,8 @@ export default function Settings() {
         <NavRow to="/help" icon={CircleHelp} label="Help & FAQ" description="Answers to common questions" />
         <NavRow to="/settings/whats-new" icon={Sparkles} label="What’s new"
           description="The latest changes to Budgeer" />
+        <NavRow href={STATUS_URL} target="_blank" rel="noopener noreferrer" icon={Activity}
+          label="Service status" description="Is Budgeer working right now?" />
         <NavRow href={`mailto:${SUPPORT_EMAIL}`} icon={Mail} label="Contact support" description={SUPPORT_EMAIL} />
         <NavRow icon={Compass} label="Take the tour again" description="A quick look around the app"
           data-tour="replay" onClick={() => startTour({ returnTo: '/settings', returnFocus: '[data-tour="replay"]' })} />

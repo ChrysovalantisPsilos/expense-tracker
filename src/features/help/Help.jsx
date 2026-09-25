@@ -15,6 +15,7 @@ import PageHeader from '../../shared/ui/PageHeader.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
+import { STATUS_URL } from '../../shared/lib/contact.js'
 import { CURRENT_ENV, shareOrigin } from '../../shared/lib/environment.js'
 import { FAQ_SECTIONS } from './faqContent.js'
 import FaqClip from './FaqClip.jsx'
@@ -161,6 +162,10 @@ function FaqBody() {
       <Text fontSize="sm" color="text.muted" textAlign="center" pt={2}>
         {DISCLAIMER} See also the{' '}
         <Link as={RouterLink} to="/privacy" variant="inline" fontWeight="600">Privacy page</Link>.
+      </Text>
+      <Text fontSize="sm" color="text.muted" textAlign="center">
+        Something not working? Check the{' '}
+        <Link href={STATUS_URL} isExternal variant="inline" fontWeight="600">service status</Link>.
       </Text>
     </Stack>
   )
