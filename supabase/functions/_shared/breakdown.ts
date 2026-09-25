@@ -60,6 +60,10 @@ export interface CategoryBar {
   ratio: number
 }
 
+// A folded "Other" row also lists what it holds, so the app can expand it.
+// The statement PDF ignores `members` (it stays top 5 + "Other").
+type CategoryBarRow<T> = T & CategoryBar & { members?: (T & CategoryBar)[] }
+
 // Rows for the "Spending by category" ranked-bar chart. Input is
 // [{ name, value }] (minor units, any order). Keeps the `top` largest and folds
 // the rest into "Other" (a real "Other" category merges into it), so a long
@@ -68,15 +72,24 @@ export interface CategoryBar {
 // buckets, so it can't drill down to one). Each row gets:
 //   share — integer percent of the total; shares sum to exactly 100
 //   ratio — value relative to the largest row (0..1), the bar's length
+// A folded row also gets `members`: the categories inside it (a merged real
+// "Other" included, under its own name), largest first, each with a share and
+// a ratio on the same scale as the rows. Member shares split Other's share by
+// the same largest-remainder method, so they sum to exactly Other's share (one
+// may then be a point off its own percent of the total, rounded alone).
 export function categoryBars<T extends { name: string; value: number }>(
   categories: T[], top = 5,
-): (T & CategoryBar)[] {
+): CategoryBarRow<T>[] {
   const sorted = categories.filter((c) => c.value > 0).sort((a, b) => b.value - a.value)
   let rows: (T & { folded?: boolean })[] = sorted
+  let members: T[] = []
   if (sorted.length > top + 1) {
-    const rest = sorted.slice(top).reduce((sum, c) => sum + c.value, 0)
+    const tail = sorted.slice(top)
+    const rest = tail.reduce((sum, c) => sum + c.value, 0)
     rows = sorted.slice(0, top)
     const existing = rows.find((c) => c.name === 'Other')
+    // A real "Other" is the largest member (it outranked the whole tail).
+    members = existing ? [existing, ...tail] : tail
     if (existing) rows = rows.map((c) => (c === existing ? { ...c, value: c.value + rest, folded: true } : c))
     else rows = [...rows, { name: 'Other', value: rest, folded: true } as T & { folded: boolean }]
   }
@@ -85,5 +98,10 @@ export function categoryBars<T extends { name: string; value: number }>(
   if (rows.length === 0) return []
   const shares = distributeByWeights(100, rows.map((c) => c.value))
   const max = Math.max(...rows.map((c) => c.value))
-  return rows.map((c, i) => ({ ...c, share: shares[i], ratio: c.value / max }))
+  return rows.map((c, i) => {
+    const row = { ...c, share: shares[i], ratio: c.value / max }
+    if (!c.folded) return row
+    const split = distributeByWeights(shares[i], members.map((m) => m.value))
+    return { ...row, members: members.map((m, j) => ({ ...m, share: split[j], ratio: m.value / max })) }
+  })
 }

@@ -84,11 +84,15 @@ function bucketLinks(rows, period) {
 // September 2026"), ready for ProgressRow / ShareLegend. `rows` are the
 // transactions behind the breakdown, `period` is { value?, from, to, label }
 // (from/to null = all time). A folded "Other" merges several buckets, so it
-// gets no link.
+// gets no link itself; its `members` (categoryBars) each get their own.
 export function linkBuckets(items, rows, period, nameOf = (item) => item.name) {
   const links = bucketLinks(rows, period)
-  return items.map((item) => {
-    const link = item.folded ? undefined : links.get(nameOf(item))
+  const linked = (item) => {
+    const link = links.get(nameOf(item))
     return link ? { ...item, to: link.to, linkLabel: link.label } : item
+  }
+  return items.map((item) => {
+    if (!item.folded) return linked(item)
+    return item.members ? { ...item, members: item.members.map(linked) } : item
   })
 }
