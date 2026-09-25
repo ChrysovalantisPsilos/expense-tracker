@@ -1,0 +1,5 @@
+# Workers static assets: headers for the CSS, the admin script and the favicon.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: same-origin
+  Cache-Control: public, max-age=300

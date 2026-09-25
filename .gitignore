@@ -21,3 +21,7 @@ supabase/.temp
 
 # Local git worktrees
 .claude/worktrees/
+
+# Status page Worker: local wrangler state and secrets (status/.dev.vars)
+status/.dev.vars
+status/.wrangler/

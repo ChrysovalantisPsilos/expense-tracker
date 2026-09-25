@@ -15,7 +15,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 
 export default [
   // Edge functions are Deno/TypeScript and are checked by `supabase functions`.
-  { ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'supabase/functions/**', '.claude/**'] },
+  { ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'supabase/functions/**', '.claude/**', 'status/.wrangler/**'] },
   js.configs.recommended,
   {
     files: ['src/**/*.{js,jsx}'],
@@ -60,6 +60,18 @@ export default [
     },
   },
   { files: ['src/sw.js'], languageOptions: { globals: { ...globals.serviceworker } } },
+  // The status page (status/): a Cloudflare Worker (service-worker style
+  // globals: fetch, Response, crypto, …) plus the admin page's browser script.
+  {
+    files: ['status/**/*.js'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.serviceworker, ...globals.browser } },
+    plugins: { 'unused-imports': unusedImports },
+    rules: {
+      'no-unused-vars': 'off',
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': ['warn', { args: 'after-used', argsIgnorePattern: '^_', caughtErrors: 'none' }],
+    },
+  },
   // Plain scripts served as-is from public/ (index.html's colour-mode boot).
   { files: ['public/**/*.js'], languageOptions: { sourceType: 'script', globals: { ...globals.browser } } },
   { files: ['test/**/*.js', 'scripts/**/*.mjs', '*.config.js'], languageOptions: { globals: { ...globals.node } } },
