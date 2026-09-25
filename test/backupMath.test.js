@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import {
   BACKUP_FORMAT, BACKUP_VERSION, BackupError, backupFileName, normText, txnKey, groupShareNote,
   buildBackup, serializeBackup, readBackup, unlockBackup, backupContents, mapCategories,
-  matchByName, planRules, planTransactions, planBudgets, planRecurring, planProfile, planPayment, currencyChange,
+  matchByName, planRules, planTransactions, planBudgets, planRecurring, planProfile, planSalaryShift, planPayment,
+  currencyChange,
   restoreSummary, splitDateRange, rebaseRateSpans, rebaseBackupData,
 } from '../src/features/backup/backupMath.js'
 import { UserError } from '../src/shared/lib/errors.js'
@@ -430,7 +431,6 @@ test('restore: unknown category icons/colours fall back to the default look', ()
 })
 
 test('version 2 carries the PayPal.me name; a version 1 file still reads', () => {
-  assert.equal(BACKUP_VERSION, 2)
   const v2 = sourceDoc()
   v2.data.payment.paypal = 'paypal.me/AlexK'
   assert.equal(readBackup(JSON.stringify(v2)).backup.data.payment.paypal, 'AlexK')
@@ -689,4 +689,206 @@ test('backup: "Paid from savings" on expenses and recurring expenses round-trips
   // A malformed flag is refused, like any other damaged field.
   older.data.transactions[0].from_savings = 'yes'
   assert.throws(() => readBackup(JSON.stringify(older)), UserError)
+})
+
+// ---- Version 3: the salary shift; older files follow today's defaults ------------
+
+const SALARY_SOURCE = [
+  { id: 'cat-food', name: 'Food', kind: 'expense', icon: 'utensils', color: null, is_archived: false },
+  { id: 'cat-bonus', name: 'Bonus', kind: 'income', icon: 'salary', color: null, is_archived: false },
+  { id: 'cat-pay', name: 'Salary', kind: 'income', icon: 'salary', color: null, is_archived: false },
+]
+const salaryDoc = (profile = {}) => buildBackup({
+  exportedAt: '2026-09-25T12:00:00.000Z', userId: 'u-source', categories: SALARY_SOURCE,
+  profile: { base_currency: 'EUR', salary_shift_from_day: 27, salary_category_id: 'cat-pay', ...profile },
+})
+
+test('version 3: the salary shift round-trips as a category key, never a server id', async () => {
+  assert.equal(BACKUP_VERSION, 3)
+  const doc = salaryDoc()
+  assert.equal(doc.version, 3)
+  assert.equal(doc.data.profile.salary_shift_from_day, 27)
+  assert.equal(doc.data.profile.salary_category, 'c3')
+  assert.ok(!JSON.stringify(doc).includes('cat-pay'))
+  const back = readBackup(await serializeBackup(doc, null)).backup
+  assert.deepEqual(back.data.profile, doc.data.profile)
+  // Off with a remembered category; a category that's no longer listed.
+  assert.equal(salaryDoc({ salary_shift_from_day: null }).data.profile.salary_category, 'c3')
+  assert.equal(salaryDoc({ salary_category_id: 'cat-deleted' }).data.profile.salary_category, null)
+})
+
+test('version 3: every flag the recent features added survives build → encrypt → read', async () => {
+  const doc = buildBackup({
+    exportedAt: '2026-09-25T12:00:00.000Z', userId: 'u-source',
+    profile: { base_currency: 'EUR', yearly_separate: true, salary_shift_from_day: 25, salary_category_id: 'cat-pay' },
+    categories: [...SALARY_SOURCE,
+      { id: 'cat-save', name: 'Savings', kind: 'income', icon: 'savings', color: null, is_archived: false, is_savings: true }],
+    transactions: [
+      { kind: 'income', category_id: 'cat-save', amount_minor: 20000, currency: 'EUR', exchange_rate: 1,
+        description: 'Set aside', spent_at: '2026-09-02', savings_from_income: true },
+      { kind: 'expense', category_id: 'cat-food', amount_minor: 1500, currency: 'EUR', exchange_rate: 1,
+        description: 'Treat', spent_at: '2026-09-03', paid_from_savings: true },
+    ],
+    recurring: [
+      { kind: 'income', category_id: 'cat-save', amount_minor: 20000, currency: 'EUR', description: 'Monthly',
+        frequency: 'monthly', interval_n: 1, next_run: '2026-10-02', savings_from_income: true },
+      { kind: 'expense', category_id: 'cat-food', amount_minor: 900, currency: 'EUR', description: 'Box',
+        frequency: 'monthly', interval_n: 1, next_run: '2026-10-03', paid_from_savings: true },
+    ],
+  })
+  const { envelope } = readBackup(await serializeBackup(doc, 'correct horse battery'))
+  const back = await unlockBackup(envelope, 'correct horse battery')
+  assert.deepEqual(back.data, doc.data)
+  assert.equal(back.data.categories.find((c) => c.name === 'Savings').savings, true)
+  assert.deepEqual(back.data.transactions.map((t) => [t.from_income, t.from_savings]), [[true, undefined], [undefined, true]])
+  assert.deepEqual(back.data.recurring.map((r) => [r.from_income, r.from_savings]), [[true, undefined], [undefined, true]])
+  assert.deepEqual(back.data.profile, {
+    display_name: null, base_currency: 'EUR', notify_email: null, notify_push: null,
+    yearly_separate: true, salary_shift_from_day: 25, salary_category: 'c3',
+  })
+})
+
+test('backup: UI state (whats_new_seen and the like) is never written to the file', () => {
+  const doc = salaryDoc({
+    whats_new_seen: '2026-09-25', tour_done: true, passkey_reminder_off: true,
+    onboarded_at: '2026-01-01T00:00:00Z', notify_digest: true, is_developer: true,
+  })
+  const text = JSON.stringify(doc)
+  for (const k of ['whats_new_seen', 'tour_done', 'passkey_reminder_off', 'onboarded_at', 'notify_digest', 'is_developer']) {
+    assert.ok(!text.includes(k), `${k} leaked into the backup`)
+  }
+  // …and a hand-edited file that has it doesn't carry it through.
+  doc.data.profile.whats_new_seen = '2026-09-25'
+  assert.ok(!('whats_new_seen' in readBackup(JSON.stringify(doc)).backup.data.profile))
+})
+
+test('read: a bad salary day is refused; a salary category that isn’t an income one in the file reads as off', () => {
+  for (const day of [0, 32, 2.5, '25']) {
+    const doc = salaryDoc()
+    doc.data.profile.salary_shift_from_day = day
+    assert.throws(() => readBackup(JSON.stringify(doc)), UserError, `day ${day}`)
+  }
+  for (const key of ['c1' /* expense */, 'c99' /* not in the file */, 42]) {
+    const doc = salaryDoc()
+    doc.data.profile.salary_category = key
+    assert.equal(readBackup(JSON.stringify(doc)).backup.data.profile.salary_category, null, `key ${key}`)
+  }
+})
+
+test('salary shift: restore remaps the category onto the target’s own id', () => {
+  const { data } = readBackup(JSON.stringify(salaryDoc())).backup
+  // The target has its own Salary (matched on kind + name) under another id.
+  const target = [
+    { id: 'tgt-food', name: 'Food', kind: 'expense' },
+    { id: 'tgt-bonus', name: 'bonus', kind: 'income' },
+    { id: 'tgt-salary', name: 'SALARY', kind: 'income' },
+  ]
+  const { idByKey } = mapCategories(data.categories, target)
+  assert.deepEqual(planSalaryShift(data.profile, { salary_shift_from_day: null, salary_category_id: null }, idByKey),
+    { patch: { salary_shift_from_day: 27, salary_category_id: 'tgt-salary' }, kept: [] })
+})
+
+test('salary shift: a category that can’t be resolved leaves the setting off, never pointing elsewhere', () => {
+  const { data } = readBackup(JSON.stringify(salaryDoc())).backup
+  const blank = { salary_shift_from_day: null, salary_category_id: null }
+  // The category wasn't restored (no id for its key).
+  assert.deepEqual(planSalaryShift(data.profile, blank, new Map([['c2', 'tgt-bonus']])), { patch: {}, kept: [] })
+  // The file had no (usable) salary category.
+  const none = { ...data.profile, salary_category: null }
+  assert.deepEqual(planSalaryShift(none, blank, new Map([['c3', 'tgt-salary']])), { patch: {}, kept: [] })
+  // An old file without the fields at all.
+  const v2 = salaryDoc()
+  v2.version = 2
+  delete v2.data.profile.salary_shift_from_day
+  delete v2.data.profile.salary_category
+  const old = readBackup(JSON.stringify(v2)).backup
+  assert.equal(old.version, 2)
+  assert.equal(old.data.profile.salary_shift_from_day, null)
+  assert.equal(old.data.profile.salary_category, null)
+  assert.deepEqual(planSalaryShift(old.data.profile, blank, new Map([['c3', 'tgt-salary']])), { patch: {}, kept: [] })
+})
+
+test('salary shift: fills only an account whose shift is off; its own setting is kept and reported', () => {
+  const { data } = readBackup(JSON.stringify(salaryDoc())).backup
+  const ids = new Map([['c3', 'tgt-salary'], ['c2', 'tgt-bonus']])
+  // Off, but remembering another category: the backup's pair is taken.
+  assert.deepEqual(planSalaryShift(data.profile, { salary_shift_from_day: null, salary_category_id: 'tgt-bonus' }, ids).patch,
+    { salary_shift_from_day: 27, salary_category_id: 'tgt-salary' })
+  // Already on: kept, and said so when it differs.
+  assert.deepEqual(planSalaryShift(data.profile, { salary_shift_from_day: 25, salary_category_id: 'tgt-salary' }, ids),
+    { patch: {}, kept: ['salary setting'] })
+  assert.deepEqual(planSalaryShift(data.profile, { salary_shift_from_day: 27, salary_category_id: 'tgt-salary' }, ids),
+    { patch: {}, kept: [] })
+  // The backup's is off but remembers a category: only an empty one is filled.
+  const off = { ...data.profile, salary_shift_from_day: null }
+  assert.deepEqual(planSalaryShift(off, { salary_shift_from_day: null, salary_category_id: null }, ids).patch,
+    { salary_category_id: 'tgt-salary' })
+  assert.deepEqual(planSalaryShift(off, { salary_shift_from_day: null, salary_category_id: 'tgt-bonus' }, ids).patch, {})
+  assert.deepEqual(planSalaryShift(off, { salary_shift_from_day: 20, salary_category_id: 'tgt-bonus' }, ids),
+    { patch: {}, kept: [] })
+  assert.match(restoreSummary({ kept: ['salary setting'] }).kept, /^Kept your current salary setting/)
+})
+
+// A fresh account's default categories (0084's seed), as listAllCategories returns them.
+const DEFAULTS = [
+  { id: 'd-food', name: 'Food & Dining', kind: 'expense', is_savings: false },
+  { id: 'd-salary', name: 'Salary', kind: 'income', is_savings: false },
+  { id: 'd-ff', name: 'Friends & family', kind: 'income', is_savings: false },
+  { id: 'd-bonus', name: 'Bonus', kind: 'income', is_savings: false },
+  { id: 'd-save', name: 'Savings', kind: 'income', is_savings: true },
+]
+
+test('categories: the default Savings, Friends & family and Bonus are matched, never duplicated', () => {
+  const doc = buildBackup({
+    userId: 'u-source',
+    categories: DEFAULTS.map((c) => ({ ...c, id: `src-${c.id}` })),
+  })
+  const { data } = readBackup(JSON.stringify(doc)).backup
+  const { idByKey, missing } = mapCategories(data.categories, DEFAULTS)
+  assert.deepEqual(missing, [])
+  const save = data.categories.find((c) => c.name === 'Savings')
+  assert.equal(save.savings, true)
+  assert.equal(idByKey.get(save.key), 'd-save') // the account's own Savings, already marked savings
+})
+
+test('categories: a version 2 file follows the 0083 rename and the 0084 Savings flag', () => {
+  const doc = buildBackup({
+    userId: 'u-source',
+    categories: [
+      { id: 's-ft', name: 'Friend Transfer', kind: 'income' },
+      { id: 's-bonus', name: 'Bonus', kind: 'income' },
+      { id: 's-save', name: 'Savings', kind: 'income' },
+      { id: 's-other', name: 'Savings', kind: 'expense' },
+    ],
+  })
+  doc.version = 2
+  for (const c of doc.data.categories) delete c.savings // made before 0084
+  const { data } = readBackup(JSON.stringify(doc)).backup
+  assert.deepEqual(data.categories.map((c) => [c.name, c.kind, c.savings]), [
+    ['Friends & family', 'income', false], ['Bonus', 'income', false],
+    ['Savings', 'income', true], ['Savings', 'expense', false],
+  ])
+  const plan = mapCategories(data.categories, DEFAULTS)
+  assert.deepEqual(plan.missing.map((c) => `${c.kind}:${c.name}`), ['expense:Savings'])
+  assert.equal(plan.idByKey.get('c1'), 'd-ff')
+  // Restored into an account without a Savings category, it's created as savings.
+  const bare = mapCategories(data.categories, DEFAULTS.filter((c) => c.name !== 'Savings'))
+  assert.equal(bare.missing.find((c) => c.kind === 'income').savings, true)
+})
+
+test('categories: the upgrade leaves newer files and deliberate names alone', () => {
+  const cats = [
+    { id: 's-ft', name: 'Friend Transfer', kind: 'income' },
+    { id: 's-ff', name: 'Friends & family', kind: 'income' },
+    { id: 's-save', name: 'Savings', kind: 'income', is_savings: false },
+  ]
+  // Version 2 with both names (as 0083 left such accounts): no rename. It has
+  // the savings key (made after 0084), so "Savings" keeps the file's flag.
+  const v2 = buildBackup({ userId: 'u', categories: cats })
+  v2.version = 2
+  assert.deepEqual(readBackup(JSON.stringify(v2)).backup.data.categories.map((c) => [c.name, c.savings]),
+    [['Friend Transfer', false], ['Friends & family', false], ['Savings', false]])
+  // Version 3: a "Friend Transfer" is the user's own choice.
+  const v3 = buildBackup({ userId: 'u', categories: [cats[0]] })
+  assert.equal(readBackup(JSON.stringify(v3)).backup.data.categories[0].name, 'Friend Transfer')
 })

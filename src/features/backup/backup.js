@@ -19,12 +19,14 @@ import { listComments, commentCounts } from '../groups/comments.js'
 import { listRules, saveRule, importTransactions } from '../import/importExpenses.js'
 import {
   buildBackup, serializeBackup, backupFileName, splitDateRange, mapCategories, matchByName,
-  planRules, planTransactions, planBudgets, planRecurring, planProfile, planPayment,
+  planRules, planTransactions, planBudgets, planRecurring, planProfile, planSalaryShift, planPayment,
   rebaseRateSpans, rebaseBackupData, currencyChange,
 } from './backupMath.js'
 import { UserError } from '../../shared/lib/errors.js'
 
-const PROFILE_FIELDS = 'display_name, base_currency, notify_email, notify_push, yearly_separate'
+// The profile settings a backup carries (see backupMath.js for what's left out).
+const PROFILE_FIELDS = 'display_name, base_currency, notify_email, notify_push, yearly_separate, '
+  + 'salary_shift_from_day, salary_category_id'
 // my_transactions is capped by the API's row limit; a window that comes back
 // full is split in half until each piece fits.
 const ROW_CAP = 1000
@@ -175,6 +177,12 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
     ? mapCategories(data.categories, await listAllCategories()).idByKey
     : catPlan.idByKey
 
+  // The salary shift points at a category, so it's set once they exist —
+  // the same profile update Settings › Monthly spending makes (0081's column
+  // grant; the server re-checks the category is the caller's own income one).
+  const salary = planSalaryShift(data.profile, current ?? {}, categoryIdByKey)
+  if (Object.keys(salary.patch).length) await updateProfile(user.id, salary.patch)
+
   step('Accounts')
   const acctPlan = matchByName(data.accounts, existingAccounts)
   for (const a of acctPlan.fresh) {
@@ -232,7 +240,7 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   step('Payment details')
   const pay = planPayment(data, await getMyPaymentInfo())
   if (pay.patch) await savePaymentInfo(pay.patch)
-  t.settings = Object.keys(prof.patch).length + (pay.patch ? 1 : 0)
-  t.kept = [...prof.kept, ...pay.kept]
+  t.settings = Object.keys(prof.patch).length + (Object.keys(salary.patch).length ? 1 : 0) + (pay.patch ? 1 : 0)
+  t.kept = [...prof.kept, ...salary.kept, ...pay.kept]
   return t
 }

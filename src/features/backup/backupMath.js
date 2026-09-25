@@ -2,8 +2,8 @@
 // backup document from rows the data layer gathered, read + validate a file,
 // and plan a restore (category/account remap, duplicate detection, what's new).
 //
-// FORMAT (version 2) — one JSON file, budgeer-backup-YYYY-MM-DD.json:
-//   { format: 'budgeer-backup', version: 1, exportedAt, app: { name },
+// FORMAT (version 3) — one JSON file, budgeer-backup-YYYY-MM-DD.json:
+//   { format: 'budgeer-backup', version: 3, exportedAt, app: { name },
 //     data: { profile, payment, categories, categoryRules, accounts, goals,
 //             budgets, recurring, transactions },
 //     groupHistory: [...] }                    ← read-only record, never restored
@@ -16,8 +16,19 @@
 // income entries are savings, not income) and an income entry's or recurring
 // entry's optional `from_income` (0084: savings taken from income) and an
 // expense's or recurring expense's optional `from_savings` (0085: paid from
-// savings) read as false when absent, so older files still read too. Names the server caps at 60 characters (display
+// savings) read as false when absent, so older files still read too.
+// Version 3 added the salary shift (0081): profile.salary_shift_from_day and
+// profile.salary_category (a category key, remapped on restore like every
+// other reference); older files read as off. Files older than version 3 also
+// follow the renames the server made to the default categories since (see
+// upgradeCategories). Names the server caps at 60 characters (display
 // name, category names, group names) are trimmed to fit instead of failing.
+// Deliberately NOT in a backup: UI state (whats_new_seen, tour_done,
+// passkey_reminder_off, onboarded_at), the weekly-digest opt-in (a consent,
+// given in person), transactions.spread_months and recurring_rule_id (derived
+// by the server from a rule link, which a restore doesn't recreate), and the
+// import wizard's saved column mappings (this device's storage, not the
+// account's).
 import { deterministicUuid } from '../import/importMath.js'
 import { FREQUENCIES } from '../recurring/recurringMath.js'
 import { sealText, openText } from './backupCrypto.js'
@@ -27,7 +38,7 @@ import { UserError } from '../../shared/lib/errors.js'
 import { fxQueryDate, rateOnOrBefore, toBaseMinor } from '../../shared/lib/currency.js'
 
 export const BACKUP_FORMAT = 'budgeer-backup'
-export const BACKUP_VERSION = 2
+export const BACKUP_VERSION = 3
 
 // The profiles.base_currency column default.
 const DEFAULT_CURRENCY = 'EUR'
@@ -107,6 +118,8 @@ export function buildBackup({
         notify_email: profile.notify_email ?? null,
         notify_push: profile.notify_push ?? null,
         yearly_separate: profile.yearly_separate ?? null,
+        salary_shift_from_day: profile.salary_shift_from_day ?? null,
+        salary_category: ref(catKey, profile.salary_category_id),
       },
       payment: {
         iban: payment.payment_iban ?? null, revolut: payment.payment_revolut ?? null,
@@ -288,6 +301,25 @@ function savingsFlags(v, entry) {
   }
 }
 
+// Files made before version 3 follow what the server did to every account's
+// default categories since, so a restore matches today's defaults instead of
+// adding a near-duplicate next to them:
+//   * 0083 renamed the income "Friend Transfer" to "Friends & family" — unless
+//     the account (here: the file) also has an income "Friends & family";
+//   * 0084 marked an income "Savings" as savings. A file from before 0084 (no
+//     category carries the `savings` key) gets the same.
+function upgradeCategories(version, categories, { before0084 }) {
+  if (version >= 3) return categories
+  const hasIncome = (name) => categories.some((c) => c.kind === 'income' && c.name === name)
+  const rename = !hasIncome('Friends & family')
+  return categories.map((c) => {
+    if (c.kind !== 'income') return c
+    if (rename && c.name === 'Friend Transfer') return { ...c, name: 'Friends & family' }
+    if (before0084 && c.name === 'Savings') return { ...c, savings: true }
+    return c
+  })
+}
+
 function validateBackup(doc) {
   const top = checker('file')
   const data = top.obj(doc.data, 'data')
@@ -301,6 +333,9 @@ function validateBackup(doc) {
     notify_email: p.bool(prof.notify_email, 'email switch', { optional: true }),
     notify_push: p.bool(prof.notify_push, 'push switch', { optional: true }),
     yearly_separate: p.bool(prof.yearly_separate, 'yearly subscriptions switch', { optional: true }),
+    // v3+. Its category is resolved below, once the categories are read.
+    salary_shift_from_day: p.int(prof.salary_shift_from_day, 'salary day', 1, 31, { optional: true }),
+    salary_category: null,
   }
   const pay = isObj(data.payment) ? data.payment : {}
   const pc = checker('payment details')
@@ -311,7 +346,8 @@ function validateBackup(doc) {
     paypal: normalisePaypalHandle(pc.text(pay.paypal, 'PayPal', { max: 200 })),
   }
 
-  const categories = top.list(data.categories, 'categories', 2000).map((c, i) => {
+  const rawCategories = top.list(data.categories, 'categories', 2000)
+  const categories = upgradeCategories(doc.version, rawCategories.map((c, i) => {
     const v = checker(`category #${i + 1}`)
     v.obj(c, 'entry')
     return {
@@ -326,9 +362,13 @@ function validateBackup(doc) {
       // Only an income category can be savings (the server's CHECK).
       savings: v.bool(c.savings ?? false, 'savings') && c.kind === 'income',
     }
-  })
+  }), { before0084: !rawCategories.some((c) => 'savings' in c) })
   const catKeys = new Set(categories.map((c) => c.key))
   if (catKeys.size !== categories.length) fail('This backup is damaged (categories: duplicate key).')
+  // The salary category must be one of the file's income categories; anything
+  // else (unknown key, an expense category) leaves the setting off.
+  const salaryKey = typeof prof.salary_category === 'string' ? prof.salary_category : null
+  profile.salary_category = categories.some((c) => c.key === salaryKey && c.kind === 'income') ? salaryKey : null
 
   const accounts = top.list(data.accounts, 'accounts', 1000).map((a, i) => {
     const v = checker(`account #${i + 1}`)
@@ -613,6 +653,28 @@ export function planProfile(backup, current, { emailName, emptyAccount }) {
     else kept.push('yearly subscriptions setting')
   }
   return { patch, kept }
+}
+
+// The salary shift (0081), planned once the categories exist: the backup's
+// category key → the target account's id (categoryIdByKey, matched on kind and
+// name, so it is always one of the account's own income categories). No id —
+// the category isn't in the file or wasn't restored — means nothing is set:
+// the shift stays off rather than pointing anywhere else. Like the other
+// settings it only fills the default: an account whose shift is off takes the
+// backup's (on, or just the remembered category when it's off there too); one
+// that has its own is kept and reported.
+export function planSalaryShift(backupProfile, current, categoryIdByKey) {
+  const day = backupProfile.salary_shift_from_day ?? null
+  const categoryId = backupProfile.salary_category ? categoryIdByKey.get(backupProfile.salary_category) ?? null : null
+  const curDay = current.salary_shift_from_day ?? null
+  const curCat = current.salary_category_id ?? null
+  if (!categoryId) return { patch: {}, kept: [] }
+  if (curDay == null) {
+    if (day != null) return { patch: { salary_shift_from_day: day, salary_category_id: categoryId }, kept: [] }
+    return { patch: curCat ? {} : { salary_category_id: categoryId }, kept: [] }
+  }
+  const differs = day != null && (day !== curDay || categoryId !== curCat)
+  return { patch: {}, kept: differs ? ['salary setting'] : [] }
 }
 
 export function planPayment(backup, current) {

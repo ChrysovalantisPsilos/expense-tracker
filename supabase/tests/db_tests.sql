@@ -4925,11 +4925,87 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 82. A backup restore and "Download my data" cover the recent fields. As
+--     the owner, through the paths a restore uses: a direct category insert
+--     keeps is_savings; the profile update Settings makes sets the salary
+--     shift (and the 0081 guard refuses another user's category);
+--     save_transactions / save_recurring_rule store savings_from_income and
+--     paid_from_savings. export_my_data() then returns all of them
+--     (0081/0084/0085), plus whats_new_seen (0087: personal data, though a
+--     backup leaves it out as UI state).
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; pay uuid; save uuid; food uuid; other uuid; doc jsonb;
+begin
+  begin
+    u1 := pg_temp.zz_user('bkp');
+    u2 := pg_temp.zz_user('bkpx');
+    insert into public.categories (user_id, name, kind) values (u2, 'ZZT their pay', 'income') returning id into other;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZT pay', 'income') returning id into pay;
+    insert into public.categories (user_id, name, kind, is_savings) values (u1, 'ZZT stash', 'income', true) returning id into save;
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZT food', 'expense') returning id into food;
+
+    update public.profiles set salary_shift_from_day = 27, salary_category_id = pay, whats_new_seen = '2026-09-25'
+     where id = u1;
+    begin
+      update public.profiles set salary_category_id = other where id = u1;
+      raise exception 'GUARD_MISSED: salary set to another user''s category';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+    end;
+
+    perform public.save_transactions(jsonb_build_array(
+      jsonb_build_object('client_uuid', gen_random_uuid(), 'kind', 'income', 'category_id', save,
+        'amount_minor', 20000, 'currency', 'EUR', 'description', 'zz-set-aside', 'savings_from_income', true),
+      jsonb_build_object('client_uuid', gen_random_uuid(), 'kind', 'expense', 'category_id', food,
+        'amount_minor', 1500, 'currency', 'EUR', 'description', 'zz-treat', 'paid_from_savings', true)), true);
+    perform public.save_recurring_rule(null, jsonb_build_object(
+      'kind', 'income', 'category_id', save, 'amount_minor', 20000, 'currency', 'EUR', 'description', 'zz-monthly',
+      'frequency', 'monthly', 'interval_n', 1, 'next_run', current_date + 5, 'savings_from_income', true));
+    perform public.save_recurring_rule(null, jsonb_build_object(
+      'kind', 'expense', 'category_id', food, 'amount_minor', 900, 'currency', 'EUR', 'description', 'zz-box',
+      'frequency', 'monthly', 'interval_n', 1, 'next_run', current_date + 5, 'paid_from_savings', true));
+    doc := public.export_my_data();
+    execute 'reset role';
+
+    if (doc->'profile'->>'salary_shift_from_day')::int is distinct from 27
+       or doc->'profile'->>'salary_category_id' is distinct from pay::text then
+      raise exception 'salary shift missing from the export: %', doc->'profile';
+    end if;
+    if doc->'profile'->>'whats_new_seen' is distinct from '2026-09-25' then raise exception 'whats_new_seen missing'; end if;
+    if not exists (select 1 from jsonb_array_elements(doc->'categories') c
+                    where c->>'id' = save::text and (c->>'is_savings')::boolean) then
+      raise exception 'is_savings missing from the export';
+    end if;
+    if not exists (select 1 from jsonb_array_elements(doc->'transactions') t
+                    where t->>'description' = 'zz-set-aside' and (t->>'savings_from_income')::boolean
+                      and not (t->>'paid_from_savings')::boolean)
+       or not exists (select 1 from jsonb_array_elements(doc->'transactions') t
+                    where t->>'description' = 'zz-treat' and (t->>'paid_from_savings')::boolean) then
+      raise exception 'entry savings flags missing from the export: %', doc->'transactions';
+    end if;
+    if not exists (select 1 from jsonb_array_elements(doc->'recurring_rules') r
+                    where r->>'description' = 'zz-monthly' and (r->>'savings_from_income')::boolean)
+       or not exists (select 1 from jsonb_array_elements(doc->'recurring_rules') r
+                    where r->>'description' = 'zz-box' and (r->>'paid_from_savings')::boolean) then
+      raise exception 'recurring savings flags missing from the export: %', doc->'recurring_rules';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: restore write paths keep the savings flags and salary shift; export_my_data includes them';
+    else update _t set fails = fails + 1; raise notice 'FAIL: backup/export coverage — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 82; f int; p int;  -- tests 1–81 + B-0059
+declare expected_tests constant int := 83; f int; p int;  -- tests 1–82 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

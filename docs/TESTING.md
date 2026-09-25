@@ -168,14 +168,22 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 ### J. Backup & restore **[2 accounts]**
 30. Settings → Your data → Export backup, once with no password and once
     with a password → `budgeer-backup-YYYY-MM-DD.json` downloads. The plain
-    file is readable JSON (`format: "budgeer-backup"`, `version: 1`); the
-    protected one shows only `kdf`, `iv` and `ciphertext`.
+    file is readable JSON (`format: "budgeer-backup"`, `version: 3`); the
+    protected one shows only `kdf`, `iv` and `ciphertext`. With the salary
+    shift on and a savings category, entries "Taken from my income" and
+    expenses "Paid from savings", the file's profile has
+    `salary_shift_from_day` and `salary_category` (a key like `"c9"`, not an
+    id), the category `savings: true`, and the entries `from_income` /
+    `from_savings`. It has no `whats_new_seen`.
 31. On a second (empty) account, Restore from backup → pick the protected
     file → a wrong password says "Wrong password or damaged file." → the right
     one shows the contents → Restore → progress, then "Added N expenses, …".
     Expenses, income, categories, budgets, recurring entries, accounts and
     goals match the first account; group shares are plain expenses whose
     notes say "Group: <name>". No budget alerts fire for past months.
+    Settings › Monthly spending shows the same salary shift (day and
+    category); the account still has exactly one Savings, Friends & family
+    and Bonus category, and the savings/"Paid from savings" flags match.
 32. Restore the same file again → "Nothing new to add"; no counts change.
 33. A damaged file (edit an amount to `-1`, or truncate it) is refused with a
     clear message and nothing is saved. Name/currency/notification/payment
