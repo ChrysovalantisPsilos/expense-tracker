@@ -16,6 +16,17 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { frequencyLabel } from '../recurring/recurringMath.js'
+import { landscapeOnly, ONE_LINE } from '../../shared/lib/shortLandscape.js'
+
+// Sideways, the meta line keeps to one line like the row's title (ItemRow):
+// its parts run on as one line of text, cut with an ellipsis at the end.
+const SHORT_META = landscapeOnly({
+  display: 'block',
+  lineHeight: 1.35,
+  ...ONE_LINE,
+  '& > *': { display: 'inline', mr: 1.5 },
+  '& svg': { display: 'inline', verticalAlign: '-1px' },
+})
 
 // Shared list of personal transactions with edit + delete.
 // Group-mirrored rows (group_expense_id set) are read-only here — they're
@@ -98,13 +109,14 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
 }
 
 // The muted line under a row's title: date · category · where savings came
-// from · note, then the group's tag on group-share rows.
+// from · note, then the group's tag on group-share rows. One line sideways.
 function RowMeta({ row: r, shared, saved }) {
   const { salaryShift } = useProfile()
   const share = monthlyShare(r)
   const countsFor = countsForLabel(r, salaryShift)
   return (
-    <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted">
+    <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted"
+      sx={SHORT_META}>
       <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
       {r.description && r.categories?.name && (
         <Text overflowWrap="anywhere">· {r.categories.name}</Text>

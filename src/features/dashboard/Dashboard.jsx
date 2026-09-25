@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  SimpleGrid, Box, Text, Stack, HStack, IconButton, Button,
+  SimpleGrid, Box, Flex, Text, Stack, HStack, IconButton, Button,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, ChevronDown, ChevronUp, PiggyBank, Table as TableIcon, ReceiptText, Users, Wallet } from 'lucide-react'
@@ -35,16 +35,25 @@ import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import {
   periodTotals, periodProjection, projectedTotals, netNote, savedNote, visibleBars, TOP_CATEGORIES,
+  homeCards, homeStacks,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 import SubscriptionsCard from '../recurring/SubscriptionsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
+import { FOLD_ROW_ACTIONS } from '../../shared/ui/RowActions.jsx'
+import { HIDE_CARD_ICONS } from '../../shared/ui/CardHeader.jsx'
+import { NARROW_STACK } from '../../shared/lib/shortLandscape.js'
 import { SkeletonBlock, SkeletonFigure, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
 
 const UNAVAILABLE = 'Not available until your transactions load.'
+
+// On the narrowest sideways screens (an iPhone SE or mini) the stacks' rows fold
+// their edit/delete into the ⋯ menu and the cards drop their header tiles,
+// so titles keep their room.
+const NARROW_STACKS = { [NARROW_STACK]: { ...FOLD_ROW_ACTIONS, ...HIDE_CARD_ICONS } }
 
 export default function Dashboard() {
   const { baseCurrency, separateYearly, salaryShift } = useProfile()
@@ -119,21 +128,21 @@ export default function Dashboard() {
     kind: 'income', periodLabel: period.label, count: income.length, loading, failed: !!error,
   })
   const firstRun = isFirstRun({ loading, failed: !!error, count: rows.length, oldest })
-  // A phone held sideways: the cards sit two by two (Overview beside Spending
-  // by category, and so on), each laid out as on a phone.
-  const twoColumns = useShortLandscape()
-  const overviewColumns = twoColumns ? 1 : { base: 1, md: 2 }
+  // A phone held sideways: the overview is one strip (Spent | Income · Net)
+  // over two stacks of cards (homeStacks).
+  const sideways = useShortLandscape()
+  const overviewGrid = sideways ? { templateColumns: '2fr 3fr' } : { columns: { base: 1, md: 2 } }
 
-  const cards = (
-    <>
-      {error ? (
+  // Every card by id; homeCards / homeStacks decide which show, and where.
+  const card = {
+    overview: error ? (
         // One error (with Retry) for the transactions every card below needs,
         // instead of €0.00 totals that look real.
         <Panel data-tour="overview"><QueryError error={error} onRetry={reload} what="your transactions" /></Panel>
       ) : (
       <Panel data-tour="overview">
-        {loading ? <OverviewSkeleton columns={overviewColumns} /> : (
-        <SimpleGrid columns={overviewColumns} spacing={4} alignItems="center">
+        {loading ? <OverviewSkeleton grid={overviewGrid} /> : (
+        <SimpleGrid {...overviewGrid} spacing={4} alignItems="center">
           <Box>
             <Figure label="Spent" size="hero" value={formatMoney(spentTotal, baseCurrency)} />
             {proj.expense > 0 && (
@@ -166,12 +175,13 @@ export default function Dashboard() {
         </SimpleGrid>
         )}
       </Panel>
-      )}
+      ),
 
-      {/* Nothing logged at all yet: the way to start sits right under the
-          totals, in place of the (empty) Expenses card further down. */}
-      {firstRun && <Panel><FirstEntry /></Panel>}
+    // Nothing logged at all yet: the way to start sits right under the
+    // totals, in place of the (empty) Expenses card further down.
+    firstEntry: <Panel><FirstEntry /></Panel>,
 
+    categories: (
       <Panel data-tour="categories" icon={ChartBarDecreasing} title="Spending by category" action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
             <CkTooltip label="Chart">
@@ -242,10 +252,11 @@ export default function Dashboard() {
           </Stack>
         )}
       </Panel>
+    ),
 
-      <BudgetsCard period={period} />
+    budgets: <BudgetsCard period={period} />,
 
-      {!firstRun && (
+    expenses: (
       <Panel icon={ReceiptText} title={expHead.title} subtitle={expHead.subtitle} divider>
         {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
           <SkeletonRegion><SkeletonRows count={5} py={2.5} /></SkeletonRegion>
@@ -259,9 +270,9 @@ export default function Dashboard() {
           </>
         )}
       </Panel>
-      )}
+    ),
 
-      {!firstRun && (
+    income: (
       <Panel icon={Wallet} iconTone="positive" title={incHead.title} subtitle={incHead.subtitle} divider>
         {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
           <SkeletonRegion><SkeletonRows count={3} py={2.5} /></SkeletonRegion>
@@ -275,33 +286,44 @@ export default function Dashboard() {
           </>
         )}
       </Panel>
-      )}
+    ),
 
+    recurring: (
       <SubscriptionsCard rules={rules} fx={ruleFx} loading={rulesLoading} error={rulesError} onRetry={reloadRules}
         baseCurrency={baseCurrency} period={period} charges={{ rows, loading, error, onRetry: reload }} />
-    </>
-  )
+    ),
+  }
+  const show = (ids) => ids.map((id) => <Fragment key={id}>{card[id]}</Fragment>)
+  const stacks = homeStacks({ firstRun })
 
   return (
-    <Stack spacing={twoColumns ? 3 : 5}>
+    <Stack spacing={sideways ? 3 : 5}>
       <PageHeader title="Overview" action={
         <Select w={{ base: '140px', sm: '200px' }} size="sm" borderRadius="lg" value={periodValue}
           aria-label="Period" onChange={(e) => setPeriodValue(e.target.value)}>
           {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </Select>
       } />
-      {twoColumns ? <SimpleGrid columns={2} spacing={3} alignItems="start">{cards}</SimpleGrid> : cards}
+      {sideways ? (
+        <>
+          {show(stacks.strip)}
+          <Flex gap={3} align="start" sx={NARROW_STACKS}>
+            <Stack spacing={3} flex="1" minW={0}>{show(stacks.left)}</Stack>
+            <Stack spacing={3} flex="1" minW={0}>{show(stacks.right)}</Stack>
+          </Flex>
+        </>
+      ) : show(homeCards({ firstRun }))}
     </Stack>
   )
 }
 
 // The overview's shape while the period's transactions load: Spent, then the
 // Income and Net tiles (instead of €0.00 totals that look real), in the
-// card's `columns`.
-function OverviewSkeleton({ columns }) {
+// card's `grid`.
+function OverviewSkeleton({ grid }) {
   return (
     <SkeletonRegion>
-      <SimpleGrid columns={columns} spacing={4} alignItems="center">
+      <SimpleGrid {...grid} spacing={4} alignItems="center">
         <SkeletonFigure size="hero" w="60%" />
         <SimpleGrid columns={2} spacing={2}>
           <SkeletonBlock h="64px" radius="lg" />

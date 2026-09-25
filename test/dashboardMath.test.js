@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  periodTotals, periodProjection, projectedTotals, visibleBars, TOP_CATEGORIES,
+  periodTotals, periodProjection, projectedTotals, visibleBars, TOP_CATEGORIES, homeCards, homeStacks,
 } from '../src/features/dashboard/dashboardMath.js'
 
 const rows = [
@@ -70,4 +70,26 @@ test('visibleBars: top 5 until "Show all", then every category', () => {
   assert.deepEqual(visibleBars(bars, true), { rows: bars, hidden: 0 })
   assert.deepEqual(visibleBars(bars.slice(0, 5), false), { rows: bars.slice(0, 5), hidden: 0 })
   assert.deepEqual(visibleBars([], false), { rows: [], hidden: 0 })
+})
+
+test('Home sideways: a strip, then two stacks that hold every card once, in the reading order', () => {
+  for (const firstRun of [false, true]) {
+    const cards = homeCards({ firstRun })
+    const { strip, left, right } = homeStacks({ firstRun })
+    const all = [...strip, ...left, ...right]
+    assert.equal(new Set(all).size, all.length, 'a card twice')
+    assert.deepEqual([...all].sort(), [...cards].sort(), `firstRun ${firstRun}: the same cards as the phone`)
+    assert.deepEqual(strip, ['overview'])
+    // Each stack keeps the phone's order.
+    for (const stack of [left, right]) {
+      const at = stack.map((id) => cards.indexOf(id))
+      assert.deepEqual(at, [...at].sort((a, b) => a - b), stack.join())
+    }
+  }
+  assert.deepEqual(homeStacks({ firstRun: false }), {
+    strip: ['overview'], left: ['categories', 'budgets'], right: ['expenses', 'income', 'recurring'],
+  })
+  // Nothing logged: the way to start leads the right stack; no empty lists.
+  assert.deepEqual(homeStacks({ firstRun: true }).right, ['firstEntry', 'recurring'])
+  assert.deepEqual(homeCards({ firstRun: true }).slice(0, 2), ['overview', 'firstEntry'])
 })

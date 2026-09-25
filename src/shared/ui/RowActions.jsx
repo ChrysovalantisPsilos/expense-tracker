@@ -9,6 +9,14 @@ const SIZES = {
   lg: { button: { boxSize: '44px', minW: '44px' }, px: 44, icon: 18, menuIcon: 20 },
 }
 
+// A container's style that folds its rows' actions into the ⋯ menu whatever
+// the screen width — for rows in a column too narrow for inline buttons (a
+// Home stack on a small phone held sideways): sx={{ [query]: FOLD_ROW_ACTIONS }}.
+export const FOLD_ROW_ACTIONS = {
+  '& .row-actions-inline': { display: 'none' },
+  '& .row-actions-menu': { display: 'block' },
+}
+
 // A list row's trailing actions. From `sm` up each action is an inline icon
 // button; on phones they fold into one ⋯ menu so the row's title keeps its
 // width. The slot is always `slots` buttons wide (one on phones), even when a
@@ -21,7 +29,7 @@ export default function RowActions({ actions, slots = actions.length, size = 'xs
   const inline = actions.filter((a) => !a.menuOnly)
   return (
     <>
-      <HStack spacing={`${GAP_PX}px`} justify="end" flexShrink={0}
+      <HStack className="row-actions-inline" spacing={`${GAP_PX}px`} justify="end" flexShrink={0}
         display={{ base: 'none', sm: 'flex' }}
         w={`${slots * s.px + Math.max(0, slots - 1) * GAP_PX}px`}>
         {inline.map(({ label, icon: Icon, onClick, danger }) => (
@@ -30,7 +38,7 @@ export default function RowActions({ actions, slots = actions.length, size = 'xs
             onClick={onClick} />
         ))}
       </HStack>
-      <Box display={{ base: 'block', sm: 'none' }} w={`${s.px}px`} flexShrink={0}>
+      <Box className="row-actions-menu" display={{ base: 'block', sm: 'none' }} w={`${s.px}px`} flexShrink={0}>
         {actions.length > 0 && (
           // `fixed`: the unopened list sits at its anchor's corner, and inside
           // a positioned row (a linked ProgressRow) an absolute one would

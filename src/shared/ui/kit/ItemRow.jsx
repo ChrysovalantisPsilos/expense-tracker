@@ -4,6 +4,13 @@ import IconTile from './IconTile.jsx'
 import RowActions from '../RowActions.jsx'
 import RowAmount from '../RowAmount.jsx'
 import { textColor } from './kitMath.js'
+import { landscapeOnly, ONE_LINE } from '../../lib/shortLandscape.js'
+
+// Sideways, a row keeps to one line of title over one line of meta, each cut
+// with an ellipsis, however narrow its column — and a little less padding, so
+// a list shows more rows above the fold.
+const SHORT_LINE = landscapeOnly({ ...ONE_LINE, lineHeight: 1.35 })
+const SHORT_ROW = landscapeOnly({ py: '4px' })
 
 const CLICKABLE = {
   as: 'button', type: 'button', textAlign: 'left',
@@ -42,9 +49,9 @@ export default function ItemRow({
     <>
       {media ?? (icon && <IconTile icon={icon} />)}
       <Box flex="1" minW={0}>
-        <Text fontSize="sm" fontWeight="600" overflowWrap="anywhere">{title}</Text>
+        <Text fontSize="sm" fontWeight="600" overflowWrap="anywhere" sx={SHORT_LINE}>{title}</Text>
         {meta && (typeof meta === 'string'
-          ? <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{meta}</Text>
+          ? <Text fontSize="xs" color="text.muted" overflowWrap="anywhere" sx={SHORT_LINE}>{meta}</Text>
           : meta)}
       </Box>
       {amount !== undefined && (
@@ -70,7 +77,7 @@ export default function ItemRow({
   if (onClick && controls) {
     return (
       <HStack spacing={3} minW={0} {...props}>
-        <HStack spacing={3} flex="1" minW={0} py={py} px={1} mx={-1} {...CLICKABLE} onClick={onClick}>
+        <HStack spacing={3} flex="1" minW={0} py={py} px={1} mx={-1} sx={SHORT_ROW} {...CLICKABLE} onClick={onClick}>
           {body}
         </HStack>
         {controls}
@@ -79,7 +86,7 @@ export default function ItemRow({
   }
   const click = onClick ? { ...CLICKABLE, onClick, w: 'full' } : {}
   return (
-    <HStack spacing={3} py={py} minW={0} {...click} {...props}>
+    <HStack spacing={3} py={py} minW={0} sx={SHORT_ROW} {...click} {...props}>
       {body}
       {controls}
     </HStack>

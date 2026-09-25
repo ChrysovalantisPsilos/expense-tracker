@@ -118,3 +118,26 @@ export function visibleBars(bars, showAll) {
   const hidden = showAll ? 0 : Math.max(0, bars.length - TOP_CATEGORIES)
   return { rows: hidden ? bars.slice(0, TOP_CATEGORIES) : bars, hidden }
 }
+
+// Home's cards, by id, in reading order. On a first run (nothing logged
+// yet) the way to start sits right under the totals, and the Expenses and
+// Income lists (empty) are left out.
+export function homeCards({ firstRun }) {
+  return firstRun
+    ? ['overview', 'firstEntry', 'categories', 'budgets', 'recurring']
+    : ['overview', 'categories', 'budgets', 'expenses', 'income', 'recurring']
+}
+
+// A phone held sideways: the overview is a strip across the top, and the
+// other cards fall into two stacks that each flow on their own (no shared
+// row heights, so a short card never leaves a hole beside a long one). The
+// left holds the summaries (by category, budgets); the right the lists
+// (expenses, income, recurring) — or, on a first run, the way to start and
+// Recurring. Together they hold every card homeCards lists, once.
+export function homeStacks({ firstRun }) {
+  return {
+    strip: ['overview'],
+    left: ['categories', 'budgets'],
+    right: firstRun ? ['firstEntry', 'recurring'] : ['expenses', 'income', 'recurring'],
+  }
+}

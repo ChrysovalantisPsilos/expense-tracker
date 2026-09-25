@@ -5,6 +5,15 @@ import IconTile from './IconTile.jsx'
 import RowActions from '../RowActions.jsx'
 import { MotionBox } from './motion.jsx'
 import { barWidth, fillColor, playProps } from './kitMath.js'
+import { landscapeOnly, ONE_LINE } from '../../lib/shortLandscape.js'
+
+// Sideways, the title and `meta` share one line when both fit whole (a card
+// of bars is then half as tall); when they don't, `meta` drops under the
+// title as on a phone rather than cutting either.
+const SHORT_TEXT = landscapeOnly({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 2 })
+const SHORT_TITLE = landscapeOnly({ ...ONE_LINE, flex: '1 0 auto', maxW: '100%' })
+const SHORT_META = landscapeOnly({ whiteSpace: 'nowrap', flexShrink: 0 })
+const SHORT_TAG = landscapeOnly({ mt: 0, flexShrink: 0 })
 
 // A linked row is a LinkBox: its title is the link, stretched over the whole
 // row, so the row is one tab stop and one tap target, while `actions` sit
@@ -51,17 +60,17 @@ export default function ProgressRow({
     <Root title={tooltip} {...(to && LINKED)} {...props}>
       <HStack spacing={3} mb={2}>
         {media ?? (icon && <IconTile icon={icon} />)}
-        <Box flex="1" minW={0}>
-          <Text fontSize="sm" fontWeight="600" overflowWrap="anywhere">
+        <Box flex="1" minW={0} sx={SHORT_TEXT}>
+          <Text fontSize="sm" fontWeight="600" overflowWrap="anywhere" sx={SHORT_TITLE}>
             {to ? (
               <LinkOverlay as={RouterLink} to={to} aria-label={linkLabel} {...OVERLAY_FOCUS}>
                 {title}
               </LinkOverlay>
             ) : title}
           </Text>
-          {meta && <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{meta}</Text>}
+          {meta && <Text fontSize="xs" color="text.muted" overflowWrap="anywhere" sx={SHORT_META}>{meta}</Text>}
           {/* Under the title, so the name keeps the row's width on a phone. */}
-          {over && <Tag size="sm" colorScheme="red" borderRadius="full" mt={1}>{overLabel}</Tag>}
+          {over && <Tag size="sm" colorScheme="red" borderRadius="full" mt={1} sx={SHORT_TAG}>{overLabel}</Tag>}
         </Box>
         <Text fontSize="sm" fontWeight="700" color={over ? 'status.negative' : 'text.muted'} flexShrink={0}>
           {valueLabel}
