@@ -38,11 +38,11 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | `auth.sessions`, `auth.refresh_tokens` | IP, user agent, timestamps | Keep users signed in, security | (f) security | until sign-out/expiry (Supabase-managed) | Supabase, operator |
 | `auth.webauthn_credentials` | passkey name, public key, last used | Passkey sign-in | (b) | account | owner, operator |
 | `auth.audit_log_entries` | sign-in events, IP | Security | (f) | 30 days (0073 purge, if stored in DB) | operator |
-| `profiles` | display_name, avatar_url, base_currency, notification switches (`notify_email`, `notify_push`, `notify_digest`), onboarding/tour/pref flags, the last “What’s new” seen (`whats_new_seen`), payment IBAN/Revolut/PayPal (enc) | Profile, settings, settling up | (b); digest (a) consent | account | owner; co-members see name/picture and payment details |
+| `profiles` | display_name, avatar_url, base_currency, notification switches (`notify_email`, `notify_push`, `notify_digest`), onboarding/tour/pref flags, the last “What’s new” seen (`whats_new_seen`, 0087; moved once from the device's retired `budge:whatsNewSeen` key), the salary setting (`salary_shift_from_day`, `salary_category_id`, 0081; off by default), payment IBAN/Revolut/PayPal (enc) | Profile, settings, settling up | (b); digest (a) consent | account | owner; co-members see name/picture and payment details |
 | `consents` (0072) | purpose, version, granted, source, server timestamp | Prove acceptance/consent (Art. 7(1)) | (c) | account | owner (read), written only by server paths |
-| `categories`, `category_rules` | names, patterns | Organise own records | (b) | account | owner |
-| `transactions` | amount/description/notes (enc), currency, rate, date, category, account, group link | Expense/income tracking | (b) | account | owner |
-| `accounts`, `budgets`, `savings_goals`, `recurring_rules` | names; balances/amounts/targets (enc); schedule | Personal finance features | (b) | account | owner |
+| `categories`, `category_rules` | names, `is_savings` (0084); the defaults "Friends & family", "Bonus" and "Savings" were added to every existing account (0082–0084), no other data touched; rule patterns (“description contains”), also saved from the import's New merchants list — can be a payee's name | Organise own records | (b); payee names in patterns (f) | account | owner |
+| `transactions` | amount/description/notes (enc), currency, rate, date, category, account, group link, `savings_from_income` (0084), `paid_from_savings` (0085); imported descriptions carry the statement's payee/payer names (never the holder's own name column) | Expense/income tracking | (b); third-party names in imported descriptions (f) | account | owner |
+| `accounts`, `budgets`, `savings_goals`, `recurring_rules` | names; balances/amounts/targets (enc); schedule; rules' `savings_from_income`/`paid_from_savings` (0084/0085) | Personal finance features | (b) | account | owner |
 | `groups` | name, picture, owner | Bill splitting | (b); for non-users (f) | until the group is deleted | members |
 | `group_members` | display_name, user link, former_user_id, role | Who is in a group | (b)/(f) | group lifetime; on account deletion renamed "Former member" and unlinked (0072) | members |
 | `group_expenses`, `expense_splits`, `settlements` | amounts, descriptions, notes (enc), payer, shares, dates | Shared ledger and balances | (b)/(f) | group lifetime (other members rely on it) | members |
@@ -55,22 +55,24 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | `privacy_email_queue` (0076) | kind (consent change / data export), event and send timestamps, pending count | Coalesce the security notices (§ 6a) | (f) security; (c) | row kept per kind while the account exists (holds only timestamps) | server only (exported to the owner) |
 | `legal_update_notices` (0076) | Privacy/Terms versions last emailed about, when | Email each user once per legal-document update | (c) Art. 12–13 | account | server only (exported to the owner) |
 | `rate_limits` | key (uid or email hash), counters | Abuse prevention | (f) | ≤ 2 days (0058), backstop 30 days (0073) | server only |
-| `fx_rates`, `fx_fetches` | none (currency rates) | Currency conversion | — | — | server |
+| `fx_rates`, `fx_fetches` | none (currency rates) | Currency conversion; `latest_fx_rates()` (0086) serves the latest cached rates to the statement's recurring totals | — | — | server |
 | Storage `avatars/<uid>/`, `group-images/<gid>/` | profile and group pictures (public URLs) | Display | (b) | removed on account/group deletion | anyone with the link |
-| Browser storage (no cookies) | Supabase session token, service-worker caches (app files; recent reads + their IndexedDB timestamps), appearance/view prefs, prompt flags and "Not now" dismissals, import column mappings, pending invite token, post-sign-in return path, FX cache; tab-only: pending-confirmation email, passkey-prompt and Google-link flags. Full key list: Privacy Notice → "Storage on your device" | Strictly necessary / user-requested (ePrivacy Art. 5(3) exemption) | — | session token and cache cleared on sign-out | the user's device |
+| Browser storage (no cookies) | Supabase session token, service-worker caches (app files; recent reads + their IndexedDB timestamps), appearance/view prefs, prompt flags and "Not now" dismissals, import column mappings, the import holder name (`importHolder`: typed, suggested from the profile name or read from a statement; never sent to the server), the offline record of legal acceptance (`legalAccepted`: user id + versions), pending invite token, post-sign-in return path, FX cache; tab-only: pending-confirmation email, passkey-prompt and Google-link flags, the Google sign-up consent marker (`legalConsentPending`: versions + time, 30-minute expiry). Retired key `budge:whatsNewSeen` is only read once, moved to `profiles.whats_new_seen` and deleted. Full key list: Privacy Notice → "Storage on your device" | Strictly necessary / user-requested (ePrivacy Art. 5(3) exemption) | — | session token, offline caches and `legalAccepted` cleared on sign-out; tab-only items when the tab closes | the user's device |
+| Page memory only (never stored) | the password just typed at sign-up, held by the “Check your inbox” page to retry the sign-in (6 s, then 15 s) until the email is confirmed | Sign the new user in once they confirm | (b) | dropped on sign-in, leaving/reloading the page, any error other than "not confirmed", or after 15 minutes | the user's browser; sent only to Supabase Auth |
+| Imported statement files | CSV/Excel read in a Web Worker in the browser; the file is never uploaded; own-account transfers (incl. Revolut top-ups) and non-transaction lines are dropped before anything is saved | Import | (b) | not kept | the user's browser |
 
 ## 4. Processors and recipients
 
 | Recipient | Role | Data | Location | Transfer safeguard |
 | --- | --- | --- | --- | --- |
-| Supabase, Inc. | Processor (DB, Auth, Storage, Edge Functions, Vault) | everything above | AWS eu-west-3 (Paris) for both TEST and PROD; US company (support access) | Supabase DPA + SCCs |
+| Supabase, Inc. | Processor (DB, Auth, Storage, Edge Functions, Vault) | everything above; Auth sends the confirm/reset/sign-in-link emails, whose links go to `{{ .SiteURL }}/auth/confirm?token_hash=…` (our domain; the app verifies the token with Supabase) | AWS eu-west-3 (Paris) for both TEST and PROD; US company (support access) | Supabase DPA + SCCs |
 | Vercel Inc. | Processor (static hosting, CDN) | IP, request logs | global edge incl. US | Vercel DPA + SCCs (DPF if certified — verify) |
-| Resend (Plus Five Five, Inc.) | Processor (email) | recipient address, email content (invites, group event emails, the service notices of § 6a, privacy-request form) | sending region eu-west-1 (Ireland); US company; open/click tracking off | Resend DPA + SCCs |
+| Resend (Plus Five Five, Inc.) | Processor (email) | recipient address, email content (Supabase Auth's confirm/reset/sign-in-link emails, sent through Auth's SMTP settings; invites, group event emails, the service notices of § 6a, privacy-request form) | sending region eu-west-1 (Ireland); US company; open/click tracking off | Resend DPA + SCCs |
 | Cloudflare, Inc. | Processor (DNS, website proxy/CDN, Email Routing for privacy@/support@) | IP + requested URLs (proxy); inbound emails to privacy@/support@ in transit, not stored | global edge incl. US | Cloudflare DPA + SCCs; DPF |
 | Google (Gmail mailbox) | Mailbox for privacy@/support@ (forwarded by Cloudflare; replies sent as privacy@/support@ through Resend SMTP) | sender address and message content of privacy/support emails and privacy-request forms | Google data centres, incl. US | DPF + Google terms; correspondence deleted when no longer needed, ≤ 2 years after the request is closed |
 | Google | Independent controller (OAuth sign-in; avatar images on googleusercontent.com) | identity, IP when avatar loads | global | Google's terms; DPF |
 | Browser push services (FCM, Mozilla, Apple, Microsoft) | Deliver encrypted push payloads | endpoint, timing | global | payload end-to-end encrypted (RFC 8291) |
-| Frankfurter (frankfurter.dev) | Independent service (ECB rates) | currency codes, date, user's IP (browser call) | unknown | no contract; no user identifiers sent |
+| Frankfurter (frankfurter.dev) | Independent service (ECB rates) | currency codes and dates only, user's IP (browser calls: the form's rate, an import's date range, pending rates, and the latest rate for foreign recurring totals); server fetch has no personal data | unknown | no contract; no user identifiers sent |
 | Revolut / PayPal | Only on user tap | friend's handle + amount in a link | — | user-initiated |
 
 ## 5. Automatic retention jobs (pg_cron, scheduled by the migrations)
@@ -192,6 +194,9 @@ security suite (`supabase/tests/db_tests.sql`).
 - Operator sign-up digest (§ 6b), PROD only: create the Vault secret
   `operator_signup_email` holding the address the digest goes to, and deploy
   `operator-digest`. Leave the secret absent on TEST.
+- Check that Supabase Auth's SMTP settings (Authentication → Emails → SMTP) send
+  through Resend on both projects, as the Privacy Notice says for the sign-in
+  emails.
 - Consider shortening Supabase Auth session lifetime / enabling inactivity
   timeout; check that auth audit logs are not kept longer than needed.
 - Keep this record and a request/breach log up to date.

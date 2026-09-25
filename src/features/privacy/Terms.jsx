@@ -39,6 +39,8 @@ const SECTIONS = [
       <Bullets items={[
         'Budgeer only records and organises the data you enter. Nothing in it is financial, investment, tax or legal advice, or a recommendation to do anything with your money.',
         'Figures can be wrong. Calculations, totals and balances, exchange rates (the European Central Bank’s daily reference rates, or an estimate until they arrive), projections, budget alerts, yearly subscriptions spread over months, bank-statement imports and receipt scans may be inaccurate or incomplete.',
+        'Some figures are estimates built only from what you enter and those reference rates: recurring totals in other currencies (converted at the latest rate, not the rate you’ll actually pay), a late-month salary counted toward the next month, what you saved, and Net. They are not a statement of your real balance or financial advice.',
+        'A bank-statement import guesses for you: it leaves out what looks like a transfer between your own accounts, and it groups merchants and suggests categories from the text of each line. These guesses can be wrong — check what was imported and what was left out.',
         'You are responsible for your own decisions and for checking figures. Always check important amounts against your bank statements before relying on them or paying anyone, and ask a qualified professional before making financial, tax or legal decisions.',
       ]} />
     </>
