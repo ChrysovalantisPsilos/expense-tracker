@@ -18,8 +18,8 @@ test('buildTrend: buckets income/expense per month in major base units', () => {
   ]
   const t = buildTrend(rows, months, 'EUR')
   assert.deepEqual(t, [
-    { label: 'Jan', income: 0, expense: 10 },
-    { label: 'Feb', income: 50, expense: 0 },
+    { label: 'Jan', income: 0, expense: 10, net: -10 },
+    { label: 'Feb', income: 50, expense: 0, net: 50 },
   ])
 })
 

@@ -49,13 +49,16 @@ export function sameKindOthers(categories, category) {
   return (categories ?? []).filter((c) => c.kind === category?.kind && c.id !== category?.id)
 }
 
-// The update an edit form's { name, icon, color } makes to `category`, or
-// null when nothing changed (the name compares trimmed, as it's stored).
-export function categoryPatch(category, { name, icon, color }) {
+// The update an edit form's { name, icon, color, savings } makes to
+// `category`, or null when nothing changed (the name compares trimmed, as it's
+// stored). `savings` ("Counts as savings", 0084) only applies to an income
+// category — the server refuses is_savings on an expense one.
+export function categoryPatch(category, { name, icon, color, savings = false }) {
   const patch = {}
   if (String(name ?? '').trim() !== category.name) patch.name = name
   if ((icon ?? null) !== (category.icon ?? null)) patch.icon = icon
   if ((color ?? null) !== (category.color ?? null)) patch.color = color
+  if (category.kind === 'income' && !!savings !== !!category.is_savings) patch.is_savings = !!savings
   return Object.keys(patch).length ? patch : null
 }
 
@@ -80,15 +83,17 @@ export function categoryPeriod(rows, { categoryId, from, to, baseCurrency, separ
   return { listed: paidInWindow(mine, from, to), total }
 }
 
-// The default income categories added in 0081: new accounts are seeded with
-// them and 0082 gave every existing account the same two. The category list
-// tags them "New" for NEW_TAG_MS after they were added. The tag is UI only —
-// never part of the name — so it can't reach statements or exports.
+// The default income categories added since 0081: new accounts are seeded
+// with them, and 0082 (Friends & family, Bonus) and 0084 (Savings, marked as
+// savings) gave every existing account the same. The category list tags them
+// "New" for NEW_TAG_MS after they were added. The tag is UI only — never part
+// of the name — so it can't reach statements or exports.
 // test/categoryMath.test.js keeps this list in lockstep with the seed and the
-// backfill.
+// backfills.
 export const NEW_DEFAULT_CATEGORIES = [
   { name: 'Friends & family', icon: 'transfer', kind: 'income' },
   { name: 'Bonus', icon: 'salary', kind: 'income' },
+  { name: 'Savings', icon: 'savings', kind: 'income', savings: true },
 ]
 export const NEW_TAG_MS = 2 * 24 * 60 * 60 * 1000
 

@@ -4,19 +4,21 @@ import {
   SimpleGrid, Box, Text, Stack, HStack, IconButton, Button,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
-import { ChartBarDecreasing, Table as TableIcon, ReceiptText, Users, Wallet } from 'lucide-react'
+import { ChartBarDecreasing, PiggyBank, Table as TableIcon, ReceiptText, Users, Wallet } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
 import FirstEntry from '../transactions/FirstEntry.jsx'
 import { isFirstRun, listHeading } from '../transactions/listHeading.js'
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { buildPeriods } from '../transactions/periods.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
+import { useSavingsIds } from '../categories/categories.js'
 import { today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring } from '../recurring/recurring.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { spendRows, paidInWindow } from '../../shared/lib/spread.js'
 import { countedInWindow } from '../../shared/lib/salaryShift.js'
+import { isSavingsRow } from '../../shared/lib/savings.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
@@ -31,7 +33,7 @@ import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import {
-  periodTotals, periodProjection, projectedTotals,
+  periodTotals, periodProjection, projectedTotals, netNote, savedNote,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 import SubscriptionsCard from '../recurring/SubscriptionsCard.jsx'
@@ -54,9 +56,13 @@ export default function Dashboard() {
 
   // `spread`: yearly subscriptions paid before the period still count their
   // share of it (totals only — the list shows what was paid in the period).
-  const { rows, loading, error, reload, mutate } = useTransactions({
+  const { rows, loading: rowsLoading, error, reload, mutate } = useTransactions({
     from: period.from ?? undefined, to: period.to ?? undefined, spread: true,
   })
+  // Savings entries (0084) aren't income: every figure below waits for the
+  // user's savings categories so none flashes with them counted.
+  const { savingsIds, loading: savingsLoading } = useSavingsIds()
+  const loading = rowsLoading || savingsLoading
   // Recheck whenever the (live) transaction rows change, so importing older
   // data extends the period dropdown without a reload. Cheap: 1-row query.
   useEffect(() => { oldestTransactionDate().then(setOldest) }, [rows])
@@ -68,15 +74,17 @@ export default function Dashboard() {
   const spend = useMemo(
     () => spendRows(rows, baseCurrency, period.from, period.to, { separateYearly, salaryShift }),
     [rows, baseCurrency, period.from, period.to, separateYearly, salaryShift])
-  const totals = useMemo(() => periodTotals(spend, baseCurrency), [spend, baseCurrency])
+  const totals = useMemo(() => periodTotals(spend, baseCurrency, savingsIds), [spend, baseCurrency, savingsIds])
   const { byCategory, bucketRow } = totals
   const paid = useMemo(() => paidInWindow(rows, period.from, period.to), [rows, period.from, period.to])
   const expenses = useMemo(() => paid.filter((r) => r.kind !== 'income'), [paid])
   // Income is listed by the month it counts for: a late-month salary (the
-  // salary setting) shows under the next month, with its real date.
+  // salary setting) shows under the next month, with its real date. Savings
+  // aren't income, so they're not listed here (the Transactions page has them).
   const income = useMemo(
-    () => countedInWindow(rows.filter((r) => r.kind === 'income'), period.from, period.to, salaryShift),
-    [rows, period.from, period.to, salaryShift])
+    () => countedInWindow(rows.filter((r) => r.kind === 'income' && !isSavingsRow(r, savingsIds)),
+      period.from, period.to, salaryShift),
+    [rows, savingsIds, period.from, period.to, salaryShift])
   // Each bar drills down to its expenses for this period (a group share to its
   // group); the folded "Other" merges several buckets, so it has no link.
   const bars = useMemo(
@@ -87,10 +95,11 @@ export default function Dashboard() {
   // periods and "all time" stay purely actual.
   const todayISO = useMemo(() => today(), [])
   const proj = useMemo(
-    () => periodProjection(rules, period.to, todayISO, separateYearly, salaryShift),
-    [rules, period.to, todayISO, separateYearly, salaryShift])
-  const { spentTotal, earnedTotal, netTotal } = projectedTotals(totals, proj)
+    () => periodProjection(rules, period.to, todayISO, separateYearly, salaryShift, savingsIds),
+    [rules, period.to, todayISO, separateYearly, salaryShift, savingsIds])
+  const { spentTotal, earnedTotal, fromIncomeTotal, netTotal } = projectedTotals(totals, proj)
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
+  const saved = savedNote(totals.saved, period, baseCurrency)
 
   // Paginate the expenses (10/page), back to page 1 when the period changes.
   const expPage = usePaged(expenses, 10, periodValue)
@@ -132,7 +141,15 @@ export default function Dashboard() {
             <BalanceTile size="md" label="Income" value={formatMoney(earnedTotal, baseCurrency)} tone="positive"
               note={proj.income > 0 ? `incl. ${formatMoney(proj.income, baseCurrency)} upcoming` : undefined} />
             <BalanceTile size="md" label="Net" value={net.text} tone={net.tone}
-              note={proj.expense > 0 || proj.income > 0 ? 'incl. upcoming recurring' : 'income − expenses'} />
+              note={netNote(proj, fromIncomeTotal)} />
+            {/* Savings aren't income (those taken from it lower the net): a quiet
+                line says what was put aside, both kinds. */}
+            {saved && (
+              <HStack gridColumn="span 2" spacing={1.5} px={1} color="text.muted">
+                <PiggyBank size={14} aria-hidden />
+                <Text fontSize="xs">{saved}</Text>
+              </HStack>
+            )}
           </SimpleGrid>
         </SimpleGrid>
         )}

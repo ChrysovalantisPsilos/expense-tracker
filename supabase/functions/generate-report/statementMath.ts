@@ -3,13 +3,17 @@
 import { fmtMinor, minorFactor, toBaseMinor } from '../_shared/money.ts'
 import { isSpread, monthlyShare, paidInWindow, perYearMinor, spendRows, yearlyRules } from '../_shared/spread.ts'
 import { isShifted, type SalaryShift } from '../_shared/salaryShift.ts'
+import { type Effect, netSign, rowEffect, savingsSource } from '../_shared/savings.ts'
 
 // One statement line. `base_amount` is in the base currency (major units),
 // or null while the row's exchange rate is pending. `yearly` marks a yearly
 // subscription payment: { months, perMonthMinor (own currency), exact }.
+// `saved` marks a savings entry (0084: income-kind, but never income) with
+// where the money came from, else null.
 export interface StatementRow {
   date: string
   kind: string
+  saved: 'from income' | 'received' | null
   category: string
   description: string
   currency: string
@@ -34,6 +38,12 @@ export interface Statement {
   rows: StatementRow[] // paid in the period, oldest first
   totalSpent: number
   totalIncome: number
+  // income − expenses − savings taken from income (received savings leave
+  // it alone), as on Home.
+  net: number
+  // The savings entries (0084), in neither income nor spending: their total
+  // and its two kinds. null when the period has none.
+  saved: { total: number; fromIncome: number; received: number } | null
   byCategory: Record<string, number>
   // Rows left out of every total: foreign amounts whose rate is still pending.
   pending: { count: number; currencies: string[] }
@@ -57,6 +67,8 @@ export interface StatementOptions {
   // profiles.salary_shift_from_day/salary_category_id (0081, salaryShiftOf):
   // salary paid from day D counts toward the next month's totals.
   salaryShift?: SalaryShift | null
+  // The ids of the user's savings categories (savingsIdsOf, 0084).
+  savingsIds?: Set<string>
 }
 
 // Build the statement from my_transactions rows (newest first, as the RPC
@@ -71,7 +83,10 @@ export interface StatementOptions {
 // own section. The transaction list always shows each real payment in the
 // period, marked as yearly. With the salary shift on, a salary paid from day
 // D counts in the next month's totals (the fetch reaches back for the one paid
-// late in the month before `from`); the list keeps its real date.
+// late in the month before `from`); the list keeps its real date. Savings
+// entries (income in a savings category) are totalled as "Saved", never as
+// income; the ones taken from income lower the net (rowEffect, shared with
+// the app).
 //
 // A foreign row with exchange_rate NULL is "pending": the server rates it from
 // its ECB cache (fx_sync, every few minutes) as soon as the cache covers its
@@ -80,7 +95,9 @@ export interface StatementOptions {
 // with no base amount and reported under `pending` (as is an earlier yearly
 // payment whose parts would have counted).
 export function buildStatement(txns: any[], base: string, opts: StatementOptions = {}): Statement {
-  const { from = null, to = null, separateYearly = false, rules = [], salaryShift = null } = opts
+  const {
+    from = null, to = null, separateYearly = false, rules = [], salaryShift = null, savingsIds = new Set<string>(),
+  } = opts
   const bf = minorFactor(base)
   // Oldest first; a base-currency row with no rate is itself (rate 1).
   const all = txns.slice().reverse().map((t) => ({
@@ -103,6 +120,7 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
     return {
       date: t.spent_at,
       kind: t.kind,
+      saved: savingsSource(t, savingsIds),
       category: t.category,
       description: t.description ?? '',
       currency: t.currency,
@@ -120,15 +138,17 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
     && spendRows([t], base, from, to, { separateYearly, salaryShift }).length > 0)
   const pendingRows = [...listed.filter((t) => t.exchange_rate == null), ...earlierPending]
 
-  let spent = 0
-  let income = 0
+  const sums: Record<Effect, number> = { income: 0, expense: 0, 'saved-from-income': 0, 'saved-received': 0 }
+  let net = 0
   const byMinor: Record<string, number> = {}
   for (const t of spend) {
     const v = baseMinor(t)
-    if (t.kind === 'income') { income += v; continue }
-    spent += v
-    byMinor[t.category] = (byMinor[t.category] ?? 0) + v
+    const effect = rowEffect(t, savingsIds)
+    sums[effect] += v
+    net += netSign(effect) * v
+    if (effect === 'expense') byMinor[t.category] = (byMinor[t.category] ?? 0) + v
   }
+  const savedTotal = sums['saved-from-income'] + sums['saved-received']
   const byCategory: Record<string, number> = {}
   for (const [k, v] of Object.entries(byMinor)) byCategory[k] = v / bf
 
@@ -158,7 +178,11 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
   }
 
   return {
-    rows, totalSpent: spent / bf, totalIncome: income / bf, byCategory,
+    rows, totalSpent: sums.expense / bf, totalIncome: sums.income / bf, net: net / bf,
+    saved: savedTotal === 0 ? null : {
+      total: savedTotal / bf, fromIncome: sums['saved-from-income'] / bf, received: sums['saved-received'] / bf,
+    },
+    byCategory,
     pending: {
       count: pendingRows.length,
       currencies: [...new Set(pendingRows.map((t) => t.currency))].sort(),
@@ -191,6 +215,15 @@ export function yearlyNote(mode: Statement['yearlyMode']): string | null {
   return null
 }
 
+// How the totals treat savings — one short line, or null when the period has
+// none. Both kinds are saved; only those taken from income lower the net.
+export function savingsNote(saved: Statement['saved']): string | null {
+  if (!saved) return null
+  return saved.fromIncome > 0
+    ? 'Savings aren’t income; those taken from your income are subtracted from the net.'
+    : 'Savings aren’t income and don’t change the net (see Saved).'
+}
+
 // How the totals treat salary paid late in the month — one short line, or
 // null when no such salary touches the period.
 export function salaryNote(fromDay: Statement['salaryShiftDay']): string | null {
@@ -219,7 +252,7 @@ export interface Sheet { name: string; rows: SheetCell[][] }
 // (strings and numbers only; the edge function hands each to SheetJS). Sheet
 // names follow Excel's rules: at most 31 characters, none of []:*?/\, unique.
 export function statementSheets(stmt: Statement, base: string, notes: string[]): Sheet[] {
-  const { rows, totalSpent, totalIncome, byCategory, yearly } = stmt
+  const { rows, totalSpent, totalIncome, net, saved, byCategory, yearly } = stmt
   const sheets: Sheet[] = [{
     name: 'Summary',
     rows: [
@@ -228,7 +261,12 @@ export function statementSheets(stmt: Statement, base: string, notes: string[]):
       [],
       ['Total income', totalIncome],
       ['Total expenses', totalSpent],
-      ['Net', totalIncome - totalSpent],
+      ['Net', net],
+      ...(saved ? [['Saved (not income)', saved.total]] : []),
+      // Both kinds in the period: each subtotal too.
+      ...(saved && saved.fromIncome && saved.received
+        ? [['Saved from income', saved.fromIncome], ['Saved, received', saved.received]]
+        : []),
       ...notes.map((n) => [n]),
       [],
       ['Spending by category'],
@@ -239,7 +277,7 @@ export function statementSheets(stmt: Statement, base: string, notes: string[]):
     rows: [
       ['Date', 'Type', 'Category', 'Description', 'Currency', 'Amount', `Amount (${base})`, 'Yearly'],
       ...rows.map((r) => [
-        r.date, r.kind, safeCell(r.category), safeCell(r.description),
+        r.date, r.saved ? `saved (${r.saved})` : r.kind, safeCell(r.category), safeCell(r.description),
         r.currency, r.amount, r.base_amount ?? 'Rate pending', yearlyLabel(r) ?? '',
       ]),
     ],

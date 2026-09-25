@@ -84,7 +84,7 @@ test('ruleFromTransaction: carries the entry over; next charge after its date', 
   }
   assert.deepEqual(ruleFromTransaction(t, { frequency: 'monthly', interval_n: 1 }), {
     kind: 'expense', amount_minor: 85000, currency: 'EUR', category_id: 'c1', account_id: null,
-    description: 'Rent', frequency: 'monthly', interval_n: 1, next_run: '2026-10-01',
+    description: 'Rent', savings_from_income: false, frequency: 'monthly', interval_n: 1, next_run: '2026-10-01',
     source_transaction_id: 't1',
   })
   // A foreign-currency entry keeps its currency; no rate is stored on the rule.
@@ -287,7 +287,7 @@ test('planRepeat: nothing on, nothing to do; switching Repeat on makes a rule fr
   assert.equal(made.action, 'create')
   assert.deepEqual(made.fields, {
     kind: 'expense', amount_minor: 1299, currency: 'EUR', category_id: 'c1', account_id: null,
-    description: 'Netflix', frequency: 'monthly', interval_n: 1, next_run: '2026-10-10',
+    description: 'Netflix', savings_from_income: false, frequency: 'monthly', interval_n: 1, next_run: '2026-10-10',
     end_date: null, remind_days_before: 2, is_active: true, source_transaction_id: 't1',
   })
   // A new entry links through its client_uuid.

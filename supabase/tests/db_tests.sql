@@ -4295,7 +4295,8 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- 71. 0081: seed_default_categories() gives a new account the income
 --     categories Salary, Friends & family and Bonus (with the expense
---     defaults, 12 in all), only for the caller, and is safe to run twice.
+--     defaults and 0084's Savings, 13 in all), only for the caller, and is
+--     safe to run twice.
 --     Clients may call it (authenticated), anon may not.
 -- ---------------------------------------------------------------------------
 do $$
@@ -4311,7 +4312,7 @@ begin
     perform public.seed_default_categories();
     execute 'reset role';
     select count(*) into n from public.categories where user_id = u;
-    if n <> 12 then raise exception 'seeded % categories (want 12)', n; end if;
+    if n <> 13 then raise exception 'seeded % categories (want 13)', n; end if;
     select count(*) into n from public.categories
      where user_id = u and kind = 'income'
        and (name, icon) in (('Salary', 'salary'), ('Friends & family', 'transfer'), ('Bonus', 'salary'));
@@ -4330,11 +4331,253 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 72. 0084: is_savings is for income categories only. An expense category
+--     can't be inserted or updated to is_savings = true (CHECK), and a
+--     savings category can't become an expense one (categories_guard keeps
+--     kind fixed). New categories are not savings by default.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; e uuid; i uuid; flag boolean;
+begin
+  begin
+    u := pg_temp.zz_user('sav-check');
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    insert into public.categories (name, kind) values ('ZZT rent', 'expense') returning id into e;
+    insert into public.categories (name, kind) values ('ZZT pot', 'income') returning id into i;
+    select is_savings into flag from public.categories where id = i;
+    if flag is distinct from false then raise exception 'is_savings not false by default'; end if;
+    begin
+      insert into public.categories (name, kind, is_savings) values ('ZZT bad', 'expense', true);
+      raise exception 'GUARD_MISSED: savings expense inserted';
+    exception when check_violation then null; end;
+    begin
+      update public.categories set is_savings = true where id = e;
+      raise exception 'GUARD_MISSED: expense marked as savings';
+    exception when check_violation then null; end;
+    update public.categories set is_savings = true where id = i;
+    begin
+      update public.categories set kind = 'expense' where id = i;
+      raise exception 'GUARD_MISSED: savings category became an expense';
+    exception when others then if sqlerrm like 'GUARD_MISSED%' then raise; end if; end;
+    execute 'reset role';
+    select is_savings into flag from public.categories where id = e;
+    if flag then raise exception 'expense category is savings'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: is_savings only on income categories';
+    else update _t set fails = fails + 1; raise notice 'FAIL: is_savings income only — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 73. 0084: seed_default_categories() gives a new account the income
+--     category "Savings" (icon 'savings') marked as savings — the only
+--     default that is.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; n int;
+begin
+  begin
+    u := pg_temp.zz_user('sav-seed');
+    delete from public.categories where user_id = u;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.seed_default_categories();
+    execute 'reset role';
+    select count(*) into n from public.categories
+     where user_id = u and name = 'Savings' and kind = 'income' and icon = 'savings' and is_savings;
+    if n <> 1 then raise exception 'seeded Savings (savings, income): % of 1', n; end if;
+    select count(*) into n from public.categories where user_id = u and is_savings;
+    if n <> 1 then raise exception '% seeded categories are savings (want 1)', n; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: seed gives Savings marked as savings';
+    else update _t set fails = fails + 1; raise notice 'FAIL: seed Savings — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 74. 0084: only the owner can toggle is_savings. Another user's update
+--     matches no rows (RLS) and leaves the flag as it was; the owner's own
+--     update turns it on and off.
+-- ---------------------------------------------------------------------------
+do $$
+declare u_own uuid; u_other uuid; c uuid; n int; flag boolean;
+begin
+  begin
+    u_own := pg_temp.zz_user('sav-owner');
+    u_other := pg_temp.zz_user('sav-other');
+    perform set_config('request.jwt.claims', json_build_object('sub', u_own, 'role', 'authenticated')::text, true);
+    insert into public.categories (user_id, name, kind) values (u_own, 'ZZT interest', 'income') returning id into c;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u_other, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.categories set is_savings = true where id = c;
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if n <> 0 then raise exception 'another user flipped is_savings'; end if;
+    select is_savings into flag from public.categories where id = c;
+    if flag then raise exception 'is_savings changed by another user'; end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u_own, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.categories set is_savings = true where id = c;
+    get diagnostics n = row_count;
+    if n <> 1 then raise exception 'the owner could not mark it as savings'; end if;
+    select is_savings into flag from public.categories where id = c;
+    if not flag then raise exception 'is_savings not stored'; end if;
+    update public.categories set is_savings = false where id = c;
+    select is_savings into flag from public.categories where id = c;
+    execute 'reset role';
+    if flag then raise exception 'the owner could not turn it off'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: is_savings owner-only (RLS)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: is_savings owner-only — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 75. 0084: "Taken from my income" (transactions.savings_from_income) round-
+--     trips through save_transactions (insert and a retried submit),
+--     update_transaction and my_transactions for the owner; it defaults to
+--     false (an import, an older client) and is dropped on an expense; the
+--     CHECK keeps it off expenses; another user can neither read nor change
+--     it (RPC: not found; direct UPDATE: no privilege).
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; sav uuid; cu uuid := gen_random_uuid(); cu2 uuid := gen_random_uuid();
+        cu3 uuid := gen_random_uuid(); tid uuid; eid uuid; flag boolean; n int;
+begin
+  begin
+    u1 := pg_temp.zz_user('sfi-owner');
+    u2 := pg_temp.zz_user('sfi-other');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    insert into public.categories (user_id, name, kind, is_savings) values (u1, 'ZZT pot', 'income', true) returning id into sav;
+
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(
+      jsonb_build_object('client_uuid', cu, 'kind', 'income', 'category_id', sav, 'amount_minor', 30000,
+                         'currency', 'EUR', 'spent_at', current_date, 'savings_from_income', true),
+      -- No flag (an import, an older client): received.
+      jsonb_build_object('client_uuid', cu2, 'kind', 'income', 'category_id', sav, 'amount_minor', 500,
+                         'currency', 'EUR', 'spent_at', current_date),
+      -- An expense can't carry it: dropped, not refused.
+      jsonb_build_object('client_uuid', cu3, 'kind', 'expense', 'amount_minor', 700,
+                         'currency', 'EUR', 'spent_at', current_date, 'savings_from_income', true)));
+    select t.id, t.savings_from_income into tid, flag from public.my_transactions() t where t.client_uuid = cu;
+    if flag is distinct from true then raise exception 'flag not stored/read (%)', flag; end if;
+    select t.savings_from_income into flag from public.my_transactions() t where t.client_uuid = cu2;
+    if flag is distinct from false then raise exception 'missing flag not false (%)', flag; end if;
+    select t.id, t.savings_from_income into eid, flag from public.my_transactions() t where t.client_uuid = cu3;
+    if flag is distinct from false then raise exception 'expense kept the flag'; end if;
+
+    -- A retried submit (same client_uuid) carries it too.
+    perform public.save_transactions(jsonb_build_array(
+      jsonb_build_object('client_uuid', cu, 'kind', 'income', 'category_id', sav, 'amount_minor', 30000,
+                         'currency', 'EUR', 'spent_at', current_date, 'savings_from_income', false)));
+    select t.savings_from_income into flag from public.my_transactions() t where t.id = tid;
+    if flag then raise exception 'retried submit did not update the flag'; end if;
+
+    -- update_transaction: set, keep when absent from the patch, clear.
+    perform public.update_transaction(tid, '{"savings_from_income": true}'::jsonb);
+    perform public.update_transaction(tid, '{"notes": "zz"}'::jsonb);
+    select t.savings_from_income into flag from public.my_transactions() t where t.id = tid;
+    if flag is distinct from true then raise exception 'update did not set / patch cleared it'; end if;
+    perform public.update_transaction(eid, '{"savings_from_income": true}'::jsonb);
+    select t.savings_from_income into flag from public.my_transactions() t where t.id = eid;
+    if flag then raise exception 'expense flagged through update_transaction'; end if;
+
+    -- Another user.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    select count(*) into n from public.my_transactions() t where t.id = tid;
+    if n <> 0 then raise exception 'outsider read the entry'; end if;
+    begin
+      perform public.update_transaction(tid, '{"savings_from_income": false}'::jsonb);
+      raise exception 'GUARD_MISSED: outsider changed the flag';
+    exception when others then
+      if sqlerrm like '%not found%' then null; else raise; end if;
+    end;
+    begin
+      update public.transactions set savings_from_income = false where id = tid;
+      raise exception 'GUARD_MISSED: direct update allowed';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+    select savings_from_income into flag from public.transactions where id = tid;
+    if flag is distinct from true then raise exception 'flag changed by another user'; end if;
+
+    -- The CHECK: never on an expense, whoever writes.
+    begin
+      update public.transactions set savings_from_income = true where id = eid;
+      raise exception 'GUARD_MISSED: expense flagged';
+    exception when check_violation then null;
+    end;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: savings_from_income round-trips, owner-only, income-only';
+    else update _t set fails = fails + 1; raise notice 'FAIL: savings_from_income — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 76. 0084: recurring savings carry "Taken from my income": save_recurring_rule
+--     stores it, my_recurring_rules returns it, the materializer copies it
+--     onto each entry, a rule switched to expense drops it, and another user
+--     can't change it.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; sav uuid; rid uuid; flag boolean; n int;
+begin
+  begin
+    u1 := pg_temp.zz_user('rsfi-owner');
+    u2 := pg_temp.zz_user('rsfi-other');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    insert into public.categories (user_id, name, kind, is_savings) values (u1, 'ZZT pot', 'income', true) returning id into sav;
+
+    execute 'set local role authenticated';
+    rid := public.save_recurring_rule(null, jsonb_build_object(
+      'kind', 'income', 'category_id', sav, 'amount_minor', 30000, 'currency', 'EUR', 'description', 'ZZ set aside',
+      'frequency', 'monthly', 'interval_n', 1, 'next_run', current_date - 1, 'savings_from_income', true));
+    select x.savings_from_income into flag from public.my_recurring_rules() x where x.id = rid;
+    if flag is distinct from true then raise exception 'rule flag not stored/read (%)', flag; end if;
+    execute 'reset role';
+
+    perform public.materialize_recurring_rules();
+    select count(*) into n from public.transactions
+     where user_id = u1 and recurring_rule_id = rid and savings_from_income and kind = 'income';
+    if n <> 1 then raise exception 'materializer made % flagged entries (want 1)', n; end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.save_recurring_rule(rid, '{"savings_from_income": false}'::jsonb);
+      raise exception 'GUARD_MISSED: outsider changed the rule';
+    exception when others then
+      if sqlerrm like '%not found%' then null; else raise; end if;
+    end;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    select x.savings_from_income into flag from public.my_recurring_rules() x where x.id = rid;
+    if flag is distinct from true then raise exception 'rule flag changed by another user'; end if;
+    -- Switched to an expense (uncategorised), the flag goes.
+    perform public.save_recurring_rule(rid, '{"kind": "expense", "category_id": null}'::jsonb);
+    select x.savings_from_income into flag from public.my_recurring_rules() x where x.id = rid;
+    execute 'reset role';
+    if flag then raise exception 'expense rule kept the flag'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: recurring savings_from_income stored, materialized, owner-only';
+    else update _t set fails = fails + 1; raise notice 'FAIL: recurring savings_from_income — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 72; f int; p int;  -- tests 1–71 + B-0059
+declare expected_tests constant int := 77; f int; p int;  -- tests 1–76 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

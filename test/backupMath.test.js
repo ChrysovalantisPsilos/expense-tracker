@@ -608,3 +608,45 @@ test('main currency: accounts and goals — zero-decimal target, negatives, rows
   // No rate for the restore day's side → the restore stops.
   assert.throws(() => rebase(data, 'JPY'), UserError)
 })
+
+test('backup: a savings category keeps its flag; only income can be savings; older files read as not savings', () => {
+  const doc = buildBackup({
+    exportedAt: '2026-09-22T12:00:00.000Z', userId: 'u-source',
+    profile: { base_currency: 'EUR' }, payment: {},
+    categories: [...CATS, { id: 'cat-save', name: 'Savings', kind: 'income', icon: 'savings', color: null, is_archived: false, is_savings: true }],
+  })
+  assert.deepEqual(doc.data.categories.map((c) => c.savings), [false, false, false, true])
+  doc.data.categories[0].savings = true // an expense category can't be savings
+  delete doc.data.categories[2].savings // a file from before 0084
+  const { backup } = readBackup(JSON.stringify(doc))
+  assert.deepEqual(backup.data.categories.map((c) => c.savings), [false, false, false, true])
+})
+
+test('backup: "Taken from my income" on savings entries and recurring savings round-trips', async () => {
+  const save = { id: 'cat-save', name: 'Savings', kind: 'income', icon: 'savings', color: null, is_archived: false, is_savings: true }
+  const entry = (o) => ({ kind: 'income', category_id: 'cat-save', account_id: null, amount_minor: 30000,
+    currency: 'EUR', exchange_rate: 1, description: 'Set aside', notes: null, spent_at: '2026-09-02', ...o })
+  const doc = buildBackup({
+    exportedAt: '2026-09-22T12:00:00.000Z', userId: 'u-source',
+    profile: { base_currency: 'EUR' }, payment: {},
+    categories: [save],
+    transactions: [
+      entry({ id: 'a', savings_from_income: true }),
+      entry({ id: 'b', savings_from_income: false, description: 'Interest' }),
+    ],
+    recurring: [{ kind: 'income', category_id: 'cat-save', amount_minor: 30000, currency: 'EUR', description: 'Monthly',
+      frequency: 'monthly', interval_n: 1, next_run: '2026-10-02', is_active: true, savings_from_income: true }],
+  })
+  // Only set flags are written (older readers ignore the key).
+  assert.deepEqual(doc.data.transactions.map((t) => t.from_income), [true, undefined])
+  assert.equal(doc.data.recurring[0].from_income, true)
+  // An expense can't carry it; a file from before 0084 has none.
+  doc.data.transactions.push({ ...doc.data.transactions[1], kind: 'expense', category: null, from_income: true })
+  const { backup } = readBackup(JSON.stringify(doc))
+  assert.deepEqual(backup.data.transactions.map((t) => t.from_income), [true, undefined, undefined])
+  const maps = { userId: 'u-target', categoryIdByKey: new Map([['c1', 'new-save']]), accountIdByKey: new Map() }
+  const { rows } = await planTransactions(backup.data.transactions, [], maps)
+  assert.deepEqual(rows.map((r) => r.savings_from_income), [true, undefined, undefined])
+  const { create } = planRecurring(backup.data.recurring, [], maps)
+  assert.equal(create[0].savings_from_income, true)
+})

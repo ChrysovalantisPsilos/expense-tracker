@@ -6,6 +6,8 @@ import {
 } from '@chakra-ui/react'
 import { Repeat, Trash2 } from 'lucide-react'
 import { useCategories } from './useData.js'
+import { useSavingsIds } from '../categories/categories.js'
+import SavingsSourceSwitch from '../../shared/ui/SavingsSourceSwitch.jsx'
 import { toMinor, minorToInput, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
@@ -39,7 +41,8 @@ const KIND_LABEL = Object.fromEntries(KINDS)
 // then creates/updates/removes the rule (planRepeat). `onDelete` (existing
 // entries) shows a Delete button; the page confirms it. A saved entry's kind
 // is fixed (the server rejects a change, 0077), so editing shows it as a
-// label and never sends it.
+// label and never sends it. Income in a savings category (0084) asks whether
+// it was "Taken from my income": on for a new entry, as stored when editing.
 export default function TransactionForm({
   kind: initialKind = 'expense', baseCurrency = 'EUR', transaction = null, rule = null, onSaved, onDelete,
 }) {
@@ -54,6 +57,9 @@ export default function TransactionForm({
   const [description, setDescription] = useState(transaction?.description ?? '')
   const [spentAt, setSpentAt] = useState(transaction?.spent_at ?? today)
   const [notes, setNotes] = useState(transaction?.notes ?? '')
+  const { savingsIds, loading: savingsLoading } = useSavingsIds()
+  const isSavings = kind === 'income' && savingsIds.has(categoryId)
+  const [fromIncome, setFromIncome] = useState(transaction ? !!transaction.savings_from_income : true)
   const [busy, setBusy] = useState(false)
   // Inline field errors, shown from the first submit on.
   const [tried, setTried] = useState(false)
@@ -145,6 +151,7 @@ export default function TransactionForm({
       description: description || null,
       notes: notes || null,
       spent_at: spentAt,
+      savings_from_income: isSavings && fromIncome,
     }
     setBusy(true)
     try {
@@ -171,7 +178,7 @@ export default function TransactionForm({
     : undefined
 
   return (
-    <PageForm bare onSubmit={submit} noValidate busy={busy} submitProps={{ isDisabled: !rate }}
+    <PageForm bare onSubmit={submit} noValidate busy={busy} submitProps={{ isDisabled: !rate || savingsLoading }}
       submitLabel={isEdit ? 'Save changes' : `Add ${kind === 'income' ? 'income' : 'expense'}`}
       secondary={onDelete && (
         <Button variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />} onClick={onDelete}>
@@ -224,6 +231,7 @@ export default function TransactionForm({
               <Link as={RouterLink} to="/settings/categories" color="accent.fg">Manage categories</Link>
             </FormHelperText>
           </FormControl>
+          {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
 
           <FormControl>
             <FormLabel>Description</FormLabel>

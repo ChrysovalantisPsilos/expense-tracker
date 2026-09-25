@@ -10,6 +10,8 @@ import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { monthlyShare } from '../../shared/lib/spread.js'
 import { countsForLabel } from '../../shared/lib/salaryShift.js'
+import { savingsSource } from '../../shared/lib/savings.js'
+import { useSavingsIds } from '../categories/categories.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
@@ -23,7 +25,9 @@ import { frequencyLabel } from '../recurring/recurringMath.js'
 // a yearly subscription's payment adds "Spread over 12 months" (it counts in
 // monthly spend a twelfth at a time; the row itself is the real payment), and
 // a salary paid late in the month says "Counts for October" when the user
-// counts it toward the next month (0081; the row keeps its real date).
+// counts it toward the next month (0081; the row keeps its real date). A
+// savings entry (0084) says where its money came from: "from income" or
+// "received".
 // On phones the row actions fold into a ⋯ menu.
 // Each row's income/expense styling follows its own `kind`, so the same
 // list renders every mode of the Transactions page (Expenses, Income, All).
@@ -33,6 +37,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
   const navigate = useNavigate()
   const [removing, setRemoving] = useState(null)
   const [busy, setBusy] = useState(false)
+  const { savingsIds } = useSavingsIds()
 
   // The page gets the row in router state, so it opens without a fetch.
   const open = (r) => navigate(`/transactions/${r.id}`, { state: { row: r } })
@@ -66,7 +71,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
               <ItemRow py={2.5} onClick={shared ? undefined : () => open(r)}
                 media={<CategoryBadge category={r.categories} kind={rk} size={32} />}
                 title={r.description || r.categories?.name || (rk === 'income' ? 'Income' : 'Expense')}
-                meta={<RowMeta row={r} shared={shared} />}
+                meta={<RowMeta row={r} shared={shared} saved={savingsSource(r, savingsIds)} />}
                 amount={`${rk === 'income' ? '+' : ''}${formatMoney(r.amount_minor, r.currency)}`}
                 amountTone={rk === 'income' ? 'positive' : 'default'}
                 amountMeta={conv && (
@@ -92,9 +97,9 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
   )
 }
 
-// The muted line under a row's title: date · category · note, then the
-// group's tag on group-share rows.
-function RowMeta({ row: r, shared }) {
+// The muted line under a row's title: date · category · where savings came
+// from · note, then the group's tag on group-share rows.
+function RowMeta({ row: r, shared, saved }) {
   const { salaryShift } = useProfile()
   const share = monthlyShare(r)
   const countsFor = countsForLabel(r, salaryShift)
@@ -104,6 +109,7 @@ function RowMeta({ row: r, shared }) {
       {r.description && r.categories?.name && (
         <Text overflowWrap="anywhere">· {r.categories.name}</Text>
       )}
+      {saved && <Text whiteSpace="nowrap">· {saved}</Text>}
       {r.notes && (
         <Text fontStyle="italic" minW={0} overflowWrap="anywhere">· {r.notes}</Text>
       )}

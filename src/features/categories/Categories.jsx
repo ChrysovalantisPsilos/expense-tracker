@@ -69,7 +69,8 @@ export default function Categories() {
                   title={isNewCategory(c) ? (
                     <>{c.name}{' '}<Tag size="sm" colorScheme="green" borderRadius="full" verticalAlign="middle">New</Tag></>
                   ) : c.name}
-                  meta={c.is_archived ? 'Archived' : undefined} dimmed={c.is_archived}
+                  meta={c.is_archived ? 'Archived' : c.is_savings ? 'Savings, not income' : undefined}
+                  dimmed={c.is_archived}
                   onClick={() => navigate(categoryPath(c.id))} chevron
                   actionSlots={3} actions={[
                     { label: `Edit ${c.name}`, icon: Pencil, onClick: () => navigate(categoryPath(c.id), { state: { edit: true } }) },

@@ -43,6 +43,7 @@ import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
 //
 // Totals follow the app's spread rule (a yearly subscription counts its
 // monthly share, or nothing when kept separate); the list shows real payments.
+// A savings category's total is what was saved (0084), never "Earned".
 export default function CategoryPage() {
   const { id } = useParams()
   const [params, setParams] = useSearchParams()
@@ -102,7 +103,8 @@ export default function CategoryPage() {
   return (
     <Stack spacing={5}>
       <PageHeader title={name || '…'}
-        eyebrow={category?.is_archived ? 'Archived category' : kind === 'income' ? 'Income category' : 'Category'}
+        eyebrow={category?.is_archived ? 'Archived category'
+          : category?.is_savings ? 'Savings category' : kind === 'income' ? 'Income category' : 'Category'}
         leading={(
           <HStack spacing={3} flexShrink={0}>
             <BackButton />
@@ -129,7 +131,7 @@ export default function CategoryPage() {
           {txns.loading ? (
             <SkeletonRegion flex="1"><SkeletonFigure size="xl" w="160px" /></SkeletonRegion>
           ) : (
-            <Figure label={kind === 'income' ? 'Earned' : 'Spent'} size="xl"
+            <Figure label={category?.is_savings ? 'Saved' : kind === 'income' ? 'Earned' : 'Spent'} size="xl"
               value={formatMoney(total, baseCurrency)} />
           )}
           <Select w={{ base: '150px', sm: '200px' }} size="md" borderRadius="lg" aria-label="Period"

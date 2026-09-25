@@ -205,7 +205,9 @@ function fetchSeries(drafts, baseCurrency) {
 // overlap with a previous export). Returns how many were actually new vs
 // skipped as duplicates. `onProgress(done, total)` reports after each chunk.
 // 500 rows a chunk keeps each call quick while staying far below the
-// server's 300-calls-an-hour limit (150,000 rows).
+// server's 300-calls-an-hour limit (150,000 rows). Rows never send
+// savings_from_income, so imported savings are money received (the server's
+// default, 0084): a statement can't say it was set aside from income.
 export async function importTransactions(rows, onProgress) {
   let inserted = 0
   for (let i = 0; i < rows.length; i += 500) {

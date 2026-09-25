@@ -3,6 +3,8 @@ import { Stack, HStack, Button, FormControl, FormLabel, Input, Select, useToast 
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import { PageForm } from '../../shared/ui/FormPage.jsx'
 import { useCategories } from '../transactions/useData.js'
+import { useSavingsIds } from '../categories/categories.js'
+import SavingsSourceSwitch from '../../shared/ui/SavingsSourceSwitch.jsx'
 import { toMinor, minorToInput } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -13,7 +15,9 @@ import RepeatFields from './RepeatFields.jsx'
 // The body of a recurring rule's page (RecurringPage). `rule` edits an
 // existing one; otherwise a new one starts as `kind`. Pausing lives on the
 // Recurring page's rows, so the schedule here has no Paused switch.
-// `onSaved` runs after a successful save.
+// Recurring income in a savings category (0084) asks "Taken from my income"
+// (on for a new rule, as stored when editing); each entry the rule adds
+// carries it. `onSaved` runs after a successful save.
 export default function RecurringForm({ rule, kind: initialKind = 'expense', baseCurrency, onSaved }) {
   const toast = useToast()
   const isEdit = !!rule
@@ -24,6 +28,9 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
   const [categoryId, setCategoryId] = useState(rule?.category_id ?? '')
   const [description, setDescription] = useState(rule?.description ?? '')
   const [draft, setDraft] = useState(() => repeatDraft(rule, { todayISO: today() }))
+  const { savingsIds, loading: savingsLoading } = useSavingsIds()
+  const isSavings = kind === 'income' && savingsIds.has(categoryId)
+  const [fromIncome, setFromIncome] = useState(rule ? !!rule.savings_from_income : true)
   const { busy, run } = useAsyncSubmit()
 
   async function submit() {
@@ -36,6 +43,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
         amount_minor: toMinor(amount, currency),
         currency,
         description: description || null,
+        savings_from_income: isSavings && fromIncome,
         ...repeatRuleFields(draft),
       })
       toast({ title: isEdit ? 'Recurring entry updated' : 'Recurring entry added', status: 'success' })
@@ -46,7 +54,8 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
   const pickKind = (k) => { setKind(k); setCategoryId('') }
 
   return (
-    <PageForm onSubmit={submit} busy={busy} submitLabel={isEdit ? 'Save changes' : 'Add recurring entry'}>
+    <PageForm onSubmit={submit} busy={busy} submitLabel={isEdit ? 'Save changes' : 'Add recurring entry'}
+      submitProps={{ isDisabled: savingsLoading }}>
       <Stack spacing={4}>
         <HStack spacing={2}>
           <Button flex="1" variant={kind === 'expense' ? 'solid' : 'outline'}
@@ -75,6 +84,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
         </FormControl>
+        {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
 
         <RepeatFields value={draft} onChange={(c) => setDraft((d) => editRepeat(d, c))}
           kind={kind} currency={currency} amountMinor={Number(amount) > 0 ? toMinor(amount, currency) : 0}

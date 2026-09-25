@@ -68,6 +68,17 @@ test('categoryPatch: only what changed; the name compares trimmed', () => {
   assert.deepEqual(categoryPatch({ ...c, icon: undefined }, { name: 'Pets', icon: 'other', color: null }), { icon: 'other' })
 })
 
+test('categoryPatch: "Counts as savings" toggles on income categories only', () => {
+  const inc = { id: 2, name: 'Savings', icon: 'savings', color: null, kind: 'income', is_savings: false }
+  const form = { name: 'Savings', icon: 'savings', color: null }
+  assert.deepEqual(categoryPatch(inc, { ...form, savings: true }), { is_savings: true })
+  assert.deepEqual(categoryPatch({ ...inc, is_savings: true }, { ...form, savings: false }), { is_savings: false })
+  assert.equal(categoryPatch({ ...inc, is_savings: true }, { ...form, savings: true }), null)
+  assert.equal(categoryPatch(inc, form), null) // no switch value: off, unchanged
+  // An expense category never sends it (the server's CHECK would refuse).
+  assert.equal(categoryPatch({ ...inc, kind: 'expense' }, { ...form, savings: true }), null)
+})
+
 test('categoryPeriod: lists real payments, totals spread parts in base currency', () => {
   const CAT = 'c1'
   const row = (o) => ({
@@ -176,29 +187,44 @@ test('isNewCategory: the new default income categories wear "New" for two days',
   assert.equal(isNewCategory(bonus, at + NEW_TAG_MS), false) // gone after 2 days
   assert.equal(NEW_TAG_MS, 2 * 24 * 60 * 60 * 1000)
   assert.equal(isNewCategory({ ...bonus, name: 'Friends & family' }, at), true)
-  // Only those two, only as income; the user's own new categories aren't tagged.
+  assert.equal(isNewCategory({ ...bonus, name: 'Savings', is_savings: true }, at), true)
+  // Only those, only as income; the user's own new categories aren't tagged.
   assert.equal(isNewCategory({ ...bonus, kind: 'expense' }, at), false)
   assert.equal(isNewCategory({ ...bonus, name: 'Groceries' }, at), false)
   assert.equal(isNewCategory({ name: 'Bonus', kind: 'income' }, at), false) // no created_at
   assert.equal(isNewCategory(bonus, at - 1000), false) // clock behind: no tag
 })
 
-test('the new default income categories match the seed and the backfill (0082, renamed in 0083)', () => {
+test('the new default income categories match the seed and the backfills (0082, renamed in 0083; 0084)', () => {
   const seed = latestSql('seed_default_categories')
   const sql = (f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8')
   const backfill = sql('0082_backfill_new_income_categories.sql')
   const rename = sql('0083_rename_friend_transfer.sql')
+  const savings = sql('0084_savings_category.sql')
   // 0082 added "Friend Transfer"; 0083 renames it to what the app lists.
   const backfilled = (name) => (name === 'Friends & family' ? 'Friend Transfer' : name)
   assert.match(rename, /set name = 'Friends & family'\s+where c\.name = 'Friend Transfer'/)
-  for (const { name, icon, kind } of NEW_DEFAULT_CATEGORIES) {
+  for (const { name, icon, kind, savings: isSavings } of NEW_DEFAULT_CATEGORIES) {
     assert.equal(kind, 'income')
     assert.ok(CATEGORY_ICON_KEYS.includes(icon), icon)
-    assert.match(seed, new RegExp(`\\(uid, '${name}',\\s*'${icon}',\\s*'income'\\)`), name)
-    assert.match(backfill, new RegExp(`\\('${backfilled(name)}',\\s*'${icon}'\\)`), name)
+    if (isSavings) {
+      // Seeded and backfilled marked as savings; an existing income category
+      // of that name is marked instead of duplicated.
+      assert.match(seed, new RegExp(`\\(uid, '${name}',\\s*'${icon}',\\s*'income', true\\)`), name)
+      assert.match(savings, new RegExp(`select p\\.id, '${name}', '${icon}', 'income'::public\\.txn_kind, true`), name)
+      assert.match(savings, /on conflict \(user_id, name, kind\) do update set is_savings = true/)
+    } else {
+      assert.match(seed, new RegExp(`\\(uid, '${name}',\\s*'${icon}',\\s*'income'\\)`), name)
+      assert.match(backfill, new RegExp(`\\('${backfilled(name)}',\\s*'${icon}'\\)`), name)
+    }
   }
+  assert.deepEqual(NEW_DEFAULT_CATEGORIES.filter((d) => d.savings).map((d) => d.name), ['Savings'])
   // Every seeded icon is one the app (and the DB check) knows.
   const icons = [...seed.matchAll(/\(uid, '[^']+',\s*'([a-z-]+)'/g)].map((m) => m[1])
-  assert.equal(icons.length, 12)
+  assert.equal(icons.length, 13)
   for (const icon of icons) assert.ok(CATEGORY_ICON_KEYS.includes(icon), icon)
+  // Savings can only be income, and the seed keeps its definer hardening.
+  assert.match(savings, /check \(not is_savings or kind = 'income'\)/)
+  assert.match(seed, /security definer\s+set search_path = public, pg_temp/)
+  assert.match(savings, /revoke execute on function public\.seed_default_categories\(\) from anon, public;/)
 })

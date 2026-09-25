@@ -4,6 +4,7 @@ import {
 } from '../../shared/lib/spread.js'
 import { toBaseMinor } from '../../shared/lib/currency.js'
 import { countedDate } from '../../shared/lib/salaryShift.js'
+import { isSavingsRow } from '../../shared/lib/savings.js'
 
 // A rule's cost in monthly minor units (shared with the statement).
 export { monthlyMinor }
@@ -67,8 +68,8 @@ export function nextRunAfter(iso, frequency, n = 1) {
 }
 
 // A new recurring rule made from a transaction (the transaction page's Repeat
-// section, see planRepeat): same kind, amount, currency, category, account and
-// description; the next charge is one period after the transaction's date, so
+// section, see planRepeat): same kind, amount, currency, category, account,
+// description and "taken from my income" (a savings entry, 0084); the next charge is one period after the transaction's date, so
 // the transaction itself is the first occurrence. The server links the two
 // through `source_transaction_id` (a listed row) or `source_client_uuid` (an
 // entry just saved, whose id the client doesn't have). The rule stores no
@@ -81,6 +82,7 @@ export function ruleFromTransaction(t, { frequency = 'monthly', interval_n: n = 
     category_id: t.category_id ?? null,
     account_id: t.account_id ?? null,
     description: t.description ?? null,
+    savings_from_income: t.savings_from_income === true,
     frequency,
     interval_n: Math.max(1, Number(n) || 1),
     next_run: nextRunAfter(t.spent_at, frequency, n),
@@ -184,7 +186,7 @@ export function repeatRuleFields(d) {
 
 // The fields an entry and its rule share: editing one of them on an entry
 // that repeats changes the rule's future charges too.
-const SHARED_FIELDS = ['kind', 'amount_minor', 'currency', 'category_id', 'description']
+const SHARED_FIELDS = ['kind', 'amount_minor', 'currency', 'category_id', 'description', 'savings_from_income']
 const pickShared = (o) => Object.fromEntries(SHARED_FIELDS.map((k) => [k, o?.[k] ?? null]))
 
 // What saving the transaction page does to the entry's recurring rule, once
@@ -316,7 +318,8 @@ export function chargedWording(period) {
 }
 
 // What the active income rules bring in per month (the Recurring page's
-// Income tab).
-export const incomePerMonth = (rules) => rules
-  .filter((r) => r.kind === 'income' && upcoming(r))
+// Income tab). Recurring savings (rules in a savings category, 0084) aren't
+// income, so they're left out.
+export const incomePerMonth = (rules, savingsIds = new Set()) => rules
+  .filter((r) => r.kind === 'income' && upcoming(r) && !isSavingsRow(r, savingsIds))
   .reduce((s, r) => s + monthlyMinor(r), 0)

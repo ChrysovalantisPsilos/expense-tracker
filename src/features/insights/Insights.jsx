@@ -24,10 +24,12 @@ import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
+import { useSavingsIds } from '../categories/categories.js'
 import { lastMonths, shortDate } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, minorFactor } from '../../shared/lib/currency.js'
 import { spendRows } from '../../shared/lib/spread.js'
+import { savedMinor } from '../../shared/lib/savings.js'
 import {
   useAccounts, deleteAccount,
   useGoals, saveGoal, deleteGoal,
@@ -51,7 +53,11 @@ export default function Insights() {
   // `spread`: a yearly subscription counts its monthly share in every month it
   // covers, including one paid before the six months (spendRows) — or not at
   // all when the user keeps yearly subscriptions separate.
-  const { rows, loading, error, reload } = useTransactions({ from, to, spread: true })
+  const { rows, loading: rowsLoading, error, reload } = useTransactions({ from, to, spread: true })
+  // Savings entries (0084) are neither income nor spending: the trend leaves
+  // them out, and waits for the savings categories so it never counts them.
+  const { savingsIds, loading: savingsLoading } = useSavingsIds()
+  const loading = rowsLoading || savingsLoading
   const spend = useMemo(
     () => spendRows(rows, baseCurrency, from, to, { separateYearly, salaryShift }),
     [rows, baseCurrency, from, to, separateYearly, salaryShift])
@@ -61,7 +67,8 @@ export default function Insights() {
   // Trend values are major units (chart axis); `money` converts back to minor.
   const factor = minorFactor(baseCurrency)
   const money = (major) => formatMoney(Math.round(major * factor), baseCurrency)
-  const trend = useMemo(() => buildTrend(spend, months, baseCurrency), [spend, months, baseCurrency])
+  const trend = useMemo(
+    () => buildTrend(spend, months, baseCurrency, savingsIds), [spend, months, baseCurrency, savingsIds])
   // Each legend entry drills down to this month's expenses in it (a group share
   // to its group); the folded "Other" merges several buckets, so it has no link.
   const shares = useMemo(() => linkBuckets(
@@ -81,7 +88,7 @@ export default function Insights() {
       <SpendingCard loading={loading} failed={failed} shares={shares} trend={trend} money={money} />
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}
       <IncomeCard loading={loading} failed={failed} trend={trend} money={money} />
-      <NetWorthCard baseCurrency={baseCurrency} />
+      <NetWorthCard baseCurrency={baseCurrency} savingsIds={savingsIds} savingsLoading={savingsLoading} />
       <GoalsCard />
       <ReportsCard noEntries={oldest === null} />
     </Stack>
@@ -209,7 +216,7 @@ function IncomeCard({ loading, failed, trend, money }) {
   const chart = useChartTheme()
   const delta = spendDelta(trend)
   const latest = trend[trend.length - 1]
-  const net = signedAmount(latest.income - latest.expense, money)
+  const net = signedAmount(latest.net, money) // income − expenses − savings taken from income
   return (
     <Panel title="Income vs expenses" action={delta != null && <SpendDelta delta={delta} />}>
       {failed ? failed : loading ? <IncomeSkeleton /> : (
@@ -268,12 +275,18 @@ function SpendDelta({ delta }) {
 }
 
 // ── Net worth ───────────────────────────────────────────────────────────────
-function NetWorthCard({ baseCurrency }) {
-  const { accounts, loading, error, reload } = useAccounts()
+// The user's accounts, plus a read-only "Savings" asset: every savings entry
+// ever made (0084), in the base currency at each entry's captured rate.
+function NetWorthCard({ baseCurrency, savingsIds, savingsLoading }) {
+  const { accounts, loading: accountsLoading, error, reload } = useAccounts()
+  const income = useTransactions({ kind: 'income' })
   const toast = useToast()
   const navigate = useNavigate()
 
-  const { assets, liabilities, net } = useMemo(() => netWorth(accounts), [accounts])
+  const savings = useMemo(
+    () => savedMinor(income.rows, savingsIds, baseCurrency), [income.rows, savingsIds, baseCurrency])
+  const { assets, liabilities, net } = useMemo(() => netWorth(accounts, savings), [accounts, savings])
+  const loading = accountsLoading || savingsLoading || income.loading
 
   async function remove(acc) {
     try { await deleteAccount(acc.id); reload() }
@@ -296,13 +309,17 @@ function NetWorthCard({ baseCurrency }) {
               tone={liabilities > 0 ? 'negative' : 'muted'} />
           </BalanceGrid>
 
-          {accounts.length === 0 ? (
+          {accounts.length === 0 && savings === 0 ? (
             <Text color="text.muted" fontSize="sm">
               Add your account balances (bank, savings, card, loan) to track net worth.
             </Text>
           ) : (
             <Box>
               <SectionLabel mb={1}>Accounts</SectionLabel>
+              {savings !== 0 && (
+                <ItemRow icon={PiggyBank} title="Savings" meta="From your savings entries"
+                  amount={formatMoney(savings, baseCurrency)} />
+              )}
               {accounts.map((acc) => {
                 const debt = acc.type === 'liability'
                 return (

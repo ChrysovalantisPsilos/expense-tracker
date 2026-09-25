@@ -154,8 +154,8 @@ test('Home projection: an upcoming salary due from day D counts in the next mont
   const rules = [{ is_active: true, kind: 'income', category_id: SAL, amount_minor: 300000, frequency: 'monthly',
     interval_n: 1, next_run: '2026-09-30', end_date: null }]
   // Today 25 Sep: September's projection leaves it out, the year keeps it.
-  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-25', false, shift), { expense: 0, income: 0 })
-  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-25'), { expense: 0, income: 300000 })
+  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-25', false, shift), { expense: 0, income: 0, savedFromIncome: 0 })
+  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-25'), { expense: 0, income: 300000, savedFromIncome: 0 })
   // This year: 30 Sep and 30 Oct count (Oct, Nov); 30 Nov → Dec; 30 Dec → next year.
   assert.equal(periodProjection(rules, '2026-12-31', '2026-09-25', false, shift).income, 3 * 300000)
   assert.equal(expectedInWindow(rules, '2026-09-25', '2026-12-31').income, 4 * 300000)

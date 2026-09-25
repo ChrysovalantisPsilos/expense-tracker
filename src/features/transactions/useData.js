@@ -97,12 +97,12 @@ export async function oldestTransactionDate() {
 // Every category the user has, archived ones included (backup/restore).
 export async function listAllCategories() {
   const { data, error } = await supabase
-    .from('categories').select('id, name, kind, icon, color, is_archived').order('name')
+    .from('categories').select('id, name, kind, icon, color, is_archived, is_savings').order('name')
   if (error) throw dbError(error)
   return data ?? []
 }
 
-// Create categories (name, kind, icon, color, is_archived). Plain columns, so
+// Create categories (name, kind, icon, color, is_archived, is_savings). Plain columns, so
 // a direct insert; RLS checks user_id is the caller's own.
 export async function createCategories(userId, rows) {
   if (!rows.length) return

@@ -1,22 +1,27 @@
 import { toBaseMinor, minorFactor, baseEquivalent } from '../../shared/lib/currency.js'
 import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
+import { netSign, rowEffect } from '../../shared/lib/savings.js'
 import { categoryBars } from '../dashboard/categoryBars.js'
 
 // Income/expense trend in MAJOR base-currency units, one entry per month bucket
 // (keyed by YYYY-MM). `months` come from lastMonths(); rows outside those months
 // are ignored. Values are major units so the chart axis reads naturally. Pass
 // spendRows output (shared/lib/spread.js) so a yearly subscription counts its
-// monthly share in each month.
-export function buildTrend(rows, months, baseCurrency) {
+// monthly share in each month. Savings entries (in `savingsIds`, 0084) are
+// neither income nor spending; `net` (what's left over: income − expenses −
+// savings taken from income) is the one figure they touch.
+export function buildTrend(rows, months, baseCurrency, savingsIds = new Set()) {
   const factor = minorFactor(baseCurrency)
-  const by = new Map(months.map((m) => [m.key, { label: m.label, income: 0, expense: 0 }]))
+  const by = new Map(months.map((m) => [m.key, { label: m.label, income: 0, expense: 0, net: 0 }]))
   for (const r of rows) {
     const key = String(r.spent_at).slice(0, 7)
     const bucket = by.get(key)
     if (!bucket) continue
     const base = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency) / factor
-    if (r.kind === 'income') bucket.income += base
-    else bucket.expense += base
+    const effect = rowEffect(r, savingsIds)
+    if (effect === 'income') bucket.income += base
+    else if (effect === 'expense') bucket.expense += base
+    bucket.net += netSign(effect) * base
   }
   return [...by.values()]
 }
@@ -37,8 +42,10 @@ export function spendDelta(trend) {
 }
 
 // Split account balances (minor units) into assets vs liabilities, plus net.
-export function netWorth(accounts) {
-  let assets = 0, liabilities = 0
+// `savings` — every savings entry ever made, in the base currency (savedMinor
+// over all time, 0084) — is one more asset: the read-only "Savings" line.
+export function netWorth(accounts, savings = 0) {
+  let assets = savings, liabilities = 0
   for (const acc of accounts) {
     if (acc.type === 'liability') liabilities += acc.balance_minor
     else assets += acc.balance_minor

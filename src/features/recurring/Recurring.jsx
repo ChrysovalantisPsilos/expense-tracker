@@ -16,6 +16,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { useRecurring, setRecurringActive, deleteRecurring } from './recurring.js'
+import { useSavingsIds } from '../categories/categories.js'
 import {
   frequencyLabel, incomePerMonth, monthlyBudgetShare, subscriptionGroups,
 } from './recurringMath.js'
@@ -44,7 +45,9 @@ export default function Recurring() {
 
   const groups = useMemo(() => subscriptionGroups(rules, baseCurrency), [rules, baseCurrency])
   const income = useMemo(() => rules.filter((r) => r.kind === 'income'), [rules])
-  const incomeMonthly = useMemo(() => incomePerMonth(rules), [rules])
+  // Recurring savings are listed with the income rules but not summed as income.
+  const { savingsIds } = useSavingsIds()
+  const incomeMonthly = useMemo(() => incomePerMonth(rules, savingsIds), [rules, savingsIds])
 
   const openNew = () => navigate(`/recurring/new?kind=${TABS[tab]}`)
   const openEdit = (r) => navigate(`/recurring/${r.id}`, { state: { rule: r } })

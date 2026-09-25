@@ -22,6 +22,12 @@
 // the next month's totals, so the fetch starts at day D of the month before
 // `from` (shiftFetchFrom) and the list still shows only the period's payments.
 //
+// Savings (categories.is_savings, 0084): income in the caller's savings
+// categories (read with their JWT, own rows only) is totalled as "Saved" —
+// its own section and summary lines — and never as income, like the app;
+// the part taken from income (transactions.savings_from_income) lowers the
+// net.
+//
 // Excel is SheetJS (0.18.5: the edge bundler only fetches allow-listed hosts,
 // and the app's 0.20.3 build is served from cdn.sheetjs.com alone, so it can't
 // be imported here; writing a workbook is unaffected); the PDF uses the shared
@@ -35,8 +41,9 @@ import { withCors, json, callerClient } from '../_shared/http.ts'
 import { fileResponse } from '../_shared/files.ts'
 import { categoryBars } from '../_shared/breakdown.ts'
 import { salaryShiftOf, shiftFetchFrom } from '../_shared/salaryShift.ts'
+import { savingsIdsOf } from '../_shared/savings.ts'
 import {
-  buildStatement, pendingNote, salaryNote, statementSheets, yearlyLabel, yearlyNote,
+  buildStatement, pendingNote, salaryNote, savingsNote, statementSheets, yearlyLabel, yearlyNote,
   type Sheet, type Statement as StatementData, type StatementRow,
 } from './statementMath.ts'
 
@@ -77,6 +84,10 @@ Deno.serve(withCors(async (req) => {
     const { data: txns, error } = await supabase
       .rpc('my_transactions', { p_from: shiftFetchFrom(from, salaryShift), p_to: to, p_spread: true })
     if (error) throw error
+    const { data: savingsCats, error: catsErr } = await supabase.from('categories')
+      .select('id, kind, is_savings').eq('is_savings', true)
+    if (catsErr) throw catsErr
+    const savingsIds = savingsIdsOf(savingsCats)
     let rules: unknown[] = []
     if (separateYearly) {
       const { data, error: rulesErr } = await supabase.rpc('my_recurring_rules')
@@ -86,9 +97,10 @@ Deno.serve(withCors(async (req) => {
 
     // Oldest first; foreign rows whose rate is still pending are listed but
     // kept out of every total (see statementMath.ts).
-    const stmt = buildStatement(txns ?? [], base, { from, to, separateYearly, rules, salaryShift })
-    const notes = [pendingNote(stmt.pending), yearlyNote(stmt.yearlyMode), salaryNote(stmt.salaryShiftDay)]
-      .filter(Boolean) as string[]
+    const stmt = buildStatement(txns ?? [], base, { from, to, separateYearly, rules, salaryShift, savingsIds })
+    const notes = [
+      pendingNote(stmt.pending), yearlyNote(stmt.yearlyMode), salaryNote(stmt.salaryShiftDay), savingsNote(stmt.saved),
+    ].filter(Boolean) as string[]
 
     const bytes = format === 'pdf'
       ? await buildPdf({ from, to, base, stmt, notes, name: profile?.display_name })
@@ -112,14 +124,13 @@ const pendingCell = (r: StatementRow) => ({ text: `${money(r.amount, r.currency)
 async function buildPdf({ from, to, base, stmt, notes, name }: {
   from: string; to: string; base: string; stmt: StatementData; notes: string[]; name?: string
 }): Promise<Uint8Array> {
-  const { rows, totalSpent, totalIncome, byCategory, yearly } = stmt
+  const { rows, totalSpent, totalIncome, net, saved, byCategory, yearly } = stmt
   const pdf = await PDFDocument.create()
   const fonts = await loadBrandFonts(pdf)
   const doc = new Statement(pdf, fonts)
 
   doc.header('Financial statement', `${from}  →  ${to}   ·   ${base}`, name)
 
-  const net = totalIncome - totalSpent
   doc.tiles([
     { label: 'Income', value: money(totalIncome, base), tone: 'positive' },
     { label: 'Spent', value: money(totalSpent, base) },
@@ -138,6 +149,19 @@ async function buildPdf({ from, to, base, stmt, notes, name }: {
       subtitle: `${money(totalSpent, base)} spent, by category`,
       contentH: Statement.breakdownHeight(bars.length),
     }, (x, y, w) => doc.breakdown(x, y, w, bars.map((b) => ({ ...b, meta: money(b.value, base) }))))
+  }
+
+  // Savings (0084): in neither income nor spending. Both kinds in the
+  // period show each subtotal too.
+  if (saved) {
+    doc.sectionTitle('Saved', 'Not counted as income')
+    doc.tiles([
+      { label: 'Saved in this period', value: money(saved.total, base), tone: 'accent' },
+      ...(saved.fromIncome && saved.received ? [
+        { label: 'Taken from income', value: money(saved.fromIncome, base) },
+        { label: 'Received', value: money(saved.received, base) },
+      ] : []),
+    ], { size: 13 })
   }
 
   if (yearly) {
@@ -192,14 +216,16 @@ async function buildPdf({ from, to, base, stmt, notes, name }: {
         // Yearly payments carry their mark (the totals count them per the
         // note up top); the description is truncated before the mark is.
         const mark = yearlyLabel(r)
-        const income = r.kind === 'income'
+        const income = r.kind === 'income' && !r.saved
         return [
           r.date,
           r.category,
           mark ? `${mark}  ·  ${r.description || '—'}` : (r.description || '—'),
           r.base_amount == null
             ? pendingCell(r)
-            : { text: `${income ? '+' : ''}${money(r.base_amount)}`, tone: income ? 'positive' : 'default', bold: true },
+            : r.saved
+              ? { text: `+${money(r.base_amount)}`, tone: 'accent' as const, bold: true }
+              : { text: `${income ? '+' : ''}${money(r.base_amount)}`, tone: income ? 'positive' : 'default', bold: true },
         ]
       }),
     )

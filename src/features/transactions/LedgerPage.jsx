@@ -19,6 +19,7 @@ import TransactionList from './TransactionList.jsx'
 import FirstEntry from './FirstEntry.jsx'
 import { isFirstRun, listHeading } from './listHeading.js'
 import { useTransactions, useCategories, oldestTransactionDate } from './useData.js'
+import { useSavingsIds } from '../categories/categories.js'
 import {
   isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS, NO_CATEGORY,
 } from './txnFilter.js'
@@ -103,7 +104,9 @@ export default function LedgerPage() {
 
   const clearAll = () => setLedger({ ...EMPTY_FILTERS, text: '' }, { own: false })
 
-  const net = netBaseMinor(shown, baseCurrency)
+  // A search's net leaves savings out (0084): they're not income.
+  const { savingsIds, loading: savingsLoading } = useSavingsIds()
+  const net = netBaseMinor(shown, baseCurrency, savingsIds)
   const head = listHeading({ kind, periodLabel: 'This month', count: shown.length, loading, failed: !!error, searching })
   const firstRun = isFirstRun({ loading, failed: !!error, count: shown.length, oldest, searching })
 
@@ -184,7 +187,7 @@ export default function LedgerPage() {
         </Box>
 
         <CardHeader icon={ReceiptText} title={head.title} divider
-          subtitle={searching && !loading && shown.length > 0
+          subtitle={searching && !loading && !savingsLoading && shown.length > 0
             ? `${head.subtitle} · Net ${net < 0 ? '−' : ''}${formatMoney(Math.abs(net), baseCurrency)}`
             : head.subtitle}
           action={searching && (

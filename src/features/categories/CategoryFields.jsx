@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   Box, FormControl, FormErrorMessage, FormHelperText, FormLabel, HStack, IconButton, Input,
-  SimpleGrid, Stack, Text, Tooltip,
+  SimpleGrid, Stack, Switch, Text, Tooltip,
 } from '@chakra-ui/react'
 import { Check } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
@@ -12,7 +12,8 @@ import {
 import { CATEGORY_NAME_MAX, categoryNameError } from './categoryMath.js'
 
 // The name / icon / colour form a category is added or edited with — the
-// new-category page and the category page's Edit panel share it.
+// new-category page and the category page's Edit panel share it. An income
+// category also has the "Counts as savings" switch (0084).
 // `useCategoryDraft` holds its state; `others` are the user's categories of
 // the same kind (for the duplicate-name rule).
 export function useCategoryDraft(category, others) {
@@ -22,16 +23,19 @@ export function useCategoryDraft(category, others) {
   // keeps its look.
   const [icon, setIcon] = useState(isEdit ? categoryIconKey(category) : 'other')
   const [color, setColor] = useState(category?.color ?? null)
+  const [savings, setSavings] = useState(!!category?.is_savings)
   const [touched, setTouched] = useState(false)
   const nameError = categoryNameError(name, others)
   return {
-    name, setName, icon, setIcon, color, setColor, touched, setTouched, nameError,
-    values: { name, icon, color },
+    name, setName, icon, setIcon, color, setColor, savings, setSavings, touched, setTouched, nameError,
+    values: { name, icon, color, savings },
   }
 }
 
 export default function CategoryFields({ draft, kind }) {
-  const { name, setName, icon, setIcon, color, setColor, touched, setTouched, nameError } = draft
+  const {
+    name, setName, icon, setIcon, color, setColor, savings, setSavings, touched, setTouched, nameError,
+  } = draft
   return (
     <Stack spacing={5}>
       <HStack spacing={3} align="start">
@@ -61,6 +65,19 @@ export default function CategoryFields({ draft, kind }) {
         </HStack>
         <FormHelperText>Used for the category’s icon everywhere in the app.</FormHelperText>
       </FormControl>
+
+      {kind === 'income' && (
+        <FormControl>
+          <HStack justify="space-between" spacing={4}>
+            <FormLabel htmlFor="category-savings" mb={0}>Counts as savings (not income)</FormLabel>
+            <Switch id="category-savings" isChecked={savings} onChange={(e) => setSavings(e.target.checked)} />
+          </HStack>
+          <FormHelperText>
+            For money you set aside or that arrives in a savings account. It’s shown as saved,
+            not added to your income, and adds to your net worth.
+          </FormHelperText>
+        </FormControl>
+      )}
     </Stack>
   )
 }
