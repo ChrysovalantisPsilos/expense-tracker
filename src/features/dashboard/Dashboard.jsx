@@ -224,7 +224,7 @@ export default function Dashboard() {
       )}
 
       {!firstRun && (
-      <Panel icon={Wallet} title={incHead.title} subtitle={incHead.subtitle} divider>
+      <Panel icon={Wallet} iconTone="positive" title={incHead.title} subtitle={incHead.subtitle} divider>
         {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
           <SkeletonRegion><SkeletonRows count={3} py={2.5} /></SkeletonRegion>
         ) : income.length === 0 ? (
