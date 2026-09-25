@@ -87,10 +87,20 @@ function keyIn(text, holder) {
 // The merchant key of a description. `holder` is the account holder's name
 // (when the statement has it): their words are never the key, and a transfer
 // whose other party is the holder (between their own accounts) has no key.
+const plainText = (description) =>
+  String(description).toUpperCase().replace(/\s+/g, ' ').replace(TAIL, '').trim()
+
+// Is the transfer's other party (the name after the bank label and BIC, when
+// the statement has no counterparty column) the holder `own` themselves?
+function partyIsHolder(party, own) {
+  const words = tokens(party).map((t) => t.w).filter((w) => !BANK_NOISE.has(w))
+  return own.size > 0 && sameWords(new Set(words.slice(0, own.size)), own)
+}
+
 export function merchantKey(description, { holder = '' } = {}) {
   if (!description) return ''
   const own = nameWords(holder)
-  const text = String(description).toUpperCase().replace(/\s+/g, ' ').replace(TAIL, '').trim()
+  const text = plainText(description)
   const cash = CASH.exec(text)
   if (cash) return cash[0]
   const time = CARD_TIME.exec(text)
@@ -105,8 +115,7 @@ export function merchantKey(description, { holder = '' } = {}) {
   }
   const party = PARTY.exec(text)
   if (party) {
-    const words = tokens(party[1]).map((t) => t.w).filter((w) => !BANK_NOISE.has(w))
-    if (own.size && sameWords(new Set(words.slice(0, own.size)), own)) return ''
+    if (partyIsHolder(party[1], own)) return ''
     const key = keyIn(party[1].replace(PARTY_END, ''), own)
     if (key) return key
   }
@@ -122,8 +131,25 @@ export function merchantKey(description, { holder = '' } = {}) {
 // name, else the description. A row whose counterparty is the account holder
 // (the "Name"/"Naam" column, either word order) is a transfer between the
 // holder's own accounts — not a merchant — and gets no key.
+const cellOf = (row, mapping) => (k) =>
+  (mapping[k] ? String(row[mapping[k]] ?? '').replace(/\s+/g, ' ').trim() : '')
+
+// A transfer between the holder's own accounts: the counterparty column (or,
+// without one, the party named in the description) is the holder, in either
+// word order. Such rows aren't spending or income, so the import leaves them
+// out. Needs the holder column; without it nothing counts as own.
+export function isOwnTransfer(row, mapping) {
+  const cell = cellOf(row, mapping)
+  const own = nameWords(cell('holder'))
+  if (!own.size) return false
+  const counterparty = cell('counterparty')
+  if (counterparty) return sameWords(nameWords(counterparty), own)
+  const party = PARTY.exec(plainText([cell('description'), cell('details')].filter(Boolean).join(' · ')))
+  return !!party && partyIsHolder(party[1], own)
+}
+
 export function rowMerchant(row, mapping) {
-  const cell = (k) => (mapping[k] ? String(row[mapping[k]] ?? '').replace(/\s+/g, ' ').trim() : '')
+  const cell = cellOf(row, mapping)
   const holder = cell('holder')
   const counterparty = cell('counterparty')
   if (counterparty) {
@@ -251,6 +277,7 @@ export function rowToDraft(row, mapping, baseCurrency, { signed = false } = {}) 
   const description = describe(row, mapping)
   if (!spent_at && !Number.isFinite(amountRaw)) return { skip: 'not a transaction' }
   if (description && SUMMARY.test(foldText(description))) return { skip: 'balance line' }
+  if (isOwnTransfer(row, mapping)) return { skip: 'own transfer' }
   if (!spent_at) return { error: 'missing/invalid date' }
   if (!Number.isFinite(amountRaw) || amountRaw === 0) return { error: 'missing/invalid amount' }
 
@@ -278,11 +305,12 @@ export function rowToDraft(row, mapping, baseCurrency, { signed = false } = {}) 
 // be saved, and how many rows are ready / skipped / unreadable — derived by
 // the same rowToDraft + sign rule the import uses.
 export function previewDrafts(rows, mapping, baseCurrency, limit = 6) {
-  const out = { rows: [], ready: 0, skipped: 0, errors: 0, firstError: null }
+  const out = { rows: [], ready: 0, skipped: 0, ownTransfers: 0, errors: 0, firstError: null }
   if (!mapping.date || !(mapping.amount || mapping.debit || mapping.credit)) return out
   const signed = signedConvention(rows, mapping)
   rows.forEach((r, i) => {
     const d = rowToDraft(r, mapping, baseCurrency, { signed })
+    if (d.skip === 'own transfer') { out.ownTransfers++; return }
     if (d.skip) { out.skipped++; return }
     if (d.error) {
       out.errors++

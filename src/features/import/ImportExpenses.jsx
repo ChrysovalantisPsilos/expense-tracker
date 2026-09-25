@@ -145,7 +145,11 @@ export default function ImportExpenses() {
         return hit ? { ...t, category_id: hit[1] } : t
       })
       const { inserted, duplicates } = await importTransactions(withCats)
-      setResult({ inserted, duplicates, failed: errors.length, errors: errors.slice(0, 10), ignored: skipped.length })
+      const own = skipped.filter((s) => s.reason === 'own transfer').length
+      setResult({
+        inserted, duplicates, failed: errors.length, errors: errors.slice(0, 10),
+        ownTransfers: own, ignored: skipped.length - own,
+      })
       setStep('done')
       setPending(null)
     }, { errorTitle: 'Import failed' })
@@ -228,8 +232,9 @@ export default function ImportExpenses() {
                   amount={`${t.kind === 'income' ? '+' : '−'}${formatMoney(t.amount_minor, t.currency)}`} />
               ))
             )}
-            {(preview.skipped > 0 || preview.errors > 0) && (
+            {(preview.skipped > 0 || preview.ownTransfers > 0 || preview.errors > 0) && (
               <Text fontSize="xs" color="text.muted" mt={3}>
+                {preview.ownTransfers > 0 && `${plural(preview.ownTransfers, 'transfer')} between your own accounts left out. `}
                 {preview.skipped > 0 && `${plural(preview.skipped, 'line')} left out (pending, declined, balances or notes). `}
                 {preview.errors > 0 && `${plural(preview.errors, 'row')} can’t be read (e.g. row ${preview.firstError.index + headerRow + 2}: ${preview.firstError.reason}).`}
               </Text>
@@ -331,6 +336,12 @@ export default function ImportExpenses() {
               <Text fontSize="sm" color="text.muted">
                 Skipped {plural(result.failed, 'row')} with a missing/invalid
                 date or amount{result.errors.length ? ` (e.g. row ${result.errors[0].row}: ${result.errors[0].reason})` : ''}.
+              </Text>
+            )}
+            {result.ownTransfers > 0 && (
+              <Text fontSize="sm" color="text.muted">
+                Left out {plural(result.ownTransfers, 'transfer')} between your own accounts — they’re
+                neither spending nor income.
               </Text>
             )}
             {result.ignored > 0 && (

@@ -179,7 +179,8 @@ test('generic mapping: a name that is the same on every row is the holder, not t
   ].join('\n'))
   assert.equal(r.detection.mapping.counterparty, 'Payee')
   assert.equal(r.detection.mapping.holder, 'Name')
-  assert.deepEqual(r.drafts.map((d) => d.merchant), ['BAKERY', '', 'GROCER'])
+  // The payment to the holder themselves is an own transfer: left out.
+  assert.deepEqual(r.drafts.map((d) => d.merchant ?? d.skip), ['BAKERY', 'own transfer', 'GROCER'])
   const lone = csv(['Date;Name;Amount', '01/09/2026;DOE JANE;-3,20', '02/09/2026;DOE JANE;-4,00', '03/09/2026;DOE JANE;-5,00'].join('\n'))
   assert.equal(lone.detection.mapping.counterparty, undefined)
   assert.equal(lone.detection.mapping.holder, 'Name')

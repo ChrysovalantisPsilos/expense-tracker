@@ -97,13 +97,14 @@ test('KBC (EN): "Name" is the account holder, "Counterparty name" the payee', ()
     assertRecognised(r, 'kbc')
     assert.equal(r.detection.mapping.holder, 'Name')
     assert.equal(r.detection.mapping.counterparty, 'Counterparty name')
+    // The transfer to the holder's own account is left out altogether.
     assert.deepEqual(r.booked.map(brief), [
       ['2026-01-06', 'expense', 800, 'EUR'],
-      ['2026-01-06', 'expense', 15000, 'EUR'],
       ['2026-01-06', 'income', 323360, 'EUR'],
     ])
-    // Card merchant; own transfer (no merchant); employer.
-    assert.deepEqual(r.booked.map((d) => d.merchant), ['LIDL', '', 'ACME'])
+    assert.equal(r.drafts.filter((d) => d.skip === 'own transfer').length, 1)
+    // Card merchant; employer.
+    assert.deepEqual(r.booked.map((d) => d.merchant), ['LIDL', 'ACME'])
   }
 })
 

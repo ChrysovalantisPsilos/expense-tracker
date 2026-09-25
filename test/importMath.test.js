@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { merchantKey, rowMerchant, parseAmount, parseDate, deterministicUuid } from '../src/features/import/importMath.js'
+import { merchantKey, rowMerchant, isOwnTransfer, rowToDraft, previewDrafts, parseAmount, parseDate, deterministicUuid } from '../src/features/import/importMath.js'
 
 test('merchantKey: strips bank noise, numbers, dates, branches', () => {
   assert.equal(merchantKey('BANCONTACT LIDL 1234 BRUXELLES 19/07'), 'LIDL')
@@ -138,4 +138,33 @@ test('deterministicUuid: stable, distinct, uuid-shaped', async () => {
   assert.equal(a1, a2)
   assert.notEqual(a1, b)
   assert.match(a1, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+})
+
+test('isOwnTransfer: transfers between the holder\'s own accounts are left out of the import', () => {
+  const mapping = {
+    date: 'Date', amount: 'Amount', counterparty: 'Counterparty name', holder: 'Name',
+    description: 'Description', details: 'Free-format reference',
+  }
+  const row = (cp, description, amount = '-100,00') => ({
+    Name: 'DOE JANE', Date: '06/01/2026', Amount: amount, 'Counterparty name': cp, Description: description,
+  })
+  const own = row('JANE DOE', "SENDING MONEY INSTANTLY TO BE00 0000 0000 0005 BENEFICIARY'S BANK: REVOBEB2XXX JANE DOE AT 17.05 WITH KBC MOBILE")
+  const back = row('Doe Jane', 'RECEIVING MONEY INSTANTLY FROM BE00 0000 0000 0005', '50,00')
+  const card = row('', 'PAYMENT VIA BANCONTACT 06-01-2026 AT 10.54 TIME LIDL 1153 LEUVEN BE3000 LEUVEN WITH KBC DEBIT CARD 5127 88XX XXXX 1234 CARDHOLDER: DOE JANE', '-12,78')
+  const relative = row('DOE MARK', 'EUROPEAN TRANSFER TO BE00 0000 0000 0009')
+  assert.equal(isOwnTransfer(own, mapping), true)
+  assert.equal(isOwnTransfer(back, mapping), true)
+  assert.equal(isOwnTransfer(card, mapping), false) // the holder only as cardholder
+  assert.equal(isOwnTransfer(relative, mapping), false) // same surname, someone else
+  // No counterparty column: the party named in the description decides.
+  const noCp = { date: 'Date', amount: 'Amount', holder: 'Name', description: 'Description' }
+  assert.equal(isOwnTransfer({ ...own, 'Counterparty name': '' }, noCp), true)
+  // Without a holder column nothing counts as own.
+  assert.equal(isOwnTransfer(own, { ...mapping, holder: undefined }), false)
+
+  assert.deepEqual(rowToDraft(own, mapping, 'EUR'), { skip: 'own transfer' })
+  const preview = previewDrafts([own, back, card, relative], mapping, 'EUR')
+  assert.equal(preview.ownTransfers, 2)
+  assert.equal(preview.skipped, 0)
+  assert.equal(preview.ready, 2)
 })
