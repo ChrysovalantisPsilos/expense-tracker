@@ -9,7 +9,7 @@ import { importFileProblem, rowsToObjects } from './sheetParse.js'
 import { detectMapping, headerSignature, savedMappingFor } from './statementDetect.js'
 // Pure helpers (parsing, drafts, deterministic identity) live in
 // importMath.js so they're unit-testable.
-import { deterministicUuid, rowToDraft, signedConvention } from './importMath.js'
+import { deterministicUuid, groupMerchants, rowToDraft, signedConvention } from './importMath.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 
@@ -89,7 +89,9 @@ export async function saveRule(userId, pattern, categoryId) {
 // per-row errors for anything unparseable and the lines that aren't
 // transactions (pending/declined, balance lines, footers) as `skipped`.
 // `firstRow` is the file line number of rows[0], for messages. `merchants`
-// maps each valid row's client_uuid to its merchant key (see rowMerchant).
+// maps each uncategorized row's client_uuid to its merchant key: the file's
+// merchant names grouped by groupMerchants, so the "New merchants" list and
+// the rules saved from it use the same keys ('' = none).
 //
 // Bank-statement conventions handled automatically:
 // - Sign: a debit/credit marker column or Debit/Credit columns decide the
@@ -119,7 +121,7 @@ export async function buildTransactions({
   const missing = new Map() // currency -> rows without a rate
 
   const valid = []
-  const merchants = new Map() // client_uuid -> merchant key ('' = none)
+  const names = new Map() // client_uuid -> merchant name, uncategorized rows only
   const errors = []
   const skipped = []
   const seen = new Map() // identity key -> occurrence count
@@ -142,7 +144,7 @@ export async function buildTransactions({
     seen.set(key, occurrence + 1)
     const client_uuid = await deterministicUuid(['import', userId, key, occurrence])
 
-    merchants.set(client_uuid, draft.merchant)
+    if (!category_id && description) names.set(client_uuid, draft.merchant)
     valid.push({
       user_id: userId,
       kind,
@@ -155,6 +157,8 @@ export async function buildTransactions({
       client_uuid,
     })
   }
+  const keyOf = groupMerchants([...names.values()])
+  const merchants = new Map([...names].map(([uuid, name]) => [uuid, keyOf.get(name) ?? '']))
   const missingRates = [...missing].map(([currency, count]) => ({ currency, count }))
   return { valid, merchants, errors, skipped, missingRates }
 }

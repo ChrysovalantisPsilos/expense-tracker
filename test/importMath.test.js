@@ -1,66 +1,89 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { merchantKey, rowMerchant, isOwnTransfer, rowToDraft, previewDrafts, parseAmount, parseDate, deterministicUuid } from '../src/features/import/importMath.js'
+import {
+  merchantKey, merchantName, groupMerchants, rowMerchantName, isOwnTransfer, rowToDraft, previewDrafts, parseAmount,
+  parseDate, deterministicUuid,
+} from '../src/features/import/importMath.js'
+
+// A key becomes a "description contains …" rule: it must be in the text.
+const key = (description, opts) => {
+  const k = merchantKey(description, opts)
+  assert.ok(description.toUpperCase().includes(k), `${k} not in ${description}`)
+  return k
+}
+// The keys a file's descriptions get on the "New merchants" step (one per
+// description, in order), each checked to be inside its own description.
+const fileKeys = (descriptions, opts) => {
+  const names = descriptions.map((d) => merchantName(d, opts))
+  const keys = groupMerchants(names)
+  return descriptions.map((d, i) => {
+    const k = names[i] ? keys.get(names[i]) : ''
+    assert.ok(d.toUpperCase().includes(k), `${k} not in ${d}`)
+    return k
+  })
+}
 
 test('merchantKey: strips bank noise, numbers, dates, branches', () => {
-  assert.equal(merchantKey('BANCONTACT LIDL 1234 BRUXELLES 19/07'), 'LIDL')
-  assert.equal(merchantKey('LIDL 992 GENT'), 'LIDL')
-  assert.equal(merchantKey('Netflix.com 12.99'), 'NETFLIX')
-  assert.equal(merchantKey('CARD PAYMENT TO IKEA'), 'IKEA')
-  assert.equal(merchantKey('ΣΟΥΠΕΡΜΑΡΚΕΤ ΑΛΦΑ 55'), 'ΣΟΥΠΕΡΜΑΡΚΕΤ')
+  assert.equal(key('BANCONTACT LIDL 1234 BRUXELLES 19/07'), 'LIDL')
+  assert.equal(key('LIDL 992 GENT'), 'LIDL')
+  assert.equal(key('Netflix.com 12.99'), 'NETFLIX')
+  assert.equal(key('CARD PAYMENT TO IKEA'), 'IKEA')
+  assert.equal(key('ΣΟΥΠΕΡΜΑΡΚΕΤ ΑΛΦΑ 55'), 'ΣΟΥΠΕΡΜΑΡΚΕΤ ΑΛΦΑ')
+  // A town right after the name is a branch, not part of the name.
+  assert.equal(key('DELHAIZE LEUVEN 14/09 12:31 Kaart 1234'), 'DELHAIZE')
+  assert.equal(key('ΑΓΟΡΑ ΣΚΛΑΒΕΝΙΤΗΣ ΑΘΗΝΑ'), 'ΣΚΛΑΒΕΝΙΤΗΣ')
 })
 
 test('merchantKey: Belgian card and app payment prefixes are noise', () => {
-  assert.equal(merchantKey('MAESTRO LIDL 1234 BRUXELLES'), 'LIDL')
-  assert.equal(merchantKey('PAYCONIQ BY BANCONTACT DELHAIZE 5678 GENT'), 'DELHAIZE')
-  assert.equal(merchantKey('BETALING MET BANCONTACT COLRUYT 0412 ANTWERPEN'), 'COLRUYT')
+  assert.equal(key('MAESTRO LIDL 1234 BRUXELLES'), 'LIDL')
+  assert.equal(key('PAYCONIQ BY BANCONTACT DELHAIZE 5678 GENT'), 'DELHAIZE')
+  assert.equal(key('BETALING MET BANCONTACT COLRUYT 0412 ANTWERPEN'), 'COLRUYT')
 })
 
 // KBC description lines. EN card shapes are from a real English export, NL
 // ones from public real KBC CSVs; FR wording is inferred from the other two.
 // Names, card numbers and IBANs are made up.
-const key = (description, opts) => {
-  const k = merchantKey(description, opts)
-  // A key becomes a "description contains …" rule: it must be in the text.
-  assert.ok(description.toUpperCase().includes(k), `${k} not in ${description}`)
-  return k
-}
+const en = (m, place, who = 'DOE JANE') => `PAYMENT VIA DEBIT MASTERCARD 06-01-2026 AT 10.54 TIME ${m} ${place} WITH KBC DEBIT CARD 5127 88XX XXXX 1234 CARDHOLDER: ${who}`
+const nl = (m, place, who = 'JANSSENS ELS') => `BETALING VIA BANCONTACT              31-12 31-12-2025 OM 13.55 UUR ${m} ${place} MET KBC-DEBETKAART 4972 55XX XXXX 3390 KAARTHOUDER: ${who}`
+const fr = (m, place, who = 'DOE JANE') => `PAIEMENT VIA BANCONTACT 06-01-2026 À 10.54 HEURES ${m} ${place} AVEC CARTE DE DEBIT KBC 5127 88XX XXXX 1234 TITULAIRE DE LA CARTE: ${who}`
 
 test('merchantKey (KBC EN): the card merchant sits between the time stamp and the postcode', () => {
   assert.equal(key('PAYMENT VIA DEBIT MASTERCARD 29-12-2025 AT 22.01 TIME MCDONALD S W.SALONICA GR54627 THESSALONIKI WITH APPLE PAY 5127 88XX XXXX 1234 VIRTUAL CARD NUMBER FOR CONTACTLESS: 5315 88XX XXXX 5678'), 'MCDONALD')
   assert.equal(key('PAYMENT VIA DEBIT MASTERCARD 06-01-2026 AT 21.34 TIME CASA VERDE ESTIASI C GR57002 LAGKADAS WITH APPLE PAY 5127 88XX XXXX 1234'), 'CASA VERDE')
   assert.equal(key('PAYMENT VIA BANCONTACT 06-01-2026 AT 10.54 TIME LIDL 1153 LEUVEN BE3000 LEUVEN WITH KBC DEBIT CARD 5127 88XX XXXX 1234 CARDHOLDER: DOE JANE'), 'LIDL')
   assert.equal(key('CASH WITHDRAWAL 18-01-2026 AT 14.02 TIME KBC LEUVEN BE3000 LEUVEN WITH KBC DEBIT CARD 5127 88XX XXXX 1234'), 'CASH WITHDRAWAL')
+  assert.equal(key(en('ALBERT HEIJN 1234', 'NL1012 AMSTERDAM')), 'ALBERT HEIJN')
 })
 
 test('merchantKey (KBC NL): Bancontact, Debit Mastercard and Maestro card lines', () => {
-  const nl = (m, place) => `BETALING VIA BANCONTACT              31-12 31-12-2025 OM 13.55 UUR ${m} ${place} MET KBC-DEBETKAART 4972 55XX XXXX 3390 KAARTHOUDER: JANSSENS ELS`
-  assert.equal(key(nl('DELHAIZE WATERSPORT NV', 'BE9000 GENT')), 'DELHAIZE')
+  assert.equal(key(nl('DELHAIZE WATERSPORT NV', 'BE9000 GENT')), 'DELHAIZE WATERSPORT')
+  assert.equal(key(nl('DELHAIZE GENT STER', 'BE9000 GENT')), 'DELHAIZE') // the card's town ends the name
   assert.equal(key(nl('7075 CRU GENT', 'BE9000 GENT')), 'CRU')
   assert.equal(key(nl('ST. PIERRE', 'BE9000 GENT')), 'ST. PIERRE')
   assert.equal(key(nl('BV XANTYP', 'BE9000 GENT') + ' INFO VAN DE HANDELAAR: GPVV9PQ BY MULTISAFEPAY'), 'XANTYP')
-  assert.equal(key('BETALING VIA DEBIT MASTERCARD        31-12 30-12-2025 OM 12.08 UUR CAFE CHARLATAN BE9000 GENT MET KBC-DEBETKAART 4972 55XX XXXX 3390 KAARTHOUDER: JANSSENS ELS'), 'CAFE')
+  assert.equal(key('BETALING VIA DEBIT MASTERCARD        31-12 30-12-2025 OM 12.08 UUR CAFE CHARLATAN BE9000 GENT MET KBC-DEBETKAART 4972 55XX XXXX 3390 KAARTHOUDER: JANSSENS ELS'), 'CAFE CHARLATAN')
   assert.equal(key('BETALING VIA MAESTRO 02-10-2023 OM 08.23 UUR STAD GENT PARKEREN BE GENT MET KBC-DEBETKAART 6703 42XX XXXX X201 0 KAARTHOUDER: JANSSENS ELS'), 'STAD GENT')
-  assert.equal(key('BETALING VIA BANCONTACT 04-12-2025 OM 15.30 UUR AMZN MKTP BE LU1855 LUXEMBOURG MET KBC-DEBETKAART 4972 55XX XXXX 3390 KAARTHOUDER: JANSSENS ELS INFO VAN DE HANDELAAR: 75HL93I WWW.AMAZON.COM.BE'), 'AMZN')
+  assert.equal(key('BETALING VIA BANCONTACT 04-12-2025 OM 15.30 UUR AMZN MKTP BE LU1855 LUXEMBOURG MET KBC-DEBETKAART 4972 55XX XXXX 3390 KAARTHOUDER: JANSSENS ELS INFO VAN DE HANDELAAR: 75HL93I WWW.AMAZON.COM.BE'), 'AMZN MKTP')
 })
 
 test('merchantKey (KBC FR): paiement par carte', () => {
-  assert.equal(key('PAIEMENT VIA BANCONTACT 06-01-2026 À 10.54 HEURES COLRUYT LOUVAIN BE3000 LEUVEN AVEC CARTE DE DEBIT KBC 5127 88XX XXXX 1234 TITULAIRE DE LA CARTE: DOE JANE'), 'COLRUYT')
+  assert.equal(key(fr('COLRUYT LOUVAIN', 'BE3000 LEUVEN')), 'COLRUYT')
   assert.equal(key('PAIEMENT VIA DEBIT MASTERCARD 06-01-2026 A 19.02 HEURES LE PAIN QUOTIDIEN BE1000 BRUXELLES AVEC APPLE PAY'), 'LE PAIN')
+  assert.equal(key(fr('SUMUP *BOULANGERIE DUPONT', 'BE5000 NAMUR')), 'BOULANGERIE DUPONT')
 })
 
 test('merchantKey (KBC): direct debits key on the creditor', () => {
   assert.equal(key('EUROPESE DOMICILIERING SCHULDEISER : KBC VERZEKERINGEN REF. SCHULDEISER: 390666825141 MANDAATREFERTE : L00223506492V0001 EIGEN OMSCHR. : GEZINSPOLIS'), 'KBC VERZEKERINGEN')
   assert.equal(key('EUROPEAN DIRECT DEBIT CREDITOR : PROXIMUS CREDITOR REF.: 123456 MANDATE REFERENCE : 9988'), 'PROXIMUS')
-  assert.equal(key('DOMICILIATION EUROPEENNE CREANCIER : ENGIE ELECTRABEL REF. CREANCIER : 998877'), 'ENGIE')
+  assert.equal(key('DOMICILIATION EUROPEENNE CREANCIER : ENGIE ELECTRABEL REF. CREANCIER : 998877'), 'ENGIE ELECTRABEL')
 })
 
 test('merchantKey (KBC): transfers key on the other party, never on the boilerplate', () => {
-  assert.equal(key('INSTANTOVERSCHRIJVING NAAR           27-12 BE00 0000 0000 0001 BANKIER BEGUNSTIGDE: KREDBEBBXXX PIETERS TOM OM 17.11 UUR MET KBC MOBILE'), 'PIETERS')
+  assert.equal(key('INSTANTOVERSCHRIJVING NAAR           27-12 BE00 0000 0000 0001 BANKIER BEGUNSTIGDE: KREDBEBBXXX PIETERS TOM OM 17.11 UUR MET KBC MOBILE'), 'PIETERS TOM')
   assert.equal(key('OVERSCHRIJVING VAN                   22-12 BE00 0000 0000 0002 BANKIER OPDRACHTGEVER: BBRUBEBB UNIVERSITEIT GENT /FOR/-/A/ 20051664/202512 REFERENTIE: 1664000010'), 'UNIVERSITEIT')
   assert.equal(key('EUROPESE OVERSCHRIJVING VAN          04-01'), 'EUROPESE OVERSCHRIJVING') // nothing else to go on
-  assert.equal(key("SENDING MONEY INSTANTLY TO BE00 0000 0000 0003 BENEFICIARY'S BANK: GEBABEBBXXX KUMAR RAVI DINNER AT 20.15 WITH KBC MOBILE"), 'KUMAR')
-  assert.equal(key('VIREMENT EUROPEEN VERS BE00 0000 0000 0004 BANQUE DU BENEFICIAIRE: KREDBEBB IMMO PEETERS LOYER'), 'IMMO')
+  assert.equal(key("SENDING MONEY INSTANTLY TO BE00 0000 0000 0003 BENEFICIARY'S BANK: GEBABEBBXXX KUMAR RAVI DINNER AT 20.15 WITH KBC MOBILE"), 'KUMAR RAVI')
+  assert.equal(key('VIREMENT EUROPEEN VERS BE00 0000 0000 0004 BANQUE DU BENEFICIAIRE: KREDBEBB IMMO PEETERS LOYER'), 'IMMO PEETERS')
 })
 
 test('merchantKey: the account holder is never the key; transfers to them have none', () => {
@@ -68,8 +91,8 @@ test('merchantKey: the account holder is never the key; transfers to them have n
   assert.equal(merchantKey("SENDING MONEY INSTANTLY TO BE00 0000 0000 0005 BENEFICIARY'S BANK: REVOBEB2XXX JANE DOE AT 17.05 WITH KBC MOBILE", { holder }), '')
   assert.equal(merchantKey('INSTANTOVERSCHRIJVING VAN BE00 0000 0000 0006 BANKIER OPDRACHTGEVER: KREDBEBBXXX DOE JANE SPAARGELD OM 00.24 UUR', { holder }), '')
   assert.equal(merchantKey('DOE J.', { holder }), '')
-  // A relative sharing the surname is someone else.
-  assert.equal(merchantKey('INSTANTOVERSCHRIJVING VAN BE00 0000 0000 0007 BANKIER OPDRACHTGEVER: KREDBEBBXXX DOE MARK VERJAARDAG OM 10.00 UUR', { holder }), 'MARK')
+  // A relative sharing the surname is someone else, named in full.
+  assert.equal(key('INSTANTOVERSCHRIJVING VAN BE00 0000 0000 0007 BANKIER OPDRACHTGEVER: KREDBEBBXXX DOE MARK VERJAARDAG OM 10.00 UUR', { holder }), 'DOE MARK')
 })
 
 test('merchantKey (KBC): bank-generated lines key on their own operation', () => {
@@ -79,24 +102,98 @@ test('merchantKey (KBC): bank-generated lines key on their own operation', () =>
   assert.equal(key('STORTING CONTANTEN 19-01-2026 KBC LEUVEN'), 'STORTING')
 })
 
-test('rowMerchant: counterparty first, the holder column marks own transfers', () => {
+test('merchantKey: a payment processor\'s prefix is skipped — the shop follows it', () => {
+  for (const d of ['CM*KANELA', 'CM* KANELA', 'CM *KANELA', 'SQ *KANELA', 'SQ* KANELA', 'SUMUP *KANELA',
+    'SUMUP  *KANELA', 'SUMUP*KANELA', 'IZ *KANELA', 'ZETTLE_*KANELA', 'PAYPAL *KANELA', 'PP*KANELA',
+    'SP * KANELA', 'TST* KANELA', 'MOLLIE*KANELA', 'CCV*KANELA', 'MYPOS*KANELA', 'VIVA*KANELA', 'KANELA']) {
+    assert.equal(key(d), 'KANELA', d)
+    assert.equal(key(en(d, 'GR54625 THESSALONIKI')), 'KANELA', d)
+  }
+  assert.equal(key('PAYPAL *SPOTIFY 35314369001'), 'SPOTIFY')
+  assert.equal(key('GOOGLE *YOUTUBE PREMIUM'), 'YOUTUBE PREMIUM')
+  assert.equal(key(nl('SQ *COFFEE LAB', 'NL1012 AMSTERDAM')), 'COFFEE LAB')
+  // A merchant whose own name merely ends in a processor's letters is untouched.
+  assert.equal(key('BISQ *REF123'), 'BISQ')
+})
+
+test('merchantKey: after the merchant, "*" starts a reference that is dropped', () => {
+  assert.equal(key('AMZN MKTP DE*AB12CD'), 'AMZN MKTP')
+  assert.equal(key('AMZN Mktp DE*2K4HX0XY5'), 'AMZN MKTP')
+  assert.equal(key('NETFLIX.COM*123'), 'NETFLIX')
+  assert.equal(key('AMAZON.COM*RT4Y12 AMZN.COM/BILL'), 'AMAZON')
+  assert.equal(key('UBER *TRIP HELP.UBER.COM'), 'UBER')
+  assert.equal(key(en('AMZN MKTP DE*AB12CD', 'LU1855 LUXEMBOURG')), 'AMZN MKTP')
+})
+
+test('groupMerchants: one key per merchant across a file\'s branches, always inside each description', () => {
+  // The owner's case: the same café with and without the CM.com prefix.
+  assert.deepEqual(fileKeys([en('KANELA', 'GR54625 THESSALONIKI'), en('CM* KANELA', 'GR54625 THESSALONIKI'),
+    en('CM*KANELA', 'GR54625 THESSALONIKI'), 'SQ *KANELA', 'SUMUP  *KANELA']), Array(5).fill('KANELA'))
+  // Multi-word names keep every shared word...
+  assert.deepEqual(fileKeys([en('ALBERT HEIJN AMSTERDAM', 'NL1012 AMSTERDAM'), en('ALBERT HEIJN UTRECHT', 'NL3511 UTRECHT'),
+    en('ALBERT HEIJN 1432', 'NL2011 HAARLEM')]), Array(3).fill('ALBERT HEIJN'))
+  // ...branches never split a merchant, in any of the three languages...
+  assert.deepEqual(fileKeys([en('LIDL LEUVEN', 'BE3000 LEUVEN'), en('LIDL GENT', 'BE9000 GENT'),
+    nl('LIDL 0412 ANTWERPEN', 'BE2000 ANTWERPEN'), fr('LIDL NAMUR', 'BE5000 NAMUR'), 'LIDL KESSEL-LO']), Array(5).fill('LIDL'))
+  assert.deepEqual(fileKeys([en('MCDONALD S W.SALONICA', 'GR54627 THESSALONIKI'), en('MCDONALD S KALAMARIA', 'GR55132 KALAMARIA'),
+    en('MCDONALD S TSIMISKI', 'GR54624 THESSALONIKI')]), Array(3).fill('MCDONALD'))
+  // ...and names that differ after a broad first word stay apart.
+  assert.deepEqual(fileKeys([en('CASA VERDE ESTIASI C', 'GR57002 LAGKADAS'), en('CASA VERDE ESTIASI C', 'GR57002 LAGKADAS'),
+    en('CASA BLANCA', 'GR54625 THESSALONIKI')]), ['CASA VERDE', 'CASA VERDE', 'CASA BLANCA'])
+  assert.deepEqual(fileKeys(['EUROPEAN DIRECT DEBIT CREDITOR : KBC INSURANCE CREDITOR REF.: 1',
+    'EUROPEAN DIRECT DEBIT CREDITOR : KBC VERZEKERINGEN REF.: 2']), ['KBC INSURANCE', 'KBC VERZEKERINGEN'])
+  // Merchant*reference lines group on the merchant.
+  assert.deepEqual(fileKeys(['AMZN MKTP DE*AB12CD', 'AMZN MKTP DE*ZX98YU', en('AMZN MKTP BE', 'LU1855 LUXEMBOURG')]),
+    Array(3).fill('AMZN MKTP'))
+  // Bank labels are their own keys: withdrawals and deposits stay apart.
+  assert.deepEqual(fileKeys(['CASH WITHDRAWAL 18-01-2026 KBC', 'CASH DEPOSIT 19-01-2026 KBC', 'SETTLEMENT KBC CREDIT CARD 5127']),
+    ['CASH WITHDRAWAL', 'CASH DEPOSIT', 'SETTLEMENT KBC'])
+})
+
+test('groupMerchants: a lone name keeps at most two words', () => {
+  const keys = groupMerchants(['ALBERT HEIJN AMSTERDAM', 'JUMBO SUPERMARKTEN ZUID', 'MCDONALD S W.SALONICA', 'LE PAIN QUOTIDIEN',
+    'CASA VERDE ESTIASI', 'KBC INSURANCE', 'ST. PIERRE', 'NETFLIX', ''])
+  assert.deepEqual(Object.fromEntries(keys), {
+    'ALBERT HEIJN AMSTERDAM': 'ALBERT HEIJN', 'JUMBO SUPERMARKTEN ZUID': 'JUMBO SUPERMARKTEN',
+    'MCDONALD S W.SALONICA': 'MCDONALD', 'LE PAIN QUOTIDIEN': 'LE PAIN', 'CASA VERDE ESTIASI': 'CASA VERDE',
+    'KBC INSURANCE': 'KBC INSURANCE', 'ST. PIERRE': 'ST. PIERRE', NETFLIX: 'NETFLIX',
+  })
+  // The same name on many rows is still one name.
+  assert.deepEqual(Object.fromEntries(groupMerchants(['ALBERT HEIJN AMSTERDAM', 'ALBERT HEIJN AMSTERDAM'])),
+    { 'ALBERT HEIJN AMSTERDAM': 'ALBERT HEIJN' })
+  // A shorter name in the group bounds the key.
+  assert.deepEqual(Object.fromEntries(groupMerchants(['ALBERT', 'ALBERT HEIJN AMSTERDAM'])),
+    { ALBERT: 'ALBERT', 'ALBERT HEIJN AMSTERDAM': 'ALBERT' })
+})
+
+test('merchantName: up to three words, cut before anything branch-specific', () => {
+  assert.equal(merchantName(en('ALBERT HEIJN AMSTERDAM', 'NL1012 AMSTERDAM')), 'ALBERT HEIJN')
+  assert.equal(merchantName(en('ALBERT HEIJN ZUIDAS', 'NL1082 AMSTERDAM')), 'ALBERT HEIJN ZUIDAS')
+  assert.equal(merchantName(en('CASA VERDE ESTIASI C', 'GR57002 LAGKADAS')), 'CASA VERDE ESTIASI')
+  assert.equal(merchantName(en('LIDL 1153 LEUVEN', 'BE3000 LEUVEN')), 'LIDL')
+  assert.equal(merchantName(en('JUMBO SUPERMARKTEN BV', 'NL5000 TILBURG')), 'JUMBO SUPERMARKTEN')
+  assert.equal(merchantName('ACME CLINICAL RESEARCH BV'), 'ACME CLINICAL RESEARCH')
+})
+
+test('rowMerchantName: counterparty first, the holder column marks own transfers', () => {
   const mapping = { counterparty: 'Counterparty name', holder: 'Name', description: 'Description', details: 'Free-format reference' }
   const row = (cp, description, free = '') => ({ Name: 'DOE JANE', 'Counterparty name': cp, Description: description, 'Free-format reference': free })
   // Salary: the employer, not "EUROPEAN".
-  assert.equal(rowMerchant(row('ACME CLINICAL RESEARCH BV', 'EUROPEAN TRANSFER FROM BE00 0000 0000 0008', 'SALARY JANUARY'), mapping), 'ACME')
+  assert.equal(rowMerchantName(row('ACME CLINICAL RESEARCH BV', 'EUROPEAN TRANSFER FROM BE00 0000 0000 0008', 'SALARY JANUARY'), mapping), 'ACME CLINICAL RESEARCH')
   // Own account, either word order.
-  assert.equal(rowMerchant(row('JANE DOE', "SENDING MONEY INSTANTLY TO BE00 0000 0000 0005 BENEFICIARY'S BANK: REVOBEB2XXX JANE DOE AT 17.05 WITH KBC MOBILE"), mapping), '')
-  assert.equal(rowMerchant(row('Doe Jane', 'RECEIVING MONEY INSTANTLY FROM BE00 0000 0000 0005'), mapping), '')
+  assert.equal(rowMerchantName(row('JANE DOE', "SENDING MONEY INSTANTLY TO BE00 0000 0000 0005 BENEFICIARY'S BANK: REVOBEB2XXX JANE DOE AT 17.05 WITH KBC MOBILE"), mapping), '')
+  assert.equal(rowMerchantName(row('Doe Jane', 'RECEIVING MONEY INSTANTLY FROM BE00 0000 0000 0005'), mapping), '')
   // Card rows leave the counterparty empty: the description decides.
-  assert.equal(rowMerchant(row('', 'PAYMENT VIA BANCONTACT 06-01-2026 AT 10.54 TIME LIDL 1153 LEUVEN BE3000 LEUVEN WITH KBC DEBIT CARD 5127 88XX XXXX 1234 CARDHOLDER: DOE JANE'), mapping), 'LIDL')
-  // Without a holder column a person's counterparty is still a key.
-  assert.equal(rowMerchant({ cp: 'KUMAR RAVI', d: 'x' }, { counterparty: 'cp', description: 'd' }), 'KUMAR')
+  assert.equal(rowMerchantName(row('', 'PAYMENT VIA BANCONTACT 06-01-2026 AT 10.54 TIME LIDL 1153 LEUVEN BE3000 LEUVEN WITH KBC DEBIT CARD 5127 88XX XXXX 1234 CARDHOLDER: DOE JANE'), mapping), 'LIDL')
+  // Without a holder column a person's counterparty is still a name.
+  assert.equal(rowMerchantName({ cp: 'KUMAR RAVI', d: 'x' }, { counterparty: 'cp', description: 'd' }), 'KUMAR RAVI')
 })
 
 test('merchantKey: empty inputs', () => {
   assert.equal(merchantKey(''), '')
   assert.equal(merchantKey(null), '')
   assert.equal(merchantKey('12/07/2026 99.50'), '')
+  assert.deepEqual(groupMerchants([]), new Map())
 })
 
 test('parseAmount: plain, comma-decimal, mixed separators, junk', () => {
@@ -167,4 +264,40 @@ test('isOwnTransfer: transfers between the holder\'s own accounts are left out o
   assert.equal(preview.ownTransfers, 2)
   assert.equal(preview.skipped, 0)
   assert.equal(preview.ready, 2)
+})
+
+test('isOwnTransfer: a card top-up of the holder\'s own Revolut account is left out', () => {
+  const mapping = {
+    date: 'Date', amount: 'Amount', counterparty: 'Counterparty name', holder: 'Name',
+    description: 'Description', details: 'Free-format reference',
+  }
+  const row = (description, amount = '-100,00') => ({
+    Name: 'DOE JANE', Date: '06/01/2026', Amount: amount, 'Counterparty name': '', Description: description,
+  })
+  const topUps = [
+    en('REVOLUT**1234* DUBLIN', 'IE'),
+    en('REVOLUT', 'IE D02 DUBLIN', 'JANE DOE'),
+    en('REVOLUT LTD', 'IE'),
+    en('REVOLUT*', 'LT01103 VILNIUS'),
+    nl('REVOLUT**1234* DUBLIN', 'IE', 'DOE JANE'),
+    fr('REVOLUT**1234* DUBLIN', 'IE', 'Jane Doe'),
+  ].map((d) => row(d))
+  for (const r of topUps) {
+    assert.equal(isOwnTransfer(r, mapping), true, r.Description)
+    assert.deepEqual(rowToDraft(r, mapping, 'EUR'), { skip: 'own transfer' })
+  }
+  // A joint-account partner's card topping up their own Revolut: an expense.
+  const partner = row(en('REVOLUT**5678* DUBLIN', 'IE', 'DOE MARK'))
+  assert.equal(isOwnTransfer(partner, mapping), false)
+  assert.equal(rowToDraft(partner, mapping, 'EUR').merchant, 'REVOLUT')
+  // Ordinary card payments are unaffected, even with the holder's card.
+  const lidl = row(en('LIDL 1153 LEUVEN', 'BE3000 LEUVEN'), '-12,78')
+  assert.equal(isOwnTransfer(lidl, mapping), false)
+  // Without a holder column nothing counts as own.
+  assert.equal(isOwnTransfer(topUps[0], { ...mapping, holder: undefined }), false)
+
+  const preview = previewDrafts([...topUps, partner, lidl], mapping, 'EUR')
+  assert.equal(preview.ownTransfers, topUps.length)
+  assert.equal(preview.ready, 2)
+  assert.equal(preview.skipped, 0)
 })

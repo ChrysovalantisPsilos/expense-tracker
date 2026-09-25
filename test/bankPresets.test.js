@@ -103,8 +103,8 @@ test('KBC (EN): "Name" is the account holder, "Counterparty name" the payee', ()
       ['2026-01-06', 'income', 323360, 'EUR'],
     ])
     assert.equal(r.drafts.filter((d) => d.skip === 'own transfer').length, 1)
-    // Card merchant; employer.
-    assert.deepEqual(r.booked.map((d) => d.merchant), ['LIDL', 'ACME'])
+    // Card merchant; employer (merchant names, before the file's grouping).
+    assert.deepEqual(r.booked.map((d) => d.merchant), ['LIDL', 'ACME CLINICAL RESEARCH'])
   }
 })
 

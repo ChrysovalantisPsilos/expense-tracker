@@ -9,9 +9,21 @@ import { parseLocaleAmount, parseDateText, ymd, foldText } from '../../shared/li
 // A merchant key groups a statement's rows for the "New merchants" step and
 // becomes a saved "description contains → category" rule, so it must (a) name
 // the business or person, never the bank's boilerplate or the account holder,
-// and (b) be a piece of the row's own description text, or the rule would
-// never match again. "BANCONTACT LIDL 1234 BRUXELLES" and "LIDL 992 GENT"
-// both give "LIDL" and share one rule.
+// and (b) be a piece of every grouped row's own description text, or the rule
+// would never match again. It is found in two steps:
+//
+// 1. Per row, merchantName / rowMerchantName pick the merchant's name out of
+//    the text: up to three words, cut before anything branch-specific (a
+//    store number, a postcode, the card's town), a "*reference", a company
+//    form or the bank's tail. Card-acquirer prefixes ("CM* KANELA",
+//    "SUMUP *KANELA") are skipped, so both are "KANELA".
+// 2. Per file, groupMerchants turns those names into keys: names sharing a
+//    first word get their longest common word-prefix ("LIDL LEUVEN" + "LIDL
+//    GENT" → "LIDL"; "ALBERT HEIJN AMSTERDAM" + "ALBERT HEIJN UTRECHT" →
+//    "ALBERT HEIJN"); a name on its own keeps at most two words.
+//
+// Each key is a word-prefix of its names, and each name a slice of its row's
+// description, so the key is in every description of its group.
 
 // Words that never name a merchant: payment-method, operation and
 // connective words banks write around it (EN/FR/NL/EL, compared unaccented),
@@ -35,12 +47,58 @@ const BANK_NOISE = new Set([
   'ΑΓΟΡΑ', 'ΚΑΡΤΑ', 'ΜΕ', 'ΣΕ', 'ΑΠΟ', 'ΠΛΗΡΩΜΗ', 'ΜΕΤΑΦΟΡΑ',
   // titles and company forms
   'MR', 'MRS', 'MS', 'MISS', 'MEJ', 'MEVR', 'MEVROUW', 'DHR', 'MME', 'MLLE', 'BV', 'NV', 'BVBA', 'VZW',
-  'SA', 'SRL', 'SPRL', 'ASBL',
+  'SA', 'SRL', 'SPRL', 'ASBL', 'LTD', 'LIMITED', 'PLC', 'LLC', 'INC', 'GMBH', 'AG', 'SARL',
+  'ΑΕ', 'ΕΠΕ', 'ΙΚΕ', 'ΟΕ', 'ΕΕ',
 ])
 // Words too broad to be a key alone — the bank's own name is in every card
 // line ("WITH KBC DEBIT CARD"), and "CASA"/"SINT" start many names — so the
 // next word joins them: "KBC INSURANCE", "CASA VERDE", "SINT PIETER".
 const LEAD = new Set(['KBC', 'CBC', 'CASA', 'CHEZ', 'SINT', 'SAINT', 'SANTA', 'SAN', 'STAD', 'VILLE'])
+
+// Towns banks print right after a shop's name ("DELHAIZE LEUVEN", "COLRUYT
+// HALLE", "ΣΚΛΑΒΕΝΙΤΗΣ ΑΘΗΝΑ"): after the first word they end the name, so
+// branches don't become merchants of their own. Card lines also name their
+// town after the postcode, which is used the same way; this list covers the
+// lines that don't (Belgium, the Netherlands, Greece, and the cities online
+// merchants bill from). Names often built on a city ("PIZZA ROMA", "CAFE
+// PARIS") are deliberately left out.
+const PLACES = new Set([
+  // Belgium (NL/FR)
+  'ANTWERPEN', 'ANVERS', 'GENT', 'GAND', 'BRUGGE', 'BRUGES', 'BRUSSEL', 'BRUXELLES', 'BRUSSELS', 'LEUVEN',
+  'LOUVAIN', 'HEVERLEE', 'KESSELLO', 'WILSELE', 'MECHELEN', 'MALINES', 'HASSELT', 'GENK', 'KORTRIJK',
+  'COURTRAI', 'OOSTENDE', 'OSTENDE', 'AALST', 'ALOST', 'ROESELARE', 'ROULERS', 'TURNHOUT', 'HALLE',
+  'VILVOORDE', 'DENDERMONDE', 'LIER', 'BEVEREN', 'LOKEREN', 'EEKLO', 'NINOVE', 'WAREGEM', 'IEPER', 'YPRES',
+  'TIENEN', 'TIRLEMONT', 'DIEST', 'AARSCHOT', 'HERENTALS', 'KNOKKE', 'ZAVENTEM', 'TERVUREN', 'OVERIJSE',
+  'NAMUR', 'NAMEN', 'LIEGE', 'LUIK', 'CHARLEROI', 'MONS', 'TOURNAI', 'DOORNIK', 'WAVRE', 'WAVER', 'NIVELLES',
+  'ARLON', 'VERVIERS', 'SERAING', 'EUPEN', 'IXELLES', 'ELSENE', 'ETTERBEEK', 'SCHAERBEEK', 'SCHAARBEEK',
+  'UCCLE', 'UKKEL', 'ANDERLECHT', 'WOLUWE', 'JETTE', 'FOREST', 'VORST',
+  // the Netherlands
+  'AMSTERDAM', 'ROTTERDAM', 'UTRECHT', 'EINDHOVEN', 'GRONINGEN', 'TILBURG', 'ALMERE', 'BREDA', 'NIJMEGEN',
+  'ARNHEM', 'HAARLEM', 'MAASTRICHT', 'LEIDEN', 'DELFT', 'ZWOLLE', 'AMERSFOORT', 'APELDOORN', 'ENSCHEDE',
+  'DORDRECHT', 'SCHIPHOL', 'SHERTOGENBOSCH', 'SGRAVENHAGE',
+  // Greece (Latin and Greek script, unaccented)
+  'ATHENS', 'ATHINA', 'ATHINAI', 'ΑΘΗΝΑ', 'THESSALONIKI', 'ΘΕΣΣΑΛΟΝΙΚΗ', 'PIRAEUS', 'PEIRAIAS', 'ΠΕΙΡΑΙΑΣ',
+  'PATRA', 'PATRAS', 'ΠΑΤΡΑ', 'HERAKLION', 'IRAKLIO', 'ΗΡΑΚΛΕΙΟ', 'LARISA', 'LARISSA', 'ΛΑΡΙΣΑ', 'VOLOS',
+  'ΒΟΛΟΣ', 'IOANNINA', 'ΙΩΑΝΝΙΝΑ', 'KALAMARIA', 'ΚΑΛΑΜΑΡΙΑ', 'CHANIA', 'ΧΑΝΙΑ', 'KAVALA', 'ΚΑΒΑΛΑ',
+  'GLYFADA', 'ΓΛΥΦΑΔΑ', 'MAROUSI', 'ΜΑΡΟΥΣΙ', 'KIFISIA', 'ΚΗΦΙΣΙΑ', 'CHALANDRI', 'ΧΑΛΑΝΔΡΙ',
+  // where online merchants bill from
+  'LUXEMBOURG', 'LUXEMBURG', 'DUBLIN', 'BERLIN', 'MUNCHEN', 'MUNICH', 'HAMBURG', 'FRANKFURT', 'KOLN',
+  'KOELN', 'AACHEN', 'DUSSELDORF', 'MADRID', 'BARCELONA', 'LISBOA', 'LISBON', 'WIEN', 'VIENNA', 'ZURICH',
+  'GENEVE', 'GENEVA', 'STOCKHOLM', 'LILLE',
+])
+
+// Card acquirers and payment facilitators that write their own tag, then
+// "*", before the shop's name: "CM* KANELA", "SQ *KANELA", "SUMUP  *KANELA",
+// "ZETTLE_*KANELA". The shop is what follows. (Square, Toast, SumUp, Zettle,
+// PayPal/Braintree, Shopify, Stripe, Paddle, Checkout.com, Worldpay, Mollie,
+// CM.com, CCV, Viva Wallet, myPOS, Worldline, Adyen, Dojo, Klarna, Google.)
+const PROCESSORS = ['SQ', 'SQU', 'TST', 'SUMUP', 'IZ', 'IZETTLE', 'ZETTLE', 'PAYPAL', 'PP', 'BT', 'SP',
+  'SHOPIFY', 'STRIPE', 'STRP', 'PADDLE', 'PADDLE.NET', 'CKO', 'WP', 'WORLDPAY', 'MOLLIE', 'CM', 'CM.COM',
+  'CCV', 'VIVA', 'VIVAWALLET', 'MYPOS', 'WORLDLINE', 'ADYEN', 'DOJO', 'KLARNA', 'GOOGLE']
+const PROCESSOR_PREFIX = new RegExp(
+  `(?<![\\p{L}\\p{N}.])(?:${PROCESSORS.map((p) => p.replace('.', '\\.')).join('|')})[\\s_]*\\*+\\s*`, 'gu')
+// A web address as a name: "NETFLIX.COM" is NETFLIX.
+const DOMAIN = /^(WWW\.)?([\p{L}\d&-]+)\.(?:COM|NET|ORG|EU|BE|NL|DE|FR|GR|LU|CO|IO|UK|APP)\b/u
 
 // Where the useful part of a description ends: card numbers, the
 // cardholder's name, the bank's merchant-info block.
@@ -48,8 +106,12 @@ const TAIL = /\s*\b(?:CARDHOLDER|KAARTHOUDER|TITULAIRE|MERCHANT INFO|INFO VAN DE
 // A card payment's time stamp — "AT 22.01 TIME", "OM 13.55 UUR",
 // "À 13.55 HEURES" — the merchant follows it...
 const CARD_TIME = /(?:^|\s)(?:AT|OM|[AÀ])\s+\d{1,2}[.:H]\d{2}\s+(?:TIME|UUR|HEURES?|H)\b/
-// ...up to the country+postcode ("BE3000", "GR54627") or "WITH/MET/AVEC …".
+// ...up to the country+postcode ("BE3000", "GR54627") and town, or
+// "WITH/MET/AVEC …".
 const CARD_END = /\s+(?:[A-Z]{2}\d{3,6}\b|(?:WITH|MET|AVEC)\b).*$/
+const CARD_TOWN = /\s[A-Z]{2}\d{3,6}\s+(.*?)(?=\s+(?:WITH|MET|AVEC)\b|$)/
+// The card's holder, as the bank prints it after the merchant.
+const CARDHOLDER = /\b(?:CARDHOLDER|KAARTHOUDER|TITULAIRE(?: DE LA CARTE)?)\s*:\s*(.+?)(?=\s+(?:MERCHANT INFO|INFO VAN|INFO DU)\b|$)/
 // A direct debit's creditor: "CREDITOR : PROXIMUS CREDITOR REF.: …".
 const CREDITOR = /\b(?:CREDITOR|SCHULDEISER|CR[EÉ]ANCIER)\s*:\s*(.+?)(?=\s+(?:CREDITOR|SCHULDEISER|CR[EÉ]ANCIER|REF\b|MANDA)|$)/
 // A transfer's other party, after the bank label and its BIC:
@@ -58,6 +120,12 @@ const PARTY = /\b(?:BANKIER (?:BEGUNSTIGDE|OPDRACHTGEVER)|(?:BENEFICIARY|ORDERIN
 const PARTY_END = /\s+(?:(?:AT|OM|[AÀ])\s+\d{1,2}[.:]\d{2}|REFERENTIE|REFERENCE|R[EÉ]F[EÉ]RENCE|MEDEDELING|COMMUNICATION|(?:WITH|MET|AVEC)\b).*$/
 // Cash in or out has no third party: the operation itself is the key.
 const CASH = /^(?:CASH (?:WITHDRAWAL|DEPOSIT)|WITHDRAWAL|DEPOSIT(?: OF CASH)?|GELDOPNEMING|GELDOPNAME|OPNAME|STORTING|RETRAIT|VERSEMENT|D[EÉ]P[OÔ]T)\b/
+// Card "purchases" that only move the holder's money to their own account
+// elsewhere: a top-up of their Revolut account with their own card.
+const OWN_TOPUP_MERCHANTS = new Set(['REVOLUT'])
+
+// A word's letters, unaccented and upper-cased: "St." → "ST", "Café" → "CAFE".
+const lettersOf = (word) => foldText(word).toUpperCase().replace(/[^\p{L}]/gu, '')
 
 function tokens(text) {
   return [...text.matchAll(/\p{L}+/gu)]
@@ -72,23 +140,61 @@ function sameWords(a, b) {
   return a.size > 0 && a.size === b.size && [...a].every((w) => b.has(w))
 }
 
-// The key inside `text` (upper-cased): its first meaningful word, or two
-// when the first is short or too broad; '' when there is none. Sliced from
-// the text itself so the saved rule still matches it ("ST. PIERRE").
-function keyIn(text, holder) {
-  const core = tokens(text).filter((t) => !BANK_NOISE.has(t.w) && !holder.has(t.w))
-  const [a, b] = core
-  if (!a) return ''
-  if (a.w.length >= 3 && !LEAD.has(a.w)) return text.slice(a.start, a.end)
-  if (b && b.end - a.start <= 40) return text.slice(a.start, b.end)
-  return LEAD.has(a.w) ? '' : text.slice(a.start, a.end)
+// The merchant's name inside `text` (upper-cased), '' when there is none.
+// Leading boilerplate, numbers and initials are skipped; the name then runs
+// for up to three words and stops at a word with a digit ("1153",
+// "BE3000"), a noise or company-form word, punctuation ("·", "/FOR/"), a
+// town after the first word (the card line's `town` or one of PLACES), a
+// "*" (what follows is a reference: "AMZN MKTP DE*AB12CD") or a web address
+// ("NETFLIX.COM").
+// Sliced from the text itself so the saved rule still matches it
+// ("ST. PIERRE"). Only the holder's own name, or a lone broad word ("KBC"),
+// is no name.
+function nameIn(text, holder, town = new Set()) {
+  // Blank a processor's prefix (same length, so offsets hold): the shop follows.
+  const plain = text.replace(PROCESSOR_PREFIX, (m) => ' '.repeat(m.length))
+  const words = []
+  for (const m of plain.matchAll(/\S+/g)) {
+    let start = m.index
+    let word = m[0].replace(/[,;:]+$/, '')
+    const star = word.indexOf('*')
+    if (star >= 0) word = word.slice(0, star)
+    const domain = DOMAIN.exec(word)
+    if (domain) {
+      start += domain[1]?.length ?? 0
+      word = domain[2]
+    }
+    const letters = lettersOf(word)
+    const stop = star >= 0 || !!domain
+    const usable = /^\p{L}/u.test(word) && !/\d/.test(word) && !BANK_NOISE.has(letters)
+    if (!words.length) {
+      if (usable && letters.length >= 2) words.push({ start, end: start + word.length, letters })
+      if (stop && words.length) break
+      continue
+    }
+    const prev = words[words.length - 1]
+    if (!usable || start !== prev.end + 1 || ((town.has(letters) || PLACES.has(letters)) && !LEAD.has(prev.letters))) break
+    words.push({ start, end: start + word.length, letters })
+    if (stop || words.length === 3) break
+  }
+  const named = words.filter((w) => w.letters.length >= 2)
+  if (!named.length || named.every((w) => holder.has(w.letters))) return ''
+  if (words.length === 1 && LEAD.has(words[0].letters)) return ''
+  return text.slice(words[0].start, words[words.length - 1].end)
 }
 
-// The merchant key of a description. `holder` is the account holder's name
-// (when the statement has it): their words are never the key, and a transfer
-// whose other party is the holder (between their own accounts) has no key.
 const plainText = (description) =>
   String(description).toUpperCase().replace(/\s+/g, ' ').replace(TAIL, '').trim()
+
+// A card payment's merchant part (after the time stamp, before the
+// postcode) and the words of its town, or null for other lines.
+function cardMerchant(text) {
+  const time = CARD_TIME.exec(text)
+  if (!time) return null
+  const rest = text.slice(time.index + time[0].length)
+  const town = CARD_TOWN.exec(rest)?.[1] ?? ''
+  return { segment: rest.replace(CARD_END, ''), town: new Set(tokens(town).map((t) => t.w)) }
+}
 
 // Is the transfer's other party (the name after the bank label and BIC, when
 // the statement has no counterparty column) the holder `own` themselves?
@@ -97,67 +203,131 @@ function partyIsHolder(party, own) {
   return own.size > 0 && sameWords(new Set(words.slice(0, own.size)), own)
 }
 
-export function merchantKey(description, { holder = '' } = {}) {
+// The merchant's name in a description (see nameIn). `holder` is the account
+// holder's name (when the statement has it): a transfer whose other party is
+// the holder (between their own accounts) has none. Cash and bank-generated
+// lines are named by the operation ("CASH WITHDRAWAL", "SETTLEMENT KBC"),
+// which groupMerchants keeps whole.
+export function merchantName(description, { holder = '' } = {}) {
   if (!description) return ''
   const own = nameWords(holder)
   const text = plainText(description)
   const cash = CASH.exec(text)
   if (cash) return cash[0]
-  const time = CARD_TIME.exec(text)
-  if (time) {
-    const key = keyIn(text.slice(time.index + time[0].length).replace(CARD_END, ''), own)
-    if (key) return key
+  const card = cardMerchant(text)
+  if (card) {
+    const name = nameIn(card.segment, own, card.town)
+    if (name) return name
   }
   const creditor = CREDITOR.exec(text)
   if (creditor) {
-    const key = keyIn(creditor[1], own)
-    if (key) return key
+    const name = nameIn(creditor[1], own)
+    if (name) return name
   }
   const party = PARTY.exec(text)
   if (party) {
     if (partyIsHolder(party[1], own)) return ''
-    const key = keyIn(party[1].replace(PARTY_END, ''), own)
-    if (key) return key
+    const name = nameIn(party[1].replace(PARTY_END, ''), own)
+    if (name) return name
   }
-  const key = keyIn(text, own)
-  if (key) return key
+  const name = nameIn(text, own)
+  if (name) return name
   // Nothing but boilerplate ("SETTLEMENT KBC CREDIT CARD"): the operation's
   // own words group these bank-generated lines.
   const label = tokens(text).filter((t) => !own.has(t.w)).slice(0, 2)
   return label.length ? text.slice(label[0].start, label[label.length - 1].end) : ''
 }
 
-// The merchant key of a statement row: the counterparty column when it has a
-// name, else the description. A row whose counterparty is the account holder
-// (the "Name"/"Naam" column, either word order) is a transfer between the
-// holder's own accounts — not a merchant — and gets no key.
+// The key a description gets on its own (a one-row file).
+export function merchantKey(description, opts) {
+  const name = merchantName(description, opts)
+  return name ? groupMerchants([name]).get(name) : ''
+}
+
+// How many leading words group a name: one, or two when the first is short
+// or too broad on its own ("LE PAIN", "CASA VERDE", "KBC INSURANCE").
+function headSize(words) {
+  const first = lettersOf(words[0])
+  return words.length > 1 && (first.length < 3 || LEAD.has(first)) ? 2 : 1
+}
+
+// A file's merchant names → their keys (a Map from each name). Names are
+// grouped by their first word (two for a short/broad one). A group of
+// different names keys on their longest common word-prefix; a lone name keys
+// on its first two words. A trailing one- or two-letter word is dropped
+// ("MCDONALD S" → "MCDONALD"). A bank label (a name that starts with a bank
+// word: "CASH WITHDRAWAL", "SETTLEMENT KBC") is its own key.
+export function groupMerchants(names) {
+  const keys = new Map()
+  const groups = new Map() // head -> [words of each distinct name]
+  for (const name of new Set(names)) {
+    if (!name) continue
+    const words = name.split(' ')
+    if (BANK_NOISE.has(lettersOf(words[0]))) { keys.set(name, name); continue }
+    const head = words.slice(0, headSize(words)).join(' ')
+    if (groups.has(head)) groups.get(head).push(words)
+    else groups.set(head, [words])
+  }
+  for (const [head, members] of groups) {
+    const min = head.split(' ').length
+    let n = Math.min(2, members[0].length)
+    if (members.length > 1) {
+      n = min
+      while (members.every((w) => n < w.length && w[n] === members[0][n])) n++
+    }
+    while (n > min && lettersOf(members[0][n - 1]).length <= 2) n--
+    const key = members[0].slice(0, n).join(' ')
+    for (const words of members) keys.set(words.join(' '), key)
+  }
+  return keys
+}
+
+// A statement row's cells, whitespace-collapsed.
 const cellOf = (row, mapping) => (k) =>
   (mapping[k] ? String(row[mapping[k]] ?? '').replace(/\s+/g, ' ').trim() : '')
 
+// A card "purchase" at a top-up merchant (Revolut) with the holder's own
+// card: money moving to their own account there.
+function isOwnTopUp(description, own) {
+  const upper = String(description).toUpperCase().replace(/\s+/g, ' ')
+  const cardholder = CARDHOLDER.exec(upper)
+  if (!cardholder || !sameWords(nameWords(cardholder[1]), own)) return false
+  const card = cardMerchant(plainText(upper))
+  const name = card ? nameIn(card.segment, new Set()) : ''
+  return OWN_TOPUP_MERCHANTS.has(lettersOf(name.split(' ')[0]))
+}
+
 // A transfer between the holder's own accounts: the counterparty column (or,
 // without one, the party named in the description) is the holder, in either
-// word order. Such rows aren't spending or income, so the import leaves them
-// out. Needs the holder column; without it nothing counts as own.
+// word order; or a card top-up of their own Revolut account. Such rows
+// aren't spending or income, so the import leaves them out. Needs the
+// holder column; without it nothing counts as own.
 export function isOwnTransfer(row, mapping) {
   const cell = cellOf(row, mapping)
   const own = nameWords(cell('holder'))
   if (!own.size) return false
   const counterparty = cell('counterparty')
   if (counterparty) return sameWords(nameWords(counterparty), own)
-  const party = PARTY.exec(plainText([cell('description'), cell('details')].filter(Boolean).join(' · ')))
+  const description = [cell('description'), cell('details')].filter(Boolean).join(' · ')
+  if (isOwnTopUp(description, own)) return true
+  const party = PARTY.exec(plainText(description))
   return !!party && partyIsHolder(party[1], own)
 }
 
-export function rowMerchant(row, mapping) {
+// The merchant name of a statement row (see merchantName): the counterparty
+// column when it has a name, else the description. A row whose counterparty
+// is the account holder (the "Name"/"Naam" column, either word order) is a
+// transfer between the holder's own accounts — not a merchant — and gets none.
+export function rowMerchantName(row, mapping) {
   const cell = cellOf(row, mapping)
   const holder = cell('holder')
   const counterparty = cell('counterparty')
   if (counterparty) {
     if (sameWords(nameWords(counterparty), nameWords(holder))) return ''
-    const key = merchantKey(counterparty, { holder })
-    if (key) return key
+    const name = merchantName(counterparty, { holder })
+    if (name) return name
   }
-  return merchantKey([cell('description'), cell('details')].filter(Boolean).join(' · '), { holder })
+  return merchantName([cell('description'), cell('details')].filter(Boolean).join(' · '), { holder })
 }
 
 // A cell as an amount. Spreadsheet numbers pass through; text is parsed with
@@ -265,8 +435,9 @@ export function signedConvention(rows, mapping) {
 // mapping. Returns { skip } for lines that aren't transactions (pending or
 // declined, balance/summary lines, footers with neither date nor amount),
 // { error } when a real-looking row lacks a valid date or a nonzero amount,
-// otherwise the parsed fields plus the row's merchant key. `signed` (see signedConvention) treats a
-// positive amount as income. Shared by the import preview and the
+// otherwise the parsed fields plus the row's merchant name (see
+// rowMerchantName; groupMerchants turns a file's names into keys). `signed`
+// (see signedConvention) treats a positive amount as income. Shared by the import preview and the
 // authoritative buildTransactions so the two can never derive a row differently.
 export function rowToDraft(row, mapping, baseCurrency, { signed = false } = {}) {
   if (mapping.status && NOT_BOOKED.test(foldText(row[mapping.status]))) {
@@ -297,7 +468,7 @@ export function rowToDraft(row, mapping, baseCurrency, { signed = false } = {}) 
   return {
     spent_at, kind, currency, amountRaw,
     amount_minor: toMinor(Math.abs(amountRaw), currency), description,
-    merchant: rowMerchant(row, mapping),
+    merchant: rowMerchantName(row, mapping),
   }
 }
 
