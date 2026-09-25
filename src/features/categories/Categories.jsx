@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Box, Button, FormControl, FormHelperText, FormLabel,
   Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
-  Select, Stack, Text, useToast,
+  Select, Stack, Tag, Text, useToast,
 } from '@chakra-ui/react'
 import { Archive, ArchiveRestore, Pencil, Plus, Tags, Trash2 } from 'lucide-react'
 import SettingsPage from '../settings/SettingsPage.jsx'
@@ -14,7 +14,7 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useAllCategories, updateCategory, countCategoryUse, deleteCategory } from './categories.js'
-import { moveTargets, sortCategories } from './categoryMath.js'
+import { isNewCategory, moveTargets, sortCategories } from './categoryMath.js'
 import { categoryPath } from './categoryLinks.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader, { BusyNote } from '../../shared/ui/RingLoader.jsx'
@@ -66,7 +66,10 @@ export default function Categories() {
             {list.map((c) => (
               <Box key={c.id} role="listitem">
                 <ItemRow media={<CategoryBadge category={c} kind={c.kind} size={32} />}
-                  title={c.name} meta={c.is_archived ? 'Archived' : undefined} dimmed={c.is_archived}
+                  title={isNewCategory(c) ? (
+                    <>{c.name}{' '}<Tag size="sm" colorScheme="green" borderRadius="full" verticalAlign="middle">New</Tag></>
+                  ) : c.name}
+                  meta={c.is_archived ? 'Archived' : undefined} dimmed={c.is_archived}
                   onClick={() => navigate(categoryPath(c.id))} chevron
                   actionSlots={3} actions={[
                     { label: `Edit ${c.name}`, icon: Pencil, onClick: () => navigate(categoryPath(c.id), { state: { edit: true } }) },

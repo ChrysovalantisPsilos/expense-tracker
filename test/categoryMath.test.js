@@ -3,9 +3,10 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   CATEGORY_NAME_MAX, categoryNameError, sortCategories, moveTargets, sameKindOthers,
-  categoryPatch, categoryPeriod,
+  categoryPatch, categoryPeriod, NEW_DEFAULT_CATEGORIES, NEW_TAG_MS, isNewCategory,
 } from '../src/features/categories/categoryMath.js'
 import { NO_CATEGORY } from '../src/features/transactions/txnFilter.js'
+import { latestSql } from './migrations.js'
 import {
   CATEGORY_ICON_KEYS, CATEGORY_ICON_LABELS, CATEGORY_ICON_GROUPS, CATEGORY_COLOR_KEYS,
   CATEGORY_COLORS, categoryTile, categoryIconKey,
@@ -165,4 +166,34 @@ test('categoryIconKey: a stored key wins, else the name suggests one, else other
   for (const [name, key] of Object.entries(hints)) assert.equal(categoryIconKey(name), key, name)
   // Every suggestion is a key the server accepts.
   for (const name of Object.keys(hints)) assert.ok(CATEGORY_ICON_KEYS.includes(categoryIconKey(name)))
+})
+
+test('isNewCategory: the new default income categories wear "New" for two days', () => {
+  const at = Date.parse('2026-09-25T10:00:00Z')
+  const bonus = { name: 'Bonus', kind: 'income', created_at: '2026-09-25T10:00:00Z' }
+  assert.equal(isNewCategory(bonus, at), true)
+  assert.equal(isNewCategory(bonus, at + NEW_TAG_MS - 1), true)
+  assert.equal(isNewCategory(bonus, at + NEW_TAG_MS), false) // gone after 2 days
+  assert.equal(NEW_TAG_MS, 2 * 24 * 60 * 60 * 1000)
+  assert.equal(isNewCategory({ ...bonus, name: 'Friend Transfer' }, at), true)
+  // Only those two, only as income; the user's own new categories aren't tagged.
+  assert.equal(isNewCategory({ ...bonus, kind: 'expense' }, at), false)
+  assert.equal(isNewCategory({ ...bonus, name: 'Groceries' }, at), false)
+  assert.equal(isNewCategory({ name: 'Bonus', kind: 'income' }, at), false) // no created_at
+  assert.equal(isNewCategory(bonus, at - 1000), false) // clock behind: no tag
+})
+
+test('the new default income categories match the seed (0081) and the backfill (0082)', () => {
+  const seed = latestSql('seed_default_categories')
+  const backfill = readFileSync(new URL('../supabase/migrations/0082_backfill_new_income_categories.sql', import.meta.url), 'utf8')
+  for (const { name, icon, kind } of NEW_DEFAULT_CATEGORIES) {
+    assert.equal(kind, 'income')
+    assert.ok(CATEGORY_ICON_KEYS.includes(icon), icon)
+    assert.match(seed, new RegExp(`\\(uid, '${name}',\\s*'${icon}',\\s*'income'\\)`), name)
+    assert.match(backfill, new RegExp(`\\('${name}',\\s*'${icon}'\\)`), name)
+  }
+  // Every seeded icon is one the app (and the DB check) knows.
+  const icons = [...seed.matchAll(/\(uid, '[^']+',\s*'([a-z-]+)'/g)].map((m) => m[1])
+  assert.equal(icons.length, 12)
+  for (const icon of icons) assert.ok(CATEGORY_ICON_KEYS.includes(icon), icon)
 })

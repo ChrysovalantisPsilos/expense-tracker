@@ -9,8 +9,6 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { saveRecurring } from './recurring.js'
 import { editRepeat, repeatDraft, repeatRuleFields } from './recurringMath.js'
 import RepeatFields from './RepeatFields.jsx'
-import { ensureCategory } from '../categories/categories.js'
-import { newIncomeOptions, suggestionFor } from '../categories/categoryMath.js'
 
 // The body of a recurring rule's page (RecurringPage). `rule` edits an
 // existing one; otherwise a new one starts as `kind`. Pausing lives on the
@@ -31,15 +29,10 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
   async function submit() {
     if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
     await run(async () => {
-      // A "(new)" suggestion becomes a real income category first.
-      const suggested = suggestionFor(categoryId)
-      const category_id = suggested
-        ? await ensureCategory({ ...suggested, kind: 'income' })
-        : categoryId || null
       await saveRecurring({
         id: rule?.id,
         kind,
-        category_id,
+        category_id: categoryId || null,
         amount_minor: toMinor(amount, currency),
         currency,
         description: description || null,
@@ -80,8 +73,6 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
           <Select placeholder="Uncategorized" value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            {kind === 'income' && newIncomeOptions(categories)
-              .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </Select>
         </FormControl>
 

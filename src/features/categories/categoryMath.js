@@ -80,33 +80,23 @@ export function categoryPeriod(rows, { categoryId, from, to, baseCurrency, separ
   return { listed: paidInWindow(mine, from, to), total }
 }
 
-// The income categories suggested to someone who doesn't have them yet: the
-// import's money-in dropdowns and the income form's category picker list them
-// as "Bonus (new)", and picking one creates that category on save. Each is one
-// of the defaults new accounts get (seed_default_categories, 0081), with the
-// same icon — test/importMath.test.js keeps the two in lockstep. Existing
-// accounts are never backfilled; this is how they get them.
-export const SUGGESTED_INCOME_CATEGORIES = [
-  { name: 'Salary', icon: 'salary' },
-  { name: 'Friend Transfer', icon: 'transfer' },
-  { name: 'Bonus', icon: 'salary' },
+// The default income categories added in 0081: new accounts are seeded with
+// them and 0082 gave every existing account the same two. The category list
+// tags them "New" for NEW_TAG_MS after they were added. The tag is UI only —
+// never part of the name — so it can't reach statements or exports.
+// test/categoryMath.test.js keeps this list in lockstep with the seed and the
+// backfill.
+export const NEW_DEFAULT_CATEGORIES = [
+  { name: 'Friend Transfer', icon: 'transfer', kind: 'income' },
+  { name: 'Bonus', icon: 'salary', kind: 'income' },
 ]
-const NEW_PREFIX = 'new:'
-const nameKey = (n) => String(n ?? '').trim().toLowerCase()
+export const NEW_TAG_MS = 2 * 24 * 60 * 60 * 1000
 
-// The suggestions missing from `categories` (the user's income ones; names
-// compared trimmed and case-blind), as dropdown options
-// { value: 'new:Bonus', label: 'Bonus (new)' }.
-export function newIncomeOptions(categories) {
-  const have = new Set((categories ?? []).filter((c) => c.kind === 'income').map((c) => nameKey(c.name)))
-  return SUGGESTED_INCOME_CATEGORIES.filter((s) => !have.has(nameKey(s.name)))
-    .map((s) => ({ value: NEW_PREFIX + s.name, label: `${s.name} (new)` }))
-}
-
-// The suggestion a dropdown value picks ({ name, icon }), or null for an
-// existing category's id (or nothing).
-export function suggestionFor(value) {
-  if (!String(value ?? '').startsWith(NEW_PREFIX)) return null
-  const name = value.slice(NEW_PREFIX.length)
-  return SUGGESTED_INCOME_CATEGORIES.find((s) => s.name === name) ?? null
+// Does `category` still wear its "New" tag at time `now` (ms)?
+export function isNewCategory(category, now = Date.now()) {
+  const added = Date.parse(category?.created_at ?? '')
+  if (!Number.isFinite(added)) return false
+  const age = now - added
+  return age >= 0 && age < NEW_TAG_MS
+    && NEW_DEFAULT_CATEGORIES.some((d) => d.kind === category.kind && d.name === category.name)
 }

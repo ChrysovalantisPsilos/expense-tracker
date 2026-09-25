@@ -12,8 +12,6 @@ import { today, shortDate } from '../../shared/lib/dates.js'
 import { insertTransaction, updateTransaction } from './writes.js'
 import { saveRecurring, deleteRecurring } from '../recurring/recurring.js'
 import { editRepeat, planRepeat, repeatDraft } from '../recurring/recurringMath.js'
-import { ensureCategory } from '../categories/categories.js'
-import { newIncomeOptions, suggestionFor } from '../categories/categoryMath.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import RepeatFields from '../recurring/RepeatFields.jsx'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
@@ -138,21 +136,9 @@ export default function TransactionForm({
       })
       return
     }
-    // A "(new)" suggestion becomes a real income category first.
-    const suggested = suggestionFor(categoryId)
-    let category_id = categoryId || null
-    if (suggested) {
-      try {
-        category_id = await ensureCategory({ ...suggested, kind: 'income' })
-      } catch (e) {
-        toast({ title: 'Couldn’t add the category', description: userMessage(e), status: 'error' })
-        return
-      }
-      setCategoryId(category_id)
-    }
     // Capture the FX rate at entry time so historical balances never shift.
     const fields = {
-      category_id,
+      category_id: categoryId || null,
       amount_minor: toMinor(amount, currency),
       currency,
       exchange_rate: rate,
@@ -233,8 +219,6 @@ export default function TransactionForm({
             <Select placeholder="Uncategorized" value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              {kind === 'income' && newIncomeOptions(categories)
-                .map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </Select>
             <FormHelperText>
               <Link as={RouterLink} to="/settings/categories" color="accent.fg">Manage categories</Link>
