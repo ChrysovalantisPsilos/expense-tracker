@@ -81,3 +81,15 @@ test('isMonthPeriod: only single months', () => {
   assert.equal(isMonthPeriod(periodFromValue('all', NOW)), false)
   assert.equal(isMonthPeriod(null), false)
 })
+
+import { isCurrentPeriod } from '../src/features/transactions/periods.js'
+
+test('isCurrentPeriod: this month, this year and all time include today; past periods do not', () => {
+  const d = new Date(2026, 8, 25)
+  const today = '2026-09-25'
+  assert.equal(isCurrentPeriod(periodFromValue('m:2026-9', d), today), true)
+  assert.equal(isCurrentPeriod(periodFromValue('y:2026', d), today), true)
+  assert.equal(isCurrentPeriod(periodFromValue('all', d), today), true)
+  assert.equal(isCurrentPeriod(periodFromValue('m:2026-8', d), today), false)
+  assert.equal(isCurrentPeriod(periodFromValue('y:2025', d), today), false)
+})

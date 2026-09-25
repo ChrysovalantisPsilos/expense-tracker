@@ -1,5 +1,7 @@
 // Pure budget helpers (no I/O) — unit-tested in test/budgetMath.test.js.
 import { toMinor } from '../../shared/lib/currency.js'
+import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
+import { isMonthPeriod } from '../transactions/periods.js'
 
 // How close spend is to its cap, as the tone its progress bar takes (the
 // theme's Progress variants): 'negative' once over the cap, 'warning' from 80%
@@ -55,4 +57,128 @@ export function carriedLabel(source, periodStart, locale = undefined) {
     month: 'long', timeZone: 'UTC', ...(periodStart.slice(0, 4) !== source.slice(0, 4) ? { year: 'numeric' } : {}),
   })
   return `Carried over from ${month}`
+}
+
+// ---- A period's budgets (Home's Budgets card follows the period picker) ----
+// Budgets are monthly, so a longer period adds its months up:
+//   a month     that month's caps (carried over by the rollover rule when it
+//               has none of its own) against that month's spend: the same
+//               view as the Budgets page, for any month.
+//   a year      per category, the sum of each month's cap against what was
+//               spent in that category in those same months. A past year
+//               counts its 12 months; the current year counts January up to
+//               and including this month (this month's whole cap, as the
+//               monthly view shows it). Future months never count.
+//   all time    the same over every month from the first one with budgets
+//               up to this month.
+// A category counts only the months it had a cap in: spend in a month
+// without its cap isn't set against anything. Months before the first
+// budgets have no caps, so they drop out on their own.
+
+const pad2 = (n) => String(n).padStart(2, '0')
+const monthKey = (iso) => `${String(iso).slice(0, 7)}-01`
+
+// The last day of a 'YYYY-MM-01' month ('YYYY-MM-DD').
+const monthEnd = (month) => {
+  const [y, m] = month.split('-').map(Number)
+  return `${y}-${pad2(m)}-${pad2(new Date(Date.UTC(y, m, 0)).getUTCDate())}`
+}
+
+// The months a period's budgets cover, { first, last } as 'YYYY-MM-01'
+// (first null for all time: from the first month with budgets), and the
+// dates { from, to } its spend is read over (from null: from the start).
+// `period` is a periods.js option.
+export function budgetWindow(period, todayISO) {
+  if (isMonthPeriod(period)) {
+    const first = monthKey(period.from)
+    return { first, last: first, from: first, to: monthEnd(first) }
+  }
+  const now = monthKey(todayISO)
+  const first = period.from ? monthKey(period.from) : null
+  const end = period.to ? monthKey(period.to) : now
+  const last = end < now ? end : now
+  return { first, last, from: first, to: monthEnd(last) }
+}
+
+// Every month from `first` to `last` ('YYYY-MM-01'), oldest first.
+function monthsBetween(first, last) {
+  const out = []
+  let [y, m] = first.split('-').map(Number)
+  for (let key = first; key <= last; key = `${y}-${pad2(m)}-01`) {
+    out.push(key)
+    m += 1
+    if (m > 12) { m = 1; y += 1 }
+  }
+  return out
+}
+
+// The caps in force in `month`: the rows of the latest budget set at or
+// before it (the rollover rule, ≡ SQL budget_source_period). `sets` are
+// { period, rows }: a month with rows of its own, as my_budgets returns them
+// (a month whose caps were all deleted is a set with no rows).
+export function capsInMonth(sets, month) {
+  let src = null
+  for (const s of sets) if (s.period <= month && (!src || s.period > src.period)) src = s
+  return src?.rows ?? []
+}
+
+// A period's budgets as the card's progress rows, and how many of its months
+// had any cap:
+//   sets    the budget sets behind the span's months (capsInMonth)
+//   span    budgetWindow(period, today)
+//   spend   spendRows() over the span, in any currency (converted to base)
+// Each item: { id, categoryId, category, name, limit, spent, tone, months }:
+// `limit` and `spent` add up the category's capped months, its look comes
+// from its latest month. Most-used first (over-budget floats to the top).
+export function periodBudgets({ sets, span, spend, baseCurrency }) {
+  const first = span.first ?? sets.map((s) => s.period).sort()[0]
+  if (!first || first > span.last) return { items: [], months: 0 }
+  const spentIn = sumToBaseByKey(spend, baseCurrency,
+    (r) => (r.category_id == null ? null : `${r.category_id}|${monthKey(r.spent_at)}`))
+  const byCat = new Map()
+  let months = 0
+  for (const month of monthsBetween(first, span.last)) {
+    const caps = capsInMonth(sets, month)
+    if (caps.length) months += 1
+    for (const b of caps) {
+      const acc = byCat.get(b.category_id) ?? { limit: 0, spent: 0, months: 0 }
+      acc.limit += Number(b.amount_minor) || 0
+      acc.spent += spentIn.get(`${b.category_id}|${month}`) ?? 0
+      acc.months += 1
+      acc.category = b.categories ?? null
+      byCat.set(b.category_id, acc)
+    }
+  }
+  const items = [...byCat].map(([categoryId, a]) => ({
+    id: categoryId,
+    categoryId,
+    category: a.category,
+    name: a.category?.name ?? 'Category',
+    limit: a.limit,
+    spent: a.spent,
+    tone: budgetTone(a.spent, a.limit),
+    months: a.months,
+  })).sort((a, b) => (b.spent / (b.limit || 1)) - (a.spent / (a.limit || 1)))
+  return { items, months }
+}
+
+// The card's subtitle: a month's name ("This month", "March 2025") with
+// where its caps were carried over from; a longer period with how many
+// months it adds up ("2025 · 12 months").
+export function budgetSubtitle(period, { months = 0, carried = null, periodStart } = {}) {
+  if (!isMonthPeriod(period)) {
+    return months ? `${period.label} · ${months} ${months === 1 ? 'month' : 'months'}` : period.label
+  }
+  if (!carried) return period.label
+  const label = carriedLabel(carried, periodStart)
+  return period.label === 'This month' ? label : `${period.label} · ${label}`
+}
+
+// The card's empty state, { text, canSet }: setting a budget is offered only
+// for a period that includes this month (`current`), the month budgets are
+// set for.
+export function budgetsEmpty(period, current) {
+  if (!current) return { text: `No budgets in ${period.label}.`, canSet: false }
+  const when = period.label === 'This year' ? 'this year' : 'yet'
+  return { text: `No budgets ${when}. Set monthly caps per category to track them here.`, canSet: true }
 }

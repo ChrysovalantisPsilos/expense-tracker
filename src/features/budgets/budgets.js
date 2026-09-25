@@ -23,6 +23,29 @@ export async function listBudgets(periodStart) {
   return data ?? []
 }
 
+// The budget sets behind a run of months (budgetMath.budgetWindow's first/last,
+// 'YYYY-MM-01'; first null: from the start), live: each month with rows of its
+// own as { period, rows }, including the earlier one the first month carries
+// over. A single month is one my_budgets read (served offline too); a longer
+// run reads which months have budgets, then each of those months' caps.
+export function useBudgetSets(first, last) {
+  const q = useOwnedQuery('budgets', {
+    cacheAs: 'budget-sets', fetch: () => listBudgetSets(first, last), deps: [first, last],
+  })
+  return { ...q, sets: q.rows }
+}
+
+async function listBudgetSets(first, last) {
+  if (first && first === last) {
+    const rows = await listBudgets(first)
+    return rows.length ? [{ period: rows[0].period_start, rows }] : []
+  }
+  const periods = (await budgetPeriods()).filter((p) => p <= last)
+  // From the latest month at or before `first` (whose caps it carries).
+  const from = first ? Math.max(0, periods.findLastIndex((p) => p <= first)) : 0
+  return Promise.all(periods.slice(from).map(async (period) => ({ period, rows: await listBudgets(period) })))
+}
+
 // Every month the user has set any budget for (plain columns, no amounts).
 export async function budgetPeriods() {
   const { data, error } = await supabase.from('budgets').select('period_start')

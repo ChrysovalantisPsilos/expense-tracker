@@ -1,51 +1,46 @@
 import { useMemo } from 'react'
-import { useMonthBudgets } from './budgets.js'
+import { useBudgetSets } from './budgets.js'
 import { useTransactions } from '../transactions/useData.js'
-import { monthRange } from '../../shared/lib/dates.js'
+import { buildPeriods, isMonthPeriod } from '../transactions/periods.js'
+import { today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { spendRows } from '../../shared/lib/spread.js'
-import { budgetTone, carriedFrom } from './budgetMath.js'
+import { budgetWindow, capsInMonth, carriedFrom, periodBudgets } from './budgetMath.js'
 
-// This month's budgets with their actual spend — shared by the dashboard card
-// and the Budgets page. Budgets are stored in the base currency; spend is
-// converted to base too, so they're directly comparable. Both queries are live.
+// A period's budgets with their actual spend (budgetMath.periodBudgets: a
+// month's caps, or a year's / all time's monthly caps added up) — shared by
+// the dashboard card (Home's period) and the Budgets page (this month, the
+// default). Budgets are stored in the base currency; spend is converted to
+// base too, so they're directly comparable. Both queries are live.
 // A yearly subscription counts its monthly share (spread.js, the same split
 // as the server's budget alerts), or nothing when the user keeps yearly
 // subscriptions separate (countsMonthly ≡ the alerts' counts_in_month).
-// `carriedFrom` is the month the caps rolled over from (null: this month's own).
-export function useBudgetProgress() {
+// `carriedFrom` is the month a single month's caps rolled over from (null:
+// its own, or a longer period); `months` how many months had any cap.
+export function useBudgetProgress(period = buildPeriods(null)[0]) {
   const { baseCurrency, separateYearly } = useProfile()
-  const { from, to } = monthRange()
+  const todayISO = today()
+  const { value, from: pFrom, to: pTo } = period
+  const span = useMemo(
+    () => budgetWindow({ value, from: pFrom, to: pTo }, todayISO), [value, pFrom, pTo, todayISO])
 
-  const b = useMonthBudgets()
-  const t = useTransactions({ kind: 'expense', from, to, spread: true })
-  const budgets = b.rows
+  const b = useBudgetSets(span.first, span.last)
+  const t = useTransactions({
+    kind: 'expense', from: span.from ?? undefined, to: span.to, spread: true,
+  })
+  const sets = b.sets
   const txns = t.rows
 
-  const items = useMemo(() => {
-    const spend = spendRows(txns, baseCurrency, from, to, { separateYearly })
-    const spentByCat = sumToBaseByKey(spend, baseCurrency, (r) => r.category_id ?? null)
-    return budgets
-      .map((b) => {
-        const spent = spentByCat.get(b.category_id) ?? 0
-        return {
-          id: b.id,
-          categoryId: b.category_id,
-          category: b.categories ?? null,
-          name: b.categories?.name ?? 'Category',
-          limit: b.amount_minor,
-          spent,
-          tone: budgetTone(spent, b.amount_minor),
-        }
-      })
-      // Most-used budgets first (over-budget floats to the top).
-      .sort((a, b) => (b.spent / (b.limit || 1)) - (a.spent / (a.limit || 1)))
-  }, [budgets, txns, baseCurrency, from, to, separateYearly])
+  const { items, months } = useMemo(() => periodBudgets({
+    sets, span, baseCurrency,
+    spend: spendRows(txns, baseCurrency, span.from, span.to, { separateYearly }),
+  }), [sets, txns, span, baseCurrency, separateYearly])
 
   const reload = () => Promise.all([b.reload(), t.reload()])
   return {
-    items, carriedFrom: carriedFrom(budgets, b.periodStart), periodStart: b.periodStart,
+    items, months,
+    carriedFrom: isMonthPeriod(period) ? carriedFrom(capsInMonth(sets, span.first), span.first) : null,
+    periodStart: span.last,
     loading: b.loading || t.loading, error: b.error ?? t.error, reload,
   }
 }

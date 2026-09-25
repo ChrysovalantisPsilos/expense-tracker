@@ -2,6 +2,7 @@
 import {
   monthlyMinor, monthlyShare, perYearMinor, ruleSpreadMonths, ruleCountsMonthly, spreadDates, spreadPart,
 } from '../../shared/lib/spread.js'
+import { toBaseMinor } from '../../shared/lib/currency.js'
 
 // A rule's cost in monthly minor units (shared with the statement).
 export { monthlyMinor }
@@ -273,6 +274,42 @@ export function subscriptionGroups(rules, baseCurrency, { limit = 3, upcomingOnl
     })
   }
   return out
+}
+
+// ---- What subscriptions charged in a period (Home card, other periods) ------
+// Home's Subscriptions card shows today's rules only for the current month;
+// any other period (a past month or year, this year, all time) shows what
+// was actually charged in it: the expense rows linked to a recurring rule
+// (transactions.recurring_rule_id, 0065 — the materializer's charges and the
+// entry a rule was made from), grouped by the rule's frequency like
+// subscriptionGroups. A row whose rule was deleted lost its link, so it's no
+// longer a subscription charge. `rows` are the period's paid rows
+// (spread.paidInWindow): a yearly charge counts once, on its real date.
+// Each group, in SUBSCRIPTION_GROUPS order, only those with charges:
+//   total    Σ the charges in `baseCurrency`, at each row's captured rate
+//   charges  the rows, newest first
+export function chargedGroups(rows, baseCurrency) {
+  const charges = rows
+    .filter((r) => r.kind === 'expense' && r.recurring_rule_id)
+    .sort((a, b) => (a.spent_at < b.spent_at ? 1 : a.spent_at > b.spent_at ? -1 : 0))
+  const out = []
+  for (const g of SUBSCRIPTION_GROUPS) {
+    const mine = charges.filter((r) => subscriptionGroup(r.recurring ?? { frequency: 'monthly' }) === g.key)
+    if (!mine.length) continue
+    out.push({
+      ...g,
+      total: mine.reduce((s, r) => s + toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency), 0),
+      charges: mine,
+    })
+  }
+  return out
+}
+
+// The card's wording for a period's charges: { subtitle, empty }.
+export function chargedWording(period) {
+  if (period.value === 'all') return { subtitle: 'Charged so far', empty: 'No subscription charges yet.' }
+  const when = period.label === 'This year' ? 'this year' : `in ${period.label}`
+  return { subtitle: `Charged ${when}`, empty: `No subscription charges ${when}.` }
 }
 
 // What the active income rules bring in per month (the Recurring page's

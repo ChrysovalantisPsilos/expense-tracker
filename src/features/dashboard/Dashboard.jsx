@@ -196,7 +196,7 @@ export default function Dashboard() {
         )}
       </Panel>
 
-      <BudgetsCard />
+      <BudgetsCard period={period} />
 
       {!firstRun && (
       <Panel icon={ReceiptText} title={expHead.title} subtitle={expHead.subtitle} divider>
@@ -215,7 +215,7 @@ export default function Dashboard() {
       )}
 
       <SubscriptionsCard rules={rules} loading={rulesLoading} error={rulesError} onRetry={reloadRules}
-        baseCurrency={baseCurrency} />
+        baseCurrency={baseCurrency} period={period} charges={{ rows, loading, error, onRetry: reload }} />
     </Stack>
   )
 }

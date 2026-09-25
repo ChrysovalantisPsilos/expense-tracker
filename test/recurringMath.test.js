@@ -309,3 +309,57 @@ test('planRepeat: a linked rule gets only what changed, is paused, or removed', 
   }), { action: 'update', id: 'r1', fields: { interval_n: 3, is_active: false } })
   assert.deepEqual(planRepeat({ rule: linked, repeat: false, draft, before: entry, entry }), { action: 'delete', id: 'r1' })
 })
+
+// ---- What subscriptions charged in a period ----------------------------------
+import { chargedGroups, chargedWording } from '../src/features/recurring/recurringMath.js'
+import { periodFromValue } from '../src/features/transactions/periods.js'
+
+const charge = (id, spent_at, amount_minor, recurring, extra = {}) => ({
+  id, kind: 'expense', spent_at, amount_minor, currency: 'EUR', exchange_rate: 1,
+  recurring_rule_id: recurring ? `rule-${id}` : null, recurring, ...extra,
+})
+
+test('chargedGroups: linked expense rows by their rule frequency, newest first, totals in base', () => {
+  const rows = [
+    charge('n1', '2025-03-03', 999, { frequency: 'monthly', interval_n: 1 }),
+    charge('n2', '2025-04-03', 999, { frequency: 'monthly', interval_n: 1 }),
+    charge('g', '2025-03-10', 500, { frequency: 'weekly', interval_n: 1 }),
+    charge('d', '2025-03-11', 100, { frequency: 'daily', interval_n: 1 }),
+    charge('q', '2025-02-01', 3000, { frequency: 'monthly', interval_n: 3 }),
+    charge('y', '2025-05-15', 12000, { frequency: 'yearly', interval_n: 1 }, { spread_months: 12 }),
+    charge('usd', '2025-06-03', 1000, { frequency: 'monthly', interval_n: 1 }, { currency: 'USD', exchange_rate: 0.9 }),
+    charge('plain', '2025-03-04', 4000, null), // not a subscription charge
+    charge('inc', '2025-03-05', 250000, { frequency: 'monthly', interval_n: 1 }, { kind: 'income' }),
+  ]
+  const groups = chargedGroups(rows, 'EUR')
+  assert.deepEqual(groups.map((g) => [g.key, g.label]),
+    [['weekly', 'Weekly'], ['monthly', 'Monthly'], ['quarterly', 'Quarterly'], ['yearly', 'Yearly']])
+  const monthly = groups.find((g) => g.key === 'monthly')
+  assert.deepEqual(monthly.charges.map((r) => r.id), ['usd', 'n2', 'n1'])
+  assert.equal(monthly.total, 999 + 999 + 900)
+  assert.equal(groups.find((g) => g.key === 'weekly').total, 600)
+  // A yearly charge counts once, in full, on its date (not spread).
+  assert.equal(groups.find((g) => g.key === 'yearly').total, 12000)
+  assert.deepEqual(chargedGroups([rows[7], rows[8]], 'EUR'), [])
+})
+
+test('chargedGroups: a zero-decimal base stays whole', () => {
+  const [g] = chargedGroups([
+    charge('a', '2025-03-03', 980, { frequency: 'monthly', interval_n: 1 }, { currency: 'JPY' }),
+    charge('b', '2025-04-03', 999, { frequency: 'monthly', interval_n: 1 }, { currency: 'EUR', exchange_rate: 161.5 }),
+  ], 'JPY')
+  assert.ok(Number.isInteger(g.total))
+  assert.equal(g.total, 980 + 1613) // €9.99 × 161.5 = ¥1613.4 → ¥1613
+})
+
+test('chargedWording: subtitle and empty line per period', () => {
+  const d = new Date(2026, 8, 25)
+  assert.deepEqual(chargedWording(periodFromValue('m:2025-3', d)),
+    { subtitle: 'Charged in March 2025', empty: 'No subscription charges in March 2025.' })
+  assert.deepEqual(chargedWording(periodFromValue('y:2025', d)),
+    { subtitle: 'Charged in 2025', empty: 'No subscription charges in 2025.' })
+  assert.deepEqual(chargedWording(periodFromValue('y:2026', d)),
+    { subtitle: 'Charged this year', empty: 'No subscription charges this year.' })
+  assert.deepEqual(chargedWording(periodFromValue('all', d)),
+    { subtitle: 'Charged so far', empty: 'No subscription charges yet.' })
+})

@@ -73,3 +73,8 @@ export function withPeriod(periods, period) {
 
 // Whether a period is a single month (budgets are monthly).
 export const isMonthPeriod = (period) => String(period?.value).startsWith('m:')
+
+// Whether a period includes today ('YYYY-MM-DD'): this month, this year, or
+// all time — the periods where what's coming still matters.
+export const isCurrentPeriod = (period, todayISO) =>
+  (!period.from || period.from <= todayISO) && (!period.to || todayISO <= period.to)
