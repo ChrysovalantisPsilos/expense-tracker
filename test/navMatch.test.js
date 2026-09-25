@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isNavActive, showsAddExpense } from '../src/app/navMatch.js'
+import { isAccountPage, isNavActive, showsAddExpense } from '../src/app/navMatch.js'
 
 test('Home is active only on the root', () => {
   assert.equal(isNavActive('/', '/'), true)
@@ -79,4 +79,21 @@ test('the form pages never show the floating Add expense button, and light their
       assert.equal(isNavActive(tab, p), true, p)
     }
   }
+})
+
+test('sideways, the avatar owns Settings: More stays dark there, and nothing else changes', () => {
+  const apart = { accountApart: true }
+  for (const p of ['/settings', '/settings/account', '/settings/appearance', '/settings/data/export']) {
+    assert.equal(isAccountPage(p), true, p)
+    assert.equal(isNavActive('/more', p, apart), false, p)
+    assert.equal(isNavActive('/more', p), true, `${p} (portrait and desktop still light More)`)
+    for (const to of ['/', '/transactions', '/groups', '/budgets']) assert.equal(isNavActive(to, p, apart), false, `${to} on ${p}`)
+  }
+  // More keeps the rest of its section.
+  for (const p of ['/more', '/insights', '/recurring', '/help', '/privacy', '/terms']) {
+    assert.equal(isAccountPage(p), false, p)
+    assert.equal(isNavActive('/more', p, apart), true, p)
+  }
+  assert.equal(isAccountPage('/settingsx'), false)
+  assert.equal(isNavActive('/transactions', '/import', apart), true)
 })

@@ -35,6 +35,9 @@ const semanticTokens = {
     'accent.solid': { default: ACCESSIBLE.solid, _dark: ACCESSIBLE.solid },
     'accent.solidHover': { default: ACCESSIBLE.solidHover, _dark: ACCESSIBLE.solidHover },
     'accent.solidActive': { default: ACCESSIBLE.solidActive, _dark: ACCESSIBLE.solidActive },
+    // The pale coral pill behind the current item of the sideways rail
+    // (accent.fg icons on it).
+    'accent.subtle': { default: 'brand.100', _dark: 'rgba(249, 93, 56, 0.18)' },
 
     // Money direction & alerts — warm-leaning green / red / amber, never
     // Chakra's saturated defaults. Each passes 4.5:1 as text on bg.surface

@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import {
   Box, Popover, PopoverTrigger, PopoverContent, PopoverBody, PopoverHeader,
-  IconButton, Badge, Stack, HStack, Text, Flex, Divider, useDisclosure, Button, Portal,
+  IconButton, Badge, Stack, HStack, Text, Flex, Divider, useDisclosure, Button,
 } from '@chakra-ui/react'
 import {
   Bell, UserPlus, ReceiptText, HandCoins, MessageSquare, CalendarClock,
@@ -18,11 +18,10 @@ const ICON = {
   budget: PiggyBank, digest: BarChart3, nudge: BellRing,
 }
 
-// `feed` is the shell's one useNotificationFeed() — the mobile and desktop
-// bells share it rather than each opening a channel. `rail`: the bell sits in
-// the landscape phone's side rail, so the list opens to its right, portalled
-// out of the rail (which scrolls, and would clip it).
-export default function NotificationBell({ feed, rail = false }) {
+// `feed` is the shell's one useNotificationFeed() — the mobile, desktop and
+// sideways bells share it rather than each opening a channel. The list opens
+// under the bell; on a phone held sideways it's capped to the short screen.
+export default function NotificationBell({ feed }) {
   const navigate = useNavigate()
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { items, error, reload, setItems } = feed
@@ -96,7 +95,7 @@ export default function NotificationBell({ feed, rail = false }) {
   // The IconButton itself is the trigger, so aria-expanded sits on the
   // button; the count badge is visual only (the label carries it).
   return (
-    <Popover isOpen={isOpen} onOpen={handleOpen} onClose={onClose} placement={rail ? 'right-end' : 'bottom-end'}>
+    <Popover isOpen={isOpen} onOpen={handleOpen} onClose={onClose} placement="bottom-end">
       <Box position="relative" display="inline-flex">
         <PopoverTrigger>
           <IconButton aria-label={label} variant="ghost" size="sm" icon={<Bell size={18} />} />
@@ -109,7 +108,7 @@ export default function NotificationBell({ feed, rail = false }) {
           </Badge>
         )}
       </Box>
-      {rail ? <Portal>{list}</Portal> : list}
+      {list}
     </Popover>
   )
 }

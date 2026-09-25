@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom'
 import {
   Box, Button, Flex, HStack, VStack, IconButton, Text, Spacer, Tooltip,
@@ -17,12 +17,14 @@ import ThemeToggle from '../shared/ui/ThemeToggle.jsx'
 import SiteSwitch from '../shared/ui/SiteSwitch.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
 import { useNotificationFeed } from '../features/notifications/notifications.js'
-import { isNavActive, showsAddExpense } from './navMatch.js'
+import { isAccountPage, isNavActive, showsAddExpense } from './navMatch.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
 import { MAIN_ID } from '../shared/ui/SkipLink.jsx'
 import { EmptyStateCount } from '../shared/ui/EmptyState.jsx'
 import { InAppShell } from '../shared/ui/inAppShell.js'
 import { useShortLandscape } from '../shared/ui/useShortLandscape.js'
+import { ShellHeaderSlots } from '../shared/ui/ShellHeader.jsx'
+import { COLUMN_BOX, GUTTER, HEADER_H, RAIL_BOX } from '../shared/lib/shortLandscape.js'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
 // desktop sidebar. `tour` names the app tour's stop (data-tour, tourSteps.js).
@@ -75,20 +77,14 @@ function SideItem({ to, label, icon: Icon, tour }) {
   )
 }
 
-// An icon over a small label: the phone's bottom bar, and (`rail`) the
-// landscape phone's side rail, where the current item also gets the
-// sidebar's tint.
-function TabItem({ to, label, icon: Icon, tour, rail = false }) {
+// An icon over a small label: the phone's bottom bar.
+function TabItem({ to, label, icon: Icon, tour }) {
   return (
     <NavItem to={to} data-tour={tour}>
       {(isActive) => (
-        <VStack spacing={0.5} px={rail ? 1 : 2} py={rail ? 0.5 : 1} minW="60px"
-          color={isActive ? 'accent.fg' : 'text.muted'}
-          {...(rail && {
-            w: RAIL_ITEM_W, borderRadius: 'lg', flexShrink: 0, transition: 'all 0.15s',
-            bg: isActive ? 'bg.subtle' : 'transparent', _hover: { bg: 'bg.subtle', color: 'text.primary' },
-          })}>
-          <Icon size={rail ? 20 : 22} strokeWidth={isActive ? 2.4 : 2} />
+        <VStack spacing={0.5} px={2} py={1} minW="60px"
+          color={isActive ? 'accent.fg' : 'text.muted'}>
+          <Icon size={22} strokeWidth={isActive ? 2.4 : 2} />
           <Text fontSize="10px" fontWeight={isActive ? '600' : '500'}>{label}</Text>
         </VStack>
       )}
@@ -101,10 +97,6 @@ function TabItem({ to, label, icon: Icon, tour, rail = false }) {
 const TAB_BAR_H = '60px'
 const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)'
 const NEW_EXPENSE = '/transactions/new'
-const SAFE_LEFT = 'env(safe-area-inset-left, 0px)'
-const SAFE_RIGHT = 'env(safe-area-inset-right, 0px)'
-const RAIL_W = '76px'
-const RAIL_ITEM_W = '68px'
 
 // Phone only: a round "Add expense" button above the bottom bar, on the main
 // tabs (navMatch.showsAddExpense). The shell hides it while the app tour runs
@@ -121,38 +113,73 @@ function AddExpenseFab() {
 }
 
 // A phone held sideways (useShortLandscape) has the width for the sidebar but
-// not the height: a slim rail stands in for it (and for the phone's top and
-// bottom bars) — the logo, a square Add expense, the bottom bar's tabs with
-// its More, then the phone top bar's account icons (the bell, the theme
-// switch, the live/test switch, your picture for Settings). It scrolls if a
-// very short screen can't fit it all; the left notch inset pads it.
-function NavRail({ feed, profile }) {
+// not the height. A slim rail on the page's own background stands in for it
+// (and for the phone's bottom bar): the logo, one Add expense, then the bottom
+// bar's tabs as icons (their names are the links' labels and tooltips), the
+// current one on a coral pill. The left notch's inset widens it, so the notch
+// sits over the rail's background; it scrolls if a screen can't fit it all.
+function NavRail() {
   return (
     <Flex
-      as="nav" direction="column" align="center" gap={0.5} flexShrink={0}
-      w={`calc(${RAIL_W} + ${SAFE_LEFT})`} pl={SAFE_LEFT} pt={2} pb={`calc(8px + ${SAFE_BOTTOM})`}
-      borderRightWidth="1px" borderColor="border.default" bg="bg.surface"
-      position="sticky" top={0} h="100dvh" overflowY="auto" overflowX="hidden"
+      as="nav" direction="column" align="center" gap={1.5} flexShrink={0} {...RAIL_BOX} pt={3}
+      bg="bg.canvas" position="sticky" top={0} h="100dvh" overflowY="auto" overflowX="hidden"
     >
-      <Logo size={24} showWord={false} flexShrink={0} />
+      <Logo size={24} showWord={false} stacked flexShrink={0} />
       <Tooltip label="Add expense" placement="right">
-        <IconButton as={RouterLink} to={NEW_EXPENSE} aria-label="Add expense"
-          icon={<Plus size={22} strokeWidth={2.4} />} w="44px" h="40px" minW="44px" borderRadius="xl"
-          my={1} flexShrink={0} />
+        <IconButton as={RouterLink} to={NEW_EXPENSE} aria-label="Add expense" data-tour="add-expense"
+          icon={<Plus size={24} strokeWidth={2.4} />} boxSize="48px" minW="48px" borderRadius="xl"
+          boxShadow="soft" my={2.5} flexShrink={0} />
       </Tooltip>
-      {MOBILE_NAV.map((n) => <TabItem key={n.to} {...n} rail />)}
-      <Flex direction="column" align="center" gap={1} mt="auto" pt={2} flexShrink={0} data-tour="account">
+      {MOBILE_NAV.map((n) => <RailItem key={n.to} {...n} />)}
+    </Flex>
+  )
+}
+
+// One rail tab: a 48×44 icon link. Settings isn't lit here (the header's
+// avatar is), so More stays dark on Settings pages (navMatch.accountApart).
+function RailItem({ to, label, icon: Icon, tour }) {
+  const { pathname } = useLocation()
+  const active = isNavActive(to, pathname, { accountApart: true })
+  return (
+    <Tooltip label={label} placement="right">
+      <Flex as={RouterLink} to={to} aria-label={label} aria-current={active ? 'page' : undefined}
+        data-tour={tour} w="48px" h="44px" flexShrink={0} align="center" justify="center"
+        borderRadius="xl" transition="background 0.15s, color 0.15s"
+        color={active ? 'accent.fg' : 'text.muted'} bg={active ? 'accent.subtle' : 'transparent'}
+        _hover={active ? undefined : { bg: 'bg.subtle', color: 'text.primary' }}
+        _focusVisible={{ outline: 'none', boxShadow: 'outline' }}>
+        <Icon size={22} strokeWidth={active ? 2.4 : 2} aria-hidden />
+      </Flex>
+    </Tooltip>
+  )
+}
+
+// The sideways page's slim header, sticky at the top of the page column:
+// the page's own row (PageHeader's title and controls, through the `title`
+// slot), a form's Save (the `actions` slot), then the account icons — sync
+// state, the live/test switch, the bell and your picture, which opens
+// Settings and is ringed while you're there. It opens <main>, so the skip
+// link lands on the page's title and controls.
+function ShellBar({ feed, profile, onTitle, onActions }) {
+  const { pathname } = useLocation()
+  const account = isAccountPage(pathname)
+  return (
+    <Flex position="sticky" top={0} zIndex={10} h={`${HEADER_H}px`} align="center" gap={2}
+      bg="bg.canvas" mx={`-${GUTTER}px`} px={`${GUTTER}px`} mb={1}>
+      <Flex ref={onTitle} flex="1" minW={0} align="center" />
+      <Flex ref={onActions} align="center" gap={2} flexShrink={0} _empty={{ display: 'none' }} />
+      <Flex align="center" gap={2} flexShrink={0} data-tour="account">
         <OfflineIndicator />
-        <HStack spacing={1}>
-          <NotificationBell feed={feed} rail />
-          <ThemeToggle />
-        </HStack>
-        <HStack spacing={1}>
-          <SiteSwitch compact />
-          <Box as={RouterLink} to="/settings" aria-label="Settings" layerStyle="hitArea" display="flex">
+        <SiteSwitch compact />
+        <NotificationBell feed={feed} />
+        <Tooltip label="Settings">
+          <Box as={RouterLink} to="/settings" aria-label="Settings" aria-current={account ? 'page' : undefined}
+            layerStyle="hitArea" display="flex" borderRadius="full" p="2px"
+            boxShadow={account ? '0 0 0 2px var(--chakra-colors-accent-solid)' : undefined}
+            _focusVisible={{ outline: 'none', boxShadow: 'outline' }}>
             <UserAvatar size="sm" name={profile?.display_name} src={profile?.avatar_url} highlight />
           </Box>
-        </HStack>
+        </Tooltip>
       </Flex>
     </Flex>
   )
@@ -161,7 +188,8 @@ function NavRail({ feed, profile }) {
 export default function AppShell({ hideAddExpense = false }) {
   const { signOut } = useAuth()
   const { profile } = useProfile()
-  // One live feed for every bell (mobile top bar, desktop header, rail).
+  // One live feed for every bell (mobile top bar, desktop header, the
+  // sideways header).
   const feed = useNotificationFeed()
   const location = useLocation()
   // How many empty states the page shows (EmptyState reports in and out).
@@ -171,10 +199,15 @@ export default function AppShell({ hideAddExpense = false }) {
   const [, setTick] = useState(0)
   useEffect(() => { setTick((n) => n + 1) }, [location])
   const rail = useShortLandscape()
+  // The sideways header's slots (ShellHeader.jsx), once they've mounted.
+  const [titleSlot, setTitleSlot] = useState(null)
+  const [actionsSlot, setActionsSlot] = useState(null)
+  const slots = useMemo(() => (rail ? { title: titleSlot, actions: actionsSlot } : null),
+    [rail, titleSlot, actionsSlot])
 
   return (
     <Flex minH="100dvh" bg="bg.canvas">
-      {rail ? <NavRail feed={feed} profile={profile} /> : (
+      {rail ? <NavRail /> : (
       /* Desktop sidebar */
       <Flex
         as="nav" direction="column" w="240px" p={4} gap={1}
@@ -247,8 +280,8 @@ export default function AppShell({ hideAddExpense = false }) {
         </Flex>
         )}
 
-        {/* Desktop header strip (sync badges + notifications); the rail
-            holds both on a landscape phone. */}
+        {/* Desktop header strip (sync badges + notifications); the sideways
+            header (ShellBar) holds both on a landscape phone. */}
         {!rail && (
         <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end" align="center"
           gap={2} px={6} pt={4}>
@@ -257,13 +290,12 @@ export default function AppShell({ hideAddExpense = false }) {
         </Flex>
         )}
 
-        <Box as="main" id={MAIN_ID} flex="1" maxW="900px" w="full" mx="auto"
-          {...(rail
-            ? { pl: 4, pr: `calc(16px + ${SAFE_RIGHT})`, pt: 3, pb: `calc(24px + ${SAFE_BOTTOM})` }
-            : {
-              px: { base: 4, md: 6 }, py: { base: 4, md: 4 },
-              pb: { base: `calc(${fab ? '164px' : '92px'} + ${SAFE_BOTTOM})`, md: 8 },
-            })}>
+        <Box as="main" id={MAIN_ID} flex="1" w="full" mx="auto"
+          {...(rail ? COLUMN_BOX : {
+            maxW: '900px', px: { base: 4, md: 6 }, py: { base: 4, md: 4 },
+            pb: { base: `calc(${fab ? '164px' : '92px'} + ${SAFE_BOTTOM})`, md: 8 },
+          })}>
+          {rail && <ShellBar feed={feed} profile={profile} onTitle={setTitleSlot} onActions={setActionsSlot} />}
           {/* Pages are lazy chunks: the shell stays put while one loads, and
               if one fails (a chunk gone after a deploy, offline, a crash) its
               error screen shows here, with the navigation still around it.
@@ -272,7 +304,9 @@ export default function AppShell({ hideAddExpense = false }) {
             <Suspense fallback={<RingLoader />}>
               <EmptyStateCount.Provider value={countEmptyState}>
                 <InAppShell.Provider value>
-                  <Outlet />
+                  <ShellHeaderSlots.Provider value={slots}>
+                    <Outlet />
+                  </ShellHeaderSlots.Provider>
                 </InAppShell.Provider>
               </EmptyStateCount.Provider>
             </Suspense>

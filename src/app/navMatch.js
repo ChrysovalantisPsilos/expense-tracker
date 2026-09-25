@@ -14,8 +14,18 @@ function under(pathname, prefix) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`)
 }
 
-export function isNavActive(to, pathname) {
+// Settings is also "your account": the avatar that opens it. Where the avatar
+// shows its own current state (the sideways rail's header), `accountApart`
+// keeps More dark on Settings pages, so only one thing is lit.
+const ACCOUNT = '/settings'
+
+export function isAccountPage(pathname) {
+  return under(pathname, ACCOUNT)
+}
+
+export function isNavActive(to, pathname, { accountApart = false } = {}) {
   if (to === '/') return pathname === '/'
+  if (accountApart && isAccountPage(pathname)) return false
   return (SECTIONS[to] ?? [to]).some((p) => under(pathname, p))
 }
 
