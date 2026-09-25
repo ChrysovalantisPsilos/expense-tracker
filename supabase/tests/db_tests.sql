@@ -4294,7 +4294,7 @@ end $$;
 
 -- ---------------------------------------------------------------------------
 -- 71. 0081: seed_default_categories() gives a new account the income
---     categories Salary, Friend Transfer and Bonus (with the expense
+--     categories Salary, Friends & family and Bonus (with the expense
 --     defaults, 12 in all), only for the caller, and is safe to run twice.
 --     Clients may call it (authenticated), anon may not.
 -- ---------------------------------------------------------------------------
@@ -4314,7 +4314,7 @@ begin
     if n <> 12 then raise exception 'seeded % categories (want 12)', n; end if;
     select count(*) into n from public.categories
      where user_id = u and kind = 'income'
-       and (name, icon) in (('Salary', 'salary'), ('Friend Transfer', 'transfer'), ('Bonus', 'salary'));
+       and (name, icon) in (('Salary', 'salary'), ('Friends & family', 'transfer'), ('Bonus', 'salary'));
     if n <> 3 then raise exception 'income defaults: % of 3', n; end if;
     select count(*) into n from public.categories where user_id = other;
     if n <> 0 then raise exception 'seeded another account'; end if;
@@ -4324,7 +4324,7 @@ begin
     end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: default categories include Friend Transfer and Bonus';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: default categories include Friends & family and Bonus';
     else update _t set fails = fails + 1; raise notice 'FAIL: default categories — %', sqlerrm; end if;
   end;
 end $$;

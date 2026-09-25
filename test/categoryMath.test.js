@@ -175,7 +175,7 @@ test('isNewCategory: the new default income categories wear "New" for two days',
   assert.equal(isNewCategory(bonus, at + NEW_TAG_MS - 1), true)
   assert.equal(isNewCategory(bonus, at + NEW_TAG_MS), false) // gone after 2 days
   assert.equal(NEW_TAG_MS, 2 * 24 * 60 * 60 * 1000)
-  assert.equal(isNewCategory({ ...bonus, name: 'Friend Transfer' }, at), true)
+  assert.equal(isNewCategory({ ...bonus, name: 'Friends & family' }, at), true)
   // Only those two, only as income; the user's own new categories aren't tagged.
   assert.equal(isNewCategory({ ...bonus, kind: 'expense' }, at), false)
   assert.equal(isNewCategory({ ...bonus, name: 'Groceries' }, at), false)
@@ -183,14 +183,19 @@ test('isNewCategory: the new default income categories wear "New" for two days',
   assert.equal(isNewCategory(bonus, at - 1000), false) // clock behind: no tag
 })
 
-test('the new default income categories match the seed (0081) and the backfill (0082)', () => {
+test('the new default income categories match the seed and the backfill (0082, renamed in 0083)', () => {
   const seed = latestSql('seed_default_categories')
-  const backfill = readFileSync(new URL('../supabase/migrations/0082_backfill_new_income_categories.sql', import.meta.url), 'utf8')
+  const sql = (f) => readFileSync(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8')
+  const backfill = sql('0082_backfill_new_income_categories.sql')
+  const rename = sql('0083_rename_friend_transfer.sql')
+  // 0082 added "Friend Transfer"; 0083 renames it to what the app lists.
+  const backfilled = (name) => (name === 'Friends & family' ? 'Friend Transfer' : name)
+  assert.match(rename, /set name = 'Friends & family'\s+where c\.name = 'Friend Transfer'/)
   for (const { name, icon, kind } of NEW_DEFAULT_CATEGORIES) {
     assert.equal(kind, 'income')
     assert.ok(CATEGORY_ICON_KEYS.includes(icon), icon)
     assert.match(seed, new RegExp(`\\(uid, '${name}',\\s*'${icon}',\\s*'income'\\)`), name)
-    assert.match(backfill, new RegExp(`\\('${name}',\\s*'${icon}'\\)`), name)
+    assert.match(backfill, new RegExp(`\\('${backfilled(name)}',\\s*'${icon}'\\)`), name)
   }
   // Every seeded icon is one the app (and the DB check) knows.
   const icons = [...seed.matchAll(/\(uid, '[^']+',\s*'([a-z-]+)'/g)].map((m) => m[1])

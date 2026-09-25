@@ -87,7 +87,7 @@ export function categoryPeriod(rows, { categoryId, from, to, baseCurrency, separ
 // test/categoryMath.test.js keeps this list in lockstep with the seed and the
 // backfill.
 export const NEW_DEFAULT_CATEGORIES = [
-  { name: 'Friend Transfer', icon: 'transfer', kind: 'income' },
+  { name: 'Friends & family', icon: 'transfer', kind: 'income' },
   { name: 'Bonus', icon: 'salary', kind: 'income' },
 ]
 export const NEW_TAG_MS = 2 * 24 * 60 * 60 * 1000
