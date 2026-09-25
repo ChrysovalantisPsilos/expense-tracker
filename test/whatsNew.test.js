@@ -207,9 +207,9 @@ test('releases.js: every page is complete, and every action opens a real page', 
   }
 })
 
-test('this release: four pages, the salary page opens Monthly spending', () => {
-  const r = RELEASES.find((x) => x.id === '2026-09-26')
-  assert.equal(r.pages.length, 4)
+test('this release: five pages, the salary page opens Monthly spending', () => {
+  const r = RELEASES.find((x) => x.id === '2026-09-25')
+  assert.equal(r.pages.length, 5)
   assert.deepEqual(r.pages[2].action, { label: 'Open settings', to: '/settings/spending' })
 })
 

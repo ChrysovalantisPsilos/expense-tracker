@@ -9,8 +9,8 @@
 //     action      — optional { label, to }: a button that opens that page
 export const RELEASES = [
   {
-    id: '2026-09-26',
-    date: '2026-09-26',
+    id: '2026-09-25',
+    date: '2026-09-25',
     pages: [
       {
         title: 'Smarter bank imports',
@@ -20,8 +20,8 @@ export const RELEASES = [
       },
       {
         title: 'Home follows the period you pick',
-        body: 'Budgets and Recurring now change with the month or year you select. And there’s a new Income list, right under Expenses.',
-        chips: ['August 2025', 'Income'],
+        body: 'Budgets and Recurring change with the month or year you select, a new Income list sits under Expenses, and every category is one tap away with Show all. Recurring payments in other currencies now count at today’s rate.',
+        chips: ['August 2025', 'Show all'],
         variant: 'update',
       },
       {
@@ -32,10 +32,16 @@ export const RELEASES = [
         action: { label: 'Open settings', to: '/settings/spending' },
       },
       {
-        title: 'New income categories',
-        body: 'Friends & family, Bonus and Savings are ready to use. Savings entries don’t count as income: they add up in a Savings line in your net worth on Insights.',
-        chips: ['Savings', 'Friends & family'],
+        title: 'Savings, your way',
+        body: 'Log money you put aside under Savings: it never counts as income, and it adds up in a Savings line in your net worth. Say whether it came from your income, and mark expenses you paid from savings so your Net stays honest.',
+        chips: ['Savings', 'From income'],
         variant: 'update',
+      },
+      {
+        title: 'And a few more',
+        body: 'Friends & family and Bonus income categories are ready to use. Signing up now continues by itself once you confirm your email, Settle up shows how to pay someone directly, and phones held sideways get a roomier layout.',
+        chips: ['Friends & family', 'Bonus'],
+        variant: 'split',
       },
     ],
   },
