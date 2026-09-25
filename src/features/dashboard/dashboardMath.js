@@ -86,3 +86,12 @@ export function savedNote(saved, period, baseCurrency) {
     : /^This /.test(label) ? label.toLowerCase() : `in ${label}`
   return `Saved ${formatMoney(saved, baseCurrency)} ${when}`
 }
+
+// "Spending by category" lists every category (no folded "Other" on Home);
+// the chart shows the top TOP_CATEGORIES until the user taps "Show all".
+// Returns the rows to draw and how many more a "Show all" would add.
+export const TOP_CATEGORIES = 5
+export function visibleBars(bars, showAll) {
+  const hidden = showAll ? 0 : Math.max(0, bars.length - TOP_CATEGORIES)
+  return { rows: hidden ? bars.slice(0, TOP_CATEGORIES) : bars, hidden }
+}

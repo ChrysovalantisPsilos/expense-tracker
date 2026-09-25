@@ -1,5 +1,5 @@
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, HStack, LinkBox, LinkOverlay, Tag, Text, chakra } from '@chakra-ui/react'
+import { Box, HStack, LinkBox, LinkOverlay, Tag, Text } from '@chakra-ui/react'
 import { ChevronRight } from 'lucide-react'
 import IconTile from './IconTile.jsx'
 import RowActions from '../RowActions.jsx'
@@ -21,14 +21,6 @@ const OVERLAY_FOCUS = {
   _focusVisible: { outline: 'none' },
   sx: { '&:focus-visible::before': { boxShadow: 'outline', borderRadius: 'lg' } },
 }
-// The disclosure button's twin of LinkOverlay: its ::before covers the row.
-const TOGGLE_OVERLAY = {
-  ...OVERLAY_FOCUS,
-  sx: {
-    ...OVERLAY_FOCUS.sx,
-    '&::before': { content: '""', position: 'absolute', inset: 0, zIndex: 0, cursor: 'pointer' },
-  },
-}
 
 // A budget/goal row: icon tile, title, muted `meta` ("€312.40 of €400.00"),
 // the percent on the right — or an "Over budget" pill once over — and a
@@ -47,21 +39,16 @@ const TOGGLE_OVERLAY = {
 //   to       in-app path: the row becomes a link (drill-down) with a chevron;
 //            `linkLabel` is its accessible name ("Show Groceries expenses for
 //            this month") — the visible title alone is too terse out of context
-//   onToggle instead of `to`: the row is a disclosure button (its title,
-//            stretched over the row like the link) that shows/hides the
-//            element `controls` names; `expanded` is its state (the chevron
-//            turns down when open); `linkLabel` is its accessible name
 export default function ProgressRow({
   icon, media, title, meta, percent, tone, over = percent > 100, overLabel = 'Over budget',
   valueLabel = `${percent}%`, actions, actionSlots, actionSize, tooltip, playback, delay = 0,
-  to, linkLabel, onToggle, expanded = false, controls, ...props
+  to, linkLabel, ...props
 }) {
   const fill = fillColor(tone ?? (over ? 'negative' : 'brand'))
   const width = barWidth(percent)
   const Root = to ? LinkBox : Box
-  const active = to || onToggle
   return (
-    <Root title={tooltip} {...(active && LINKED)} {...(onToggle && { position: 'relative' })} {...props}>
+    <Root title={tooltip} {...(to && LINKED)} {...props}>
       <HStack spacing={3} mb={2}>
         {media ?? (icon && <IconTile icon={icon} />)}
         <Box flex="1" minW={0}>
@@ -70,11 +57,6 @@ export default function ProgressRow({
               <LinkOverlay as={RouterLink} to={to} aria-label={linkLabel} {...OVERLAY_FOCUS}>
                 {title}
               </LinkOverlay>
-            ) : onToggle ? (
-              <chakra.button type="button" onClick={onToggle} aria-expanded={expanded}
-                aria-controls={controls} aria-label={linkLabel} textAlign="start" {...TOGGLE_OVERLAY}>
-                {title}
-              </chakra.button>
             ) : title}
           </Text>
           {meta && <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">{meta}</Text>}
@@ -84,12 +66,7 @@ export default function ProgressRow({
         <Text fontSize="sm" fontWeight="700" color={over ? 'status.negative' : 'text.muted'} flexShrink={0}>
           {valueLabel}
         </Text>
-        {active && (
-          <Box color="text.muted" flexShrink={0} aria-hidden transition="transform 0.2s"
-            transform={onToggle && expanded ? 'rotate(90deg)' : undefined}>
-            <ChevronRight size={16} />
-          </Box>
-        )}
+        {to && <Box color="text.muted" flexShrink={0} aria-hidden><ChevronRight size={16} /></Box>}
         {actions && (to ? (
           // Positioned after the link's stretch, so it paints (and clicks) above it.
           <Box position="relative" flexShrink={0}>

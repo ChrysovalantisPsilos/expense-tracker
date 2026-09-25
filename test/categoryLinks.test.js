@@ -102,38 +102,3 @@ test('linkBuckets: only expense rows inside the period decide a bucket; nameOf r
   assert.equal(g.to, categoryPath(CAT, 'm:2026-8'))
   assert.equal(g.share, 100)
 })
-
-test('linkBuckets: a folded Other stays unlinked; its members each link to their page', () => {
-  const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
-  const rows = names.map((n) => tx({ category_id: `id-${n}`, categories: { name: n } }))
-  const bars = linkBuckets(categoryBars(names.map((n, i) => ({ name: n, value: 700 - i * 100 }))), rows, aug)
-  const other = bars.at(-1)
-  assert.equal(other.to, undefined)
-  assert.deepEqual(other.members.map((m) => m.name), ['F', 'G'])
-  assert.deepEqual(other.members.map((m) => m.to),
-    [categoryPath('id-F', 'm:2026-8'), categoryPath('id-G', 'm:2026-8')])
-  assert.equal(other.members[0].linkLabel, 'Show F expenses for August 2026')
-  assert.equal(other.members[0].share + other.members[1].share, other.share)
-})
-
-test('linkBuckets: a real Other merged into the fold links to its own category page', () => {
-  const cats = [{ name: 'Other', value: 500 }, ...['A', 'B', 'C', 'D', 'E', 'F'].map((name) => ({ name, value: 10 }))]
-  const rows = [tx({ category_id: CAT, categories: { name: 'Other' } }), tx({ category_id: CAT2, categories: { name: 'F' } })]
-  const other = linkBuckets(categoryBars(cats), rows, aug).at(-1)
-  assert.equal(other.folded, true)
-  assert.equal(other.to, undefined)
-  const real = other.members.find((m) => m.name === 'Other')
-  assert.equal(real.to, categoryPath(CAT, 'm:2026-8'))
-  assert.equal(real.linkLabel, 'Show Other expenses for August 2026')
-  assert.equal(other.members.find((m) => m.name === 'F').to, categoryPath(CAT2, 'm:2026-8'))
-})
-
-test('linkBuckets: no fold, no members (items without members pass through)', () => {
-  const rows = [groceries()]
-  const [g] = linkBuckets(categoryBars([{ name: 'Groceries', value: 1000 }]), rows, aug)
-  assert.equal(g.members, undefined)
-  assert.equal(g.to, categoryPath(CAT, 'm:2026-8'))
-  // A folded item without members (spendingShares) is left as is.
-  const folded = { name: 'Other', folded: true }
-  assert.equal(linkBuckets([folded], rows, aug)[0], folded)
-})

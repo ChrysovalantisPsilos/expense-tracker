@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  periodTotals, periodProjection, projectedTotals,
+  periodTotals, periodProjection, projectedTotals, visibleBars, TOP_CATEGORIES,
 } from '../src/features/dashboard/dashboardMath.js'
 
 const rows = [
@@ -56,4 +56,13 @@ const withYearly = [
 test('periodProjection: separateYearly leaves yearly rules out', () => {
   assert.deepEqual(periodProjection(withYearly, '2026-09-30', '2026-09-23'), { expense: 999 + 1000, income: 10000, savedFromIncome: 0 })
   assert.deepEqual(periodProjection(withYearly, '2026-09-30', '2026-09-23', true), { expense: 999, income: 10000, savedFromIncome: 0 })
+})
+
+test('visibleBars: top 5 until "Show all", then every category', () => {
+  const bars = ['A', 'B', 'C', 'D', 'E', 'F', 'G'].map((name) => ({ name }))
+  assert.equal(TOP_CATEGORIES, 5)
+  assert.deepEqual(visibleBars(bars, false), { rows: bars.slice(0, 5), hidden: 2 })
+  assert.deepEqual(visibleBars(bars, true), { rows: bars, hidden: 0 })
+  assert.deepEqual(visibleBars(bars.slice(0, 5), false), { rows: bars.slice(0, 5), hidden: 0 })
+  assert.deepEqual(visibleBars([], false), { rows: [], hidden: 0 })
 })

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
   SimpleGrid, Box, Text, Stack, HStack, IconButton, Button,
-  Table, Thead, Tbody, Tr, Th, Tooltip as CkTooltip, Select,
+  Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, PiggyBank, Table as TableIcon, ReceiptText, Users, Wallet } from 'lucide-react'
 import TransactionList from '../transactions/TransactionList.jsx'
@@ -29,11 +29,11 @@ import { CardEmptyState } from '../../shared/ui/EmptyState.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { BalanceTile } from '../../shared/ui/kit/Balances.jsx'
+import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
-import CategoryBarRow, { CategoryTableRows } from './CategoryBarRow.jsx'
 import {
-  periodTotals, periodProjection, projectedTotals, netNote, savedNote,
+  periodTotals, periodProjection, projectedTotals, netNote, savedNote, visibleBars, TOP_CATEGORIES,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 import SubscriptionsCard from '../recurring/SubscriptionsCard.jsx'
@@ -86,9 +86,12 @@ export default function Dashboard() {
       period.from, period.to, salaryShift),
     [rows, savingsIds, period.from, period.to, salaryShift])
   // Each bar drills down to its expenses for this period (a group share to its
-  // group); the folded "Other" merges several buckets, so it expands to them.
+  // group); the folded "Other" merges several buckets, so it has no link.
+  // Every category, largest first (no fold: "Show all" reveals the tail).
   const bars = useMemo(
-    () => linkBuckets(categoryBars(byCategory), spend, period), [byCategory, spend, period])
+    () => linkBuckets(categoryBars(byCategory, Infinity), spend, period), [byCategory, spend, period])
+  const [showAllBars, setShowAllBars] = useState(false)
+  const shownBars = visibleBars(bars, showAllBars)
 
   // Fold not-yet-charged recurring into the period's spend/income projection,
   // but only for periods that are still ongoing (end today or later). Past
@@ -195,17 +198,37 @@ export default function Dashboard() {
               </Tr>
             </Thead>
             <Tbody>
-              {bars.map((c) => <CategoryTableRows key={c.name} bar={c} baseCurrency={baseCurrency} />)}
+              {bars.map((c) => (
+                <Tr key={c.name}>
+                  <Td>
+                    {c.to ? <Link as={RouterLink} to={c.to} aria-label={c.linkLabel}>{c.name}</Link> : c.name}
+                  </Td>
+                  <Td isNumeric fontWeight="600">{formatMoney(c.value, baseCurrency)}</Td>
+                  <Td isNumeric color="text.muted">{c.share}%</Td>
+                </Tr>
+              ))}
             </Tbody>
           </Table>
         ) : (
           // Ranked bars: one hue (identity is the label, not a colour), each row
           // labelled with its amount and share, so nothing depends on hover.
-          <Stack spacing={4} role="list" aria-label="Spending by category">
-            {bars.map((c) => (
-              <CategoryBarRow key={c.name} bar={c} baseCurrency={baseCurrency}
-                iconOf={(name) => <BucketIcon row={bucketRow.get(name)} />} />
+          <Stack spacing={4}>
+          <Stack spacing={4} role="list" aria-label="Spending by category" id="spending-bars">
+            {shownBars.rows.map((c) => (
+              <ProgressRow key={c.name} role="listitem"
+                title={c.name} meta={formatMoney(c.value, baseCurrency)}
+                tooltip={`${c.name}: ${formatMoney(c.value, baseCurrency)} (${c.share}%)`}
+                media={<BucketIcon row={bucketRow.get(c.name)} />}
+                percent={Math.max(c.ratio * 100, 2)} valueLabel={`${c.share}%`}
+                to={c.to} linkLabel={c.linkLabel} />
             ))}
+          </Stack>
+          {(shownBars.hidden > 0 || showAllBars) && bars.length > TOP_CATEGORIES && (
+            <Button size="sm" variant="ghost" alignSelf="center" aria-controls="spending-bars"
+              aria-expanded={showAllBars} onClick={() => setShowAllBars((v) => !v)}>
+              {showAllBars ? `Show top ${TOP_CATEGORIES}` : `Show all ${bars.length} categories`}
+            </Button>
+          )}
           </Stack>
         )}
       </Panel>
