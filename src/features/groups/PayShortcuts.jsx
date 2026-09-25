@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import {
   Box, Button, Center, HStack, Image, Text, useToast,
 } from '@chakra-ui/react'
-import { ExternalLink, QrCode, Copy } from 'lucide-react'
+import { ExternalLink, Info, QrCode, Copy } from 'lucide-react'
 import { memberPaymentInfo } from './groups.js'
 import { revolutUrl, paypalUrl, sepaQrPayload } from '../../shared/lib/payLinks.js'
 
 // One-tap ways to actually pay a co-member the settle-up amount, driven by
 // the payment details they saved in Settings → Account → Getting paid (readable to
-// co-members). Revolut and PayPal links open with the amount filled in. The
+// co-members). Without any (or before they've joined), the box says what it
+// would offer, so people learn the option exists. Revolut and PayPal links open with the amount filled in. The
 // SEPA "Bank QR" encodes an EPC069-12 payload — scanning it
 // in any EU banking app pre-fills payee, IBAN, and the exact amount (EPC
 // transfers are EUR-only, so it hides for other group currencies).
@@ -54,7 +55,25 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
 
   const revolut = revolutUrl(info?.payment_revolut, amountMinor, currency)
   const paypal = paypalUrl(info?.payment_paypal, amountMinor, currency)
-  if (!member?.user_id || (!iban && !revolut && !paypal)) return null
+  if (!member) return null
+  // No details (yet): say what this box would offer, so people know it exists.
+  // Not shown while the details are still loading.
+  if (!member.user_id || (info && !iban && !revolut && !paypal)) {
+    return (
+      <Box borderWidth="1px" borderColor="border.default" borderRadius="lg" p={3}>
+        <HStack spacing={2} mb={1}>
+          <Info size={15} aria-hidden />
+          <Text fontSize="sm" fontWeight="600">Pay {member.display_name} directly</Text>
+        </HStack>
+        <Text fontSize="xs" color="text.muted">
+          {member.user_id
+            ? `${member.display_name} hasn’t added payment details yet. Once they add an IBAN, Revolut or PayPal in Settings › Account › Getting paid, you can pay them here with a bank QR or in one tap.`
+            : `Once ${member.display_name} joins Budgeer and adds an IBAN, Revolut or PayPal, you can pay them here with a bank QR or in one tap.`}
+        </Text>
+      </Box>
+    )
+  }
+  if (!info) return null
 
   const qrUrl = showQr && qr?.payload === payload ? qr.url : null
 
