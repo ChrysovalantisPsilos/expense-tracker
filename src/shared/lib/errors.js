@@ -17,6 +17,8 @@
 // Edge-function text is still checked for anything code-like (a snake_case
 // token, brackets, a stack line) and falls back when it has some.
 
+import { DEMO_REFUSAL } from './demoAccount.js'
+
 export const GENERIC_ERROR = 'Something went wrong. Please try again.'
 export const CONNECTION_ERROR = 'Couldn’t reach the server. Check your connection and try again.'
 const SESSION_EXPIRED = 'Your session has expired. Please sign in again.'
@@ -158,6 +160,8 @@ export const SQL_USER_MESSAGES = new Map([
   ['Too many requests — please try again later.', null],
   ['Too many saves — please slow down.', null],
   ['Too many settlements — please slow down.', null],
+  // The shared demo account (0090): invites, links, reminders, push, emails.
+  [DEMO_REFUSAL, null],
 ])
 
 // Code-like content that must never reach the user, even from our own

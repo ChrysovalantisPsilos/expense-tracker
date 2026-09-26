@@ -121,7 +121,7 @@ function PublicRoutes() {
 
 function AuthedRoutes() {
   const navigate = useNavigate()
-  const { profile, loading: profileLoading } = useProfile()
+  const { profile, loading: profileLoading, isDemo } = useProfile()
   // A brand-new account (no onboarded_at) gets the setup wizard, which also
   // folds in the passkey + notification asks — so the standalone prompts wait
   // until onboarding is done to avoid stacking.
@@ -222,8 +222,13 @@ function AuthedRoutes() {
         <Suspense fallback={null}><ProductTour {...tour} onEnd={endTour} /></Suspense>
       ) : (
         <>
-          <PasskeyPrompt />
-          <NotificationPrompt />
+          {/* The shared demo login (0090) adds no passkeys or push devices. */}
+          {!profileLoading && profile && !isDemo && (
+            <>
+              <PasskeyPrompt />
+              <NotificationPrompt />
+            </>
+          )}
           {/* After the profile loads: it needs onboarded_at to tell a new account apart. */}
           {!profileLoading && profile && <WhatsNewPrompt profile={profile} />}
         </>

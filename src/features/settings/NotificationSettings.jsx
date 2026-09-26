@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Stack, Divider, useToast } from '@chakra-ui/react'
+import { Stack, Divider, Text, useToast } from '@chakra-ui/react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { enablePush } from '../../shared/lib/push.js'
 import { getProfile, updateProfile } from '../../shared/lib/profile.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
 import PrefRow from './PrefRow.jsx'
@@ -23,6 +24,9 @@ export default function NotificationSettings() {
 export function NotificationPrefs({ title, onChanged }) {
   const { user } = useAuth()
   const toast = useToast()
+  // The shared demo login (0090) sends no messages: the server refuses
+  // turning any of them on, so the switches stay put.
+  const { isDemo } = useProfile()
   const [prefs, setPrefs] = useState(null) // { notify_email, notify_push, notify_digest }
 
   useEffect(() => {
@@ -65,16 +69,19 @@ export function NotificationPrefs({ title, onChanged }) {
         <Stack spacing={4} divider={<Divider />}>
           <PrefRow id="pref-push" label="Push notifications"
             hint="Group activity, payment reminders and budget alerts, on every device you’ve allowed."
-            isChecked={prefs.notify_push}
+            isChecked={prefs.notify_push} isDisabled={isDemo}
             onChange={(e) => setPref('notify_push', e.target.checked)} />
           <PrefRow id="pref-email" label="Email me"
             hint="Big events only: group invites, members joining or leaving."
-            isChecked={prefs.notify_email}
+            isChecked={prefs.notify_email} isDisabled={isDemo}
             onChange={(e) => setPref('notify_email', e.target.checked)} />
           <PrefRow id="pref-digest" label="Weekly summary"
             hint="Optional: every Sunday, how many expenses you logged and your top category."
-            isChecked={!!prefs.notify_digest}
+            isChecked={!!prefs.notify_digest} isDisabled={isDemo}
             onChange={(e) => setPref('notify_digest', e.target.checked)} />
+          {isDemo && (
+            <Text fontSize="sm" color="text.muted">Messages stay off on the shared demo account.</Text>
+          )}
         </Stack>
       )}
     </Panel>

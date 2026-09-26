@@ -16,6 +16,7 @@ import { PRIVACY_EMAIL } from '../_shared/contact.ts'
 import { privacyReceiptEmail } from '../_shared/gdprEmails.ts'
 import { appOrigin, inviteSender, noticeSender, privacyInbox, sendEmail } from '../_shared/sendEmail.ts'
 import { REQUEST_KINDS, validatePrivacyRequest } from '../_shared/privacyRequest.ts'
+import { DEMO_REFUSAL, isDemoCaller } from '../_shared/demo.ts'
 
 Deno.serve(withCors(async (req) => {
   const INBOX = privacyInbox()
@@ -24,6 +25,8 @@ Deno.serve(withCors(async (req) => {
     const asUser = callerClient(req)
     const { data: { user } } = await asUser.auth.getUser()
     if (!user?.email) return json({ error: 'not authenticated' }, 401)
+    // The demo login (0090) is shared: its address is no one's to write from.
+    if (await isDemoCaller(asUser, user.id)) return json({ error: DEMO_REFUSAL }, 403)
 
     const parsed = validatePrivacyRequest(await req.json().catch(() => ({})))
     if ('error' in parsed) return json({ error: parsed.error }, 400)

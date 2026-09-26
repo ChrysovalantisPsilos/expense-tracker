@@ -19,6 +19,7 @@
 import { withCors, json, callerClient, serviceClient } from '../_shared/http.ts'
 import { brandEmail } from '../_shared/email.ts'
 import { appOrigin, inviteSender, sendEmail } from '../_shared/sendEmail.ts'
+import { DEMO_REFUSAL, isDemoCaller } from '../_shared/demo.ts'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const SUBJECT = 'You’re invited to a group on Budgeer'
@@ -42,6 +43,8 @@ Deno.serve(withCors(async (req) => {
     const asUser = callerClient(req)
     const { data: { user } } = await asUser.auth.getUser()
     if (!user) return json({ error: 'not authenticated' }, 401)
+    // The shared demo login (0090) emails no one.
+    if (await isDemoCaller(asUser, user.id)) return json({ error: DEMO_REFUSAL }, 403)
 
     // Per-caller quota (keyed on the caller's own uid server-side). Fails closed.
     const { data: allowed, error: quotaErr } = await asUser.rpc('consume_quota', { p_scope: 'send-invite' })

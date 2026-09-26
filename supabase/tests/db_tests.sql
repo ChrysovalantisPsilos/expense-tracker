@@ -5061,11 +5061,388 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 84. 0090: profiles.is_demo is server-only. A client can't set it (or clear
+--     it), a demo can't delete its profile row to lose it, and demo_accounts
+--     (where the reset keeps the password hash) grants no client role anything.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; demo_msg constant text := 'That isn’t available on the demo account.'; flag boolean;
+begin
+  begin
+    u := pg_temp.zz_user('a');
+    select is_demo into flag from public.profiles where id = u;
+    if flag is distinct from false then raise exception 'a new profile is not is_demo = false'; end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      update public.profiles set is_demo = true where id = u;
+      raise exception 'client set is_demo';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+
+    update public.profiles set is_demo = true where id = u;  -- as an operator would
+    execute 'set local role authenticated';
+    begin
+      update public.profiles set is_demo = false where id = u;
+      raise exception 'client cleared is_demo';
+    exception when insufficient_privilege then null;
+    end;
+    select is_demo into flag from public.profiles where id = u;  -- own row reads it
+    if flag is distinct from true then raise exception 'owner cannot read is_demo'; end if;
+    begin
+      delete from public.profiles where id = u;
+      raise exception 'demo profile deleted by the client';
+    exception when others then
+      if sqlerrm <> demo_msg then raise; end if;
+    end;
+    execute 'reset role';
+
+    if has_table_privilege('authenticated', 'public.demo_accounts', 'select')
+       or has_table_privilege('authenticated', 'public.demo_accounts', 'insert')
+       or has_table_privilege('authenticated', 'public.demo_accounts', 'update')
+       or has_table_privilege('authenticated', 'public.demo_accounts', 'delete')
+       or has_table_privilege('anon', 'public.demo_accounts', 'select') then
+      raise exception 'demo_accounts is reachable by a client role';
+    end if;
+    if not (select relrowsecurity from pg_class where oid = 'public.demo_accounts'::regclass) then
+      raise exception 'RLS is off on demo_accounts';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: is_demo is server-only; demo_accounts has no client access';
+    else update _t set fails = fails + 1; raise notice 'FAIL: is_demo is server-only — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 85. 0090: the demo reaches no one. As a demo account: inviting, making a
+--     share link, joining through one, nudging, registering a push device and
+--     turning any message switch on are all refused with the demo message;
+--     a data export queues no email; nobody can invite a demo account. A
+--     regular user doing the same things is unaffected.
+-- ---------------------------------------------------------------------------
+do $$
+declare d uuid; r uuid; o uuid; o2 uuid; gd uuid; gr uuid; md_other uuid; mr_other uuid;
+        tok text := 'zztest_' || md5(random()::text); demo_email text; q text; cnt int;
+        demo_msg constant text := 'That isn’t available on the demo account.';
+        push_ep text := 'https://fcm.googleapis.com/fcm/send/zz-' || md5(random()::text);
+begin
+  begin
+    d := pg_temp.zz_user('demo'); r := pg_temp.zz_user('real');
+    o := pg_temp.zz_user('o');    o2 := pg_temp.zz_user('o2');
+    update public.profiles set is_demo = true where id = d;
+    select email into demo_email from auth.users where id = d;
+
+    insert into public.groups (name, owner_id, currency) values ('ZZT demo group', d, 'EUR') returning id into gd;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gd, d, 'Demo', 'owner');
+    insert into public.group_members (group_id, user_id, display_name) values (gd, o, 'Other') returning id into md_other;
+    insert into public.groups (name, owner_id, currency) values ('ZZT real group', r, 'EUR') returning id into gr;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gr, r, 'Real', 'owner');
+    insert into public.group_members (group_id, user_id, display_name) values (gr, o2, 'Other 2') returning id into mr_other;
+    insert into public.group_invites (group_id, token, created_by) values (gr, tok, r);
+
+    -- Nobody (not even the owner role) can make an invite that names a demo.
+    begin
+      insert into public.group_invites (group_id, invited_user_id, invited_email, created_by)
+      values (gr, d, demo_email, r);
+      raise exception 'invite naming a demo was stored';
+    exception when others then
+      if sqlerrm <> demo_msg then raise; end if;
+    end;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set notify_email = false, notify_push = false, notify_digest = false where id = d;
+    foreach q in array array[
+      format('select public.invite_user_to_group(%L, %L)', gd, 'zz-nobody@example.com'),
+      format('insert into public.group_invites (group_id) values (%L)', gd),
+      format('select public.join_via_link(%L)', tok),
+      format('select public.nudge_member(%L, %L)', gd, md_other),
+      format('select public.save_push_subscription(%L, %L, %L)', push_ep, 'zz-p256dh', 'zz-auth'),
+      format('update public.profiles set notify_email = true where id = %L', d),
+      format('update public.profiles set notify_push = true where id = %L', d),
+      format('update public.profiles set notify_digest = true where id = %L', d)
+    ] loop
+      begin
+        execute q;
+        raise exception 'not refused: %', q;
+      exception when others then
+        if sqlerrm <> demo_msg then raise; end if;
+      end;
+    end loop;
+    perform public.export_my_data();
+    execute 'reset role';
+    select count(*) into cnt from public.privacy_email_queue where user_id = d;
+    if cnt <> 0 then raise exception 'a demo export queued an email'; end if;
+    select count(*) into cnt from public.push_subscriptions where user_id = d;
+    if cnt <> 0 then raise exception 'a demo push device was stored'; end if;
+
+    -- A real user inviting the demo's address is refused too.
+    perform set_config('request.jwt.claims', json_build_object('sub', r, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.invite_user_to_group(gr, demo_email);
+      raise exception 'a demo account was invited';
+    exception when others then
+      if sqlerrm <> demo_msg then raise; end if;
+    end;
+
+    -- …and is otherwise unaffected.
+    if public.invite_user_to_group(gr, 'zz-nobody-' || md5(random()::text) || '@example.com')->>'status' <> 'no_account' then
+      raise exception 'regular invite broke';
+    end if;
+    insert into public.group_invites (group_id) values (gr);
+    perform public.nudge_member(gr, mr_other);
+    perform public.save_push_subscription(push_ep, 'zz-p256dh', 'zz-auth');
+    update public.profiles set notify_email = false where id = r;
+    update public.profiles set notify_email = true, notify_digest = true where id = r;
+    perform public.export_my_data();
+    execute 'reset role';
+    select count(*) into cnt from public.push_subscriptions where user_id = r and endpoint = push_ep;
+    if cnt <> 1 then raise exception 'regular push device not stored'; end if;
+    select count(*) into cnt from public.privacy_email_queue where user_id = r;
+    if cnt = 0 then raise exception 'regular export queued no email'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: demo refused invites, links, joins, nudges, push and message switches; regular user unaffected';
+    else update _t set fails = fails + 1; raise notice 'FAIL: demo refusals — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 86. 0090: the demo machinery is server-only. The reset, registration and
+--     helpers are SECURITY DEFINER with a pinned search_path and no EXECUTE
+--     for anon/authenticated (calling the reset as a client fails);
+--     caller_is_demo, which the storage policies use, is for authenticated
+--     only; profiles_demo_guard is SECURITY INVOKER, so it sees the writer's
+--     role (a definer trigger would always see its owner).
+-- ---------------------------------------------------------------------------
+do $$
+declare f text; p regprocedure; u uuid;
+begin
+  begin
+    foreach f in array array[
+      'public.reset_demo_accounts()', 'public.register_demo_account(text,text,text,text)',
+      'public.demo_seed(uuid,uuid[])', 'public.demo_wipe(uuid[])', 'public.demo_restore_account(uuid)',
+      'public.demo_day(int,int)', 'public.demo_next_run(int)', 'public.is_demo_user(uuid)',
+      'public.refuse_if_demo(uuid)', 'public.group_invites_demo_guard()',
+      'public.demo_auth_guard()', 'public.caller_is_demo()'
+    ] loop
+      p := f::regprocedure;
+      if not (select prosecdef from pg_proc where oid = p) then raise exception '% is not SECURITY DEFINER', f; end if;
+      if not exists (select 1 from pg_proc, unnest(proconfig) c where oid = p and c like 'search_path=%') then
+        raise exception '% has no pinned search_path', f;
+      end if;
+      if has_function_privilege('anon', p, 'execute') then raise exception 'anon can execute %', f; end if;
+      if f <> 'public.caller_is_demo()' and has_function_privilege('authenticated', p, 'execute') then
+        raise exception 'authenticated can execute %', f;
+      end if;
+    end loop;
+    p := 'public.profiles_demo_guard()'::regprocedure;
+    if (select prosecdef from pg_proc where oid = p)
+       or not exists (select 1 from pg_proc, unnest(proconfig) c where oid = p and c like 'search_path=%')
+       or has_function_privilege('authenticated', p, 'execute') then
+      raise exception 'profiles_demo_guard must be an invoker trigger with a pinned search_path, not client-callable';
+    end if;
+    if not has_function_privilege('authenticated', 'public.caller_is_demo()', 'execute') then
+      raise exception 'the storage policies can''t call caller_is_demo';
+    end if;
+
+    u := pg_temp.zz_user('a');
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.reset_demo_accounts();
+      raise exception 'authenticated ran the reset';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+    execute 'set local role anon';
+    begin
+      perform public.reset_demo_accounts();
+      raise exception 'anon ran the reset';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+    if not exists (select 1 from cron.job where jobname = 'reset-demo-accounts' and schedule = '0 3 * * *') then
+      raise exception 'the nightly reset is not scheduled';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: demo reset/registration are definer, pinned and not client-callable; nightly job scheduled';
+    else update _t set fails = fails + 1; raise notice 'FAIL: demo machinery is server-only — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 87. 0090: reset_demo_accounts() seeds a demo login and puts it back. After
+--     registering a login and three friends, the reset leaves entries that
+--     decrypt through my_transactions, this month's budgets, a yearly
+--     recurring entry, the salary shift, accepted legal documents and a
+--     "Lisbon trip" with open balances. After a visitor changes the email,
+--     password hash, payment details, push devices and entries (and signs
+--     in), the next reset restores all of it and ends every session.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; r uuid; tag text := md5(random()::text); hash text; em text; n int; cnt int; cnt2 int; gid uuid;
+        net bigint; opened int; regular_email text;
+begin
+  begin
+    em := 'zzt-demo-' || tag || '@example.com';
+    hash := extensions.crypt('zz-not-a-real-password', extensions.gen_salt('bf'));
+    u := public.register_demo_account(em, 'Alex (demo)', 'main', hash);
+    for i in 1 .. 3 loop
+      perform public.register_demo_account('zzt-demo-f' || i || '-' || tag || '@example.com', 'Friend ' || i, 'friend');
+    end loop;
+    if exists (select 1 from auth.users u2 join public.demo_accounts d on d.user_id = u2.id
+               where d.role = 'friend' and d.email like '%' || tag || '%'
+                 and (u2.banned_until is null or u2.banned_until < now() + interval '50 years')) then
+      raise exception 'a friend account can sign in';
+    end if;
+    r := pg_temp.zz_user('r');
+    select email into regular_email from auth.users where id = r;
+    begin
+      perform public.register_demo_account(regular_email, 'X', 'friend');
+      raise exception 'a regular account was turned into a demo';
+    exception when others then
+      if sqlerrm <> 'that address belongs to an existing account' then raise; end if;
+    end;
+    begin
+      perform public.register_demo_account(null, 'X', 'friend');
+      raise exception 'a demo account without an email was made';
+    exception when others then
+      if sqlerrm <> 'invalid email' then raise; end if;
+    end;
+
+    n := public.reset_demo_accounts();
+    if n < 1 then raise exception 'reset reported % logins', n; end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select count(*) into cnt from public.my_transactions(null, null, null, null, 1000, false, false)
+     where description = 'Rent' and amount_minor = 115000;
+    if cnt < 3 then raise exception 'rent entries missing or not decrypting (%)', cnt; end if;
+    select count(*) into cnt from public.my_budgets(date_trunc('month', current_date)::date);
+    if cnt < 5 then raise exception 'this month''s budgets missing (%)', cnt; end if;
+    if not exists (select 1 from public.my_recurring_rules() r where r.frequency = 'yearly') then
+      raise exception 'no yearly recurring entry';
+    end if;
+    if (public.my_legal_status()->>'needs_acceptance')::boolean then raise exception 'legal documents not accepted'; end if;
+    select g.id into gid from public.groups g where g.name = 'Lisbon trip' and g.owner_id = u;
+    if gid is null then raise exception 'no Lisbon trip'; end if;
+    select count(*), sum(b.net_minor), count(*) filter (where b.net_minor <> 0)
+      into cnt, net, opened from public.group_balances(gid) b;
+    if cnt < 4 or net <> 0 or opened < 2 then raise exception 'trip balances wrong: % members, sum %, open %', cnt, net, opened; end if;
+    if not exists (select 1 from public.group_expenses where group_id = gid and currency = 'GBP') then
+      raise exception 'no foreign-currency trip expense';
+    end if;
+    execute 'reset role';
+    if not exists (select 1 from public.profiles where id = u and is_demo and display_name = 'Alex (demo)'
+                   and salary_shift_from_day = 25 and salary_category_id is not null and tour_done
+                   and onboarded_at is not null and not notify_email and not notify_push and not notify_digest) then
+      raise exception 'profile not restored';
+    end if;
+    select count(*) into cnt from public.transactions where user_id = u;
+
+    -- A visitor's changes.
+    update auth.users set email = 'zzt-changed-' || tag || '@example.com',
+                          encrypted_password = extensions.crypt('changed', extensions.gen_salt('bf'))
+     where id = u;
+    insert into auth.sessions (id, user_id, created_at, updated_at) values (gen_random_uuid(), u, now(), now());
+    insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
+      values (u, 'https://fcm.googleapis.com/fcm/send/zz-' || tag, 'k', 'a');
+    execute 'set local role authenticated';
+    perform public.set_payment_info('NL00ZZTE0123456789', 'zzrevolut', 'zzpaypal');
+    delete from public.notifications where user_id = u;
+    perform public.create_group('ZZT visitor group', 'EUR');
+    execute 'reset role';
+    delete from public.transactions where user_id = u and description_enc is not null
+      and public.dec_text(description_enc, public.app_enc_key()) = 'Rent';
+
+    perform public.reset_demo_accounts();
+
+    if (select email from auth.users where id = u) <> em then raise exception 'email not restored'; end if;
+    if (select encrypted_password from auth.users where id = u) <> hash then raise exception 'password hash not restored'; end if;
+    if exists (select 1 from auth.sessions where user_id = u) then raise exception 'sessions not signed out'; end if;
+    if exists (select 1 from public.push_subscriptions where user_id = u) then raise exception 'push devices kept'; end if;
+    if exists (select 1 from public.profiles where id = u and (payment_iban_enc is not null
+               or payment_revolut_enc is not null or payment_paypal_enc is not null)) then
+      raise exception 'payment details kept';
+    end if;
+    if exists (select 1 from public.groups where owner_id = u and name <> 'Lisbon trip') then
+      raise exception 'visitor group kept';
+    end if;
+    select count(*) into cnt2 from public.transactions where user_id = u;
+    if cnt2 <> cnt then raise exception 'entries not re-seeded (% then %)', cnt, cnt2; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: reset_demo_accounts seeds the demo and restores email, password, data and sessions';
+    else update _t set fails = fails + 1; raise notice 'FAIL: reset_demo_accounts — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 88. 0090: no mail or hosting on the demo's behalf. Demo accounts are left
+--     out of the policy-update emails and the inactivity sweep (a regular
+--     account in the same state is in both); a demo can't upload to storage
+--     (a regular user can); and Supabase Auth's edits to a demo's password
+--     and email are held by a trigger on auth.users.
+-- ---------------------------------------------------------------------------
+do $$
+declare d uuid; r uuid;
+begin
+  begin
+    d := pg_temp.zz_user('demo'); r := pg_temp.zz_user('real');
+    update public.profiles set is_demo = true where id = d;
+    update auth.users set created_at = now() - interval '3 years', last_sign_in_at = now() - interval '3 years'
+     where id in (d, r);
+    delete from public.consents where user_id in (d, r);
+
+    if not exists (select 1 from public.legal_update_recipients(1000000) where user_id = r) then
+      raise exception 'regular account missing from legal updates (test setup)';
+    end if;
+    if exists (select 1 from public.legal_update_recipients(1000000) where user_id = d) then
+      raise exception 'demo gets legal update emails';
+    end if;
+    if not exists (select 1 from public.inactive_accounts() where user_id = r) then
+      raise exception 'regular account missing from the inactivity sweep (test setup)';
+    end if;
+    if exists (select 1 from public.inactive_accounts() where user_id = d) then
+      raise exception 'demo is in the inactivity sweep';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      insert into storage.objects (bucket_id, name) values ('avatars', d || '/zz.png');
+      raise exception 'demo uploaded an avatar';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+    perform set_config('request.jwt.claims', json_build_object('sub', r, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    insert into storage.objects (bucket_id, name) values ('avatars', r || '/zz.png');
+    execute 'reset role';
+
+    if not exists (select 1 from pg_trigger where tgname = 'on_auth_user_demo_guard'
+                   and tgrelid = 'auth.users'::regclass and tgenabled <> 'D') then
+      raise exception 'auth.users demo guard missing';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: demo skipped by legal/inactivity emails, uploads refused, auth guard in place';
+    else update _t set fails = fails + 1; raise notice 'FAIL: demo emails/uploads — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 84; f int; p int;  -- tests 1–83 + B-0059
+declare expected_tests constant int := 89; f int; p int;  -- tests 1–88 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

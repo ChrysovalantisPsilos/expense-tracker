@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import {
   FormControl, FormHelperText, FormLabel, Select, Stack, Textarea, useToast,
 } from '@chakra-ui/react'
@@ -7,6 +8,7 @@ import useGoBack from '../../shared/ui/useGoBack.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { MESSAGE_MAX, REQUEST_KINDS, responseDeadline, validatePrivacyRequest } from './legal.js'
 import { sendPrivacyRequest } from './privacyData.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 
 // /settings/privacy/request — restrict, object, or any other privacy
 // request. It goes to the privacy inbox, and the reply goes to the account's
@@ -17,6 +19,8 @@ export default function PrivacyRequestPage() {
   const [kind, setKind] = useState('restrict')
   const [message, setMessage] = useState('')
   const { busy, run } = useAsyncSubmit()
+  // The shared demo login (0090) sends no requests (privacy-request refuses it).
+  const { isDemo } = useProfile()
 
   async function submit() {
     const checked = validatePrivacyRequest({ kind, message })
@@ -30,6 +34,7 @@ export default function PrivacyRequestPage() {
     }, { errorTitle: 'Couldn’t send your request' })
   }
 
+  if (isDemo) return <Navigate to="/settings/privacy" replace />
   return (
     <FormPage eyebrow="Privacy" title="Privacy request" fallback="/settings/privacy">
       <PageForm onSubmit={submit} busy={busy} submitLabel="Send request">

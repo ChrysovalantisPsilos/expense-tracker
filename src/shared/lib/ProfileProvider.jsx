@@ -4,6 +4,7 @@ import { useLiveQuery } from './db.js'
 import { fetchProfile } from './profile.js'
 import { EVENTS } from './keys.js'
 import { salaryShiftOf } from './salaryShift.js'
+import { isDemoAccount } from './demoAccount.js'
 
 const ProfileContext = createContext(null)
 
@@ -43,6 +44,8 @@ export function ProfileProvider({ children }) {
     baseCurrency: (uid && profile?.base_currency) || 'EUR',
     // Keep yearly subscriptions out of monthly spending (0068; off by default).
     separateYearly: !!(uid && profile?.yearly_separate),
+    // The shared demo login (0090): the app hides what it can't use.
+    isDemo: !!uid && isDemoAccount(profile),
     salaryShift,
     loading,
     error,

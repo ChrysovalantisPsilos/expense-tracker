@@ -10,6 +10,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import { shortDateTime } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import SettingsPage from '../settings/SettingsPage.jsx'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { NotificationPrefs } from '../settings/NotificationSettings.jsx'
 import { describeConsent } from './legal.js'
 import { PRIVACY_EMAIL } from '../../shared/lib/contact.js'
@@ -19,6 +20,8 @@ import RingLoader, { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 // Settings → Privacy: each GDPR right with the way to use it here, the
 // optional-message switches (consent), and the consent history.
 export default function PrivacySettings() {
+  // The shared demo login (0090) can't be deleted and sends no requests.
+  const { isDemo } = useProfile()
   const [consents, setConsents] = useState(null)
   const loadConsents = useCallback(() => {
     listMyConsents().then(setConsents).catch(() => setConsents([]))
@@ -47,12 +50,14 @@ export default function PrivacySettings() {
 
       <Right icon={Trash2} title="Delete your account" article="Art. 17"
         text="Permanently deletes your account and personal data. Group expenses you were part of stay for the other members, shown as “Former member” with no link to you. The delete screen lists exactly what goes and what stays.">
-        <Button as={RouterLink} to="/settings/security" size="sm" variant="outline" colorScheme="red">
-          Go to Delete account
-        </Button>
+        {!isDemo && (
+          <Button as={RouterLink} to="/settings/security" size="sm" variant="outline" colorScheme="red">
+            Go to Delete account
+          </Button>
+        )}
       </Right>
 
-      <RequestRight />
+      <RequestRight isDemo={isDemo} />
 
       <NotificationPrefs title="Withdraw or give consent" onChanged={loadConsents} />
 
@@ -98,15 +103,17 @@ function DownloadRight() {
   )
 }
 
-function RequestRight() {
+function RequestRight({ isDemo }) {
   return (
     <Right icon={ShieldOff} title="Restrict or object, or another request" article="Art. 18 and 21"
       text="Ask us to limit how we use your data, object to a use based on our legitimate interest, or make any other privacy request. It goes to our privacy inbox, and we reply to your account’s email address.">
       <HStack spacing={2} flexWrap="wrap">
-        <Button as={RouterLink} to="/settings/privacy/request" leftIcon={<Mail size={16} />} size="sm"
-          variant="outline">
-          Send a request
-        </Button>
+        {!isDemo && (
+          <Button as={RouterLink} to="/settings/privacy/request" leftIcon={<Mail size={16} />} size="sm"
+            variant="outline">
+            Send a request
+          </Button>
+        )}
         <Button as="a" href={`mailto:${PRIVACY_EMAIL}`} size="sm" variant="ghost" leftIcon={<FileText size={16} />}>
           Email instead
         </Button>

@@ -11,6 +11,7 @@ import { NavList, NavRow } from '../../shared/ui/NavList.jsx'
 import { STATUS_URL, SUPPORT_EMAIL } from '../../shared/lib/contact.js'
 import { useSiteSwitch } from '../../shared/lib/useSiteSwitch.js'
 import { startTour } from '../onboarding/tour.js'
+import DemoNotice from './DemoNotice.jsx'
 
 const PREFERENCES = [
   { to: '/settings/categories', label: 'Categories', desc: 'Add, rename, recolour or archive', icon: Tags },
@@ -36,7 +37,7 @@ const rows = (items) => items.map(({ to, label, desc, icon }) => (
 // the live/test site switch for developer accounts, then sign-out.
 export default function Settings() {
   const { user, signOut } = useAuth()
-  const { profile } = useProfile()
+  const { profile, isDemo } = useProfile()
   const site = useSiteSwitch()
 
   return (
@@ -49,6 +50,7 @@ export default function Settings() {
           media={<UserAvatar size="md" name={profile?.display_name} src={profile?.avatar_url}
             highlight flexShrink={0} />} />
       </NavList>
+      {isDemo && <DemoNotice />}
       <NavList label="Preferences">{rows(PREFERENCES)}</NavList>
       <NavList label="Privacy & security" data-tour="settings-privacy">{rows(PRIVACY)}</NavList>
       <NavList label="Help">

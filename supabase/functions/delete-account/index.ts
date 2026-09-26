@@ -21,6 +21,7 @@ import { withCors, json, callerClient, serviceClient } from '../_shared/http.ts'
 import { REAUTH_REQUIRED, isRecentSignIn, reauthMessage } from '../_shared/reauth.ts'
 import { PRIVACY_EMAIL } from '../_shared/contact.ts'
 import { deleteAccount } from '../_shared/accountDeletion.ts'
+import { DEMO_REFUSAL, isDemoCaller } from '../_shared/demo.ts'
 import { accountDeletedEmail } from '../_shared/gdprEmails.ts'
 import { appOrigin, noticeSender, sendEmail } from '../_shared/sendEmail.ts'
 
@@ -33,8 +34,11 @@ Deno.serve(withCors(async (req) => {
     const password = typeof body?.password === 'string' ? body.password : ''
 
     const authHeader = req.headers.get('Authorization') ?? ''
-    const { data: { user } } = await callerClient(req).auth.getUser()
+    const asUser = callerClient(req)
+    const { data: { user } } = await asUser.auth.getUser()
     if (!user) return json({ error: 'not authenticated' }, 401)
+    // The shared demo login (0090) can't be deleted by whoever holds it.
+    if (await isDemoCaller(asUser, user.id)) return json({ error: DEMO_REFUSAL }, 403)
     const uid = user.id
     const email = user.email ?? null
 

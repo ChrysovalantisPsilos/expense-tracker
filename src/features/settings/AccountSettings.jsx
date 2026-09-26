@@ -5,6 +5,7 @@ import {
 } from '@chakra-ui/react'
 import { Camera, UserRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { baseCurrencyLocked, getProfile, updateProfile, uploadAvatar } from '../../shared/lib/profile.js'
 import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
@@ -31,6 +32,8 @@ export default function AccountSettings() {
 // saved in, so switching would misprice everything already there.
 function IdentityCard({ user }) {
   const toast = useToast()
+  // The shared demo login (0090) can't upload a photo (storage refuses it).
+  const { isDemo } = useProfile()
   const fileRef = useRef(null)
   const [loading, setLoading] = useState(true)
   const [displayName, setDisplayName] = useState('')
@@ -93,10 +96,14 @@ function IdentityCard({ user }) {
         <HStack spacing={4} minW={0}>
           <Box position="relative" flexShrink={0}>
             <UserAvatar size="xl" name={displayName} src={avatarUrl} highlight />
-            <IconButton aria-label="Change photo" icon={<Camera size={16} />}
-              size="sm" borderRadius="full" position="absolute" bottom="-4px" right="-4px"
-              isLoading={uploading} onClick={() => fileRef.current?.click()} />
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onAvatar} />
+            {!isDemo && (
+              <>
+                <IconButton aria-label="Change photo" icon={<Camera size={16} />}
+                  size="sm" borderRadius="full" position="absolute" bottom="-4px" right="-4px"
+                  isLoading={uploading} onClick={() => fileRef.current?.click()} />
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={onAvatar} />
+              </>
+            )}
           </Box>
           <Stack spacing={0} flex="1" minW={0}>
             <Text fontWeight="700" overflowWrap="anywhere">{displayName || 'Your name'}</Text>
