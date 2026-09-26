@@ -59,22 +59,20 @@ export default [
       }],
     },
   },
-  // i18n (docs/I18N.md): no user-facing text written straight into JSX in
-  // the files already converted to translation keys. Each phase adds its
-  // files here; once every feature is converted this becomes src/**/*.jsx.
-  // Symbols and the brand may stay literal.
+  // i18n (docs/I18N.md): no user-facing text written straight into JSX —
+  // every word a person reads comes from a translation key. Symbols, the
+  // brand and codes may stay literal (a URL or a code goes in a constant).
+  // KitGallery.jsx is left out: it's the dev-only design-system gallery
+  // (lazy-loaded behind import.meta.env.DEV, never in the production
+  // build), whose sample labels are fixtures, not UI copy.
   {
-    files: [
-      'src/app/AppShell.jsx', 'src/app/More.jsx', 'src/app/NotFound.jsx',
-      'src/features/landing/*.jsx',
-      'src/features/settings/{Settings,SettingsPage,AppearanceSettings,LanguageSettings,DemoNotice}.jsx',
-      'src/shared/ui/{PublicHeader,LanguageSwitch,SkipLink,OfflineIndicator,ThemeToggle,SiteSwitch,HobbyNotice}.jsx',
-    ],
+    files: ['src/**/*.jsx'],
+    ignores: ['src/shared/ui/kit/KitGallery.jsx'],
     rules: {
       'react/jsx-no-literals': ['error', {
         noStrings: true,
         ignoreProps: true,
-        allowedStrings: ['·', '—', '–', '→', '←', '©', ':', '/', '(', ')', '+', '−', '%', '…', 'Budgeer', 'budgeer'],
+        allowedStrings: ['·', '—', '–', '→', '←', '›', '©', ':', '/', '(', ')', '+', '−', '%', '…', '@', '€', 'Budgeer', 'budgeer'],
       }],
     },
   },

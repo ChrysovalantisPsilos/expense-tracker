@@ -155,7 +155,7 @@ export default function Recurring() {
             </Text>
           </ModalBody>
           <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={() => setRemoving(null)}>{t('list.remove.cancel')}</Button>
+            <Button variant="ghost" onClick={() => setRemoving(null)}>{t('common:actions.cancel')}</Button>
             <Button colorScheme="red" onClick={confirmRemove}>{t('list.remove.confirm')}</Button>
           </ModalFooter>
         </ModalContent>
@@ -182,8 +182,8 @@ function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
       }
       actionSlots={2} actions={[
         { label: t(r.is_active ? 'row.pause' : 'row.resume'), icon: r.is_active ? Pause : Play, menuOnly: true, onClick: onToggle },
-        { label: t('row.edit'), icon: Pencil, onClick: onEdit },
-        { label: t('row.delete'), icon: Trash2, danger: true, onClick: onRemove },
+        { label: t('common:actions.edit'), icon: Pencil, onClick: onEdit },
+        { label: t('common:actions.delete'), icon: Trash2, danger: true, onClick: onRemove },
       ]} />
   )
 }

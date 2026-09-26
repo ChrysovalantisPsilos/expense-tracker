@@ -7,6 +7,7 @@ import { supabase } from '../../shared/lib/supabase.js'
 import { useOwnedQuery, removeRow } from '../../shared/lib/db.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
 import { cleanPattern } from './importRulesMath.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // Every rule the user has (live: an import in another tab adds to the list).
 export function useImportRules() {
@@ -19,7 +20,7 @@ export async function updateRule(id, { pattern, category_id: categoryId }) {
   const { error } = await supabase.from('category_rules')
     .update({ pattern: cleanPattern(pattern), category_id: categoryId }).eq('id', id)
   if (error) {
-    throw error.code === '23505' ? new UserError('You already have a rule for that text.') : dbError(error)
+    throw error.code === '23505' ? new UserError(t('import:rules.errors.taken')) : dbError(error)
   }
 }
 

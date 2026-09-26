@@ -373,12 +373,12 @@ function AccountRow({ account: acc, remove }) {
   const saving = acc.type === 'savings'
   return (
     <ItemRow icon={debt ? CreditCard : saving ? PiggyBank : Landmark} title={acc.name}
-      meta={saving ? 'Savings account' : t(debt ? 'netWorth.debt' : 'netWorth.asset')}
+      meta={t(saving ? 'netWorth.savingsAccount' : debt ? 'netWorth.debt' : 'netWorth.asset')}
       amount={`${debt ? '−' : ''}${formatMoney(acc.balance_minor, acc.currency)}`}
       amountTone={debt ? 'negative' : 'default'}
       actions={[
-        { label: t('actions.edit'), icon: Pencil, onClick: () => navigate(`/insights/accounts/${acc.id}`, { state: { account: acc } }) },
-        { label: t('actions.delete'), icon: Trash2, onClick: () => remove(acc), danger: true },
+        { label: t('common:actions.edit'), icon: Pencil, onClick: () => navigate(`/insights/accounts/${acc.id}`, { state: { account: acc } }) },
+        { label: t('common:actions.delete'), icon: Trash2, onClick: () => remove(acc), danger: true },
       ]} />
   )
 }

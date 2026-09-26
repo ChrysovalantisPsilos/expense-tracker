@@ -232,7 +232,7 @@ function DoneStep({ tally }) {
           {kept && <Text fontSize="sm" color="text.muted">{kept}</Text>}
         </Stack>
       </Panel>
-      <Button onClick={back}>{t('restore.done')}</Button>
+      <Button onClick={back}>{t('common:actions.done')}</Button>
     </>
   )
 }

@@ -151,9 +151,9 @@ function DeleteCategoryModal({ category, all, onClose, onSaved }) {
           </Stack>
         </ModalBody>
         <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
           <Button colorScheme="red" isLoading={busy} isDisabled={count == null} onClick={confirm}>
-            {t('actions.delete')}
+            {t('common:actions.delete')}
           </Button>
         </ModalFooter>
       </ModalContent>

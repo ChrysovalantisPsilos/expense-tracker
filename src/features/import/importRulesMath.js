@@ -6,16 +6,19 @@
 // which rows it can file (money out → expense categories, money in → income).
 import { foldText } from '../../shared/lib/localeParse.js'
 import { isoDate } from '../../shared/lib/dates.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
+import { byDisplayName, categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // The server's bounds on a pattern (category_rules' CHECK, 0040).
 export const PATTERN_MIN = 2
 export const PATTERN_MAX = 80
 
-// The list's filter: every rule, or those for money out / money in.
-export const RULE_FILTERS = [['all', 'All'], ['expense', 'Money out'], ['income', 'Money in']]
+// The list's filter: every rule, or those for money out / money in (each
+// with its label's key, import:rules.filters.*).
+export const RULE_FILTERS = [['all', 'rules.filters.all'], ['expense', 'rules.filters.expense'], ['income', 'rules.filters.income']]
 
 // A rule's direction as the list says it.
-export const directionLabel = (kind) => (kind === 'income' ? 'Money in' : 'Money out')
+export const directionLabel = (kind) => t(kind === 'income' ? 'import:rules.filters.income' : 'import:rules.filters.expense')
 
 // A typed pattern as it's saved: whitespace collapsed and trimmed (the server
 // does the same, 0093).
@@ -25,11 +28,11 @@ export const cleanPattern = (text) => String(text ?? '').replace(/\s+/g, ' ').tr
 // same text (ignoring case and accents, as matching does) as another rule.
 export function patternProblem(text, rules, id = null) {
   const pattern = cleanPattern(text)
-  if (pattern.length < PATTERN_MIN) return `Use at least ${PATTERN_MIN} characters.`
-  if (pattern.length > PATTERN_MAX) return `Use at most ${PATTERN_MAX} characters.`
+  if (pattern.length < PATTERN_MIN) return t('import:rules.errors.short', { count: PATTERN_MIN })
+  if (pattern.length > PATTERN_MAX) return t('import:rules.errors.long', { count: PATTERN_MAX })
   const key = foldText(pattern)
   if (rules.some((r) => r.id !== id && foldText(r.pattern) === key)) {
-    return 'You already have a rule for that text.'
+    return t('import:rules.errors.taken')
   }
   return null
 }
@@ -52,7 +55,8 @@ export function filterRules(rows, { query = '', filter = 'all' } = {}) {
   const q = foldText(query.trim())
   return rows.filter((r) => (filter === 'all' || r.kind === filter)
     && (!q || foldText(r.pattern).includes(q)
-      || foldText(r.category?.name).includes(q)))
+      || foldText(r.category?.name).includes(q)
+      || foldText(categoryDisplayName(r.category)).includes(q)))
 }
 
 // The categories a rule can be moved to: the active ones, grouped by
@@ -60,9 +64,8 @@ export function filterRules(rows, { query = '', filter = 'all' } = {}) {
 // the picker still shows it.
 export function ruleTargets(categories, current = null) {
   const usable = (categories ?? []).filter((c) => !c.is_archived || c.id === current)
-  const byName = (a, b) => a.name.localeCompare(b.name)
   return [
-    { kind: 'expense', label: directionLabel('expense'), categories: usable.filter((c) => c.kind === 'expense').sort(byName) },
-    { kind: 'income', label: directionLabel('income'), categories: usable.filter((c) => c.kind === 'income').sort(byName) },
+    { kind: 'expense', label: directionLabel('expense'), categories: usable.filter((c) => c.kind === 'expense').sort(byDisplayName) },
+    { kind: 'income', label: directionLabel('income'), categories: usable.filter((c) => c.kind === 'income').sort(byDisplayName) },
   ].filter((g) => g.categories.length > 0)
 }

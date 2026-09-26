@@ -16,6 +16,7 @@ export default {
     notifications: { label: 'Notifications', desc: 'Push and email alerts' },
     appearance: { label: 'Appearance', desc: 'Light, dark or match your device' },
     language: { label: 'Language', desc: 'English, Greek or match your device' },
+    importRules: { label: 'Import rules', desc: 'Categories your bank imports fill in automatically' },
     security: { label: 'Security', desc: 'Sign-in and account deletion' },
     data: { label: 'Your data', desc: 'Back up or restore your account' },
     privacy: { label: 'Privacy', desc: 'Your data rights, consents and requests' },
@@ -68,7 +69,6 @@ export default {
     paypal: 'PayPal.me name',
     paypalPlaceholder: 'paypal.me/yourname',
     paypalInvalid: 'A PayPal.me name is up to 20 letters and numbers.',
-    save: 'Save',
     saved: 'Payment details saved',
   },
   notifications: {
@@ -165,7 +165,6 @@ export default {
     firstPassword: {
       lead: 'Log in with your email ({{email}}) and a password as well as with Google.',
       submit: 'Set password',
-      cancel: 'Cancel',
       hasOne: 'This account already has a password',
       hasOneBody: 'Change it under Password below, or use “Forgot password?” on the log-in page.',
       failed: 'Couldn’t set the password',

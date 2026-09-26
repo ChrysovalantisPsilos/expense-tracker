@@ -3,9 +3,6 @@ export default {
   description: 'Οι αλλαγές κάθε ενημέρωσης. Πάτησε μία για να τη δεις ξανά.',
   story: {
     counter: 'Νέο · {{page}} από {{pages}} · {{day}}',
-    skip: 'Παράλειψη',
-    next: 'Επόμενο',
-    done: 'Τέλος',
   },
   releases: {
     '2026-09-26': {

@@ -2,6 +2,9 @@ import { Box, HStack, Image, Text, VStack } from '@chakra-ui/react'
 import { isTestSite } from '../lib/environment.js'
 import { useT } from '../lib/i18n/I18nProvider.jsx'
 
+// The test site's tag: an environment code, the same in every language.
+const TEST_SITE_TAG = 'DEV'
+
 // Budgeer logo: a lowercase b whose bowl is a budget progress ring + wordmark. `showWord` toggles the text
 // (hidden when the sidebar is collapsed / on tight spaces). On the test site
 // it carries a "DEV" tag for everyone, so nobody mistakes it for the live site.
@@ -28,7 +31,7 @@ export default function Logo({ size = 32, showWord = true, stacked = false, ...p
           px={1.5} py={0.5} borderRadius="md" fontSize={stacked ? '9px' : '11px'} fontWeight="800"
           letterSpacing="0.06em" lineHeight="1.2"
           bg="amber.100" color="amber.900" _dark={{ bg: 'amber.400', color: 'sand.900' }}>
-          DEV
+          {TEST_SITE_TAG}
         </Box>
       )}
     </Wrap>

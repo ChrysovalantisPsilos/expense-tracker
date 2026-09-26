@@ -4,7 +4,6 @@
 // docs/I18N.md.
 export default {
   title: 'Import a bank statement',
-  back: 'Back',
   upload: {
     title: 'Upload a statement or spreadsheet',
     text: 'The CSV or Excel export from your bank (up to 5 MB), or any sheet with a header row. The layout is recognised automatically — including {{banks}} — and you see a preview before anything is saved. Pending and declined payments are left out; foreign-currency rows convert at the ECB rate for their date.',
@@ -134,5 +133,53 @@ export default {
     ignored_other: 'Left out {{count}} lines that aren’t booked transactions (pending, declined, balances or notes).',
     another: 'Import another',
     view: 'View transactions',
+  },
+  // Settings › Import rules (ImportRules.jsx, importRulesMath.js).
+  rules: {
+    title: 'Import rules',
+    lead: 'When an imported row’s description contains a rule’s text, it gets the rule’s category.',
+    yours: 'Your rules',
+    count_one: '{{count}} rule',
+    count_other: '{{count}} rules',
+    what: 'your import rules',
+    search: 'Search text or category',
+    searchLabel: 'Search import rules',
+    direction: 'Direction',
+    filters: {
+      all: 'All',
+      expense: 'Money out',
+      income: 'Money in',
+    },
+    noMatch: 'No rules match.',
+    unknownCategory: 'Unknown category',
+    added: 'Added {{date}}',
+    editOne: 'Edit {{pattern}}',
+    deleteOne: 'Delete {{pattern}}',
+    empty: {
+      title: 'No import rules yet',
+      text: 'Rules are made when you import a bank statement and pick categories for new merchants. Next time, their rows are sorted automatically.',
+      action: 'Import a statement',
+    },
+    edit: {
+      title: 'Edit rule',
+      pattern: 'Description contains',
+      patternHint: 'Upper or lower case doesn’t matter.',
+      category: 'Category',
+      categoryHint: 'A money-out category files payments; a money-in one, money you receive.',
+      futureOnly: 'Only future imports use the new text; entries already imported keep their category.',
+    },
+    remove: {
+      title: 'Delete “{{pattern}}”?',
+      body: 'Future imports won’t sort these rows automatically any more. Entries already imported keep their category.',
+    },
+    saved: 'Rule saved',
+    deleted: 'Rule deleted',
+    errors: {
+      short_one: 'Use at least {{count}} character.',
+      short_other: 'Use at least {{count}} characters.',
+      long_one: 'Use at most {{count}} character.',
+      long_other: 'Use at most {{count}} characters.',
+      taken: 'You already have a rule for that text.',
+    },
   },
 }

@@ -49,8 +49,8 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
       amount={`${out ? '−' : '+'}${formatMoney(r.amount_minor, r.currency)}`}
       amountTone={out ? 'default' : 'positive'}
       actionSlots={2} actions={[
-        { label: t('actions.edit'), icon: Pencil, onClick: () => open(r) },
-        { label: t('actions.delete'), icon: Trash2, danger: true, onClick: () => remove(r) },
+        { label: t('common:actions.edit'), icon: Pencil, onClick: () => open(r) },
+        { label: t('common:actions.delete'), icon: Trash2, danger: true, onClick: () => remove(r) },
       ]} />
   )
 }

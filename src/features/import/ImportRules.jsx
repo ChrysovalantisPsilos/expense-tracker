@@ -16,6 +16,8 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { shortDate } from '../../shared/lib/dates.js'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { useAllCategories } from '../categories/categories.js'
 import { useImportRules, updateRule, deleteRule } from './importRules.js'
 import {
@@ -28,6 +30,7 @@ import {
 // goes and when it was added; search and a direction filter narrow the list,
 // a row opens its editor (text and category) and Delete asks first. Live.
 export default function ImportRules() {
+  const t = useT('import')
   const navigate = useNavigate()
   const rules = useImportRules()
   const categories = useAllCategories()
@@ -42,13 +45,12 @@ export default function ImportRules() {
   const reload = () => { rules.reload(); categories.reload() }
 
   let body
-  if (error) body = <QueryError error={error} onRetry={reload} what="your import rules" />
+  if (error) body = <QueryError error={error} onRetry={reload} what={t('rules.what')} />
   else if (rules.loading || categories.loading) body = <RingLoader />
   else if (rows.length === 0) {
     body = (
-      <EmptyState title="No import rules yet"
-        text="Rules are made when you import a bank statement and pick categories for new merchants. Next time, their rows are sorted automatically."
-        actions={<Button leftIcon={<UploadCloud size={16} />} onClick={() => navigate('/import')}>Import a statement</Button>} />
+      <EmptyState title={t('rules.empty.title')} text={t('rules.empty.text')}
+        actions={<Button leftIcon={<UploadCloud size={16} />} onClick={() => navigate('/import')}>{t('rules.empty.action')}</Button>} />
     )
   } else {
     body = (
@@ -56,27 +58,28 @@ export default function ImportRules() {
         <InputGroup size="sm">
           <InputLeftElement pointerEvents="none" color="text.muted"><Search size={16} /></InputLeftElement>
           <Input type="search" value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search text or category" aria-label="Search import rules" borderRadius="lg" />
+            placeholder={t('rules.search')} aria-label={t('rules.searchLabel')} borderRadius="lg" />
         </InputGroup>
-        <SegmentedControl label="Direction" options={RULE_FILTERS} value={filter} onChange={setFilter}
+        <SegmentedControl label={t('rules.direction')} options={RULE_FILTERS.map(([v, key]) => [v, t(key)])}
+          value={filter} onChange={setFilter}
           alignSelf="start" w="fit-content" />
         {shown.length === 0 ? (
-          <Text color="text.muted" fontSize="sm">No rules match.</Text>
+          <Text color="text.muted" fontSize="sm">{t('rules.noMatch')}</Text>
         ) : (
-          <Stack spacing={0} role="list" aria-label="Import rules">
+          <Stack spacing={0} role="list" aria-label={t('rules.title')}>
             {shown.map((r) => (
               <Box key={r.id} role="listitem">
                 <ItemRow media={<CategoryBadge category={r.category} kind={r.kind} size={32} />}
                   title={r.pattern}
                   meta={[
-                    r.category?.name ?? 'Unknown category',
+                    r.category ? categoryDisplayName(r.category) : t('rules.unknownCategory'),
                     r.kind && directionLabel(r.kind),
-                    r.addedOn && `Added ${shortDate(r.addedOn)}`,
+                    r.addedOn && t('rules.added', { date: shortDate(r.addedOn) }),
                   ].filter(Boolean).join(' · ')}
                   onClick={() => setEditing(r)}
                   actionSlots={2} actions={[
-                    { label: `Edit ${r.pattern}`, icon: Pencil, onClick: () => setEditing(r) },
-                    { label: `Delete ${r.pattern}`, icon: Trash2, danger: true, onClick: () => setDeleting(r) },
+                    { label: t('rules.editOne', { pattern: r.pattern }), icon: Pencil, onClick: () => setEditing(r) },
+                    { label: t('rules.deleteOne', { pattern: r.pattern }), icon: Trash2, danger: true, onClick: () => setDeleting(r) },
                   ]} />
               </Box>
             ))}
@@ -87,9 +90,8 @@ export default function ImportRules() {
   }
 
   return (
-    <SettingsPage title="Import rules"
-      description="When an imported row’s description contains a rule’s text, it gets the rule’s category.">
-      <Panel icon={Wand2} title="Your rules" subtitle={rows.length ? `${rows.length} ${rows.length === 1 ? 'rule' : 'rules'}` : undefined}>
+    <SettingsPage title={t('rules.title')} description={t('rules.lead')}>
+      <Panel icon={Wand2} title={t('rules.yours')} subtitle={rows.length ? t('rules.count', { count: rows.length }) : undefined}>
         {body}
       </Panel>
       <EditRuleModal key={editing?.id ?? 'none'} rule={editing} rules={rows} categories={categories.rows}
@@ -101,6 +103,7 @@ export default function ImportRules() {
 
 // Change a rule's text and category.
 function EditRuleModal({ rule, rules, categories, onClose, onSaved }) {
+  const t = useT('import')
   const toast = useToast()
   const textRef = useRef(null)
   const [pattern, setPattern] = useState(rule?.pattern ?? '')
@@ -115,37 +118,37 @@ function EditRuleModal({ rule, rules, categories, onClose, onSaved }) {
     if (problem || !categoryId) return
     await run(async () => {
       await updateRule(rule.id, { pattern, category_id: categoryId })
-      toast({ title: 'Rule saved', status: 'success' })
+      toast({ title: t('rules.saved'), status: 'success' })
       onSaved?.(); onClose()
     })
   }
 
   return (
-    <FormModal isOpen={!!rule} onClose={onClose} title="Edit rule" onSubmit={save} busy={busy}
+    <FormModal isOpen={!!rule} onClose={onClose} title={t('rules.edit.title')} onSubmit={save} busy={busy}
       initialFocusRef={textRef} noValidate>
       <Stack spacing={4}>
         <FormControl isInvalid={touched && !!problem}>
-          <FormLabel>Description contains</FormLabel>
+          <FormLabel>{t('rules.edit.pattern')}</FormLabel>
           <Input ref={textRef} value={pattern} maxLength={PATTERN_MAX} autoComplete="off"
             onChange={(e) => setPattern(e.target.value)} onBlur={() => setTouched(true)} />
           {touched && problem
             ? <FormErrorMessage>{problem}</FormErrorMessage>
-            : <FormHelperText>Upper or lower case doesn’t matter.</FormHelperText>}
+            : <FormHelperText>{t('rules.edit.patternHint')}</FormHelperText>}
         </FormControl>
         <FormControl>
-          <FormLabel>Category</FormLabel>
+          <FormLabel>{t('rules.edit.category')}</FormLabel>
           <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             {groups.map((g) => (
               <optgroup key={g.kind} label={g.label}>
-                {g.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {g.categories.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
               </optgroup>
             ))}
           </Select>
-          <FormHelperText>A money-out category files payments; a money-in one, money you receive.</FormHelperText>
+          <FormHelperText>{t('rules.edit.categoryHint')}</FormHelperText>
         </FormControl>
         {cleanPattern(pattern) !== rule?.pattern && (
           <Text fontSize="xs" color="text.muted">
-            Only future imports use the new text; entries already imported keep their category.
+            {t('rules.edit.futureOnly')}
           </Text>
         )}
       </Stack>
@@ -155,21 +158,20 @@ function EditRuleModal({ rule, rules, categories, onClose, onSaved }) {
 
 // Delete, after asking.
 function DeleteRuleModal({ rule, onClose, onDone }) {
+  const t = useT('import')
   const toast = useToast()
   const { busy, run } = useAsyncSubmit()
   async function confirm() {
     await run(async () => {
       await deleteRule(rule.id)
-      toast({ title: 'Rule deleted', status: 'success' })
+      toast({ title: t('rules.deleted'), status: 'success' })
       onDone?.(); onClose()
     })
   }
   return (
-    <FormModal isOpen={!!rule} onClose={onClose} title={`Delete “${rule?.pattern ?? ''}”?`} onSubmit={confirm}
-      busy={busy} submitLabel="Delete" submitProps={{ colorScheme: 'red' }}>
-      <Text color="text.muted">
-        Future imports won’t sort these rows automatically any more. Entries already imported keep their category.
-      </Text>
+    <FormModal isOpen={!!rule} onClose={onClose} title={t('rules.remove.title', { pattern: rule?.pattern ?? '' })}
+      onSubmit={confirm} busy={busy} submitLabel={t('common:actions.delete')} submitProps={{ colorScheme: 'red' }}>
+      <Text color="text.muted">{t('rules.remove.body')}</Text>
     </FormModal>
   )
 }

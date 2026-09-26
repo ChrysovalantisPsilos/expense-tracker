@@ -26,8 +26,8 @@ export default function DeleteTransactionDialog({ row, onClose, onConfirm, busy,
           </Text>
         </ModalBody>
         <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
-          <Button colorScheme="red" isLoading={busy} onClick={onConfirm}>{t('actions.delete')}</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
+          <Button colorScheme="red" isLoading={busy} onClick={onConfirm}>{t('common:actions.delete')}</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>

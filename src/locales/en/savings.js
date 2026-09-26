@@ -5,16 +5,15 @@ export default {
   what: 'your savings',
   add: 'Add to savings',
   fallbackName: 'Savings',
-  actions: {
-    edit: 'Edit',
-    delete: 'Delete',
-  },
   pot: {
     label: 'Your savings pot',
     since_one: 'since {{month}} · {{count}} month',
     since_other: 'since {{month}} · {{count}} months',
     chart: 'Your savings pot at the end of each month, {{points}}',
     series: 'Pot',
+    // Where the total comes from (totalSourceNote).
+    fromAccounts: 'From your savings accounts',
+    fromEntries: 'From your savings entries',
   },
   chip: {
     up: '+{{amount}} this month',

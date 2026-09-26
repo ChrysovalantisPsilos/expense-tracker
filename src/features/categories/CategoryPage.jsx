@@ -121,7 +121,7 @@ export default function CategoryPage() {
         action={category && (
           <PageAction h="44px" minW="44px" aria-expanded={editing}
             icon={editing ? <X size={18} /> : <Pencil size={18} />}
-            label={t(editing ? 'actions.close' : 'actions.edit')} variant={editing ? 'outline' : 'solid'}
+            label={t(editing ? 'common:actions.close' : 'common:actions.edit')} variant={editing ? 'outline' : 'solid'}
             onClick={() => (editing ? setEditing(false) : openEdit(false))} />
         )} />
 
@@ -270,8 +270,8 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
               {t(category.is_archived ? 'actions.unarchive' : 'actions.archive')}
             </Button>
             <HStack spacing={2}>
-              <Button variant="ghost" h="44px" onClick={onClose}>{t('actions.cancel')}</Button>
-              <Button type="submit" h="44px" isLoading={busy}>{t('actions.save')}</Button>
+              <Button variant="ghost" h="44px" onClick={onClose}>{t('common:actions.cancel')}</Button>
+              <Button type="submit" h="44px" isLoading={busy}>{t('common:actions.save')}</Button>
             </HStack>
           </Flex>
         </Stack>

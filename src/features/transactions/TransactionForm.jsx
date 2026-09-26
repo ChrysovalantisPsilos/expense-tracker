@@ -289,7 +289,7 @@ export default function TransactionForm({
       submitLabel={t(isEdit ? 'form.saveChanges' : `form.submit.${kind}`)}
       secondary={onDelete && (
         <Button variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />} onClick={onDelete}>
-          {t('actions.delete')}
+          {t('common:actions.delete')}
         </Button>
       )}>
       {sideways ? (

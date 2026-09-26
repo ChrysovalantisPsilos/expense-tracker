@@ -191,7 +191,7 @@ export default function TransactionPage() {
   return (
     <Stack spacing={5} {...FORM_COLUMN}>
       <PageHeader eyebrow={group ? group.name : t('ledger.title')} title={title} leading={
-        <IconButton aria-label={t('actions.back')} variant="ghost" size="sm" ml={-2} flexShrink={0}
+        <IconButton aria-label={t('common:actions.back')} variant="ghost" size="sm" ml={-2} flexShrink={0}
           icon={<ArrowLeft size={18} />} onClick={back} />
       } />
       {body}

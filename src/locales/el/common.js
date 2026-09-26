@@ -5,6 +5,9 @@ export default {
     signUp: 'Εγγραφή',
     save: 'Αποθήκευση',
     cancel: 'Ακύρωση',
+    edit: 'Επεξεργασία',
+    delete: 'Διαγραφή',
+    close: 'Κλείσιμο',
     back: 'Πίσω',
     next: 'Επόμενο',
     done: 'Τέλος',
@@ -159,6 +162,7 @@ export default {
     ecb: '{{conversion}} στις {{date}} (ΕΚΤ)',
     missing: 'Δεν βρέθηκε η ισοτιμία {{from}}→{{to}} γι’ αυτή την ημερομηνία. Γράψε την ισοτιμία για να αποθηκευτεί — θα τη βρεις στην κίνηση της κάρτας ή της τράπεζάς σου.',
     ratePlaceholder: 'π.χ. 1,17',
+    rateLabel: '1 {{from}} = ? {{to}}',
   },
   savingsSwitch: {
     fromIncome: {

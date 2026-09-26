@@ -33,8 +33,6 @@ export default {
       skip: 'Skip tour',
       start: 'Start tour',
     },
-    back: 'Back',
-    skip: 'Skip',
     continue: 'Continue',
     finishFailed: 'Couldn’t finish',
   },

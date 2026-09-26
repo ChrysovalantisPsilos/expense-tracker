@@ -195,11 +195,11 @@ export default function OnboardingWizard({ profile, onDone }) {
         <ModalFooter gap={2}>
           {step > 0 && (
             <Button variant="ghost" leftIcon={<ArrowLeft size={16} />}
-              onClick={() => setStep(step - 1)} isDisabled={busy}>{t('wizard.back')}</Button>
+              onClick={() => setStep(step - 1)} isDisabled={busy}>{t('common:actions.back')}</Button>
           )}
           <Box flex="1" />
           {step < 2 && (
-            <Button variant="ghost" onClick={() => setStep(step + 1)} isDisabled={busy}>{t('wizard.skip')}</Button>
+            <Button variant="ghost" onClick={() => setStep(step + 1)} isDisabled={busy}>{t('common:actions.skip')}</Button>
           )}
           {step === 0 && (
             <Button rightIcon={<ArrowRight size={16} />} isLoading={busy} onClick={saveBasics}>{t('wizard.continue')}</Button>

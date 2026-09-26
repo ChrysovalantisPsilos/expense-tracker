@@ -9,7 +9,6 @@ export default {
   expense: 'Έξοδο',
   member: 'Μέλος',
   total: 'Σύνολο',
-  back: 'Πίσω',
   count: {
     member_one: '{{count}} μέλος',
     member_other: '{{count}} μέλη',
@@ -21,9 +20,6 @@ export default {
     way_other: '{{count}} άτομα',
   },
   actions: {
-    cancel: 'Ακύρωση',
-    close: 'Κλείσιμο',
-    delete: 'Διαγραφή',
     accept: 'Αποδοχή',
     decline: 'Απόρριψη',
     share: 'Κοινοποίηση',
@@ -60,6 +56,7 @@ export default {
   },
   detail: {
     reportFailed: 'Η αναφορά δεν δημιουργήθηκε',
+    reportNotAllowed: 'Δεν επιτρέπεται για αυτή την ομάδα.',
     reportBusy: 'Ετοιμάζεται η αναφορά της ομάδας…',
     summaryCopied: 'Η σύνοψη αντιγράφηκε',
     summaryPaste: 'Κάνε επικόλληση στο chat της ομάδας.',
@@ -258,7 +255,7 @@ export default {
   pay: {
     qrFailed: 'Ο κωδικός QR δεν δημιουργήθηκε',
     direct: 'Πλήρωσε απευθείας: {{name}}',
-    noDetails: '{{name}}: δεν έχει προσθέσει ακόμα στοιχεία πληρωμής. Μόλις προσθέσει IBAN, Revolut ή PayPal στις Ρυθμίσεις › Λογαριασμός, θα μπορείς να πληρώνεις εδώ με QR τράπεζας ή με ένα πάτημα.',
+    noDetails: '{{name}}: δεν έχει προσθέσει ακόμα στοιχεία πληρωμής. Μόλις προσθέσει IBAN, Revolut ή PayPal στις Ρυθμίσεις › Λογαριασμός › Πώς σε πληρώνουν, θα μπορείς να πληρώνεις εδώ με QR τράπεζας ή με ένα πάτημα.',
     notJoined: '{{name}}: μόλις μπει στο Budgeer και προσθέσει IBAN, Revolut ή PayPal, θα μπορείς να πληρώνεις εδώ με QR τράπεζας ή με ένα πάτημα.',
     ibanCopied: 'Το IBAN αντιγράφηκε',
     hideQr: 'Απόκρυψη QR',

@@ -70,7 +70,7 @@ export default function GroupHeader({
     </Box>
   )
   const back = (props) => (
-    <IconButton aria-label={t('back')} variant="ghost" size="sm" ml={-2} {...props}
+    <IconButton aria-label={t('common:actions.back')} variant="ghost" size="sm" ml={-2} {...props}
       icon={<ArrowLeft size={18} />} onClick={() => navigate('/groups')} />
   )
   const menu = (

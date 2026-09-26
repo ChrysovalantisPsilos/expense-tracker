@@ -6,6 +6,9 @@ export default {
     signUp: 'Sign up',
     save: 'Save',
     cancel: 'Cancel',
+    edit: 'Edit',
+    delete: 'Delete',
+    close: 'Close',
     back: 'Back',
     next: 'Next',
     done: 'Done',
@@ -175,6 +178,7 @@ export default {
     ecb: '{{conversion}} on {{date}} (ECB)',
     missing: 'Couldn’t get the {{from}}→{{to}} exchange rate for this date. Enter the rate to save it — you’ll find it on your card or bank statement.',
     ratePlaceholder: 'e.g. 1.17',
+    rateLabel: '1 {{from}} = ? {{to}}',
   },
   savingsSwitch: {
     fromIncome: {

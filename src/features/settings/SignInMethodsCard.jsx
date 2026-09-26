@@ -188,7 +188,7 @@ function SetPasswordForm({ email, onCancel, onDone, setFirstPassword, markPasswo
         <Button type="submit" isLoading={busy} isDisabled={!next || !confirm}>
           {t('signIn.firstPassword.submit')}
         </Button>
-        <Button variant="ghost" onClick={onCancel}>{t('signIn.firstPassword.cancel')}</Button>
+        <Button variant="ghost" onClick={onCancel}>{t('common:actions.cancel')}</Button>
       </Stack>
     </Stack>
   )

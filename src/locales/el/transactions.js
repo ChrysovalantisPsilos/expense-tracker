@@ -7,10 +7,6 @@ export default {
   uncategorized: 'Χωρίς κατηγορία',
   actions: {
     add: 'Προσθήκη',
-    edit: 'Επεξεργασία',
-    delete: 'Διαγραφή',
-    cancel: 'Ακύρωση',
-    back: 'Πίσω',
     clear: 'Καθαρισμός',
   },
   periods: {

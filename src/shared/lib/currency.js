@@ -199,3 +199,11 @@ export function formatRate(rate) {
   const locale = intlLocale()
   return locale ? n.toLocaleString(locale, { maximumSignificantDigits: 5 }) : String(n)
 }
+
+// A stored rate shown in full, as English always showed it (0.85477391), but
+// with the app language's decimal mark (Greek 0,85477391).
+export function rateText(rate) {
+  const n = Number(rate)
+  const locale = intlLocale()
+  return locale ? n.toLocaleString(locale, { maximumFractionDigits: 20, useGrouping: false }) : String(n)
+}

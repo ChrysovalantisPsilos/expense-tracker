@@ -59,7 +59,7 @@ test('baseEquivalent: null for base-currency rows or a missing rate', () => {
 // --- Exchange rates (pure parts of the ECB/Frankfurter integration) --------
 import {
   CURRENCIES, fxUrl, fxRangeUrl, fxQueryDate, parseFxResponse, parseFxSeries, rateOnOrBefore,
-  fxCacheKey, isFinalFx, parseManualRate, formatRate, FX_API,
+  fxCacheKey, isFinalFx, parseManualRate, formatRate, rateText, FX_API,
 } from '../src/shared/lib/currency.js'
 
 test('CURRENCIES: the ECB set, EUR first, no duplicates, all ISO codes', () => {
@@ -171,6 +171,19 @@ test('formatRate: five significant digits, no trailing zeros', () => {
   assert.equal(formatRate(1.17), '1.17')
   assert.equal(formatRate(0.00538619), '0.0053862')
   assert.equal(formatRate(185.66), '185.66')
+})
+
+test('rateText: a stored rate in full, with the app language\'s decimal mark', async () => {
+  const { loadLanguage } = await import('../src/shared/lib/i18n/i18n.js')
+  assert.equal(rateText(0.85477391), '0.85477391') // English exactly as before
+  assert.equal(rateText(1234.5), '1234.5')
+  await loadLanguage('el')
+  try {
+    assert.equal(rateText(0.85477391), '0,85477391')
+    assert.equal(rateText(1234.5), '1234,5') // no grouping in a rate
+  } finally {
+    await loadLanguage('en')
+  }
 })
 
 // --- Pending rates (server hasn't rated a mirrored/recurring row yet) -------

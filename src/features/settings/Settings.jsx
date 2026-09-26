@@ -21,6 +21,7 @@ const PREFERENCES = [
   { to: '/settings/notifications', id: 'notifications', icon: BellRing },
   { to: '/settings/appearance', id: 'appearance', icon: Palette },
   { to: '/settings/language', id: 'language', icon: Languages },
+  { to: '/settings/import-rules', id: 'importRules', icon: Wand2 },
 ]
 const PRIVACY = [
   { to: '/settings/security', id: 'security', icon: ShieldCheck },
@@ -55,11 +56,7 @@ export default function Settings() {
             highlight flexShrink={0} />} />
       </NavList>
       {isDemo && <DemoNotice />}
-      <NavList label={t('sections.preferences')}>
-        {rows(PREFERENCES, t)}
-        <NavRow to="/settings/import-rules" icon={Wand2} label="Import rules"
-          description="Categories your bank imports fill in automatically" />
-      </NavList>
+      <NavList label={t('sections.preferences')}>{rows(PREFERENCES, t)}</NavList>
       <NavList label={t('sections.privacy')} data-tour="settings-privacy">{rows(PRIVACY, t)}</NavList>
       <NavList label={t('sections.help')}>
         <NavRow to="/help" icon={CircleHelp} label={t('rows.help.label')} description={t('rows.help.desc')} />

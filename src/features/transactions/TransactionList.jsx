@@ -5,7 +5,7 @@ import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import DeleteTransactionDialog from './DeleteTransactionDialog.jsx'
-import { formatMoney, baseEquivalent } from '../../shared/lib/currency.js'
+import { formatMoney, rateText, baseEquivalent } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { monthlyShare } from '../../shared/lib/spread.js'
@@ -91,14 +91,14 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
                 amountMeta={conv && (
                   <>
                     {t('list.approx', { amount: formatMoney(conv.baseMinor, baseCurrency) })}
-                    <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {conv.rate}</Box>
+                    <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {rateText(conv.rate)}</Box>
                     {/* Rate estimated on this device until the server records it. */}
                     {r.rate_estimated && ` · ${t('list.estimated')}`}
                   </>
                 )}
                 actionSlots={2} actions={shared ? [] : [
-                  { label: t('actions.edit'), icon: Pencil, onClick: () => open(r) },
-                  { label: t('actions.delete'), icon: Trash2, danger: true, onClick: () => setRemoving(r) },
+                  { label: t('common:actions.edit'), icon: Pencil, onClick: () => open(r) },
+                  { label: t('common:actions.delete'), icon: Trash2, danger: true, onClick: () => setRemoving(r) },
                 ]} />
             </ListItem>
           )

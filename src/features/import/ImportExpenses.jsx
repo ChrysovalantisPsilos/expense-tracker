@@ -165,7 +165,7 @@ export default function ImportExpenses() {
   return (
     <Stack spacing={5} maxW="760px">
       <PageHeader eyebrow={t('transactions:ledger.title')} title={t('title')} leading={
-        <IconButton aria-label={t('back')} variant="ghost" size="sm" ml={-2} flexShrink={0}
+        <IconButton aria-label={t('common:actions.back')} variant="ghost" size="sm" ml={-2} flexShrink={0}
           icon={<ArrowLeft size={18} />} onClick={() => navigate('/transactions')} />
       } />
 
@@ -277,7 +277,7 @@ export default function ImportExpenses() {
             ))}
           </Stack>
           <HStack mt={5}>
-            <Button variant="ghost" onClick={() => setStep('map')}>{t('back')}</Button>
+            <Button variant="ghost" onClick={() => setStep('map')}>{t('common:actions.back')}</Button>
             {busy && <BusyNote>{t('preview.importing', { count: preview.ready })}</BusyNote>}
             <Spacer />
             <Button leftIcon={<Check size={16} />} isLoading={busy} spinner={<RingSpinner />}
@@ -316,7 +316,7 @@ export default function ImportExpenses() {
             ))}
           </Stack>
           <HStack mt={5}>
-            <Button variant="ghost" onClick={() => { setPending(null); setStep('map') }}>{t('back')}</Button>
+            <Button variant="ghost" onClick={() => { setPending(null); setStep('map') }}>{t('common:actions.back')}</Button>
             {busy && <BusyNote>{t('preview.importing', { count: pending.valid.length })}</BusyNote>}
             <Spacer />
             <Button leftIcon={<Check size={16} />} isLoading={busy} spinner={<RingSpinner />}

@@ -74,10 +74,10 @@ function AccountForm({ account, baseCurrency }) {
           <Select value={type} onChange={(e) => setType(e.target.value)}>
             <option value="asset">{t('account.asset')}</option>
             <option value="liability">{t('account.liability')}</option>
-            <option value="savings">Savings (what you’ve saved)</option>
+            <option value="savings">{t('account.savings')}</option>
           </Select>
           {type === 'savings' && (
-            <FormHelperText>Your savings accounts’ balances become your savings total on the Savings page.</FormHelperText>
+            <FormHelperText>{t('account.savingsHint')}</FormHelperText>
           )}
         </FormControl>
         <FormControl isRequired>

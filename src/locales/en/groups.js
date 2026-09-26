@@ -10,7 +10,6 @@ export default {
   expense: 'Expense',
   member: 'Member',
   total: 'Total',
-  back: 'Back',
   // pluralise(n, noun): "4 members", "2 payments", "3 people", "3 ways".
   count: {
     member_one: '{{count}} member',
@@ -23,9 +22,6 @@ export default {
     way_other: '{{count}} ways',
   },
   actions: {
-    cancel: 'Cancel',
-    close: 'Close',
-    delete: 'Delete',
     accept: 'Accept',
     decline: 'Decline',
     share: 'Share',
@@ -64,6 +60,8 @@ export default {
   detail: {
     reportFailed: 'Couldn’t generate the report',
     reportBusy: 'Preparing the group statement…',
+    // What the statement answers a non-member (as the edge function's 403).
+    reportNotAllowed: 'Not allowed for this group.',
     summaryCopied: 'Summary copied',
     summaryPaste: 'Paste it into your group chat.',
     summaryFailed: 'Couldn’t share the summary',
