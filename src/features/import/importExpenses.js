@@ -14,6 +14,7 @@ import {
 } from './importMath.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 
 // Mappings the user confirmed, per header layout — a per-device convenience
 // (the next export from the same bank skips the mapping step). Browser
@@ -69,19 +70,23 @@ export function rememberHolder(name) {
 // (SheetJS is loaded only there, so it isn't in the main bundle and a heavy
 // file can't freeze the page). A mapping the user confirmed before for the
 // same header layout wins over detection. Errors come back as clear,
-// actionable messages.
+// actionable messages, in the app's language.
 export async function parseWorkbook(file) {
-  const problem = importFileProblem(file)
+  const problem = importFileProblem(file, { tr: (key, vars) => t(`import:${key}`, vars), locale: intlLocale('en-US') })
   if (problem) throw new UserError(problem)
   const buf = await file.arrayBuffer()
   const worker = new Worker(new URL('./sheetWorker.js', import.meta.url), { type: 'module' })
   try {
     const res = await new Promise((resolve, reject) => {
       worker.onmessage = (e) => resolve(e.data)
-      worker.onerror = () => reject(new UserError('The spreadsheet reader failed to start. Reload the page and try again.'))
+      worker.onerror = () => reject(new UserError(t('import:errors.readerFailed')))
       worker.postMessage(buf, [buf])
     })
-    if (!res.ok) throw new UserError(res.message)
+    if (!res.ok) {
+      throw new UserError(res.key
+        ? t(`import:${res.key}`, { hint: t('import:errors.exportHint') })
+        : t('import:errors.unreadableShort'))
+    }
     const rows = rowsToObjects(res.headers, res.rows)
     const detected = detectMapping(res.headers, rows)
     const saved = savedMappingFor(rememberedMappings(), res.headers)

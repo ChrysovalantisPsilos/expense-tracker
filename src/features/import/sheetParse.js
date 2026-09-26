@@ -6,23 +6,38 @@ import { sniffContainer, decodeText, parseDelimited } from './statementText.js'
 import { locateHeader } from './statementDetect.js'
 import { matchPreset } from './bankPresets.js'
 import { UserError } from '../../shared/lib/errors.js'
+import { interpolate, lookup } from '../../shared/lib/i18n/translate.js'
+import en from '../../locales/en/import.js'
 
 // Statement files are small; anything bigger is almost certainly not one, and
 // parsing it would freeze low-end phones.
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024
 
-const EXPORT_HINT =
-  'Re-export it as CSV (in Numbers/Excel: File → Export To → CSV) and upload that.'
+// Messages about the file are import:errors.* keys. This module also runs in
+// the parsing worker, which loads no dictionaries (that would bundle every
+// language into it), so by default it words them in English, and an error it
+// throws carries its `key`: the page shows that in the user's language
+// (importExpenses.parseWorkbook).
+const english = (key, vars) => interpolate(lookup(en, key), vars)
+
+function unreadable() {
+  const err = new UserError(english('errors.unreadable', { hint: english('errors.exportHint') }))
+  err.key = 'errors.unreadable'
+  return err
+}
 
 // A reason the file can't be imported (before reading a byte of it), or null.
-export function importFileProblem({ name = '', size = 0 }) {
+// `tr(key, vars)` words it (the page passes its own, in the user's language)
+// and `locale` formats the size.
+export function importFileProblem({ name = '', size = 0 }, { tr = english, locale = 'en-US' } = {}) {
   // .numbers is an Apple package format SheetJS cannot read at all.
   if (name.toLowerCase().endsWith('.numbers')) {
-    return `Numbers documents can’t be imported directly. ${EXPORT_HINT}`
+    return tr('errors.numbers', { hint: tr('errors.exportHint') })
   }
   if (size > MAX_IMPORT_BYTES) {
-    const mb = (size / 1024 / 1024).toFixed(1)
-    return `That file is ${mb} MB; the limit is 5 MB. Export a shorter date range (or just the columns you need) and try again.`
+    const mb = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1, useGrouping: false })
+      .format(size / 1024 / 1024)
+    return tr('errors.tooBig', { size: mb })
   }
   return null
 }
@@ -147,7 +162,7 @@ function readWorkbook(XLSX, bytes, kind) {
       // several export-quirk crashes.
       wb = XLSX.read(bytes, { ...base, cellStyles: false, cellHTML: false, cellNF: false, bookVBA: false })
     } catch {
-      throw new UserError(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
+      throw unreadable()
     }
   }
   try {
@@ -159,7 +174,7 @@ function readWorkbook(XLSX, bytes, kind) {
     })
     return sheets.length ? sheets : [[]]
   } catch {
-    throw new UserError(`This spreadsheet couldn’t be read. ${EXPORT_HINT}`)
+    throw unreadable()
   }
 }
 

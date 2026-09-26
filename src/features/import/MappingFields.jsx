@@ -1,44 +1,42 @@
 import { FormControl, FormLabel, Select, SimpleGrid, Text } from '@chakra-ui/react'
 import { IMPORT_FIELDS } from './statementDetect.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
-const DATE_ORDERS = [
-  { value: 'dmy', label: 'Day first (31/12/2026)' },
-  { value: 'mdy', label: 'Month first (12/31/2026)' },
-  { value: 'ymd', label: 'Year first (2026-12-31)' },
-]
-const DECIMALS = [
-  { value: ',', label: 'Comma (1.234,56)' },
-  { value: '.', label: 'Point (1,234.56)' },
-]
+// Each option's label is import:mapping.dateOrders.<value> / .decimals.<id>.
+const DATE_ORDERS = ['dmy', 'mdy', 'ymd']
+const DECIMALS = [{ value: ',', id: 'comma' }, { value: '.', id: 'point' }]
+// A required field's asterisk, after its label.
+const REQUIRED_MARK = ' *'
 
 // The column-mapping form: one select per import field (any header, or none)
 // plus how the file writes dates and decimals. Controlled by the page.
 export default function MappingFields({ headers, mapping, onChange }) {
+  const t = useT('import')
   const set = (key, value) => onChange({ ...mapping, [key]: value })
   return (
     <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
       {IMPORT_FIELDS.map((f) => (
         <FormControl key={f.key}>
           <FormLabel fontSize="sm" mb={1}>
-            {f.label}{f.required && <Text as="span" color="status.negative"> *</Text>}
-            {f.hint && <Text as="span" color="text.muted" fontWeight="400"> · {f.hint}</Text>}
+            {t(`fields.${f.key}.label`)}{f.required && <Text as="span" color="status.negative">{REQUIRED_MARK}</Text>}
+            {f.hint && <Text as="span" color="text.muted" fontWeight="400"> · {t(`fields.${f.key}.hint`)}</Text>}
           </FormLabel>
-          <Select size="sm" placeholder={f.required ? 'Select a column…' : '— none —'}
+          <Select size="sm" placeholder={t(f.required ? 'mapping.selectColumn' : 'mapping.noColumn')}
             value={mapping[f.key] || ''} onChange={(e) => set(f.key, e.target.value)}>
             {headers.map((h) => <option key={h} value={h}>{h}</option>)}
           </Select>
         </FormControl>
       ))}
       <FormControl>
-        <FormLabel fontSize="sm" mb={1}>Dates are written</FormLabel>
+        <FormLabel fontSize="sm" mb={1}>{t('mapping.dateOrder')}</FormLabel>
         <Select size="sm" value={mapping.dateOrder || 'dmy'} onChange={(e) => set('dateOrder', e.target.value)}>
-          {DATE_ORDERS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {DATE_ORDERS.map((v) => <option key={v} value={v}>{t(`mapping.dateOrders.${v}`)}</option>)}
         </Select>
       </FormControl>
       <FormControl>
-        <FormLabel fontSize="sm" mb={1}>Decimal separator</FormLabel>
+        <FormLabel fontSize="sm" mb={1}>{t('mapping.decimal')}</FormLabel>
         <Select size="sm" value={mapping.decimal || '.'} onChange={(e) => set('decimal', e.target.value)}>
-          {DECIMALS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          {DECIMALS.map((o) => <option key={o.value} value={o.value}>{t(`mapping.decimals.${o.id}`)}</option>)}
         </Select>
       </FormControl>
     </SimpleGrid>

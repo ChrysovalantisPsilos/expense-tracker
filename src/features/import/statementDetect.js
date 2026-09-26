@@ -6,22 +6,23 @@ import { parseDate, parseAmount, normalizeCurrency, directionOf, rowToDraft, sig
 import { CURRENCIES } from '../../shared/lib/currency.js'
 
 // The fields a mapping can fill, in the order the mapping step shows them.
-// Amount alone, or Debit + Credit, is required alongside Date.
+// Amount alone, or Debit + Credit, is required alongside Date. Each field's
+// words are import:fields.<key>.label (and .hint, where `hint` is set).
 export const IMPORT_FIELDS = [
-  { key: 'date', label: 'Date', required: true },
-  { key: 'amount', label: 'Amount (signed)', hint: 'or Debit + Credit below' },
-  { key: 'debit', label: 'Debit / money out' },
-  { key: 'credit', label: 'Credit / money in' },
-  { key: 'type', label: 'Debit/credit marker (D/C, Af/Bij, Χ/Π, income/expense)' },
-  { key: 'counterparty', label: 'Payee / counterparty' },
-  { key: 'holder', label: 'Account holder (your own name)', hint: 'transfers to it aren’t merchants' },
-  { key: 'description', label: 'Description' },
-  { key: 'details', label: 'More details' },
-  { key: 'currency', label: 'Currency' },
-  { key: 'category', label: 'Category' },
-  { key: 'status', label: 'Status (pending rows are skipped)' },
-  { key: 'fee', label: 'Fee' },
-  { key: 'baseAmount', label: 'Amount in your base currency', hint: 'the bank’s own conversion of a foreign amount' },
+  { key: 'date', required: true },
+  { key: 'amount', hint: true },
+  { key: 'debit' },
+  { key: 'credit' },
+  { key: 'type' },
+  { key: 'counterparty' },
+  { key: 'holder', hint: true },
+  { key: 'description' },
+  { key: 'details' },
+  { key: 'currency' },
+  { key: 'category' },
+  { key: 'status' },
+  { key: 'fee' },
+  { key: 'baseAmount', hint: true },
 ]
 
 // At or above this, the detected mapping is used as-is (the user can still
