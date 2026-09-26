@@ -8,7 +8,24 @@
 
 export function createQueryCache(max = 50) {
   const entries = new Map()
+  const pending = new Map() // key -> a prefetch in flight
+  let generation = 0 // bumped by clear(): a prefetch started before it never lands
   return {
+    // Warm `key` with one call of `read` (async), unless it's answered or
+    // already being warmed; resolves when done. The answer lands only if
+    // nothing filled the key meanwhile (a live query's own, fresher answer
+    // wins) and the cache wasn't cleared (a sign-out). A failed read leaves
+    // the key empty: the page's own query reads it as usual.
+    prefetch(key, read) {
+      if (entries.has(key)) return Promise.resolve()
+      if (pending.has(key)) return pending.get(key)
+      const started = generation
+      const done = Promise.resolve().then(read).then((data) => {
+        if (started === generation && !entries.has(key)) this.set(key, data)
+      }, () => {}).finally(() => { if (pending.get(key) === done) pending.delete(key) })
+      pending.set(key, done)
+      return done
+    },
     // { data } for a key answered before, else undefined (so a cached
     // null/undefined answer still counts as a hit).
     get(key) {
@@ -23,7 +40,11 @@ export function createQueryCache(max = 50) {
       entries.set(key, { data })
       while (entries.size > max) entries.delete(entries.keys().next().value)
     },
-    clear() { entries.clear() },
+    clear() {
+      entries.clear()
+      pending.clear()
+      generation++
+    },
     get size() { return entries.size },
   }
 }
