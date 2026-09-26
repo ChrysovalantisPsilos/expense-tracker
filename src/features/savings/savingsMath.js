@@ -1,6 +1,6 @@
 import { toBaseMinor, minorFactor, formatMoney } from '../../shared/lib/currency.js'
 import { isoDate, monthName, monthTitle } from '../../shared/lib/dates.js'
-import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 import { rowEffect, potSign } from '../../shared/lib/savings.js'
 import { MARK_ARCS } from '../../shared/ui/markGeometry.js'
 
@@ -84,7 +84,8 @@ export function seriesLength(moves, now = new Date(), max = 12) {
 }
 
 // The history's filter: every move, only what went in, or only what came out.
-export const HISTORY_FILTERS = [['all', 'All'], ['in', 'In'], ['out', 'Out']]
+// [value, the key of its name in the savings namespace]
+export const HISTORY_FILTERS = [['all', 'history.filters.all'], ['in', 'history.filters.in'], ['out', 'history.filters.out']]
 
 // The history, month by month, newest first: [{ key, rows, net }]. `rows` are
 // the month's moves that pass `filter` ('all' | 'in' | 'out'); `net` is the
@@ -174,10 +175,15 @@ export function goalPace({ saved_minor: saved, target_minor: target, target_date
 // needs a month to be reached by its date ("€163/mo to reach it by May
 // 2027", strong), or, muted, that it has no date or its date has passed.
 export function goalStatus(goal, now = new Date()) {
-  if (goalProgress(goal).done) return { text: 'Reached 🎉', strong: true }
+  if (goalProgress(goal).done) return { text: t('savings:goals.status.reached'), strong: true }
   const pace = goalPace(goal, now)
-  if (pace) return { text: `${wholeMoney(pace.perMonth, goal.currency)}/mo to reach it by ${pace.by}`, strong: true }
-  return { text: goal.target_date ? 'Target date passed' : 'No deadline', strong: false }
+  if (pace) {
+    return {
+      text: t('savings:goals.status.pace', { amount: wholeMoney(pace.perMonth, goal.currency), date: pace.by }),
+      strong: true,
+    }
+  }
+  return { text: t(goal.target_date ? 'savings:goals.status.passed' : 'savings:goals.status.noDeadline'), strong: false }
 }
 
 // A goal's ring in the logo's language: the amber arc, the gap, then coral

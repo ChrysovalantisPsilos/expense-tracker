@@ -1,3 +1,107 @@
-// Namespace `savings`: src/features/savings. Not converted yet: its strings are
-// still literals in the feature's components (docs/I18N.md, "Converting a feature").
-export default {}
+// Namespace `savings`: src/features/savings (the Savings page, its goals and
+// history, and a goal's page).
+export default {
+  title: 'Savings',
+  what: 'your savings',
+  add: 'Add to savings',
+  fallbackName: 'Savings',
+  actions: {
+    edit: 'Edit',
+    delete: 'Delete',
+  },
+  pot: {
+    label: 'Your savings pot',
+    since_one: 'since {{month}} · {{count}} month',
+    since_other: 'since {{month}} · {{count}} months',
+    chart: 'Your savings pot at the end of each month, {{points}}',
+    series: 'Pot',
+  },
+  chip: {
+    up: '+{{amount}} this month',
+    spent: '{{amount}} spent from savings this month',
+    none: 'No change this month',
+  },
+  month: {
+    title: 'This month',
+    fromIncome: 'From income',
+    received: 'Received',
+    fromSavings: 'From savings',
+    net: 'Net change',
+    repeating: 'Repeating',
+    next: '{{name}} · next on {{date}}',
+  },
+  how: {
+    title: 'How savings work',
+    subtitle: 'Add an entry in the Savings category',
+    fromIncome: {
+      title: 'Saved from your income',
+      meta: 'Money you set aside from what you earn. It lowers what’s left over that month.',
+    },
+    received: {
+      title: 'Received into savings',
+      meta: 'Interest, a gift or a refund paid straight in. Your month’s net stays as it is.',
+    },
+    fromSavings: {
+      title: 'Paid from savings',
+      meta: 'A big buy the pot covers. It’s still spending, but it doesn’t eat into your month.',
+    },
+    auto: {
+      title: 'Make it automatic',
+      meta: 'Set an amount to go in every month',
+    },
+  },
+  empty: {
+    title: 'Start your savings pot',
+    text: 'Everything you put aside adds up here, month by month, so you can watch it grow and aim it at a goal.',
+    setGoal: 'Set a goal',
+  },
+  goals: {
+    title: 'Goals',
+    add: 'Goal',
+    what: 'your goals',
+    empty: 'No goals yet — set one to start saving toward it.',
+    of: '{{saved}} of {{target}}',
+    deleteFailed: 'Couldn’t delete the goal. Please try again.',
+    updateFailed: 'Couldn’t update the goal. Please try again.',
+    // savingsMath.goalStatus: the line under a goal's amounts.
+    status: {
+      reached: 'Reached 🎉',
+      pace: '{{amount}}/mo to reach it by {{date}}',
+      passed: 'Target date passed',
+      noDeadline: 'No deadline',
+    },
+  },
+  goal: {
+    eyebrow: 'Savings goals',
+    titleNew: 'New goal',
+    titleEdit: 'Edit goal',
+    what: 'this goal',
+    gone: 'This goal doesn’t exist any more.',
+    nameIt: 'Name it',
+    setTarget: 'Set a target',
+    save: 'Save changes',
+    add: 'Add goal',
+    name: 'Name',
+    nameHint: 'Emergency fund, holiday…',
+    target: 'Target ({{currency}})',
+    saved: 'Saved so far',
+    targetDate: 'Set a target date',
+  },
+  history: {
+    title: 'Savings history',
+    subtitle: 'Only what moves your pot',
+    show: 'Show',
+    filters: {
+      all: 'All',
+      in: 'In',
+      out: 'Out',
+    },
+    emptyIn: 'Nothing put into savings yet.',
+    emptyOut: 'Nothing paid from savings yet.',
+    older: 'Show older',
+    repeats: 'Repeats',
+    deletedIncome: 'Income deleted',
+    deletedExpense: 'Expense deleted',
+    deleteFailed: 'Couldn’t delete',
+  },
+}
