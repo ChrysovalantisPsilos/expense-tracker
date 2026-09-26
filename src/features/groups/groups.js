@@ -3,6 +3,7 @@ import { useLiveQuery } from '../../shared/lib/db.js'
 import { fileStem, saveBlob, toBlob } from '../../shared/lib/download.js'
 import { FILE_TYPES } from '../../../supabase/functions/_shared/files.ts'
 import { dbError, edgeFunctionError } from '../../shared/lib/errors.js'
+import { deviceFirst } from '../../shared/lib/deviceFirst.js'
 
 // ---- Queries -------------------------------------------------------------
 
@@ -294,11 +295,21 @@ async function listAuditLog(groupId, limit = 200) {
 }
 
 // Generate the group PDF statement (balances + settlements + audit trail) and
-// trigger a download. Returns nothing; throws on failure.
+// trigger a download. Returns nothing; throws on failure. Made on the device
+// (deviceGroupStatement.js, loaded on demand); for one release the
+// `group-report` edge function remains the fallback (deviceFirst.js).
 export async function downloadGroupReport(groupId, groupName = 'group') {
+  const file = await deviceFirst('group statement',
+    async () => (await import('./deviceGroupStatement.js')).groupStatementOnDevice(supabase, groupId),
+    () => groupReportFromServer(groupId))
+  saveBlob(toBlob(file, FILE_TYPES.pdf), `${fileStem(groupName, 'group')}-statement.pdf`)
+}
+
+// TODO(release after next): remove with the group-report function.
+async function groupReportFromServer(groupId) {
   const { data, error } = await supabase.functions.invoke('group-report', {
     body: { group_id: groupId },
   })
   if (error) throw await edgeFunctionError(error)
-  saveBlob(toBlob(data, FILE_TYPES.pdf), `${fileStem(groupName, 'group')}-statement.pdf`)
+  return data
 }

@@ -1,10 +1,15 @@
-// Pure maths behind the financial statement (generate-report). Unit-tested in
+// Pure maths behind the financial statement (statementFile.ts: made on the
+// device by the app, and by generate-report as its fallback). Unit-tested in
 // test/statementMath.test.js (Node strips the types).
 import { fmtMinor, minorFactor, toBaseMinor } from '../_shared/money.ts'
 import { isSpread, monthlyShare, paidInWindow, perYearMinor, spendRows, yearlyRules } from '../_shared/spread.ts'
 import { isShifted, type SalaryShift } from '../_shared/salaryShift.ts'
 import { CONVERTED_NOTE, missingRatesNote, type Rates, rulesInBase } from '../_shared/ruleFx.ts'
 import { EFFECTS, type Effect, isSpending, netSign, rowEffect, savingsSource } from '../_shared/savings.ts'
+import { type PersonalText, STATEMENT_TEXT } from '../_shared/statementText.ts'
+
+// Its words come from _shared/statementText.ts: every function that prints
+// text takes the `text` to use, English by default.
 
 // One statement line. `base_amount` is in the base currency (major units),
 // or null while the row's exchange rate is pending. `yearly` marks a yearly
@@ -79,6 +84,8 @@ export interface StatementOptions {
   salaryShift?: SalaryShift | null
   // The ids of the user's savings categories (savingsIdsOf, 0084).
   savingsIds?: Set<string>
+  // The statement's words (category fallbacks).
+  text?: PersonalText
 }
 
 // Build the statement from my_transactions rows (newest first, as the RPC
@@ -108,7 +115,7 @@ export interface StatementOptions {
 export function buildStatement(txns: any[], base: string, opts: StatementOptions = {}): Statement {
   const {
     from = null, to = null, separateYearly = false, rules = [], rates = {}, salaryShift = null,
-    savingsIds = new Set<string>(),
+    savingsIds = new Set<string>(), text = STATEMENT_TEXT.personal,
   } = opts
   const bf = minorFactor(base)
   // Oldest first; a base-currency row with no rate is itself (rate 1).
@@ -117,8 +124,8 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
     // Mirrored group expenses bucket under their group's name; everything else
     // uses its category (matching the in-app breakdown).
     category: t.group_expense_id
-      ? (t.group_expenses?.groups?.name ?? 'Group')
-      : (t.categories?.name ?? 'Uncategorized'),
+      ? (t.group_expenses?.groups?.name ?? text.groupFallback)
+      : (t.categories?.name ?? text.uncategorized),
     exchange_rate: t.exchange_rate == null ? (t.currency === base ? 1 : null) : Number(t.exchange_rate),
   }))
   const listed = paidInWindow(all, from, to)
@@ -182,7 +189,7 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
       perYear: cost.perYear / bf,
       perMonth: cost.perMonth / bf,
       rules: y.rules.map((r) => ({
-        name: r.description || r.categories?.name || 'Expense',
+        name: r.description || r.categories?.name || text.ruleFallback,
         nextRun: r.next_run,
         currency: r.currency,
         amount: r.amount_minor / minorFactor(r.currency),
@@ -219,52 +226,55 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
 
 // "2 transactions in GBP, JPY await an exchange rate and aren't in the
 // totals." — or null when nothing is pending. Short: it's one PDF line.
-export function pendingNote({ count, currencies }: Statement['pending']): string | null {
-  if (count === 0) return null
-  const [what, verb, isnt] = count === 1
-    ? ['1 transaction', 'awaits', 'isn’t']
-    : [`${count} transactions`, 'await', 'aren’t']
-  return `${what} in ${currencies.join(', ')} ${verb} an exchange rate and ${isnt} in the totals.`
+export function pendingNote(
+  { count, currencies }: Statement['pending'], text = STATEMENT_TEXT.personal,
+): string | null {
+  return count === 0 ? null : text.pending(count, currencies)
 }
 
 // How the totals treat yearly subscriptions — one short line, or null when the
 // period has none.
-export function yearlyNote(mode: Statement['yearlyMode']): string | null {
-  if (mode === 'spread') {
-    return 'Totals count yearly subscriptions month by month, including charges paid before this period.'
-  }
-  if (mode === 'separate') return 'Yearly subscriptions are kept out of the totals (see Yearly subscriptions).'
+export function yearlyNote(mode: Statement['yearlyMode'], text = STATEMENT_TEXT.personal): string | null {
+  if (mode === 'spread') return text.yearlySpread
+  if (mode === 'separate') return text.yearlySeparate
   return null
 }
 
 // How the totals treat savings — one short line, or null when the period has
 // none. Both kinds are saved; only those taken from income lower the net.
-export function savingsNote(saved: Statement['saved']): string | null {
+export function savingsNote(saved: Statement['saved'], text = STATEMENT_TEXT.personal): string | null {
   if (!saved) return null
-  return saved.fromIncome > 0
-    ? 'Savings aren’t income; those taken from your income are subtracted from the net.'
-    : 'Savings aren’t income and don’t change the net (see Saved).'
+  return saved.fromIncome > 0 ? text.savingsFromIncome : text.savingsReceived
 }
 
 // How the totals treat expenses paid from savings (0085) — one short line, or
 // null when the period has none.
-export function fromSavingsNote(spentFromSavings: Statement['spentFromSavings']): string | null {
-  return spentFromSavings > 0 ? 'Expenses paid from savings count as spending but not against your income.' : null
+export function fromSavingsNote(
+  spentFromSavings: Statement['spentFromSavings'], text = STATEMENT_TEXT.personal,
+): string | null {
+  return spentFromSavings > 0 ? text.fromSavings : null
 }
 
 // How the totals treat salary paid late in the month — one short line, or
 // null when no such salary touches the period.
-export function salaryNote(fromDay: Statement['salaryShiftDay']): string | null {
-  if (fromDay == null) return null
-  return `Salary paid from day ${fromDay} of a month counts toward the next month's totals.`
+export function salaryNote(fromDay: Statement['salaryShiftDay'], text = STATEMENT_TEXT.personal): string | null {
+  return fromDay == null ? null : text.salary(fromDay)
+}
+
+// Every note that applies to `stmt`, in the order the statement prints them.
+export function statementNotes(stmt: Statement, text = STATEMENT_TEXT.personal): string[] {
+  return [
+    pendingNote(stmt.pending, text), yearlyNote(stmt.yearlyMode, text), salaryNote(stmt.salaryShiftDay, text),
+    savingsNote(stmt.saved, text), fromSavingsNote(stmt.spentFromSavings, text),
+  ].filter((n): n is string => n != null)
 }
 
 // The list's mark on a yearly payment: "Yearly · 10.00 EUR/mo" ("≈" when the
 // months differ by a cent; "Every 2 years" for longer spreads).
-export function yearlyLabel({ yearly: y, currency }: StatementRow): string | null {
+export function yearlyLabel({ yearly: y, currency }: StatementRow, text = STATEMENT_TEXT.personal): string | null {
   if (!y) return null
-  const every = y.months === 12 ? 'Yearly' : `Every ${y.months / 12} years`
-  return `${every} · ${y.exact ? '' : '≈'}${fmtMinor(y.perMonthMinor, currency)}/mo`
+  const every = y.months === 12 ? text.yearly : text.everyYears(y.months / 12)
+  return `${every} · ${y.exact ? '' : '≈'}${fmtMinor(y.perMonthMinor, currency)}${text.perMonthSuffix}`
 }
 
 // Neutralise spreadsheet formula injection: text starting with a formula
@@ -275,8 +285,10 @@ export function safeCell(v: string): string {
 
 // The Transactions sheet's Type column: "income", "expense", "expense (from
 // savings)", "saved (from income)" or "saved (received)".
-const typeLabel = (r: StatementRow): string =>
-  r.saved ? `saved (${r.saved})` : r.fromSavings ? `${r.kind} (from savings)` : r.kind
+const typeLabel = (r: StatementRow, text: PersonalText): string => {
+  const kind = text.kind[r.kind] ?? r.kind
+  return r.saved ? text.savedFrom[r.saved] : r.fromSavings ? text.kindFromSavings(kind) : kind
+}
 
 type SheetCell = string | number
 export interface Sheet { name: string; rows: SheetCell[][] }
@@ -284,56 +296,59 @@ export interface Sheet { name: string; rows: SheetCell[][] }
 // The Excel workbook's content: one sheet per entry, as rows of plain cells
 // (strings and numbers only; the edge function hands each to SheetJS). Sheet
 // names follow Excel's rules: at most 31 characters, none of []:*?/\, unique.
-export function statementSheets(stmt: Statement, base: string, notes: string[]): Sheet[] {
+export function statementSheets(
+  stmt: Statement, base: string, notes: string[], text = STATEMENT_TEXT.personal,
+): Sheet[] {
   const { rows, totalSpent, spentFromSavings, totalIncome, net, saved, byCategory, yearly } = stmt
+  const t = text
   const sheets: Sheet[] = [{
-    name: 'Summary',
+    name: t.sheetSummary,
     rows: [
-      ['Financial Statement'],
-      ['Base currency', base],
+      [t.summaryHeading],
+      [t.baseCurrency, base],
       [],
-      ['Total income', totalIncome],
-      ['Total expenses', totalSpent],
-      ...(spentFromSavings > 0 ? [['Of which paid from savings', spentFromSavings]] : []),
-      ['Net', net],
-      ...(saved ? [['Saved (not income)', saved.total]] : []),
+      [t.totalIncome, totalIncome],
+      [t.totalExpenses, totalSpent],
+      ...(spentFromSavings > 0 ? [[t.paidFromSavings, spentFromSavings]] : []),
+      [t.net, net],
+      ...(saved ? [[t.savedNotIncome, saved.total]] : []),
       // Both kinds in the period: each subtotal too.
       ...(saved && saved.fromIncome && saved.received
-        ? [['Saved from income', saved.fromIncome], ['Saved, received', saved.received]]
+        ? [[t.savedFromIncome, saved.fromIncome], [t.savedReceived, saved.received]]
         : []),
       ...notes.map((n) => [n]),
       [],
-      ['Spending by category'],
+      [t.spendingByCategory],
       ...Object.entries(byCategory).sort((a, b) => b[1] - a[1]).map(([k, v]) => [safeCell(k), v]),
     ],
   }, {
-    name: 'Transactions',
+    name: t.sheetTransactions,
     rows: [
-      ['Date', 'Type', 'Category', 'Description', 'Currency', 'Amount', `Amount (${base})`, 'Yearly'],
+      [t.colDate, t.colType, t.colCategory, t.colDescription, t.colCurrency, t.colAmount, t.colAmountIn(base), t.colYearly],
       ...rows.map((r) => [
-        r.date, typeLabel(r), safeCell(r.category), safeCell(r.description),
-        r.currency, r.amount, r.base_amount ?? 'Rate pending', yearlyLabel(r) ?? '',
+        r.date, typeLabel(r, t), safeCell(r.category), safeCell(r.description),
+        r.currency, r.amount, r.base_amount ?? t.ratePending, yearlyLabel(r, t) ?? '',
       ]),
     ],
   }]
   if (yearly) {
     sheets.push({
-      name: 'Yearly subscriptions',
+      name: t.sheetYearly,
       rows: [
-        ['Yearly subscriptions (kept out of the totals)'],
-        [`Paid in this period (${base})`, yearly.paidTotal],
-        [`Active subscriptions per year (${base})`, yearly.perYear],
-        [`Per month (${base})`, yearly.perMonth],
+        [t.yearlyHeading],
+        [t.paidInPeriodIn(base), yearly.paidTotal],
+        [t.activePerYearIn(base), yearly.perYear],
+        [t.perMonthIn(base), yearly.perMonth],
         ...yearly.notes.map((n) => [n]),
         [],
-        ['Payments in this period'],
-        ['Date', 'Description', 'Currency', 'Amount', `Amount (${base})`],
+        [t.paymentsInPeriod],
+        [t.colDate, t.colDescription, t.colCurrency, t.colAmount, t.colAmountIn(base)],
         ...yearly.payments.map((r) => [
-          r.date, safeCell(r.description || r.category), r.currency, r.amount, r.base_amount ?? 'Rate pending',
+          r.date, safeCell(r.description || r.category), r.currency, r.amount, r.base_amount ?? t.ratePending,
         ]),
         [],
-        ['Active yearly subscriptions'],
-        ['Subscription', 'Next charge', 'Currency', 'Charge', 'Per year'],
+        [t.activeYearly],
+        [t.colSubscription, t.colNextCharge, t.colCurrency, t.colCharge, t.colPerYear],
         ...yearly.rules.map((r) => [safeCell(r.name), r.nextRun, r.currency, r.amount, r.perYear]),
       ],
     })

@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { OCR_ASSET_DIR } from './src/shared/lib/receiptScan.js'
 import { RING_LOADER_CSS, bootLoaderHtml } from './src/shared/ui/ringLoader.js'
+import { BRAND_FONTS, STATEMENT_FONT_DIR, fontPath } from './supabase/functions/_shared/brandFonts.ts'
 
 // Receipt OCR engine, served from our own origin instead of Tesseract's
 // jsDelivr defaults: the worker, both LSTM cores (Tesseract picks SIMD or not
@@ -20,17 +21,32 @@ const OCR_FILES = {
   'lang/ell.traineddata.gz': '@tesseract.js-data/ell/4.0.0_best_int/ell.traineddata.gz',
 }
 
-// Copies OCR_FILES into the build and serves them in dev.
-function selfHostedOcr() {
-  const files = Object.entries(OCR_FILES)
-    .map(([to, from]) => [`/${OCR_ASSET_DIR}/${to}`, require.resolve(from)])
+// The statement PDFs' brand fonts (brandFonts.ts), served from our own origin
+// for the statements made on the device: fetched on the first export, then
+// kept by the service worker (src/sw.js). Not precached (~1.3 MB, DejaVu
+// alone ~740 KB). The npm package is the spec without its @version.
+const STATEMENT_FONTS = Object.keys(BRAND_FONTS).map((role) => [
+  `/${STATEMENT_FONT_DIR}/${fontPath(role)}`,
+  `${BRAND_FONTS[role].pkg.replace(/@[^@/]+$/, '')}/${BRAND_FONTS[role].file}`,
+])
+
+const CONTENT_TYPES = { '.js': 'text/javascript', '.gz': 'application/gzip', '.ttf': 'font/ttf' }
+
+// Copies node_modules files into the build at the given URLs, and serves them
+// in dev: the OCR engine and the statement fonts.
+function selfHosted() {
+  const files = [
+    ...Object.entries(OCR_FILES).map(([to, from]) => [`/${OCR_ASSET_DIR}/${to}`, from]),
+    ...STATEMENT_FONTS,
+  ].map(([url, from]) => [url, require.resolve(from)])
   return {
-    name: 'self-hosted-ocr',
+    name: 'self-hosted',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        const hit = files.find(([url]) => url === req.url?.split('?')[0])
+        const url = decodeURIComponent(req.url?.split('?')[0] ?? '')
+        const hit = files.find(([u]) => u === url)
         if (!hit) return next()
-        res.setHeader('Content-Type', hit[0].endsWith('.js') ? 'text/javascript' : 'application/gzip')
+        res.setHeader('Content-Type', CONTENT_TYPES[hit[0].slice(hit[0].lastIndexOf('.'))])
         res.end(readFileSync(hit[1]))
       })
     },
@@ -76,7 +92,7 @@ function bootLoader() {
 export default defineConfig({
   plugins: [
     react(),
-    selfHostedOcr(),
+    selfHosted(),
     bootLoader(),
     VitePWA({
       // Custom worker (src/sw.js): generateSW can't add push handlers, so the

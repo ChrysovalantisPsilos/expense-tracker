@@ -114,7 +114,10 @@ units.
   (invites, joins, nudges, notifications).
 - **Edge Functions:**
   - `generate-report` and `group-report` build PDF and Excel statements with
-    the caller's own JWT, so RLS still applies.
+    the caller's own JWT, so RLS still applies. The app now builds these
+    statements on the device from the same code; the two functions stay for
+    one release as its fallback (see docs/TESTING.md, "Statements on the
+    device").
   - `send-invite` sends invite emails.
   - `delete-account` deletes the caller's account.
   - `notify-user` handles push and email fan-out.

@@ -10,6 +10,9 @@ const OFFLINE_READ_RPCS = new Set([
   'my_payment_info', 'list_my_group_invites',
   'group_ledger', 'group_balances', 'group_audit_entries', 'group_comments_for',
   'group_comment_counts', 'group_member_avatars', 'member_payment_info',
+  // The statements made on the device read the latest ECB rates for foreign
+  // yearly rules (public reference data, nothing per user).
+  'latest_fx_rates',
 ])
 
 // The RPC name for a cacheable read, or null. `pathname` like

@@ -1,18 +1,56 @@
-// Shared brand-matched PDF toolkit for the report edge functions.
+// Shared brand-matched PDF toolkit for the statements (the personal
+// statement and the group statement), built on the device by the app and,
+// for one release, by the report edge functions as a fallback.
 //
 // Mirrors the in-app kit (src/app/theme.js, src/shared/ui/kit): the budgeer
 // mark and wordmark, Poppins headings + Nunito Sans body, white rounded
 // panels on sand hairlines, sand figure tiles, the "Where your money went"
 // stacked bar and ranked category bars, settle-up transfer rows and quiet
-// tables. Fonts are the static TTFs bundled in the @expo-google-fonts npm
-// packages (verified to resolve from the edge runtime; google/fonts only keeps
-// variable fonts for these families), with DejaVu Sans as a Unicode fallback
-// and Helvetica as the last resort. Every text draw degrades gracefully.
+// tables. Fonts are brandFonts.ts's TTFs, with DejaVu Sans as a Unicode
+// fallback and Helvetica as the last resort. Every text draw degrades
+// gracefully.
+//
+// No imports of pdf-lib here: the caller injects it (PdfLib below) together
+// with a way to get the font bytes. The Deno entry (pdfDeno.ts) supplies
+// pdf-lib from esm.sh and fetches the fonts from jsDelivr; the browser entry
+// (src/shared/lib/pdf.js) supplies the npm build and the app's self-hosted
+// copies. Colours are plain pdf-lib RGB values ({ type: 'RGB', … }, what
+// pdf-lib's rgb() returns).
 
-import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'https://esm.sh/pdf-lib@1.17.1'
-import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
+import { type FontRole } from './brandFonts.ts'
+import { STATEMENT_TEXT } from './statementText.ts'
 
-type Color = ReturnType<typeof rgb>
+// The slice of pdf-lib the toolkit uses (structural, so both builds fit).
+interface Color { type: 'RGB'; red: number; green: number; blue: number }
+interface PDFFont { widthOfTextAtSize(text: string, size: number): number }
+interface PDFPage {
+  drawText(text: string, options: object): void
+  drawSvgPath(path: string, options: object): void
+  drawRectangle(options: object): void
+  drawCircle(options: object): void
+}
+interface PDFDocument {
+  addPage(size: [number, number]): PDFPage
+  getPages(): PDFPage[]
+  registerFontkit(fontkit: unknown): void
+  embedFont(font: string | Uint8Array | ArrayBuffer, options?: object): Promise<PDFFont>
+  save(): Promise<Uint8Array>
+}
+// What an entry point injects: pdf-lib's document factory, fontkit, and the
+// bytes of one brand font (null when it can't be had: the toolkit then
+// falls back, as it always has).
+export interface PdfLib {
+  create(): Promise<PDFDocument>
+  fontkit: unknown
+  fontBytes(role: FontRole): Promise<ArrayBuffer | Uint8Array | null>
+}
+
+// pdf-lib's StandardFonts names for the last-resort faces.
+const HELVETICA = 'Helvetica'
+const HELVETICA_BOLD = 'Helvetica-Bold'
+
+const rgb = (red: number, green: number, blue: number): Color => ({ type: 'RGB', red, green, blue })
+
 const hex = (h: string): Color => rgb(
   parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255,
 )
@@ -42,48 +80,25 @@ const TONE: Record<Tone, Color> = {
 const SWATCHES = ['#f95d38', '#fbb324', '#ffa088', '#d97a06', '#f6c453', '#c2703d', '#ef8a5a'].map(hex)
 const swatch = (i: number, label: string) => (label === 'Other' ? BRAND.muted : SWATCHES[i % SWATCHES.length])
 
-const EXPO = 'https://cdn.jsdelivr.net/npm/@expo-google-fonts'
-const DEJAVU = 'https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf'
-const FONT_URLS = {
-  head: [`${EXPO}/poppins/Poppins_600SemiBold.ttf`],
-  headBold: [`${EXPO}/poppins/Poppins_700Bold.ttf`],
-  body: [`${EXPO}/nunito-sans/NunitoSans_400Regular.ttf`],
-  bodyBold: [`${EXPO}/nunito-sans/NunitoSans_700Bold.ttf`],
-  uni: [`${DEJAVU}/DejaVuSans.ttf`],
-}
-const fontBytes: Record<string, ArrayBuffer | null> = {}
-async function fetchFont(url: string): Promise<ArrayBuffer | null> {
-  if (url in fontBytes) return fontBytes[url]
-  try {
-    const r = await fetch(url)
-    fontBytes[url] = r.ok ? await r.arrayBuffer() : null
-  } catch {
-    fontBytes[url] = null
-  }
-  return fontBytes[url]
-}
-
-export interface BrandFonts {
+interface BrandFonts {
   head: PDFFont; headBold: PDFFont; body: PDFFont; bodyBold: PDFFont; uni: PDFFont | null
 }
-export async function loadBrandFonts(pdf: PDFDocument): Promise<BrandFonts> {
-  pdf.registerFontkit(fontkit)
-  const helv = await pdf.embedFont(StandardFonts.Helvetica)
-  const helvB = await pdf.embedFont(StandardFonts.HelveticaBold)
-  const embed = async (urls: string[], fallback: PDFFont) => {
-    for (const url of urls) {
-      const bytes = await fetchFont(url)
-      if (!bytes) continue
-      try { return await pdf.embedFont(bytes, { subset: true }) } catch { /* try next */ }
-    }
-    return fallback
+async function loadBrandFonts(pdf: PDFDocument, lib: PdfLib): Promise<BrandFonts> {
+  pdf.registerFontkit(lib.fontkit)
+  const helv = await pdf.embedFont(HELVETICA)
+  const helvB = await pdf.embedFont(HELVETICA_BOLD)
+  const embed = async (role: FontRole, fallback: PDFFont) => {
+    let bytes: ArrayBuffer | Uint8Array | null = null
+    try { bytes = await lib.fontBytes(role) } catch { /* unavailable: fall back */ }
+    if (!bytes) return fallback
+    try { return await pdf.embedFont(bytes, { subset: true }) } catch { return fallback }
   }
-  const uni = await embed(FONT_URLS.uni, null as unknown as PDFFont) || null
+  const uni = await embed('uni', null as unknown as PDFFont) || null
   return {
-    head: await embed(FONT_URLS.head, helvB),
-    headBold: await embed(FONT_URLS.headBold, helvB),
-    body: await embed(FONT_URLS.body, uni ?? helv),
-    bodyBold: await embed(FONT_URLS.bodyBold, uni ?? helvB),
+    head: await embed('head', helvB),
+    headBold: await embed('headBold', helvB),
+    body: await embed('body', uni ?? helv),
+    bodyBold: await embed('bodyBold', uni ?? helvB),
     uni: uni ?? null,
   }
 }
@@ -145,6 +160,12 @@ export class Statement {
     this.pdf = pdf
     this.f = fonts
     this.addPage()
+  }
+
+  // A new A4 statement, with the brand fonts embedded, on the injected pdf-lib.
+  static async create(lib: PdfLib): Promise<Statement> {
+    const pdf = await lib.create()
+    return new Statement(pdf, await loadBrandFonts(pdf, lib))
   }
 
   addPage() {
@@ -426,15 +447,17 @@ export class Statement {
     this.y += 22
   }
 
-  finish() {
+  // Footers on every page; then the document's bytes.
+  save(footer = STATEMENT_TEXT.footer): Promise<Uint8Array> {
     const pages = this.pdf.getPages()
     const total = pages.length
     pages.forEach((p, i) => {
       this.page = p
       p.drawRectangle({ x: this.M, y: 40, width: this.CW, height: 0.8, color: BRAND.line })
       this.mark(this.M - 2, this.H - 34, 12)
-      this.text('Generated by Budgeer · budgeer.com', this.M + 13, this.H - 31, { size: 8, color: BRAND.muted })
+      this.text(footer, this.M + 13, this.H - 31, { size: 8, color: BRAND.muted })
       this.textRight(`${i + 1} / ${total}`, this.M + this.CW, this.H - 31, { size: 8, color: BRAND.muted })
     })
+    return this.pdf.save()
   }
 }
