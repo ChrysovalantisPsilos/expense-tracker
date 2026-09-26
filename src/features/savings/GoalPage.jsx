@@ -11,13 +11,14 @@ import useGoBack from '../../shared/ui/useGoBack.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { minorToInput, toMinor } from '../../shared/lib/currency.js'
-import { useGoals, saveGoal } from './insights.js'
+import { useGoals, saveGoal } from './savings.js'
 
 // A savings goal's page:
-//   /insights/goals/new   a new goal
-//   /insights/goals/:id   an existing one (Insights passes it in router state;
-//                         a reload finds it in the list)
-// Saving goes back to wherever the user came from, else Insights.
+//   /savings/goals/new   a new goal
+//   /savings/goals/:id   an existing one (Savings passes it in router state;
+//                        a reload finds it in the list)
+// Saving goes back to wherever the user came from, else Savings. (The old
+// /insights/goals/… addresses redirect here: App.jsx.)
 export default function GoalPage() {
   const { id } = useParams()
   const location = useLocation()
@@ -33,7 +34,7 @@ export default function GoalPage() {
   else body = <GoalForm key={goal?.id ?? 'new'} goal={goal} baseCurrency={baseCurrency} />
 
   return (
-    <FormPage eyebrow="Savings goals" title={id ? 'Edit goal' : 'New goal'} fallback="/insights">
+    <FormPage eyebrow="Savings goals" title={id ? 'Edit goal' : 'New goal'} fallback="/savings">
       {body}
     </FormPage>
   )
@@ -41,7 +42,7 @@ export default function GoalPage() {
 
 function GoalForm({ goal, baseCurrency }) {
   const toast = useToast()
-  const back = useGoBack('/insights')
+  const back = useGoBack('/savings')
   const isEdit = !!goal
   const [name, setName] = useState(goal?.name ?? '')
   const [target, setTarget] = useState(goal ? minorToInput(goal.target_minor, goal.currency) : '')

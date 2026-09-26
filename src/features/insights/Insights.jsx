@@ -16,7 +16,6 @@ import TrendBars from '../../shared/ui/kit/TrendBars.jsx'
 import ConversionRow from '../../shared/ui/kit/ConversionRow.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
-import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { StackedBar, ShareLegend } from '../../shared/ui/kit/ShareBar.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
@@ -25,18 +24,14 @@ import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Ske
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
 import { useSavingsIds } from '../categories/categories.js'
-import { lastMonths, shortDate } from '../../shared/lib/dates.js'
+import { lastMonths } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, minorFactor } from '../../shared/lib/currency.js'
 import { spendRows } from '../../shared/lib/spread.js'
-import { savingsPotMinor } from '../../shared/lib/savings.js'
-import {
-  useAccounts, deleteAccount,
-  useGoals, saveGoal, deleteGoal,
-} from './insights.js'
+import { useAccounts, deleteAccount } from './insights.js'
+import { useSavingsMoves } from '../savings/savings.js'
 import {
   buildTrend, hasTrendData, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
-  goalProgress, goalSavedAfter,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
@@ -88,8 +83,7 @@ export default function Insights() {
       <SpendingCard loading={loading} failed={failed} shares={shares} trend={trend} money={money} />
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}
       <IncomeCard loading={loading} failed={failed} trend={trend} money={money} />
-      <NetWorthCard baseCurrency={baseCurrency} savingsIds={savingsIds} savingsLoading={savingsLoading} />
-      <GoalsCard />
+      <NetWorthCard baseCurrency={baseCurrency} />
       <ReportsCard noEntries={oldest === null} />
     </Stack>
   )
@@ -275,22 +269,19 @@ function SpendDelta({ delta }) {
 }
 
 // ── Net worth ───────────────────────────────────────────────────────────────
-// The user's accounts, plus a read-only "Savings" line: every savings entry
-// ever made (0084) minus every expense paid from savings (0085), in the base
-// currency at each entry's captured rate. It can go below zero (shown with a
-// minus, as a debt); it's hidden only when it's exactly zero.
-function NetWorthCard({ baseCurrency, savingsIds, savingsLoading }) {
+// The user's accounts, plus a read-only "Savings" line: the savings pot (every
+// savings entry ever made, 0084, minus every expense paid from savings, 0085,
+// in the base currency at each entry's captured rate), which links to the
+// Savings page. It can go below zero (shown with a minus, as a debt); it's
+// hidden only when it's exactly zero.
+function NetWorthCard({ baseCurrency }) {
   const { accounts, loading: accountsLoading, error, reload } = useAccounts()
-  const income = useTransactions({ kind: 'income' })
-  const fromSavings = useTransactions({ kind: 'expense', paidFromSavings: true })
+  const { pot: savings, loading: savingsLoading } = useSavingsMoves()
   const toast = useToast()
   const navigate = useNavigate()
 
-  const savings = useMemo(
-    () => savingsPotMinor([...income.rows, ...fromSavings.rows], savingsIds, baseCurrency),
-    [income.rows, fromSavings.rows, savingsIds, baseCurrency])
   const { assets, liabilities, net } = useMemo(() => netWorth(accounts, savings), [accounts, savings])
-  const loading = accountsLoading || savingsLoading || income.loading || fromSavings.loading
+  const loading = accountsLoading || savingsLoading
 
   async function remove(acc) {
     try { await deleteAccount(acc.id); reload() }
@@ -321,10 +312,17 @@ function NetWorthCard({ baseCurrency, savingsIds, savingsLoading }) {
             <Box>
               <SectionLabel mb={1}>Accounts</SectionLabel>
               {savings !== 0 && (
-                <ItemRow icon={PiggyBank} title="Savings"
-                  meta={savings < 0 ? 'More paid from savings than saved' : 'From your savings entries'}
+                <ItemRow icon={PiggyBank} title="Savings" onClick={() => navigate('/savings')}
+                  meta={
+                    <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">
+                      {savings < 0 && 'More paid from savings than saved · '}
+                      <Text as="span" color="accent.fg" fontWeight="600" whiteSpace="nowrap">See savings ›</Text>
+                    </Text>
+                  }
                   amount={`${savings < 0 ? '−' : ''}${formatMoney(Math.abs(savings), baseCurrency)}`}
-                  amountTone={savings < 0 ? 'negative' : 'default'} />
+                  amountTone={savings < 0 ? 'negative' : 'default'}
+                  // No actions of its own; the empty slot lines its amount up with the accounts'.
+                  actions={[]} actionSlots={2} />
               )}
               {accounts.map((acc) => {
                 const debt = acc.type === 'liability'
@@ -345,73 +343,6 @@ function NetWorthCard({ baseCurrency, savingsIds, savingsLoading }) {
           <Divider borderColor="border.default" />
           <Figure layout="inline" label="Net worth" value={formatMoney(net, baseCurrency)}
             tone={net < 0 ? 'negative' : 'default'} />
-        </Stack>
-      )}
-    </Panel>
-  )
-}
-
-// ── Goals ───────────────────────────────────────────────────────────────────
-function GoalsCard() {
-  const { goals, loading, error, reload } = useGoals()
-  const toast = useToast()
-  const navigate = useNavigate()
-
-  async function remove(g) {
-    try { await deleteGoal(g.id); reload() }
-    catch (e) {
-      console.error('[insights] goal delete failed:', e)
-      toast({ title: userMessage(e, 'Couldn’t delete the goal. Please try again.'), status: 'error' })
-    }
-  }
-  async function addTo(g, deltaMinor) {
-    try {
-      // Send the full goal — the encrypting save RPC rewrites every field.
-      await saveGoal({ ...g, saved_minor: goalSavedAfter(g, deltaMinor) })
-      reload()
-    } catch (e) {
-      console.error('[insights] goal update failed:', e)
-      toast({ title: userMessage(e, 'Couldn’t update the goal. Please try again.'), status: 'error' })
-    }
-  }
-
-  return (
-    <Panel title="Savings goals" action={
-      <Button size="xs" leftIcon={<Plus size={14} />}
-        onClick={() => navigate('/insights/goals/new')}>Goal</Button>
-    }>
-      {error ? <QueryError error={error} onRetry={reload} what="your goals" /> : loading ? (
-        <SkeletonRegion><SkeletonRows count={2} progress spacing={5} /></SkeletonRegion>
-      ) : goals.length === 0 ? (
-        <Text color="text.muted" fontSize="sm">No goals yet — set one to start saving toward it.</Text>
-      ) : (
-        <Stack spacing={5}>
-          {goals.map((g) => {
-            const { pct, done, step } = goalProgress(g)
-            const by = g.target_date ? ` · by ${shortDate(g.target_date)}` : ''
-            return (
-              <Box key={g.id}>
-                <ProgressRow icon={PiggyBank} title={g.name}
-                  meta={`${formatMoney(g.saved_minor, g.currency)} of ${formatMoney(g.target_minor, g.currency)}${by}`}
-                  percent={pct} over={false} tone={done ? 'positive' : undefined}
-                  valueLabel={done ? 'Reached 🎉' : `${pct}%`}
-                  actions={[
-                    { label: 'Edit', icon: Pencil, onClick: () => navigate(`/insights/goals/${g.id}`, { state: { goal: g } }) },
-                    { label: 'Delete', icon: Trash2, onClick: () => remove(g), danger: true },
-                  ]} />
-                {!done && (
-                  <HStack mt={3} spacing={2}>
-                    <Button size="xs" variant="outline" onClick={() => addTo(g, step)}>
-                      + {formatMoney(step, g.currency)}
-                    </Button>
-                    {g.saved_minor > 0 && (
-                      <Button size="xs" variant="ghost" onClick={() => addTo(g, -step)}>− {formatMoney(step, g.currency)}</Button>
-                    )}
-                  </HStack>
-                )}
-              </Box>
-            )
-          })}
         </Stack>
       )}
     </Panel>

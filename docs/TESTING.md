@@ -42,7 +42,8 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Multi-currency: the ECB rate for the expense's date is shown before saving and captured with the entry, so history never shifts. A failed lookup asks for a rate and never saves 1:1
 - Budgets per category/month, with 80% / 100% push alerts
 - Recurring rules (subscriptions, salary) auto-logged nightly, with per-rule payment reminders
-- Savings goals, net worth (accounts), insights & 6-month trends
+- Savings page: the pot (all time, month by month), this month's flow, repeating savings, goals and a savings-only history
+- Net worth (accounts), insights & 6-month trends
 - One Transactions page (Expenses / Income / All switch) with search & filters across all history
 - Smart statement import (CSV/XLSX): auto-mapped columns, duplicate-proof re-imports, learned merchant→category rules
 - Branded PDF statements (personal + per-group) and an Excel export of your own statement
@@ -205,10 +206,10 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 34. Phone width: the bottom bar is exactly Home · Transactions · Groups ·
     Budgets · More; the top bar is bell, theme toggle, avatar (plus the
     offline badge when offline). Transactions stays lit on `/import`; More
-    stays lit on Insights, Recurring and every Settings page; Groups stays lit
+    stays lit on Insights, Savings, Recurring and every Settings page; Groups stays lit
     inside a group.
 35. Desktop: the sidebar is Home, Transactions, Groups, Budgets, a divider,
-    Insights, Recurring, then the user row (→ Settings), theme toggle and sign
+    Insights, Savings, Recurring, then the user row (→ Settings), theme toggle and sign
     out. No More or Search entries. Tablets, desktops and portrait phones
     look exactly as before whatever the sideways layout below does.
 35a. A phone held sideways (landscape, ≤ 500px tall: 844×390, 667×375, and
@@ -294,6 +295,7 @@ heading, one muted line and its buttons (full width on the phone).
 | A group, Expenses tab | No shared expenses yet (three slices) | Add the first expense · Invite people (only while you're alone in it) |
 | Budgets | No budgets yet (the "Set a monthly cap" form under it) | Set your first budget (scrolls to the form, cursor in Category) · Copy last month's budgets (only when last month has caps) |
 | Recurring, each tab | No subscriptions or bills yet / No recurring income yet | Add a subscription or bill / Add recurring income |
+| Savings | Start your savings pot (then "How savings work") | Add to savings · Set a goal (only with no goals) |
 
 While one of these shows, the phone's floating "+" is hidden, so it never
 sits over the card's buttons (on a short phone too); it's back once there's
@@ -316,7 +318,7 @@ camera step inside the expense page, and it never submits that page.
 | `/groups/<id>/members` | the member stack under the group's name |
 | `/groups/<id>/edit` | ⋯ → Rename group (owner) |
 | `/recurring/new?kind=…`, `/recurring/<id>` | Recurring → Add; a rule's Edit |
-| `/insights/goals/new`, `/insights/goals/<id>` | Insights → Goal; a goal's Edit |
+| `/savings/goals/new`, `/savings/goals/<id>` | Savings → Goal; a goal's Edit (the old `/insights/goals/…` links redirect here) |
 | `/insights/accounts/new`, `/insights/accounts/<id>` | Insights → Account; an account's Edit |
 | `/settings/categories/new?kind=…` | Settings → Categories → Add (Edit opens the category's page with its Edit panel, like Budgets → Edit) |
 | `/settings/data/export`, `/settings/data/restore` | Settings → Your data |
@@ -329,7 +331,7 @@ For each, at 390px and on desktop, light and dark:
    saving changes nothing.
 2. Reload the page, or open its address in a new tab: it loads (a spinner,
    then the form), filled in for an edit; ← then goes to its parent
-   (the group, Recurring, Insights, Categories, Your data, Privacy).
+   (the group, Recurring, Insights, Savings, Categories, Your data, Privacy).
    Signed out, the address goes to sign-in and comes back to it.
 3. The phone's floating "+" is not on any of these pages; the bottom bar
    keeps the section lit (Groups, or More).
@@ -343,6 +345,47 @@ For each, at 390px and on desktop, light and dark:
    wait for one): the page doesn't reload until you save or leave.
 6. Restore: ← is disabled while the restore runs; a bad file says why and
    offers "Choose another file".
+
+### K3. Savings
+
+Fake data with savings entries in several months (some from income, some
+received, one in a foreign currency), an expense paid from savings this
+month, a monthly savings rule and two goals (one with a target date). Check
+at 390px (light and dark), desktop 1280, and sideways at 844×390 and 667×375.
+
+1. More lists Savings ("Your pot, goals & history") between Insights
+   ("Trends & net worth") and Recurring; the desktop sidebar has it under
+   Insights; the bottom bar is unchanged and More stays lit on `/savings`.
+2. Pot: the all-time total equals Insights' net worth Savings line (entries
+   in another currency count at their captured rate). The chart shows the
+   month-end total from the first savings month (2–12 months).
+3. Chip: a month where the pot grew shows a green "+€X this month"; a month
+   with money paid from savings and no growth shows the muted "€X spent from
+   savings this month"; never red.
+4. Add to savings opens New income with the Savings category picked and
+   "Taken from my income" on. `/transactions/new?kind=income&category=<an
+   expense category's id or nonsense>` opens with no category picked.
+5. This month: From income, Received and From savings tiles (a muted €0.00
+   when nothing came out), the net change, and each active savings rule
+   ("€200.00 every month", repeat icon) opening its page.
+6. Goals: ring in the logo's amber → gap → coral with the percentage; the
+   pace line ("€X/mo to reach it by May 2027", "No deadline", "Target date
+   passed", "Reached 🎉"); + / − a tenth, Edit (`/savings/goals/<id>`),
+   Delete and "+ Goal" work; `/insights/goals/<id>` lands on the edit page.
+7. History: only entries that move the pot, by month, newest first; each
+   month's header net is green when positive, muted otherwise. All / In /
+   Out filters the rows (the header keeps the whole month's net). Two months
+   show, then "Show older" adds more. Rows show date · from income /
+   received / from savings, no category tag, a repeat icon for rule entries,
+   one line each; Edit opens the entry, Delete asks first.
+8. Live: add a savings entry in another tab → the pot, chart, tiles and
+   history update without a reload.
+9. Empty (no savings entries): "Start your savings pot", Add to savings,
+   Set a goal, and "How savings work" with "Make it automatic".
+10. Sideways: the pot is a strip (total, chip, Add beside the chart) over two
+    stacks (This month and Goals | History) under the slim header; at 667
+    the rows fold their actions into ⋯ and the cards drop their header tiles.
+11. Home's "Saved €X this month" and Insights' "See savings ›" open Savings.
 
 ### L. Privacy & legal (GDPR)
 

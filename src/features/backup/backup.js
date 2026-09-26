@@ -8,7 +8,8 @@ import {
 } from '../transactions/useData.js'
 import { listRecurring, saveRecurring } from '../recurring/recurring.js'
 import { listBudgets, budgetPeriods, saveBudget } from '../budgets/budgets.js'
-import { listAccounts, saveAccount, listGoals, saveGoal } from '../insights/insights.js'
+import { listAccounts, saveAccount } from '../insights/insights.js'
+import { listGoals, saveGoal } from '../savings/savings.js'
 import {
   baseCurrencyLocked, fetchProfile, getProfile, updateProfile, getMyPaymentInfo, savePaymentInfo,
 } from '../../shared/lib/profile.js'

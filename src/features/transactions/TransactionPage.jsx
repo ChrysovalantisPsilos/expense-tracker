@@ -20,7 +20,9 @@ import RingLoader from '../../shared/ui/RingLoader.jsx'
 const noun = (kind) => (kind === 'income' ? 'income' : 'expense')
 
 // The add/edit page for one expense or income:
-//   /transactions/new?kind=expense|income   a new entry
+//   /transactions/new?kind=expense|income   a new entry; &category=<id>
+//                                           opens it on one of the user's
+//                                           categories of that kind
 //   /transactions/:id                       an existing one (the list passes
 //                                           the row in router state)
 // The back arrow — and saving or deleting — returns to wherever the user came
@@ -101,7 +103,7 @@ export default function TransactionPage() {
   } else {
     body = (
       <TransactionForm key={row?.id ?? `new-${kind}-${baseCurrency}`} kind={kind} baseCurrency={baseCurrency}
-        transaction={row} rule={rule} onSaved={back} onDelete={row ? () => setConfirming(true) : undefined} />
+        transaction={row} rule={rule} initialCategory={isNew ? params.get('category') : null} onSaved={back} onDelete={row ? () => setConfirming(true) : undefined} />
     )
   }
 

@@ -41,19 +41,12 @@ import BudgetsCard from '../budgets/BudgetsCard.jsx'
 import SubscriptionsCard from '../recurring/SubscriptionsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
-import { FOLD_ROW_ACTIONS } from '../../shared/ui/RowActions.jsx'
-import { HIDE_CARD_ICONS } from '../../shared/ui/CardHeader.jsx'
-import { NARROW_STACK } from '../../shared/lib/shortLandscape.js'
+import { NARROW_STACKS } from '../../shared/ui/narrowStacks.js'
 import { SkeletonBlock, SkeletonFigure, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
 
 const UNAVAILABLE = 'Not available until your transactions load.'
-
-// On the narrowest sideways screens (an iPhone SE or mini) the stacks' rows fold
-// their edit/delete into the ⋯ menu and the cards drop their header tiles,
-// so titles keep their room.
-const NARROW_STACKS = { [NARROW_STACK]: { ...FOLD_ROW_ACTIONS, ...HIDE_CARD_ICONS } }
 
 export default function Dashboard() {
   const { baseCurrency, separateYearly, salaryShift } = useProfile()
@@ -164,11 +157,13 @@ export default function Dashboard() {
             <BalanceTile size="md" label="Net" value={net.text} tone={net.tone}
               note={netNote(proj, fromIncomeTotal, fromSavingsTotal)} />
             {/* Savings aren't income (those taken from it lower the net): a quiet
-                line says what was put aside, both kinds. */}
+                line says what was put aside, both kinds, and opens Savings. */}
             {saved && (
-              <HStack gridColumn="span 2" spacing={1.5} px={1} color="text.muted">
+              <HStack as={RouterLink} to="/savings" gridColumn="span 2" justifySelf="start" spacing={1.5} px={1}
+                color="text.muted" borderRadius="md" _hover={{ color: 'accent.fg' }}
+                _focusVisible={{ boxShadow: 'outline' }}>
                 <PiggyBank size={14} aria-hidden />
-                <Text fontSize="xs">{saved}</Text>
+                <Text fontSize="xs">{saved} ›</Text>
               </HStack>
             )}
           </SimpleGrid>

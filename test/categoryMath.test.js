@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   CATEGORY_NAME_MAX, categoryNameError, sortCategories, moveTargets, sameKindOthers,
-  categoryPatch, categoryPeriod, NEW_DEFAULT_CATEGORIES, NEW_TAG_MS, isNewCategory,
+  categoryPatch, categoryPeriod, NEW_DEFAULT_CATEGORIES, NEW_TAG_MS, isNewCategory, presetCategoryId,
 } from '../src/features/categories/categoryMath.js'
 import { NO_CATEGORY } from '../src/features/transactions/txnFilter.js'
 import { latestSql } from './migrations.js'
@@ -227,4 +227,19 @@ test('the new default income categories match the seed and the backfills (0082, 
   assert.match(savings, /check \(not is_savings or kind = 'income'\)/)
   assert.match(seed, /security definer\s+set search_path = public, pg_temp/)
   assert.match(savings, /revoke execute on function public\.seed_default_categories\(\) from anon, public;/)
+})
+
+test('presetCategoryId: a category from a link counts only if it is one of the user’s active ones of that kind', () => {
+  const cats = [
+    { id: 'sav', kind: 'income', is_savings: true },
+    { id: 'food', kind: 'expense' },
+    { id: 'old', kind: 'income', is_archived: true },
+  ]
+  assert.equal(presetCategoryId('sav', cats, 'income'), 'sav')
+  assert.equal(presetCategoryId('food', cats, 'income'), '') // wrong kind
+  assert.equal(presetCategoryId('old', cats, 'income'), '') // archived
+  assert.equal(presetCategoryId('someone-elses', cats, 'income'), '') // not the user's
+  assert.equal(presetCategoryId('', cats, 'income'), '')
+  assert.equal(presetCategoryId(null, cats, 'income'), '')
+  assert.equal(presetCategoryId('sav', undefined, 'income'), '')
 })

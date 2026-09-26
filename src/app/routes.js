@@ -10,10 +10,11 @@ export const SIGNED_IN_ROUTES = [
   '/recurring/new',
   '/recurring/:id',
   '/insights',
-  '/insights/goals/new',
-  '/insights/goals/:id',
   '/insights/accounts/new',
   '/insights/accounts/:id',
+  '/savings',
+  '/savings/goals/new',
+  '/savings/goals/:id',
   '/more',
   '/transactions',
   '/transactions/new',
@@ -48,11 +49,13 @@ export const SIGNED_IN_ROUTES = [
   '/privacy',
   '/terms',
   // Legacy addresses that redirect (Settings' old name; the pages that
-  // became Transactions).
+  // became Transactions; goals, which moved from Insights to Savings).
   '/profile',
   '/expenses',
   '/income',
   '/search',
+  '/insights/goals/new',
+  '/insights/goals/:id',
 ]
 
 const segments = (path) => path.split('/').filter(Boolean)

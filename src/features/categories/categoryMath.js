@@ -36,6 +36,16 @@ export function sortCategories(categories, kind) {
       || String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' }))
 }
 
+// A new entry's category from a link (`/transactions/new?kind=…&category=…`,
+// e.g. Savings' "Add to savings"): the id when it's one of the user's active
+// categories of that kind, else '' (none picked) — a stale, foreign or
+// mistyped id is ignored rather than trusted.
+export function presetCategoryId(id, categories, kind) {
+  if (!id) return ''
+  const match = (categories ?? []).find((c) => c.id === id)
+  return match && match.kind === kind && !match.is_archived ? match.id : ''
+}
+
 // Where a deleted category's entries can go: the other active categories of
 // the same kind, A–Z.
 export function moveTargets(categories, deleting) {

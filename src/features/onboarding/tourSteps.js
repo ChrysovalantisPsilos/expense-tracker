@@ -48,12 +48,12 @@ export const TOUR_STEPS = [
   {
     id: 'more', media: 'mobile', target: 'nav-more', prefer: NAV,
     title: 'More',
-    body: 'Insights (trends, net worth and goals), Recurring and Settings are here.',
+    body: 'Insights (trends and net worth), Savings (your pot and goals), Recurring and Settings are here.',
   },
   {
     id: 'more', media: 'desktop', target: 'nav-more', prefer: NAV,
-    title: 'Insights and Recurring',
-    body: 'Trends, net worth and goals, plus your subscriptions, bills and regular income.',
+    title: 'Insights, Savings and Recurring',
+    body: 'Trends and net worth, your savings pot and goals, plus your subscriptions, bills and regular income.',
   },
   {
     id: 'account', media: 'mobile', target: 'account',

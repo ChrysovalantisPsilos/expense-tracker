@@ -15,8 +15,8 @@ test('Transactions owns /transactions and /import', () => {
   assert.equal(isNavActive('/transactions', '/importer'), false)
 })
 
-test('More owns /more, /insights, /recurring, /help, the legal pages and every /settings page', () => {
-  for (const p of ['/more', '/insights', '/recurring', '/settings', '/settings/account', '/settings/data', '/help', '/privacy', '/terms']) {
+test('More owns /more, /insights, /savings, /recurring, /help, the legal pages and every /settings page', () => {
+  for (const p of ['/more', '/insights', '/savings', '/recurring', '/settings', '/settings/account', '/settings/data', '/help', '/privacy', '/terms']) {
     assert.equal(isNavActive('/more', p), true, p)
   }
   assert.equal(isNavActive('/more', '/transactions'), false)
@@ -34,13 +34,16 @@ test('Any other entry matches its own path and the pages below it', () => {
   assert.equal(isNavActive('/budgets', '/budgets'), true)
   assert.equal(isNavActive('/insights', '/insights'), true)
   assert.equal(isNavActive('/recurring', '/insights'), false)
+  assert.equal(isNavActive('/savings', '/savings/goals/g1'), true)
+  assert.equal(isNavActive('/insights', '/savings'), false)
+  assert.equal(isNavActive('/savings', '/savingsx'), false)
   assert.equal(isNavActive('/settings', '/settings/security'), true)
 })
 
 test('exactly one bottom-bar tab is active on every routed page', () => {
   const TABS = ['/', '/transactions', '/groups', '/budgets', '/more']
   const PAGES = ['/', '/transactions', '/import', '/groups', '/groups/g1', '/budgets',
-    '/more', '/insights', '/recurring', '/settings', '/settings/notifications', '/categories/none']
+    '/more', '/insights', '/savings', '/recurring', '/settings', '/settings/notifications', '/categories/none']
   for (const p of PAGES) {
     assert.equal(TABS.filter((t) => isNavActive(t, p)).length, 1, p)
   }
@@ -52,7 +55,7 @@ test('the floating Add expense button shows on the four main tabs only', () => {
     assert.equal(showsAddExpense(p), true, p)
   }
   for (const p of ['/transactions/new', '/transactions/42', '/groups/1', '/settings', '/settings/account',
-    '/more', '/insights', '/recurring', '/import', '/categories/1', '/help']) {
+    '/more', '/insights', '/savings', '/recurring', '/import', '/categories/1', '/help']) {
     assert.equal(showsAddExpense(p), false, p)
   }
 })
@@ -69,7 +72,7 @@ test('the form pages never show the floating Add expense button, and light their
   const FORMS = {
     '/groups': ['/groups/new', '/groups/g1/settle', '/groups/g1/edit', '/groups/g1/members',
       '/groups/g1/expenses/new', '/groups/g1/expenses/e1', '/groups/g1/comments/e1'],
-    '/more': ['/recurring/new', '/recurring/r1', '/insights/goals/new', '/insights/goals/g1',
+    '/more': ['/recurring/new', '/recurring/r1', '/savings/goals/new', '/savings/goals/g1',
       '/insights/accounts/new', '/insights/accounts/a1', '/settings/categories/new',
       '/settings/data/export', '/settings/data/restore', '/settings/privacy/request'],
   }
@@ -90,7 +93,7 @@ test('sideways, the avatar owns Settings: More stays dark there, and nothing els
     for (const to of ['/', '/transactions', '/groups', '/budgets']) assert.equal(isNavActive(to, p, apart), false, `${to} on ${p}`)
   }
   // More keeps the rest of its section.
-  for (const p of ['/more', '/insights', '/recurring', '/help', '/privacy', '/terms']) {
+  for (const p of ['/more', '/insights', '/savings', '/recurring', '/help', '/privacy', '/terms']) {
     assert.equal(isAccountPage(p), false, p)
     assert.equal(isNavActive('/more', p, apart), true, p)
   }
