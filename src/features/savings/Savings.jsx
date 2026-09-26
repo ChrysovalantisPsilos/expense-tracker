@@ -21,7 +21,7 @@ import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { NARROW_STACKS } from '../../shared/ui/narrowStacks.js'
 import { formatMoney, minorFactor } from '../../shared/lib/currency.js'
-import { lastMonths, shortDate } from '../../shared/lib/dates.js'
+import { lastMonths, monthName as nameOfMonth, shortDate } from '../../shared/lib/dates.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
 import { useCategories } from '../transactions/useData.js'
 import { useRecurring } from '../recurring/recurring.js'
@@ -198,7 +198,7 @@ function MonthCard({ month, rules, currency }) {
   const navigate = useNavigate()
   const signed = (m) => signedAmount(m, (x) => money(x, currency))
   const net = signed(month.net)
-  const monthName = new Date().toLocaleDateString('en-US', { month: 'long' })
+  const monthName = nameOfMonth()
   return (
     <Panel title="This month" subtitle={monthName}>
       <BalanceGrid columns={3}>

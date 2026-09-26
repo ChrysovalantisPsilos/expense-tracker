@@ -1,0 +1,3 @@
+// Namespace `transactions`: src/features/transactions. Not converted yet: its strings are
+// still literals in the feature's components (docs/I18N.md, "Converting a feature").
+export default {}
