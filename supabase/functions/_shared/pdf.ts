@@ -43,6 +43,8 @@ export interface PdfLib {
   create(): Promise<PDFDocument>
   fontkit: unknown
   fontBytes(role: FontRole): Promise<ArrayBuffer | Uint8Array | null>
+  // Told each page's number as it is begun (a long statement's progress).
+  onPage?(page: number): void
 }
 
 // pdf-lib's StandardFonts names for the last-resort faces.
@@ -80,6 +82,14 @@ const TONE: Record<Tone, Color> = {
 const SWATCHES = ['#f95d38', '#fbb324', '#ffa088', '#d97a06', '#f6c453', '#c2703d', '#ef8a5a'].map(hex)
 const swatch = (i: number, label: string) => (label === 'Other' ? BRAND.muted : SWATCHES[i % SWATCHES.length])
 
+// pdf-lib draws and measures text by its glyphs and their advance widths
+// alone; the positioning (GPOS) fontkit works out on every layout — kerning,
+// mark placement — is never read. Turning those features off leaves the
+// glyphs, the widths and so the file the same, and makes each layout (the
+// bulk of a long statement's time) up to twice as fast. Substitutions
+// (ligatures and the like) stay on.
+const NO_POSITIONING = { kern: false, mark: false, mkmk: false, curs: false, dist: false, abvm: false, blwm: false }
+
 interface BrandFonts {
   head: PDFFont; headBold: PDFFont; body: PDFFont; bodyBold: PDFFont; uni: PDFFont | null
 }
@@ -91,7 +101,7 @@ async function loadBrandFonts(pdf: PDFDocument, lib: PdfLib): Promise<BrandFonts
     let bytes: ArrayBuffer | Uint8Array | null = null
     try { bytes = await lib.fontBytes(role) } catch { /* unavailable: fall back */ }
     if (!bytes) return fallback
-    try { return await pdf.embedFont(bytes, { subset: true }) } catch { return fallback }
+    try { return await pdf.embedFont(bytes, { subset: true, features: NO_POSITIONING }) } catch { return fallback }
   }
   const uni = await embed('uni', null as unknown as PDFFont) || null
   return {
@@ -107,6 +117,18 @@ async function loadBrandFonts(pdf: PDFDocument, lib: PdfLib): Promise<BrandFonts
 // punctuation (’ “ ” – — … •), € and the minus sign.
 const BRAND_CHARS = /^[\u0020-\u024F\u2000-\u206F\u20AC\u2212]$/
 
+// Text whose measured width only grows as characters are added: Latin,
+// Greek, Cyrillic, general punctuation, currency signs, arrows and maths
+// operators. Nothing there is shaped narrower by what follows it in these
+// fonts (their ligatures — fi, fl, ffi, l·l, stacked marks — are never
+// narrower than the text they grow from), so truncate() may binary-search
+// the cut. Anything else (Arabic joining forms, say, which do shrink) keeps
+// the one-character-at-a-time search.
+const GROWS_WITH_LENGTH = /^[\u0020-\u024F\u0370-\u04FF\u1E00-\u1FFF\u2000-\u206F\u20A0-\u20CF\u2190-\u22FF]*$/
+
+// How many measured widths a statement keeps per font before starting over.
+const WIDTH_CACHE_SIZE = 20000
+
 // Fold characters the brand fonts can't encode down to ASCII (last resort).
 function asciiFold(s: string): string {
   return String(s)
@@ -116,9 +138,12 @@ function asciiFold(s: string): string {
     .replace(/[^\x20-\x7E\xA0-\xFF]/g, '?')
 }
 
+// One formatter for every amount (what toLocaleString would build per call).
+const AMOUNT = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 export function money(n: number, cur?: string): string {
   const neg = n < 0
-  const s = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const s = AMOUNT.format(Math.abs(n))
   return `${neg ? '-' : ''}${s}${cur ? ' ' + cur : ''}`
 }
 
@@ -156,21 +181,26 @@ export class Statement {
   y = 0
   get CW() { return this.W - this.M * 2 }
 
-  constructor(pdf: PDFDocument, fonts: BrandFonts) {
+  pages = 0
+  onPage?: (page: number) => void
+
+  constructor(pdf: PDFDocument, fonts: BrandFonts, onPage?: (page: number) => void) {
     this.pdf = pdf
     this.f = fonts
+    this.onPage = onPage
     this.addPage()
   }
 
   // A new A4 statement, with the brand fonts embedded, on the injected pdf-lib.
   static async create(lib: PdfLib): Promise<Statement> {
     const pdf = await lib.create()
-    return new Statement(pdf, await loadBrandFonts(pdf, lib))
+    return new Statement(pdf, await loadBrandFonts(pdf, lib), lib.onPage)
   }
 
   addPage() {
     this.page = this.pdf.addPage([this.W, this.H])
     this.y = this.M
+    this.onPage?.(++this.pages)
   }
   ensure(h: number) {
     if (this.y + h > this.H - 54) this.addPage()
@@ -192,9 +222,28 @@ export class Statement {
     }
     return out
   }
+  // A run's width, as pdf-lib measures it. Shaping makes each measurement
+  // costly and a statement asks for the same ones again and again (dates,
+  // categories, amounts, a cell drawn right after it was truncated), so they
+  // are kept: the numbers, and so the file, are exactly what they were.
+  // `estimated` counts the runs no face could measure (the ASCII-fold guess,
+  // which isn't kept).
+  widths = new Map<PDFFont, Map<string, number>>()
+  estimated = 0
   runWidth(s: string, font: PDFFont, size: number): number {
-    try { return font.widthOfTextAtSize(s, size) }
-    catch { return asciiFold(s).length * size * 0.5 }
+    let known = this.widths.get(font)
+    if (!known) this.widths.set(font, known = new Map())
+    const key = `${size} ${s}`
+    const cached = known.get(key)
+    if (cached !== undefined) return cached
+    let w: number
+    try { w = font.widthOfTextAtSize(s, size) } catch {
+      this.estimated++
+      return asciiFold(s).length * size * 0.5
+    }
+    if (known.size >= WIDTH_CACHE_SIZE) known.clear()
+    known.set(key, w)
+    return w
   }
 
   // Draw a string with its top near screen-y `ty`; anything no face can
@@ -218,11 +267,57 @@ export class Statement {
   width(str: string, font: PDFFont, size: number): number {
     return this.runs(str, font).reduce((w, run) => w + this.runWidth(run.s, run.font, size), 0)
   }
+  // `str`, or its longest prefix (at least one character) that fits `maxW`
+  // with an ellipsis. Measuring shapes the whole string, so a long bank
+  // description tried one character shorter at a time cost ~70 measurements.
+  // Where the width only grows with the prefix (GROWS_WITH_LENGTH, measured
+  // by a real face), the cut is guessed from the characters' own widths and
+  // then confirmed — usually two measurements; otherwise prefixes are tried
+  // longest first, as they always were. Both find the same cut.
   truncate(str: string, font: PDFFont, size: number, maxW: number): string {
+    const estimated = this.estimated
     if (this.width(str, font, size) <= maxW) return str
-    let s = str
-    while (s.length > 1 && this.width(s + '…', font, size) > maxW) s = s.slice(0, -1)
-    return s + '…'
+    const fits = (n: number) => this.width(str.slice(0, n) + '…', font, size) <= maxW
+    if (!GROWS_WITH_LENGTH.test(str) || this.estimated !== estimated) {
+      let n = str.length
+      while (n > 1 && !fits(n)) n--
+      return str.slice(0, n) + '…'
+    }
+    // The answer is the longest fitting length in [1, str.length) (the whole
+    // string with an ellipsis is wider still), or 1 when none fits.
+    const last = str.length - 1
+    let guess = 1
+    let sum = this.width('…', font, size)
+    for (let i = 0; i < last; i++) {
+      sum += this.width(str[i], font, size)
+      if (sum > maxW) break
+      guess = i + 1
+    }
+    // Step out from the guess, doubling, until the cut is bracketed in
+    // [lo, hi] (fits(lo), or lo is 1); then halve.
+    let lo = 1
+    let hi = last
+    if (fits(guess)) {
+      lo = guess
+      for (let step = 1; lo < hi; step *= 2) {
+        const next = Math.min(lo + step, hi)
+        if (!fits(next)) { hi = next - 1; break }
+        lo = next
+      }
+    } else {
+      hi = guess - 1
+      for (let step = 1; lo < hi; step *= 2) {
+        const next = Math.max(hi - step, lo)
+        if (fits(next)) { lo = next; break }
+        hi = next - 1
+      }
+    }
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2)
+      if (fits(mid)) lo = mid
+      else hi = mid - 1
+    }
+    return str.slice(0, lo) + '…'
   }
   // Greedy word wrap to `maxW`.
   wrap(str: string, font: PDFFont, size: number, maxW: number): string[] {

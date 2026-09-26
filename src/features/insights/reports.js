@@ -6,11 +6,17 @@ import { deviceFirst } from '../../shared/lib/deviceFirst.js'
 
 // Financial-statement export (PDF or Excel). The statement is made on the
 // device (deviceStatement.js, loaded on demand); for one release the
-// `generate-report` edge function remains the fallback (deviceFirst.js).
-export async function downloadStatement({ from, to, format }) {
+// `generate-report` edge function remains the fallback (deviceFirst.js), also
+// when the device takes too long. `onProgress` hears the PDF page being made
+// (null once the server has taken over).
+export async function downloadStatement({ from, to, format, onProgress }) {
   const file = await deviceFirst('statement',
-    async () => (await import('./deviceStatement.js')).statementOnDevice(supabase, { from, to, format }),
-    () => statementFromServer({ from, to, format }))
+    async (signal) => (await import('./deviceStatement.js'))
+      .statementOnDevice(supabase, { from, to, format, onProgress, signal }),
+    () => {
+      onProgress?.(null)
+      return statementFromServer({ from, to, format })
+    })
   saveBlob(toBlob(file, FILE_TYPES[format]), statementFilename(from, to, format))
 }
 

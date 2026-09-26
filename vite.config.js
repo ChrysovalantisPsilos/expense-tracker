@@ -90,6 +90,10 @@ function bootLoader() {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  // Workers are module workers (created with { type: 'module' }), so they
+  // can load a library only when needed: the statement worker takes pdf-lib
+  // for a PDF and SheetJS for Excel, never both.
+  worker: { format: 'es' },
   plugins: [
     react(),
     selfHosted(),

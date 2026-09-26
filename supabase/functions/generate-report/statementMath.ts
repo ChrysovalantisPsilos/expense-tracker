@@ -154,7 +154,8 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
   // one that would count in the period — a yearly payment covering it (when
   // yearly rows count monthly) or a salary paid late in the month before.
   const unrated = all.filter((t) => t.exchange_rate == null)
-  const earlierPending = unrated.filter((t) => !listed.includes(t)
+  const isListed = new Set(listed)
+  const earlierPending = unrated.filter((t) => !isListed.has(t)
     && spendRows([t], base, from, to, { separateYearly, salaryShift }).length > 0)
   const pendingRows = [...listed.filter((t) => t.exchange_rate == null), ...earlierPending]
 

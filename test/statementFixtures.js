@@ -89,10 +89,52 @@ export const BALANCES = [
   { member_id: 'm1', net_minor: '4000' }, { member_id: 'm2', net_minor: '-1000' }, { member_id: 'm3', net_minor: '-3000' },
 ]
 
+// A long account, as bank imports make one: `n` rows over 18 months (newest
+// first, as my_transactions returns them) with 60–120-character bank
+// descriptions, some Greek; foreign amounts, a few still awaiting a rate;
+// salaries, savings, yearly subscriptions and group shares. Deterministic.
+export const LONG_FROM = '2025-03-12'
+export const LONG_TO = '2026-09-30'
+export function longAccount(n) {
+  let seed = 7
+  const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32)
+  const pick = (a) => a[Math.floor(rand() * a.length)]
+  const merchants = ['LIDL HELLAS', 'AB VASSILOPOULOS', 'SHELL KIFISIAS', 'AMAZON EU SARL', 'WOLT ATHENS',
+    'ΔΕΗ ΛΟΓΑΡΙΑΣΜΟΣ ΡΕΥΜΑΤΟΣ', 'ΚΑΦΕΤΕΡΙΑ ΤΟ ΣΤΕΚΙ', 'AEGEAN AIRLINES', 'ΦΑΡΜΑΚΕΙΟ ΠΑΠΑΔΟΠΟΥΛΟΥ', 'Café Straße']
+  const categories = ['Groceries', 'Transport', 'Food & drink', 'Bills', 'Travel', 'Καφετέρια']
+  const currencies = [['EUR', 1], ['EUR', 1], ['EUR', 1], ['USD', 0.92], ['GBP', 1.17], ['JPY', 0.0062]]
+  const start = Date.UTC(2025, 2, 1)
+  const days = (Date.UTC(2026, 8, 30) - start) / 864e5
+  const rows = Array.from({ length: n }, (_, i) => {
+    const date = new Date(start + Math.floor(rand() * days) * 864e5).toISOString().slice(0, 10)
+    let description = `CARD PURCHASE ${date} ${pick(merchants)} ATHENS GR REF ${Math.floor(rand() * 1e10)} VISA`
+    const length = 60 + Math.floor(rand() * 61)
+    while (description.length < length) description += ` ${pick(['CONTACTLESS', 'POS', 'ΑΓΟΡΑ', String(i)])}`
+    const [currency, rate] = pick(currencies)
+    const row = {
+      spent_at: date, kind: 'expense', amount_minor: 100 + Math.floor(rand() * 30000), currency,
+      exchange_rate: currency === 'EUR' ? 1 : rand() < 0.05 ? null : String(rate),
+      description: description.slice(0, length), categories: { name: pick(categories) },
+    }
+    const k = rand()
+    if (k < 0.04) {
+      Object.assign(row, { kind: 'income', category_id: 'cat-salary', amount_minor: 250000, currency: 'EUR',
+        exchange_rate: 1, categories: { name: 'Salary' } })
+    } else if (k < 0.07) {
+      Object.assign(row, { kind: 'income', category_id: 'cat-savings', savings_from_income: rand() < 0.5 })
+    } else if (k < 0.09) row.spread_months = 12
+    else if (k < 0.1) row.paid_from_savings = true
+    else if (k < 0.12) Object.assign(row, { group_expense_id: `ge${i}`, group_expenses: { groups: { name: 'Λισαβόνα' } } })
+    return row
+  })
+  return rows.sort((a, b) => b.spent_at.localeCompare(a.spent_at))
+}
+
 // A stand-in for a supabase-js client signed in as the user: the chained
 // query builder and rpc() the statements use, each answered from the data
 // above. Every read is logged in `calls`.
-export function fakeSupabase({ yearlySeparate = false } = {}) {
+// `txns` stands in for my_transactions' rows (TXNS by default).
+export function fakeSupabase({ yearlySeparate = false, txns = TXNS } = {}) {
   const calls = []
   const tables = {
     profiles: () => [profile(yearlySeparate)],
@@ -102,7 +144,7 @@ export function fakeSupabase({ yearlySeparate = false } = {}) {
   }
   const rpcs = {
     consume_quota: () => true,
-    my_transactions: () => TXNS,
+    my_transactions: () => txns,
     my_recurring_rules: () => RULES,
     latest_fx_rates: ({ p_currencies }) => FX.filter((r) => p_currencies.includes(r.currency)),
     group_ledger: ({ p_group }) => (p_group === GROUP.id ? LEDGER : null),

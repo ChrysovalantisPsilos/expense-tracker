@@ -71,6 +71,7 @@ export default {
     excel: 'Εξαγωγή Excel',
     noEntries: 'Τίποτα για εξαγωγή ακόμα — πρόσθεσε πρώτα ένα έξοδο ή έσοδο.',
     preparingPdf: 'Ετοιμάζεται η αναφορά σου σε PDF…',
+    preparingPdfPage: 'Ετοιμάζεται η αναφορά σου σε PDF… σελίδα {{page}}',
     preparingExcel: 'Ετοιμάζεται η αναφορά σου σε Excel…',
   },
 }
