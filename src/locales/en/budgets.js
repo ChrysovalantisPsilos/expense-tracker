@@ -20,6 +20,8 @@ export default {
   copied_other: 'Copied {{count}} budgets from last month',
   copy: {
     button: 'Copy last month’s budgets',
+    // The same, as the This month card's small action (Greek keeps it shorter).
+    action: 'Copy last month’s budgets',
     title: 'Copy last month’s budgets?',
     body_one: 'This month’s {{count}} cap is replaced by last month’s {{previous}}.',
     body_other: 'This month’s {{count}} caps are replaced by last month’s {{previous}}.',

@@ -99,7 +99,7 @@ export default function Budgets() {
   const copyButton = canCopy && (
     <Button size="xs" variant="ghost" leftIcon={<Copy size={14} />} isLoading={copying}
       onClick={() => setConfirmCopy(true)}>
-      {t('copy.button')}
+      {t('copy.action')}
     </Button>
   )
 
@@ -122,7 +122,7 @@ export default function Budgets() {
             <FormLabel>{t('form.cap')}</FormLabel>
             <MoneyInput currency={baseCurrency} value={amount} onChange={setAmount} />
           </FormControl>
-          <Button type="submit">{t('form.submit')}</Button>
+          <Button type="submit" flexShrink={0}>{t('form.submit')}</Button>
         </HStack>
       </form>
     </Panel>
