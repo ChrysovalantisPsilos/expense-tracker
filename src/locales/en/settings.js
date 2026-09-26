@@ -119,7 +119,6 @@ export default {
   // "Please sign in again" (ReauthNotice): one whole sentence per case.
   reauth: {
     logInAgain: 'Log in again',
-    deleteAccount: 'For your security, please sign in again to delete your account.',
     passkeyGoogle: 'For your security, please sign in again to add a passkey or change your Google connection.',
     passkeyGoogleDelete: 'For your security, please sign in again to add a passkey, change your Google connection or delete your account.',
   },
@@ -216,6 +215,20 @@ export default {
     typeLabel: 'Type DELETE to confirm',
     deletedList: 'Deleted',
     staysList: 'Stays for your groups',
+    // What deletion erases and what stays: the English is exactly
+    // _shared/accountDeletion.ts' DELETION_SCOPE, which the confirmation
+    // email uses (test/legal.test.js keeps them in lockstep).
+    scope: {
+      deleted: {
+        account: 'Your sign-in, passkeys, profile, picture and payment details',
+        records: 'Your expenses and income, categories and rules, accounts, budgets, goals and recurring payments',
+        notifications: 'Your notifications (and the ones other members got about something you did), push subscriptions, consent history and the group comments you wrote',
+        groups: 'Groups you own that have no other members (the rest pass to another member)',
+      },
+      stays: {
+        shared: 'Group expenses, splits and settlements you were part of, so others’ balances stay right — shown as “Former member”, with no link to you',
+      },
+    },
     done: 'Your account has been deleted',
     failed: 'Could not delete account',
   },

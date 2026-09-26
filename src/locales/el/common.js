@@ -19,7 +19,7 @@ export default {
     position: 'Σελίδα {{page}} από {{pages}}',
   },
   queryError: {
-    title: 'Δεν φόρτωσαν {{what}}',
+    title: 'Δεν μπορέσαμε να φορτώσουμε {{what}}',
     this: 'τα δεδομένα',
   },
   errors: {
@@ -32,6 +32,7 @@ export default {
       body: 'Συνδέσου ξανά για να αποθηκευτούν οι αλλαγές σου.',
     },
     sessionExpired: 'Η σύνδεσή σου έληξε. Συνδέσου ξανά.',
+    signedOut: 'Πρέπει να έχεις συνδεθεί.',
     tooMany: 'Πάρα πολλές προσπάθειες. Περίμενε λίγα λεπτά και δοκίμασε ξανά.',
     emailInvalid: 'Γράψε ένα έγκυρο email.',
     auth: {
@@ -42,6 +43,12 @@ export default {
       samePassword: 'Ο νέος κωδικός πρέπει να διαφέρει από τον τωρινό.',
       currentPasswordInvalid: 'Ο τωρινός κωδικός είναι λάθος.',
       linkExpired: 'Αυτό το link έληξε. Ζήτα καινούργιο.',
+    },
+    reauth: {
+      connectGoogle: 'Για την ασφάλειά σου, συνδέσου ξανά για να συνδέσεις το Google.',
+      disconnectGoogle: 'Για την ασφάλειά σου, συνδέσου ξανά για να αποσυνδέσεις το Google.',
+      addPasskey: 'Για την ασφάλειά σου, συνδέσου ξανά για να προσθέσεις κλειδί πρόσβασης.',
+      deleteAccount: 'Για την ασφάλειά σου, συνδέσου ξανά για να διαγράψεις τον λογαριασμό σου.',
     },
     passkey: {
       cancelled: 'Το αίτημα για το κλειδί πρόσβασης ακυρώθηκε ή έληξε.',
@@ -187,6 +194,15 @@ export default {
     total: 'Σύνολο',
     currency: 'Νόμισμα',
     date: 'Ημερομηνία',
+  },
+  savingsNote: {
+    fromIncome: 'από το εισόδημα',
+    received: 'που πήρες',
+    fromSavings: 'από αποταμιεύσεις',
+  },
+  countsFor: {
+    month: 'Στα έσοδα {{month}}',
+    withYear: 'Στα έσοδα {{month}} {{year}}',
   },
   tour: {
     label: 'Ξενάγηση',

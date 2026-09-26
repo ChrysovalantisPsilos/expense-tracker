@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Box, HStack, Tab, TabList, TabPanel, TabPanels, Tabs, Text } from '@chakra-ui/react'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
-import { CONVERTED_NOTE, missingRatesNote, ruleInBase } from '../../shared/lib/ruleFx.js'
+import { missingRatesNote, ruleInBase } from '../../shared/lib/ruleFx.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Frequency chips over subscriptionGroups() (recurringMath.js) — Home's
@@ -52,11 +52,12 @@ export function GroupTotal({ group: g, baseCurrency, ...props }) {
 // The notes under a total built from rules: foreign ones converted at today's
 // rate, and those left out because there's no rate right now.
 export function RatesNote({ converted, missing, ...props }) {
-  const left = missingRatesNote(missing, formatMoney)
+  const t = useT('recurring')
+  const left = missingRatesNote(missing, formatMoney, (amounts) => t('rates.missing', { amounts }))
   if (!converted && !left) return null
   return (
     <Box fontSize="xs" color="text.muted" {...props}>
-      {converted && <Text>{CONVERTED_NOTE}</Text>}
+      {converted && <Text>{t('rates.converted')}</Text>}
       {left && <Text>{left}</Text>}
     </Box>
   )

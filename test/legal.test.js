@@ -7,7 +7,13 @@ import { latestSql } from './migrations.js'
 import {
   LEGAL_VERSIONS, LEGAL_CHANGES, RETENTION, changesSince, describeConsent, exportFileName,
   formatVersion, responseDeadline, signupConsentMetadata, validatePrivacyRequest, REQUEST_KINDS,
+  changeItems, legalLanguage, requestErrorKey, MESSAGE_MAX,
 } from '../src/features/privacy/legal.js'
+import { DELETION_SCOPE } from '../supabase/functions/_shared/accountDeletion.ts'
+import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
+import enPrivacy from '../src/locales/en/privacy.js'
+import enSettings from '../src/locales/en/settings.js'
+import elSettings from '../src/locales/el/settings.js'
 import { INACTIVITY, deletionDate, formatDay } from '../supabase/functions/_shared/inactivity.ts'
 import { deleteAccount } from '../supabase/functions/_shared/accountDeletion.ts'
 
@@ -148,4 +154,43 @@ test('deleteAccount hands over shared groups, removes files, then deletes the us
     ['remove', 'group-images', ['g-solo/cover.png']],
     ['deleteUser', 'u1'],
   ])
+})
+
+test('legalLanguage: the English original only when the address asks for it', () => {
+  assert.equal(legalLanguage('en', 'el'), 'en')
+  assert.equal(legalLanguage(null, 'el'), 'el')
+  assert.equal(legalLanguage('el', 'en'), 'en')
+  assert.equal(legalLanguage('fr', 'el'), 'el') // anything else: the app's language
+  assert.equal(legalLanguage(undefined, 'en'), 'en')
+})
+
+test('requestErrorKey: each of the validator\'s English errors has its key', () => {
+  assert.equal(requestErrorKey(validatePrivacyRequest({}).error), 'kind')
+  assert.equal(requestErrorKey(validatePrivacyRequest({ kind: 'other', message: '' }).error), 'short')
+  assert.equal(requestErrorKey(validatePrivacyRequest({ kind: 'other', message: 'x'.repeat(MESSAGE_MAX + 1) }).error), 'long')
+  assert.equal(requestErrorKey('Something else'), null)
+  assert.equal(requestErrorKey(undefined), null)
+  for (const key of ['kind', 'short', 'long']) assert.equal(typeof enPrivacy.request.errors[key], 'string', key)
+})
+
+test('changeItems: a version the dictionary has is translated; a newer one falls back to legal.ts', async () => {
+  const known = LEGAL_CHANGES[0]
+  assert.deepEqual(changeItems(known), Object.values(enPrivacy.gate.changes[known.version]))
+  await loadLanguage('el')
+  try {
+    const greek = changeItems(known)
+    assert.equal(greek.length, Object.keys(enPrivacy.gate.changes[known.version]).length)
+    assert.ok(greek.every((line) => /[α-ω]/i.test(line)), 'Greek items')
+    const future = { version: '2099-01-01', summary: 'x', items: ['A new English line.'] }
+    assert.deepEqual(changeItems(future), ['A new English line.'])
+  } finally {
+    await loadLanguage('en')
+  }
+})
+
+test('the delete screen lists exactly what the deletion email does (DELETION_SCOPE)', () => {
+  const scope = enSettings.deleteAccount.scope
+  assert.deepEqual(Object.values(scope.deleted), DELETION_SCOPE.deleted)
+  assert.deepEqual(Object.values(scope.stays), DELETION_SCOPE.stays)
+  assert.deepEqual(Object.keys(elSettings.deleteAccount.scope.deleted), Object.keys(scope.deleted))
 })

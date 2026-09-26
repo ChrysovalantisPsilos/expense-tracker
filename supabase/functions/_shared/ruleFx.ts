@@ -68,13 +68,18 @@ export function rulesInBase(
   return { rules: out, missing, converted }
 }
 
-// The line under a total that has foreign rules in it.
+// The line under a total that has foreign rules in it (the statement's; the
+// app shows recurring:rates.converted).
 export const CONVERTED_NOTE = 'Other currencies converted at today’s rate.'
 
 // "PLN 29.99 not included — no exchange rate right now." for the rules left
 // out of a total (each charge in its own currency, `fmt(minor, currency)`), or
-// null when none were.
-export function missingRatesNote(missing: Row[], fmt: (minor: number, currency: string) => string): string | null {
+// null when none were. `sentence(amounts)` words it (the app passes its
+// translated sentence; the statement keeps this English one).
+export function missingRatesNote(
+  missing: Row[], fmt: (minor: number, currency: string) => string,
+  sentence: (amounts: string) => string = (amounts) => `${amounts} not included — no exchange rate right now.`,
+): string | null {
   if (!missing?.length) return null
-  return `${missing.map((r) => fmt(Number(r.amount_minor), r.currency)).join(', ')} not included — no exchange rate right now.`
+  return sentence(missing.map((r) => fmt(Number(r.amount_minor), r.currency)).join(', '))
 }

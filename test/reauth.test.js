@@ -49,3 +49,12 @@ test('the reauth error code and copy', () => {
   assert.equal(REAUTH_REQUIRED, 'reauth_required')
   assert.equal(reauthMessage('add a passkey'), 'For your security, please sign in again to add a passkey.')
 })
+
+test('the app\'s "sign in again" sentences are reauthMessage\'s, word for word', async () => {
+  const { default: common } = await import('../src/locales/en/common.js')
+  const r = common.errors.reauth
+  assert.equal(r.connectGoogle, reauthMessage('connect Google'))
+  assert.equal(r.disconnectGoogle, reauthMessage('disconnect Google'))
+  assert.equal(r.addPasskey, reauthMessage('add a passkey'))
+  assert.equal(r.deleteAccount, reauthMessage('delete your account')) // the delete-account function's
+})

@@ -10,7 +10,7 @@ import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { monthlyShare } from '../../shared/lib/spread.js'
 import { countsForLabel } from '../../shared/lib/salaryShift.js'
-import { savingsNoteOf } from '../../shared/lib/savings.js'
+import { savingsNoteLabel } from '../../shared/lib/savings.js'
 import { useSavingsIds } from '../categories/categories.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { deleteTransaction } from './writes.js'
@@ -85,7 +85,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
               <ItemRow py={2.5} onClick={shared ? undefined : () => open(r)}
                 media={<CategoryBadge category={r.categories} kind={rk} size={32} />}
                 title={r.description || categoryDisplayName(r.categories) || t(`kinds.${rk === 'income' ? 'income' : 'expense'}`)}
-                meta={<RowMeta row={r} shared={shared} saved={savingsNoteOf(r, savingsIds)} />}
+                meta={<RowMeta row={r} shared={shared} saved={savingsNoteLabel(r, savingsIds)} />}
                 amount={`${rk === 'income' ? '+' : ''}${formatMoney(r.amount_minor, r.currency)}`}
                 amountTone={rk === 'income' ? 'positive' : 'default'}
                 amountMeta={conv && (

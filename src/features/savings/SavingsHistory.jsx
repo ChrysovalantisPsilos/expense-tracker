@@ -9,7 +9,7 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
-import { savingsNoteOf } from '../../shared/lib/savings.js'
+import { savingsNoteLabel } from '../../shared/lib/savings.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
 import DeleteTransactionDialog from '../transactions/DeleteTransactionDialog.jsx'
@@ -36,7 +36,7 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
           <Text sx={ONE_LINE} minW={0}>
             {shortDate(r.spent_at)} ·{' '}
             <Text as="span" color={out ? 'text.primary' : undefined} fontWeight={out ? 600 : undefined}>
-              {savingsNoteOf(r, savingsIds)}
+              {savingsNoteLabel(r, savingsIds)}
             </Text>
           </Text>
           {r.recurring_rule_id && (

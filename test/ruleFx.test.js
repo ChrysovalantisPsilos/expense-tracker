@@ -3,8 +3,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  foreignCurrencies, ruleInBase, rulesInBase, missingRatesNote, CONVERTED_NOTE,
+  foreignCurrencies, ruleInBase, rulesInBase, missingRatesNote,
 } from '../src/shared/lib/ruleFx.js'
+import { CONVERTED_NOTE } from '../supabase/functions/_shared/ruleFx.ts'
 import { formatMoney } from '../src/shared/lib/currency.js'
 import { fmtMinor } from '../supabase/functions/_shared/money.ts'
 import { periodProjection } from '../src/features/dashboard/dashboardMath.js'
@@ -56,6 +57,9 @@ test('rulesInBase: converted, missing and the notes', () => {
   assert.equal(missingRatesNote([pln, jpy], fmtMinor),
     '29.99 PLN, 1500 JPY not included — no exchange rate right now.')
   assert.equal(missingRatesNote([], formatMoney), null)
+  // The app words it in its own language.
+  assert.equal(missingRatesNote([pln], fmtMinor, (amounts) => `${amounts}: χωρίς ισοτιμία`),
+    `${fmtMinor(Number(pln.amount_minor), pln.currency)}: χωρίς ισοτιμία`)
   assert.equal(CONVERTED_NOTE, 'Other currencies converted at today’s rate.')
   // All in the base currency: unchanged, nothing converted.
   const same = rulesInBase([eur], 'EUR', {})

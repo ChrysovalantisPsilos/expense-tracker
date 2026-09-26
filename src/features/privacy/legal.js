@@ -13,11 +13,11 @@ import { CONSENT_LABELS, LEGAL_CHANGES, LEGAL_VERSIONS } from '../../../supabase
 import { MESSAGE_MAX, validatePrivacyRequest } from '../../../supabase/functions/_shared/privacyRequest.ts'
 import { DEFAULT_LANGUAGE } from '../../shared/lib/i18n/language.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
+import en from '../../locales/en/privacy.js'
 
 export { REQUEST_KINDS, MESSAGE_MAX, validatePrivacyRequest }
   from '../../../supabase/functions/_shared/privacyRequest.ts'
 export { LEGAL_VERSIONS, LEGAL_CHANGES } from '../../../supabase/functions/_shared/legal.ts'
-export { DELETION_SCOPE } from '../../../supabase/functions/_shared/accountDeletion.ts'
 
 export const CONTROLLER = 'Budgeer (Belgium)'
 
@@ -71,6 +71,14 @@ export function describeConsent(row) {
     return t(row.granted ? 'privacy:consent.accepted' : 'privacy:consent.declined', { document: what, version, where })
   }
   return t(row?.granted ? 'privacy:consent.turnedOn' : 'privacy:consent.turnedOff', { what, where })
+}
+
+// The items of one LEGAL_CHANGES entry, in the app's language: the
+// dictionary's copy of that version (privacy:gate.changes), or legal.ts's
+// English items for a version the dictionary doesn't have yet.
+export function changeItems(change) {
+  const copy = en.gate.changes[change.version]
+  return copy ? Object.keys(copy).map((k) => t(`privacy:gate.changes.${change.version}.${k}`)) : change.items
 }
 
 // The key (privacy:request.errors.<key>) for a validatePrivacyRequest error,

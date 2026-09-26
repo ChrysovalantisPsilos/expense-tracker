@@ -80,6 +80,8 @@ const AUTH_MESSAGES = {
   refresh_token_not_found: SESSION_EXPIRED,
   refresh_token_already_used: SESSION_EXPIRED,
   bad_jwt: SESSION_EXPIRED,
+  // The delete-account function's "sign in again" (_shared/reauth.ts).
+  reauth_required: 'reauth.deleteAccount',
   PGRST301: SESSION_EXPIRED, // PostgREST: JWT expired
 }
 

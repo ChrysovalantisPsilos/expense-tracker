@@ -176,4 +176,9 @@ export default {
     charges_one: '{{count}} charge',
     charges_other: '{{count}} charges',
   },
+  // Under a total built from recurring rules (SubscriptionGroups' RatesNote).
+  rates: {
+    converted: 'Other currencies converted at today’s rate.',
+    missing: '{{amounts}} not included — no exchange rate right now.',
+  },
 }
