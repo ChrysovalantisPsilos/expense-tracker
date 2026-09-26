@@ -1,11 +1,16 @@
 // The header over a list of transactions (Home's Expenses card, a category's
 // page, the Transactions page): a title naming what's listed, and a muted
 // subtitle with the period and how many entries it holds — or, for a
-// search, how many results. Pure, so the three screens word it the same way.
+// search, how many results. Pure, so the three screens word it the same way,
+// in the app's language (transactions:heading.*).
+import { t } from '../../shared/lib/i18n/i18n.js'
 
-const TITLES = { expense: 'Expenses', income: 'Income' }
+// A list of one kind is titled by it; any other list is "All transactions".
+const titleOf = (kind, savings) => (savings && kind === 'income' ? 'savings'
+  : kind === 'expense' || kind === 'income' ? kind : 'all')
 
-export const countLabel = (n, one = 'entry', many = 'entries') => `${n} ${n === 1 ? one : many}`
+// "3 entries", or with `noun` 'result' "3 results".
+export const countLabel = (n, noun = 'entry') => t(`transactions:heading.${noun}`, { count: n })
 
 //   kind        'expense' | 'income' | undefined (every kind)
 //   savings     the entries are a savings category's (0084): "Savings", not
@@ -19,9 +24,12 @@ export function listHeading({
 }) {
   const unknown = loading || failed || count == null
   if (searching) {
-    return { title: 'Search results', subtitle: loading ? 'Searching…' : unknown ? '' : countLabel(count, 'result', 'results') }
+    return {
+      title: t('transactions:heading.search'),
+      subtitle: loading ? t('transactions:heading.searching') : unknown ? '' : countLabel(count, 'result'),
+    }
   }
-  const title = savings && kind === 'income' ? 'Savings' : TITLES[kind] ?? 'All transactions'
+  const title = t(`transactions:heading.${titleOf(kind, savings)}`)
   const subtitle = unknown ? periodLabel : `${periodLabel} · ${countLabel(count)}`
   return { title, subtitle }
 }

@@ -1,8 +1,10 @@
 import { isoDate, monthTitle } from '../../shared/lib/dates.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // Period options (a month, a year, all time) as { value, label, from, to }.
 // `value` is a stable token — 'm:2026-9', 'y:2026', 'all' — that pages keep
 // in their state or URL. Pure module (no React/supabase) so it's unit-testable.
+// Labels are made when a period is built, in the app's language.
 
 function monthPeriod(y, m, d) {
   const start = new Date(y, m, 1)
@@ -10,17 +12,17 @@ function monthPeriod(y, m, d) {
   const now = y === d.getFullYear() && m === d.getMonth()
   return {
     value: `m:${start.getFullYear()}-${start.getMonth() + 1}`,
-    label: now ? 'This month' : monthTitle(start),
+    label: now ? t('transactions:periods.thisMonth') : monthTitle(start),
     from: isoDate(start), to: isoDate(end),
   }
 }
 
 const yearPeriod = (yr, d) => ({
-  value: `y:${yr}`, label: yr === d.getFullYear() ? 'This year' : String(yr),
+  value: `y:${yr}`, label: yr === d.getFullYear() ? t('transactions:periods.thisYear') : String(yr),
   from: `${yr}-01-01`, to: `${yr}-12-31`,
 })
 
-const ALL_TIME = { value: 'all', label: 'All time', from: null, to: null }
+const allTime = () => ({ value: 'all', label: t('transactions:periods.allTime'), from: null, to: null })
 
 // Dashboard period options, clamped so the user never sees months/years from
 // before they have any data. The range spans from `oldestISO` (their oldest
@@ -49,7 +51,7 @@ export function buildPeriods(oldestISO, d = new Date()) {
   if (!out.some((p) => p.value === thisMonth.value)) out.unshift(thisMonth)
   for (let yr = y; yr >= oldestY; yr--) out.push(yearPeriod(yr, d))
   // "All time" only adds value once there's data spanning more than this month.
-  if (oldestMonthIdx < nowMonthIdx) out.push(ALL_TIME)
+  if (oldestMonthIdx < nowMonthIdx) out.push(allTime())
   return out
 }
 
@@ -57,7 +59,7 @@ export function buildPeriods(oldestISO, d = new Date()) {
 // anything malformed — a hand-edited URL falls back to the caller's default.
 export function periodFromValue(value, d = new Date()) {
   const v = String(value ?? '')
-  if (v === 'all') return ALL_TIME
+  if (v === 'all') return allTime()
   const month = /^m:(\d{4})-(\d{1,2})$/.exec(v)
   if (month && +month[2] >= 1 && +month[2] <= 12) return monthPeriod(+month[1], +month[2] - 1, d)
   const year = /^y:(\d{4})$/.exec(v)

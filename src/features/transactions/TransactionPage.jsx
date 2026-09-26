@@ -20,11 +20,10 @@ import WhoForChips from '../groups/WhoForChips.jsx'
 import GroupExpenseForm from '../groups/GroupExpenseForm.jsx'
 import { useTransaction } from './useData.js'
 import { deleteTransaction } from './writes.js'
-import TransactionForm, { KINDS } from './TransactionForm.jsx'
+import TransactionForm, { kindOptions } from './TransactionForm.jsx'
 import DeleteTransactionDialog from './DeleteTransactionDialog.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
-
-const noun = (kind) => (kind === 'income' ? 'income' : 'expense')
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // The add/edit page for one expense or income:
 //   /transactions/new?kind=expense|income   a new entry; &category=<id>
@@ -45,6 +44,7 @@ const noun = (kind) => (kind === 'income' ? 'income' : 'expense')
 // leaves the Add page. The typed amount, currency, description and date go
 // along either way (carryDraft); switching to Income returns to Just me.
 export default function TransactionPage() {
+  const t = useT('transactions')
   const { id } = useParams()
   const [params, setParams] = useSearchParams()
   const location = useLocation()
@@ -115,31 +115,33 @@ export default function TransactionPage() {
     setDeleting(true)
     try {
       await deleteTransaction(row.id)
-      toast({ title: `${row.kind === 'income' ? 'Income' : 'Expense'} deleted`, status: 'success' })
+      toast({ title: t(`list.deleted.${row.kind === 'income' ? 'income' : 'expense'}`), status: 'success' })
       setConfirming(false)
       back()
     } catch (e) {
-      toast(saveErrorToast(e, 'Couldn’t delete'))
+      toast(saveErrorToast(e, t('list.notDeleted')))
     } finally {
       setDeleting(false)
     }
   }
 
-  const title = group ? 'Shared expense' : isNew ? `New ${noun(kind)}` : row ? `Edit ${noun(row.kind)}` : 'Transaction'
+  const title = t(`page.title.${group ? 'shared'
+    : isNew ? (kind === 'income' ? 'newIncome' : 'newExpense')
+      : row ? (row.kind === 'income' ? 'editIncome' : 'editExpense') : 'fallback'}`)
   // Only for someone in a group: without one the form is exactly as before.
   const who = isNew && groups.length > 0 && (
     <WhoForChips groups={groups} value={groupId} onChange={pickGroup} memory={chips} />
   )
 
   let body
-  if (!isNew && error) body = <Panel><QueryError error={error} onRetry={reload} what="this entry" /></Panel>
+  if (!isNew && error) body = <Panel><QueryError error={error} onRetry={reload} what={t('page.what')} /></Panel>
   else if ((!isNew && waiting) || profilePending || groupPending) body = <RingLoader />
   else if (!isNew && !row) {
     body = (
       <Panel>
         <Stack spacing={3} align="start">
-          <Text color="text.muted">This entry doesn’t exist any more.</Text>
-          <Button as={RouterLink} to="/transactions" size="sm">Go to Transactions</Button>
+          <Text color="text.muted">{t('page.gone')}</Text>
+          <Button as={RouterLink} to="/transactions" size="sm">{t('page.goToList')}</Button>
         </Stack>
       </Panel>
     )
@@ -148,14 +150,12 @@ export default function TransactionPage() {
       <Panel icon={Users} title={groupLabel(row)}>
         <Stack spacing={3} align="start">
           <Text>
-            {row.description || row.categories?.name || 'Group expense'} ·{' '}
+            {row.description || row.categories?.name || t('page.groupExpense')} ·{' '}
             {formatMoney(row.amount_minor, row.currency)}
           </Text>
-          <Text fontSize="sm" color="text.muted">
-            This is your share of a group expense, so it’s edited in its group.
-          </Text>
+          <Text fontSize="sm" color="text.muted">{t('page.groupShare')}</Text>
           {row.group_id && (
-            <Button as={RouterLink} to={`/groups/${row.group_id}`} size="sm">Open group</Button>
+            <Button as={RouterLink} to={`/groups/${row.group_id}`} size="sm">{t('page.openGroup')}</Button>
           )}
         </Stack>
       </Panel>
@@ -168,7 +168,7 @@ export default function TransactionPage() {
         initial={carryDraft(draft.current, group.currency)} onDraft={onDraft}
         lead={(
           <>
-            <SegmentedControl label="Kind" options={KINDS} value="expense" onChange={pickKind} size="sm" isFitted />
+            <SegmentedControl label={t('form.kind')} options={kindOptions(t)} value="expense" onChange={pickKind} size="sm" isFitted />
             {who}
           </>
         )}
@@ -189,15 +189,15 @@ export default function TransactionPage() {
 
   return (
     <Stack spacing={5} {...FORM_COLUMN}>
-      <PageHeader eyebrow={group ? group.name : 'Transactions'} title={title} leading={
-        <IconButton aria-label="Back" variant="ghost" size="sm" ml={-2} flexShrink={0}
+      <PageHeader eyebrow={group ? group.name : t('ledger.title')} title={title} leading={
+        <IconButton aria-label={t('actions.back')} variant="ghost" size="sm" ml={-2} flexShrink={0}
           icon={<ArrowLeft size={18} />} onClick={back} />
       } />
       {body}
 
       <DeleteTransactionDialog row={confirming ? row : null} onClose={() => setConfirming(false)}
         onConfirm={remove} busy={deleting}
-        note={rule ? 'It keeps repeating: switch Repeat off and save to stop future charges.' : undefined} />
+        note={rule ? t('page.keepsRepeating') : undefined} />
     </Stack>
   )
 }

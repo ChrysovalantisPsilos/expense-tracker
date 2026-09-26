@@ -1,3 +1,162 @@
-// Namespace `transactions`: src/features/transactions. Not converted yet: its strings are
-// still literals in the feature's components (docs/I18N.md, "Converting a feature").
-export default {}
+// Namespace `transactions`: src/features/transactions (the Transactions page,
+// the Add/Edit page and form, the list, and the period and list-heading
+// labels that Home, a category's page and budgets reuse). Conventions:
+// docs/I18N.md.
+export default {
+  kinds: {
+    expense: 'Expense',
+    income: 'Income',
+  },
+  uncategorized: 'Uncategorized',
+  actions: {
+    add: 'Add',
+    edit: 'Edit',
+    delete: 'Delete',
+    cancel: 'Cancel',
+    back: 'Back',
+    clear: 'Clear',
+  },
+  // periods.js: the period pickers' own labels (a named month or year comes
+  // from dates.js).
+  periods: {
+    thisMonth: 'This month',
+    thisYear: 'This year',
+    allTime: 'All time',
+  },
+  // listHeading.js: the header over a list of entries.
+  heading: {
+    expense: 'Expenses',
+    income: 'Income',
+    savings: 'Savings',
+    all: 'All transactions',
+    search: 'Search results',
+    searching: 'Searching…',
+    entry_one: '{{count}} entry',
+    entry_other: '{{count}} entries',
+    result_one: '{{count}} result',
+    result_other: '{{count}} results',
+  },
+  ledger: {
+    title: 'Transactions',
+    types: {
+      expense: 'Expenses',
+      income: 'Income',
+      all: 'All',
+    },
+    typeLabel: 'Transaction type',
+    add: {
+      expense: 'Add expense',
+      income: 'Add income',
+      all: 'Add',
+    },
+    empty: {
+      expense: 'Nothing logged yet.',
+      income: 'No income logged yet.',
+      all: 'Nothing logged this month yet.',
+    },
+    noMatch: 'No transactions match this search.',
+    moreActions: 'More actions',
+    importFile: 'Import file',
+    search: 'Search transactions',
+    searchPlaceholder: 'Search transactions…',
+    clearSearch: 'Clear search',
+    filters: 'Filters',
+    filtersActive: 'Filters (active)',
+    category: 'Category',
+    anyCategory: 'Any',
+    selectedCategory: 'Selected category',
+    min: 'Min ({{currency}})',
+    max: 'Max ({{currency}})',
+    from: 'From',
+    to: 'To',
+    net: 'Net {{amount}}',
+    what: 'your transactions',
+  },
+  firstEntry: {
+    title: 'Nothing logged yet',
+    text: 'Add what you spend as it happens, or bring in your history from a bank statement.',
+    add: 'Add your first expense',
+    import: 'Import a bank statement',
+  },
+  deleteDialog: {
+    title: {
+      expense: 'Delete this expense?',
+      income: 'Delete this income?',
+    },
+    body: '{{name}} · {{amount}}. This can’t be undone.',
+    thisEntry: 'This entry',
+  },
+  list: {
+    deleted: {
+      expense: 'Expense deleted',
+      income: 'Income deleted',
+    },
+    notDeleted: 'Couldn’t delete',
+    // A foreign entry's amount in the base currency.
+    approx: '≈ {{amount}}',
+    estimated: 'est.',
+    repeats: 'Repeats {{frequency}}',
+    paused: '(paused)',
+    spread: '{{amount}}/month over {{months}} months',
+  },
+  form: {
+    pickDate: 'Pick a date',
+    repeatNotUpdated: 'Saved, but its repeat couldn’t be updated',
+    repeatNotSet: 'Saved, but it couldn’t be set to repeat',
+    fetchingRate: 'Still fetching the exchange rate…',
+    enterRate: 'Enter the exchange rate',
+    saved: 'Saved',
+    added: {
+      expense: 'Expense saved',
+      income: 'Income saved',
+    },
+    nextHelp: 'This entry is the first; the next is on {{date}}.',
+    nextHelpMissed: 'This entry is the first; the next is on {{date}}. Any missed since then are added tonight.',
+    type: 'Type',
+    kindFixed: {
+      expense: 'A saved entry keeps its type. To record it as income, delete it and add a new one.',
+      income: 'A saved entry keeps its type. To record it as an expense, delete it and add a new one.',
+    },
+    kind: 'Kind',
+    amount: 'Amount',
+    currency: 'Currency',
+    manageCategories: 'Manage categories',
+    category: 'Category',
+    description: 'Description',
+    placeholder: {
+      expense: 'Coffee',
+      income: 'Paycheck',
+    },
+    date: 'Date',
+    notes: 'Notes',
+    saveChanges: 'Save changes',
+    submit: {
+      expense: 'Add expense',
+      income: 'Add income',
+    },
+    repeat: {
+      title: 'Repeat',
+      inSeries: 'Part of a recurring series',
+      offer: 'Log it again on a schedule',
+      appliesToFuture: 'Changes to the amount, category or description here apply to its future charges too.',
+      stops: 'Saving stops this from repeating. Entries it already added stay.',
+    },
+  },
+  page: {
+    title: {
+      shared: 'Shared expense',
+      newExpense: 'New expense',
+      newIncome: 'New income',
+      editExpense: 'Edit expense',
+      editIncome: 'Edit income',
+      fallback: 'Transaction',
+    },
+    what: 'this entry',
+    gone: 'This entry doesn’t exist any more.',
+    goToList: 'Go to Transactions',
+    groupExpense: 'Group expense',
+    groupShare: 'This is your share of a group expense, so it’s edited in its group.',
+    openGroup: 'Open group',
+    keepsRepeating: 'It keeps repeating: switch Repeat off and save to stop future charges.',
+  },
+}

@@ -27,14 +27,15 @@ import { useShellHeader } from '../../shared/ui/ShellHeader.jsx'
 import CategoryGrid from './CategoryGrid.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
-export const KINDS = [['expense', 'Expense'], ['income', 'Income']]
+// The Expense / Income switch's options; `t` is useT('transactions').
+export const kindOptions = (t) => ['expense', 'income'].map((k) => [k, t(`kinds.${k}`)])
 const FIELDS = ['amount', 'date']
-const checkFields = ({ amount, spentAt }) => fieldErrors({
+const checkFields = ({ amount, spentAt }, t) => fieldErrors({
   amount: amountError(amount),
-  date: requiredError(spentAt, 'Pick a date'),
+  date: requiredError(spentAt, t('form.pickDate')),
 })
-const KIND_LABEL = Object.fromEntries(KINDS)
 
 // The body of the transaction page: one expense or income, new or
 // (`transaction`) existing, and its Repeat section. `rule` is the recurring
@@ -62,6 +63,7 @@ export default function TransactionForm({
   kind: initialKind = 'expense', baseCurrency = 'EUR', transaction = null, rule = null, onSaved, onDelete,
   initialCategory = null, initial = null, onDraft, onKind, who = null,
 }) {
+  const t = useT('transactions')
   const isEdit = !!transaction
   const [kind, setKind] = useState(transaction?.kind ?? initialKind) // fixed once saved
   const { categories, loading: categoriesLoading } = useCategories(kind)
@@ -156,18 +158,18 @@ export default function TransactionForm({
     } catch (err) {
       console.error('[transactions] repeat not saved:', err)
       toast({
-        title: rule ? 'Saved, but its repeat couldn’t be updated' : 'Saved, but it couldn’t be set to repeat',
+        title: t(rule ? 'form.repeatNotUpdated' : 'form.repeatNotSet'),
         description: userMessage(err), status: 'warning',
       })
     }
   }
 
-  const errors = tried ? checkFields({ amount, spentAt }) : {}
+  const errors = tried ? checkFields({ amount, spentAt }, t) : {}
   // A phone held sideways lays the form out in two columns.
   const sideways = !!useShellHeader()
 
   async function submit() {
-    const first = firstInvalid(checkFields({ amount, spentAt }), FIELDS)
+    const first = firstInvalid(checkFields({ amount, spentAt }, t), FIELDS)
     if (first) {
       setTried(true)
       const field = first === 'amount' ? amountRef : dateRef
@@ -177,7 +179,7 @@ export default function TransactionForm({
     // Never save a foreign amount without a real rate (no silent 1:1).
     if (!rate) {
       toast({
-        title: fx.status === 'loading' ? 'Still fetching the exchange rate…' : 'Enter the exchange rate',
+        title: t(fx.status === 'loading' ? 'form.fetchingRate' : 'form.enterRate'),
         status: 'warning',
       })
       return
@@ -208,27 +210,23 @@ export default function TransactionForm({
       ? { ...fields, kind, id: transaction.id, account_id: transaction.account_id }
       : { ...fields, kind, client_uuid: clientUuid.current })
     setBusy(false)
-    toast({ title: isEdit ? 'Saved' : `${kind === 'income' ? 'Income' : 'Expense'} saved`, status: 'success' })
+    toast({ title: t(isEdit ? 'form.saved' : `form.added.${kind}`), status: 'success' })
     onSaved?.()
   }
 
   const firstNext = !rule && repeat
   const nextHelp = firstNext
-    ? `This entry is the first; the next is on ${shortDate(draft.nextRun)}.${
-      draft.nextRun < today() ? ' Any missed since then are added tonight.' : ''}`
+    ? t(draft.nextRun < today() ? 'form.nextHelpMissed' : 'form.nextHelp', { date: shortDate(draft.nextRun) })
     : undefined
 
   const kindField = isEdit ? (
     <FormControl>
-      <FormLabel>Type</FormLabel>
-      <Text fontWeight="600">{KIND_LABEL[kind]}</Text>
-      <FormHelperText>
-        A saved entry keeps its type. To record it as {kind === 'income' ? 'an expense' : 'income'},
-        delete it and add a new one.
-      </FormHelperText>
+      <FormLabel>{t('form.type')}</FormLabel>
+      <Text fontWeight="600">{t(`kinds.${kind}`)}</Text>
+      <FormHelperText>{t(`form.kindFixed.${kind}`)}</FormHelperText>
     </FormControl>
   ) : (
-    <SegmentedControl label="Kind" options={KINDS} value={kind} onChange={pickKind}
+    <SegmentedControl label={t('form.kind')} options={kindOptions(t)} value={kind} onChange={pickKind}
       size="sm" isFitted />
   )
   const amountFields = (
@@ -237,12 +235,12 @@ export default function TransactionForm({
 
       <HStack align="start">
         <FormControl isRequired isInvalid={!!errors.amount}>
-          <FormLabel>Amount</FormLabel>
+          <FormLabel>{t('form.amount')}</FormLabel>
           <MoneyInput ref={amountRef} currency={currency} value={amount} onChange={setAmount} />
           <FormErrorMessage>{errors.amount}</FormErrorMessage>
         </FormControl>
         <FormControl maxW="110px">
-          <FormLabel>Currency</FormLabel>
+          <FormLabel>{t('form.currency')}</FormLabel>
           <Select value={currency} onChange={(e) => pickCurrency(e.target.value)}>
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </Select>
@@ -256,7 +254,7 @@ export default function TransactionForm({
     </>
   )
   const manageCategories = (
-    <Link as={RouterLink} to="/settings/categories" color="accent.fg">Manage categories</Link>
+    <Link as={RouterLink} to="/settings/categories" color="accent.fg">{t('form.manageCategories')}</Link>
   )
   const savingsSwitches = (
     <>
@@ -267,19 +265,19 @@ export default function TransactionForm({
   const otherFields = (
     <>
       <FormControl>
-        <FormLabel>Description</FormLabel>
+        <FormLabel>{t('form.description')}</FormLabel>
         <Input value={description} onChange={(e) => setDescription(e.target.value)}
-          placeholder={kind === 'income' ? 'Paycheck' : 'Coffee'} />
+          placeholder={t(`form.placeholder.${kind}`)} />
       </FormControl>
 
       <FormControl isRequired isInvalid={!!errors.date}>
-        <FormLabel>Date</FormLabel>
+        <FormLabel>{t('form.date')}</FormLabel>
         <Input ref={dateRef} type="date" value={spentAt} onChange={(e) => changeDate(e.target.value)} />
         <FormErrorMessage>{errors.date}</FormErrorMessage>
       </FormControl>
 
       <FormControl>
-        <FormLabel>Notes</FormLabel>
+        <FormLabel>{t('form.notes')}</FormLabel>
         <Textarea rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </FormControl>
     </>
@@ -287,10 +285,10 @@ export default function TransactionForm({
 
   return (
     <PageForm bare onSubmit={submit} noValidate busy={busy} submitProps={{ isDisabled: !rate || savingsLoading }}
-      submitLabel={isEdit ? 'Save changes' : `Add ${kind === 'income' ? 'income' : 'expense'}`}
+      submitLabel={t(isEdit ? 'form.saveChanges' : `form.submit.${kind}`)}
       secondary={onDelete && (
         <Button variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />} onClick={onDelete}>
-          Delete
+          {t('actions.delete')}
         </Button>
       )}>
       {sideways ? (
@@ -308,7 +306,7 @@ export default function TransactionForm({
           </Panel>
           <Panel>
             <Text fontSize="sm" fontWeight="600" color="text.muted" mb={3}>
-              Category
+              {t('form.category')}
             </Text>
             <CategoryGrid categories={categories} value={categoryId} onChange={setCategoryId} kind={kind} />
             <Text fontSize="sm" mt={3}>{manageCategories}</Text>
@@ -322,8 +320,8 @@ export default function TransactionForm({
           {amountFields}
 
           <FormControl>
-            <FormLabel>Category</FormLabel>
-            <Select placeholder="Uncategorized" value={categoryId}
+            <FormLabel>{t('form.category')}</FormLabel>
+            <Select placeholder={t('uncategorized')} value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
@@ -335,27 +333,23 @@ export default function TransactionForm({
       </Panel>
       )}
 
-      <Panel icon={Repeat} title="Repeat"
-        subtitle={rule ? 'Part of a recurring series' : 'Log it again on a schedule'}
+      <Panel icon={Repeat} title={t('form.repeat.title')}
+        subtitle={t(rule ? 'form.repeat.inSeries' : 'form.repeat.offer')}
         action={
           <Switch id="repeat-switch" isChecked={repeat} onChange={(e) => setRepeat(e.target.checked)}
-            aria-label="Repeat" />
+            aria-label={t('form.repeat.title')} />
         }>
         {repeat ? (
           <Stack spacing={3}>
             {rule && (
-              <Text fontSize="sm" color="text.muted">
-                Changes to the amount, category or description here apply to its future charges too.
-              </Text>
+              <Text fontSize="sm" color="text.muted">{t('form.repeat.appliesToFuture')}</Text>
             )}
             <RepeatFields value={draft} onChange={(c) => setDraft((d) => editRepeat(d, c, spentAt || today()))}
               nextHelp={nextHelp} pausable={!!rule}
               kind={kind} currency={currency} amountMinor={amountMinor} />
           </Stack>
         ) : rule ? (
-          <Text fontSize="sm" color="text.muted">
-            Saving stops this from repeating. Entries it already added stay.
-          </Text>
+          <Text fontSize="sm" color="text.muted">{t('form.repeat.stops')}</Text>
         ) : null}
       </Panel>
     </PageForm>

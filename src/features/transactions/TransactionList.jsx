@@ -17,6 +17,7 @@ import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { frequencyLabel } from '../recurring/recurringMath.js'
 import { landscapeOnly, ONE_LINE } from '../../shared/lib/shortLandscape.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Sideways, the meta line keeps to one line like the row's title (ItemRow):
 // its parts run on as one line of text, cut with an ellipsis at the end.
@@ -44,6 +45,7 @@ const SHORT_META = landscapeOnly({
 // list renders every mode of the Transactions page (Expenses, Income, All).
 const kindOf = (r, fallback) => r.kind ?? fallback
 export default function TransactionList({ rows, kind, baseCurrency, mutate, reload }) {
+  const t = useT('transactions')
   const toast = useToast()
   const navigate = useNavigate()
   const [removing, setRemoving] = useState(null)
@@ -60,11 +62,11 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
     mutate((rs) => rs.filter((r) => r.id !== row.id)) // optimistic
     try {
       await deleteTransaction(row.id)
-      toast({ title: `${kindOf(row, kind) === 'income' ? 'Income' : 'Expense'} deleted`, status: 'success' })
+      toast({ title: t(`list.deleted.${kindOf(row, kind) === 'income' ? 'income' : 'expense'}`), status: 'success' })
       reload()
     } catch (e) {
       mutate(() => prev)
-      toast(saveErrorToast(e, 'Couldn’t delete'))
+      toast(saveErrorToast(e, t('list.notDeleted')))
     } finally {
       setBusy(false); setRemoving(null)
     }
@@ -81,21 +83,21 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
             <ListItem key={r.id}>
               <ItemRow py={2.5} onClick={shared ? undefined : () => open(r)}
                 media={<CategoryBadge category={r.categories} kind={rk} size={32} />}
-                title={r.description || r.categories?.name || (rk === 'income' ? 'Income' : 'Expense')}
+                title={r.description || r.categories?.name || t(`kinds.${rk === 'income' ? 'income' : 'expense'}`)}
                 meta={<RowMeta row={r} shared={shared} saved={savingsNoteOf(r, savingsIds)} />}
                 amount={`${rk === 'income' ? '+' : ''}${formatMoney(r.amount_minor, r.currency)}`}
                 amountTone={rk === 'income' ? 'positive' : 'default'}
                 amountMeta={conv && (
                   <>
-                    ≈ {formatMoney(conv.baseMinor, baseCurrency)}
+                    {t('list.approx', { amount: formatMoney(conv.baseMinor, baseCurrency) })}
                     <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {conv.rate}</Box>
                     {/* Rate estimated on this device until the server records it. */}
-                    {r.rate_estimated && ' · est.'}
+                    {r.rate_estimated && ` · ${t('list.estimated')}`}
                   </>
                 )}
                 actionSlots={2} actions={shared ? [] : [
-                  { label: 'Edit', icon: Pencil, onClick: () => open(r) },
-                  { label: 'Delete', icon: Trash2, danger: true, onClick: () => setRemoving(r) },
+                  { label: t('actions.edit'), icon: Pencil, onClick: () => open(r) },
+                  { label: t('actions.delete'), icon: Trash2, danger: true, onClick: () => setRemoving(r) },
                 ]} />
             </ListItem>
           )
@@ -111,6 +113,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
 // The muted line under a row's title: date · category · where savings came
 // from · note, then the group's tag on group-share rows. One line sideways.
 function RowMeta({ row: r, shared, saved }) {
+  const t = useT('transactions')
   const { salaryShift } = useProfile()
   const share = monthlyShare(r)
   const countsFor = countsForLabel(r, salaryShift)
@@ -133,13 +136,15 @@ function RowMeta({ row: r, shared, saved }) {
       )}
       {r.recurring && (
         <Text whiteSpace="nowrap" display="inline-flex" alignItems="center" gap={1}>
-          · <Repeat size={11} aria-hidden /> Repeats {frequencyLabel(r.recurring)}
-          {!r.recurring.is_active && ' (paused)'}
+          · <Repeat size={11} aria-hidden /> {t('list.repeats', { frequency: frequencyLabel(r.recurring) })}
+          {!r.recurring.is_active && ` ${t('list.paused')}`}
         </Text>
       )}
       {share && (
         <Text whiteSpace="nowrap">
-          · {share.exact ? '' : '≈ '}{formatMoney(share.perMonth, r.currency)}/month over {share.months} months
+          · {share.exact ? '' : '≈ '}{t('list.spread', {
+            amount: formatMoney(share.perMonth, r.currency), months: share.months,
+          })}
         </Text>
       )}
       {countsFor && <Text whiteSpace="nowrap">· {countsFor}</Text>}

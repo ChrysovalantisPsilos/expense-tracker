@@ -1,6 +1,7 @@
 import { Box, Flex, SimpleGrid, Text, useRadio, useRadioGroup } from '@chakra-ui/react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // "No category" as a radio value (a radio can't hold '').
 const NONE = 'none'
@@ -11,17 +12,18 @@ const NONE = 'none'
 // use the form's category id ('' for none). Arrow keys move between tiles,
 // as in any radio group.
 export default function CategoryGrid({ categories, value, onChange, kind }) {
+  const t = useT('transactions')
   const { getRootProps, getRadioProps } = useRadioGroup({
     name: 'category',
     value: value || NONE,
     onChange: (v) => onChange(v === NONE ? '' : v),
   })
   return (
-    <SimpleGrid {...getRootProps()} aria-label="Category" minChildWidth="88px" spacing={2}>
+    <SimpleGrid {...getRootProps()} aria-label={t('form.category')} minChildWidth="88px" spacing={2}>
       {categories.map((c) => (
         <Tile key={c.id} {...getRadioProps({ value: c.id })} category={c} kind={kind} label={c.name} />
       ))}
-      <Tile {...getRadioProps({ value: NONE })} category={null} kind={kind} label="Uncategorized" />
+      <Tile {...getRadioProps({ value: NONE })} category={null} kind={kind} label={t('uncategorized')} />
     </SimpleGrid>
   )
 }

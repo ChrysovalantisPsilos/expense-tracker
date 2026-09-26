@@ -31,15 +31,12 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useShellHeader } from '../../shared/ui/ShellHeader.jsx'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const OWN_EDIT = { ownEdit: true }
-const TYPES = [['expense', 'Expenses'], ['income', 'Income'], ['all', 'All']]
-const ADD_LABEL = { expense: 'Add expense', income: 'Add income', all: 'Add' }
-const EMPTY_TEXT = {
-  expense: 'Nothing logged yet.',
-  income: 'No income logged yet.',
-  all: 'Nothing logged this month yet.',
-}
+// The type switch's values; each one's label, Add button and empty line are
+// ledger.types / ledger.add / ledger.empty.<type>.
+const TYPES = ['expense', 'income', 'all']
 
 // The Transactions page (/transactions). The URL holds its whole state —
 // `?type=expense|income|all`, the `?q=` search text and every filter
@@ -49,6 +46,7 @@ const EMPTY_TEXT = {
 // searching (text or the Filters panel) spans all history, or the chosen
 // dates. "Add" opens the transaction page (/transactions/new).
 export default function LedgerPage() {
+  const t = useT('transactions')
   const { baseCurrency = 'EUR' } = useProfile()
   const navigate = useNavigate()
   const location = useLocation()
@@ -98,7 +96,7 @@ export default function LedgerPage() {
   // still shows as selected rather than a misleading "Any".
   const unlistedCategory = filters.categoryId && filters.categoryId !== NO_CATEGORY
     && !categoriesLoading && !categories.some((c) => c.id === filters.categoryId)
-    ? rows.find((r) => r.category_id === filters.categoryId)?.categories?.name ?? 'Selected category'
+    ? rows.find((r) => r.category_id === filters.categoryId)?.categories?.name ?? t('ledger.selectedCategory')
     : null
 
   // Categories are per kind, so switching type drops the category filter.
@@ -109,7 +107,7 @@ export default function LedgerPage() {
   // A search's net leaves savings out (0084): they're not income.
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
   const net = netBaseMinor(shown, baseCurrency, savingsIds)
-  const head = listHeading({ kind, periodLabel: 'This month', count: shown.length, loading, failed: !!error, searching })
+  const head = listHeading({ kind, periodLabel: t('periods.thisMonth'), count: shown.length, loading, failed: !!error, searching })
   const firstRun = isFirstRun({ loading, failed: !!error, count: shown.length, oldest, searching })
   // A phone held sideways: the page's controls move up into the shell's header.
   const sideways = !!useShellHeader()
@@ -117,24 +115,24 @@ export default function LedgerPage() {
   // The list's heading line: "This month · 13 entries", with the net of a
   // search.
   const summary = searching && !loading && !savingsLoading && shown.length > 0
-    ? `${head.subtitle} · Net ${net < 0 ? '−' : ''}${formatMoney(Math.abs(net), baseCurrency)}`
+    ? `${head.subtitle} · ${t('ledger.net', { amount: `${net < 0 ? '−' : ''}${formatMoney(Math.abs(net), baseCurrency)}` })}`
     : head.subtitle
   const clear = searching && (
     <Button size="xs" variant="ghost" leftIcon={<X size={14} />} onClick={clearAll}>
-      Clear
+      {t('actions.clear')}
     </Button>
   )
   const typeSwitch = (props) => (
-    <SegmentedControl label="Transaction type" options={TYPES} value={type}
+    <SegmentedControl label={t('ledger.typeLabel')} options={TYPES.map((v) => [v, t(`ledger.types.${v}`)])} value={type}
       onChange={switchType} size="sm" {...props} />
   )
   const moreMenu = (
     <Menu placement="bottom-end" isLazy>
-      <MenuButton as={IconButton} aria-label="More actions" size="sm" variant="ghost"
+      <MenuButton as={IconButton} aria-label={t('ledger.moreActions')} size="sm" variant="ghost"
         icon={<MoreHorizontal size={18} />} />
       <MenuList minW="180px">
         <MenuItem icon={<FileSpreadsheet size={16} />} onClick={() => navigate('/import')}>
-          Import file
+          {t('ledger.importFile')}
         </MenuItem>
       </MenuList>
     </Menu>
@@ -144,18 +142,18 @@ export default function LedgerPage() {
       maxW={sideways ? '360px' : undefined}>
       <InputGroup size={sideways ? 'sm' : undefined}>
         <InputLeftElement pointerEvents="none" color="text.muted"><Search size={16} /></InputLeftElement>
-        <Input ref={searchRef} enterKeyHint="search" aria-label="Search transactions"
-          placeholder="Search transactions…" borderRadius={sideways ? 'lg' : undefined}
+        <Input ref={searchRef} enterKeyHint="search" aria-label={t('ledger.search')}
+          placeholder={t('ledger.searchPlaceholder')} borderRadius={sideways ? 'lg' : undefined}
           value={text} onChange={(e) => setLedger({ text: e.target.value })} />
         {text && (
           <InputRightElement>
-            <IconButton aria-label="Clear search" size="xs" variant="ghost"
+            <IconButton aria-label={t('ledger.clearSearch')} size="xs" variant="ghost"
               icon={<X size={14} />} onClick={() => setLedger({ text: '' })} />
           </InputRightElement>
         )}
       </InputGroup>
       <Box position="relative" flexShrink={0}>
-        <IconButton aria-label={hasFilters ? 'Filters (active)' : 'Filters'}
+        <IconButton aria-label={t(hasFilters ? 'ledger.filtersActive' : 'ledger.filters')}
           aria-expanded={filtersPanel.isOpen} size={sideways ? 'sm' : undefined}
           variant={filtersPanel.isOpen ? 'solid' : 'outline'}
           colorScheme={filtersPanel.isOpen ? 'brand' : 'gray'}
@@ -171,27 +169,27 @@ export default function LedgerPage() {
     <Collapse in={filtersPanel.isOpen} animateOpacity>
       <SimpleGrid key={fieldsKey} columns={{ base: 2, md: 3 }} spacing={3} pt={4}>
         <FormControl gridColumn={{ base: 'span 2', md: 'auto' }}>
-          <FormLabel fontSize="xs" color="text.muted">Category</FormLabel>
-          <Select placeholder="Any" value={filters.categoryId}
+          <FormLabel fontSize="xs" color="text.muted">{t('ledger.category')}</FormLabel>
+          <Select placeholder={t('ledger.anyCategory')} value={filters.categoryId}
             onChange={(e) => setFilter('categoryId')(e.target.value)}>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             {unlistedCategory && <option value={filters.categoryId}>{unlistedCategory}</option>}
-            <option value={NO_CATEGORY}>Uncategorized</option>
+            <option value={NO_CATEGORY}>{t('uncategorized')}</option>
           </Select>
         </FormControl>
         <FormControl>
-          <FormLabel fontSize="xs" color="text.muted">Min ({baseCurrency})</FormLabel>
+          <FormLabel fontSize="xs" color="text.muted">{t('ledger.min', { currency: baseCurrency })}</FormLabel>
           <MoneyInput currency={baseCurrency} placeholder="0" value={filters.min} onChange={setFilter('min')} />
         </FormControl>
         <FormControl>
-          <FormLabel fontSize="xs" color="text.muted">Max ({baseCurrency})</FormLabel>
+          <FormLabel fontSize="xs" color="text.muted">{t('ledger.max', { currency: baseCurrency })}</FormLabel>
           <MoneyInput currency={baseCurrency} placeholder="∞" value={filters.max} onChange={setFilter('max')} />
         </FormControl>
         <FormControl>
-          <OptionalDate label="From" value={filters.from} onChange={setFilter('from')} />
+          <OptionalDate label={t('ledger.from')} value={filters.from} onChange={setFilter('from')} />
         </FormControl>
         <FormControl>
-          <OptionalDate label="To" value={filters.to} onChange={setFilter('to')} />
+          <OptionalDate label={t('ledger.to')} value={filters.to} onChange={setFilter('to')} />
         </FormControl>
       </SimpleGrid>
     </Collapse>
@@ -201,10 +199,10 @@ export default function LedgerPage() {
     <Stack spacing={sideways ? 3 : 5}>
       {/* Sideways, the search and its filters sit in the slim header, and
           the rail's Add is the page's only one. */}
-      <PageHeader title="Transactions" leading={openedFiltered ? <BackButton /> : undefined} action={sideways ? (
+      <PageHeader title={t('ledger.title')} leading={openedFiltered ? <BackButton /> : undefined} action={sideways ? (
         <>{search}{moreMenu}</>
       ) : (<>
-        <PageAction icon={<Plus size={16} />} data-tour="add-expense" label={ADD_LABEL[type]}
+        <PageAction icon={<Plus size={16} />} data-tour="add-expense" label={t(`ledger.add.${type}`)}
           onClick={() => navigate(`/transactions/new?kind=${kind ?? 'expense'}`)} />
         {moreMenu}
       </>)} />
@@ -233,13 +231,13 @@ export default function LedgerPage() {
             <CardHeader icon={ReceiptText} title={head.title} divider subtitle={summary} action={clear} />
           </>
         )}
-        {error ? <QueryError error={error} onRetry={reload} what="your transactions" /> : loading ? (
+        {error ? <QueryError error={error} onRetry={reload} what={t('ledger.what')} /> : loading ? (
           <SkeletonRegion><SkeletonRows count={8} py={2.5} /></SkeletonRegion>
         ) : firstRun ? (
           <FirstEntry />
         ) : shown.length === 0 ? (
           <Text color="text.muted" fontSize="sm">
-            {searching ? 'No transactions match this search.' : EMPTY_TEXT[type]}
+            {t(searching ? 'ledger.noMatch' : `ledger.empty.${type}`)}
           </Text>
         ) : (
           <TransactionList rows={shown} kind={kind} baseCurrency={baseCurrency}
