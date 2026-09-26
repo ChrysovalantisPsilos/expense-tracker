@@ -12,6 +12,9 @@ export default {
     skipToContent: 'Skip to content',
     brandHome: 'Budgeer home',
   },
+  budget: {
+    over: 'Over budget',
+  },
   offline: 'Offline',
   theme: {
     toLight: 'Switch to light theme',

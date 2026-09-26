@@ -11,7 +11,7 @@ Conventions for keys and code are in [`I18N.md`](I18N.md).
   θέμα», «Πρόσθεσε έξοδο», «Το όνομά σου», not «Επιλέξτε», «Προσθέστε»,
   «Το όνομά σας».
 - **Natural, modern Greek**, the way Greek fintech apps talk (Viva Wallet,
-  Revolut in Greek, Winbank app). Short, everyday verbs: «Πλήρωσε», «Μοίρασε»,
+  Revolut in Greek, Winbank app). Short, everyday verbs: «Πλήρωσε», «Μοιράσου»,
   «Ξεχρέωσε». Avoid bureaucratic or banking-contract style: «Παρακαλούμε όπως
   προβείτε», «δύναται», «εν λόγω», «κατόπιν».
 - **Active and direct.** «Δεν αποθηκεύτηκε» is better than «Η αποθήκευση δεν
@@ -43,8 +43,8 @@ Conventions for keys and code are in [`I18N.md`](I18N.md).
 | subscription | συνδρομή | |
 | yearly subscription | ετήσια συνδρομή | |
 | group | ομάδα | |
-| split (verb) | μοιράζω → «Μοίρασε» | «Μοίρασε ισόποσα», «ανά ποσό / ποσοστό / μερίδια» |
-| split (noun) | μοιρασιά | |
+| split (verb) | μοιράζομαι → «Μοιράσου» (never «Μοίρασε») | «Μοιράσου τα ισόποσα», «ανά ποσό / ποσοστό / μερίδια» |
+| split (noun) | μοίρασμα | Avoid «μοιρασιά»: it reads unnaturally. Prefer a verb («μοιράσου τα έξοδα») where you can. |
 | settle up | ξεχρεώνω → «Ξεχρέωσε», «Ξεχρέωση» | «Ξεχρεώσατε όλοι» for All settled up |
 | owes / is owed | χρωστάει / του χρωστάνε | «Η Άννα σου χρωστάει 20 €», «Σου χρωστάνε 45 €», «Χρωστάς 12 €» |
 | balance | υπόλοιπο | a group's balances: «Υπόλοιπα» |
@@ -124,3 +124,12 @@ never type them into a string.
   PayPal.me, Airbnb, Google, Excel, CSV, PDF.
 - Don't translate currency codes (EUR, USD), and never translate user data
   (names, descriptions, category names that people typed).
+
+## Owner's review notes
+
+- Always informal singular: «σου», never «σας» (e.g. «το σπίτι», not «το σπίτι σας»).
+- Don't over-explain: «μοιράσου ένα link», not «ένα link πρόσκλησης».
+- Headlines must sound like something a person would say; when a literal
+  translation of the English sounds odd, rewrite it («Ξεκίνα σήμερα — είναι
+  δωρεάν», not «Ξεκίνα τη μοιρασιά»).
+- «Over budget» is «Υπέρβαση».

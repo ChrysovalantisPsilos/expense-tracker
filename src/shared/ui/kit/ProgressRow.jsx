@@ -6,6 +6,7 @@ import RowActions from '../RowActions.jsx'
 import { MotionBox } from './motion.jsx'
 import { barWidth, fillColor, playProps } from './kitMath.js'
 import { landscapeOnly, ONE_LINE } from '../../lib/shortLandscape.js'
+import { useT } from '../../lib/i18n/I18nProvider.jsx'
 
 // Sideways, the title and `meta` share one line when both fit whole (a card
 // of bars is then half as tall); when they don't, `meta` drops under the
@@ -49,10 +50,11 @@ const OVERLAY_FOCUS = {
 //            `linkLabel` is its accessible name ("Show Groceries expenses for
 //            this month") — the visible title alone is too terse out of context
 export default function ProgressRow({
-  icon, media, title, meta, percent, tone, over = percent > 100, overLabel = 'Over budget',
+  icon, media, title, meta, percent, tone, over = percent > 100, overLabel,
   valueLabel = `${percent}%`, actions, actionSlots, actionSize, tooltip, playback, delay = 0,
   to, linkLabel, ...props
 }) {
+  const t = useT('common')
   const fill = fillColor(tone ?? (over ? 'negative' : 'brand'))
   const width = barWidth(percent)
   const Root = to ? LinkBox : Box
@@ -70,7 +72,7 @@ export default function ProgressRow({
           </Text>
           {meta && <Text fontSize="xs" color="text.muted" overflowWrap="anywhere" sx={SHORT_META}>{meta}</Text>}
           {/* Under the title, so the name keeps the row's width on a phone. */}
-          {over && <Tag size="sm" colorScheme="red" borderRadius="full" mt={1} sx={SHORT_TAG}>{overLabel}</Tag>}
+          {over && <Tag size="sm" colorScheme="red" borderRadius="full" mt={1} sx={SHORT_TAG}>{overLabel ?? t('budget.over')}</Tag>}
         </Box>
         <Text fontSize="sm" fontWeight="700" color={over ? 'status.negative' : 'text.muted'} flexShrink={0}>
           {valueLabel}

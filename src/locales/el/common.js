@@ -11,6 +11,9 @@ export default {
     skipToContent: 'Μετάβαση στο περιεχόμενο',
     brandHome: 'Αρχική σελίδα Budgeer',
   },
+  budget: {
+    over: 'Υπέρβαση',
+  },
   offline: 'Εκτός σύνδεσης',
   theme: {
     toLight: 'Αλλαγή σε ανοιχτό θέμα',
