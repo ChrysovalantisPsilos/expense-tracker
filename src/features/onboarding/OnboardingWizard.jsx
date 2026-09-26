@@ -18,6 +18,10 @@ import { createGroup } from '../groups/groups.js'
 import Logo from '../../shared/ui/Logo.jsx'
 import { startTour } from './tour.js'
 import { userMessage } from '../../shared/lib/errors.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+
+// The wizard's steps: welcome, first group, stay in the loop, look around.
+const STEP_COUNT = 4
 
 // Post-signup setup wizard. Shows once per account (App gates on
 // profiles.onboarded_at). Collects the essentials, folds in the notification +
@@ -28,6 +32,7 @@ import { userMessage } from '../../shared/lib/errors.js'
 // step hands over to the app tour (ProductTour); skipping that, or closing
 // the wizard early, marks the tour seen too (profiles.tour_done).
 export default function OnboardingWizard({ profile, onDone }) {
+  const t = useT('onboarding')
   const { user, registerPasskey } = useAuth()
   const navigate = useNavigate()
   const toast = useToast()
@@ -43,8 +48,7 @@ export default function OnboardingWizard({ profile, onDone }) {
 
   const { busy, run } = useAsyncSubmit()
 
-  const STEPS = ['Welcome', 'First group', 'Stay in the loop', 'Look around']
-  const isLast = step === STEPS.length - 1
+  const isLast = step === STEP_COUNT - 1
 
   // Each step opens on its field (not the close button): the name first,
   // then the group name.
@@ -80,38 +84,38 @@ export default function OnboardingWizard({ profile, onDone }) {
       await updateProfile(user.id, { display_name: name.trim() || null, base_currency: currency })
       window.dispatchEvent(new Event(EVENTS.profileUpdated))
       setStep(1)
-    }, { errorTitle: 'Couldn’t save your details' })
+    }, { errorTitle: t('wizard.welcome.failed') })
   }
 
   async function saveGroup() {
     await run(async () => {
       if (groupName.trim()) {
         const gid = await createGroup(groupName.trim(), currency)
-        toast({ title: `Group “${groupName.trim()}” created`, status: 'success' })
+        toast({ title: t('wizard.group.created', { name: groupName.trim() }), status: 'success' })
         setGroupPath(`/groups/${gid}`)
         setGroupName('')
       }
       setStep(2)
-    }, { errorTitle: 'Couldn’t save' })
+    }, { errorTitle: t('common:errors.notSaved') })
   }
 
   async function turnOnPush() {
     const status = await enablePush().catch(() => 'error')
     setPushDone(true)
-    if (status === 'denied') toast({ title: 'Notifications blocked — you can enable them later in Settings', status: 'info' })
-    else if (status === 'unsupported') toast({ title: 'On iPhone, install Budgeer to your home screen for push', status: 'info' })
-    else if (status === 'subscribed') toast({ title: 'Notifications on', status: 'success' })
+    if (status === 'denied') toast({ title: t('wizard.loop.blocked'), status: 'info' })
+    else if (status === 'unsupported') toast({ title: t('wizard.loop.iphone'), status: 'info' })
+    else if (status === 'subscribed') toast({ title: t('wizard.loop.on'), status: 'success' })
   }
 
   async function addPasskey() {
     const { error } = await registerPasskey()
     if (error) {
       console.error('[onboarding] passkey not added:', error)
-      toast({ title: 'Couldn’t add passkey', description: userMessage(error), status: 'error' })
+      toast({ title: t('settings:passkeys.addFailed'), description: userMessage(error), status: 'error' })
       return
     }
     setPasskeyDone(true)
-    toast({ title: 'Passkey added', status: 'success' })
+    toast({ title: t('settings:passkeys.added'), status: 'success' })
   }
 
   return (
@@ -122,10 +126,10 @@ export default function OnboardingWizard({ profile, onDone }) {
         <ModalHeader pb={2}>
           <HStack justify="space-between" align="start">
             <Logo size={26} />
-            <IconButton aria-label="Skip setup" size="sm" variant="ghost"
+            <IconButton aria-label={t('wizard.skipSetup')} size="sm" variant="ghost"
               icon={<X size={18} />} onClick={() => finish()} />
           </HStack>
-          <Progress value={((step + 1) / STEPS.length) * 100} size="xs" mt={3} />
+          <Progress value={((step + 1) / STEP_COUNT) * 100} size="xs" mt={3} />
         </ModalHeader>
 
         {/* One height for every step, so the buttons don’t jump about (except
@@ -133,68 +137,57 @@ export default function OnboardingWizard({ profile, onDone }) {
         <ModalBody minH="340px" sx={{ [SHORT_LANDSCAPE]: { minH: 0 } }}>
           {step === 0 && (
             <Stack spacing={4}>
-              <HStack color="accent.fg"><Sparkles size={18} /><Heading size="sm">Welcome to Budgeer</Heading></HStack>
-              <Text fontSize="sm" color="text.muted">
-                Track your spending and split costs with friends. Let’s set up the basics —
-                this takes under a minute.
-              </Text>
+              <HStack color="accent.fg"><Sparkles size={18} /><Heading size="sm">{t('wizard.welcome.title')}</Heading></HStack>
+              <Text fontSize="sm" color="text.muted">{t('wizard.welcome.lead')}</Text>
               <FormControl>
-                <FormLabel>Your name</FormLabel>
-                <Input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name"
+                <FormLabel>{t('settings:yourName')}</FormLabel>
+                <Input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('settings:yourName')}
                   autoComplete="name" />
               </FormControl>
               <FormControl>
-                <FormLabel>Default currency</FormLabel>
+                <FormLabel>{t('settings:account.currency')}</FormLabel>
                 <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
                   {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </Select>
-                <FormHelperText>It’s fixed once you add your first entry, so past amounts stay correct.</FormHelperText>
+                <FormHelperText>{t('wizard.welcome.currencyHelp')}</FormHelperText>
               </FormControl>
             </Stack>
           )}
 
           {step === 1 && (
             <Stack spacing={4}>
-              <HStack color="accent.fg"><Users size={18} /><Heading size="sm">Split costs with friends</Heading></HStack>
-              <Text fontSize="sm" color="text.muted">
-                A group keeps track of shared costs for a trip or a household, and of who
-                owes whom. Start one now if you like — or any time from Groups.
-              </Text>
+              <HStack color="accent.fg"><Users size={18} /><Heading size="sm">{t('wizard.group.title')}</Heading></HStack>
+              <Text fontSize="sm" color="text.muted">{t('wizard.group.lead')}</Text>
               <FormControl>
-                <FormLabel>Name your first group (optional)</FormLabel>
+                <FormLabel>{t('wizard.group.label')}</FormLabel>
                 <Input ref={groupRef} value={groupName} onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="Corfu trip, Flatmates…" />
+                  placeholder={t('wizard.group.placeholder')} />
               </FormControl>
             </Stack>
           )}
 
           {step === 2 && (
             <Stack spacing={4}>
-              <HStack color="accent.fg"><BellRing size={18} /><Heading size="sm">Stay in the loop</Heading></HStack>
-              <Text fontSize="sm" color="text.muted">
-                Get a nudge when friends add expenses or bills are due, and log in faster next time.
-              </Text>
+              <HStack color="accent.fg"><BellRing size={18} /><Heading size="sm">{t('wizard.loop.title')}</Heading></HStack>
+              <Text fontSize="sm" color="text.muted">{t('wizard.loop.lead')}</Text>
               <Button variant="outline" leftIcon={<BellRing size={16} />}
                 onClick={turnOnPush} isDisabled={pushDone || !pushSupported()}>
-                {pushDone ? 'Notifications set' : 'Enable notifications'}
+                {pushDone ? t('wizard.loop.enabled') : t('wizard.loop.enable')}
               </Button>
               {passkeysSupported && (
                 <Button variant="outline" leftIcon={<KeyRound size={16} />}
                   onClick={addPasskey} isDisabled={passkeyDone}>
-                  {passkeyDone ? 'Passkey added' : 'Add a passkey'}
+                  {passkeyDone ? t('settings:passkeys.added') : t('wizard.loop.addPasskey')}
                 </Button>
               )}
-              <Text fontSize="xs" color="text.muted">You can change both anytime in Settings.</Text>
+              <Text fontSize="xs" color="text.muted">{t('wizard.loop.later')}</Text>
             </Stack>
           )}
 
           {step === 3 && (
             <Stack spacing={4}>
-              <HStack color="accent.fg"><Compass size={18} /><Heading size="sm">Let’s take a quick look around</Heading></HStack>
-              <Text fontSize="sm" color="text.muted">
-                A one-minute tour of where things are: adding expenses, groups, budgets and more.
-                You can take it again any time from Settings.
-              </Text>
+              <HStack color="accent.fg"><Compass size={18} /><Heading size="sm">{t('wizard.tour.title')}</Heading></HStack>
+              <Text fontSize="sm" color="text.muted">{t('wizard.tour.lead')}</Text>
             </Stack>
           )}
         </ModalBody>
@@ -202,29 +195,29 @@ export default function OnboardingWizard({ profile, onDone }) {
         <ModalFooter gap={2}>
           {step > 0 && (
             <Button variant="ghost" leftIcon={<ArrowLeft size={16} />}
-              onClick={() => setStep(step - 1)} isDisabled={busy}>Back</Button>
+              onClick={() => setStep(step - 1)} isDisabled={busy}>{t('wizard.back')}</Button>
           )}
           <Box flex="1" />
           {step < 2 && (
-            <Button variant="ghost" onClick={() => setStep(step + 1)} isDisabled={busy}>Skip</Button>
+            <Button variant="ghost" onClick={() => setStep(step + 1)} isDisabled={busy}>{t('wizard.skip')}</Button>
           )}
           {step === 0 && (
-            <Button rightIcon={<ArrowRight size={16} />} isLoading={busy} onClick={saveBasics}>Continue</Button>
+            <Button rightIcon={<ArrowRight size={16} />} isLoading={busy} onClick={saveBasics}>{t('wizard.continue')}</Button>
           )}
           {step === 1 && (
-            <Button rightIcon={<ArrowRight size={16} />} isLoading={busy} onClick={saveGroup}>Continue</Button>
+            <Button rightIcon={<ArrowRight size={16} />} isLoading={busy} onClick={saveGroup}>{t('wizard.continue')}</Button>
           )}
           {step === 2 && (
-            <Button rightIcon={<ArrowRight size={16} />} onClick={() => setStep(3)}>Continue</Button>
+            <Button rightIcon={<ArrowRight size={16} />} onClick={() => setStep(3)}>{t('wizard.continue')}</Button>
           )}
           {isLast && (
             <>
-              <Button variant="ghost" isDisabled={busy} onClick={() => run(finish, { errorTitle: 'Couldn’t finish' })}>
-                Skip tour
+              <Button variant="ghost" isDisabled={busy} onClick={() => run(finish, { errorTitle: t('wizard.finishFailed') })}>
+                {t('wizard.tour.skip')}
               </Button>
               <Button isLoading={busy} rightIcon={<ArrowRight size={16} />}
-                onClick={() => run(() => finish({ tour: true }), { errorTitle: 'Couldn’t finish' })}>
-                Start tour
+                onClick={() => run(() => finish({ tour: true }), { errorTitle: t('wizard.finishFailed') })}>
+                {t('wizard.tour.start')}
               </Button>
             </>
           )}

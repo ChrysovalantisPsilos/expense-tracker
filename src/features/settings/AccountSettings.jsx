@@ -16,11 +16,13 @@ import SettingsPage from './SettingsPage.jsx'
 import PaymentCard from './PaymentCard.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 export default function AccountSettings() {
+  const t = useT('settings')
   const { user } = useAuth()
   return (
-    <SettingsPage title="Account">
+    <SettingsPage title={t('account.title')}>
       <IdentityCard user={user} />
       <PaymentCard user={user} />
     </SettingsPage>
@@ -31,6 +33,7 @@ export default function AccountSettings() {
 // has entries (0078): each one's exchange rate is to the currency it was
 // saved in, so switching would misprice everything already there.
 function IdentityCard({ user }) {
+  const t = useT('settings')
   const toast = useToast()
   // The shared demo login (0090) can't upload a photo (storage refuses it).
   const { isDemo } = useProfile()
@@ -67,7 +70,7 @@ function IdentityCard({ user }) {
       })
       // Nudge live consumers (nav bar) to refetch the new name/avatar at once.
       window.dispatchEvent(new Event(EVENTS.profileUpdated))
-      toast({ title: 'Profile saved', status: 'success' })
+      toast({ title: t('account.saved'), status: 'success' })
     })
   }
 
@@ -79,26 +82,26 @@ function IdentityCard({ user }) {
     try {
       const url = await uploadAvatar(user.id, file)
       setAvatarUrl(url)
-      toast({ title: 'Photo updated', status: 'success' })
+      toast({ title: t('account.photoUpdated'), status: 'success' })
     } catch (e) {
       console.error('[settings] avatar upload failed:', e)
-      toast({ title: userMessage(e, 'Couldn’t update your photo. Please try again.'), status: 'error' })
+      toast({ title: userMessage(e, t('account.photoFailed')), status: 'error' })
     } finally { setUploading(false) }
   }
 
   if (loading) {
-    return <Panel title="Profile" icon={UserRound}><RingLoader /></Panel>
+    return <Panel title={t('account.profile')} icon={UserRound}><RingLoader /></Panel>
   }
 
   return (
-    <Panel title="Profile" icon={UserRound}>
+    <Panel title={t('account.profile')} icon={UserRound}>
       <Stack spacing={5} as="form" onSubmit={save}>
         <HStack spacing={4} minW={0}>
           <Box position="relative" flexShrink={0}>
             <UserAvatar size="xl" name={displayName} src={avatarUrl} highlight />
             {!isDemo && (
               <>
-                <IconButton aria-label="Change photo" icon={<Camera size={16} />}
+                <IconButton aria-label={t('account.changePhoto')} icon={<Camera size={16} />}
                   size="sm" borderRadius="full" position="absolute" bottom="-4px" right="-4px"
                   isLoading={uploading} onClick={() => fileRef.current?.click()} />
                 <input ref={fileRef} type="file" accept="image/*" hidden onChange={onAvatar} />
@@ -106,27 +109,23 @@ function IdentityCard({ user }) {
             )}
           </Box>
           <Stack spacing={0} flex="1" minW={0}>
-            <Text fontWeight="700" overflowWrap="anywhere">{displayName || 'Your name'}</Text>
+            <Text fontWeight="700" overflowWrap="anywhere">{displayName || t('yourName')}</Text>
             <Text fontSize="sm" color="text.muted" overflowWrap="anywhere">{user.email}</Text>
           </Stack>
         </HStack>
 
         <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
           <FormControl>
-            <FormLabel>Name</FormLabel>
+            <FormLabel>{t('account.name')}</FormLabel>
             <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your name" />
+              placeholder={t('yourName')} />
           </FormControl>
           <FormControl>
-            <FormLabel>Default currency</FormLabel>
+            <FormLabel>{t('account.currency')}</FormLabel>
             {currencyLocked ? (
               <>
                 <Input value={currency} isReadOnly />
-                <FormHelperText>
-                  Your base currency is fixed once you’ve added entries, so past amounts stay
-                  correct. To start over in another currency, export your data and create a new
-                  account.
-                </FormHelperText>
+                <FormHelperText>{t('account.currencyLocked')}</FormHelperText>
               </>
             ) : (
               <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
@@ -136,7 +135,7 @@ function IdentityCard({ user }) {
           </FormControl>
         </SimpleGrid>
 
-        <Button type="submit" alignSelf="start" isLoading={busy}>Save changes</Button>
+        <Button type="submit" alignSelf="start" isLoading={busy}>{t('account.save')}</Button>
       </Stack>
     </Panel>
   )

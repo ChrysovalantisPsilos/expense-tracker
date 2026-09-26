@@ -18,14 +18,10 @@ import Note from './Note.jsx'
 import { UserError, userMessage } from '../../shared/lib/errors.js'
 import { RingMark, RingSpinner } from '../../shared/ui/RingLoader.jsx'
 import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Hard ceiling on what we'll read into memory; real backups are far smaller.
 const MAX_FILE_BYTES = 50 * 1024 * 1024
-
-const TITLES = {
-  choose: 'Restore from backup', error: 'Can’t restore this file', password: 'Enter the backup’s password',
-  review: 'Restore this backup?', running: 'Restoring…', done: 'Restore complete',
-}
 
 // /settings/data/restore — pick a file → (password) → review → progress →
 // summary, one step at a time on this page. A restore only ever adds:
@@ -33,12 +29,14 @@ const TITLES = {
 // the page counts as unsaved work (no automatic update reload), and Back is
 // held while the restore runs.
 export default function RestoreBackupPage() {
+  const t = useT('backup')
   const [flow, setFlow] = useState({ step: 'choose' }) // { step, envelope?, backup?, error?, tally? }
   const running = flow.step === 'running'
   const choose = () => setFlow({ step: 'choose' })
 
   return (
-    <FormPage eyebrow="Your data" title={TITLES[flow.step]} fallback="/settings/data" backDisabled={running}>
+    <FormPage eyebrow={t('settings:rows.data.label')} title={t(`restore.steps.${flow.step}`)} fallback="/settings/data"
+      backDisabled={running}>
       <Stack spacing={5} {...unsavedFormAttr(['password', 'review', 'running'].includes(flow.step))}>
         {flow.step === 'choose' && <ChooseStep setFlow={setFlow} />}
         {flow.step === 'error' && <ErrorStep message={flow.error} onRetry={choose} />}
@@ -53,6 +51,7 @@ export default function RestoreBackupPage() {
 }
 
 function ChooseStep({ setFlow }) {
+  const t = useT('backup')
   const input = useRef(null)
 
   async function onFile(e) {
@@ -60,39 +59,38 @@ function ChooseStep({ setFlow }) {
     e.target.value = ''
     if (!file) return
     try {
-      if (file.size > MAX_FILE_BYTES) throw new UserError('This file is too large to be a Budgeer backup.')
+      if (file.size > MAX_FILE_BYTES) throw new UserError(t('errors.tooLarge'))
       const read = readBackup(await file.text())
       setFlow(read.encrypted ? { step: 'password', envelope: read.envelope } : { step: 'review', backup: read.backup })
     } catch (err) {
       console.error('[backup] file not read:', err)
-      setFlow({ step: 'error', error: userMessage(err, 'This file couldn’t be read as a Budgeer backup.') })
+      setFlow({ step: 'error', error: userMessage(err, t('errors.unreadable')) })
     }
   }
 
   return (
     <Panel>
-      <Text fontSize="sm" color="text.muted" mb={4}>
-        Pick a backup file you exported from Budgeer. You’ll see what’s in it
-        before anything is added, and nothing is deleted or overwritten.
-      </Text>
+      <Text fontSize="sm" color="text.muted" mb={4}>{t('restore.chooseLead')}</Text>
       <input ref={input} type="file" accept=".json,application/json" hidden onChange={onFile} />
       <Button w={{ base: 'full', sm: 'auto' }} leftIcon={<Upload size={16} />} onClick={() => input.current?.click()}>
-        Choose backup file
+        {t('restore.chooseFile')}
       </Button>
     </Panel>
   )
 }
 
 function ErrorStep({ message, onRetry }) {
+  const t = useT('backup')
   return (
     <>
       <Note icon={ShieldAlert} tone="warning">{message}</Note>
-      <Button onClick={onRetry}>Choose another file</Button>
+      <Button onClick={onRetry}>{t('restore.chooseAnother')}</Button>
     </>
   )
 }
 
 function PasswordStep({ envelope, setFlow }) {
+  const t = useT('backup')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -105,21 +103,18 @@ function PasswordStep({ envelope, setFlow }) {
       setFlow({ step: 'review', backup: await unlockBackup(envelope, password) })
     } catch (err) {
       console.error('[backup] unlock failed:', err)
-      setError(userMessage(err, 'Wrong password or damaged file.'))
+      setError(userMessage(err, t('errors.wrongPassword')))
       setBusy(false)
     }
   }
 
   return (
-    <PageForm onSubmit={submit} busy={busy} submitLabel="Unlock"
-      submitProps={{ loadingText: 'Unlocking', spinner: <RingSpinner />, isDisabled: !password }}>
+    <PageForm onSubmit={submit} busy={busy} submitLabel={t('restore.unlock')}
+      submitProps={{ loadingText: t('restore.unlocking'), spinner: <RingSpinner />, isDisabled: !password }}>
       <Stack spacing={4}>
-        <Text fontSize="sm" color="text.muted">
-          This backup is password-protected. It’s unlocked on this device; the
-          password isn’t sent anywhere.
-        </Text>
+        <Text fontSize="sm" color="text.muted">{t('restore.locked')}</Text>
         <FormControl isInvalid={!!error}>
-          <FormLabel>Password</FormLabel>
+          <FormLabel>{t('auth:password.label')}</FormLabel>
           <Input type="password" value={password} autoComplete="off"
             onChange={(e) => { setPassword(e.target.value); setError(null) }} />
           <FormErrorMessage>{error}</FormErrorMessage>
@@ -129,16 +124,14 @@ function PasswordStep({ envelope, setFlow }) {
   )
 }
 
-const CONTENT_ROWS = [
-  ['expenses', 'Expenses'], ['income', 'Income'], ['categories', 'Categories'],
-  ['rules', 'Category rules'], ['budgets', 'Budgets'], ['recurring', 'Recurring'],
-  ['accounts', 'Accounts'], ['goals', 'Savings goals'], ['groups', 'Groups (record only)'],
-]
+// What the backup holds, in this order (labels: backup:restore.contents.<id>).
+const CONTENT_ROWS = ['expenses', 'income', 'categories', 'rules', 'budgets', 'recurring', 'accounts', 'goals', 'groups']
 
 function ReviewStep({ backup, setFlow, running }) {
+  const t = useT('backup')
   const { user } = useAuth()
   const toast = useToast()
-  const [progress, setProgress] = useState({ label: 'Starting', done: 0, total: 0 })
+  const [progress, setProgress] = useState(() => ({ label: t('restore.progressSteps.starting'), done: 0, total: 0 }))
   const contents = backupContents(backup)
   const made = backup.exportedAt ? new Date(backup.exportedAt) : null
   const [currency, setCurrency] = useState(null) // { change, from, to }
@@ -160,8 +153,8 @@ function ReviewStep({ backup, setFlow, running }) {
       setFlow({ step: 'done', tally })
     } catch (err) {
       console.error('[backup] restore stopped:', err)
-      toast({ title: 'The restore stopped', status: 'error',
-        description: `${userMessage(err)} What was added so far stays; running the restore again picks up the rest.` })
+      toast({ title: t('restore.stopped'), status: 'error',
+        description: t('restore.stoppedBody', { error: userMessage(err) }) })
       setFlow((f) => ({ ...f, step: 'review' }))
     }
   }
@@ -183,38 +176,30 @@ function ReviewStep({ backup, setFlow, running }) {
                 )}
               </Flex>
               <Progress size="sm" value={pct ?? undefined} isIndeterminate={pct === null}
-                aria-label="Restore progress" />
+                aria-label={t('restore.progress')} />
             </Box>
           )}
           {made && !isNaN(made) && (
             <Text fontSize="sm" color="text.muted">
-              Backup made {made.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric' })}.
+              {t('restore.made', { date: made.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) })}
             </Text>
           )}
           <CurrencyLine plan={currency} />
           <BalanceGrid columns={{ base: 2, sm: 3 }}>
-            {CONTENT_ROWS.map(([k, label]) => (
-              <BalanceTile key={k} label={label} value={contents[k]}
+            {CONTENT_ROWS.map((k) => (
+              <BalanceTile key={k} label={t(`restore.contents.${k}`)} value={contents[k]}
                 tone={contents[k] ? 'default' : 'muted'} />
             ))}
           </BalanceGrid>
           {contents.groupShares > 0 && (
-            <Note icon={Info}>
-              {contents.groupShares} of the expenses are your shares of group
-              expenses. They come back as personal expenses, with the group’s
-              name in the notes. The groups themselves aren’t restored.
-            </Note>
+            <Note icon={Info}>{t('restore.groupShares', { shares: contents.groupShares })}</Note>
           )}
-          <Note icon={Info}>
-            Only what’s missing is added. Your name, notification and payment
-            settings are kept; the backup only fills in what’s empty or
-            still at its default.
-          </Note>
+          <Note icon={Info}>{t('restore.onlyMissing')}</Note>
         </Stack>
       </Panel>
       <Button leftIcon={<Upload size={16} />} onClick={start} isLoading={running}
-        loadingText="Restoring" spinner={<RingSpinner />}>
-        Restore
+        loadingText={t('restore.restoring')} spinner={<RingSpinner />}>
+        {t('restore.restore')}
       </Button>
     </>
   )
@@ -223,18 +208,18 @@ function ReviewStep({ backup, setFlow, running }) {
 // One quiet line on what happens to the main currency (backupMath.js
 // currencyChange); nothing when the backup's matches the account's.
 function CurrencyLine({ plan }) {
+  const t = useT('backup')
   if (!plan?.change) return null
   const { change, from, to } = plan
   return (
     <Text fontSize="sm" color="text.muted">
-      {change === 'adopt'
-        ? `Your main currency will be set to ${from} to match this backup.`
-        : `This backup is in ${from} and your account uses ${to}, so budgets, account balances and savings goals will be converted to ${to} at the European Central Bank rate. Entries keep their original amounts.`}
+      {t(change === 'adopt' ? 'restore.currencyAdopt' : 'restore.currencyConvert', { from, to })}
     </Text>
   )
 }
 
 function DoneStep({ tally }) {
+  const t = useT('backup')
   const back = useGoBack('/settings/data')
   const { added, skipped, kept } = restoreSummary(tally)
   return (
@@ -247,7 +232,7 @@ function DoneStep({ tally }) {
           {kept && <Text fontSize="sm" color="text.muted">{kept}</Text>}
         </Stack>
       </Panel>
-      <Button onClick={back}>Done</Button>
+      <Button onClick={back}>{t('restore.done')}</Button>
     </>
   )
 }

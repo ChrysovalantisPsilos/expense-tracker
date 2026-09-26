@@ -8,10 +8,15 @@ import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+
+// An example IBAN (data, not words: the same in every language).
+const IBAN_EXAMPLE = 'BE68 5390 0754 7034'
 
 // "Getting paid": the IBAN / Revolut tag / PayPal.me name friends see when
 // settling up.
 export default function PaymentCard({ user }) {
+  const t = useT('settings')
   const toast = useToast()
   const [iban, setIban] = useState('')
   const [revolut, setRevolut] = useState('')
@@ -35,7 +40,7 @@ export default function PaymentCard({ user }) {
     e.preventDefault()
     const paypalName = paypal.trim() ? normalisePaypalHandle(paypal) : null
     if (paypal.trim() && !paypalName) {
-      toast({ title: 'A PayPal.me name is up to 20 letters and numbers.', status: 'warning' })
+      toast({ title: t('payment.paypalInvalid'), status: 'warning' })
       return
     }
     await run(async () => {
@@ -45,38 +50,35 @@ export default function PaymentCard({ user }) {
         paypal: paypalName,
       })
       setPaypal(paypalName ?? '')
-      toast({ title: 'Payment details saved', status: 'success' })
+      toast({ title: t('payment.saved'), status: 'success' })
     })
   }
 
   return (
-    <Panel title="Getting paid" icon={Landmark}>
-      <Text fontSize="sm" color="text.muted" mb={4}>
-        Friends settling up with you see these as one-tap payment options —
-        a bank QR for your IBAN, and Revolut and PayPal links with the amount filled in.
-      </Text>
+    <Panel title={t('payment.title')} icon={Landmark}>
+      <Text fontSize="sm" color="text.muted" mb={4}>{t('payment.lead')}</Text>
       {!loaded ? (
         <RingLoader compact />
       ) : (
         <Stack spacing={4} as="form" onSubmit={save}>
           <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
             <FormControl>
-              <FormLabel>IBAN</FormLabel>
+              <FormLabel>{t('payment.iban')}</FormLabel>
               <Input value={iban} onChange={(e) => setIban(e.target.value)}
-                placeholder="BE68 5390 0754 7034" autoComplete="off" />
+                placeholder={IBAN_EXAMPLE} autoComplete="off" />
             </FormControl>
             <FormControl>
-              <FormLabel>Revolut tag</FormLabel>
+              <FormLabel>{t('payment.revolut')}</FormLabel>
               <Input value={revolut} onChange={(e) => setRevolut(e.target.value)}
-                placeholder="@yourtag" autoComplete="off" />
+                placeholder={t('payment.revolutPlaceholder')} autoComplete="off" />
             </FormControl>
             <FormControl>
-              <FormLabel>PayPal.me name</FormLabel>
+              <FormLabel>{t('payment.paypal')}</FormLabel>
               <Input value={paypal} onChange={(e) => setPaypal(e.target.value)}
-                placeholder="paypal.me/yourname" autoComplete="off" />
+                placeholder={t('payment.paypalPlaceholder')} autoComplete="off" />
             </FormControl>
           </SimpleGrid>
-          <Button type="submit" size="sm" alignSelf="start" isLoading={busy}>Save</Button>
+          <Button type="submit" size="sm" alignSelf="start" isLoading={busy}>{t('payment.save')}</Button>
         </Stack>
       )}
     </Panel>

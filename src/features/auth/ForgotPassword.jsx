@@ -6,10 +6,12 @@ import {
 import { MailCheck, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import AuthLayout from './AuthLayout.jsx'
+import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function ForgotPassword() {
+  const t = useT('auth')
   const navigate = useNavigate()
   const { sendPasswordReset } = useAuth()
   const [email, setEmail] = useState('')
@@ -30,39 +32,35 @@ export default function ForgotPassword() {
 
   if (sent) {
     return (
-      <AuthLayout icon={<MailCheck size={28} />} title="Check your inbox"
-        subtitle={<>
-          If an account exists for <b>{email.trim()}</b>, we’ve sent a
-          link to reset your password. Check spam if it’s not there.
-        </>}>
+      <AuthLayout icon={<MailCheck size={28} />} title={t('forgot.sentTitle')}
+        subtitle={<Trans t={t} k="forgot.sent" components={{ email: <b>{email.trim()}</b> }} />}>
         <Button variant="outline" colorScheme="gray"
           leftIcon={<ArrowLeft size={16} />} onClick={() => navigate('/login')}>
-          Back to log in
+          {t('backToLogIn')}
         </Button>
       </AuthLayout>
     )
   }
 
   return (
-    <AuthLayout title="Reset your password"
-      subtitle="Enter your email and we’ll send you a reset link.">
+    <AuthLayout title={t('forgot.title')} subtitle={t('forgot.subtitle')}>
       <form onSubmit={handleSubmit}>
         <Stack spacing={4}>
           <FormControl isRequired>
-            <FormLabel>Email</FormLabel>
+            <FormLabel>{t('email')}</FormLabel>
             <Input type="email" autoComplete="email" value={email}
               onChange={(e) => setEmail(e.target.value)} />
           </FormControl>
           <Button type="submit" isLoading={busy} w="full"
             isDisabled={!EMAIL_RE.test(email.trim())}>
-            Send reset link
+            {t('forgot.send')}
           </Button>
         </Stack>
       </form>
 
       <Button variant="link" colorScheme="brand" size="sm"
         leftIcon={<ArrowLeft size={14} />} onClick={() => navigate('/login')}>
-        Back to log in
+        {t('backToLogIn')}
       </Button>
     </AuthLayout>
   )

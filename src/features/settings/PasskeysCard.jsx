@@ -5,6 +5,12 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+
+// The day a passkey was added: 2026-09-26 in English (as before), 26/09/2026 in Greek.
+const addedDay = (ts) => new Date(ts).toLocaleDateString(intlLocale('en-CA'),
+  { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' })
 
 // List / add / remove passkeys. `passkeys` is SecuritySettings' usePasskeys()
 // (shared with the sign-in methods list). Renders nothing when this browser
@@ -12,6 +18,7 @@ import { userMessage } from '../../shared/lib/errors.js'
 // errors), so users never see a dead feature. Removing a passkey never removes
 // the last way in: every account also has an email or Google identity.
 export default function PasskeysCard({ passkeys: query }) {
+  const t = useT('settings')
   const { registerPasskey, deletePasskey } = useAuth()
   const toast = useToast()
   const [pkBusy, setPkBusy] = useState(false)
@@ -23,10 +30,10 @@ export default function PasskeysCard({ passkeys: query }) {
     setPkBusy(false)
     if (error) {
       console.error('[passkeys] add failed:', error)
-      toast({ title: 'Couldn’t add passkey', description: userMessage(error), status: 'error' })
+      toast({ title: t('passkeys.addFailed'), description: userMessage(error), status: 'error' })
       return
     }
-    toast({ title: 'Passkey added', status: 'success' })
+    toast({ title: t('passkeys.added'), status: 'success' })
     loadPasskeys()
   }
 
@@ -34,7 +41,7 @@ export default function PasskeysCard({ passkeys: query }) {
     const { error } = await deletePasskey(id)
     if (error) {
       console.error('[passkeys] remove failed:', error)
-      toast({ title: userMessage(error, 'Couldn’t remove the passkey. Please try again.'), status: 'error' })
+      toast({ title: userMessage(error, t('passkeys.removeFailed')), status: 'error' })
       return
     }
     loadPasskeys()
@@ -43,20 +50,17 @@ export default function PasskeysCard({ passkeys: query }) {
   if (error || passkeys === null) return null
 
   return (
-    <Panel title="Passkeys" icon={Fingerprint} action={
+    <Panel title={t('passkeys.title')} icon={Fingerprint} action={
       <Button size="sm" leftIcon={<Plus size={14} />} isLoading={pkBusy}
-        onClick={addPasskey}>Add</Button>
+        onClick={addPasskey}>{t('passkeys.add')}</Button>
     }>
       {passkeys.length === 0 ? (
-        <Text fontSize="sm" color="text.muted">
-          No passkeys yet. Add one to log in with Face ID, Touch ID, or your
-          device PIN — no password needed.
-        </Text>
+        <Text fontSize="sm" color="text.muted">{t('passkeys.empty')}</Text>
       ) : (
         passkeys.map((pk) => (
-          <ItemRow key={pk.id} icon={KeyRound} title={pk.friendly_name || 'Passkey'}
-            meta={pk.created_at ? `added ${String(pk.created_at).slice(0, 10)}` : undefined}
-            actions={[{ label: 'Remove passkey', icon: Trash2, onClick: () => removePasskey(pk.id), danger: true }]} />
+          <ItemRow key={pk.id} icon={KeyRound} title={pk.friendly_name || t('passkeys.fallbackName')}
+            meta={pk.created_at ? t('passkeys.addedOn', { date: addedDay(pk.created_at) }) : undefined}
+            actions={[{ label: t('passkeys.remove'), icon: Trash2, onClick: () => removePasskey(pk.id), danger: true }]} />
         ))
       )}
     </Panel>

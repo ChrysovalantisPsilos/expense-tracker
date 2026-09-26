@@ -1,3 +1,74 @@
-// Namespace `auth`: src/features/auth. Not converted yet: its strings are
-// still literals in the feature's components (docs/I18N.md, "Converting a feature").
-export default {}
+// Namespace `auth`: src/features/auth (log in, sign up, verify email, reset
+// password, email links). Settings › Security reuses the password field words
+// (password.*). Conventions: docs/I18N.md.
+export default {
+  backHome: 'Back to home',
+  backToLogIn: 'Back to log in',
+  email: 'Email',
+  password: {
+    label: 'Password',
+    new: 'New password',
+    confirm: 'Confirm password',
+    confirmNew: 'Confirm new password',
+    hint: 'At least 8 characters, with a letter and a number.',
+    mismatch: 'Passwords don’t match.',
+    required: 'Enter your password.',
+    show: 'Show password',
+    hide: 'Hide password',
+    update: 'Update password',
+    updated: 'Password updated',
+  },
+  login: {
+    title: 'Welcome back',
+    subtitle: 'Log in to your groups and budgets',
+    forgot: 'Forgot password?',
+    google: 'Sign in with Google',
+    passkey: 'Log in with a passkey',
+    passkeyFailed: 'Passkey sign-in failed',
+    switch: 'Don’t have an account? <action>Sign up</action>',
+  },
+  signup: {
+    title: 'Create your account',
+    subtitle: 'Free — track your money and split with friends',
+    consent: 'I’m 16 or older and I accept the <terms>Terms of Use</terms> and the <privacy>Privacy Notice</privacy>.',
+    consentError: 'Please accept the Terms of Use and Privacy Notice',
+    google: 'Sign up with Google',
+    switch: 'Already have one? <action>Log in</action>',
+  },
+  orContinue: 'or continue with',
+  serverError: 'Something went wrong on our side — please try again in a moment.',
+  // Developers only (a local build without Supabase keys); never on a built site.
+  notConfigured: 'Supabase isn’t configured yet — set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.',
+  forgot: {
+    title: 'Reset your password',
+    subtitle: 'Enter your email and we’ll send you a reset link.',
+    send: 'Send reset link',
+    sentTitle: 'Check your inbox',
+    sent: 'If an account exists for <email/>, we’ve sent a link to reset your password. Check spam if it’s not there.',
+  },
+  verify: {
+    title: 'Check your inbox',
+    sentTo: 'We sent a confirmation link to',
+    waiting: 'Waiting for you to tap the link…',
+    waitingBody: 'This page continues by itself once you do — on this or any other device.',
+    stillWaiting: 'Still waiting?',
+    tapped: 'Tapped the link?',
+    logInBody: 'Once you’ve confirmed, log in to continue.',
+    noEmail: 'No email? Check spam, then <resend/> or <change>use a different email</change>.',
+    resend: 'resend it',
+    resendIn: 'resend in {{seconds}}s',
+    resent: 'Confirmation email resent',
+    resendFailed: 'Couldn’t resend',
+  },
+  reset: {
+    title: 'Choose a new password',
+    failed: 'Couldn’t update your password — the link may have expired.',
+  },
+  expired: {
+    title: 'Link expired or invalid',
+    recovery: 'This password-reset link isn’t valid anymore. Reset links are single-use and expire after a while — request a fresh one.',
+    other: 'This link isn’t valid anymore: links work once and expire after a while. Already confirmed? Just log in. If not, sign up again with the same email for a new link.',
+    requestNew: 'Request a new link',
+    signUpAgain: 'Sign up again',
+  },
+}

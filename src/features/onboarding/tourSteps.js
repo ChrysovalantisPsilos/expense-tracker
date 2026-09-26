@@ -6,73 +6,23 @@
 // skipped (Spotlight.jsx), so an empty Home or a missing button can't strand
 // the tour. `prefer` orders the popover's sides (spotlightMath.placePopover):
 // nav stops sit beside the desktop sidebar, and fall back to above/below the
-// phone's bars, where there's no room at the side.
+// phone's bars, where there's no room at the side. `title` and `body` are
+// keys in the onboarding namespace (tour.*); ProductTour translates them.
 const NAV = ['right', 'bottom', 'top']
+const copy = (key) => ({ title: `tour.${key}.title`, body: `tour.${key}.body` })
 
 export const TOUR_STEPS = [
-  {
-    id: 'overview', route: '/', target: 'overview',
-    title: 'Your month at a glance',
-    body: 'What you spent, earned and kept this month. Pick another period from the menu above.',
-  },
-  {
-    id: 'categories', route: '/', target: 'categories',
-    title: 'Where it goes',
-    body: 'Your spending by category. Tap one to open its page: its entries for any period, its budget, and its name, icon and colour.',
-  },
-  {
-    id: 'subscriptions', route: '/', target: 'subscriptions',
-    title: 'Recurring',
-    body: 'Your recurring bills by how often they charge — weekly, monthly, quarterly or yearly — with the next charges. Manage opens Recurring.',
-  },
-  {
-    id: 'add-expense', route: '/transactions', target: 'add-expense',
-    title: 'Add an expense or income',
-    body: 'Opens a page for the amount (in any currency), category, date and notes. Switch on Repeat for a bill that comes back. Tap any entry to edit it.',
-  },
-  {
-    id: 'search', route: '/transactions', target: 'ledger-search',
-    title: 'Search and filters',
-    body: 'Everything you spend and earn, in one list you can search. To import a bank or card statement, use the ⋯ menu at the top.',
-  },
-  {
-    id: 'groups', target: 'nav-groups', prefer: NAV,
-    title: 'Groups',
-    body: 'Split bills with friends and invite them with a link. Budgeer keeps track of who owes whom.',
-  },
-  {
-    id: 'budgets', target: 'nav-budgets', prefer: NAV,
-    title: 'Budgets',
-    body: 'Set a monthly limit for each category; what you don’t spend can carry over. Tap a budget to open its category.',
-  },
-  {
-    id: 'more', media: 'mobile', target: 'nav-more', prefer: NAV,
-    title: 'More',
-    body: 'Insights (trends and net worth), Savings (your pot and goals), Recurring and Settings are here.',
-  },
-  {
-    id: 'more', media: 'desktop', target: 'nav-more', prefer: NAV,
-    title: 'Insights, Savings and Recurring',
-    body: 'Trends and net worth, your savings pot and goals, plus your subscriptions, bills and regular income.',
-  },
-  {
-    id: 'account', media: 'mobile', target: 'account',
-    title: 'Updates and Settings',
-    body: 'The bell shows what’s new, and your picture opens Settings, where you can also pick light or dark.',
-  },
-  {
-    id: 'account', media: 'desktop', target: 'account', prefer: NAV,
-    title: 'Your account',
-    body: 'Settings, light or dark, and sign-out. The bell at the top shows what’s new.',
-  },
-  {
-    id: 'privacy', route: '/settings', target: 'settings-privacy',
-    title: 'Privacy and security',
-    body: 'How you log in (password, Google, passkeys), backups of your data, and Privacy: your data rights, consents and requests.',
-  },
-  {
-    id: 'done',
-    title: 'You’re all set',
-    body: 'Questions? Settings → Help & FAQ has answers, and you can take this tour again from there.',
-  },
+  { id: 'overview', route: '/', target: 'overview', ...copy('overview') },
+  { id: 'categories', route: '/', target: 'categories', ...copy('categories') },
+  { id: 'subscriptions', route: '/', target: 'subscriptions', ...copy('subscriptions') },
+  { id: 'add-expense', route: '/transactions', target: 'add-expense', ...copy('addExpense') },
+  { id: 'search', route: '/transactions', target: 'ledger-search', ...copy('search') },
+  { id: 'groups', target: 'nav-groups', prefer: NAV, ...copy('groups') },
+  { id: 'budgets', target: 'nav-budgets', prefer: NAV, ...copy('budgets') },
+  { id: 'more', media: 'mobile', target: 'nav-more', prefer: NAV, ...copy('moreMobile') },
+  { id: 'more', media: 'desktop', target: 'nav-more', prefer: NAV, ...copy('moreDesktop') },
+  { id: 'account', media: 'mobile', target: 'account', ...copy('accountMobile') },
+  { id: 'account', media: 'desktop', target: 'account', prefer: NAV, ...copy('accountDesktop') },
+  { id: 'privacy', route: '/settings', target: 'settings-privacy', ...copy('privacy') },
+  { id: 'done', ...copy('done') },
 ]

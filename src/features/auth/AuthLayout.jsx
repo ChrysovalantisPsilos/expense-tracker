@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
 import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Shared frame for the sign-in family of pages: the public header, the brand
 // glow, and a centered card that opens with an optional icon tile, the page's
@@ -15,13 +16,14 @@ import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 export default function AuthLayout({
   icon, iconColor = 'accent.fg', title, subtitle, showHome = true, children,
 }) {
+  const t = useT('auth')
   return (
     <Flex direction="column" minH="100dvh" bg="bg.canvas">
       <PublicHeader>
         {showHome && (
           <Button as={RouterLink} to="/" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}
             leftIcon={<ArrowLeft size={16} />}>
-            Back to home
+            {t('backHome')}
           </Button>
         )}
       </PublicHeader>

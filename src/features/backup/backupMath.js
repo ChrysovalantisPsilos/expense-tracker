@@ -36,6 +36,10 @@ import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import { CATEGORY_ICON_KEYS, CATEGORY_COLOR_KEYS } from '../../shared/lib/categoryStyle.js'
 import { UserError } from '../../shared/lib/errors.js'
 import { fxQueryDate, rateOnOrBefore, toBaseMinor } from '../../shared/lib/currency.js'
+import { translate } from '../../shared/lib/i18n/i18n.js'
+
+// Words in the app's language (backup namespace), looked up when needed.
+const say = (key, vars) => translate(key, vars, { defaultNs: 'backup' })
 
 export const BACKUP_FORMAT = 'budgeer-backup'
 export const BACKUP_VERSION = 3
@@ -49,8 +53,10 @@ const MAX_MINOR = Number.MAX_SAFE_INTEGER
 
 export class BackupError extends UserError {}
 const fail = (msg) => { throw new BackupError(msg) }
-const NOT_A_BACKUP = 'This file isn’t a Budgeer backup.'
-const NEWER = 'This backup was made by a newer version of Budgeer. Update the app (reload the page) and try again.'
+const notABackup = () => fail(say('errors.notABackup'))
+// "This backup is damaged (category #3: name)." — `where` and `field` name the
+// broken part (technical, so they stay as written).
+const damaged = (where, field) => fail(say('errors.damaged', { where, field }))
 
 // budgeer-backup-YYYY-MM-DD.json, in the user's local calendar day.
 export function backupFileName(d = new Date()) {
@@ -219,10 +225,10 @@ export async function serializeBackup(doc, password) {
 // backup } (the validated, cleaned document). Throws BackupError.
 export function readBackup(text) {
   let doc
-  try { doc = JSON.parse(text) } catch { fail(NOT_A_BACKUP) }
-  if (!isObj(doc) || doc.format !== BACKUP_FORMAT) fail(NOT_A_BACKUP)
-  if (!Number.isInteger(doc.version) || doc.version < 1) fail(NOT_A_BACKUP)
-  if (doc.version > BACKUP_VERSION) fail(NEWER)
+  try { doc = JSON.parse(text) } catch { notABackup() }
+  if (!isObj(doc) || doc.format !== BACKUP_FORMAT) notABackup()
+  if (!Number.isInteger(doc.version) || doc.version < 1) notABackup()
+  if (doc.version > BACKUP_VERSION) fail(say('errors.newer'))
   if (doc.encrypted === true) {
     const { version, kdf, iv, ciphertext } = doc
     return { encrypted: true, envelope: { version, kdf, iv, ciphertext } }
@@ -235,7 +241,7 @@ export function readBackup(text) {
 export async function unlockBackup(envelope, password) {
   const text = await openText(envelope, password, { aad: aadFor(envelope.version) })
   const inner = readBackup(text)
-  if (inner.encrypted) fail(NOT_A_BACKUP)
+  if (inner.encrypted) notABackup()
   return inner.backup
 }
 
@@ -248,7 +254,7 @@ export async function unlockBackup(envelope, password) {
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 
 function checker(where) {
-  const bad = (field) => fail(`This backup is damaged (${where}: ${field}).`)
+  const bad = (field) => damaged(where, field)
   return {
     list(v, field, max) {
       if (v == null) return []
@@ -352,7 +358,7 @@ function validateBackup(doc) {
     v.obj(c, 'entry')
     return {
       key: v.text(c.key, 'key', { max: 40, required: true }),
-      name: clipName(v.text(c.name, 'name', { max: 10000, required: true })) ?? fail(`This backup is damaged (category #${i + 1}: name).`),
+      name: clipName(v.text(c.name, 'name', { max: 10000, required: true })) ?? damaged(`category #${i + 1}`, 'name'),
       kind: v.oneOf(c.kind, KINDS, 'kind'),
       // Only the app's own icon/colour keys (the server's CHECKs); an old or
       // unknown value falls back to the default look.
@@ -364,7 +370,7 @@ function validateBackup(doc) {
     }
   }), { before0084: !rawCategories.some((c) => 'savings' in c) })
   const catKeys = new Set(categories.map((c) => c.key))
-  if (catKeys.size !== categories.length) fail('This backup is damaged (categories: duplicate key).')
+  if (catKeys.size !== categories.length) damaged('categories', 'duplicate key')
   // The salary category must be one of the file's income categories; anything
   // else (unknown key, an expense category) leaves the setting off.
   const salaryKey = typeof prof.salary_category === 'string' ? prof.salary_category : null
@@ -382,14 +388,14 @@ function validateBackup(doc) {
     }
   })
   const acctKeys = new Set(accounts.map((a) => a.key))
-  if (acctKeys.size !== accounts.length) fail('This backup is damaged (accounts: duplicate key).')
+  if (acctKeys.size !== accounts.length) damaged('accounts', 'duplicate key')
 
   const categoryRules = top.list(data.categoryRules, 'rules', 5000).map((r, i) => {
     const v = checker(`rule #${i + 1}`)
     v.obj(r, 'entry')
     const pattern = v.text(r.pattern, 'pattern', { max: 80, required: true })
-    if (pattern.length < 2) fail(`This backup is damaged (rule #${i + 1}: pattern).`)
-    return { pattern, category: v.ref(r.category, catKeys, 'category') ?? fail(`This backup is damaged (rule #${i + 1}: category).`) }
+    if (pattern.length < 2) damaged(`rule #${i + 1}`, 'pattern')
+    return { pattern, category: v.ref(r.category, catKeys, 'category') ?? damaged(`rule #${i + 1}`, 'category') }
   })
 
   const goals = top.list(data.goals, 'goals', 1000).map((g, i) => {
@@ -408,7 +414,7 @@ function validateBackup(doc) {
     const v = checker(`budget #${i + 1}`)
     v.obj(b, 'entry')
     return {
-      category: v.ref(b.category, catKeys, 'category') ?? fail(`This backup is damaged (budget #${i + 1}: category).`),
+      category: v.ref(b.category, catKeys, 'category') ?? damaged(`budget #${i + 1}`, 'category'),
       period_start: v.date(b.period_start, 'month'),
       amount_minor: v.minor(b.amount_minor, 'amount'),
       currency: v.currency(b.currency, 'currency'),
@@ -439,7 +445,7 @@ function validateBackup(doc) {
     const v = checker(`entry #${i + 1}`)
     v.obj(t, 'entry')
     const rate = t.exchange_rate ?? 1
-    if (typeof rate !== 'number' || !(rate > 0) || rate > 1e10) fail(`This backup is damaged (entry #${i + 1}: exchange rate).`)
+    if (typeof rate !== 'number' || !(rate > 0) || rate > 1e10) damaged(`entry #${i + 1}`, 'exchange rate')
     return {
       kind: v.oneOf(t.kind, KINDS, 'kind'),
       category: v.ref(t.category, catKeys, 'category'),
@@ -623,7 +629,8 @@ export function currencyChange(backupBase, accountBase, locked) {
 }
 
 // Profile settings and payment details fill in only what's empty or still at
-// its default; anything the account already set is kept and reported, never
+// its default; anything the account already set is kept and reported (`kept`:
+// ids that restoreSummary words, backup:summary.kept.<id>), never
 // overwritten. The main currency is the exception: an empty account takes the
 // backup's (currencyChange). `emailName` is the email's local part (the signup
 // default for the display name); `emptyAccount` means no entries before the
@@ -634,23 +641,23 @@ export function planProfile(backup, current, { emailName, emptyAccount }) {
   const b = backup.profile
   if (b.display_name && b.display_name !== current.display_name) {
     if (!current.display_name || current.display_name === emailName) patch.display_name = b.display_name
-    else kept.push('display name')
+    else kept.push('displayName')
   }
   const currency = currencyChange(b.base_currency, current.base_currency, !emptyAccount)
   if (currency === 'adopt') patch.base_currency = b.base_currency
-  else if (currency === 'convert') kept.push('main currency')
+  else if (currency === 'convert') kept.push('mainCurrency')
   // Notifications default to on. Only an untouched "on" follows the backup's
   // "off"; a restore never switches notifications on.
-  for (const [field, label] of [['notify_email', 'email notifications'], ['notify_push', 'push notifications']]) {
+  for (const [field, id] of [['notify_email', 'emailNotifications'], ['notify_push', 'pushNotifications']]) {
     if (typeof b[field] !== 'boolean' || b[field] === current[field]) continue
     if (current[field] === true && b[field] === false) patch[field] = false
-    else kept.push(label)
+    else kept.push(id)
   }
   // Yearly subscriptions count in monthly spending by default (0068). Only
   // that untouched default follows a backup that kept them separate.
   if (typeof b.yearly_separate === 'boolean' && b.yearly_separate !== !!current.yearly_separate) {
     if (b.yearly_separate && !current.yearly_separate) patch.yearly_separate = true
-    else kept.push('yearly subscriptions setting')
+    else kept.push('yearlySeparate')
   }
   return { patch, kept }
 }
@@ -674,19 +681,18 @@ export function planSalaryShift(backupProfile, current, categoryIdByKey) {
     return { patch: curCat ? {} : { salary_category_id: categoryId }, kept: [] }
   }
   const differs = day != null && (day !== curDay || categoryId !== curCat)
-  return { patch: {}, kept: differs ? ['salary setting'] : [] }
+  return { patch: {}, kept: differs ? ['salaryShift'] : [] }
 }
 
 export function planPayment(backup, current) {
   const patch = {}
   const kept = []
-  for (const [field, cur, label] of [
-    ['iban', current.payment_iban, 'IBAN'], ['revolut', current.payment_revolut, 'Revolut tag'],
-    ['paypal', current.payment_paypal, 'PayPal.me name']]) {
+  for (const [field, cur] of [
+    ['iban', current.payment_iban], ['revolut', current.payment_revolut], ['paypal', current.payment_paypal]]) {
     const v = backup.payment[field]
     if (!v || v === cur) continue
     if (!cur) patch[field] = v
-    else kept.push(label)
+    else kept.push(field)
   }
   return {
     patch: Object.keys(patch).length
@@ -714,8 +720,6 @@ export function planPayment(backup, current) {
 // Recurring entries keep their own currency (the server rates each charge
 // when it runs). Same main currency — or an old backup that doesn't say —
 // changes nothing.
-
-const RATES_MISSING = 'Couldn’t get the exchange rates needed to convert this backup to your main currency. Check your connection and try again.'
 
 const needsRebase = (fromBase, toBase) => !!fromBase && !!toBase && fromBase !== toBase
 
@@ -749,7 +753,7 @@ export function rebaseBackupData(data, { fromBase, toBase, seriesByCurrency, tod
   if (!needsRebase(fromBase, toBase)) return data
   const rateFor = (currency, date) => (currency === toBase ? 1
     : rateOnOrBefore(seriesByCurrency.get(currency) ?? [], fxQueryDate(date, todayIso))?.rate
-      ?? fail(RATES_MISSING))
+      ?? fail(say('errors.ratesMissing')))
   // `fields` (minor amounts) of a row in its own currency → toBase at `date`.
   const convert = (row, fields, date) => {
     if (row.currency === toBase) return row
@@ -769,31 +773,24 @@ export function rebaseBackupData(data, { fromBase, toBase, seriesByCurrency, tod
 
 // ---- Summary ---------------------------------------------------------------------
 
-const count = (n, one, many) => `${n} ${n === 1 ? one : many}`
+// "a, b and c" (the last pair joined by the language's "and").
 const listOf = (items) => (items.length < 2 ? items.join('')
-  : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
+  : say('summary.list', { rest: items.slice(0, -1).join(', '), last: items[items.length - 1] }))
+
+// The tallies the summary counts, in order (backup:summary.<id>_one/_other).
+const TALLIES = ['expenses', 'income', 'categories', 'rules', 'budgets', 'recurring', 'accounts', 'goals',
+  'budgetsUpdated', 'settings']
 
 // "Added 212 expenses, 14 categories… Skipped 3 duplicates." from the restore's
-// tallies. Returns { added, skipped, kept } sentences (null when empty).
-export function restoreSummary(t) {
-  const parts = [
-    [t.expenses, 'expense', 'expenses'],
-    [t.income, 'income entry', 'income entries'],
-    [t.categories, 'category', 'categories'],
-    [t.rules, 'auto-category rule', 'auto-category rules'],
-    [t.budgets, 'budget', 'budgets'],
-    [t.recurring, 'recurring entry', 'recurring entries'],
-    [t.accounts, 'account', 'accounts'],
-    [t.goals, 'savings goal', 'savings goals'],
-  ].filter(([n]) => n > 0).map(([n, one, many]) => count(n, one, many))
-  if (t.budgetsUpdated > 0) parts.push(`updated ${count(t.budgetsUpdated, 'budget', 'budgets')}`)
-  if (t.settings > 0) parts.push(`filled in ${count(t.settings, 'setting', 'settings')}`)
-  const added = parts.length
-    ? `Added ${parts.join(', ')}.`
-    : 'Nothing new to add — everything in this backup is already in your account.'
-  const skipped = t.duplicates > 0 ? `Skipped ${count(t.duplicates, 'duplicate', 'duplicates')}.` : null
-  const kept = t.kept?.length
-    ? `Kept your current ${listOf(t.kept)} — the backup’s ${t.kept.length === 1 ? 'differs' : 'differ'}. You can change ${t.kept.length === 1 ? 'it' : 'them'} in Settings.`
+// tallies, in the app's language. Returns { added, skipped, kept } sentences
+// (null when empty).
+export function restoreSummary(tally) {
+  const parts = TALLIES.filter((id) => tally[id] > 0).map((id) => say(`summary.${id}`, { count: tally[id] }))
+  const added = parts.length ? say('summary.added', { items: parts.join(', ') }) : say('summary.nothingNew')
+  const skipped = tally.duplicates > 0 ? say('summary.skipped', { count: tally.duplicates }) : null
+  const kept = tally.kept?.length
+    ? say(tally.kept.length === 1 ? 'summary.keptOne' : 'summary.keptMany',
+      { items: listOf(tally.kept.map((id) => say(`summary.kept.${id}`))) })
     : null
   return { added, skipped, kept }
 }

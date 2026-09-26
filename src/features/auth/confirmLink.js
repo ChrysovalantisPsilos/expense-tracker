@@ -7,6 +7,7 @@
 // The page (ConfirmLink.jsx) hands the token to Supabase Auth (verifyOtp),
 // which answers with a session. Pure helpers here; the generator
 // (scripts/build-auth-emails.mjs) builds the links from the same constants.
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 export const CONFIRM_PATH = '/auth/confirm'
 
@@ -48,12 +49,15 @@ export function confirmDestination(type) {
 export function expiredLinkHelp(type) {
   if (type === 'recovery') {
     return {
-      text: 'This password-reset link isn’t valid anymore. Reset links are single-use and expire after a while — request a fresh one.',
-      actions: [{ label: 'Request a new link', to: '/forgot-password' }],
+      text: t('auth:expired.recovery'),
+      actions: [{ label: t('auth:expired.requestNew'), to: '/forgot-password' }],
     }
   }
   return {
-    text: 'This link isn’t valid anymore: links work once and expire after a while. Already confirmed? Just log in. If not, sign up again with the same email for a new link.',
-    actions: [{ label: 'Log in', to: '/login' }, { label: 'Sign up again', to: '/login?signup=1' }],
+    text: t('auth:expired.other'),
+    actions: [
+      { label: t('common:actions.logIn'), to: '/login' },
+      { label: t('auth:expired.signUpAgain'), to: '/login?signup=1' },
+    ],
   }
 }

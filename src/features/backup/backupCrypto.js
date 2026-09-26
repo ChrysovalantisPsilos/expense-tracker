@@ -9,6 +9,7 @@
 // tag check, and we can't (and don't try to) tell those apart.
 
 import { UserError } from '../../shared/lib/errors.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 const ITERATIONS = 600_000 // OWASP 2023 guidance for PBKDF2-SHA256
 // Bounds for a file's own iteration count: refuse absurd values rather than
@@ -16,7 +17,8 @@ const ITERATIONS = 600_000 // OWASP 2023 guidance for PBKDF2-SHA256
 const MIN_ITERATIONS = 310_000
 const MAX_ITERATIONS = 5_000_000
 
-const WRONG_PASSWORD = 'Wrong password or damaged file.'
+// Built when thrown, so it's in the app's language at that moment.
+const wrongPassword = () => new UserError(t('backup:errors.wrongPassword'))
 
 const enc = new TextEncoder()
 const dec = new TextDecoder()
@@ -32,7 +34,7 @@ function toBase64(bytes) {
 }
 
 function fromBase64(b64) {
-  if (typeof b64 !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(b64)) throw new UserError(WRONG_PASSWORD)
+  if (typeof b64 !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(b64)) throw wrongPassword()
   const bin = atob(b64)
   const out = new Uint8Array(bin.length)
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
@@ -65,22 +67,22 @@ export async function sealText(text, password, { aad } = {}) {
   }
 }
 
-// Reverse of sealText. Throws UserError(WRONG_PASSWORD) for a wrong password,
+// Reverse of sealText. Throws "Wrong password or damaged file." for a wrong password,
 // a tampered/truncated file or malformed parameters.
 export async function openText({ kdf, iv, ciphertext } = {}, password, { aad } = {}) {
   const iterations = kdf?.iterations
   if (kdf?.name !== 'PBKDF2' || kdf?.hash !== 'SHA-256' || !Number.isInteger(iterations)
     || iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) {
-    throw new UserError(WRONG_PASSWORD)
+    throw wrongPassword()
   }
   const salt = fromBase64(kdf.salt)
   const ivBytes = fromBase64(iv)
-  if (salt.length < 16 || ivBytes.length !== 12) throw new UserError(WRONG_PASSWORD)
+  if (salt.length < 16 || ivBytes.length !== 12) throw wrongPassword()
   const key = await deriveKey(password, salt, iterations)
   try {
     const params = { name: 'AES-GCM', iv: ivBytes, ...(aad ? { additionalData: enc.encode(aad) } : {}) }
     return dec.decode(await crypto.subtle.decrypt(params, key, fromBase64(ciphertext)))
   } catch {
-    throw new UserError(WRONG_PASSWORD)
+    throw wrongPassword()
   }
 }

@@ -3,14 +3,18 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  pickRelease, createSeenTracker, ringVariant, releaseDay, releaseDate,
+  pickRelease, createSeenTracker, ringVariant, releaseDay, releaseDate, releaseText,
 } from '../src/features/whatsnew/whatsNewMath.js'
 import { RELEASES } from '../src/features/whatsnew/releases.js'
+import en from '../src/locales/en/index.js'
+import el from '../src/locales/el/index.js'
+import { translateIn } from '../src/shared/lib/i18n/translate.js'
+import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 import { isSignedInRoute } from '../src/app/routes.js'
 import { RETIRED_STORAGE_KEYS } from '../src/shared/lib/keys.js'
 import { readFileSync, readdirSync } from 'node:fs'
 
-const page = (title) => ({ title, body: 'b', chips: ['x'] })
+const page = (id) => ({ id, chips: ['x'] })
 const R3 = { id: '2026-11-01', date: '2026-11-01', pages: [page('c')] }
 const R2 = { id: '2026-10-01', date: '2026-10-01', pages: [page('b')] }
 const R1 = { id: '2026-09-26', date: '2026-09-26', pages: [page('a')] }
@@ -165,14 +169,29 @@ test('storage unreadable, or a profile without the column: nothing breaks, the d
   assert.deepEqual(f.saves, [])
 })
 
-test('ring picture and dates', () => {
+test('ring picture and dates', async () => {
   assert.equal(ringVariant({ variant: 'split' }), 'split')
   assert.equal(ringVariant({ variant: 'crash' }), 'update')
   assert.equal(ringVariant({}), 'update')
   assert.equal(releaseDay('2026-09-26'), '26 Sep')
   assert.equal(releaseDay('2027-01-05'), '5 Jan')
   assert.equal(releaseDate('2026-09-26'), '26 September 2026')
+  // Greek: short months, and the genitive month after a day.
+  await loadLanguage('el')
+  try {
+    assert.equal(releaseDay('2026-09-26'), '26 Σεπ')
+    assert.equal(releaseDate('2026-09-26'), '26 Σεπτεμβρίου 2026')
+    assert.equal(releaseDate('2027-05-05'), '5 Μαΐου 2027')
+  } finally {
+    await loadLanguage('en')
+  }
 })
+
+// releaseText in one language; a key missing there (no English fallback) fails.
+const textIn = (lang) => (key) => translateIn({ en, el }, lang, key, undefined, {
+  defaultNs: 'whatsnew', fallback: lang, onMissing: (msg) => { throw new Error(`${lang}: ${msg}`) },
+})
+const inEnglish = (r) => releaseText(r, textIn('en'))
 
 test('releases.js: unique ids, newest first, valid dates, 1–5 pages each', () => {
   assert.ok(RELEASES.length > 0)
@@ -190,25 +209,47 @@ test('releases.js: unique ids, newest first, valid dates, 1–5 pages each', () 
   }
 })
 
-test('releases.js: every page is complete, and every action opens a real page', () => {
+test('releases.js: every page is complete in both languages, and every action opens a real page', () => {
   for (const r of RELEASES) {
-    const titles = r.pages.map((p) => p.title)
-    assert.equal(new Set(titles).size, titles.length, `${r.id}: duplicate page title`)
+    const ids = r.pages.map((p) => p.id)
+    assert.ok(ids.every((id) => /^[a-z][A-Za-z0-9]*$/.test(id)), `${r.id}: page ids are camelCase keys`)
+    assert.equal(new Set(ids).size, ids.length, `${r.id}: duplicate page id`)
     for (const p of r.pages) {
-      assert.ok(p.title?.trim() && p.body?.trim(), `${r.id}: a page lacks a title or body`)
-      assert.ok(Array.isArray(p.chips) && p.chips.length >= 1 && p.chips.length <= 2, `${p.title}: 1–2 chips`)
-      assert.equal(new Set(p.chips).size, p.chips.length, `${p.title}: duplicate chip`)
-      if (p.variant !== undefined) assert.equal(ringVariant(p), p.variant, `${p.title}: unknown ring variant ${p.variant}`)
-      if (p.action) {
-        assert.ok(p.action.label?.trim(), `${p.title}: action without a label`)
-        assert.ok(isSignedInRoute(p.action.to), `${p.title}: ${p.action.to} isn't an app route`)
+      assert.ok(Array.isArray(p.chips) && p.chips.length >= 1 && p.chips.length <= 2, `${r.id}/${p.id}: 1–2 chips`)
+      assert.equal(new Set(p.chips).size, p.chips.length, `${r.id}/${p.id}: duplicate chip`)
+      if (p.variant !== undefined) assert.equal(ringVariant(p), p.variant, `${p.id}: unknown ring variant ${p.variant}`)
+      if (p.action) assert.ok(isSignedInRoute(p.action.to), `${p.id}: ${p.action.to} isn't an app route`)
+    }
+    // Written in both languages: every title, body, chip and action label resolves.
+    for (const lang of ['en', 'el']) {
+      const text = releaseText(r, textIn(lang))
+      const titles = text.pages.map((p) => p.title)
+      assert.equal(new Set(titles).size, titles.length, `${lang} ${r.id}: duplicate page title`)
+      for (const p of text.pages) {
+        assert.ok(p.title.trim() && p.body.trim(), `${lang} ${r.id}/${p.id}: a page lacks a title or body`)
+        assert.equal(new Set(p.chips).size, p.chips.length, `${lang} ${r.id}/${p.id}: duplicate chip`)
+        if (p.action) assert.ok(p.action.label.trim(), `${lang} ${r.id}/${p.id}: action without a label`)
       }
     }
   }
 })
 
+test('releaseText: fills in the words and keeps the ids and the shape', () => {
+  const r = { id: 'r1', date: '2026-01-01', pages: [{ id: 'a', chips: ['x', 'y'], variant: 'split', action: { to: '/x' } }] }
+  const out = releaseText(r, (k) => `<${k}>`)
+  assert.deepEqual(out, {
+    id: 'r1', date: '2026-01-01',
+    pages: [{
+      id: 'a', variant: 'split', title: '<releases.r1.a.title>', body: '<releases.r1.a.body>',
+      chips: ['<releases.r1.a.chips.x>', '<releases.r1.a.chips.y>'],
+      action: { to: '/x', label: '<releases.r1.a.action>' },
+    }],
+  })
+  assert.equal(releaseText(null, (k) => k), null)
+})
+
 test('this release (2026-09-26): three pages, the status page has no action', () => {
-  const r = RELEASES[0]
+  const r = inEnglish(RELEASES[0])
   assert.equal(r.id, '2026-09-26')
   assert.equal(r.pages.length, 3)
   assert.deepEqual(r.pages.map((p) => p.title),
@@ -219,7 +260,7 @@ test('this release (2026-09-26): three pages, the status page has no action', ()
 })
 
 test('this release: five pages, the salary page opens Monthly spending', () => {
-  const r = RELEASES.find((x) => x.id === '2026-09-25')
+  const r = inEnglish(RELEASES.find((x) => x.id === '2026-09-25'))
   assert.equal(r.pages.length, 5)
   assert.deepEqual(r.pages[2].action, { label: 'Open settings', to: '/settings/spending' })
 })
