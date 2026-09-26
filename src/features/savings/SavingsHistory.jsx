@@ -1,0 +1,123 @@
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Box, Button, HStack, Stack, Text, useToast } from '@chakra-ui/react'
+import { Pencil, PiggyBank, Repeat, Trash2 } from 'lucide-react'
+import Panel from '../../shared/ui/kit/Panel.jsx'
+import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
+import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
+import { signedAmount } from '../../shared/ui/kit/kitMath.js'
+import { formatMoney } from '../../shared/lib/currency.js'
+import { shortDate } from '../../shared/lib/dates.js'
+import { savingsNoteOf } from '../../shared/lib/savings.js'
+import { saveErrorToast } from '../../shared/lib/saveError.js'
+import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
+import DeleteTransactionDialog from '../transactions/DeleteTransactionDialog.jsx'
+import { deleteTransaction } from '../transactions/writes.js'
+import {
+  HISTORY_FILTERS, HISTORY_MONTHS, HISTORY_MORE, monthGroups, monthHeading, moveDirection,
+} from './savingsMath.js'
+
+// One entry: its date and where the money came from or went ("from income",
+// "received", "from savings"), a repeat mark when a rule adds it, and the
+// amount signed by what it did to the pot. No category tag: everything here
+// is savings. Title and meta each keep to one line.
+function SavingsRow({ row: r, savingsIds, open, remove }) {
+  const out = moveDirection(r, savingsIds) === 'out'
+  return (
+    <ItemRow py={1.5} onClick={() => open(r)}
+      media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
+      title={<Box as="span" display="block" sx={ONE_LINE}>{r.description || r.categories?.name || 'Savings'}</Box>}
+      meta={
+        <HStack spacing={1.5} fontSize="xs" color="text.muted" minW={0}>
+          <Text sx={ONE_LINE} minW={0}>
+            {shortDate(r.spent_at)} ·{' '}
+            <Text as="span" color={out ? 'text.primary' : undefined} fontWeight={out ? 600 : undefined}>
+              {savingsNoteOf(r, savingsIds)}
+            </Text>
+          </Text>
+          {r.recurring_rule_id && (
+            <Box as="span" flexShrink={0} display="inline-flex" aria-label="Repeats" role="img">
+              <Repeat size={11} aria-hidden />
+            </Box>
+          )}
+        </HStack>
+      }
+      amount={`${out ? '−' : '+'}${formatMoney(r.amount_minor, r.currency)}`}
+      amountTone={out ? 'default' : 'positive'}
+      actionSlots={2} actions={[
+        { label: 'Edit', icon: Pencil, onClick: () => open(r) },
+        { label: 'Delete', icon: Trash2, danger: true, onClick: () => remove(r) },
+      ]} />
+  )
+}
+
+// "Savings history": only the entries that move the pot, month by month,
+// newest first, each month headed by its net change (green when the pot
+// grew, muted otherwise). All / In / Out narrows the rows; the latest
+// HISTORY_MONTHS months show first, and "Show older" adds more.
+export default function SavingsHistory({ moves, savingsIds, baseCurrency, reload }) {
+  const navigate = useNavigate()
+  const toast = useToast()
+  const [filter, setFilter] = useState('all')
+  const [months, setMonths] = useState(HISTORY_MONTHS)
+  const [removing, setRemoving] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const groups = useMemo(
+    () => monthGroups(moves, savingsIds, baseCurrency, filter), [moves, savingsIds, baseCurrency, filter])
+
+  // The transaction page gets the row in router state, so it opens at once.
+  const open = (r) => navigate(`/transactions/${r.id}`, { state: { row: r } })
+
+  async function confirmRemove() {
+    setBusy(true)
+    try {
+      await deleteTransaction(removing.id)
+      toast({ title: `${removing.kind === 'income' ? 'Income' : 'Expense'} deleted`, status: 'success' })
+      reload()
+    } catch (e) {
+      toast(saveErrorToast(e, 'Couldn’t delete'))
+    } finally {
+      setBusy(false); setRemoving(null)
+    }
+  }
+
+  return (
+    <Panel icon={PiggyBank} title="Savings history" subtitle="Only what moves your pot">
+      <SegmentedControl options={HISTORY_FILTERS} value={filter} onChange={setFilter} isFitted label="Show" />
+      {groups.length === 0 ? (
+        <Text color="text.muted" fontSize="sm" mt={4}>
+          {filter === 'out' ? 'Nothing paid from savings yet.' : 'Nothing put into savings yet.'}
+        </Text>
+      ) : (
+        <Stack spacing={4} mt={4}>
+          {groups.slice(0, months).map((g) => {
+            const net = signedAmount(g.net, (m) => formatMoney(m, baseCurrency))
+            return (
+              <Box key={g.key} as="section" aria-label={monthHeading(g.key)}>
+                <HStack justify="space-between" pb={1.5} mb={1} borderBottomWidth="1px" borderColor="border.default">
+                  <Text as="h3" fontFamily="heading" fontWeight="700" fontSize="sm">{monthHeading(g.key)}</Text>
+                  <Text fontSize="sm" fontWeight="700" whiteSpace="nowrap"
+                    color={net.tone === 'positive' ? 'status.positive' : 'text.muted'}>
+                    {net.text}
+                  </Text>
+                </HStack>
+                {g.rows.map((r) => (
+                  <SavingsRow key={r.id} row={r} savingsIds={savingsIds} open={open} remove={setRemoving} />
+                ))}
+              </Box>
+            )
+          })}
+        </Stack>
+      )}
+      {groups.length > months && (
+        <Button variant="outline" size="sm" w="full" mt={4} onClick={() => setMonths((n) => n + HISTORY_MORE)}>
+          Show older
+        </Button>
+      )}
+
+      <DeleteTransactionDialog row={removing} onClose={() => setRemoving(null)}
+        onConfirm={confirmRemove} busy={busy} />
+    </Panel>
+  )
+}

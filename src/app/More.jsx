@@ -1,5 +1,5 @@
 import { Stack } from '@chakra-ui/react'
-import { TrendingUp, Repeat, Settings } from 'lucide-react'
+import { TrendingUp, PiggyBank, Repeat, Settings } from 'lucide-react'
 import PageHeader from '../shared/ui/PageHeader.jsx'
 import { NavList, NavRow } from '../shared/ui/NavList.jsx'
 
@@ -7,7 +7,8 @@ import { NavList, NavRow } from '../shared/ui/NavList.jsx'
 // in labelled groups.
 const SECTIONS = [
   { label: 'Money', links: [
-    { to: '/insights', label: 'Insights', desc: 'Trends, net worth & goals', icon: TrendingUp },
+    { to: '/insights', label: 'Insights', desc: 'Trends & net worth', icon: TrendingUp },
+    { to: '/savings', label: 'Savings', desc: 'Your pot, goals & history', icon: PiggyBank },
     { to: '/recurring', label: 'Recurring', desc: 'Subscriptions & recurring bills', icon: Repeat },
   ] },
   { label: 'Account', links: [

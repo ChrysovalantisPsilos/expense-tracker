@@ -6,5 +6,5 @@
 // treat the same entries the same way as the app): see
 // supabase/functions/_shared/savings.ts for the rule.
 export {
-  EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, savingsNoteOf, isSpending, netSign, savingsPotMinor,
+  EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, savingsNoteOf, isSpending, netSign, potSign, savingsPotMinor,
 } from '../../../supabase/functions/_shared/savings.ts'

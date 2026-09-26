@@ -25,12 +25,14 @@ test('SIGNED_IN_ROUTES matches the AppShell routes in App.jsx exactly', () => {
 test('real signed-in pages match, including the legacy redirects', () => {
   for (const p of [
     '/', '/transactions', '/transactions/123', '/transactions/new', '/groups/abc', '/groups',
-    '/settings/security', '/budgets', '/categories/c1', '/import', '/more', '/insights',
+    '/settings/security', '/budgets', '/categories/c1', '/import', '/more', '/insights', '/savings',
     '/recurring', '/settings', '/settings/data', '/profile', '/expenses', '/income', '/search',
     // The form pages (no dialogs): a signed-out deep link signs in and comes back.
     '/groups/new', '/groups/abc/settle', '/groups/abc/edit', '/groups/abc/members',
     '/groups/abc/expenses/new', '/groups/abc/expenses/e1', '/groups/abc/comments/e1',
-    '/recurring/new', '/recurring/r1', '/insights/goals/new', '/insights/goals/g1',
+    '/recurring/new', '/recurring/r1', '/savings/goals/new', '/savings/goals/g1',
+    // Goals' old addresses, which redirect to their Savings pages.
+    '/insights/goals/new', '/insights/goals/g1',
     '/insights/accounts/new', '/insights/accounts/a1', '/settings/categories/new',
     '/settings/data/export', '/settings/data/restore', '/settings/privacy/request',
   ]) {
@@ -48,7 +50,7 @@ test('unknown addresses do not match', () => {
   for (const p of [
     '/nope', '/does-not-exist', '/transactions/1/edit', '/groupsx', '/groups/abc/def',
     '/groups/abc/settle/x', '/groups/abc/expenses', '/groups/abc/comments', '/recurring/r1/edit',
-    '/insights/goals', '/settings/data/other',
+    '/insights/goals', '/savings/goals', '/savings/x', '/settings/data/other',
     '/settings/unknown', '/categories', '/transactionsx', '/login', '/join', '/kit',
     '', 'transactions', '//transactions', '/transactions//1', null, undefined,
   ]) {

@@ -7,6 +7,7 @@ import {
 import { Repeat, Trash2 } from 'lucide-react'
 import { useCategories } from './useData.js'
 import { useSavingsIds } from '../categories/categories.js'
+import { presetCategoryId } from '../categories/categoryMath.js'
 import { PaidFromSavingsSwitch, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
 import { toMinor, minorToInput, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
@@ -48,19 +49,29 @@ const KIND_LABEL = Object.fromEntries(KINDS)
 // An expense asks whether it was "Paid from savings" (0085: still spending,
 // but not against the Net) once the user has a savings category — off for a
 // new entry, as stored when editing (shown while it's on, whatever the
-// categories). On a phone held sideways the fields take the left column and
+// categories). A new entry can open on a category (`initialCategory`, from
+// the link's ?category=): it's picked once the categories load, and only if
+// it's one of the user's own of this kind (presetCategoryId). On a phone held sideways the fields take the left column and
 // the categories a grid of tiles on the right (CategoryGrid).
 export default function TransactionForm({
   kind: initialKind = 'expense', baseCurrency = 'EUR', transaction = null, rule = null, onSaved, onDelete,
+  initialCategory = null,
 }) {
   const isEdit = !!transaction
   const [kind, setKind] = useState(transaction?.kind ?? initialKind) // fixed once saved
-  const { categories } = useCategories(kind)
+  const { categories, loading: categoriesLoading } = useCategories(kind)
   const toast = useToast()
   const [amount, setAmount] = useState(
     transaction ? minorToInput(transaction.amount_minor, transaction.currency) : '')
   const [currency, setCurrency] = useState(transaction?.currency ?? baseCurrency)
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
+  // The link's category, until the categories are known to check it against.
+  const [preset, setPreset] = useState(transaction ? '' : initialCategory ?? '')
+  if (preset && !categoriesLoading) {
+    setPreset('')
+    const id = presetCategoryId(preset, categories, kind)
+    if (id) setCategoryId(id)
+  }
   const [description, setDescription] = useState(transaction?.description ?? '')
   const [spentAt, setSpentAt] = useState(transaction?.spent_at ?? today)
   const [notes, setNotes] = useState(transaction?.notes ?? '')
@@ -113,6 +124,7 @@ export default function TransactionForm({
 
   function pickKind(k) {
     setKind(k)
+    setPreset('')
     setCategoryId('') // categories are per kind
   }
 

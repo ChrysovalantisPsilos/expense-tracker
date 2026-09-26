@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
-import { Routes, Route, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import AppShell from './AppShell.jsx'
 import PasskeyPrompt from '../features/settings/PasskeyPrompt.jsx'
@@ -36,8 +36,9 @@ const TransactionPage = lazy(() => import('../features/transactions/TransactionP
 const Recurring = lazy(() => import('../features/recurring/Recurring.jsx'))
 const RecurringPage = lazy(() => import('../features/recurring/RecurringPage.jsx'))
 const Insights = lazy(() => import('../features/insights/Insights.jsx'))
-const GoalPage = lazy(() => import('../features/insights/GoalPage.jsx'))
 const AccountPage = lazy(() => import('../features/insights/AccountPage.jsx'))
+const Savings = lazy(() => import('../features/savings/Savings.jsx'))
+const GoalPage = lazy(() => import('../features/savings/GoalPage.jsx'))
 const More = lazy(() => import('./More.jsx'))
 const Groups = lazy(() => import('../features/groups/Groups.jsx'))
 const GroupDetail = lazy(() => import('../features/groups/GroupDetail.jsx'))
@@ -93,6 +94,12 @@ function SignedOutFallback() {
 function SignedInLogin() {
   const [params] = useSearchParams()
   return <Navigate to={safeReturnPath(params.get(NEXT_PARAM)) ?? '/'} replace />
+}
+
+// Goals moved from Insights to Savings: an old goal link opens its new page.
+function OldGoalLink() {
+  const { id } = useParams()
+  return <Navigate to={`/savings/goals/${id}`} replace />
 }
 
 // Logged-out invite link -> read-only group preview. Its CTAs stash the token
@@ -167,10 +174,11 @@ function AuthedRoutes() {
           <Route path="recurring/new" element={<RecurringPage />} />
           <Route path="recurring/:id" element={<RecurringPage />} />
           <Route path="insights" element={<Insights />} />
-          <Route path="insights/goals/new" element={<GoalPage />} />
-          <Route path="insights/goals/:id" element={<GoalPage />} />
           <Route path="insights/accounts/new" element={<AccountPage />} />
           <Route path="insights/accounts/:id" element={<AccountPage />} />
+          <Route path="savings" element={<Savings />} />
+          <Route path="savings/goals/new" element={<GoalPage />} />
+          <Route path="savings/goals/:id" element={<GoalPage />} />
           <Route path="more" element={<More />} />
           <Route path="transactions" element={<LedgerPage />} />
           <Route path="transactions/new" element={<TransactionPage />} />
@@ -206,6 +214,9 @@ function AuthedRoutes() {
           <Route path="terms" element={<Terms />} />
           {/* Old name for Settings — keeps bookmarks and old links working. */}
           <Route path="profile" element={<Navigate to="/settings" replace />} />
+          {/* Goals moved from Insights to Savings. */}
+          <Route path="insights/goals/new" element={<Navigate to="/savings/goals/new" replace />} />
+          <Route path="insights/goals/:id" element={<OldGoalLink />} />
           {/* Expenses, Income and Search became one Transactions page. */}
           <Route path="expenses" element={<Navigate to="/transactions?type=expense" replace />} />
           <Route path="income" element={<Navigate to="/transactions?type=income" replace />} />

@@ -148,6 +148,14 @@ export function useOwnedQuery(table, { select = '*', build, deps = [], fetch, ca
   return { rows: data, ...rest }
 }
 
+// A decrypting read RPC's rows (encrypted tables: accounts, goals…); [] when
+// it answers nothing.
+export async function rpcRows(name, args) {
+  const { data, error } = await supabase.rpc(name, args)
+  if (error) throw dbError(error)
+  return data ?? []
+}
+
 export async function removeRow(table, id) {
   const { error } = await supabase.from(table).delete().eq('id', id)
   if (error) throw dbError(error)
