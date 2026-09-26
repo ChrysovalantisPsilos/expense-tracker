@@ -35,7 +35,7 @@ test('netWorth: assets vs liabilities and the net', () => {
     { type: 'liability', balance_minor: 400 },
     { type: 'savings', balance_minor: 200 },
   ]
-  assert.deepEqual(netWorth(accounts), { assets: 1200, liabilities: 400, net: 800 })
+  assert.deepEqual(netWorth(accounts), { assets: 1200, liabilities: 400, net: 800, showPot: false })
 })
 
 test('axisTick: compact labels that stay distinct between neighbouring ticks', () => {

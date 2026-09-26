@@ -3,8 +3,9 @@ import { useOwnedQuery, removeRow, rpcRows } from '../../shared/lib/db.js'
 import { supabase } from '../../shared/lib/supabase.js'
 import { dbError } from '../../shared/lib/errors.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { savingsPotMinor } from '../../shared/lib/savings.js'
+import { savingsPotMinor, savingsTotal } from '../../shared/lib/savings.js'
 import { useTransactions } from '../transactions/useData.js'
+import { useAccounts } from '../insights/insights.js'
 import { useSavingsIds } from '../categories/categories.js'
 import { savingsMoves } from './savingsMath.js'
 
@@ -38,6 +39,21 @@ export function useSavingsMoves() {
     error: income.error ?? fromSavings.error,
     reload,
   }
+}
+
+// ── The savings total ───────────────────────────────────────────────────────
+// useSavingsMoves plus the user's net-worth accounts (live, the same read
+// Insights makes): `total` is savingsTotal — the savings accounts' balances
+// when there are any (0092), else the pot from the entries — and `loading`
+// waits for the accounts too, so the total never flashes from one source to
+// the other.
+export function useSavingsBalance() {
+  const moves = useSavingsMoves()
+  const { accounts, loading, error, reload: reloadAccounts } = useAccounts()
+  const total = useMemo(() => savingsTotal(accounts, moves.pot), [accounts, moves.pot])
+  const { reload: reloadMoves } = moves
+  const reload = useCallback(() => Promise.all([reloadMoves(), reloadAccounts()]), [reloadMoves, reloadAccounts])
+  return { ...moves, total, loading: moves.loading || loading, error: moves.error ?? error, reload }
 }
 
 // ── Savings goals ───────────────────────────────────────────────────────────

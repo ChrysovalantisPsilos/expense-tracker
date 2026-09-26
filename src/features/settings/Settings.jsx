@@ -1,7 +1,7 @@
 import { Box, Stack, Text } from '@chakra-ui/react'
 import {
   BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass, CircleHelp, Mail,
-  Scale, UserCheck, ArrowLeftRight, Sparkles, Activity, Languages,
+  Scale, UserCheck, ArrowLeftRight, Sparkles, Activity, Languages, Wand2,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -55,7 +55,11 @@ export default function Settings() {
             highlight flexShrink={0} />} />
       </NavList>
       {isDemo && <DemoNotice />}
-      <NavList label={t('sections.preferences')}>{rows(PREFERENCES, t)}</NavList>
+      <NavList label={t('sections.preferences')}>
+        {rows(PREFERENCES, t)}
+        <NavRow to="/settings/import-rules" icon={Wand2} label="Import rules"
+          description="Categories your bank imports fill in automatically" />
+      </NavList>
       <NavList label={t('sections.privacy')} data-tour="settings-privacy">{rows(PRIVACY, t)}</NavList>
       <NavList label={t('sections.help')}>
         <NavRow to="/help" icon={CircleHelp} label={t('rows.help.label')} description={t('rows.help.desc')} />

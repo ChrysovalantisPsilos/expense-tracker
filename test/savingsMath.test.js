@@ -13,6 +13,7 @@ import {
   touchesSavings, moveDirection, savingsMoves, savingsFlow, potSeries, seriesLength,
   HISTORY_FILTERS, monthGroups, monthHeading, wholeMoney, changeChip,
   goalProgress, goalSavedAfter, goalPace, goalStatus, goalRingArcs, savingsCategoryOf, savingsStacks,
+  anchoredSeries, totalSourceNote,
 } from '../src/features/savings/savingsMath.js'
 
 const SAV = 'cat-savings'
@@ -219,4 +220,23 @@ test('savingsStacks: every card once, the pot a strip when sideways', () => {
   assert.deepEqual(cards(sideways), cards(upright))
   assert.deepEqual(upright.left, ['pot', 'month'])
   assert.deepEqual(sideways.strip, ['pot'])
+})
+
+test('totalSourceNote: says where the Savings total comes from', () => {
+  assert.equal(totalSourceNote('accounts'), 'From your savings accounts')
+  assert.equal(totalSourceNote('entries'), 'From your savings entries')
+})
+
+test('anchoredSeries: from savings accounts, the line ends on their total; from entries, unchanged', () => {
+  const series = [
+    { key: '2026-07', label: 'Jul', pot: 10000 },
+    { key: '2026-08', label: 'Aug', pot: 25000 },
+    { key: '2026-09', label: 'Sep', pot: 42000 },
+  ]
+  assert.equal(anchoredSeries(series, { source: 'entries', minor: 42000 }), series)
+  const moved = anchoredSeries(series, { source: 'accounts', minor: 1021300 })
+  assert.deepEqual(moved.map((s) => s.pot), [1021300 - 32000, 1021300 - 17000, 1021300])
+  assert.deepEqual(moved.map((s) => s.label), ['Jul', 'Aug', 'Sep'])
+  assert.deepEqual(series.map((s) => s.pot), [10000, 25000, 42000]) // not mutated
+  assert.deepEqual(anchoredSeries([], { source: 'accounts', minor: 5 }), [])
 })

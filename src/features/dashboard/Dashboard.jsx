@@ -12,6 +12,7 @@ import { useTransactions, oldestTransactionDate } from '../transactions/useData.
 import { buildPeriods } from '../transactions/periods.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
 import { useSavingsIds } from '../categories/categories.js'
+import { usePrefetchMyGroups } from '../groups/myGroups.js'
 import { today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring, useRuleRates } from '../recurring/recurring.js'
@@ -71,6 +72,8 @@ export default function Dashboard() {
   // user's savings categories so none flashes with them counted.
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
   const loading = rowsLoading || savingsLoading
+  // Warm the Add form's "Who's it for?" groups once Home has loaded.
+  usePrefetchMyGroups(!loading)
   // Recheck whenever the (live) transaction rows change, so importing older
   // data extends the period dropdown without a reload. Cheap: 1-row query.
   useEffect(() => { oldestTransactionDate().then(setOldest) }, [rows])

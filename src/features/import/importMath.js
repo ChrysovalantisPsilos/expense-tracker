@@ -214,7 +214,26 @@ function cardMerchant(text) {
   if (!time) return null
   const rest = text.slice(time.index + time[0].length)
   const town = CARD_TOWN.exec(rest)?.[1] ?? ''
-  return { segment: rest.replace(CARD_END, ''), town: new Set(tokens(town).map((t) => t.w)) }
+  return { segment: rest.replace(CARD_END, ''), town: new Set(tokens(town).map((t) => t.w)), townText: town }
+}
+
+// What merchantName reads out of a description, for the import's short
+// display labels (kbcLabels.js), upper-cased: `cash` (the cash operation's
+// words), `card` ({ name, segment, town }: a card line's merchant name, the
+// text it came from, and its town), `creditor` (a direct debit's) and `party`
+// (a transfer's other party, as the description names it). Each null when
+// absent.
+export function descriptionParts(description) {
+  const text = plainText(description ?? '')
+  const card = cardMerchant(text)
+  const creditor = CREDITOR.exec(text)?.[1]?.trim()
+  const party = PARTY.exec(text)?.[1]?.replace(PARTY_END, '').trim()
+  return {
+    cash: CASH.exec(text)?.[0] ?? null,
+    card: card ? { name: nameIn(card.segment, new Set(), card.town), segment: card.segment.trim(), town: card.townText.trim() } : null,
+    creditor: creditor || null,
+    party: party || null,
+  }
 }
 
 // Is the transfer's other party (the name after the bank label and BIC, when
@@ -561,9 +580,13 @@ export function rowToDraft(row, mapping, baseCurrency, { signed = false } = {}) 
     if (amountRaw > 0) kind = 'income'
   }
 
+  const cell = cellOf(row, mapping)
   return {
     spent_at, kind, currency, amountRaw,
     amount_minor: toMinor(Math.abs(amountRaw), currency), description,
+    // The raw text columns, for the shorter label kbcLabels.displayDescription
+    // saves; `description` stays the raw text duplicates and rules match on.
+    cells: { counterparty: cell('counterparty'), description: cell('description'), details: cell('details') },
     merchant: rowMerchantName(row, mapping),
     rate: statementRate(row, mapping, amountRaw, currency, baseCurrency),
   }

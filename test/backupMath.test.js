@@ -457,6 +457,23 @@ test('version 2 carries the PayPal.me name; a version 1 file still reads', () =>
   assert.equal(backup.data.payment.paypal, null)
 })
 
+test('version 4 carries savings accounts; a version 3 file with asset/debt accounts still reads', () => {
+  const doc = buildBackup({
+    exportedAt: '2026-09-26T12:00:00.000Z', userId: 'u-source', profile: { base_currency: 'EUR' },
+    accounts: [...ACCOUNTS, { id: 'acc-2', name: 'Savings', type: 'savings', balance_minor: 1021300, currency: 'EUR' }],
+  })
+  assert.equal(doc.version, 4)
+  assert.deepEqual(doc.data.accounts.map((a) => a.type), ['asset', 'savings'])
+  assert.deepEqual(readBackup(JSON.stringify(doc)).backup.data.accounts.map((a) => a.type), ['asset', 'savings'])
+  const v3 = sourceDoc()
+  v3.version = 3
+  assert.deepEqual(readBackup(JSON.stringify(v3)).backup.data.accounts.map((a) => a.type), ['asset'])
+  // An unknown type is still a damaged file.
+  const bad = sourceDoc()
+  bad.data.accounts[0].type = 'pension'
+  assert.throws(() => readBackup(JSON.stringify(bad)), BackupError)
+})
+
 test('payment: a PayPal.me name fills an empty one and is kept when set', () => {
   const { data } = fresh()
   data.payment.paypal = 'AlexK'
@@ -717,9 +734,9 @@ const salaryDoc = (profile = {}) => buildBackup({
 })
 
 test('version 3: the salary shift round-trips as a category key, never a server id', async () => {
-  assert.equal(BACKUP_VERSION, 3)
+  assert.ok(BACKUP_VERSION >= 3)
   const doc = salaryDoc()
-  assert.equal(doc.version, 3)
+  assert.equal(doc.version, BACKUP_VERSION)
   assert.equal(doc.data.profile.salary_shift_from_day, 27)
   assert.equal(doc.data.profile.salary_category, 'c3')
   assert.ok(!JSON.stringify(doc).includes('cat-pay'))

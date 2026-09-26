@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useLocation, useParams } from 'react-router-dom'
-import { FormControl, FormLabel, Input, Select, Stack, Text, useToast } from '@chakra-ui/react'
+import { FormControl, FormHelperText, FormLabel, Input, Select, Stack, Text, useToast } from '@chakra-ui/react'
 import FormPage, { PageForm } from '../../shared/ui/FormPage.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
@@ -74,7 +74,11 @@ function AccountForm({ account, baseCurrency }) {
           <Select value={type} onChange={(e) => setType(e.target.value)}>
             <option value="asset">{t('account.asset')}</option>
             <option value="liability">{t('account.liability')}</option>
+            <option value="savings">Savings (what you’ve saved)</option>
           </Select>
+          {type === 'savings' && (
+            <FormHelperText>Your savings accounts’ balances become your savings total on the Savings page.</FormHelperText>
+          )}
         </FormControl>
         <FormControl isRequired>
           <FormLabel>{t('account.balance', { currency })}</FormLabel>

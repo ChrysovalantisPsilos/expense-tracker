@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
   Stack, HStack, Text, Button, Box, Divider, SimpleGrid, useToast,
 } from '@chakra-ui/react'
@@ -31,7 +31,7 @@ import { spendRows } from '../../shared/lib/spread.js'
 import { useAccounts, deleteAccount } from './insights.js'
 import { useSavingsMoves } from '../savings/savings.js'
 import {
-  buildTrend, hasTrendData, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
+  buildTrend, hasTrendData, spendDelta, netWorth, accountSections, axisTick, spendingShares, foreignSpending,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
@@ -287,7 +287,12 @@ function NetWorthCard({ baseCurrency }) {
   const navigate = useNavigate()
   const t = useT('insights')
 
-  const { assets, liabilities, net } = useMemo(() => netWorth(accounts, savings), [accounts, savings])
+  const { assets, liabilities, net, showPot } = useMemo(() => netWorth(accounts, savings), [accounts, savings])
+  const sections = useMemo(() => accountSections(accounts), [accounts])
+  const accountRow = (acc) => <AccountRow key={acc.id} account={acc} remove={remove} />
+  const seeSavings = (
+    <Text as="span" color="accent.fg" fontWeight="600" whiteSpace="nowrap">{t('netWorth.seeSavings')}</Text>
+  )
   const loading = accountsLoading || savingsLoading
 
   async function remove(acc) {
@@ -316,35 +321,38 @@ function NetWorthCard({ baseCurrency }) {
               {t('netWorth.empty')}
             </Text>
           ) : (
-            <Box>
-              <SectionLabel mb={1}>{t('netWorth.accounts')}</SectionLabel>
-              {savings !== 0 && (
-                <ItemRow icon={PiggyBank} title={t('netWorth.savings')} onClick={() => navigate('/savings')}
-                  meta={
-                    <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">
-                      {savings < 0 && t('netWorth.overdrawn')}
-                      <Text as="span" color="accent.fg" fontWeight="600" whiteSpace="nowrap">{t('netWorth.seeSavings')}</Text>
-                    </Text>
-                  }
-                  amount={`${savings < 0 ? '−' : ''}${formatMoney(Math.abs(savings), baseCurrency)}`}
-                  amountTone={savings < 0 ? 'negative' : 'default'}
-                  // No actions of its own; the empty slot lines its amount up with the accounts'.
-                  actions={[]} actionSlots={2} />
+            <Stack spacing={3}>
+              {sections.savings.length > 0 && (
+                // Savings accounts are the savings (0092): listed under "Savings",
+                // with the link to the Savings page, instead of the pot line.
+                <Box>
+                  <HStack justify="space-between" mb={1}>
+                    <SectionLabel>{t('netWorth.savings')}</SectionLabel>
+                    <Text as={RouterLink} to="/savings" fontSize="xs">{seeSavings}</Text>
+                  </HStack>
+                  {sections.savings.map(accountRow)}
+                </Box>
               )}
-              {accounts.map((acc) => {
-                const debt = acc.type === 'liability'
-                return (
-                  <ItemRow key={acc.id} icon={debt ? CreditCard : Landmark} title={acc.name}
-                    meta={t(debt ? 'netWorth.debt' : 'netWorth.asset')}
-                    amount={`${debt ? '−' : ''}${formatMoney(acc.balance_minor, acc.currency)}`}
-                    amountTone={debt ? 'negative' : 'default'}
-                    actions={[
-                      { label: t('actions.edit'), icon: Pencil, onClick: () => navigate(`/insights/accounts/${acc.id}`, { state: { account: acc } }) },
-                      { label: t('actions.delete'), icon: Trash2, onClick: () => remove(acc), danger: true },
-                    ]} />
-                )
-              })}
-            </Box>
+              {(showPot || sections.other.length > 0) && (
+                <Box>
+                  <SectionLabel mb={1}>{t('netWorth.accounts')}</SectionLabel>
+                  {showPot && (
+                    <ItemRow icon={PiggyBank} title={t('netWorth.savings')} onClick={() => navigate('/savings')}
+                      meta={
+                        <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">
+                          {savings < 0 && t('netWorth.overdrawn')}
+                          {seeSavings}
+                        </Text>
+                      }
+                      amount={`${savings < 0 ? '−' : ''}${formatMoney(Math.abs(savings), baseCurrency)}`}
+                      amountTone={savings < 0 ? 'negative' : 'default'}
+                      // No actions of its own; the empty slot lines its amount up with the accounts'.
+                      actions={[]} actionSlots={2} />
+                  )}
+                  {sections.other.map(accountRow)}
+                </Box>
+              )}
+            </Stack>
           )}
 
           <Divider borderColor="border.default" />
@@ -353,5 +361,24 @@ function NetWorthCard({ baseCurrency }) {
         </Stack>
       )}
     </Panel>
+  )
+}
+
+// One net-worth account: a debt (minus, red), a savings account or an asset,
+// with Edit and Delete.
+function AccountRow({ account: acc, remove }) {
+  const navigate = useNavigate()
+  const t = useT('insights')
+  const debt = acc.type === 'liability'
+  const saving = acc.type === 'savings'
+  return (
+    <ItemRow icon={debt ? CreditCard : saving ? PiggyBank : Landmark} title={acc.name}
+      meta={saving ? 'Savings account' : t(debt ? 'netWorth.debt' : 'netWorth.asset')}
+      amount={`${debt ? '−' : ''}${formatMoney(acc.balance_minor, acc.currency)}`}
+      amountTone={debt ? 'negative' : 'default'}
+      actions={[
+        { label: t('actions.edit'), icon: Pencil, onClick: () => navigate(`/insights/accounts/${acc.id}`, { state: { account: acc } }) },
+        { label: t('actions.delete'), icon: Trash2, onClick: () => remove(acc), danger: true },
+      ]} />
   )
 }

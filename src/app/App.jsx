@@ -30,6 +30,7 @@ const ForgotPassword = lazy(() => import('../features/auth/ForgotPassword.jsx'))
 const ResetPassword = lazy(() => import('../features/auth/ResetPassword.jsx'))
 const Dashboard = lazy(() => import('../features/dashboard/Dashboard.jsx'))
 const ImportExpenses = lazy(() => import('../features/import/ImportExpenses.jsx'))
+const ImportRules = lazy(() => import('../features/import/ImportRules.jsx'))
 const Budgets = lazy(() => import('../features/budgets/Budgets.jsx'))
 const LedgerPage = lazy(() => import('../features/transactions/LedgerPage.jsx'))
 const TransactionPage = lazy(() => import('../features/transactions/TransactionPage.jsx'))
@@ -204,6 +205,7 @@ function AuthedRoutes() {
           <Route path="settings/spending" element={<SpendingSettings />} />
           <Route path="settings/categories" element={<Categories />} />
           <Route path="settings/categories/new" element={<NewCategoryPage />} />
+          <Route path="settings/import-rules" element={<ImportRules />} />
           <Route path="settings/security" element={<SecuritySettings />} />
           <Route path="settings/data" element={<YourData />} />
           <Route path="settings/data/export" element={<ExportBackupPage />} />

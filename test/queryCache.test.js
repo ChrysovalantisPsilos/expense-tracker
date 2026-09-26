@@ -54,3 +54,46 @@ test('queryCacheKey: differs by name, user and every input', () => {
   assert.notEqual(base, queryCacheKey('transactions', ['u1', 'transactions', '*', 'income', '2026-09-01']))
   assert.notEqual(base, queryCacheKey('transactions', ['u1', 'transactions', '*', 'expense', '2026-10-01']))
 })
+
+// Home warms the Add form's groups (myGroups' usePrefetchMyGroups).
+test('prefetch: one read fills an empty key; repeats while in flight or answered read nothing', async () => {
+  const c = createQueryCache()
+  let reads = 0
+  const read = async () => { reads++; return [{ id: 'g1' }] }
+  const first = c.prefetch('my-groups', read)
+  const again = c.prefetch('my-groups', read) // in flight: the same promise, no second read
+  assert.equal(again, first)
+  await first
+  assert.equal(reads, 1)
+  assert.deepEqual(c.get('my-groups').data, [{ id: 'g1' }])
+  await c.prefetch('my-groups', read) // answered: nothing
+  assert.equal(reads, 1)
+  // No groups: the empty answer is cached too (the chips' row reads it at once).
+  await c.prefetch('none', async () => [])
+  assert.deepEqual(c.get('none'), { data: [] })
+})
+
+test('prefetch: a fresher answer, a failure or a sign-out wins over it', async () => {
+  const c = createQueryCache()
+  let release
+  const gate = () => new Promise((resolve) => { release = resolve })
+  const slow = c.prefetch('k', gate)
+  await Promise.resolve() // the read starts on the next tick
+  c.set('k', ['live']) // the page's own query answered first
+  release(['prefetched'])
+  await slow
+  assert.deepEqual(c.get('k').data, ['live'])
+
+  await c.prefetch('bad', async () => { throw new Error('offline') })
+  assert.equal(c.get('bad'), undefined)
+  let reads = 0
+  await c.prefetch('bad', async () => { reads++; return [1] }) // a later try still reads
+  assert.equal(reads, 1)
+
+  const late = c.prefetch('old', gate)
+  await Promise.resolve()
+  c.clear() // signed out mid-read
+  release(['someone else'])
+  await late
+  assert.equal(c.get('old'), undefined)
+})
