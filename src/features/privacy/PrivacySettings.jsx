@@ -16,10 +16,12 @@ import { describeConsent } from './legal.js'
 import { PRIVACY_EMAIL } from '../../shared/lib/contact.js'
 import { downloadMyData, listMyConsents } from './privacyData.js'
 import RingLoader, { RingSpinner } from '../../shared/ui/RingLoader.jsx'
+import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Settings → Privacy: each GDPR right with the way to use it here, the
 // optional-message switches (consent), and the consent history.
 export default function PrivacySettings() {
+  const t = useT('privacy')
   // The shared demo login (0090) can't be deleted and sends no requests.
   const { isDemo } = useProfile()
   const [consents, setConsents] = useState(null)
@@ -29,93 +31,91 @@ export default function PrivacySettings() {
   useEffect(loadConsents, [loadConsents])
 
   return (
-    <SettingsPage title="Privacy" description="Your data rights, consents and requests">
+    <SettingsPage title={t('settings.title')} description={t('settings.description')}>
       <Text fontSize="sm" color="text.muted">
-        You have these rights under the GDPR. Use them here, or email{' '}
-        <Link href={`mailto:${PRIVACY_EMAIL}`} variant="inline">{PRIVACY_EMAIL}</Link> — we answer
-        within one month. Details are in the{' '}
-        <Link as={RouterLink} to="/privacy" variant="inline">Privacy Notice</Link> and the{' '}
-        <Link as={RouterLink} to="/terms" variant="inline">Terms of Use</Link>.
+        <Trans t={t} k="settings.intro" components={{
+          email: <Link href={`mailto:${PRIVACY_EMAIL}`} variant="inline">{PRIVACY_EMAIL}</Link>,
+          privacy: <Link as={RouterLink} to="/privacy" variant="inline" />,
+          terms: <Link as={RouterLink} to="/terms" variant="inline" />,
+        }} />
       </Text>
 
       <DownloadRight />
 
-      <Right icon={PencilLine} title="Correct your data" article="Art. 16"
-        text="Change your name, picture, currency and payment details, or edit any expense, income, budget or recurring payment where it’s shown. For anything else, such as your email address, send a request below.">
+      <Right icon={PencilLine} id="correct">
         <HStack spacing={2} flexWrap="wrap">
-          <Button as={RouterLink} to="/settings/account" size="sm" variant="outline">Edit profile</Button>
-          <Button as={RouterLink} to="/transactions" size="sm" variant="outline">Your transactions</Button>
+          <Button as={RouterLink} to="/settings/account" size="sm" variant="outline">{t('settings.correct.profile')}</Button>
+          <Button as={RouterLink} to="/transactions" size="sm" variant="outline">{t('settings.correct.transactions')}</Button>
         </HStack>
       </Right>
 
-      <Right icon={Trash2} title="Delete your account" article="Art. 17"
-        text="Permanently deletes your account and personal data. Group expenses you were part of stay for the other members, shown as “Former member” with no link to you. The delete screen lists exactly what goes and what stays.">
+      <Right icon={Trash2} id="delete">
         {!isDemo && (
           <Button as={RouterLink} to="/settings/security" size="sm" variant="outline" colorScheme="red">
-            Go to Delete account
+            {t('settings.delete.go')}
           </Button>
         )}
       </Right>
 
       <RequestRight isDemo={isDemo} />
 
-      <NotificationPrefs title="Withdraw or give consent" onChanged={loadConsents} />
+      <NotificationPrefs title={t('settings.consent')} onChanged={loadConsents} />
 
-      <Right icon={UserCheck} title="Automated decisions" article="Art. 22"
-        text="We make no decisions about you based solely on automated processing with legal or similarly significant effects. The one automatic action is deleting accounts unused for 2 years — only after an email warning, and logging in stops it." />
+      <Right icon={UserCheck} id="automated" />
 
-      <Right icon={Scale} title="Complain to a supervisory authority" article="Art. 77"
-        text="Belgian Data Protection Authority (APD/GBA), Rue de la Presse 35 / Drukpersstraat 35, 1000 Brussels · contact@apd-gba.be · +32 2 274 48 00 · www.dataprotectionauthority.be — or the authority where you live or work." />
+      <Right icon={Scale} id="complain" />
 
       <ConsentHistory consents={consents} />
     </SettingsPage>
   )
 }
 
-function Right({ icon, title, article, text, children }) {
+// One right: its title, article and text are privacy:settings.<id>.title /
+// .text and settings.articles.<id>.
+function Right({ icon, id, children }) {
+  const t = useT('privacy')
   return (
-    <Panel title={title} icon={icon} subtitle={article}>
-      <Text fontSize="sm" color="text.muted" mb={children ? 4 : 0}>{text}</Text>
+    <Panel title={t(`settings.${id}.title`)} icon={icon} subtitle={t(`settings.articles.${id}`)}>
+      <Text fontSize="sm" color="text.muted" mb={children ? 4 : 0}>{t(`settings.${id}.text`)}</Text>
       {children}
     </Panel>
   )
 }
 
 function DownloadRight() {
+  const t = useT('privacy')
   const toast = useToast()
   const { busy, run } = useAsyncSubmit()
   const download = () => run(async () => {
     await downloadMyData()
-    toast({ title: 'Your data was downloaded', status: 'success',
-      description: 'The file isn’t password-protected — keep it somewhere safe.' })
-  }, { errorTitle: 'Couldn’t download your data' })
+    toast({ title: t('gate.downloaded'), status: 'success', description: t('settings.download.unprotected') })
+  }, { errorTitle: t('gate.downloadFailed') })
   return (
-    <Right icon={Download} title="Download your data" article="Art. 15 and 20"
-      text="One JSON file with everything we hold about you: account and profile, payment details, consents, notifications, devices for push (service only), categories, rules, accounts, budgets, goals, recurring payments, transactions, and your part of your groups. Nothing about other people beyond what you already see in the app.">
+    <Right icon={Download} id="download">
       <HStack spacing={2} flexWrap="wrap">
         <Button leftIcon={<Download size={16} />} size="sm" isLoading={busy} onClick={download}
-          loadingText="Gathering your data…" spinner={<RingSpinner />}>
-          Download my data
+          loadingText={t('gate.gathering')} spinner={<RingSpinner />}>
+          {t('settings.download.button')}
         </Button>
-        <Button as={RouterLink} to="/settings/data" size="sm" variant="ghost">Backup and restore</Button>
+        <Button as={RouterLink} to="/settings/data" size="sm" variant="ghost">{t('settings.download.backup')}</Button>
       </HStack>
     </Right>
   )
 }
 
 function RequestRight({ isDemo }) {
+  const t = useT('privacy')
   return (
-    <Right icon={ShieldOff} title="Restrict or object, or another request" article="Art. 18 and 21"
-      text="Ask us to limit how we use your data, object to a use based on our legitimate interest, or make any other privacy request. It goes to our privacy inbox, and we reply to your account’s email address.">
+    <Right icon={ShieldOff} id="request">
       <HStack spacing={2} flexWrap="wrap">
         {!isDemo && (
           <Button as={RouterLink} to="/settings/privacy/request" leftIcon={<Mail size={16} />} size="sm"
             variant="outline">
-            Send a request
+            {t('settings.request.send')}
           </Button>
         )}
         <Button as="a" href={`mailto:${PRIVACY_EMAIL}`} size="sm" variant="ghost" leftIcon={<FileText size={16} />}>
-          Email instead
+          {t('settings.request.email')}
         </Button>
       </HStack>
     </Right>
@@ -123,12 +123,13 @@ function RequestRight({ isDemo }) {
 }
 
 function ConsentHistory({ consents }) {
+  const t = useT('privacy')
   return (
-    <Panel title="Your consent history" icon={History}>
+    <Panel title={t('settings.history.title')} icon={History}>
       {consents === null ? (
         <RingLoader compact />
       ) : consents.length === 0 ? (
-        <Text fontSize="sm" color="text.muted">Nothing recorded yet.</Text>
+        <Text fontSize="sm" color="text.muted">{t('settings.history.empty')}</Text>
       ) : (
         <Stack spacing={3}>
           {consents.map((c) => (

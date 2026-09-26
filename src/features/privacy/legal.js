@@ -10,11 +10,12 @@
 //     public.inactive_accounts() (0073), and INACTIVITY in
 //     supabase/functions/_shared/inactivity.ts.
 import { CONSENT_LABELS, LEGAL_CHANGES, LEGAL_VERSIONS } from '../../../supabase/functions/_shared/legal.ts'
-import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { MESSAGE_MAX, validatePrivacyRequest } from '../../../supabase/functions/_shared/privacyRequest.ts'
+import { DEFAULT_LANGUAGE } from '../../shared/lib/i18n/language.js'
+import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 
-export {
-  REQUEST_KINDS, MESSAGE_MAX, validatePrivacyRequest,
-} from '../../../supabase/functions/_shared/privacyRequest.ts'
+export { REQUEST_KINDS, MESSAGE_MAX, validatePrivacyRequest }
+  from '../../../supabase/functions/_shared/privacyRequest.ts'
 export { LEGAL_VERSIONS, LEGAL_CHANGES } from '../../../supabase/functions/_shared/legal.ts'
 export { DELETION_SCOPE } from '../../../supabase/functions/_shared/accountDeletion.ts'
 
@@ -30,11 +31,12 @@ export const RETENTION = {
   inactiveNoticeDays: 28,
 }
 
-// "23 September 2026" for an ISO date (the date itself, whatever the zone).
-export function formatVersion(iso) {
+// "23 September 2026" for an ISO date (the date itself, whatever the zone),
+// in the app's language unless `locale` says otherwise.
+export function formatVersion(iso, locale = intlLocale('en-GB')) {
   const [y, m, d] = String(iso).split('-').map(Number)
   if (!y || !m || !d) return String(iso ?? '')
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(intlLocale('en-GB'),
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(locale,
     { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 
@@ -51,24 +53,43 @@ export function signupConsentMetadata() {
   return { accepted_privacy: LEGAL_VERSIONS.privacy, accepted_terms: LEGAL_VERSIONS.terms }
 }
 
-const SOURCE_LABELS = {
-  signup: 'when you signed up',
-  prompt: 'after an update',
-  settings: 'in Settings',
+const SOURCES = ['signup', 'prompt', 'settings']
+const has = (list, key) => Object.hasOwn(list, key)
+
+// One consent-history row as a sentence, in the app's language: "Accepted
+// the Privacy Notice (version 23 September 2026) when you signed up",
+// "Weekly summary turned off in Settings". The purposes are CONSENT_LABELS'
+// (privacy:consent.purposes); an unknown one shows as it is.
+export function describeConsent(row) {
+  const purpose = row?.purpose
+  const what = has(CONSENT_LABELS, purpose)
+    ? t(`privacy:consent.purposes.${purpose}`)
+    : String(purpose ?? t('privacy:consent.unknown'))
+  const where = SOURCES.includes(row?.source) ? ` ${t(`privacy:consent.sources.${row.source}`)}` : ''
+  if (purpose === 'privacy_notice' || purpose === 'terms') {
+    const version = row.version ? ` (${t('privacy:consent.version', { date: formatVersion(row.version) })})` : ''
+    return t(row.granted ? 'privacy:consent.accepted' : 'privacy:consent.declined', { document: what, version, where })
+  }
+  return t(row?.granted ? 'privacy:consent.turnedOn' : 'privacy:consent.turnedOff', { what, where })
 }
 
-// One consent-history row as a sentence: "Accepted the Privacy Notice
-// (version 23 September 2026) when you signed up", "Weekly summary turned off
-// in Settings".
-export function describeConsent(row) {
-  const what = CONSENT_LABELS[row?.purpose] ?? String(row?.purpose ?? 'Unknown')
-  const where = SOURCE_LABELS[row?.source] ?? ''
-  const tail = where ? ` ${where}` : ''
-  if (row?.purpose === 'privacy_notice' || row?.purpose === 'terms') {
-    const v = row.version ? ` (version ${formatVersion(row.version)})` : ''
-    return `${row.granted ? 'Accepted' : 'Declined'} the ${what}${v}${tail}`
+// The key (privacy:request.errors.<key>) for a validatePrivacyRequest error,
+// which is English (the edge function shares it): found by asking the
+// validator for each of its errors, so the two can't drift. null if unknown.
+export function requestErrorKey(error) {
+  const errors = {
+    kind: validatePrivacyRequest({}).error,
+    short: validatePrivacyRequest({ kind: 'other', message: '' }).error,
+    long: validatePrivacyRequest({ kind: 'other', message: 'x'.repeat(MESSAGE_MAX + 1) }).error,
   }
-  return `${what} turned ${row?.granted ? 'on' : 'off'}${tail}`
+  return Object.keys(errors).find((k) => errors[k] === error) ?? null
+}
+
+// The language a legal document is shown in: the English original when the
+// address asks for it (?lang=en, where the translation notice links), else
+// the app's. English is the version that prevails.
+export function legalLanguage(asked, appLang) {
+  return asked === DEFAULT_LANGUAGE ? asked : appLang
 }
 
 // The date by which a request received at `d` must be answered: one month
