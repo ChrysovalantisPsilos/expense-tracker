@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   passkeyPrompted: 'budge:passkeyPrompted', // sessionStorage — passkey prompt shown this session
   returnPath: 'budge:returnPath',      // localStorage — page to open after an off-page sign-in
   appearance: 'budge-appearance',      // localStorage — Light/Dark/System (also read by public/theme-boot.js)
+  language: 'budge:language',          // localStorage — Follow my device / English / Ελληνικά
   paymentAskDismissed: 'budge:paymentAsk', // localStorage — "Not now" to Settle up's payment-details ask
   notifPrompted: 'budge:notifPrompted', // localStorage — notification prompt answered ("Not now" included)
   linkingGoogle: 'budge:linkingGoogle', // sessionStorage — a Google link attempt is in flight

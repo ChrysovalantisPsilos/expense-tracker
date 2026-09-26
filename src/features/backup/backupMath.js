@@ -24,7 +24,7 @@
 // upgradeCategories). Names the server caps at 60 characters (display
 // name, category names, group names) are trimmed to fit instead of failing.
 // Deliberately NOT in a backup: UI state (whats_new_seen, tour_done,
-// passkey_reminder_off, onboarded_at), the weekly-digest opt-in (a consent,
+// passkey_reminder_off, onboarded_at, language), the weekly-digest opt-in (a consent,
 // given in person), transactions.spread_months and recurring_rule_id (derived
 // by the server from a rule link, which a restore doesn't recreate), and the
 // import wizard's saved column mappings (this device's storage, not the

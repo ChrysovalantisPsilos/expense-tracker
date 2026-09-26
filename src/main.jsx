@@ -20,6 +20,8 @@ import theme from './app/theme.js'
 import { AuthProvider } from './shared/auth/AuthProvider.jsx'
 import { ProfileProvider } from './shared/lib/ProfileProvider.jsx'
 import { AppearanceProvider } from './shared/lib/appearance.jsx'
+import { LanguageBoundary, LanguageProvider, bootLanguage } from './shared/lib/i18n/I18nProvider.jsx'
+import ProfileLanguage from './shared/lib/i18n/ProfileLanguage.jsx'
 import AutoUpdate from './app/AutoUpdate.jsx'
 import { markEnvironment } from './shared/lib/environment.js'
 import { adoptBootLoader } from './shared/ui/useLoaderReveal.js'
@@ -34,10 +36,14 @@ markEnvironment(document)
 // a failure of Chakra itself, with a plain unthemed fallback.
 // index.html paints a loading screen into #root before this script arrives;
 // React replaces it, and the app's first loader carries it on seamlessly.
+// The first render waits for the language's strings (Greek is its own chunk),
+// so a Greek device never flashes English; the loading screen covers it.
+// LanguageBoundary remounts the app when the language changes;
+// ProfileLanguage (outside it) applies the profile's language once signed in.
 const root = document.getElementById('root')
 adoptBootLoader(root)
 
-ReactDOM.createRoot(root).render(
+bootLanguage().finally(() => ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <ErrorBoundary fallback={<RootFallback />}>
       <ColorModeScript initialColorMode={theme.config.initialColorMode} />
@@ -45,11 +51,16 @@ ReactDOM.createRoot(root).render(
         <ErrorBoundary>
           <BrowserRouter>
             <AppearanceProvider>
-              <AuthProvider>
-                <ProfileProvider>
-                  <App />
-                </ProfileProvider>
-              </AuthProvider>
+              <LanguageProvider>
+                <AuthProvider>
+                  <ProfileProvider>
+                    <ProfileLanguage />
+                    <LanguageBoundary>
+                      <App />
+                    </LanguageBoundary>
+                  </ProfileProvider>
+                </AuthProvider>
+              </LanguageProvider>
             </AppearanceProvider>
           </BrowserRouter>
         </ErrorBoundary>
@@ -57,4 +68,4 @@ ReactDOM.createRoot(root).render(
       </ChakraProvider>
     </ErrorBoundary>
   </React.StrictMode>,
-)
+))
