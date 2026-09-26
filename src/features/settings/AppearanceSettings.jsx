@@ -3,21 +3,23 @@ import { Sun, Moon, Monitor } from 'lucide-react'
 import { useAppearance } from '../../shared/lib/appearance.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsPage from './SettingsPage.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
+// `value` is also the option's key under appearance.* in the settings namespace.
 const APPEARANCE_OPTIONS = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Monitor },
+  { value: 'light', icon: Sun },
+  { value: 'dark', icon: Moon },
+  { value: 'system', icon: Monitor },
 ]
 
 export default function AppearanceSettings() {
+  const t = useT('settings')
   const { pref, setPref } = useAppearance()
   return (
-    <SettingsPage title="Appearance"
-      description="Choose your theme. “System” follows your device and switches automatically.">
+    <SettingsPage title={t('appearance.title')} description={t('appearance.description')}>
       <Panel>
         <SimpleGrid columns={3} spacing={{ base: 2, md: 3 }}>
-          {APPEARANCE_OPTIONS.map(({ value, label, icon: Icon }) => {
+          {APPEARANCE_OPTIONS.map(({ value, icon: Icon }) => {
             const active = pref === value
             return (
               <Button key={value} onClick={() => setPref(value)} variant="outline"
@@ -29,7 +31,7 @@ export default function AppearanceSettings() {
                 bg={active ? 'bg.subtle' : 'transparent'}
                 _hover={{ bg: 'bg.subtle' }}>
                 <Icon size={24} />
-                <Text fontSize="sm" fontWeight="600">{label}</Text>
+                <Text fontSize="sm" fontWeight="600">{t(`appearance.${value}`)}</Text>
               </Button>
             )
           })}

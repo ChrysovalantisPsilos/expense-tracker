@@ -14,7 +14,7 @@ import HobbyNotice from '../../shared/ui/HobbyNotice.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { STATUS_URL } from '../../shared/lib/contact.js'
 import { CURRENT_ENV, shareOrigin } from '../../shared/lib/environment.js'
 import { FAQ_SECTIONS } from './faqContent.js'
@@ -88,6 +88,7 @@ function FaqSection({ section, open, onOpenChange, onCopyLink }) {
 // Search box, result count, the sections, and the disclaimer. Owns which
 // questions are open and follows the URL's #anchor.
 function FaqBody() {
+  const t = useT()
   const { hash } = useLocation()
   const navigate = useNavigate()
   const toast = useToast()
@@ -160,7 +161,7 @@ function FaqBody() {
       )}
 
       <Text fontSize="sm" color="text.muted" textAlign="center" pt={2}>
-        {DISCLAIMER} See also the{' '}
+        {t('hobby.disclaimer')} See also the{' '}
         <Link as={RouterLink} to="/privacy" variant="inline" fontWeight="600">Privacy page</Link>.
       </Text>
       <Text fontSize="sm" color="text.muted" textAlign="center">

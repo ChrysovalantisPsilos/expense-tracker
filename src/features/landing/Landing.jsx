@@ -10,7 +10,6 @@ import BrandGlow from '../../shared/ui/BrandGlow.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import ThemeToggle from '../../shared/ui/ThemeToggle.jsx'
-import { DISCLAIMER, HOBBY_BADGE, HOBBY_NOTICE_TITLE } from '../../shared/lib/disclaimer.js'
 import TripSplitMock from './TripSplitMock.jsx'
 import BudgetsMock from './BudgetsMock.jsx'
 import InsightsMock from './InsightsMock.jsx'
@@ -19,66 +18,55 @@ import CurrencyMock from './CurrencyMock.jsx'
 import SectionHeading from './SectionHeading.jsx'
 import HowItWorks from './HowItWorks.jsx'
 import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
+import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
+// The words of each are showcase.<id>.eyebrow / .title / .body (landing namespace).
 const SHOWCASE = [
-  {
-    eyebrow: 'Budgets & tracking',
-    title: 'Know where every euro goes',
-    body: 'Log expenses and income and set a monthly budget for each category — it carries over to the next month. Bars turn amber at 80% and red when you’re over, and Budgeer notifies you when you cross either line.',
-    Mock: BudgetsMock,
-  },
-  {
-    eyebrow: 'Insights',
-    title: 'Your spending, at a glance',
-    body: 'See what you spend by category and your last six months side by side, with the change from last month.',
-    Mock: InsightsMock,
-  },
-  {
-    eyebrow: 'Multi-currency',
-    title: 'Spend abroad, track at home',
-    body: 'Add expenses in the currency you paid in, on your own or in a group. Budgeer converts them at the European Central Bank rate for that day, and each one keeps its rate, so past totals never shift.',
-    Mock: CurrencyMock,
-  },
+  { id: 'budgets', Mock: BudgetsMock },
+  { id: 'insights', Mock: InsightsMock },
+  { id: 'currency', Mock: CurrencyMock },
 ]
 
-// Real features the showcase doesn't have room for.
+// Real features the showcase doesn't have room for (also.<id>).
 const ALSO_INCLUDED = [
-  { icon: Landmark, label: 'Pay back by IBAN, Revolut or PayPal' },
-  { icon: Percent, label: 'Split by amount, percent or shares' },
-  { icon: ScanLine, label: 'Receipt scan on your device' },
-  { icon: FileSpreadsheet, label: 'Import from CSV or Excel' },
-  { icon: Repeat, label: 'Recurring payments' },
-  { icon: PiggyBank, label: 'Savings goals and net worth' },
-  { icon: Download, label: 'PDF and Excel statements' },
-  { icon: ArchiveRestore, label: 'Encrypted backups' },
-  { icon: LockKeyhole, label: 'Encrypted at rest' },
+  { icon: Landmark, id: 'payBack' },
+  { icon: Percent, id: 'splitWays' },
+  { icon: ScanLine, id: 'receipts' },
+  { icon: FileSpreadsheet, id: 'import' },
+  { icon: Repeat, id: 'recurring' },
+  { icon: PiggyBank, id: 'savings' },
+  { icon: Download, id: 'statements' },
+  { icon: ArchiveRestore, id: 'backups' },
+  { icon: LockKeyhole, id: 'atRest' },
 ]
 
 // A quiet pill above the headline saying what Budgeer is, linking to the
 // "Who runs Budgeer?" answer in Help & FAQ.
 function HobbyBadge() {
+  const t = useT()
   return (
     <Link as={RouterLink} to="/help#who-runs-budgeer" alignSelf="flex-start" display="inline-flex"
       alignItems="center" gap={2} px={3} py={1.5} borderRadius="full" fontSize="sm" fontWeight="600"
       color="text.primary" bg="bg.surface" borderWidth="1px" borderColor="border.default" boxShadow="sm"
       _hover={{ textDecoration: 'none', borderColor: 'brand.300' }}>
       <Box as="span" color="accent.fg"><Heart size={14} fill="currentColor" /></Box>
-      {HOBBY_BADGE}
+      {t('hobby.badge')}
       <Box as="span" color="text.muted"><ArrowRight size={14} /></Box>
     </Link>
   )
 }
 
 // What Budgeer is and isn't, in plain words. Every line here must match the
-// Privacy Notice, the Terms and Help & FAQ.
+// Privacy Notice, the Terms and Help & FAQ (honest.<id>.title / .body).
 const HONEST_POINTS = [
-  { icon: Heart, title: 'Free, with no ads', body: 'Every feature is free. No ads, no analytics, no cookies, and your data is never sold.' },
-  { icon: Landmark, title: 'Not a bank or an adviser', body: 'Budgeer never holds or moves money, and it doesn’t give financial, tax or legal advice.' },
-  { icon: MapPin, title: 'Stored in the EU', body: 'Our database is hosted in the EU, in Paris, France.' },
-  { icon: Wrench, title: 'Looked after with care', body: 'It can still have bugs or downtime, so check important figures against your bank.' },
+  { icon: Heart, id: 'free' },
+  { icon: Landmark, id: 'notBank' },
+  { icon: MapPin, id: 'eu' },
+  { icon: Wrench, id: 'care' },
 ]
 
 function Hero({ onLogin, onSignup }) {
+  const t = useT('landing')
   return (
     <Box as="section" position="relative" overflow="hidden">
       <BrandGlow top="-10%" right={{ base: '-40%', lg: '-5%' }} w={{ base: '120%', lg: '60%' }} h="120%" />
@@ -88,17 +76,15 @@ function Hero({ onLogin, onSignup }) {
           <Stack spacing={6} flex="1.15" maxW={{ base: '2xl', lg: 'none' }}>
             <HobbyBadge />
             <Heading as="h1" fontSize={{ base: '4xl', md: '5xl', xl: '6xl' }} letterSpacing="-0.03em" lineHeight="1.05">
-              Track your money.<br />
-              <Text as="span" color="accent.fg">Split with friends.</Text>
+              <Trans t={t} k="hero.title"
+                components={{ br: <br />, accent: <Text as="span" color="accent.fg" /> }} />
             </Heading>
             <Text color="text.muted" fontSize={{ base: 'lg', md: 'xl' }} maxW="lg">
-              A free expense tracker and bill splitter. Log spending and income, set
-              budgets, split trips and flats with friends, and pay them back by
-              IBAN, Revolut or PayPal in a tap. No limits, no ads.
+              {t('hero.lead')}
             </Text>
             <Stack direction={{ base: 'column', sm: 'row' }} spacing={3} pt={2}>
-              <Button size="lg" onClick={onSignup}>Get started — it’s free</Button>
-              <Button size="lg" variant="ghost" onClick={onLogin}>I already have an account</Button>
+              <Button size="lg" onClick={onSignup}>{t('hero.start')}</Button>
+              <Button size="lg" variant="ghost" onClick={onLogin}>{t('hero.haveAccount')}</Button>
             </Stack>
           </Stack>
           <Box flex="1" w="full">
@@ -111,15 +97,18 @@ function Hero({ onLogin, onSignup }) {
 }
 
 function Showcase() {
+  const t = useT('landing')
   return (
     <Box as="section">
       <Container maxW="6xl" px={{ base: 4, md: 6 }} py={{ base: 14, md: 24 }}>
         <Stack spacing={{ base: 16, md: 24 }}>
-          {SHOWCASE.map(({ eyebrow, title, body, Mock }, i) => (
-            <Flex key={eyebrow} align="center" gap={{ base: 8, md: 12, lg: 16 }}
+          {SHOWCASE.map(({ id, Mock }, i) => (
+            <Flex key={id} align="center" gap={{ base: 8, md: 12, lg: 16 }}
               direction={{ base: 'column', md: i % 2 ? 'row-reverse' : 'row' }}>
               <Box flex="1" w="full">
-                <SectionHeading eyebrow={eyebrow} title={title}>{body}</SectionHeading>
+                <SectionHeading eyebrow={t(`showcase.${id}.eyebrow`)} title={t(`showcase.${id}.title`)}>
+                  {t(`showcase.${id}.body`)}
+                </SectionHeading>
               </Box>
               <Box flex="1" w="full">
                 <Box maxW="420px" mx="auto">
@@ -135,16 +124,17 @@ function Showcase() {
 }
 
 function AlsoIncluded() {
+  const t = useT('landing')
   return (
     <Box as="section" bg="bg.surface" borderTopWidth="1px" borderBottomWidth="1px" borderColor="border.default">
       <Container maxW="6xl" px={{ base: 4, md: 6 }} py={{ base: 12, md: 16 }}>
-        <SectionHeading eyebrow="Also included" title="Everything else, free too" />
+        <SectionHeading eyebrow={t('also.eyebrow')} title={t('also.title')} />
         <SimpleGrid as="ul" listStyleType="none" columns={{ base: 1, sm: 2, lg: 3 }}
           spacing={{ base: 3, md: 4 }} mt={{ base: 6, md: 10 }}>
-          {ALSO_INCLUDED.map(({ icon, label }) => (
-            <HStack as="li" key={label} spacing={3}>
+          {ALSO_INCLUDED.map(({ icon, id }) => (
+            <HStack as="li" key={id} spacing={3}>
               <IconTile icon={icon} size={36} radius="lg" />
-              <Text fontWeight="600">{label}</Text>
+              <Text fontWeight="600">{t(`also.${id}`)}</Text>
             </HStack>
           ))}
         </SimpleGrid>
@@ -156,29 +146,29 @@ function AlsoIncluded() {
 // "Made by one person, for fun": a card before the closing call to action
 // saying plainly what Budgeer is and isn't.
 function Honest() {
+  const t = useT('landing')
   return (
     <Box as="section">
       <Container maxW="6xl" px={{ base: 4, md: 6 }} pt={{ base: 14, md: 20 }}>
         <Box p={{ base: 6, md: 10 }} bg="bg.surface" borderRadius="2xl" borderWidth="1px" borderColor="border.default">
           <Flex direction={{ base: 'column', md: 'row' }} align={{ md: 'flex-end' }} justify="space-between"
             gap={{ base: 4, md: 8 }}>
-            <SectionHeading eyebrow={HOBBY_NOTICE_TITLE} title="Made by one person, for fun">
-              There’s no company behind Budgeer — just one person building it in their spare
-              time. Here’s what that means.
+            <SectionHeading eyebrow={t('common:hobby.title')} title={t('honest.title')}>
+              {t('honest.lead')}
             </SectionHeading>
             <HStack spacing={5} rowGap={2} flexWrap="wrap" fontWeight="600" flexShrink={0}>
-              <Link as={RouterLink} to="/help#who-runs-budgeer" color="accent.fg">Who runs Budgeer?</Link>
-              <Link as={RouterLink} to="/terms" color="accent.fg">Terms of Use</Link>
+              <Link as={RouterLink} to="/help#who-runs-budgeer" color="accent.fg">{t('honest.whoRuns')}</Link>
+              <Link as={RouterLink} to="/terms" color="accent.fg">{t('honest.terms')}</Link>
             </HStack>
           </Flex>
           <SimpleGrid as="ul" listStyleType="none" columns={{ base: 1, sm: 2, lg: 4 }}
             spacing={{ base: 5, md: 6 }} mt={{ base: 8, md: 10 }}>
-            {HONEST_POINTS.map(({ icon, title, body }) => (
-              <Flex as="li" key={title} direction={{ base: 'row', lg: 'column' }} gap={3}>
+            {HONEST_POINTS.map(({ icon, id }) => (
+              <Flex as="li" key={id} direction={{ base: 'row', lg: 'column' }} gap={3}>
                 <IconTile icon={icon} size={40} radius="lg" />
                 <Box minW={0}>
-                  <Text fontFamily="heading" fontWeight="700" lineHeight="1.4">{title}</Text>
-                  <Text color="text.muted" fontSize="sm" lineHeight="1.6" mt={1}>{body}</Text>
+                  <Text fontFamily="heading" fontWeight="700" lineHeight="1.4">{t(`honest.${id}.title`)}</Text>
+                  <Text color="text.muted" fontSize="sm" lineHeight="1.6" mt={1}>{t(`honest.${id}.body`)}</Text>
                 </Box>
               </Flex>
             ))}
@@ -190,6 +180,7 @@ function Honest() {
 }
 
 function ClosingCta({ onSignup }) {
+  const t = useT('landing')
   return (
     <Box as="section">
       <Container maxW="6xl" px={{ base: 4, md: 6 }} py={{ base: 14, md: 20 }}>
@@ -197,13 +188,13 @@ function ClosingCta({ onSignup }) {
           borderRadius="2xl" bg="brand.50" borderWidth="1px" borderColor="brand.100"
           _dark={{ bg: 'rgba(249, 93, 56, 0.10)', borderColor: 'rgba(249, 93, 56, 0.24)' }}>
           <Heading as="h2" fontSize={{ base: '2xl', md: '4xl' }} letterSpacing="-0.02em">
-            Start splitting — <Box as="span" color="accent.fg">it’s free</Box>
+            <Trans t={t} k="closing.title" components={{ accent: <Box as="span" color="accent.fg" /> }} />
           </Heading>
           <Text fontSize={{ base: 'md', md: 'lg' }} color="text.muted" maxW="md">
-            Create your first group and invite friends with a link. No limits, no ads.
+            {t('closing.lead')}
           </Text>
           <Button size="lg" onClick={onSignup}>
-            Sign up
+            {t('common:actions.signUp')}
           </Button>
         </Stack>
       </Container>
@@ -212,6 +203,7 @@ function ClosingCta({ onSignup }) {
 }
 
 export default function Landing() {
+  const t = useT('landing')
   const navigate = useNavigate()
   const onLogin = () => navigate('/login')
   const onSignup = () => navigate('/login?signup=1')
@@ -219,8 +211,8 @@ export default function Landing() {
   return (
     <Box minH="100dvh" bg="bg.canvas" overflowX="clip">
       <PublicHeader>
-        <Button size="sm" variant="ghost" px={{ base: 2, sm: 3 }} onClick={onLogin}>Log in</Button>
-        <Button size="sm" px={{ base: 3, sm: 4 }} onClick={onSignup}>Sign up</Button>
+        <Button size="sm" variant="ghost" px={{ base: 2, sm: 3 }} onClick={onLogin}>{t('common:actions.logIn')}</Button>
+        <Button size="sm" px={{ base: 3, sm: 4 }} onClick={onSignup}>{t('common:actions.signUp')}</Button>
       </PublicHeader>
       <main id={MAIN_ID}>
         <Hero onLogin={onLogin} onSignup={onSignup} />
@@ -235,16 +227,16 @@ export default function Landing() {
           <Flex minH="64px" py={3} align="center" justify="space-between">
             <HStack spacing={4} rowGap={1} flexWrap="wrap" fontSize="sm" color="text.muted">
               <Text>© {new Date().getFullYear()} Budgeer</Text>
-              <Link as={RouterLink} to="/help">Help</Link>
-              <Link as={RouterLink} to="/help#install-app">Install the app</Link>
-              <Link as={RouterLink} to="/privacy">Privacy</Link>
-              <Link as={RouterLink} to="/terms">Terms</Link>
-              <Link href={STATUS_URL} isExternal>Status</Link>
-              <Link href={`mailto:${SUPPORT_EMAIL}`}>Contact</Link>
+              <Link as={RouterLink} to="/help">{t('footer.help')}</Link>
+              <Link as={RouterLink} to="/help#install-app">{t('footer.install')}</Link>
+              <Link as={RouterLink} to="/privacy">{t('footer.privacy')}</Link>
+              <Link as={RouterLink} to="/terms">{t('footer.terms')}</Link>
+              <Link href={STATUS_URL} isExternal>{t('footer.status')}</Link>
+              <Link href={`mailto:${SUPPORT_EMAIL}`}>{t('footer.contact')}</Link>
             </HStack>
             <ThemeToggle />
           </Flex>
-          <Text fontSize="xs" color="text.muted" pb={4}>{DISCLAIMER}</Text>
+          <Text fontSize="xs" color="text.muted" pb={4}>{t('common:hobby.disclaimer')}</Text>
         </Container>
       </Box>
     </Box>

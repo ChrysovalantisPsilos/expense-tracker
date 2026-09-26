@@ -1,11 +1,13 @@
 import { Box, HStack, Image, Text, VStack } from '@chakra-ui/react'
 import { isTestSite } from '../lib/environment.js'
+import { useT } from '../lib/i18n/I18nProvider.jsx'
 
 // Budgeer logo: a lowercase b whose bowl is a budget progress ring + wordmark. `showWord` toggles the text
 // (hidden when the sidebar is collapsed / on tight spaces). On the test site
 // it carries a "DEV" tag for everyone, so nobody mistakes it for the live site.
 // `stacked` puts the tag under the mark, a size smaller (the sideways rail).
 export default function Logo({ size = 32, showWord = true, stacked = false, ...props }) {
+  const t = useT()
   const Wrap = stacked ? VStack : HStack
   return (
     <Wrap spacing={stacked ? 1 : 2.5} {...props}>
@@ -22,7 +24,7 @@ export default function Logo({ size = 32, showWord = true, stacked = false, ...p
         </Text>
       )}
       {isTestSite && (
-        <Box as="span" title="Test site: separate from budgeer.com" flexShrink={0}
+        <Box as="span" title={t('site.testTag')} flexShrink={0}
           px={1.5} py={0.5} borderRadius="md" fontSize={stacked ? '9px' : '11px'} fontWeight="800"
           letterSpacing="0.06em" lineHeight="1.2"
           bg="amber.100" color="amber.900" _dark={{ bg: 'amber.400', color: 'sand.900' }}>

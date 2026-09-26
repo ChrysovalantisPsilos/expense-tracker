@@ -1,7 +1,7 @@
 import { Box, Stack, Text } from '@chakra-ui/react'
 import {
   BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass, CircleHelp, Mail,
-  Scale, UserCheck, ArrowLeftRight, Sparkles, Activity,
+  Scale, UserCheck, ArrowLeftRight, Sparkles, Activity, Languages,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -12,23 +12,26 @@ import { STATUS_URL, SUPPORT_EMAIL } from '../../shared/lib/contact.js'
 import { useSiteSwitch } from '../../shared/lib/useSiteSwitch.js'
 import { startTour } from '../onboarding/tour.js'
 import DemoNotice from './DemoNotice.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
+// Each row's words are rows.<id>.label / .desc in the settings namespace.
 const PREFERENCES = [
-  { to: '/settings/categories', label: 'Categories', desc: 'Add, rename, recolour or archive', icon: Tags },
-  { to: '/settings/spending', label: 'Monthly spending', desc: 'How yearly subscriptions and salary count', icon: CalendarRange },
-  { to: '/settings/notifications', label: 'Notifications', desc: 'Push and email alerts', icon: BellRing },
-  { to: '/settings/appearance', label: 'Appearance', desc: 'Light, dark or match your device', icon: Palette },
+  { to: '/settings/categories', id: 'categories', icon: Tags },
+  { to: '/settings/spending', id: 'spending', icon: CalendarRange },
+  { to: '/settings/notifications', id: 'notifications', icon: BellRing },
+  { to: '/settings/appearance', id: 'appearance', icon: Palette },
+  { to: '/settings/language', id: 'language', icon: Languages },
 ]
 const PRIVACY = [
-  { to: '/settings/security', label: 'Security', desc: 'Sign-in and account deletion', icon: ShieldCheck },
-  { to: '/settings/data', label: 'Your data', desc: 'Back up or restore your account', icon: DatabaseBackup },
-  { to: '/settings/privacy', label: 'Privacy', desc: 'Your data rights, consents and requests', icon: UserCheck },
-  { to: '/privacy', label: 'Privacy Notice', desc: 'What we store, why, and who receives it', icon: FileText },
-  { to: '/terms', label: 'Terms of Use', desc: 'The rules for using Budgeer', icon: Scale },
+  { to: '/settings/security', id: 'security', icon: ShieldCheck },
+  { to: '/settings/data', id: 'data', icon: DatabaseBackup },
+  { to: '/settings/privacy', id: 'privacy', icon: UserCheck },
+  { to: '/privacy', id: 'privacyNotice', icon: FileText },
+  { to: '/terms', id: 'terms', icon: Scale },
 ]
 
-const rows = (items) => items.map(({ to, label, desc, icon }) => (
-  <NavRow key={to} to={to} icon={icon} label={label} description={desc} />
+const rows = (items, t) => items.map(({ to, id, icon }) => (
+  <NavRow key={to} to={to} icon={icon} label={t(`rows.${id}.label`)} description={t(`rows.${id}.desc`)} />
 ))
 
 // The Settings list: who you are at the top (taps into Account), then the
@@ -36,46 +39,47 @@ const rows = (items) => items.map(({ to, label, desc, icon }) => (
 // page and replaying the app tour),
 // the live/test site switch for developer accounts, then sign-out.
 export default function Settings() {
+  const t = useT('settings')
   const { user, signOut } = useAuth()
   const { profile, isDemo } = useProfile()
   const site = useSiteSwitch()
 
   return (
     <Stack spacing={5}>
-      <PageHeader title="Settings" />
+      <PageHeader title={t('title')} />
 
-      <NavList label="Profile">
-        <NavRow to="/settings/account" label={profile?.display_name || 'Your name'}
+      <NavList label={t('sections.profile')}>
+        <NavRow to="/settings/account" label={profile?.display_name || t('yourName')}
           description={user.email}
           media={<UserAvatar size="md" name={profile?.display_name} src={profile?.avatar_url}
             highlight flexShrink={0} />} />
       </NavList>
       {isDemo && <DemoNotice />}
-      <NavList label="Preferences">{rows(PREFERENCES)}</NavList>
-      <NavList label="Privacy & security" data-tour="settings-privacy">{rows(PRIVACY)}</NavList>
-      <NavList label="Help">
-        <NavRow to="/help" icon={CircleHelp} label="Help & FAQ" description="Answers to common questions" />
-        <NavRow to="/settings/whats-new" icon={Sparkles} label="What’s new"
-          description="The latest changes to Budgeer" />
+      <NavList label={t('sections.preferences')}>{rows(PREFERENCES, t)}</NavList>
+      <NavList label={t('sections.privacy')} data-tour="settings-privacy">{rows(PRIVACY, t)}</NavList>
+      <NavList label={t('sections.help')}>
+        <NavRow to="/help" icon={CircleHelp} label={t('rows.help.label')} description={t('rows.help.desc')} />
+        <NavRow to="/settings/whats-new" icon={Sparkles} label={t('rows.whatsNew.label')}
+          description={t('rows.whatsNew.desc')} />
         <NavRow href={STATUS_URL} target="_blank" rel="noopener noreferrer" icon={Activity}
-          label="Service status" description="Is Budgeer working right now?" />
-        <NavRow href={`mailto:${SUPPORT_EMAIL}`} icon={Mail} label="Contact support" description={SUPPORT_EMAIL} />
-        <NavRow icon={Compass} label="Take the tour again" description="A quick look around the app"
+          label={t('rows.status.label')} description={t('rows.status.desc')} />
+        <NavRow href={`mailto:${SUPPORT_EMAIL}`} icon={Mail} label={t('rows.contact.label')} description={SUPPORT_EMAIL} />
+        <NavRow icon={Compass} label={t('rows.tour.label')} description={t('rows.tour.desc')}
           data-tour="replay" onClick={() => startTour({ returnTo: '/settings', returnFocus: '[data-tour="replay"]' })} />
       </NavList>
       {site && (
         <Box>
-          <NavList label="Developer">
+          <NavList label={t('sections.developer')}>
             <NavRow href={site.href} icon={ArrowLeftRight} label={site.label}
               description={site.host} />
           </NavList>
           <Text fontSize="sm" color="text.muted" mt={2} px={1}>
-            The live and test sites have separate accounts and data: you log in separately on each.
+            {t('developerNote')}
           </Text>
         </Box>
       )}
       <NavList>
-        <NavRow onClick={signOut} icon={LogOut} label="Sign out" />
+        <NavRow onClick={signOut} icon={LogOut} label={t('rows.signOut.label')} />
       </NavList>
     </Stack>
   )

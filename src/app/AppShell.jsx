@@ -25,26 +25,28 @@ import { InAppShell } from '../shared/ui/inAppShell.js'
 import { useShortLandscape } from '../shared/ui/useShortLandscape.js'
 import { ShellHeaderSlots } from '../shared/ui/ShellHeader.jsx'
 import { COLUMN_BOX, GUTTER, HEADER_H, RAIL_BOX } from '../shared/lib/shortLandscape.js'
+import { useT } from '../shared/lib/i18n/I18nProvider.jsx'
 
 // Primary destinations — shown in the mobile bottom bar and at the top of the
-// desktop sidebar. `tour` names the app tour's stop (data-tour, tourSteps.js).
+// desktop sidebar. `tour` names the app tour's stop (data-tour, tourSteps.js);
+// `label` is a key in the shell namespace.
 const PRIMARY = [
-  { to: '/', label: 'Home', icon: LayoutDashboard },
-  { to: '/transactions', label: 'Transactions', icon: ReceiptText },
-  { to: '/groups', label: 'Groups', icon: Users, tour: 'nav-groups' },
-  { to: '/budgets', label: 'Budgets', icon: Target, tour: 'nav-budgets' },
+  { to: '/', label: 'nav.home', icon: LayoutDashboard },
+  { to: '/transactions', label: 'nav.transactions', icon: ReceiptText },
+  { to: '/groups', label: 'nav.groups', icon: Users, tour: 'nav-groups' },
+  { to: '/budgets', label: 'nav.budgets', icon: Target, tour: 'nav-budgets' },
 ]
 // Secondary destinations — listed directly in the desktop sidebar, and gathered
 // under the "More" tab on mobile.
 const SECONDARY = [
-  { to: '/insights', label: 'Insights', icon: TrendingUp },
-  { to: '/savings', label: 'Savings', icon: PiggyBank },
-  { to: '/recurring', label: 'Recurring', icon: Repeat },
+  { to: '/insights', label: 'nav.insights', icon: TrendingUp },
+  { to: '/savings', label: 'nav.savings', icon: PiggyBank },
+  { to: '/recurring', label: 'nav.recurring', icon: Repeat },
 ]
 // Mobile bottom bar (and a landscape phone's rail): the four primary tabs
 // plus a "More" entry.
 // Which tab is lit for a given page is decided by navMatch.js.
-const MOBILE_NAV = [...PRIMARY, { to: '/more', label: 'More', icon: MoreHorizontal, tour: 'nav-more' }]
+const MOBILE_NAV = [...PRIMARY, { to: '/more', label: 'nav.more', icon: MoreHorizontal, tour: 'nav-more' }]
 
 // A nav link that knows whether it's the current section (see navMatch.js).
 // `children` renders from the active flag.
@@ -59,6 +61,7 @@ function NavItem({ to, children, ...rest }) {
 }
 
 function SideItem({ to, label, icon: Icon, tour }) {
+  const t = useT('shell')
   return (
     <NavItem to={to} style={{ width: '100%' }} data-tour={tour}>
       {(isActive) => (
@@ -71,7 +74,7 @@ function SideItem({ to, label, icon: Icon, tour }) {
           transition="all 0.15s"
         >
           <Icon size={20} strokeWidth={isActive ? 2.4 : 2} />
-          <Text fontSize="sm">{label}</Text>
+          <Text fontSize="sm">{t(label)}</Text>
         </HStack>
       )}
     </NavItem>
@@ -80,13 +83,14 @@ function SideItem({ to, label, icon: Icon, tour }) {
 
 // An icon over a small label: the phone's bottom bar.
 function TabItem({ to, label, icon: Icon, tour }) {
+  const t = useT('shell')
   return (
     <NavItem to={to} data-tour={tour}>
       {(isActive) => (
         <VStack spacing={0.5} px={2} py={1} minW="60px"
           color={isActive ? 'accent.fg' : 'text.muted'}>
           <Icon size={22} strokeWidth={isActive ? 2.4 : 2} />
-          <Text fontSize="10px" fontWeight={isActive ? '600' : '500'}>{label}</Text>
+          <Text fontSize="10px" fontWeight={isActive ? '600' : '500'}>{t(label)}</Text>
         </VStack>
       )}
     </NavItem>
@@ -103,8 +107,9 @@ const NEW_EXPENSE = '/transactions/new'
 // tabs (navMatch.showsAddExpense). The shell hides it while the app tour runs
 // so it never sits over a highlighted stop.
 function AddExpenseFab() {
+  const t = useT('shell')
   return (
-    <IconButton as={RouterLink} to={NEW_EXPENSE} aria-label="Add expense"
+    <IconButton as={RouterLink} to={NEW_EXPENSE} aria-label={t('addExpense')}
       icon={<Plus size={26} strokeWidth={2.4} />} w="56px" h="56px" borderRadius="full"
       position="fixed" zIndex={10} boxShadow="lg"
       right="calc(16px + env(safe-area-inset-right, 0px))"
@@ -120,14 +125,15 @@ function AddExpenseFab() {
 // current one on a coral pill. The left notch's inset widens it, so the notch
 // sits over the rail's background; it scrolls if a screen can't fit it all.
 function NavRail() {
+  const t = useT('shell')
   return (
     <Flex
       as="nav" direction="column" align="center" gap={1.5} flexShrink={0} {...RAIL_BOX} pt={3}
       bg="bg.canvas" position="sticky" top={0} h="100dvh" overflowY="auto" overflowX="hidden"
     >
       <Logo size={24} showWord={false} stacked flexShrink={0} />
-      <Tooltip label="Add expense" placement="right">
-        <IconButton as={RouterLink} to={NEW_EXPENSE} aria-label="Add expense" data-tour="add-expense"
+      <Tooltip label={t('addExpense')} placement="right">
+        <IconButton as={RouterLink} to={NEW_EXPENSE} aria-label={t('addExpense')} data-tour="add-expense"
           icon={<Plus size={24} strokeWidth={2.4} />} boxSize="48px" minW="48px" borderRadius="xl"
           boxShadow="soft" my={2.5} flexShrink={0} />
       </Tooltip>
@@ -138,7 +144,9 @@ function NavRail() {
 
 // One rail tab: a 48×44 icon link. Settings isn't lit here (the header's
 // avatar is), so More stays dark on Settings pages (navMatch.accountApart).
-function RailItem({ to, label, icon: Icon, tour }) {
+function RailItem({ to, label: labelKey, icon: Icon, tour }) {
+  const t = useT('shell')
+  const label = t(labelKey)
   const { pathname } = useLocation()
   const active = isNavActive(to, pathname, { accountApart: true })
   return (
@@ -162,6 +170,7 @@ function RailItem({ to, label, icon: Icon, tour }) {
 // Settings and is ringed while you're there. It opens <main>, so the skip
 // link lands on the page's title and controls.
 function ShellBar({ feed, profile, onTitle, onActions }) {
+  const t = useT('shell')
   const { pathname } = useLocation()
   const account = isAccountPage(pathname)
   return (
@@ -173,8 +182,8 @@ function ShellBar({ feed, profile, onTitle, onActions }) {
         <OfflineIndicator />
         <SiteSwitch compact />
         <NotificationBell feed={feed} />
-        <Tooltip label="Settings">
-          <Box as={RouterLink} to="/settings" aria-label="Settings" aria-current={account ? 'page' : undefined}
+        <Tooltip label={t('nav.settings')}>
+          <Box as={RouterLink} to="/settings" aria-label={t('nav.settings')} aria-current={account ? 'page' : undefined}
             layerStyle="hitArea" display="flex" borderRadius="full" p="2px"
             boxShadow={account ? '0 0 0 2px var(--chakra-colors-accent-solid)' : undefined}
             _focusVisible={{ outline: 'none', boxShadow: 'outline' }}>
@@ -187,6 +196,7 @@ function ShellBar({ feed, profile, onTitle, onActions }) {
 }
 
 export default function AppShell({ hideAddExpense = false }) {
+  const t = useT('shell')
   const { signOut } = useAuth()
   const { profile } = useProfile()
   // One live feed for every bell (mobile top bar, desktop header, the
@@ -218,7 +228,7 @@ export default function AppShell({ hideAddExpense = false }) {
       >
         <Box px={2} py={2} mb={2}><Logo size={30} /></Box>
         <Button as={RouterLink} to={NEW_EXPENSE} leftIcon={<Plus size={18} />} mb={3} mx={1}>
-          Add expense
+          {t('addExpense')}
         </Button>
         {PRIMARY.map((n) => <SideItem key={n.to} {...n} />)}
         <Box h="1px" bg="border.default" my={2} mx={2} />
@@ -228,14 +238,14 @@ export default function AppShell({ hideAddExpense = false }) {
         <Spacer />
         <Flex direction="column" gap={1} data-tour="account">
           <SiteSwitch />
-          <NavItem to="/settings" title="Settings" style={{ width: '100%' }}>
+          <NavItem to="/settings" title={t('nav.settings')} style={{ width: '100%' }}>
             {(isActive) => (
               <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
                 bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
                 <UserAvatar size="xs" name={profile?.display_name}
                   src={profile?.avatar_url} highlight />
                 <Text fontSize="sm" fontWeight="500" flex="1" minW={0} overflowWrap="anywhere">
-                  {profile?.display_name || 'Settings'}
+                  {profile?.display_name || t('nav.settings')}
                 </Text>
                 <Box as="span" color={isActive ? 'accent.fg' : 'text.muted'} flexShrink={0}>
                   <Settings size={16} />
@@ -244,11 +254,11 @@ export default function AppShell({ hideAddExpense = false }) {
             )}
           </NavItem>
           <HStack px={1} justify="space-between">
-            <Tooltip label="Toggle theme">
+            <Tooltip label={t('toggleTheme')}>
               <ThemeToggle />
             </Tooltip>
-            <Tooltip label="Sign out">
-              <IconButton aria-label="Sign out" variant="ghost" size="sm"
+            <Tooltip label={t('signOut')}>
+              <IconButton aria-label={t('signOut')} variant="ghost" size="sm"
                 icon={<LogOut size={18} />} onClick={signOut} />
             </Tooltip>
           </HStack>
@@ -273,7 +283,7 @@ export default function AppShell({ hideAddExpense = false }) {
             <SiteSwitch compact />
             <NotificationBell feed={feed} />
             <ThemeToggle />
-            <Box as={RouterLink} to="/settings" aria-label="Settings" layerStyle="hitArea" display="flex">
+            <Box as={RouterLink} to="/settings" aria-label={t('nav.settings')} layerStyle="hitArea" display="flex">
               <UserAvatar size="sm" name={profile?.display_name}
                 src={profile?.avatar_url} highlight />
             </Box>

@@ -2,6 +2,8 @@
 // Computed with the app's real math (splitMath, currency) so the showcase can
 // never drift from what the product actually does. All money is integer minor
 // units; no clocks, no randomness, no network (fixed captured FX rates).
+// Names and labels here are English; the mocks show them in the app's
+// language by `id` (landing namespace, demo.*).
 import { distributeByWeights, simplifyDebts, splitEqually } from '../groups/splitMath.js'
 import { toBaseMinor, toMinor } from '../../shared/lib/currency.js'
 import { budgetTone } from '../budgets/budgetMath.js'
@@ -67,12 +69,13 @@ export function buildTripDemo() {
 
 // "How it works", step 2: one shared expense split equally among the group,
 // with each member's share (the payer's own share lands in their spending).
+// `paidBy` is the payer's member id.
 export function splitDemo() {
   const amountMinor = toMinor(58.4, DEMO_CURRENCY)
   const shares = splitEqually(amountMinor, MEMBERS.length)
   return {
     label: 'Groceries for the flat',
-    paidBy: 'Anna',
+    paidBy: 'anna',
     amountMinor,
     members: MEMBERS.map((m, i) => ({ ...m, shareMinor: shares[i] })),
   }
@@ -99,35 +102,35 @@ export function settleDemo() {
 // Groceries past 80% of it (amber).
 export function budgetsDemo() {
   return [
-    { category: 'Groceries', spent: 352, cap: 400 },
-    { category: 'Food & Dining', spent: 186.9, cap: 150 },
-    { category: 'Transport', spent: 64.2, cap: 120 },
-    { category: 'Entertainment', spent: 48, cap: 80 },
-  ].map(({ category, spent, cap }) => {
+    { id: 'groceries', category: 'Groceries', spent: 352, cap: 400 },
+    { id: 'foodDining', category: 'Food & Dining', spent: 186.9, cap: 150 },
+    { id: 'transport', category: 'Transport', spent: 64.2, cap: 120 },
+    { id: 'entertainment', category: 'Entertainment', spent: 48, cap: 80 },
+  ].map(({ id, category, spent, cap }) => {
     const spentMinor = toMinor(spent, DEMO_CURRENCY)
     const capMinor = toMinor(cap, DEMO_CURRENCY)
     return {
-      category, spentMinor, capMinor, pct: percent(spentMinor, capMinor), tone: budgetTone(spentMinor, capMinor),
+      id, category, spentMinor, capMinor, pct: percent(spentMinor, capMinor), tone: budgetTone(spentMinor, capMinor),
     }
   }).sort((a, b) => b.spentMinor / b.capMinor - a.spentMinor / a.capMinor)
 }
 
 // One month by category (shares apportioned to sum to exactly 100) plus a
-// 6-month spending trend.
+// 6-month spending trend (`monthIndex`: 0 = January).
 export function insightsDemo() {
   const cats = [
-    { category: 'Housing', amount: 950 },
-    { category: 'Groceries', amount: 312.4 },
-    { category: 'Food & Dining', amount: 186.9 },
-    { category: 'Transport', amount: 64.2 },
-    { category: 'Other', amount: 121.5 },
-  ].map(({ category, amount }) => ({ category, minor: toMinor(amount, DEMO_CURRENCY) }))
+    { id: 'housing', category: 'Housing', amount: 950 },
+    { id: 'groceries', category: 'Groceries', amount: 312.4 },
+    { id: 'foodDining', category: 'Food & Dining', amount: 186.9 },
+    { id: 'transport', category: 'Transport', amount: 64.2 },
+    { id: 'other', category: 'Other', amount: 121.5 },
+  ].map(({ id, category, amount }) => ({ id, category, minor: toMinor(amount, DEMO_CURRENCY) }))
   const shares = distributeByWeights(100, cats.map((c) => c.minor))
 
   const trend = [
     ['Apr', 1580.2], ['May', 1712.75], ['Jun', 1655.3],
     ['Jul', 1890.1], ['Aug', 1742.6], ['Sep', 1635],
-  ].map(([month, amount]) => ({ month, minor: toMinor(amount, DEMO_CURRENCY) }))
+  ].map(([month, amount], i) => ({ month, monthIndex: 3 + i, minor: toMinor(amount, DEMO_CURRENCY) }))
 
   return {
     byCategory: cats.map((c, i) => ({ ...c, share: shares[i] })),
@@ -138,12 +141,12 @@ export function insightsDemo() {
 // Foreign-currency spend converted to EUR at the rate captured at entry time.
 export function currencyDemo() {
   const rows = [
-    { label: 'Train to London', currency: 'GBP', amount: 42.5, rate: 1.17 },
-    { label: 'NYC hotel night', currency: 'USD', amount: 189, rate: 0.92 },
-    { label: 'Ramen in Tokyo', currency: 'JPY', amount: 1800, rate: 0.0062 },
-  ].map(({ label, currency, amount, rate }) => {
+    { id: 'train', label: 'Train to London', currency: 'GBP', amount: 42.5, rate: 1.17 },
+    { id: 'hotel', label: 'NYC hotel night', currency: 'USD', amount: 189, rate: 0.92 },
+    { id: 'ramen', label: 'Ramen in Tokyo', currency: 'JPY', amount: 1800, rate: 0.0062 },
+  ].map(({ id, label, currency, amount, rate }) => {
     const minor = toMinor(amount, currency)
-    return { label, currency, minor, rate, baseMinor: toBaseMinor(minor, rate, currency, DEMO_CURRENCY) }
+    return { id, label, currency, minor, rate, baseMinor: toBaseMinor(minor, rate, currency, DEMO_CURRENCY) }
   })
   return {
     base: DEMO_CURRENCY,
