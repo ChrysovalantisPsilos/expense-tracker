@@ -248,8 +248,16 @@ test('releaseText: fills in the words and keeps the ids and the shape', () => {
   assert.equal(releaseText(null, (k) => k), null)
 })
 
-test('this release (2026-09-26): three pages, the status page has no action', () => {
+test('this release (2026-09-27): five pages, language and Savings open their pages', () => {
   const r = inEnglish(RELEASES[0])
+  assert.equal(r.id, '2026-09-27')
+  assert.equal(r.pages.length, 5)
+  assert.deepEqual(r.pages[0].action, { label: 'Choose language', to: '/settings/language' })
+  assert.deepEqual(r.pages[2].action, { label: 'Open Savings', to: '/savings' })
+})
+
+test('the 2026-09-26 release: three pages, the status page has no action', () => {
+  const r = inEnglish(RELEASES.find((x) => x.id === '2026-09-26'))
   assert.equal(r.id, '2026-09-26')
   assert.equal(r.pages.length, 3)
   assert.deepEqual(r.pages.map((p) => p.title),

@@ -8,6 +8,35 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-09-27': {
+      greek: {
+        title: 'Budgeer in Greek',
+        body: 'The whole app now speaks Greek, with the default categories in Greek too. It follows your device’s language, or pick English or Ελληνικά in Settings › Language.',
+        chips: { el: 'Ελληνικά', device: 'Like my device' },
+        action: 'Choose language',
+      },
+      whoFor: {
+        title: 'Add a shared expense from Add',
+        body: 'In a group? Add now asks “Who’s it for?”. Pick a group and split the expense right there, without opening the group first. Swipe for more groups; the ones you used last come first.',
+        chips: { question: 'Who’s it for?', group: 'Lisbon trip' },
+      },
+      savings: {
+        title: 'A page for your savings',
+        body: 'Savings has its own page: your pot, this month’s savings, your goals and the history. Net worth also gets a Savings account type, and it counts toward your savings.',
+        chips: { account: 'Savings account', goals: 'Goals' },
+        action: 'Open Savings',
+      },
+      statements: {
+        title: 'Faster statements',
+        body: 'PDF and Excel statements are now made on your phone, so your data stays with you. Long ranges that used to hang now finish, and the app stays usable while a big one is prepared.',
+        chips: { formats: 'PDF · Excel', long: 'Long ranges' },
+      },
+      more: {
+        title: 'And a few more',
+        body: 'See, edit and delete your saved import rules in Settings › Import rules. After an import, Budgeer tells you which dates came in and opens them. Group expenses show profile pictures in Paid by and the split, and the welcome tour starts at Home’s period picker.',
+        chips: { rules: 'Import rules', photos: 'Paid by' },
+      },
+    },
     '2026-09-26': {
       sideways: {
         title: 'Sideways phones, redesigned',

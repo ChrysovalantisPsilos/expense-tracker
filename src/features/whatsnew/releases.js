@@ -17,6 +17,17 @@
 // Greek wording follows docs/i18n-glossary-el.md).
 export const RELEASES = [
   {
+    id: '2026-09-27',
+    date: '2026-09-27',
+    pages: [
+      { id: 'greek', chips: ['el', 'device'], variant: 'start', action: { to: '/settings/language' } },
+      { id: 'whoFor', chips: ['question', 'group'], variant: 'split' },
+      { id: 'savings', chips: ['account', 'goals'], variant: 'update', action: { to: '/savings' } },
+      { id: 'statements', chips: ['formats', 'long'], variant: 'update' },
+      { id: 'more', chips: ['rules', 'photos'], variant: 'split' },
+    ],
+  },
+  {
     id: '2026-09-26',
     date: '2026-09-26',
     pages: [
