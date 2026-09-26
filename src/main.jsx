@@ -11,6 +11,16 @@ import '@fontsource/poppins/latin-700.css'
 import '@fontsource/nunito-sans/latin-400.css'
 import '@fontsource/nunito-sans/latin-600.css'
 import '@fontsource/nunito-sans/latin-700.css'
+// Greek letters: Poppins and Nunito Sans have none, so the stacks in
+// palette.js fall back glyph by glyph to Manrope (headings) and Noto Sans
+// (body). These are the Greek subsets only; their unicode-range means the
+// browser downloads them only when a page actually shows Greek text.
+import '@fontsource/manrope/greek-500.css'
+import '@fontsource/manrope/greek-600.css'
+import '@fontsource/manrope/greek-700.css'
+import '@fontsource/noto-sans/greek-400.css'
+import '@fontsource/noto-sans/greek-600.css'
+import '@fontsource/noto-sans/greek-700.css'
 import { ChakraProvider, ColorModeScript } from '@chakra-ui/react'
 import { BrowserRouter } from 'react-router-dom'
 import App from './app/App.jsx'

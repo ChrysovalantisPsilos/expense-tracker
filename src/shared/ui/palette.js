@@ -85,6 +85,6 @@ export const DARK = {
 }
 
 export const FONTS = {
-  heading: `'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
-  body: `'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
+  heading: `'Poppins', 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
+  body: `'Nunito Sans', 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif`,
 }

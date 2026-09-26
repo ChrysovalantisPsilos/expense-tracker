@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
-import { Box, Container, Flex } from '@chakra-ui/react'
+import { Box, Container, Flex, useBreakpointValue } from '@chakra-ui/react'
 import Logo from './Logo.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 import LanguageSwitch from './LanguageSwitch.jsx'
 import { useT } from '../lib/i18n/I18nProvider.jsx'
+import { isTestSite } from '../lib/environment.js'
 
 function useScrolled() {
   const [scrolled, setScrolled] = useState(false)
@@ -24,6 +25,9 @@ function useScrolled() {
 export default function PublicHeader({ children }) {
   const t = useT()
   const scrolled = useScrolled()
+  // On a phone the test site's DEV tag leaves no room for the wordmark next
+  // to the language switch, theme toggle and sign-in buttons: the mark alone.
+  const narrow = useBreakpointValue({ base: true, sm: false }, { ssr: false })
   return (
     <Box as="header" position="sticky" top={0} zIndex="sticky"
       bg="color-mix(in srgb, var(--chakra-colors-bg-canvas) 85%, transparent)"
@@ -33,6 +37,7 @@ export default function PublicHeader({ children }) {
       <Container maxW="6xl" px={{ base: 4, md: 6 }}>
         <Flex h="60px" align="center" gap={{ base: 1, sm: 2 }}>
           <Logo as={RouterLink} to="/" aria-label={t('a11y.brandHome')} size={28} layerStyle="hitArea"
+            showWord={!(isTestSite && narrow)}
             borderRadius="md" _focusVisible={{ boxShadow: 'outline', outline: 'none' }} />
           <Box flex="1" />
           <LanguageSwitch />
