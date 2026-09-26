@@ -120,6 +120,7 @@ export default {
     import_other: 'Import {{count}} rows',
   },
   done: {
+    dated: 'Dated {{from}} – {{to}}. “View transactions” opens those dates.',
     title_one: 'Imported {{count}} transactions',
     title_other: 'Imported {{count}} transactions',
     duplicates_one: '{{count}} row was already imported before and got skipped — re-importing never duplicates.',

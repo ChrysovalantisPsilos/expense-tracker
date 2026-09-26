@@ -21,8 +21,9 @@ import {
   rememberedHolder, rememberHolder,
 } from './importExpenses.js'
 import {
-  previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder,
+  previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder, importedRange,
 } from './importMath.js'
+import { shortDate } from '../../shared/lib/dates.js'
 import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
 import { displayDescription } from './kbcLabels.js'
 import MappingFields from './MappingFields.jsx'
@@ -154,7 +155,7 @@ export default function ImportExpenses() {
       const own = skipped.filter((s) => s.reason === 'own transfer').length
       setResult({
         inserted, duplicates, failed: errors.length, errors: errors.slice(0, 10),
-        ownTransfers: own, ignored: skipped.length - own,
+        ownTransfers: own, ignored: skipped.length - own, range: importedRange(withCats),
       })
       setStep('done')
       setPending(null)
@@ -331,6 +332,10 @@ export default function ImportExpenses() {
           <Stack spacing={3} align="center" py={6} textAlign="center">
             <IconTile icon={Check} size={64} radius="2xl" tone="positive" />
             <Heading size="md">{t('done.title', { count: result.inserted })}</Heading>
+            {result.range && (
+              <Text fontSize="sm">{t('done.dated', {
+                from: shortDate(result.range.from), to: shortDate(result.range.to) })}</Text>
+            )}
             {result.duplicates > 0 && (
               <Text fontSize="sm" color="text.muted">{t('done.duplicates', { count: result.duplicates })}</Text>
             )}
@@ -351,7 +356,8 @@ export default function ImportExpenses() {
             )}
             <HStack pt={2}>
               <Button variant="ghost" onClick={() => { setStep('upload'); setResult(null) }}>{t('done.another')}</Button>
-              <Button onClick={() => navigate('/transactions?type=all')}>{t('done.view')}</Button>
+              <Button onClick={() => navigate(`/transactions?${new URLSearchParams({
+                type: 'all', ...(result.range ?? {}) })}`)}>{t('done.view')}</Button>
             </HStack>
           </Stack>
         </Panel>

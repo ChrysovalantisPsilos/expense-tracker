@@ -638,3 +638,19 @@ export async function deterministicUuid(parts) {
   const hex = [...hash.slice(0, 16)].map((b) => b.toString(16).padStart(2, '0')).join('')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
 }
+
+// The first and last day among imported drafts (spent_at, YYYY-MM-DD), or
+// null when there are none: the done step says when the entries are dated and
+// opens Transactions on that range — a statement from earlier months would
+// otherwise look like nothing was imported, since lists open on this month.
+export function importedRange(drafts) {
+  let from = null
+  let to = null
+  for (const d of drafts ?? []) {
+    const day = d?.spent_at
+    if (!day) continue
+    if (!from || day < from) from = day
+    if (!to || day > to) to = day
+  }
+  return from ? { from, to } : null
+}

@@ -496,3 +496,12 @@ test('descriptionParts: what the labels are built from', () => {
   assert.equal(descriptionParts('DEPOSIT OF CASH 19-01-2026 KBC LEUVEN').cash, 'DEPOSIT OF CASH')
   assert.deepEqual(descriptionParts(null), { cash: null, card: null, creditor: null, party: null })
 })
+
+test('importedRange: the first and last day of the imported entries, or null', async () => {
+  const { importedRange } = await import('../src/features/import/importMath.js')
+  assert.deepEqual(importedRange([
+    { spent_at: '2026-03-14' }, { spent_at: '2026-01-02' }, { spent_at: '2026-07-25' }, {},
+  ]), { from: '2026-01-02', to: '2026-07-25' })
+  assert.equal(importedRange([]), null)
+  assert.equal(importedRange(undefined), null)
+})
