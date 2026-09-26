@@ -7,4 +7,5 @@
 // supabase/functions/_shared/savings.ts for the rule.
 export {
   EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, savingsNoteOf, isSpending, netSign, potSign, savingsPotMinor,
+  isSavingsAccount, savingsTotal,
 } from '../../../supabase/functions/_shared/savings.ts'

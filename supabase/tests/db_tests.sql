@@ -5498,11 +5498,55 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 90. 0092: savings accounts. save_account takes type 'savings' (new and
+--     edit), my_accounts reads it back; an unknown type is still refused by
+--     the RPC and by the table's CHECK; the RPC stays a pinned-search_path
+--     definer that anon can't call.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; aid uuid; t text; n bigint;
+begin
+  begin
+    u1 := pg_temp.zz_user('savacct');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    aid := public.save_account(null, 'ZZ savings', 'savings', 1021300, 'EUR');
+    select type, balance_minor into t, n from public.my_accounts() where id = aid;
+    if t is distinct from 'savings' or n <> 1021300 then execute 'reset role'; raise exception 'read back % %', t, n; end if;
+    perform public.save_account(aid, 'ZZ savings', 'asset', 500, 'EUR');
+    perform public.save_account(aid, 'ZZ savings', 'savings', 600, 'EUR');
+    select type into t from public.my_accounts() where id = aid;
+    if t is distinct from 'savings' then execute 'reset role'; raise exception 'edit to savings kept %', t; end if;
+    begin
+      perform public.save_account(null, 'ZZ bad', 'pension', 1, 'EUR');
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: unknown type saved';
+    exception when others then if sqlerrm not like '%bad type%' then raise; end if; end;
+    execute 'reset role';
+    begin
+      update public.accounts set type = 'pension' where id = aid;
+      raise exception 'GUARD_MISSED: CHECK allowed an unknown type';
+    exception when check_violation then null; end;
+    if has_function_privilege('anon', 'public.save_account(uuid, text, text, bigint, text)', 'execute') then
+      raise exception 'anon can call save_account';
+    end if;
+    if not exists (select 1 from pg_proc where oid = 'public.save_account(uuid, text, text, bigint, text)'::regprocedure
+                   and prosecdef and proconfig::text like '%search_path=public%') then
+      raise exception 'save_account lost its definer / pinned search_path';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: savings accounts saved and read back; unknown types refused; save_account pinned, not anon';
+    else update _t set fails = fails + 1; raise notice 'FAIL: savings accounts — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 90; f int; p int;  -- tests 1–89 + B-0059
+declare expected_tests constant int := 91; f int; p int;  -- tests 1–90 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;
