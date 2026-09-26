@@ -5,6 +5,8 @@ import { offlineReadRpc, offlineReadKey, requestUser } from '../src/shared/lib/o
 test('offlineReadRpc: allowlisted read RPCs via POST', () => {
   assert.equal(offlineReadRpc('POST', '/rest/v1/rpc/my_transactions'), 'my_transactions')
   assert.equal(offlineReadRpc('POST', '/rest/v1/rpc/group_ledger'), 'group_ledger')
+  // The device-made statement's reads, so an export works offline too.
+  assert.equal(offlineReadRpc('POST', '/rest/v1/rpc/latest_fx_rates'), 'latest_fx_rates')
 })
 
 test('offlineReadRpc: writes, anon preview, GETs and odd paths are never cached', () => {
