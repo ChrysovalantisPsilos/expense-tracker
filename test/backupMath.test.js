@@ -8,6 +8,7 @@ import {
   restoreSummary, splitDateRange, rebaseRateSpans, rebaseBackupData,
 } from '../src/features/backup/backupMath.js'
 import { UserError } from '../src/shared/lib/errors.js'
+import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 
 // ---- A small source account, in the shapes the data modules return ----------
 const CATS = [
@@ -336,12 +337,12 @@ test('profile: only empty/default values are filled; the rest is reported, never
   const a = planProfile(data, newbie, { emailName: 'alex.d', emptyAccount: true })
   assert.deepEqual(a.patch, { display_name: 'Alex Demo', base_currency: 'USD', notify_email: false })
   // Push is off here and on in the backup: a restore never switches it on.
-  assert.deepEqual(a.kept, ['push notifications'])
+  assert.deepEqual(a.kept, ['pushNotifications'])
 
   const settled = { display_name: 'Alexandra', base_currency: 'EUR', notify_email: false, notify_push: true }
   const b = planProfile(data, settled, { emailName: 'alex.d', emptyAccount: false })
   assert.deepEqual(b.patch, {})
-  assert.deepEqual(b.kept, ['display name', 'main currency'])
+  assert.deepEqual(b.kept, ['displayName', 'mainCurrency'])
 })
 
 test('profile: an empty account takes the backup’s main currency, whatever it uses now', () => {
@@ -354,7 +355,7 @@ test('profile: an empty account takes the backup’s main currency, whatever it 
   assert.deepEqual(plan({ base_currency: null }, true).patch, { base_currency: 'USD' }) // unread: the column default
   // An account with entries keeps its own (the backup's amounts are converted).
   assert.equal(plan({ base_currency: 'JPY' }, false).patch.base_currency, undefined)
-  assert.deepEqual(plan({ base_currency: 'JPY' }, false).kept, ['main currency'])
+  assert.deepEqual(plan({ base_currency: 'JPY' }, false).kept, ['mainCurrency'])
   // Same currency: nothing to change or report.
   assert.deepEqual(plan({ base_currency: 'USD' }, false), { patch: {}, kept: [] })
 })
@@ -373,21 +374,33 @@ test('currencyChange: adopt on an empty account, convert on a locked one, nothin
 test('payment: fills an empty IBAN/Revolut, keeps one that is set', () => {
   const { data } = fresh() // IBAN set, no Revolut
   assert.deepEqual(planPayment(data, {}), { patch: { iban: 'BE68539007547034', revolut: null, paypal: null }, kept: [] })
-  assert.deepEqual(planPayment(data, { payment_iban: 'GB00OTHER', payment_revolut: 'alex' }), { patch: null, kept: ['IBAN'] })
+  assert.deepEqual(planPayment(data, { payment_iban: 'GB00OTHER', payment_revolut: 'alex' }), { patch: null, kept: ['iban'] })
   assert.deepEqual(planPayment(data, { payment_iban: 'BE68539007547034' }), { patch: null, kept: [] })
 })
 
 test('summary: what was added, what was skipped, what was kept', () => {
   const s = restoreSummary({ expenses: 212, income: 1, categories: 14, rules: 0, budgets: 0, budgetsUpdated: 2,
-    recurring: 0, accounts: 0, goals: 0, settings: 1, duplicates: 3, kept: ['display name'] })
+    recurring: 0, accounts: 0, goals: 0, settings: 1, duplicates: 3, kept: ['displayName'] })
   assert.equal(s.added, 'Added 212 expenses, 1 income entry, 14 categories, updated 2 budgets, filled in 1 setting.')
   assert.equal(s.skipped, 'Skipped 3 duplicates.')
   assert.equal(s.kept, 'Kept your current display name — the backup’s differs. You can change it in Settings.')
-  assert.match(restoreSummary({ kept: ['display name', 'main currency', 'IBAN'] }).kept,
+  assert.match(restoreSummary({ kept: ['displayName', 'mainCurrency', 'iban'] }).kept,
     /^Kept your current display name, main currency and IBAN — the backup’s differ\. You can change them/)
   const again = restoreSummary({ expenses: 0, income: 0, categories: 0, duplicates: 40, kept: [] })
   assert.match(again.added, /Nothing new to add/)
   assert.equal(again.kept, null)
+})
+
+test('summary: in Greek, with Greek plurals and "και"', async () => {
+  await loadLanguage('el')
+  try {
+    const s = restoreSummary({ expenses: 1, income: 3, duplicates: 1, kept: ['displayName', 'mainCurrency', 'iban'] })
+    assert.equal(s.added, 'Προστέθηκαν: 1 έξοδο, 3 έσοδα.')
+    assert.equal(s.skipped, 'Παραλείφθηκε 1 διπλότυπο.')
+    assert.match(s.kept, /^Έμειναν όπως ήταν: όνομα, βασικό νόμισμα και IBAN,/)
+  } finally {
+    await loadLanguage('en')
+  }
 })
 
 test('splitDateRange: halves an inclusive range; a single day cannot split', () => {
@@ -450,7 +463,7 @@ test('payment: a PayPal.me name fills an empty one and is kept when set', () => 
   assert.deepEqual(planPayment(data, { payment_iban: 'BE68539007547034' }).patch,
     { iban: 'BE68539007547034', revolut: null, paypal: 'AlexK' })
   assert.deepEqual(planPayment(data, { payment_iban: 'BE68539007547034', payment_paypal: 'Other' }),
-    { patch: null, kept: ['PayPal.me name'] })
+    { patch: null, kept: ['paypal'] })
 })
 
 test('profile: the yearly-subscriptions setting round-trips and fills only the default', () => {
@@ -463,7 +476,7 @@ test('profile: the yearly-subscriptions setting round-trips and fills only the d
   // An account that already keeps them separate isn't switched back.
   const off = { ...data, profile: { ...data.profile, yearly_separate: false } }
   assert.deepEqual(planProfile(off, { display_name: 'A', yearly_separate: true }, { emailName: 'a', emptyAccount: false }),
-    { patch: {}, kept: ['yearly subscriptions setting'] })
+    { patch: {}, kept: ['yearlySeparate'] })
   // Older backups without the field leave it alone.
   assert.equal(fresh().data.profile.yearly_separate, null)
   assert.deepEqual(planProfile(fresh().data, blank, { emailName: 'a', emptyAccount: false }).patch.yearly_separate, undefined)
@@ -816,7 +829,7 @@ test('salary shift: fills only an account whose shift is off; its own setting is
     { salary_shift_from_day: 27, salary_category_id: 'tgt-salary' })
   // Already on: kept, and said so when it differs.
   assert.deepEqual(planSalaryShift(data.profile, { salary_shift_from_day: 25, salary_category_id: 'tgt-salary' }, ids),
-    { patch: {}, kept: ['salary setting'] })
+    { patch: {}, kept: ['salaryShift'] })
   assert.deepEqual(planSalaryShift(data.profile, { salary_shift_from_day: 27, salary_category_id: 'tgt-salary' }, ids),
     { patch: {}, kept: [] })
   // The backup's is off but remembers a category: only an empty one is filled.
@@ -826,7 +839,7 @@ test('salary shift: fills only an account whose shift is off; its own setting is
   assert.deepEqual(planSalaryShift(off, { salary_shift_from_day: null, salary_category_id: 'tgt-bonus' }, ids).patch, {})
   assert.deepEqual(planSalaryShift(off, { salary_shift_from_day: 20, salary_category_id: 'tgt-bonus' }, ids),
     { patch: {}, kept: [] })
-  assert.match(restoreSummary({ kept: ['salary setting'] }).kept, /^Kept your current salary setting/)
+  assert.match(restoreSummary({ kept: ['salaryShift'] }).kept, /^Kept your current salary setting/)
 })
 
 // A fresh account's default categories (0084's seed), as listAllCategories returns them.

@@ -24,6 +24,7 @@ import {
   rebaseRateSpans, rebaseBackupData, currencyChange,
 } from './backupMath.js'
 import { UserError } from '../../shared/lib/errors.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // The profile settings a backup carries (see backupMath.js for what's left out).
 const PROFILE_FIELDS = 'display_name, base_currency, notify_email, notify_push, yearly_separate, '
@@ -54,7 +55,7 @@ async function allTransactions(baseCurrency) {
   }
   const total = await countTransactions()
   if (rows.length !== total) {
-    throw new UserError('Couldn’t read all of your entries — please try again.')
+    throw new UserError(t('backup:errors.incomplete'))
   }
   return rows
 }
@@ -80,19 +81,19 @@ async function groupLedgers(groups) {
 }
 
 // Gather the signed-in user's data into a backup document.
-// `onStep(label)` narrates progress for the export page.
+// `onStep(label)` narrates progress for the export page, in the app's language.
 async function gatherBackup(userId, onStep = () => {}) {
-  onStep('Reading your settings')
+  onStep(t('backup:export.steps.settings'))
   const [profile, payment] = await Promise.all([getProfile(userId, PROFILE_FIELDS), getMyPaymentInfo()])
-  onStep('Reading categories, accounts and goals')
+  onStep(t('backup:export.steps.lists'))
   const [categories, categoryRules, accounts, goals] = await Promise.all([
     listAllCategories(), listRules(), listAccounts(), listGoals(),
   ])
-  onStep('Reading budgets and recurring entries')
+  onStep(t('backup:export.steps.plans'))
   const [budgets, recurring] = await Promise.all([allBudgets(), listRecurring()])
-  onStep('Reading expenses and income')
+  onStep(t('backup:export.steps.entries'))
   const transactions = await allTransactions(profile?.base_currency || 'EUR')
-  onStep('Reading group history')
+  onStep(t('backup:export.steps.groups'))
   const groupList = await listGroups()
   const groups = await groupLedgers(groupList)
   return buildBackup({
@@ -105,7 +106,7 @@ async function gatherBackup(userId, onStep = () => {}) {
 // Build, optionally password-protect, and download the backup file.
 export async function downloadBackup(userId, password, onStep) {
   const doc = await gatherBackup(userId, onStep)
-  onStep?.(password ? 'Encrypting' : 'Saving')
+  onStep?.(t(password ? 'backup:export.steps.encrypting' : 'backup:export.steps.saving'))
   const text = await serializeBackup(doc, password)
   saveBlob(new Blob([text], { type: 'application/json' }), backupFileName())
 }
@@ -144,13 +145,13 @@ export async function restoreCurrencyPlan(userId, backup) {
 // converted first when the account's main currency differs.
 // `onProgress({ label, done, total })` drives the progress bar.
 export async function restoreBackup(user, backup, onProgress = () => {}) {
-  const step = (label, done = 0, total = 0) => onProgress({ label, done, total })
-  const t = {
+  const step = (id, done = 0, total = 0) => onProgress({ label: t(`backup:restore.progressSteps.${id}`), done, total })
+  const tally = {
     expenses: 0, income: 0, categories: 0, rules: 0, budgets: 0, budgetsUpdated: 0,
     recurring: 0, accounts: 0, goals: 0, settings: 0, duplicates: 0, kept: [],
   }
 
-  step('Checking what’s already in your account')
+  step('checking')
   // The profile must be read: its main currency decides what the amounts mean.
   const [cats, existingAccounts, existingTxns, current, locked] = await Promise.all([
     listAllCategories(), listAccounts(), allTransactions(),
@@ -166,14 +167,14 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
     prof.patch.base_currency ?? current?.base_currency ?? 'EUR')
   if (Object.keys(prof.patch).length) await updateProfile(user.id, prof.patch)
 
-  step('Categories')
+  step('categories')
   const catPlan = mapCategories(data.categories, cats)
   await createCategories(user.id, catPlan.missing.map((c) => ({
     name: c.name, kind: c.kind, icon: c.icon, color: c.color, is_archived: c.archived,
     is_savings: c.savings,
   })))
-  t.categories = catPlan.missing.length
-  t.duplicates += data.categories.length - catPlan.missing.length
+  tally.categories = catPlan.missing.length
+  tally.duplicates += data.categories.length - catPlan.missing.length
   const categoryIdByKey = catPlan.missing.length
     ? mapCategories(data.categories, await listAllCategories()).idByKey
     : catPlan.idByKey
@@ -184,64 +185,64 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   const salary = planSalaryShift(data.profile, current ?? {}, categoryIdByKey)
   if (Object.keys(salary.patch).length) await updateProfile(user.id, salary.patch)
 
-  step('Accounts')
+  step('accounts')
   const acctPlan = matchByName(data.accounts, existingAccounts)
   for (const a of acctPlan.fresh) {
     await saveAccount({ name: a.name, type: a.type, balance_minor: a.balance_minor, currency: a.currency })
   }
-  t.accounts = acctPlan.fresh.length
-  t.duplicates += acctPlan.skipped
+  tally.accounts = acctPlan.fresh.length
+  tally.duplicates += acctPlan.skipped
   const accountIdByKey = acctPlan.fresh.length
     ? matchByName(data.accounts, await listAccounts()).idByKey
     : acctPlan.idByKey
 
-  step('Auto-category rules')
+  step('rules')
   const rulePlan = planRules(data.categoryRules, await listRules(), categoryIdByKey)
   for (const r of rulePlan.create) await saveRule(user.id, r.pattern, r.category_id)
-  t.rules = rulePlan.create.length
-  t.duplicates += rulePlan.skipped
+  tally.rules = rulePlan.create.length
+  tally.duplicates += rulePlan.skipped
 
   const txPlan = await planTransactions(data.transactions, existingTxns,
     { userId: user.id, categoryIdByKey, accountIdByKey })
-  t.duplicates += txPlan.duplicates
+  tally.duplicates += txPlan.duplicates
   // Saved per kind so the summary can say how many of each were new; rows the
   // server itself recognises (same client_uuid, e.g. from an interrupted
   // earlier restore) come back as duplicates.
   const total = txPlan.rows.length
   let done = 0
-  step('Expenses and income', 0, total)
+  step('entries', 0, total)
   for (const kind of ['expense', 'income']) {
     const rows = txPlan.rows.filter((r) => r.kind === kind)
     const base = done
-    const res = await importTransactions(rows, (n) => step('Expenses and income', base + n, total))
+    const res = await importTransactions(rows, (n) => step('entries', base + n, total))
     done += rows.length
-    t[kind === 'expense' ? 'expenses' : 'income'] = res.inserted
-    t.duplicates += res.duplicates
+    tally[kind === 'expense' ? 'expenses' : 'income'] = res.inserted
+    tally.duplicates += res.duplicates
   }
 
-  step('Recurring entries')
+  step('recurring')
   const recPlan = planRecurring(data.recurring, await listRecurring(), { categoryIdByKey, accountIdByKey })
   for (const r of recPlan.create) await saveRecurring(r)
-  t.recurring = recPlan.create.length
-  t.duplicates += recPlan.skipped
+  tally.recurring = recPlan.create.length
+  tally.duplicates += recPlan.skipped
 
-  step('Budgets')
+  step('budgets')
   const budPlan = planBudgets(data.budgets, await allBudgets(), categoryIdByKey)
   for (const b of [...budPlan.create, ...budPlan.update]) await saveBudget(b)
-  t.budgets = budPlan.create.length
-  t.budgetsUpdated = budPlan.update.length
-  t.duplicates += budPlan.unchanged
+  tally.budgets = budPlan.create.length
+  tally.budgetsUpdated = budPlan.update.length
+  tally.duplicates += budPlan.unchanged
 
-  step('Savings goals')
+  step('goals')
   const goalPlan = matchByName(data.goals, await listGoals())
   for (const g of goalPlan.fresh) await saveGoal(g)
-  t.goals = goalPlan.fresh.length
-  t.duplicates += goalPlan.skipped
+  tally.goals = goalPlan.fresh.length
+  tally.duplicates += goalPlan.skipped
 
-  step('Payment details')
+  step('payment')
   const pay = planPayment(data, await getMyPaymentInfo())
   if (pay.patch) await savePaymentInfo(pay.patch)
-  t.settings = Object.keys(prof.patch).length + (Object.keys(salary.patch).length ? 1 : 0) + (pay.patch ? 1 : 0)
-  t.kept = [...prof.kept, ...salary.kept, ...pay.kept]
-  return t
+  tally.settings = Object.keys(prof.patch).length + (Object.keys(salary.patch).length ? 1 : 0) + (pay.patch ? 1 : 0)
+  tally.kept = [...prof.kept, ...salary.kept, ...pay.kept]
+  return tally
 }
