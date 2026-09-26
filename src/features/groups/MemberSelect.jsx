@@ -32,7 +32,7 @@ const MemberSelect = forwardRef(function MemberSelect(
     <UserAvatar size="xs" name={m.display_name} src={m.avatar_url} highlight={m.id === myMemberId} aria-hidden />
   )
   return (
-    <Menu placement="bottom-end" isLazy modifiers={[{ name: 'preventOverflow', options: { padding: 16 } }]}>
+    <Menu placement="bottom-end" strategy="fixed" isLazy modifiers={[{ name: 'preventOverflow', options: { padding: 16 } }]}>
       <MenuButton ref={ref} as={Button} variant="unstyled" {...control}
         aria-labelledby={`${control.id}-label ${valueId}`}
         sx={field} display="flex" alignItems="center" w="full" fontWeight="400" textAlign="start" px={3}
