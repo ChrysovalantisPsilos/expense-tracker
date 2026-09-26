@@ -25,6 +25,7 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 const TABS = ['expense', 'income']
 
@@ -149,7 +150,7 @@ export default function Recurring() {
           <ModalBody>
             <Text color="text.muted">
               {t('list.remove.body', {
-                name: removing?.description || removing?.categories?.name || t('list.remove.thisEntry'),
+                name: removing?.description || categoryDisplayName(removing?.categories) || t('list.remove.thisEntry'),
               })}
             </Text>
           </ModalBody>
@@ -170,7 +171,7 @@ function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
   return (
     <ItemRow py={2.5} dimmed={!r.is_active}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-      title={r.description || r.categories?.name || t(`kinds.${r.kind === 'income' ? 'income' : 'expense'}`)}
+      title={r.description || categoryDisplayName(r.categories) || t(`kinds.${r.kind === 'income' ? 'income' : 'expense'}`)}
       meta={<RuleMeta rule={r} />}
       amount={formatMoney(r.amount_minor, r.currency)} amountMeta={hint}
       amountTone={r.kind === 'income' ? 'positive' : 'default'}

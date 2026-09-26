@@ -123,7 +123,10 @@ never type them into a string.
 - Keep product and company names as they are: IBAN, Revolut, PayPal,
   PayPal.me, Airbnb, Google, Excel, CSV, PDF.
 - Don't translate currency codes (EUR, USD), and never translate user data
-  (names, descriptions, category names that people typed).
+  (names, descriptions, category names that people typed). The seeded
+  default categories are the exception, until the user renames one: Φαγητό &
+  εστιατόρια, Σούπερ μάρκετ, Μετακινήσεις, Σπίτι, Λογαριασμοί, Ψώνια, Υγεία,
+  Διασκέδαση, Άλλα, Μισθός, Φίλοι & οικογένεια, Μπόνους, Αποταμιεύσεις.
 
 ## Owner's review notes
 

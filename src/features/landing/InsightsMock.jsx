@@ -17,7 +17,7 @@ const LATEST = trend[trend.length - 1]
 export default function InsightsMock() {
   const t = useT('landing')
   const playback = usePlayback({ once: true })
-  const shares = byCategory.map((c) => ({ label: t(`demo.categories.${c.id}`), share: c.share }))
+  const shares = byCategory.map((c) => ({ name: c.category, label: t(`demo.categories.${c.id}`), share: c.share }))
   const bars = trend.map((m) => ({ label: shortMonth(m.monthIndex), value: m.minor }))
   return (
     <Panel ref={playback.ref} title={t('demo.insights.title')} label={t('demo.insights.label')}>

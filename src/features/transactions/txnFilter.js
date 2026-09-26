@@ -1,5 +1,6 @@
 import { toBaseMinor, toMinor } from '../../shared/lib/currency.js'
 import { netSign, rowEffect } from '../../shared/lib/savings.js'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // Pure search/filter logic behind the Transactions page. The server does the
 // coarse, indexed filtering (kind, dates, category); free text and the amount
@@ -38,7 +39,7 @@ export function filterTransactions(rows, { text = '', min = '', max = '', catego
   return rows.filter((r) => {
     if (categoryId === NO_CATEGORY && (r.category_id || r.group_expense_id)) return false
     if (q) {
-      const hay = `${r.description ?? ''} ${r.notes ?? ''} ${r.categories?.name ?? ''}`.toLowerCase()
+      const hay = `${r.description ?? ''} ${r.notes ?? ''} ${r.categories?.name ?? ''} ${categoryDisplayName(r.categories)}`.toLowerCase()
       if (!hay.includes(q)) return false
     }
     if (minBase != null || maxBase != null) {

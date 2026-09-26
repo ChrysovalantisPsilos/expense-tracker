@@ -19,6 +19,7 @@ import { categoryPath } from './categoryLinks.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader, { BusyNote } from '../../shared/ui/RingLoader.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // The Expenses / Income switch (labels: kinds.<kind>).
 const KINDS = ['expense', 'income']
@@ -44,7 +45,7 @@ export default function Categories() {
     try {
       await updateCategory(c.id, { is_archived: !c.is_archived })
       reload()
-      toast({ title: t(c.is_archived ? 'toasts.unarchived' : 'toasts.archived', { name: c.name }), status: 'success' })
+      toast({ title: t(c.is_archived ? 'toasts.unarchived' : 'toasts.archived', { name: categoryDisplayName(c) }), status: 'success' })
     } catch (e) {
       console.error('[categories] archive failed:', e)
       toast({ title: userMessage(e, t('toasts.notUpdated')), status: 'error' })
@@ -69,17 +70,17 @@ export default function Categories() {
               <Box key={c.id} role="listitem">
                 <ItemRow media={<CategoryBadge category={c} kind={c.kind} size={32} />}
                   title={isNewCategory(c) ? (
-                    <>{c.name}{' '}<Tag size="sm" colorScheme="green" borderRadius="full" verticalAlign="middle">{t('list.new')}</Tag></>
-                  ) : c.name}
+                    <>{categoryDisplayName(c)}{' '}<Tag size="sm" colorScheme="green" borderRadius="full" verticalAlign="middle">{t('list.new')}</Tag></>
+                  ) : categoryDisplayName(c)}
                   meta={c.is_archived ? t('list.archived') : c.is_savings ? t('list.savings') : undefined}
                   dimmed={c.is_archived}
                   onClick={() => navigate(categoryPath(c.id))} chevron
                   actionSlots={3} actions={[
-                    { label: t('list.editOne', { name: c.name }), icon: Pencil, onClick: () => navigate(categoryPath(c.id), { state: { edit: true } }) },
+                    { label: t('list.editOne', { name: categoryDisplayName(c) }), icon: Pencil, onClick: () => navigate(categoryPath(c.id), { state: { edit: true } }) },
                     c.is_archived
-                      ? { label: t('list.unarchiveOne', { name: c.name }), icon: ArchiveRestore, onClick: () => toggleArchive(c) }
-                      : { label: t('list.archiveOne', { name: c.name }), icon: Archive, onClick: () => toggleArchive(c) },
-                    { label: t('list.deleteOne', { name: c.name }), icon: Trash2, danger: true, onClick: () => setDeleting(c) },
+                      ? { label: t('list.unarchiveOne', { name: categoryDisplayName(c) }), icon: ArchiveRestore, onClick: () => toggleArchive(c) }
+                      : { label: t('list.archiveOne', { name: categoryDisplayName(c) }), icon: Archive, onClick: () => toggleArchive(c) },
+                    { label: t('list.deleteOne', { name: categoryDisplayName(c) }), icon: Trash2, danger: true, onClick: () => setDeleting(c) },
                   ]} />
               </Box>
             ))}
@@ -115,8 +116,8 @@ function DeleteCategoryModal({ category, all, onClose, onSaved }) {
       const moved = await deleteCategory(category.id, moveTo || null)
       const target = targets.find((c) => c.id === moveTo)
       toast({
-        title: t('toasts.deleted', { name: category.name }),
-        description: moved > 0 && target ? t('toasts.moved', { count: moved, target: target.name }) : undefined,
+        title: t('toasts.deleted', { name: categoryDisplayName(category) }),
+        description: moved > 0 && target ? t('toasts.moved', { count: moved, target: categoryDisplayName(target) }) : undefined,
         status: 'success',
       })
       onSaved?.(); onClose()
@@ -127,7 +128,7 @@ function DeleteCategoryModal({ category, all, onClose, onSaved }) {
     <Modal isOpen={!!category} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent mx={4}>
-        <ModalHeader>{t('deleteDialog.title', { name: category?.name })}</ModalHeader>
+        <ModalHeader>{t('deleteDialog.title', { name: categoryDisplayName(category) })}</ModalHeader>
         <ModalBody>
           <Stack spacing={4}>
             {count == null ? (
@@ -141,7 +142,7 @@ function DeleteCategoryModal({ category, all, onClose, onSaved }) {
                 </FormLabel>
                 <Select value={moveTo} onChange={(e) => setMoveTo(e.target.value)}>
                   <option value="">{t('deleteDialog.leave')}</option>
-                  {targets.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {targets.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
                 </Select>
                 <FormHelperText>{t('deleteDialog.movesToo')}</FormHelperText>
               </FormControl>

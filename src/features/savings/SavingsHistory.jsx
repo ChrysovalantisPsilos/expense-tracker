@@ -18,6 +18,7 @@ import {
   HISTORY_FILTERS, HISTORY_MONTHS, HISTORY_MORE, monthGroups, monthHeading, moveDirection,
 } from './savingsMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // One entry: its date and where the money came from or went ("from income",
 // "received", "from savings"), a repeat mark when a rule adds it, and the
@@ -29,7 +30,7 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
   return (
     <ItemRow py={1.5} onClick={() => open(r)}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-      title={<Box as="span" display="block" sx={ONE_LINE}>{r.description || r.categories?.name || t('fallbackName')}</Box>}
+      title={<Box as="span" display="block" sx={ONE_LINE}>{r.description || categoryDisplayName(r.categories) || t('fallbackName')}</Box>}
       meta={
         <HStack spacing={1.5} fontSize="xs" color="text.muted" minW={0}>
           <Text sx={ONE_LINE} minW={0}>

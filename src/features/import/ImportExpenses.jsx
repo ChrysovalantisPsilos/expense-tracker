@@ -29,6 +29,7 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { BusyNote, RingSpinner } from '../../shared/ui/RingLoader.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // A row's error code (importMath.rowToDraft) in words: import:reasons.*.
 function reasonText(t, reason) {
@@ -307,7 +308,7 @@ export default function ImportExpenses() {
                     value={assign[g.id] || ''}
                     onChange={(e) => setAssign((a) => ({ ...a, [g.id]: e.target.value }))}>
                     {categories.filter((c) => c.kind === g.kind && !c.is_archived)
-                      .map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      .map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
                   </Select>
                 </Stack>
               </Tile>

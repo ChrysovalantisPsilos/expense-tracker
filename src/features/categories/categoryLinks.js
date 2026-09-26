@@ -1,6 +1,6 @@
 import { NO_CATEGORY } from '../transactions/txnFilter.js'
 import { periodFromValue } from '../transactions/periods.js'
-import { bucketOf } from '../../shared/lib/txnRollup.js'
+import { bucketLabels, bucketOf } from '../../shared/lib/txnRollup.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 
 // The category page's URL contract, and the drill-down links other pages
@@ -69,28 +69,29 @@ function bucketLinks(rows, period) {
     if (!targets.has(name)) targets.set(name, target)
     else if (targets.get(name) !== target) targets.set(name, null)
   }
+  const labels = bucketLabels(rows.filter((r) => r.kind !== 'income'))
   const links = new Map()
   for (const [name, target] of targets) {
     if (!target) continue
     const [kind, id] = target.split(':')
     links.set(name, kind === 'group'
       ? { to: `/groups/${id}`, label: t('categories:links.group', { name }) }
-      : categoryLink(name, id, period))
+      : categoryLink(labels.get(name) ?? name, id, period))
   }
   return links
 }
 
-// A category breakdown's items (categoryBars rows, or spendingShares items —
-// `nameOf` reads the bucket name) with their drill-down: `to` (in-app path)
+// A category breakdown's items (categoryBars rows or spendingShares items;
+// `name` is the bucket) with their drill-down: `to` (in-app path)
 // and `linkLabel` (its accessible name, e.g. "Show Groceries expenses for
 // September 2026"), ready for ProgressRow / ShareLegend. `rows` are the
 // transactions behind the breakdown, `period` is { value?, from, to, label }
 // (from/to null = all time). A folded "Other" merges several buckets, so it
 // gets no link.
-export function linkBuckets(items, rows, period, nameOf = (item) => item.name) {
+export function linkBuckets(items, rows, period) {
   const links = bucketLinks(rows, period)
   return items.map((item) => {
-    const link = item.folded ? undefined : links.get(nameOf(item))
+    const link = item.folded ? undefined : links.get(item.name)
     return link ? { ...item, to: link.to, linkLabel: link.label } : item
   })
 }

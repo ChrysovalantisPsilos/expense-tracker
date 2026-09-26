@@ -28,6 +28,7 @@ import CategoryGrid from './CategoryGrid.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // The Expense / Income switch's options; `t` is useT('transactions').
 export const kindOptions = (t) => ['expense', 'income'].map((k) => [k, t(`kinds.${k}`)])
@@ -323,7 +324,7 @@ export default function TransactionForm({
             <FormLabel>{t('form.category')}</FormLabel>
             <Select placeholder={t('uncategorized')} value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
             </Select>
             <FormHelperText>{manageCategories}</FormHelperText>
           </FormControl>

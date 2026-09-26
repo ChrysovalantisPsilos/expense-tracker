@@ -35,6 +35,7 @@ import { categoryPatch, categoryPeriod, sameKindOthers } from './categoryMath.js
 import { parseCategoryRoute } from './categoryLinks.js'
 import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // One category's page (/categories/:id?period=…) — where Home's category
 // bars, Insights' legend, budget rows and the Categories list drill down to.
@@ -94,7 +95,7 @@ export default function CategoryPage() {
   const [focusBudget, setFocusBudget] = useState(false)
   const openEdit = (withBudget) => { setFocusBudget(withBudget); setEditing(true) }
 
-  const name = uncategorised ? t('uncategorized') : category?.name ?? ''
+  const name = uncategorised ? t('uncategorized') : categoryDisplayName(category)
   const pickPeriod = (value) => setParams({ period: value }, { replace: true })
 
   if (missing) {
@@ -238,7 +239,7 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
     await run(async () => {
       await updateCategory(category.id, { is_archived: !category.is_archived })
       toast({
-        title: t(category.is_archived ? 'toasts.unarchived' : 'toasts.archived', { name: category.name }),
+        title: t(category.is_archived ? 'toasts.unarchived' : 'toasts.archived', { name: categoryDisplayName(category) }),
         status: 'success',
       })
       await onSaved()
@@ -246,7 +247,7 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
   }
 
   return (
-    <Panel icon={Pencil} title={t('page.editTitle', { name: category.name })}>
+    <Panel icon={Pencil} title={t('page.editTitle', { name: categoryDisplayName(category) })}>
       <form onSubmit={save} {...unsaved}>
         <Stack spacing={5}>
           {category.kind === 'expense' && (

@@ -12,6 +12,7 @@ import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { SALARY_SHIFT_DAYS, salaryShiftPatch } from './spendingPrefs.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // How monthly spending is counted. Two synced preferences:
 //   * profiles.yearly_separate (0068). Off (the default) spreads a yearly
@@ -119,7 +120,7 @@ function SalaryShiftPref({ profile, save }) {
               placeholder={shown.salary_category_id ? undefined : t('spending.salary.chooseCategory')}
               value={shown.salary_category_id ?? ''}
               onChange={(e) => e.target.value && change({ salary_category_id: e.target.value })}>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
             </Select>
           </FormControl>
         </Stack>

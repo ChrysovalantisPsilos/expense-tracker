@@ -118,10 +118,12 @@ export default {
       common: 'That password is too common — pick something less guessable.',
     },
   },
-  // A breakdown's buckets without a category of their own (txnRollup.js).
+  // A breakdown's buckets without a category of their own (txnRollup.js);
+  // `other` is the folded tail of a top-5 breakdown (categoryBars' "Other").
   bucket: {
     uncategorized: 'Uncategorized',
     group: 'Group',
+    other: 'Other',
   },
   // The full-page error screens (errorScreens.js).
   errorScreen: {
@@ -202,6 +204,24 @@ export default {
     label: 'App tour',
     step: 'Step {{n}} of {{total}}',
     announce: 'Step {{n}} of {{total}}: {{title}}',
+  },
+  // The seeded default categories' names (categories.default_key, 0094;
+  // categoryDisplayName). English is exactly the stored name.
+  defaultCategories: {
+    food: 'Food & Dining',
+    groceries: 'Groceries',
+    transport: 'Transport',
+    housing: 'Housing',
+    utilities: 'Utilities',
+    shopping: 'Shopping',
+    health: 'Health',
+    entertainment: 'Entertainment',
+    other: 'Other',
+    salary: 'Salary',
+    friends: 'Friends & family',
+    friendTransfer: 'Friend Transfer',
+    bonus: 'Bonus',
+    savings: 'Savings',
   },
   // The category icon picker (categoryStyle.js): each icon's name, and the sections.
   categoryIcons: {

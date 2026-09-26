@@ -14,7 +14,7 @@ import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 const CATS = [
   { id: 'cat-food', name: 'Food', kind: 'expense', icon: 'utensils', color: 'amber', is_archived: false },
   { id: 'cat-old', name: 'Old hobby', kind: 'expense', icon: null, color: null, is_archived: true },
-  { id: 'cat-pay', name: 'Salary', kind: 'income', icon: 'salary', color: 'green', is_archived: false },
+  { id: 'cat-pay', name: 'Salary', kind: 'income', icon: 'salary', color: 'green', is_archived: false, default_key: 'salary' },
 ]
 const ACCOUNTS = [{ id: 'acc-1', name: 'Current account', type: 'asset', balance_minor: 125000, currency: 'EUR' }]
 const TXNS = [

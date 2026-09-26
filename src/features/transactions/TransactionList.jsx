@@ -18,6 +18,7 @@ import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { frequencyLabel } from '../recurring/recurringMath.js'
 import { landscapeOnly, ONE_LINE } from '../../shared/lib/shortLandscape.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // Sideways, the meta line keeps to one line like the row's title (ItemRow):
 // its parts run on as one line of text, cut with an ellipsis at the end.
@@ -83,7 +84,7 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
             <ListItem key={r.id}>
               <ItemRow py={2.5} onClick={shared ? undefined : () => open(r)}
                 media={<CategoryBadge category={r.categories} kind={rk} size={32} />}
-                title={r.description || r.categories?.name || t(`kinds.${rk === 'income' ? 'income' : 'expense'}`)}
+                title={r.description || categoryDisplayName(r.categories) || t(`kinds.${rk === 'income' ? 'income' : 'expense'}`)}
                 meta={<RowMeta row={r} shared={shared} saved={savingsNoteOf(r, savingsIds)} />}
                 amount={`${rk === 'income' ? '+' : ''}${formatMoney(r.amount_minor, r.currency)}`}
                 amountTone={rk === 'income' ? 'positive' : 'default'}
@@ -122,7 +123,7 @@ function RowMeta({ row: r, shared, saved }) {
       sx={SHORT_META}>
       <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
       {r.description && r.categories?.name && (
-        <Text overflowWrap="anywhere">· {r.categories.name}</Text>
+        <Text overflowWrap="anywhere">· {categoryDisplayName(r.categories)}</Text>
       )}
       {saved && <Text whiteSpace="nowrap">· {saved}</Text>}
       {r.notes && (

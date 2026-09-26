@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { supabase } from '../../shared/lib/supabase.js'
 import { useLiveQuery, useOwnedQuery } from '../../shared/lib/db.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
@@ -6,6 +6,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { fillPendingRates } from '../../shared/lib/fx.js'
 import { shiftFetchFrom } from '../../shared/lib/salaryShift.js'
 import { dbError } from '../../shared/lib/errors.js'
+import { byDisplayName } from '../../shared/lib/categoryName.js'
 
 // Categories for the current user (optionally filtered by kind).
 export function useCategories(kind) {
@@ -16,7 +17,9 @@ export function useCategories(kind) {
     },
     deps: [kind],
   })
-  return { categories, loading, reload }
+  // A–Z by the name shown (a default category in the app's language).
+  const sorted = useMemo(() => [...categories].sort(byDisplayName), [categories])
+  return { categories: sorted, loading, reload }
 }
 
 // Transactions in a date range (defaults to current month). Optional
@@ -107,7 +110,7 @@ export async function oldestTransactionDate() {
 // Every category the user has, archived ones included (backup/restore).
 export async function listAllCategories() {
   const { data, error } = await supabase
-    .from('categories').select('id, name, kind, icon, color, is_archived, is_savings').order('name')
+    .from('categories').select('id, name, kind, icon, color, is_archived, is_savings, default_key').order('name')
   if (error) throw dbError(error)
   return data ?? []
 }

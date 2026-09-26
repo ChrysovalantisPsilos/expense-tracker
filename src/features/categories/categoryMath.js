@@ -8,6 +8,7 @@ import { NO_CATEGORY } from '../transactions/txnFilter.js'
 import { paidInWindow, spendRows } from '../../shared/lib/spread.js'
 import { toBaseMinor } from '../../shared/lib/currency.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
+import { byDisplayName, categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 export const CATEGORY_NAME_MAX = 60
 
@@ -30,12 +31,13 @@ export function categoryNameError(name, others = []) {
 }
 
 // The categories page list for one kind: active first, then archived, each
-// A–Z (locale-aware, case-insensitive).
+// A–Z by the name shown (a default in the app's language; locale-aware,
+// case-insensitive).
 export function sortCategories(categories, kind) {
   return (categories ?? [])
     .filter((c) => c.kind === kind)
     .sort((a, b) => Number(!!a.is_archived) - Number(!!b.is_archived)
-      || String(a.name).localeCompare(String(b.name), undefined, { sensitivity: 'base' }))
+      || byDisplayName(a, b))
 }
 
 // A new entry's category from a link (`/transactions/new?kind=…&category=…`,
@@ -63,11 +65,13 @@ export function sameKindOthers(categories, category) {
 
 // The update an edit form's { name, icon, color, savings } makes to
 // `category`, or null when nothing changed (the name compares trimmed, as it's
-// stored). `savings` ("Counts as savings", 0084) only applies to an income
+// stored). The form starts on the name as shown, so a default category's
+// translated name left as it is isn't a rename (that would drop its key). `savings` ("Counts as savings", 0084) only applies to an income
 // category — the server refuses is_savings on an expense one.
 export function categoryPatch(category, { name, icon, color, savings = false }) {
   const patch = {}
-  if (String(name ?? '').trim() !== category.name) patch.name = name
+  const trimmed = String(name ?? '').trim()
+  if (trimmed !== category.name && trimmed !== categoryDisplayName(category)) patch.name = name
   if ((icon ?? null) !== (category.icon ?? null)) patch.icon = icon
   if ((color ?? null) !== (category.color ?? null)) patch.color = color
   if (category.kind === 'income' && !!savings !== !!category.is_savings) patch.is_savings = !!savings

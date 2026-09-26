@@ -210,11 +210,11 @@ test('the new default income categories match the seed and the backfills (0082, 
     if (isSavings) {
       // Seeded and backfilled marked as savings; an existing income category
       // of that name is marked instead of duplicated.
-      assert.match(seed, new RegExp(`\\(uid, '${name}',\\s*'${icon}',\\s*'income', true\\)`), name)
+      assert.match(seed, new RegExp(`\\(uid, '${name}',\\s*'${icon}',\\s*'income', true, '[a-zA-Z]+'\\)`), name)
       assert.match(savings, new RegExp(`select p\\.id, '${name}', '${icon}', 'income'::public\\.txn_kind, true`), name)
       assert.match(savings, /on conflict \(user_id, name, kind\) do update set is_savings = true/)
     } else {
-      assert.match(seed, new RegExp(`\\(uid, '${name}',\\s*'${icon}',\\s*'income'\\)`), name)
+      assert.match(seed, new RegExp(`\\(uid, '${name}',\\s*'${icon}',\\s*'income',\\s*'[a-zA-Z]+'\\)`), name)
       assert.match(backfill, new RegExp(`\\('${backfilled(name)}',\\s*'${icon}'\\)`), name)
     }
   }

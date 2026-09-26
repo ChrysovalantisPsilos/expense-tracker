@@ -92,13 +92,13 @@ test('linkBuckets: a real "Other" category links when nothing is folded into it'
   assert.equal(other.to, categoryPath(CAT, 'm:2026-8'))
 })
 
-test('linkBuckets: only expense rows inside the period decide a bucket; nameOf reads labels', () => {
+test('linkBuckets: only expense rows inside the period decide a bucket', () => {
   const rows = [
     groceries({ spent_at: '2026-07-31', category_id: CAT2 }), // previous month: ignored
     groceries({ kind: 'income', category_id: CAT2 }), // income: ignored
     groceries(),
   ]
-  const [g] = linkBuckets([{ label: 'Groceries', share: 100 }], rows, aug, (s) => s.label)
+  const [g] = linkBuckets([{ name: 'Groceries', label: 'Groceries', share: 100 }], rows, aug)
   assert.equal(g.to, categoryPath(CAT, 'm:2026-8'))
   assert.equal(g.share, 100)
 })

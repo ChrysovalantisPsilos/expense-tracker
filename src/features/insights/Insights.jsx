@@ -70,7 +70,7 @@ export default function Insights() {
   // to its group); the folded "Other" merges several buckets, so it has no link.
   const shares = useMemo(() => linkBuckets(
     spendingShares(spend, thisMonth, baseCurrency), spend,
-    { ...months[months.length - 1], label: t('thisMonth') }, (s) => s.label,
+    { ...months[months.length - 1], label: t('thisMonth') },
   ), [spend, months, thisMonth, baseCurrency, t])
   // Spending abroad lists actual payments (each at its own rate), not shares.
   const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])

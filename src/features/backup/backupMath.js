@@ -135,6 +135,9 @@ export function buildBackup({
         key: catKey.get(c.id), name: c.name, kind: c.kind,
         icon: c.icon ?? null, color: c.color ?? null, archived: !!c.is_archived,
         savings: !!c.is_savings,
+        // 0094: a default category's key, only as a hint. On restore the
+        // server re-derives it from the name and kind; it never trusts it.
+        ...(c.default_key && { default_key: c.default_key }),
       })),
       categoryRules: categoryRules.filter((r) => catKey.has(r.category_id))
         .map((r) => ({ pattern: r.pattern, category: catKey.get(r.category_id) })),
@@ -367,6 +370,8 @@ function validateBackup(doc) {
       archived: v.bool(c.archived ?? false, 'archived'),
       // Only an income category can be savings (the server's CHECK).
       savings: v.bool(c.savings ?? false, 'savings') && c.kind === 'income',
+      // 0094: a default's key, a hint the server re-derives (buildBackup).
+      ...(v.text(c.default_key, 'default key', { max: 40 }) && { default_key: c.default_key }),
     }
   }), { before0084: !rawCategories.some((c) => 'savings' in c) })
   const catKeys = new Set(categories.map((c) => c.key))

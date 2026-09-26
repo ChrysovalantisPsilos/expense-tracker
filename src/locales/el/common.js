@@ -114,6 +114,7 @@ export default {
   bucket: {
     uncategorized: 'Χωρίς κατηγορία',
     group: 'Ομάδα',
+    other: 'Άλλα',
   },
   errorScreen: {
     notFound: {
@@ -191,6 +192,22 @@ export default {
     label: 'Ξενάγηση',
     step: 'Βήμα {{n}} από {{total}}',
     announce: 'Βήμα {{n}} από {{total}}: {{title}}',
+  },
+  defaultCategories: {
+    food: 'Φαγητό & εστιατόρια',
+    groceries: 'Σούπερ μάρκετ',
+    transport: 'Μετακινήσεις',
+    housing: 'Σπίτι',
+    utilities: 'Λογαριασμοί',
+    shopping: 'Ψώνια',
+    health: 'Υγεία',
+    entertainment: 'Διασκέδαση',
+    other: 'Άλλα',
+    salary: 'Μισθός',
+    friends: 'Φίλοι & οικογένεια',
+    friendTransfer: 'Μεταφορά από φίλο',
+    bonus: 'Μπόνους',
+    savings: 'Αποταμιεύσεις',
   },
   categoryIcons: {
     labels: {

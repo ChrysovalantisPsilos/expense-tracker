@@ -3,6 +3,7 @@ import {
 } from '@chakra-ui/react'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // "Delete this expense?" — the confirm step before deleting one transaction
 // (the list's row action and the transaction page). Open while `row` is set;
@@ -18,7 +19,7 @@ export default function DeleteTransactionDialog({ row, onClose, onConfirm, busy,
         <ModalBody>
           <Text color="text.muted">
             {row && t('deleteDialog.body', {
-              name: row.description || row.categories?.name || t('deleteDialog.thisEntry'),
+              name: row.description || categoryDisplayName(row.categories) || t('deleteDialog.thisEntry'),
               amount: formatMoney(row.amount_minor, row.currency),
             })}
             {note && ` ${note}`}

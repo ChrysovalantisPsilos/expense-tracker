@@ -13,7 +13,7 @@ import { t } from '../../shared/lib/i18n/i18n.js'
 // Every category the user has, archived included (live).
 export function useAllCategories() {
   return useOwnedQuery('categories', {
-    select: 'id, name, kind, icon, color, is_archived, is_savings, created_at',
+    select: 'id, name, kind, icon, color, is_archived, is_savings, default_key, created_at',
     build: (q) => q.order('name'),
   })
 }

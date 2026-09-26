@@ -20,6 +20,7 @@ import { spendRows, paidInWindow } from '../../shared/lib/spread.js'
 import { rulesInBase } from '../../shared/lib/ruleFx.js'
 import { countedInWindow } from '../../shared/lib/salaryShift.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
+import { bucketLabel, bucketLabels } from '../../shared/lib/txnRollup.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
@@ -96,8 +97,12 @@ export default function Dashboard() {
   // Each bar drills down to its expenses for this period (a group share to its
   // group); the folded "Other" merges several buckets, so it has no link.
   // Every category, largest first (no fold: "Show all" reveals the tail).
-  const bars = useMemo(
-    () => linkBuckets(categoryBars(byCategory, Infinity), spend, period), [byCategory, spend, period])
+  // Each bar is shown by its label (a default category in the app's language).
+  const bars = useMemo(() => {
+    const labels = bucketLabels(bucketRow.values())
+    return linkBuckets(categoryBars(byCategory, Infinity), spend, period)
+      .map((c) => ({ ...c, label: bucketLabel(c, labels) }))
+  }, [byCategory, bucketRow, spend, period])
   const [showAllBars, setShowAllBars] = useState(false)
   const shownBars = visibleBars(bars, showAllBars)
 
@@ -217,7 +222,7 @@ export default function Dashboard() {
               {bars.map((c) => (
                 <Tr key={c.name}>
                   <Td>
-                    {c.to ? <Link as={RouterLink} to={c.to} aria-label={c.linkLabel}>{c.name}</Link> : c.name}
+                    {c.to ? <Link as={RouterLink} to={c.to} aria-label={c.linkLabel}>{c.label}</Link> : c.label}
                   </Td>
                   <Td isNumeric fontWeight="600">{formatMoney(c.value, baseCurrency)}</Td>
                   <Td isNumeric color="text.muted">{c.share}%</Td>
@@ -232,8 +237,8 @@ export default function Dashboard() {
           <Stack spacing={4} role="list" aria-label={t('categories.title')} id="spending-bars">
             {shownBars.rows.map((c) => (
               <ProgressRow key={c.name} role="listitem"
-                title={c.name} meta={formatMoney(c.value, baseCurrency)}
-                tooltip={t('categories.tooltip', { name: c.name, amount: formatMoney(c.value, baseCurrency), share: c.share })}
+                title={c.label} meta={formatMoney(c.value, baseCurrency)}
+                tooltip={t('categories.tooltip', { name: c.label, amount: formatMoney(c.value, baseCurrency), share: c.share })}
                 media={<BucketIcon row={bucketRow.get(c.name)} />}
                 percent={Math.max(c.ratio * 100, 2)} valueLabel={`${c.share}%`}
                 to={c.to} linkLabel={c.linkLabel} />

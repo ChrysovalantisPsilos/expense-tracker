@@ -171,7 +171,7 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   const catPlan = mapCategories(data.categories, cats)
   await createCategories(user.id, catPlan.missing.map((c) => ({
     name: c.name, kind: c.kind, icon: c.icon, color: c.color, is_archived: c.archived,
-    is_savings: c.savings,
+    is_savings: c.savings, default_key: c.default_key, // a hint: the server re-derives it (0094)
   })))
   tally.categories = catPlan.missing.length
   tally.duplicates += data.categories.length - catPlan.missing.length

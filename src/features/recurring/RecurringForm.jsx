@@ -12,6 +12,7 @@ import { saveRecurring } from './recurring.js'
 import { editRepeat, repeatDraft, repeatRuleFields } from './recurringMath.js'
 import RepeatFields from './RepeatFields.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // The body of a recurring rule's page (RecurringPage). `rule` edits an
 // existing one; otherwise a new one starts as `kind`. Pausing lives on the
@@ -88,7 +89,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
           <FormLabel>{t('form.category')}</FormLabel>
           <Select placeholder={t('form.uncategorized')} value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {categories.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
           </Select>
         </FormControl>
         {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}

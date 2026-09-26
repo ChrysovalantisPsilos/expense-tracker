@@ -24,6 +24,7 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 export default function Budgets() {
   const t = useT('budgets')
@@ -115,7 +116,7 @@ export default function Budgets() {
           <FormControl>
             <FormLabel>{t('form.category')}</FormLabel>
             <Select ref={categoryRef} placeholder={t('form.select')} value={catId} onChange={(e) => setCatId(e.target.value)}>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
             </Select>
           </FormControl>
           <FormControl maxW="160px">

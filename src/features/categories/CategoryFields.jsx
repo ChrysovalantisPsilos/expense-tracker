@@ -11,6 +11,7 @@ import {
 } from '../../shared/lib/categoryStyle.js'
 import { CATEGORY_NAME_MAX, categoryNameError } from './categoryMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // The name / icon / colour form a category is added or edited with — the
 // new-category page and the category page's Edit panel share it. An income
@@ -19,7 +20,8 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 // the same kind (for the duplicate-name rule).
 export function useCategoryDraft(category, others) {
   const isEdit = !!category?.id
-  const [name, setName] = useState(category?.name ?? '')
+  // A default category starts on its name in the app's language.
+  const [name, setName] = useState(categoryDisplayName(category))
   // A legacy/unknown stored icon starts on the icon its badge shows, so saving
   // keeps its look.
   const [icon, setIcon] = useState(isEdit ? categoryIconKey(category) : 'other')
