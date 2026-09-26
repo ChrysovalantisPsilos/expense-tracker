@@ -10,10 +10,6 @@ export default {
   uncategorized: 'Uncategorized',
   actions: {
     add: 'Add',
-    edit: 'Edit',
-    delete: 'Delete',
-    cancel: 'Cancel',
-    back: 'Back',
     clear: 'Clear',
   },
   // periods.js: the period pickers' own labels (a named month or year comes

@@ -213,7 +213,7 @@ export default {
       complaint: {
         name: 'Καταγγελία σε εποπτική αρχή (άρθρο 77)',
         where: 'Αρχή Προστασίας Δεδομένων του Βελγίου — Autorité de protection des données / Gegevensbeschermingsautoriteit (APD/GBA), Rue de la Presse 35 / Drukpersstraat 35, 1000 Brussels, Belgium · contact@apd-gba.be · +32 2 274 48 00 · www.dataprotectionauthority.be',
-        also: 'Μπορείς να υποβάλεις καταγγελία στην αρχή προστασίας δεδομένων της χώρας της ΕΕ όπου ζεις ή εργάζεσαι, ή όπου πιστεύεις ότι συνέβη το πρόβλημα (στην Ελλάδα, η Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα). Θα εκτιμούσαμε την ευκαιρία να το λύσουμε πρώτα μαζί σου.',
+        also: 'Μπορείς να υποβάλεις καταγγελία στην αρχή προστασίας δεδομένων της χώρας της ΕΕ όπου ζεις ή εργάζεσαι, ή όπου πιστεύεις ότι συνέβη το πρόβλημα. Θα εκτιμούσαμε την ευκαιρία να το λύσουμε πρώτα μαζί σου.',
       },
     },
     security: {
@@ -394,7 +394,7 @@ export default {
     },
     complain: {
       title: 'Καταγγελία σε εποπτική αρχή',
-      text: 'Αρχή Προστασίας Δεδομένων του Βελγίου (APD/GBA), Rue de la Presse 35 / Drukpersstraat 35, 1000 Brussels · contact@apd-gba.be · +32 2 274 48 00 · www.dataprotectionauthority.be — ή η αρχή της χώρας όπου ζεις ή εργάζεσαι (στην Ελλάδα, η Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα).',
+      text: 'Αρχή Προστασίας Δεδομένων του Βελγίου (APD/GBA), Rue de la Presse 35 / Drukpersstraat 35, 1000 Brussels · contact@apd-gba.be · +32 2 274 48 00 · www.dataprotectionauthority.be — ή η αρχή της χώρας όπου ζεις ή εργάζεσαι.',
     },
     download: {
       title: 'Λήψη των δεδομένων σου',
@@ -450,7 +450,7 @@ export default {
   },
   checkError: {
     title: 'Δεν μπορέσαμε να ελέγξουμε τον λογαριασμό σου',
-    retry: 'Δοκίμασε ξανά',
+    retry: 'Προσπάθησε ξανά',
     checking: 'Έλεγχος…',
     logOut: 'Αποσύνδεση',
   },

@@ -105,8 +105,8 @@ export default function GoalsCard({ goals, loading, error, reload }) {
                     </Text>
                   </Box>
                   <RowActions actions={[
-                    { label: t('actions.edit'), icon: Pencil, onClick: () => navigate(`/savings/goals/${g.id}`, { state: { goal: g } }) },
-                    { label: t('actions.delete'), icon: Trash2, onClick: () => remove(g), danger: true },
+                    { label: t('common:actions.edit'), icon: Pencil, onClick: () => navigate(`/savings/goals/${g.id}`, { state: { goal: g } }) },
+                    { label: t('common:actions.delete'), icon: Trash2, onClick: () => remove(g), danger: true },
                   ]} />
                 </HStack>
                 {!done && (

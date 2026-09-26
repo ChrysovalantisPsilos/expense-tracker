@@ -76,7 +76,7 @@ test('spendingShares: converts to base currency and buckets group shares under t
     tx({ spent_at: '2026-09-03', amount_minor: 500, group_expense_id: 'g1', group_expenses: { groups: { name: 'Lisbon' } } }),
   ]
   assert.deepEqual(spendingShares(rows, '2026-09', 'EUR'), [
-    { label: 'Travel', share: 75 }, { label: 'Lisbon', share: 25 },
+    { name: 'Travel', label: 'Travel', share: 75 }, { name: 'Lisbon', label: 'Lisbon', share: 25 },
   ])
   assert.deepEqual(spendingShares([], '2026-09', 'EUR'), [])
 })

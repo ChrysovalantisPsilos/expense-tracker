@@ -8,11 +8,6 @@ export default {
   uncategorized: 'Χωρίς κατηγορία',
   actions: {
     add: 'Προσθήκη',
-    edit: 'Επεξεργασία',
-    close: 'Κλείσιμο',
-    save: 'Αποθήκευση',
-    cancel: 'Ακύρωση',
-    delete: 'Διαγραφή',
     archive: 'Αρχειοθέτηση',
     unarchive: 'Επαναφορά',
   },

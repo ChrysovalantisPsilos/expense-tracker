@@ -4,6 +4,7 @@ import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 import { monthTitle } from '../../shared/lib/dates.js'
 import { isMonthPeriod } from '../transactions/periods.js'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // How close spend is to its cap, as the tone its progress bar takes (the
 // theme's Progress variants): 'negative' once over the cap, 'warning' from 80%
@@ -166,7 +167,7 @@ export function periodBudgets({ sets, span, spend, baseCurrency }) {
     id: categoryId,
     categoryId,
     category: a.category,
-    name: a.category?.name ?? t('budgets:fallbackName'),
+    name: categoryDisplayName(a.category) || t('budgets:fallbackName'),
     limit: a.limit,
     spent: a.spent,
     tone: budgetTone(a.spent, a.limit),

@@ -33,6 +33,7 @@ import {
 import GoalsCard from './GoalsCard.jsx'
 import SavingsHistory from './SavingsHistory.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 const money = (minor, currency) => formatMoney(minor, currency)
 
@@ -226,7 +227,7 @@ function MonthCard({ month, rules, currency }) {
           {rules.map((r) => (
             <ItemRow key={r.id} icon={Repeat} chevron onClick={() => navigate(`/recurring/${r.id}`)}
               title={`${money(r.amount_minor, r.currency)} ${frequencyLabel(r)}`}
-              meta={t('month.next', { name: r.description || r.categories?.name || t('fallbackName'), date: shortDate(r.next_run) })} />
+              meta={t('month.next', { name: r.description || categoryDisplayName(r.categories) || t('fallbackName'), date: shortDate(r.next_run) })} />
           ))}
         </>
       )}

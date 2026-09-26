@@ -4,8 +4,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  salaryShiftOf, isShifted, countedDate, countedRow, countedInWindow, shiftFetchFrom, countsForLabel,
+  salaryShiftOf, isShifted, countedDate, countedRow, countedInWindow, shiftFetchFrom, countsFor,
 } from '../supabase/functions/_shared/salaryShift.ts'
+import { countsForLabel } from '../src/shared/lib/salaryShift.js'
+import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 import { spendRows, paidInWindow } from '../src/shared/lib/spread.js'
 import { periodTotals, periodProjection } from '../src/features/dashboard/dashboardMath.js'
 import { buildTrend } from '../src/features/insights/insightsMath.js'
@@ -51,11 +53,21 @@ test('D=31 clamps to short months: from the 28th/29th in February, the 30th in A
   assert.equal(countedDate(pay('2026-05-31'), d31), '2026-06-01')
 })
 
-test('December salary counts for January of the next year', () => {
+test('December salary counts for January of the next year', async () => {
   assert.equal(countedDate(pay('2025-12-30'), shift), '2026-01-01')
+  assert.deepEqual(countsFor(pay('2025-12-30'), shift), { year: 2026, month: 1, newYear: true })
+  assert.deepEqual(countsFor(pay('2026-09-30'), shift), { year: 2026, month: 10, newYear: false })
+  assert.equal(countsFor(pay('2026-09-10'), shift), null)
   assert.equal(countsForLabel(pay('2025-12-30'), shift), 'Counts for January 2026')
   assert.equal(countsForLabel(pay('2026-09-30'), shift), 'Counts for October')
   assert.equal(countsForLabel(pay('2026-09-10'), shift), null)
+  await loadLanguage('el')
+  try {
+    assert.equal(countsForLabel(pay('2026-09-30'), shift), 'Στα έσοδα Οκτωβρίου')
+    assert.equal(countsForLabel(pay('2025-12-30'), shift), 'Στα έσοδα Ιανουαρίου 2026')
+  } finally {
+    await loadLanguage('en')
+  }
 })
 
 test('never shifts: setting off, another income category, an expense in the salary category', () => {

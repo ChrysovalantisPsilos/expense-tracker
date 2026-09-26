@@ -32,8 +32,6 @@ export default {
       skip: 'Όχι τώρα',
       start: 'Ξενάγηση',
     },
-    back: 'Πίσω',
-    skip: 'Παράλειψη',
     continue: 'Συνέχεια',
     finishFailed: 'Δεν ολοκληρώθηκε',
   },

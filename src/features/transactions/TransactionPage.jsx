@@ -24,6 +24,7 @@ import TransactionForm, { kindOptions } from './TransactionForm.jsx'
 import DeleteTransactionDialog from './DeleteTransactionDialog.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // The add/edit page for one expense or income:
 //   /transactions/new?kind=expense|income   a new entry; &category=<id>
@@ -150,7 +151,7 @@ export default function TransactionPage() {
       <Panel icon={Users} title={groupLabel(row)}>
         <Stack spacing={3} align="start">
           <Text>
-            {row.description || row.categories?.name || t('page.groupExpense')} ·{' '}
+            {row.description || categoryDisplayName(row.categories) || t('page.groupExpense')} ·{' '}
             {formatMoney(row.amount_minor, row.currency)}
           </Text>
           <Text fontSize="sm" color="text.muted">{t('page.groupShare')}</Text>
@@ -190,7 +191,7 @@ export default function TransactionPage() {
   return (
     <Stack spacing={5} {...FORM_COLUMN}>
       <PageHeader eyebrow={group ? group.name : t('ledger.title')} title={title} leading={
-        <IconButton aria-label={t('actions.back')} variant="ghost" size="sm" ml={-2} flexShrink={0}
+        <IconButton aria-label={t('common:actions.back')} variant="ghost" size="sm" ml={-2} flexShrink={0}
           icon={<ArrowLeft size={18} />} onClick={back} />
       } />
       {body}

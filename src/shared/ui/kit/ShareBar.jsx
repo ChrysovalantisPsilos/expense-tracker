@@ -4,13 +4,14 @@ import { ChevronRight } from 'lucide-react'
 import { MotionBox } from './motion.jsx'
 import { playProps, shareSwatch } from './kitMath.js'
 
-// items for both: [{ label, share }] — share is an integer percent and the
+// items for both: [{ label, share, name? }] — share is an integer percent and the
 // shares should sum to 100 (categoryBars / distributeByWeights give that).
 // Optional `color` per item; otherwise shareSwatch() picks one by position
-// ("Other" is always muted). Give both components the same items.
+// (the "Other" bucket is always muted: `name` is the bucket's internal
+// name when `label` is translated). Give both components the same items.
 // Optional `to` (in-app path) + `linkLabel` (its accessible name) make that
 // legend entry a drill-down link; StackedBar ignores them.
-const colorOf = (item, i) => item.color ?? shareSwatch(i, item.label)
+const colorOf = (item, i) => item.color ?? shareSwatch(i, item.name ?? item.label)
 
 // One horizontal bar split into segments with a 2px gap. Optional
 // `playback` grows the segments in.

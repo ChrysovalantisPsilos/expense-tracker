@@ -32,6 +32,7 @@ import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useShellHeader } from '../../shared/ui/ShellHeader.jsx'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 const OWN_EDIT = { ownEdit: true }
 // The type switch's values; each one's label, Add button and empty line are
@@ -96,7 +97,7 @@ export default function LedgerPage() {
   // still shows as selected rather than a misleading "Any".
   const unlistedCategory = filters.categoryId && filters.categoryId !== NO_CATEGORY
     && !categoriesLoading && !categories.some((c) => c.id === filters.categoryId)
-    ? rows.find((r) => r.category_id === filters.categoryId)?.categories?.name ?? t('ledger.selectedCategory')
+    ? (categoryDisplayName(rows.find((r) => r.category_id === filters.categoryId)?.categories) || t('ledger.selectedCategory'))
     : null
 
   // Categories are per kind, so switching type drops the category filter.
@@ -172,7 +173,7 @@ export default function LedgerPage() {
           <FormLabel fontSize="xs" color="text.muted">{t('ledger.category')}</FormLabel>
           <Select placeholder={t('ledger.anyCategory')} value={filters.categoryId}
             onChange={(e) => setFilter('categoryId')(e.target.value)}>
-            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {categories.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
             {unlistedCategory && <option value={filters.categoryId}>{unlistedCategory}</option>}
             <option value={NO_CATEGORY}>{t('uncategorized')}</option>
           </Select>

@@ -45,7 +45,7 @@ export default function FxPreview({ from, to, amountMinor, fx, captured, manual,
       borderRadius="md" p={3} data-testid="fx-missing">
       <Text fontSize="sm" mb={2}>{t('fx.missing', { from, to })}</Text>
       <FormControl isRequired>
-        <FormLabel fontSize="sm" mb={1}>1 {from} = ? {to}</FormLabel>
+        <FormLabel fontSize="sm" mb={1}>{t('fx.rateLabel', { from, to })}</FormLabel>
         <Input size="sm" inputMode="decimal" autoComplete="off" value={manual}
           onChange={(e) => onManual(e.target.value)} placeholder={t('fx.ratePlaceholder')} maxW="160px" />
       </FormControl>

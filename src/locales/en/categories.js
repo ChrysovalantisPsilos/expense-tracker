@@ -11,11 +11,6 @@ export default {
   uncategorized: 'Uncategorized',
   actions: {
     add: 'Add',
-    edit: 'Edit',
-    close: 'Close',
-    save: 'Save',
-    cancel: 'Cancel',
-    delete: 'Delete',
     archive: 'Archive',
     unarchive: 'Unarchive',
   },

@@ -13,7 +13,6 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { hasPasswordIdentity } from './authMethods.js'
 import { useRecentSignIn } from './useRecentSignIn.js'
 import ReauthNotice from './ReauthNotice.jsx'
-import { DELETION_SCOPE } from '../privacy/legal.js'
 import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
@@ -92,19 +91,24 @@ export function DeleteAccountModal({ user, isOpen, onClose, signOut }) {
   )
 }
 
-// What deletion erases and what stays — DELETION_SCOPE, the same words the
-// deletion confirmation email uses (_shared/accountDeletion.ts).
+// What deletion erases and what stays — the same words as the deletion
+// confirmation email (DELETION_SCOPE, _shared/accountDeletion.ts), in the
+// app's language (settings:deleteAccount.scope).
+const SCOPE = {
+  deleted: ['account', 'records', 'notifications', 'groups'],
+  stays: ['shared'],
+}
 function DeletionScope() {
   const t = useT('settings')
   return (
     <Stack spacing={2} fontSize="sm" color="text.muted">
       <Text fontWeight="600" color="text.primary">{t('deleteAccount.deletedList')}</Text>
       <UnorderedList spacing={1} pl={1}>
-        {DELETION_SCOPE.deleted.map((line) => <ListItem key={line}>{line}</ListItem>)}
+        {SCOPE.deleted.map((id) => <ListItem key={id}>{t(`deleteAccount.scope.deleted.${id}`)}</ListItem>)}
       </UnorderedList>
       <Text fontWeight="600" color="text.primary">{t('deleteAccount.staysList')}</Text>
       <UnorderedList spacing={1} pl={1}>
-        {DELETION_SCOPE.stays.map((line) => <ListItem key={line}>{line}</ListItem>)}
+        {SCOPE.stays.map((id) => <ListItem key={id}>{t(`deleteAccount.scope.stays.${id}`)}</ListItem>)}
       </UnorderedList>
     </Stack>
   )

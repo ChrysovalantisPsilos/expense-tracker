@@ -324,7 +324,7 @@ export default function GroupExpenseForm({
   const submitLabel = isEdit ? t('form.save') : quick ? t('form.addTo', { name: group.name }) : t('form.add')
   const deleteButton = onDelete && (
     <Button variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />} onClick={onDelete}>
-      {t('actions.delete')}
+      {t('common:actions.delete')}
     </Button>
   )
 

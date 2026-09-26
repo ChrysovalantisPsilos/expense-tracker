@@ -8,19 +8,10 @@ import { Download, LogOut, Trash2 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { DeleteAccountModal } from '../settings/DeleteAccount.jsx'
-import { changesSince, formatVersion } from './legal.js'
+import { changeItems, changesSince, formatVersion } from './legal.js'
 import { downloadMyData } from './privacyData.js'
 import { RingSpinner } from '../../shared/ui/RingLoader.jsx'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import en from '../../locales/en/privacy.js'
-
-// The items of one LEGAL_CHANGES entry, in the app's language: the
-// dictionary's copy of that version (privacy:gate.changes), or legal.ts's
-// English items for a version the dictionary doesn't have yet.
-function changeItems(change, t) {
-  const copy = en.gate.changes[change.version]
-  return copy ? Object.keys(copy).map((k) => t(`gate.changes.${change.version}.${k}`)) : change.items
-}
 
 // Blocking prompt shown when the user hasn't accepted the Privacy Notice and
 // Terms versions in force: a new account that signed up with Google, or
@@ -65,7 +56,7 @@ export default function LegalGate({ status, onAccept }) {
               </Text>
               {changes.length > 0 && (
                 <UnorderedList spacing={1.5} fontSize="sm" color="text.muted" pl={1}>
-                  {changes.flatMap((c) => changeItems(c, t)).map((item) => <ListItem key={item}>{item}</ListItem>)}
+                  {changes.flatMap((c) => changeItems(c)).map((item) => <ListItem key={item}>{item}</ListItem>)}
                 </UnorderedList>
               )}
               <Text fontSize="sm">

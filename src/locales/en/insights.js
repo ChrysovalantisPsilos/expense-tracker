@@ -7,10 +7,6 @@ export default {
   thisMonth: 'This month',
   lastMonths: 'Last 6 months',
   total: 'Total',
-  actions: {
-    edit: 'Edit',
-    delete: 'Delete',
-  },
   spending: {
     title: 'Where your money went',
     empty: 'No spending yet this month.',
@@ -44,6 +40,7 @@ export default {
     seeSavings: 'See savings ›',
     debt: 'Debt',
     asset: 'Asset',
+    savingsAccount: 'Savings account',
   },
   account: {
     eyebrow: 'Net worth',
@@ -58,6 +55,8 @@ export default {
     nameHint: 'Checking, Visa, Savings…',
     type: 'Type',
     asset: 'Asset (what you own)',
+    savings: 'Savings (what you’ve saved)',
+    savingsHint: 'Your savings accounts’ balances become your savings total on the Savings page.',
     liability: 'Debt (what you owe)',
     balance: 'Balance ({{currency}})',
   },

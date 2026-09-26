@@ -69,7 +69,6 @@ export default {
     progress: 'Restore progress',
     stopped: 'The restore stopped',
     stoppedBody: '{{error}} What was added so far stays; running the restore again picks up the rest.',
-    done: 'Done',
     // The progress line while restoring ("…" is added after it).
     progressSteps: {
       starting: 'Starting',

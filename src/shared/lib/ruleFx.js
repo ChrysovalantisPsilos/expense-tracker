@@ -3,5 +3,5 @@
 // way the app does): see supabase/functions/_shared/ruleFx.ts. The rates come
 // from fx.js useLatestRates.
 export {
-  foreignCurrencies, ruleInBase, rulesInBase, missingRatesNote, CONVERTED_NOTE,
+  foreignCurrencies, ruleInBase, rulesInBase, missingRatesNote,
 } from '../../../supabase/functions/_shared/ruleFx.ts'

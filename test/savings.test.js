@@ -8,7 +8,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, savingsNoteOf, isSpending, netSign, savingsPotMinor,
+  EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, savingsNoteLabel, isSpending, netSign, savingsPotMinor,
   isSavingsAccount, savingsTotal,
 } from '../src/shared/lib/savings.js'
 import { potSign, savingsSource } from '../supabase/functions/_shared/savings.ts'
@@ -264,7 +264,7 @@ test('rowEffect: an expense paid from savings; how every effect moves spending, 
   assert.deepEqual(EFFECTS.map(netSign), [1, -1, 0, -1, 0])
   assert.deepEqual(EFFECTS.map(potSign), [0, 0, -1, 1, 1])
   // The lists' note: "from savings" on it, the savings entries' source otherwise.
-  assert.deepEqual(withLaptop.map((r) => savingsNoteOf(r, IDS)), [null, 'from income', 'received', null, 'from savings'])
+  assert.deepEqual(withLaptop.map((r) => savingsNoteLabel(r, IDS)), [null, 'from income', 'received', null, 'from savings'])
   assert.equal(savingsSource(laptop, IDS), null) // not a savings entry
 })
 

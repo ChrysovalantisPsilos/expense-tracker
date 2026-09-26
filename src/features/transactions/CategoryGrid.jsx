@@ -2,6 +2,7 @@ import { Box, Flex, SimpleGrid, Text, useRadio, useRadioGroup } from '@chakra-ui
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // "No category" as a radio value (a radio can't hold '').
 const NONE = 'none'
@@ -21,7 +22,7 @@ export default function CategoryGrid({ categories, value, onChange, kind }) {
   return (
     <SimpleGrid {...getRootProps()} aria-label={t('form.category')} minChildWidth="88px" spacing={2}>
       {categories.map((c) => (
-        <Tile key={c.id} {...getRadioProps({ value: c.id })} category={c} kind={kind} label={c.name} />
+        <Tile key={c.id} {...getRadioProps({ value: c.id })} category={c} kind={kind} label={categoryDisplayName(c)} />
       ))}
       <Tile {...getRadioProps({ value: NONE })} category={null} kind={kind} label={t('uncategorized')} />
     </SimpleGrid>

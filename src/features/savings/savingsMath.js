@@ -210,7 +210,7 @@ export function savingsCategoryOf(categories) {
 // Where the page's total comes from (savingsTotal's `source`), as the line
 // under it says it.
 export const totalSourceNote = (source) =>
-  (source === 'accounts' ? 'From your savings accounts' : 'From your savings entries')
+  t(source === 'accounts' ? 'savings:pot.fromAccounts' : 'savings:pot.fromEntries')
 
 // The pot's month-end line when the total comes from savings accounts: the
 // entries' line moved so its last point (this month's end) is the accounts'

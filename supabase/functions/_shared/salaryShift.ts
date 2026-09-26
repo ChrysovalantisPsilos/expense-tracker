@@ -97,13 +97,12 @@ export function countedInWindow(
   })
 }
 
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August',
-  'September', 'October', 'November', 'December']
-
-// The list's note on a shifted salary: "Counts for October" (with the year
-// when it moves into the next one: "Counts for January 2027"), else null.
-export function countsForLabel(row: Row, shift: SalaryShift | null): string | null {
+// The month a shifted salary counts for, for the list's note ("Counts for
+// October"): { year, month } (month 1–12) and `newYear` when it moves into
+// the next year (the note then names the year: "Counts for January 2027");
+// null when the row isn't shifted. The app words it (salaryShift.js).
+export function countsFor(row: Row, shift: SalaryShift | null): { year: number; month: number; newYear: boolean } | null {
   if (!isShifted(row, shift)) return null
-  const [y, m] = parts(countedDate(row, shift))
-  return `Counts for ${MONTHS[m - 1]}${y !== parts(row.spent_at)[0] ? ` ${y}` : ''}`
+  const [year, month] = parts(countedDate(row, shift))
+  return { year, month, newYear: year !== parts(row.spent_at)[0] }
 }

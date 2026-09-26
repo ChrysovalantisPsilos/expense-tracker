@@ -9,7 +9,7 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
-import { savingsNoteOf } from '../../shared/lib/savings.js'
+import { savingsNoteLabel } from '../../shared/lib/savings.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
 import DeleteTransactionDialog from '../transactions/DeleteTransactionDialog.jsx'
@@ -18,6 +18,7 @@ import {
   HISTORY_FILTERS, HISTORY_MONTHS, HISTORY_MORE, monthGroups, monthHeading, moveDirection,
 } from './savingsMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // One entry: its date and where the money came from or went ("from income",
 // "received", "from savings"), a repeat mark when a rule adds it, and the
@@ -29,13 +30,13 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
   return (
     <ItemRow py={1.5} onClick={() => open(r)}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-      title={<Box as="span" display="block" sx={ONE_LINE}>{r.description || r.categories?.name || t('fallbackName')}</Box>}
+      title={<Box as="span" display="block" sx={ONE_LINE}>{r.description || categoryDisplayName(r.categories) || t('fallbackName')}</Box>}
       meta={
         <HStack spacing={1.5} fontSize="xs" color="text.muted" minW={0}>
           <Text sx={ONE_LINE} minW={0}>
             {shortDate(r.spent_at)} ·{' '}
             <Text as="span" color={out ? 'text.primary' : undefined} fontWeight={out ? 600 : undefined}>
-              {savingsNoteOf(r, savingsIds)}
+              {savingsNoteLabel(r, savingsIds)}
             </Text>
           </Text>
           {r.recurring_rule_id && (
@@ -48,8 +49,8 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
       amount={`${out ? '−' : '+'}${formatMoney(r.amount_minor, r.currency)}`}
       amountTone={out ? 'default' : 'positive'}
       actionSlots={2} actions={[
-        { label: t('actions.edit'), icon: Pencil, onClick: () => open(r) },
-        { label: t('actions.delete'), icon: Trash2, danger: true, onClick: () => remove(r) },
+        { label: t('common:actions.edit'), icon: Pencil, onClick: () => open(r) },
+        { label: t('common:actions.delete'), icon: Trash2, danger: true, onClick: () => remove(r) },
       ]} />
   )
 }

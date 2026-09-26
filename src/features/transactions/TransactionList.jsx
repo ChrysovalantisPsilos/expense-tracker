@@ -5,12 +5,12 @@ import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import DeleteTransactionDialog from './DeleteTransactionDialog.jsx'
-import { formatMoney, baseEquivalent } from '../../shared/lib/currency.js'
+import { formatMoney, rateText, baseEquivalent } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { monthlyShare } from '../../shared/lib/spread.js'
 import { countsForLabel } from '../../shared/lib/salaryShift.js'
-import { savingsNoteOf } from '../../shared/lib/savings.js'
+import { savingsNoteLabel } from '../../shared/lib/savings.js'
 import { useSavingsIds } from '../categories/categories.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { deleteTransaction } from './writes.js'
@@ -18,6 +18,7 @@ import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { frequencyLabel } from '../recurring/recurringMath.js'
 import { landscapeOnly, ONE_LINE } from '../../shared/lib/shortLandscape.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // Sideways, the meta line keeps to one line like the row's title (ItemRow):
 // its parts run on as one line of text, cut with an ellipsis at the end.
@@ -83,21 +84,21 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
             <ListItem key={r.id}>
               <ItemRow py={2.5} onClick={shared ? undefined : () => open(r)}
                 media={<CategoryBadge category={r.categories} kind={rk} size={32} />}
-                title={r.description || r.categories?.name || t(`kinds.${rk === 'income' ? 'income' : 'expense'}`)}
-                meta={<RowMeta row={r} shared={shared} saved={savingsNoteOf(r, savingsIds)} />}
+                title={r.description || categoryDisplayName(r.categories) || t(`kinds.${rk === 'income' ? 'income' : 'expense'}`)}
+                meta={<RowMeta row={r} shared={shared} saved={savingsNoteLabel(r, savingsIds)} />}
                 amount={`${rk === 'income' ? '+' : ''}${formatMoney(r.amount_minor, r.currency)}`}
                 amountTone={rk === 'income' ? 'positive' : 'default'}
                 amountMeta={conv && (
                   <>
                     {t('list.approx', { amount: formatMoney(conv.baseMinor, baseCurrency) })}
-                    <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {conv.rate}</Box>
+                    <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {rateText(conv.rate)}</Box>
                     {/* Rate estimated on this device until the server records it. */}
                     {r.rate_estimated && ` · ${t('list.estimated')}`}
                   </>
                 )}
                 actionSlots={2} actions={shared ? [] : [
-                  { label: t('actions.edit'), icon: Pencil, onClick: () => open(r) },
-                  { label: t('actions.delete'), icon: Trash2, danger: true, onClick: () => setRemoving(r) },
+                  { label: t('common:actions.edit'), icon: Pencil, onClick: () => open(r) },
+                  { label: t('common:actions.delete'), icon: Trash2, danger: true, onClick: () => setRemoving(r) },
                 ]} />
             </ListItem>
           )
@@ -122,7 +123,7 @@ function RowMeta({ row: r, shared, saved }) {
       sx={SHORT_META}>
       <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
       {r.description && r.categories?.name && (
-        <Text overflowWrap="anywhere">· {r.categories.name}</Text>
+        <Text overflowWrap="anywhere">· {categoryDisplayName(r.categories)}</Text>
       )}
       {saved && <Text whiteSpace="nowrap">· {saved}</Text>}
       {r.notes && (

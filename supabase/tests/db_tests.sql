@@ -5613,11 +5613,77 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 92. 0094: categories.default_key (a default category's name in the app's
+--     language). The seed sets it; a rename clears it and other edits keep
+--     it; a client can't set it (an insert's key is only a re-derived hint,
+--     an update's is ignored); the reads and export_my_data() return it.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; groc uuid; sal uuid; cid uuid; v text; doc jsonb;
+begin
+  begin
+    u1 := pg_temp.zz_user('catkey');
+    delete from public.categories where user_id = u1;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.seed_default_categories();
+    execute 'reset role';
+    if exists (select 1 from public.categories where user_id = u1 and default_key is null) then
+      raise exception 'seed left a default without its key';
+    end if;
+    select id into groc from public.categories where user_id = u1 and name = 'Groceries' and default_key = 'groceries';
+    select id into sal from public.categories where user_id = u1 and name = 'Salary' and default_key = 'salary';
+    if groc is null or sal is null then raise exception 'seed keys wrong'; end if;
+    if (select default_key from public.categories where user_id = u1 and name = 'Savings') is distinct from 'savings' then
+      raise exception 'savings key missing';
+    end if;
+    if public.category_default_key('Friend Transfer', 'income') is distinct from 'friendTransfer'
+       or public.category_default_key('Other', 'income') is not null then
+      raise exception 'category_default_key mapping wrong';
+    end if;
+
+    execute 'set local role authenticated';
+    -- Other edits keep it; a rename clears it; the client can't write it.
+    update public.categories set color = 'teal', is_archived = true where id = sal;
+    update public.categories set default_key = 'bonus' where id = sal;
+    update public.categories set name = 'Supermarket', default_key = 'groceries' where id = groc;
+    update public.categories set default_key = 'groceries' where id = groc;
+    insert into public.categories (name, kind, default_key) values ('Zz mine', 'expense', 'groceries') returning id into cid;
+    select default_key into v from public.categories where id = cid;
+    if v is not null then execute 'reset role'; raise exception 'client set a key on its own category (%)', v; end if;
+    -- A restored default: the hint is re-derived from the name, never trusted.
+    insert into public.categories (name, kind, default_key) values ('Groceries', 'expense', 'salary') returning id into cid;
+    select default_key into v from public.categories where id = cid;
+    if v is distinct from 'groceries' then execute 'reset role'; raise exception 'restore hint not re-derived (%)', v; end if;
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'kind', 'income', 'category_id', sal, 'amount_minor', 100, 'currency', 'EUR')));
+    select m.categories->>'default_key' into v from public.my_transactions() m where m.category_id = sal;
+    doc := public.export_my_data();
+    execute 'reset role';
+    if v is distinct from 'salary' then raise exception 'my_transactions default_key = %', v; end if;
+    if (select default_key from public.categories where id = sal) is distinct from 'salary' then
+      raise exception 'an edit (or the client) changed the salary key';
+    end if;
+    if (select default_key from public.categories where id = groc) is not null then
+      raise exception 'rename kept the key';
+    end if;
+    if not exists (select 1 from jsonb_array_elements(doc->'categories') e
+                    where e->>'id' = sal::text and e->>'default_key' = 'salary') then
+      raise exception 'default_key missing from the export';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: categories.default_key seeded, cleared on rename, kept on edits, never client-set, read and exported';
+    else update _t set fails = fails + 1; raise notice 'FAIL: categories.default_key — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 92; f int; p int;  -- tests 1–91 + B-0059
+declare expected_tests constant int := 93; f int; p int;  -- tests 1–92 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

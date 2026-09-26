@@ -70,7 +70,7 @@ export default function Insights() {
   // to its group); the folded "Other" merges several buckets, so it has no link.
   const shares = useMemo(() => linkBuckets(
     spendingShares(spend, thisMonth, baseCurrency), spend,
-    { ...months[months.length - 1], label: t('thisMonth') }, (s) => s.label,
+    { ...months[months.length - 1], label: t('thisMonth') },
   ), [spend, months, thisMonth, baseCurrency, t])
   // Spending abroad lists actual payments (each at its own rate), not shares.
   const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
@@ -373,12 +373,12 @@ function AccountRow({ account: acc, remove }) {
   const saving = acc.type === 'savings'
   return (
     <ItemRow icon={debt ? CreditCard : saving ? PiggyBank : Landmark} title={acc.name}
-      meta={saving ? 'Savings account' : t(debt ? 'netWorth.debt' : 'netWorth.asset')}
+      meta={t(saving ? 'netWorth.savingsAccount' : debt ? 'netWorth.debt' : 'netWorth.asset')}
       amount={`${debt ? '−' : ''}${formatMoney(acc.balance_minor, acc.currency)}`}
       amountTone={debt ? 'negative' : 'default'}
       actions={[
-        { label: t('actions.edit'), icon: Pencil, onClick: () => navigate(`/insights/accounts/${acc.id}`, { state: { account: acc } }) },
-        { label: t('actions.delete'), icon: Trash2, onClick: () => remove(acc), danger: true },
+        { label: t('common:actions.edit'), icon: Pencil, onClick: () => navigate(`/insights/accounts/${acc.id}`, { state: { account: acc } }) },
+        { label: t('common:actions.delete'), icon: Trash2, onClick: () => remove(acc), danger: true },
       ]} />
   )
 }

@@ -34,7 +34,7 @@ export function DeleteGroupModal({ group, check, isOpen, onClose, busy, onConfir
             </Stack>
           </ModalBody>
           <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={onClose}>{t('actions.close')}</Button>
+            <Button variant="ghost" onClick={onClose}>{t('common:actions.close')}</Button>
             <Button leftIcon={<Users size={16} />} onClick={onMembers}>{t('modals.deleteBlocked.manage')}</Button>
           </ModalFooter>
         </ModalContent>
@@ -58,7 +58,7 @@ export function DeleteGroupModal({ group, check, isOpen, onClose, busy, onConfir
           </Stack>
         </ModalBody>
         <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
           <Button colorScheme="red" isDisabled={!match} isLoading={busy} onClick={onConfirm}>
             {t('header.delete')}
           </Button>
@@ -86,7 +86,7 @@ export function LeaveGroupModal({ group, isOwner, isOpen, onClose, busy, onConfi
           </Stack>
         </ModalBody>
         <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
           <Button colorScheme="red" isLoading={busy} onClick={() => onConfirm(silent)}>{t('modals.leave.confirm')}</Button>
         </ModalFooter>
       </ModalContent>
@@ -106,7 +106,7 @@ export function RemoveMemberModal({ member, onClose, busy, onConfirm }) {
           <Text color="text.muted">{t('modals.remove.body')}</Text>
         </ModalBody>
         <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
+          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
           <Button colorScheme="red" isLoading={busy} onClick={onConfirm}>{t('modals.remove.confirm')}</Button>
         </ModalFooter>
       </ModalContent>

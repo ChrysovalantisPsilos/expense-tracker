@@ -175,8 +175,8 @@ export default function WhatsNewStory({ release: shown, onClose }) {
         </Box>
 
         <HStack spacing={3} mt={6} sx={area('buttons', { mt: 4 })}>
-          <Button variant="ghost" color="text.primary" onClick={onClose} px={5}>{t('story.skip')}</Button>
-          <Button ref={nextRef} flex="1" onClick={next}>{last ? t('story.done') : t('story.next')}</Button>
+          <Button variant="ghost" color="text.primary" onClick={onClose} px={5}>{t('common:actions.skip')}</Button>
+          <Button ref={nextRef} flex="1" onClick={next}>{last ? t('common:actions.done') : t('common:actions.next')}</Button>
         </HStack>
       </ModalContent>
     </Modal>

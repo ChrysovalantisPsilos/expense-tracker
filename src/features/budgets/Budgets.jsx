@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Stack, HStack, Text, Button, FormControl, FormLabel, Select, useToast,
+  Stack, HStack, Text, Button, FormControl, FormLabel, Select, useToast, useBreakpointValue,
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
 } from '@chakra-ui/react'
 import { Target, CalendarDays, Copy, Pencil, Trash2 } from 'lucide-react'
@@ -24,6 +24,7 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 export default function Budgets() {
   const t = useT('budgets')
@@ -96,6 +97,10 @@ export default function Budgets() {
   // Copying makes sense once this month has its own caps (or none): a month
   // still showing last month's is already using them.
   const canCopy = !carriedFrom && prev.rows.length > 0
+  // On a phone the button gets its own line under the card's title (its
+  // label is long in Greek and would squeeze the title); from sm up it sits
+  // in the header.
+  const wide = useBreakpointValue({ base: false, sm: true }, { ssr: false })
   const copyButton = canCopy && (
     <Button size="xs" variant="ghost" leftIcon={<Copy size={14} />} isLoading={copying}
       onClick={() => setConfirmCopy(true)}>
@@ -115,7 +120,7 @@ export default function Budgets() {
           <FormControl>
             <FormLabel>{t('form.category')}</FormLabel>
             <Select ref={categoryRef} placeholder={t('form.select')} value={catId} onChange={(e) => setCatId(e.target.value)}>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {categories.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
             </Select>
           </FormControl>
           <FormControl maxW="160px">
@@ -154,11 +159,12 @@ export default function Budgets() {
           {form}
           <Panel icon={CalendarDays} title={t('thisMonth')}
             subtitle={carriedFrom ? carriedLabel(carriedFrom, periodStart) : undefined}
-            action={items.length > 0 ? copyButton : undefined}>
+            action={wide && items.length > 0 ? copyButton : undefined}>
             {error ? <QueryError error={error} onRetry={reload} what={t('what')} /> : loading ? (
               <SkeletonRegion><SkeletonRows count={4} progress spacing={5} /></SkeletonRegion>
             ) : (
               <Stack spacing={5}>
+                {!wide && copyButton && <HStack>{copyButton}</HStack>}
                 <Text color="text.muted" fontSize="sm">
                   {t('hint')}
                 </Text>

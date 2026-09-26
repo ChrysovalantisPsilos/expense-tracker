@@ -6,9 +6,6 @@ export default {
   description: 'The changes in each update. Tap one to see it again.',
   story: {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
-    skip: 'Skip',
-    next: 'Next',
-    done: 'Done',
   },
   releases: {
     '2026-09-26': {

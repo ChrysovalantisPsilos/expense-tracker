@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase.js'
 import { UserError } from '../lib/errors.js'
 import { clearUserDataCaches } from '../lib/userDataCaches.js'
 import { liveQueryCache } from '../lib/queryCache.js'
-import { REAUTH_REQUIRED, isRecentSignIn, reauthMessage } from '../../../supabase/functions/_shared/reauth.ts'
+import { REAUTH_REQUIRED, isRecentSignIn } from '../../../supabase/functions/_shared/reauth.ts'
+import { t } from '../lib/i18n/i18n.js'
 
 const AuthContext = createContext(null)
 
@@ -26,11 +27,12 @@ function hasStoredSession() {
 // account can be entered, so they need a recent sign-in (_shared/reauth.ts),
 // as deleting the account does. Supabase Auth doesn't ask for one on these
 // calls, so the app checks the session first; the returned error is copy for
-// the user (Settings → Security also offers "Sign in again").
-async function reauthError(what) {
+// the user (Settings → Security also offers "Sign in again"): `action` picks
+// the sentence (common:errors.reauth.<action>; the English is reauthMessage's).
+async function reauthError(action) {
   const { data } = await supabase.auth.getSession()
   if (isRecentSignIn(data?.session?.access_token)) return null
-  return Object.assign(new UserError(reauthMessage(what)), { code: REAUTH_REQUIRED })
+  return Object.assign(new UserError(t(`common:errors.reauth.${action}`)), { code: REAUTH_REQUIRED })
 }
 
 export function AuthProvider({ children }) {
@@ -192,13 +194,13 @@ export function AuthProvider({ children }) {
   // Server-side enforcement is Supabase Auth's "Secure password change".
   const changePassword = useCallback(async (current, next) => {
     const email = session?.user?.email
-    if (!email) return { error: new UserError('You need to be signed in.') }
+    if (!email) return { error: new UserError(t('common:errors.signedOut')) }
     const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: current })
-    if (authErr) return { error: new UserError('Current password is incorrect.') }
+    if (authErr) return { error: new UserError(t('common:errors.auth.currentPasswordInvalid')) }
     // The project requires the current password on a change (Auth setting
     // "require current password"), so the server checks it again.
     const { error } = await supabase.auth.updateUser({ password: next, current_password: current })
-    if (error?.code === 'current_password_invalid') return { error: new UserError('Current password is incorrect.') }
+    if (error?.code === 'current_password_invalid') return { error: new UserError(t('common:errors.auth.currentPasswordInvalid')) }
     return { error: error ?? null }
   }, [session?.user?.email])
 
@@ -216,13 +218,13 @@ export function AuthProvider({ children }) {
   // then back to `returnTo`. Returns { error } when it can't start (e.g.
   // manual linking is off for the project: code manual_linking_disabled).
   const linkGoogle = useCallback(async (returnTo) => {
-    const error = await reauthError('connect Google')
+    const error = await reauthError('connectGoogle')
     if (error) return { data: null, error }
     return supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo: returnTo } })
   }, [])
 
   const unlinkIdentity = useCallback(async (identity) => {
-    const error = await reauthError('disconnect Google')
+    const error = await reauthError('disconnectGoogle')
     if (error) return { data: null, error }
     return supabase.auth.unlinkIdentity(identity)
   }, [])
@@ -248,7 +250,7 @@ export function AuthProvider({ children }) {
   // the API is missing on an older client build.
   const signInWithPasskey = useCallback(() => supabase.auth.signInWithPasskey(), [])
   const registerPasskey = useCallback(async () => {
-    const error = await reauthError('add a passkey')
+    const error = await reauthError('addPasskey')
     if (error) return { data: null, error }
     return supabase.auth.registerPasskey()
   }, [])

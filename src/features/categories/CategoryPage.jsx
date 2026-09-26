@@ -35,6 +35,7 @@ import { categoryPatch, categoryPeriod, sameKindOthers } from './categoryMath.js
 import { parseCategoryRoute } from './categoryLinks.js'
 import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // One category's page (/categories/:id?period=…) — where Home's category
 // bars, Insights' legend, budget rows and the Categories list drill down to.
@@ -94,7 +95,7 @@ export default function CategoryPage() {
   const [focusBudget, setFocusBudget] = useState(false)
   const openEdit = (withBudget) => { setFocusBudget(withBudget); setEditing(true) }
 
-  const name = uncategorised ? t('uncategorized') : category?.name ?? ''
+  const name = uncategorised ? t('uncategorized') : categoryDisplayName(category)
   const pickPeriod = (value) => setParams({ period: value }, { replace: true })
 
   if (missing) {
@@ -120,7 +121,7 @@ export default function CategoryPage() {
         action={category && (
           <PageAction h="44px" minW="44px" aria-expanded={editing}
             icon={editing ? <X size={18} /> : <Pencil size={18} />}
-            label={t(editing ? 'actions.close' : 'actions.edit')} variant={editing ? 'outline' : 'solid'}
+            label={t(editing ? 'common:actions.close' : 'common:actions.edit')} variant={editing ? 'outline' : 'solid'}
             onClick={() => (editing ? setEditing(false) : openEdit(false))} />
         )} />
 
@@ -238,7 +239,7 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
     await run(async () => {
       await updateCategory(category.id, { is_archived: !category.is_archived })
       toast({
-        title: t(category.is_archived ? 'toasts.unarchived' : 'toasts.archived', { name: category.name }),
+        title: t(category.is_archived ? 'toasts.unarchived' : 'toasts.archived', { name: categoryDisplayName(category) }),
         status: 'success',
       })
       await onSaved()
@@ -246,7 +247,7 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
   }
 
   return (
-    <Panel icon={Pencil} title={t('page.editTitle', { name: category.name })}>
+    <Panel icon={Pencil} title={t('page.editTitle', { name: categoryDisplayName(category) })}>
       <form onSubmit={save} {...unsaved}>
         <Stack spacing={5}>
           {category.kind === 'expense' && (
@@ -269,8 +270,8 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
               {t(category.is_archived ? 'actions.unarchive' : 'actions.archive')}
             </Button>
             <HStack spacing={2}>
-              <Button variant="ghost" h="44px" onClick={onClose}>{t('actions.cancel')}</Button>
-              <Button type="submit" h="44px" isLoading={busy}>{t('actions.save')}</Button>
+              <Button variant="ghost" h="44px" onClick={onClose}>{t('common:actions.cancel')}</Button>
+              <Button type="submit" h="44px" isLoading={busy}>{t('common:actions.save')}</Button>
             </HStack>
           </Flex>
         </Stack>

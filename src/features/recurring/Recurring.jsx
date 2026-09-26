@@ -25,6 +25,7 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 const TABS = ['expense', 'income']
 
@@ -149,12 +150,12 @@ export default function Recurring() {
           <ModalBody>
             <Text color="text.muted">
               {t('list.remove.body', {
-                name: removing?.description || removing?.categories?.name || t('list.remove.thisEntry'),
+                name: removing?.description || categoryDisplayName(removing?.categories) || t('list.remove.thisEntry'),
               })}
             </Text>
           </ModalBody>
           <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={() => setRemoving(null)}>{t('list.remove.cancel')}</Button>
+            <Button variant="ghost" onClick={() => setRemoving(null)}>{t('common:actions.cancel')}</Button>
             <Button colorScheme="red" onClick={confirmRemove}>{t('list.remove.confirm')}</Button>
           </ModalFooter>
         </ModalContent>
@@ -170,7 +171,7 @@ function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
   return (
     <ItemRow py={2.5} dimmed={!r.is_active}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-      title={r.description || r.categories?.name || t(`kinds.${r.kind === 'income' ? 'income' : 'expense'}`)}
+      title={r.description || categoryDisplayName(r.categories) || t(`kinds.${r.kind === 'income' ? 'income' : 'expense'}`)}
       meta={<RuleMeta rule={r} />}
       amount={formatMoney(r.amount_minor, r.currency)} amountMeta={hint}
       amountTone={r.kind === 'income' ? 'positive' : 'default'}
@@ -181,8 +182,8 @@ function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
       }
       actionSlots={2} actions={[
         { label: t(r.is_active ? 'row.pause' : 'row.resume'), icon: r.is_active ? Pause : Play, menuOnly: true, onClick: onToggle },
-        { label: t('row.edit'), icon: Pencil, onClick: onEdit },
-        { label: t('row.delete'), icon: Trash2, danger: true, onClick: onRemove },
+        { label: t('common:actions.edit'), icon: Pencil, onClick: onEdit },
+        { label: t('common:actions.delete'), icon: Trash2, danger: true, onClick: onRemove },
       ]} />
   )
 }

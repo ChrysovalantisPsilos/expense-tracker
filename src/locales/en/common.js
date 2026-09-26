@@ -6,6 +6,9 @@ export default {
     signUp: 'Sign up',
     save: 'Save',
     cancel: 'Cancel',
+    edit: 'Edit',
+    delete: 'Delete',
+    close: 'Close',
     back: 'Back',
     next: 'Next',
     done: 'Done',
@@ -20,7 +23,9 @@ export default {
     position: 'Page {{page}} of {{pages}}',
   },
   // QueryError: "Couldn't load {{what}}". Callers pass `what` already
-  // translated (in Greek: a plural subject with its article, «οι ειδοποιήσεις»).
+  // translated. Greek: «Δεν μπορέσαμε να φορτώσουμε {{what}}», so every
+  // `what` is an object in the accusative with its article («τις κινήσεις
+  // σου», «αυτή την ομάδα»); test/queryError.test.js checks each caller.
   queryError: {
     title: 'Couldn’t load {{what}}',
     this: 'this',
@@ -35,6 +40,7 @@ export default {
       body: 'Reconnect to save your changes.',
     },
     sessionExpired: 'Your session has expired. Please sign in again.',
+    signedOut: 'You need to be signed in.',
     tooMany: 'Too many attempts. Please wait a few minutes and try again.',
     emailInvalid: 'Please enter a valid email address.',
     // Supabase Auth codes (errors.js AUTH_MESSAGES).
@@ -46,6 +52,15 @@ export default {
       samePassword: 'Your new password must be different from the current one.',
       currentPasswordInvalid: 'Current password is incorrect.',
       linkExpired: 'This link has expired. Please request a new one.',
+    },
+    // "Please sign in again" before a dangerous action (AuthProvider, and
+    // the delete-account function's reauth_required). The English is
+    // _shared/reauth.ts' reauthMessage.
+    reauth: {
+      connectGoogle: 'For your security, please sign in again to connect Google.',
+      disconnectGoogle: 'For your security, please sign in again to disconnect Google.',
+      addPasskey: 'For your security, please sign in again to add a passkey.',
+      deleteAccount: 'For your security, please sign in again to delete your account.',
     },
     passkey: {
       cancelled: 'The passkey request was cancelled or timed out.',
@@ -118,10 +133,12 @@ export default {
       common: 'That password is too common — pick something less guessable.',
     },
   },
-  // A breakdown's buckets without a category of their own (txnRollup.js).
+  // A breakdown's buckets without a category of their own (txnRollup.js);
+  // `other` is the folded tail of a top-5 breakdown (categoryBars' "Other").
   bucket: {
     uncategorized: 'Uncategorized',
     group: 'Group',
+    other: 'Other',
   },
   // The full-page error screens (errorScreens.js).
   errorScreen: {
@@ -161,6 +178,7 @@ export default {
     ecb: '{{conversion}} on {{date}} (ECB)',
     missing: 'Couldn’t get the {{from}}→{{to}} exchange rate for this date. Enter the rate to save it — you’ll find it on your card or bank statement.',
     ratePlaceholder: 'e.g. 1.17',
+    rateLabel: '1 {{from}} = ? {{to}}',
   },
   savingsSwitch: {
     fromIncome: {
@@ -197,11 +215,41 @@ export default {
     currency: 'Currency',
     date: 'Date',
   },
+  // A list row's note on an entry that touches savings (savingsNoteLabel).
+  savingsNote: {
+    fromIncome: 'from income',
+    received: 'received',
+    fromSavings: 'from savings',
+  },
+  // A shifted salary's note in the lists (countsForLabel); {{month}} is the
+  // month's name as Intl gives it on its own (Greek: the genitive).
+  countsFor: {
+    month: 'Counts for {{month}}',
+    withYear: 'Counts for {{month}} {{year}}',
+  },
   // Spotlight: the guided tour's popover.
   tour: {
     label: 'App tour',
     step: 'Step {{n}} of {{total}}',
     announce: 'Step {{n}} of {{total}}: {{title}}',
+  },
+  // The seeded default categories' names (categories.default_key, 0094;
+  // categoryDisplayName). English is exactly the stored name.
+  defaultCategories: {
+    food: 'Food & Dining',
+    groceries: 'Groceries',
+    transport: 'Transport',
+    housing: 'Housing',
+    utilities: 'Utilities',
+    shopping: 'Shopping',
+    health: 'Health',
+    entertainment: 'Entertainment',
+    other: 'Other',
+    salary: 'Salary',
+    friends: 'Friends & family',
+    friendTransfer: 'Friend Transfer',
+    bonus: 'Bonus',
+    savings: 'Savings',
   },
   // The category icon picker (categoryStyle.js): each icon's name, and the sections.
   categoryIcons: {

@@ -5,7 +5,19 @@
 // one module shared with the edge functions (the PDF/Excel statement must
 // treat the same entries the same way as the app): see
 // supabase/functions/_shared/savings.ts for the rule.
+import { savingsNoteOf } from '../../../supabase/functions/_shared/savings.ts'
+import { t } from './i18n/i18n.js'
+
 export {
-  EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, savingsNoteOf, isSpending, netSign, potSign, savingsPotMinor,
+  EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, isSpending, netSign, potSign, savingsPotMinor,
   isSavingsAccount, savingsTotal,
 } from '../../../supabase/functions/_shared/savings.ts'
+
+const NOTE_KEYS = { 'from income': 'fromIncome', received: 'received', 'from savings': 'fromSavings' }
+
+// The lists' note on a row that touches savings ("from income", "received",
+// "from savings"), in the app's language; null otherwise.
+export function savingsNoteLabel(row, savingsIds) {
+  const note = savingsNoteOf(row, savingsIds)
+  return note ? t(`common:savingsNote.${NOTE_KEYS[note]}`) : null
+}

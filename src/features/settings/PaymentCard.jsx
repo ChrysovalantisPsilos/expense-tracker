@@ -78,7 +78,7 @@ export default function PaymentCard({ user }) {
                 placeholder={t('payment.paypalPlaceholder')} autoComplete="off" />
             </FormControl>
           </SimpleGrid>
-          <Button type="submit" size="sm" alignSelf="start" isLoading={busy}>{t('payment.save')}</Button>
+          <Button type="submit" size="sm" alignSelf="start" isLoading={busy}>{t('common:actions.save')}</Button>
         </Stack>
       )}
     </Panel>

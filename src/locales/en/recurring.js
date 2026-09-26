@@ -91,15 +91,12 @@ export default {
       title: 'Remove recurring entry?',
       body: '“{{name}}” will stop repeating. Transactions it already created stay.',
       thisEntry: 'This entry',
-      cancel: 'Cancel',
       confirm: 'Remove',
     },
   },
   row: {
     pause: 'Pause',
     resume: 'Resume',
-    edit: 'Edit',
-    delete: 'Delete',
     next: 'next {{date}}',
     budgetShare: '{{amount}}/mo in budgets',
     remindDays: '{{days}}d',
@@ -175,5 +172,10 @@ export default {
     nextCharges: 'Next charges',
     charges_one: '{{count}} charge',
     charges_other: '{{count}} charges',
+  },
+  // Under a total built from recurring rules (SubscriptionGroups' RatesNote).
+  rates: {
+    converted: 'Other currencies converted at today’s rate.',
+    missing: '{{amounts}} not included — no exchange rate right now.',
   },
 }

@@ -1,7 +1,8 @@
 import { toBaseMinor, minorFactor, baseEquivalent } from '../../shared/lib/currency.js'
-import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
+import { bucketLabel, bucketLabels, bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { isSavingsAccount, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { categoryBars } from '../dashboard/categoryBars.js'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 
 // Income/expense trend in MAJOR base-currency units, one entry per month bucket
@@ -84,14 +85,19 @@ const monthExpenses = (rows, monthKey) =>
   rows.filter((r) => r.kind !== 'income' && String(r.spent_at).slice(0, 7) === monthKey)
 
 // "Where your money went": the month's spending by category as StackedBar /
-// ShareLegend items [{ label, share }] — top 5 + "Other", integer shares that
-// sum to 100, "Other" last (`folded: true` when it merges several buckets). Buckets and converts exactly like the dashboard breakdown
+// ShareLegend items [{ name, label, share }] — top 5 + "Other", integer
+// shares that sum to 100, "Other" last (`folded: true` when it merges several
+// buckets). `name` is the bucket (bucketOf), `label` what it's called on
+// screen (bucketLabel). Buckets and converts exactly like the dashboard breakdown
 // (bucketOf + sumToBaseByKey, then categoryBars). [] when nothing was spent.
 export function spendingShares(rows, monthKey, baseCurrency) {
-  const totals = sumToBaseByKey(monthExpenses(rows, monthKey), baseCurrency, bucketOf)
+  const expenses = monthExpenses(rows, monthKey)
+  const totals = sumToBaseByKey(expenses, baseCurrency, bucketOf)
+  const labels = bucketLabels(expenses)
   const categories = [...totals.entries()].map(([name, value]) => ({ name, value }))
-  return categoryBars(categories)
-    .map((c) => ({ label: c.name, share: c.share, ...(c.folded && { folded: true }) }))
+  return categoryBars(categories).map((c) => ({
+    name: c.name, label: bucketLabel(c, labels), share: c.share, ...(c.folded && { folded: true }),
+  }))
 }
 
 // "Spending abroad": the month's foreign-currency expenses with their value
@@ -106,7 +112,7 @@ export function foreignSpending(rows, monthKey, baseCurrency) {
     const conv = baseEquivalent(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
     if (!conv) continue
     items.push({
-      id: r.id, label: r.description || r.categories?.name || t('insights:expense'),
+      id: r.id, label: r.description || categoryDisplayName(r.categories) || t('insights:expense'),
       currency: r.currency, minor: r.amount_minor, rate: conv.rate, baseMinor: conv.baseMinor,
     })
   }

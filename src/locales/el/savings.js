@@ -4,16 +4,14 @@ export default {
   what: 'την αποταμίευσή σου',
   add: 'Βάλε στον κουμπαρά',
   fallbackName: 'Αποταμίευση',
-  actions: {
-    edit: 'Επεξεργασία',
-    delete: 'Διαγραφή',
-  },
   pot: {
     label: 'Ο κουμπαράς σου',
     since_one: 'από {{month}} · {{count}} μήνας',
     since_other: 'από {{month}} · {{count}} μήνες',
     chart: 'Ο κουμπαράς σου στο τέλος κάθε μήνα, {{points}}',
     series: 'Κουμπαράς',
+    fromAccounts: 'Από τους αποταμιευτικούς λογαριασμούς σου',
+    fromEntries: 'Από τις καταχωρίσεις αποταμίευσης',
   },
   chip: {
     up: '+{{amount}} αυτόν τον μήνα',

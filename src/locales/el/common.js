@@ -5,11 +5,14 @@ export default {
     signUp: 'Εγγραφή',
     save: 'Αποθήκευση',
     cancel: 'Ακύρωση',
+    edit: 'Επεξεργασία',
+    delete: 'Διαγραφή',
+    close: 'Κλείσιμο',
     back: 'Πίσω',
     next: 'Επόμενο',
     done: 'Τέλος',
     skip: 'Παράλειψη',
-    retry: 'Ξανά',
+    retry: 'Προσπάθησε ξανά',
     moreActions: 'Περισσότερες ενέργειες',
   },
   loading: 'Φόρτωση…',
@@ -19,7 +22,7 @@ export default {
     position: 'Σελίδα {{page}} από {{pages}}',
   },
   queryError: {
-    title: 'Δεν φόρτωσαν {{what}}',
+    title: 'Δεν μπορέσαμε να φορτώσουμε {{what}}',
     this: 'τα δεδομένα',
   },
   errors: {
@@ -32,6 +35,7 @@ export default {
       body: 'Συνδέσου ξανά για να αποθηκευτούν οι αλλαγές σου.',
     },
     sessionExpired: 'Η σύνδεσή σου έληξε. Συνδέσου ξανά.',
+    signedOut: 'Πρέπει να έχεις συνδεθεί.',
     tooMany: 'Πάρα πολλές προσπάθειες. Περίμενε λίγα λεπτά και δοκίμασε ξανά.',
     emailInvalid: 'Γράψε ένα έγκυρο email.',
     auth: {
@@ -43,6 +47,12 @@ export default {
       currentPasswordInvalid: 'Ο τωρινός κωδικός είναι λάθος.',
       linkExpired: 'Αυτό το link έληξε. Ζήτα καινούργιο.',
     },
+    reauth: {
+      connectGoogle: 'Για την ασφάλειά σου, συνδέσου ξανά για να συνδέσεις το Google.',
+      disconnectGoogle: 'Για την ασφάλειά σου, συνδέσου ξανά για να αποσυνδέσεις το Google.',
+      addPasskey: 'Για την ασφάλειά σου, συνδέσου ξανά για να προσθέσεις κλειδί πρόσβασης.',
+      deleteAccount: 'Για την ασφάλειά σου, συνδέσου ξανά για να διαγράψεις τον λογαριασμό σου.',
+    },
     passkey: {
       cancelled: 'Το αίτημα για το κλειδί πρόσβασης ακυρώθηκε ή έληξε.',
       registered: 'Αυτή η συσκευή έχει ήδη κλειδί πρόσβασης για τον λογαριασμό σου.',
@@ -51,8 +61,8 @@ export default {
       notAllowed: 'Δεν επιτρέπεται.',
       notMember: 'Δεν είσαι μέλος.',
       notGroupMember: 'Δεν είσαι μέλος αυτής της ομάδας.',
-      ownerDeletes: 'Μόνο ο δημιουργός της ομάδας μπορεί να τη διαγράψει.',
-      editExpense: 'Αυτό το έξοδο το αλλάζει μόνο όποιος το πρόσθεσε (ή ο δημιουργός της ομάδας).',
+      ownerDeletes: 'Μόνο ο διαχειριστής της ομάδας μπορεί να τη διαγράψει.',
+      editExpense: 'Αυτό το έξοδο το αλλάζει μόνο όποιος το πρόσθεσε (ή ο διαχειριστής της ομάδας).',
       ownSettlements: 'Μπορείς να καταγράψεις μόνο ξεχρεώσεις στις οποίες συμμετέχεις.',
       payerNotMember: 'Όποιος πλήρωσε πρέπει να είναι μέλος της ομάδας.',
       settlementMembers: 'Στην ξεχρέωση συμμετέχουν μόνο μέλη αυτής της ομάδας.',
@@ -114,6 +124,7 @@ export default {
   bucket: {
     uncategorized: 'Χωρίς κατηγορία',
     group: 'Ομάδα',
+    other: 'Άλλα',
   },
   errorScreen: {
     notFound: {
@@ -142,7 +153,7 @@ export default {
       goHome: 'Στην Αρχική',
       help: 'Βοήθεια & συχνές ερωτήσεις',
       reload: 'Ανανέωση',
-      tryAgain: 'Δοκίμασε ξανά',
+      tryAgain: 'Προσπάθησε ξανά',
     },
   },
   fx: {
@@ -151,6 +162,7 @@ export default {
     ecb: '{{conversion}} στις {{date}} (ΕΚΤ)',
     missing: 'Δεν βρέθηκε η ισοτιμία {{from}}→{{to}} γι’ αυτή την ημερομηνία. Γράψε την ισοτιμία για να αποθηκευτεί — θα τη βρεις στην κίνηση της κάρτας ή της τράπεζάς σου.',
     ratePlaceholder: 'π.χ. 1,17',
+    rateLabel: '1 {{from}} = ? {{to}}',
   },
   savingsSwitch: {
     fromIncome: {
@@ -187,10 +199,35 @@ export default {
     currency: 'Νόμισμα',
     date: 'Ημερομηνία',
   },
+  savingsNote: {
+    fromIncome: 'από το εισόδημα',
+    received: 'που πήρες',
+    fromSavings: 'από αποταμιεύσεις',
+  },
+  countsFor: {
+    month: 'Στα έσοδα {{month}}',
+    withYear: 'Στα έσοδα {{month}} {{year}}',
+  },
   tour: {
     label: 'Ξενάγηση',
     step: 'Βήμα {{n}} από {{total}}',
     announce: 'Βήμα {{n}} από {{total}}: {{title}}',
+  },
+  defaultCategories: {
+    food: 'Φαγητό & εστιατόρια',
+    groceries: 'Σούπερ μάρκετ',
+    transport: 'Μετακινήσεις',
+    housing: 'Σπίτι',
+    utilities: 'Λογαριασμοί',
+    shopping: 'Ψώνια',
+    health: 'Υγεία',
+    entertainment: 'Διασκέδαση',
+    other: 'Άλλα',
+    salary: 'Μισθός',
+    friends: 'Φίλοι & οικογένεια',
+    friendTransfer: 'Μεταφορά από φίλο',
+    bonus: 'Μπόνους',
+    savings: 'Αποταμιεύσεις',
   },
   categoryIcons: {
     labels: {
