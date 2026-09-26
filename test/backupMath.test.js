@@ -751,10 +751,10 @@ test('version 3: every flag the recent features added survives build → encrypt
 test('backup: UI state (whats_new_seen and the like) is never written to the file', () => {
   const doc = salaryDoc({
     whats_new_seen: '2026-09-25', tour_done: true, passkey_reminder_off: true,
-    onboarded_at: '2026-01-01T00:00:00Z', notify_digest: true, is_developer: true, is_demo: true,
+    onboarded_at: '2026-01-01T00:00:00Z', notify_digest: true, is_developer: true, is_demo: true, language: 'el',
   })
   const text = JSON.stringify(doc)
-  for (const k of ['whats_new_seen', 'tour_done', 'passkey_reminder_off', 'onboarded_at', 'notify_digest', 'is_developer', 'is_demo']) {
+  for (const k of ['whats_new_seen', 'tour_done', 'passkey_reminder_off', 'onboarded_at', 'notify_digest', 'is_developer', 'is_demo', 'language']) {
     assert.ok(!text.includes(k), `${k} leaked into the backup`)
   }
   // …and a hand-edited file that has it doesn't carry it through.

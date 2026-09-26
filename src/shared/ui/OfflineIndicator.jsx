@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Badge } from '@chakra-ui/react'
 import { WifiOff } from 'lucide-react'
+import { useT } from '../lib/i18n/I18nProvider.jsx'
 
 // Persistent offline indicator: renders nothing while online, and a standing
 // "Offline" pill whenever the browser loses its connection. Since writes need
@@ -8,6 +9,7 @@ import { WifiOff } from 'lucide-react'
 // saves won't go through until it clears — the failed-write toast is the
 // moment-of-action reminder, this is the ambient state.
 export default function OfflineIndicator() {
+  const t = useT()
   const [online, setOnline] = useState(navigator.onLine)
   useEffect(() => {
     const on = () => setOnline(true)
@@ -23,7 +25,7 @@ export default function OfflineIndicator() {
   if (online) return null
   return (
     <Badge bg="bg.subtle" color="status.warning" display="flex" alignItems="center" gap={1}>
-      <WifiOff size={12} /> Offline
+      <WifiOff size={12} /> {t('offline')}
     </Badge>
   )
 }

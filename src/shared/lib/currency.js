@@ -1,6 +1,7 @@
 // Currency helpers. Money is stored as integer minor units (cents).
 import { ZERO_DECIMAL, toBaseMinor } from '../../../supabase/functions/_shared/money.ts'
 import { STORAGE_KEYS } from './keys.js'
+import { intlLocale } from './i18n/i18n.js'
 
 // Supported currencies: every currency the ECB publishes a daily reference
 // rate for (so each one can be converted to any other), EUR first — it's the
@@ -38,8 +39,9 @@ export function minorToInput(minor, currency = 'EUR') {
 
 // Decimals come from our minor units, not ICU's defaults: ICU shows HUF and
 // IDR with 0 decimals although ISO 4217 (and our storage) has 2, which would
-// round 12.50 to "13" on screen.
-export function formatMoney(minor, currency = 'EUR', locale = undefined) {
+// round 12.50 to "13" on screen. The locale is the app language's (Greek:
+// "1.234,56 €"); in English, the device's own, as always.
+export function formatMoney(minor, currency = 'EUR', locale = intlLocale()) {
   const digits = Math.log10(minorFactor(currency))
   return new Intl.NumberFormat(locale, {
     style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits,
@@ -191,7 +193,9 @@ export function parseManualRate(raw) {
 }
 
 // A rate for display: 5 significant digits, no trailing zeros (1.1699,
-// 0.0053862, 185.66).
+// 0.0053862, 185.66; Greek writes the decimal comma: 1,1699).
 export function formatRate(rate) {
-  return String(Number(Number(rate).toPrecision(5)))
+  const n = Number(Number(rate).toPrecision(5))
+  const locale = intlLocale()
+  return locale ? n.toLocaleString(locale, { maximumSignificantDigits: 5 }) : String(n)
 }

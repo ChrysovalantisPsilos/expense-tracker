@@ -13,6 +13,8 @@ import { MotionBox, Reveal, popIn, usePhases, usePlayback } from '../../shared/u
 import { formatMoney } from '../../shared/lib/currency.js'
 import { DEMO_CURRENCY, settleDemo, splitDemo } from './landingDemo.js'
 import SectionHeading from './SectionHeading.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import useDemoPerson from './useDemoPerson.js'
 
 const money = (minor) => formatMoney(minor, DEMO_CURRENCY)
 const SPLIT = splitDemo()
@@ -23,6 +25,9 @@ const FRIENDS = SPLIT.members.slice(1) // everyone but "You"
 const INVITE_HOLDS = [1100, 900, 650, 650, 2800]
 const SPLIT_HOLDS = [600, 1100, 1100, 3000]
 const SETTLE_HOLDS = [1300, ...SETTLE.payments.map(() => 1300), 2800]
+
+// The link the first illustration copies: an address, not words to translate.
+const INVITE_URL = 'budgeer.com/join/…'
 
 // Every illustration gets the same fixed box, so nothing below it moves.
 function Stage({ children }) {
@@ -36,6 +41,8 @@ function Stage({ children }) {
 
 // Step 1: the invite link is copied, then friends join one by one.
 function InviteAnim({ playback }) {
+  const t = useT('landing')
+  const person = useDemoPerson()
   const phase = usePhases(playback, INVITE_HOLDS)
   const copied = phase >= 1
   const joined = FRIENDS.slice(0, Math.max(0, phase - 1))
@@ -44,18 +51,18 @@ function InviteAnim({ playback }) {
     <Stack spacing={3}>
       <HStack spacing={2} px={2.5} h="40px" borderRadius="lg" bg="bg.subtle" minW={0}>
         <Box color="accent.fg" flexShrink={0}><Link2 size={16} /></Box>
-        <Text fontSize="sm" color="text.muted" flex="1" minW={0} noOfLines={1}>budgeer.com/join/…</Text>
+        <Text fontSize="sm" color="text.muted" flex="1" minW={0} noOfLines={1}>{INVITE_URL}</Text>
         <HStack spacing={1} px={2} h="26px" borderRadius="md" flexShrink={0} fontSize="xs" fontWeight="700"
           bg={copied ? 'status.positive' : 'brand.500'} color={copied ? 'bg.surface' : 'white'} transition="background 0.25s">
           {copied ? <Check size={13} /> : <Copy size={13} />}
-          <Text as="span">{copied ? 'Copied' : 'Copy'}</Text>
+          <Text as="span">{t(copied ? 'how.invite.copied' : 'how.invite.copy')}</Text>
         </HStack>
       </HStack>
       <HStack justify="space-between" minH="40px">
         <AvatarGroup size="sm" spacing={-2}>
-          <UserAvatar name="You" highlight />
+          <UserAvatar name={person('you')} highlight />
           {FRIENDS.map((f, i) => (
-            <UserAvatar key={f.id} name={f.name} opacity={i < joined.length ? 1 : 0}
+            <UserAvatar key={f.id} name={person(f.id)} opacity={i < joined.length ? 1 : 0}
               transform={i < joined.length ? 'scale(1)' : 'scale(0.6)'}
               transition={playback.reduce ? undefined : 'opacity 0.3s, transform 0.3s'} />
           ))}
@@ -64,14 +71,14 @@ function InviteAnim({ playback }) {
           <AnimatePresence mode="wait" initial={false}>
             <MotionBox key={joined.length} {...anim}>
               <Text fontSize="sm" fontWeight="600" color={joined.length ? 'text.primary' : 'text.muted'}>
-                {joined.length ? `${joined.at(-1).name} joined` : 'Share the link'}
+                {joined.length ? t('how.invite.joined', { name: person(joined.at(-1).id) }) : t('how.invite.share')}
               </Text>
             </MotionBox>
           </AnimatePresence>
         </Box>
       </HStack>
       <Text fontSize="xs" color="text.muted">
-        {joined.length === FRIENDS.length ? 'Everyone’s in the group' : 'Friends join with a free account'}
+        {t(joined.length === FRIENDS.length ? 'how.invite.allIn' : 'how.invite.freeAccount')}
       </Text>
     </Stack>
   )
@@ -79,6 +86,8 @@ function InviteAnim({ playback }) {
 
 // Step 2: an expense lands, gets split equally, and your share is counted.
 function SplitAnim({ playback }) {
+  const t = useT('landing')
+  const person = useDemoPerson()
   const phase = usePhases(playback, SPLIT_HOLDS)
   const anim = popIn(playback)
   const you = SPLIT.members[0]
@@ -88,7 +97,8 @@ function SplitAnim({ playback }) {
         <AnimatePresence initial={false}>
           {phase >= 1 && (
             <MotionBox key="row" {...anim}>
-              <ItemRow icon={ReceiptText} title={SPLIT.label} meta={`Paid by ${SPLIT.paidBy}`}
+              <ItemRow icon={ReceiptText} title={t('demo.groceriesForFlat')}
+                meta={t('demo.paidBy', { name: person(SPLIT.paidBy) })}
                 amount={money(SPLIT.amountMinor)} />
             </MotionBox>
           )}
@@ -100,9 +110,9 @@ function SplitAnim({ playback }) {
             <MotionBox key="split" {...anim}>
               <HStack spacing={2}>
                 <AvatarGroup size="xs" spacing={-1.5}>
-                  {SPLIT.members.map((m) => <UserAvatar key={m.id} name={m.name} highlight={m.id === 'you'} />)}
+                  {SPLIT.members.map((m) => <UserAvatar key={m.id} name={person(m.id)} highlight={m.id === 'you'} />)}
                 </AvatarGroup>
-                <Text fontSize="sm" color="text.muted">Split equally · {money(you.shareMinor)} each</Text>
+                <Text fontSize="sm" color="text.muted">{t('how.split.equally', { amount: money(you.shareMinor) })}</Text>
               </HStack>
             </MotionBox>
           )}
@@ -112,7 +122,7 @@ function SplitAnim({ playback }) {
         <AnimatePresence initial={false}>
           {phase >= 3 && (
             <MotionBox key="share" {...anim}>
-              <HighlightPill amount={money(you.shareMinor)} py={1.5}>Your share, in your spending:</HighlightPill>
+              <HighlightPill amount={money(you.shareMinor)} py={1.5}>{t('how.split.yourShare')}</HighlightPill>
             </MotionBox>
           )}
         </AnimatePresence>
@@ -123,6 +133,8 @@ function SplitAnim({ playback }) {
 
 // Step 3: each payment clears a balance, until everyone is at zero.
 function SettleAnim({ playback }) {
+  const t = useT('landing')
+  const person = useDemoPerson()
   const phase = usePhases(playback, SETTLE_HOLDS)
   const anim = popIn(playback)
   const paid = Math.min(phase, SETTLE.payments.length)
@@ -135,17 +147,17 @@ function SettleAnim({ playback }) {
           <MotionBox key={done ? 'done' : phase} {...anim}>
             {done ? (
               <HStack spacing={1.5} color="status.positive" fontSize="sm" fontWeight="700">
-                <Check size={16} /><Text as="span">All settled up</Text>
+                <Check size={16} /><Text as="span">{t('how.settle.done')}</Text>
               </HStack>
             ) : payment ? (
               <HStack spacing={1.5} fontSize="sm" fontWeight="600">
-                <Text as="span">{payment.fromName}</Text>
+                <Text as="span">{person(payment.from)}</Text>
                 <Box color="text.muted"><ArrowRight size={14} /></Box>
-                <Text as="span">{payment.toName}</Text>
+                <Text as="span">{person(payment.to)}</Text>
                 <Text as="span" color="accent.fg" fontWeight="800">{money(payment.amountMinor)}</Text>
               </HStack>
             ) : (
-              <Text fontSize="sm" color="text.muted">{SETTLE.payments.length} payments settle everyone</Text>
+              <Text fontSize="sm" color="text.muted">{t('how.settle.payments', { count: SETTLE.payments.length })}</Text>
             )}
           </MotionBox>
         </AnimatePresence>
@@ -153,38 +165,25 @@ function SettleAnim({ playback }) {
       <BalanceGrid>
         {SETTLE.frames[paid].map((b) => {
           const { text, tone } = signedAmount(b.netMinor, money)
-          return <BalanceTile key={b.id} label={b.name} value={text} tone={tone} py={1} />
+          return <BalanceTile key={b.id} label={person(b.id)} value={text} tone={tone} py={1} />
         })}
       </BalanceGrid>
     </Stack>
   )
 }
 
+// Each step's words are how.<id>.title / .body (landing namespace).
 const STEPS = [
-  {
-    icon: Link2,
-    title: 'Create a group & invite friends with a link',
-    body: 'Create a group for a trip, your flat or a night out, share one invite link, and friends join with a free account.',
-    Anim: InviteAnim,
-  },
-  {
-    icon: ReceiptText,
-    title: 'Add expenses as you go',
-    body: 'Log who paid, in any currency. Split equally, or by amount, percentage or shares.',
-    Anim: SplitAnim,
-  },
-  {
-    icon: HandCoins,
-    title: 'See who owes what and settle up',
-    body: 'Budgeer works out the fewest payments to square up, and shows each friend’s IBAN, Revolut or PayPal to pay back.',
-    Anim: SettleAnim,
-  },
+  { id: 'invite', icon: Link2, Anim: InviteAnim },
+  { id: 'split', icon: ReceiptText, Anim: SplitAnim },
+  { id: 'settle', icon: HandCoins, Anim: SettleAnim },
 ]
 
 // One step card. It fades in once it scrolls into view (later cards a beat
 // after earlier ones, so a row of three staggers), and its illustration
 // loops only while the card is on screen.
 function StepCard({ step, index }) {
+  const t = useT('landing')
   const reveal = usePlayback({ once: true, amount: 0.25 })
   const playback = usePlayback()
   const { Anim } = step
@@ -195,11 +194,11 @@ function StepCard({ step, index }) {
         <HStack spacing={3}>
           <IconTile icon={step.icon} size={44} radius="xl" />
           <Text fontFamily="heading" fontWeight="700" color="text.muted" fontSize="sm">
-            Step {index + 1}
+            {t('how.step', { n: index + 1 })}
           </Text>
         </HStack>
-        <Heading as="h3" fontSize="lg" lineHeight="1.3">{step.title}</Heading>
-        <Text color="text.muted" flex="1">{step.body}</Text>
+        <Heading as="h3" fontSize="lg" lineHeight="1.3">{t(`how.${step.id}.title`)}</Heading>
+        <Text color="text.muted" flex="1">{t(`how.${step.id}.body`)}</Text>
         <Stage><Anim playback={playback} /></Stage>
       </Stack>
     </Reveal>
@@ -210,12 +209,13 @@ function StepCard({ step, index }) {
 // turn as they scroll into view, each with a small looping illustration.
 // Reduced motion: no reveal, and each illustration shows its final state.
 export default function HowItWorks() {
+  const t = useT('landing')
   return (
     <Box as="section" bg="bg.surface" borderTopWidth="1px" borderBottomWidth="1px" borderColor="border.default">
       <Container maxW="6xl" px={{ base: 4, md: 6 }} py={{ base: 14, md: 20 }}>
-        <SectionHeading eyebrow="How it works" title="Shared costs, sorted in three steps" />
+        <SectionHeading eyebrow={t('how.eyebrow')} title={t('how.title')} />
         <SimpleGrid columns={{ base: 1, md: 3 }} spacing={{ base: 4, md: 6 }} mt={{ base: 8, md: 12 }}>
-          {STEPS.map((s, i) => <StepCard key={s.title} step={s} index={i} />)}
+          {STEPS.map((s, i) => <StepCard key={s.id} step={s} index={i} />)}
         </SimpleGrid>
       </Container>
     </Box>

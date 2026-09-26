@@ -5,6 +5,7 @@ import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import ErrorScreen from '../shared/ui/ErrorScreen.jsx'
 import PublicHeader from '../shared/ui/PublicHeader.jsx'
 import useGoBack from '../shared/ui/useGoBack.js'
+import { useT } from '../shared/lib/i18n/I18nProvider.jsx'
 
 // The 404 page. Signed in it renders inside the app shell (a child route), so
 // the navigation stays: Back to Home, or Go back. Signed out it's a public
@@ -12,6 +13,7 @@ import useGoBack from '../shared/ui/useGoBack.js'
 // Every unknown address is served index.html with a 200, so while the 404 is
 // on screen a robots meta tag keeps search engines from indexing it.
 export default function NotFound() {
+  const t = useT()
   const { user } = useAuth()
   const goBack = useGoBack('/')
 
@@ -31,7 +33,7 @@ export default function NotFound() {
       handlers={{ home: { to: '/' }, help: { to: '/help' } }}
       header={(
         <PublicHeader>
-          <Button as={RouterLink} to="/login" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}>Log in</Button>
+          <Button as={RouterLink} to="/login" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}>{t('actions.logIn')}</Button>
         </PublicHeader>
       )} />
   )

@@ -59,6 +59,25 @@ export default [
       }],
     },
   },
+  // i18n (docs/I18N.md): no user-facing text written straight into JSX in
+  // the files already converted to translation keys. Each phase adds its
+  // files here; once every feature is converted this becomes src/**/*.jsx.
+  // Symbols and the brand may stay literal.
+  {
+    files: [
+      'src/app/AppShell.jsx', 'src/app/More.jsx', 'src/app/NotFound.jsx',
+      'src/features/landing/*.jsx',
+      'src/features/settings/{Settings,SettingsPage,AppearanceSettings,LanguageSettings,DemoNotice}.jsx',
+      'src/shared/ui/{PublicHeader,LanguageSwitch,SkipLink,OfflineIndicator,ThemeToggle,SiteSwitch,HobbyNotice}.jsx',
+    ],
+    rules: {
+      'react/jsx-no-literals': ['error', {
+        noStrings: true,
+        ignoreProps: true,
+        allowedStrings: ['·', '—', '–', '→', '←', '©', ':', '/', '(', ')', '+', '−', '%', '…', 'Budgeer', 'budgeer'],
+      }],
+    },
+  },
   { files: ['src/sw.js'], languageOptions: { globals: { ...globals.serviceworker } } },
   // The status page (status/): a Cloudflare Worker (service-worker style
   // globals: fetch, Response, crypto, …) plus the admin page's browser script.

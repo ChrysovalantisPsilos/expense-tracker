@@ -46,6 +46,7 @@ aspirations — if a change would break one, fix the cause, don't paper over it.
 | Cross-feature UI | `src/shared/ui/` (design-system kit in `src/shared/ui/kit/`; `ShellHeader.jsx` = the sideways header's slots that `PageHeader`/`PageForm` fill) |
 | Sideways phones (landscape ≤ 500px tall) | `shortLandscape.js` (query, shell measurements, `landscapeOnly`, `NARROW_STACK`) + `useShortLandscape`; the rail and header live in `AppShell.jsx`; Home's stacks in `dashboardMath.homeStacks`, Savings' in `savingsMath.savingsStacks`; `shared/ui/narrowStacks.js` folds a stack's rows on the narrowest screens |
 | Add a group expense from Add ("Who's it for?") | `TransactionPage.jsx` swaps in `GroupExpenseForm`'s `quick` layout; `groups/WhoForChips.jsx` (chips), `groups/myGroups.js` (the viewer's groups + recently used, `STORAGE_KEYS.recentGroups`), pure rules in `groups/quickAddMath.js` (`test/quickAdd.test.js`) |
+| Translations (i18n) | engine + `useT`/`t`/`<Trans>` in `src/shared/lib/i18n/`, dictionaries per namespace in `src/locales/{en,el}/`, conventions in `docs/I18N.md`, Greek terms in `docs/i18n-glossary-el.md`, parity test `test/i18n.test.js` |
 | Auth context | `src/shared/auth/` |
 | Features | `src/features/{auth,backup,budgets,categories,dashboard,groups,help,import,insights,landing,notifications,onboarding,privacy,recurring,savings,settings,transactions,whatsnew}/` |
 | DB schema & policies | `supabase/migrations/NNNN_*.sql` (append-only, ordered) |

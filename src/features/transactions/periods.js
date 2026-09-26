@@ -1,4 +1,4 @@
-import { isoDate } from '../../shared/lib/dates.js'
+import { isoDate, monthTitle } from '../../shared/lib/dates.js'
 
 // Period options (a month, a year, all time) as { value, label, from, to }.
 // `value` is a stable token — 'm:2026-9', 'y:2026', 'all' — that pages keep
@@ -10,7 +10,7 @@ function monthPeriod(y, m, d) {
   const now = y === d.getFullYear() && m === d.getMonth()
   return {
     value: `m:${start.getFullYear()}-${start.getMonth() + 1}`,
-    label: now ? 'This month' : start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    label: now ? 'This month' : monthTitle(start),
     from: isoDate(start), to: isoDate(end),
   }
 }

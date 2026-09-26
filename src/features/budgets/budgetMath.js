@@ -1,6 +1,7 @@
 // Pure budget helpers (no I/O) — unit-tested in test/budgetMath.test.js.
 import { toMinor } from '../../shared/lib/currency.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
+import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 import { isMonthPeriod } from '../transactions/periods.js'
 
 // How close spend is to its cap, as the tone its progress bar takes (the
@@ -51,7 +52,7 @@ export function carriedFrom(rows, periodStart) {
 }
 
 // "Carried over from August" (the year is added when it isn't this one's).
-export function carriedLabel(source, periodStart, locale = undefined) {
+export function carriedLabel(source, periodStart, locale = intlLocale()) {
   const [y, m] = source.split('-').map(Number)
   const month = new Date(Date.UTC(y, m - 1, 1)).toLocaleString(locale, {
     month: 'long', timeZone: 'UTC', ...(periodStart.slice(0, 4) !== source.slice(0, 4) ? { year: 'numeric' } : {}),

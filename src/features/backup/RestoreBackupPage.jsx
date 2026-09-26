@@ -17,6 +17,7 @@ import { restoreBackup, restoreCurrencyPlan } from './backup.js'
 import Note from './Note.jsx'
 import { UserError, userMessage } from '../../shared/lib/errors.js'
 import { RingMark, RingSpinner } from '../../shared/ui/RingLoader.jsx'
+import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 
 // Hard ceiling on what we'll read into memory; real backups are far smaller.
 const MAX_FILE_BYTES = 50 * 1024 * 1024
@@ -187,7 +188,7 @@ function ReviewStep({ backup, setFlow, running }) {
           )}
           {made && !isNaN(made) && (
             <Text fontSize="sm" color="text.muted">
-              Backup made {made.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.
+              Backup made {made.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric' })}.
             </Text>
           )}
           <CurrencyLine plan={currency} />

@@ -2,6 +2,7 @@ import { toBaseMinor, minorFactor, baseEquivalent } from '../../shared/lib/curre
 import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { categoryBars } from '../dashboard/categoryBars.js'
+import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 
 // Income/expense trend in MAJOR base-currency units, one entry per month bucket
 // (keyed by YYYY-MM). `months` come from lastMonths(); rows outside those months
@@ -59,8 +60,9 @@ export function netWorth(accounts, savings = 0) {
 // Y-axis tick label for the trend chart (major units): "800", "1.6k", "2.4k",
 // "120k", "1.5M". One decimal keeps neighbouring ticks distinct, where whole
 // thousands would print 1.6k and 2.4k both as "2k".
-const compact = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 })
-export const axisTick = (v) => compact.format(v).replace(/K$/, 'k')
+// Greek: "1,6 χιλ.", "1,5 εκ.".
+export const axisTick = (v) =>
+  new Intl.NumberFormat(intlLocale('en'), { notation: 'compact', maximumFractionDigits: 1 }).format(v).replace(/K$/, 'k')
 
 // Expense rows (anything not income) dated in the `monthKey` (YYYY-MM) month.
 const monthExpenses = (rows, monthKey) =>

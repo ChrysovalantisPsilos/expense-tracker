@@ -10,6 +10,7 @@
 //     public.inactive_accounts() (0073), and INACTIVITY in
 //     supabase/functions/_shared/inactivity.ts.
 import { CONSENT_LABELS, LEGAL_CHANGES, LEGAL_VERSIONS } from '../../../supabase/functions/_shared/legal.ts'
+import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 
 export {
   REQUEST_KINDS, MESSAGE_MAX, validatePrivacyRequest,
@@ -33,7 +34,7 @@ export const RETENTION = {
 export function formatVersion(iso) {
   const [y, m, d] = String(iso).split('-').map(Number)
   if (!y || !m || !d) return String(iso ?? '')
-  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-GB',
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(intlLocale('en-GB'),
     { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 

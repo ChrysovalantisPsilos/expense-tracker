@@ -10,7 +10,7 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { isSupabaseConfigured, passkeysSupported } from '../../shared/lib/supabase.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { NEXT_PARAM, rememberReturnPath, safeReturnPath } from '../../shared/lib/returnPath.js'
-import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { signupConsentMetadata } from '../privacy/legal.js'
 import { rememberConsentMarker } from '../privacy/legalConsentStore.js'
 import AuthLayout from './AuthLayout.jsx'
@@ -20,6 +20,7 @@ import { firstInvalid } from '../../shared/lib/formChecks.js'
 import { AUTH_FIELDS, authErrors, consentError } from './authChecks.js'
 
 export default function Login() {
+  const t = useT()
   const { signInWithPassword, signUp, signInWithPasskey, signInWithProvider } = useAuth()
   const [searchParams] = useSearchParams()
   const [mode, setMode] = useState(searchParams.get('signup') ? 'signup' : 'signin')
@@ -179,7 +180,7 @@ export default function Login() {
             </FormControl>
           )}
           {mode === 'signup' && (
-            <Text fontSize="xs" color="text.muted">{DISCLAIMER}</Text>
+            <Text fontSize="xs" color="text.muted">{t('hobby.disclaimer')}</Text>
           )}
           {mode === 'signin' && (
             <Button variant="link" colorScheme="brand" size="sm" alignSelf="flex-end"

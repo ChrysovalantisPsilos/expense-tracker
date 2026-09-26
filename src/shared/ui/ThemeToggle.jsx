@@ -3,6 +3,7 @@ import { IconButton, useColorMode } from '@chakra-ui/react'
 import { Moon, Sun } from 'lucide-react'
 import { useAppearance } from '../lib/appearance.jsx'
 import { toggledPref } from '../lib/themePref.js'
+import { useT } from '../lib/i18n/I18nProvider.jsx'
 
 // Quick light/dark flip: pins the opposite of what's showing, or goes back to
 // following the device when the flip lands on what the device shows
@@ -11,6 +12,7 @@ import { toggledPref } from '../lib/themePref.js'
 // which passes its own onClick (to close itself), so ours runs alongside it
 // rather than being replaced by it.
 const ThemeToggle = forwardRef(function ThemeToggle({ onClick, ...props }, ref) {
+  const t = useT()
   const { colorMode } = useColorMode()
   const { setPref } = useAppearance()
   const dark = colorMode === 'dark'
@@ -18,7 +20,7 @@ const ThemeToggle = forwardRef(function ThemeToggle({ onClick, ...props }, ref) 
   return (
     <IconButton
       ref={ref}
-      aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+      aria-label={t(dark ? 'theme.toLight' : 'theme.toDark')}
       variant="ghost" size="sm" icon={<Icon size={18} />}
       {...props}
       onClick={(e) => {

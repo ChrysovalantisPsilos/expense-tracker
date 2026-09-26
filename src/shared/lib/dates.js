@@ -1,3 +1,5 @@
+import { getLanguage, intlLocale } from './i18n/i18n.js'
+
 // Date helpers. All app dates are YYYY-MM-DD strings in the user's LOCAL
 // calendar. Never format a local date with toISOString(): that converts to UTC,
 // which is the previous day east of UTC (e.g. local midnight 1 Sep in Belgium is
@@ -17,9 +19,17 @@ export function monthRange(d = new Date()) {
   return { from: isoDate(start), to: isoDate(end) }
 }
 
-// A month as a heading, e.g. "September 2026".
+// A month as a heading, e.g. "September 2026" ("Σεπτέμβριος 2026").
 export const monthTitle = (d = new Date()) =>
-  d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  d.toLocaleDateString(intlLocale('en-US'), { month: 'long', year: 'numeric' })
+
+// A month's name on its own, e.g. "September". Taken from the month-and-year
+// form: Greek then gets the nominative "Σεπτέμβριος" (month-only formatting
+// gives the genitive "Σεπτεμβρίου", as in "26 Σεπτεμβρίου").
+export function monthName(d = new Date()) {
+  return new Intl.DateTimeFormat(intlLocale('en-US'), { month: 'long', year: 'numeric' })
+    .formatToParts(d).find((p) => p.type === 'month').value
+}
 
 // The last `n` calendar months, oldest → newest, each as
 // { key: 'YYYY-MM', label: 'Jan', from, to }.
@@ -30,19 +40,26 @@ export function lastMonths(n, d = new Date()) {
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 0)
     out.push({
       key: isoDate(start).slice(0, 7),
-      label: start.toLocaleDateString('en-US', { month: 'short' }),
+      label: start.toLocaleDateString(intlLocale('en-US'), { month: 'short' }),
       from: isoDate(start), to: isoDate(end),
     })
   }
   return out
 }
 
-// Fixed English month abbreviations: toLocaleDateString('en-GB') renders
-// September as "Sept" on newer ICU builds, so it isn't stable across devices.
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+// Fixed month abbreviations per language: toLocaleDateString('en-GB')
+// renders September as "Sept" on newer ICU builds, so it isn't stable across
+// devices. Greek: ICU's own short forms ("26 Σεπ 2026").
+const MONTHS_SHORT = {
+  en: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  el: ['Ιαν', 'Φεβ', 'Μαρ', 'Απρ', 'Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ', 'Οκτ', 'Νοε', 'Δεκ'],
+}
+
+// A month's short name (0 = January) in the app's language.
+export const shortMonth = (m) => (MONTHS_SHORT[getLanguage()] ?? MONTHS_SHORT.en)[m]
 
 const dayMonth = (y, m, d, now) =>
-  `${d} ${MONTHS_SHORT[m]}${y === now.getFullYear() ? '' : ` ${y}`}`
+  `${d} ${shortMonth(m)}${y === now.getFullYear() ? '' : ` ${y}`}`
 
 // A list-row date: "21 Sep", or "21 Sep 2025" outside the current year.
 // Takes a YYYY-MM-DD string (a timestamp's date part is used as-is); falls

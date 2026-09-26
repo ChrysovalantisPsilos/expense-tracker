@@ -1,6 +1,6 @@
 import LegalLayout, { Body, Bullets, MailLink, PageLink } from './LegalLayout.jsx'
 import { PRIVACY_EMAIL, SUPPORT_EMAIL } from '../../shared/lib/contact.js'
-import { DISCLAIMER } from '../../shared/lib/disclaimer.js'
+import { translate } from '../../shared/lib/i18n/i18n.js'
 import { CONTROLLER, LEGAL_VERSIONS, RETENTION } from './legal.js'
 
 // Terms of Use. A material change needs a new LEGAL_VERSIONS.terms (and the
@@ -35,7 +35,8 @@ const SECTIONS = [
   ) },
   { id: 'advice', title: 'No financial advice', body: (
     <>
-      <Body><strong>{DISCLAIMER}</strong></Body>
+      {/* English, like the rest of the Terms until their Greek copy exists. */}
+      <Body><strong>{translate('common:hobby.disclaimer', null, { lang: 'en' })}</strong></Body>
       <Bullets items={[
         'Budgeer only records and organises the data you enter. Nothing in it is financial, investment, tax or legal advice, or a recommendation to do anything with your money.',
         'Figures can be wrong. Calculations, totals and balances, exchange rates (the European Central Bank’s daily reference rates, or an estimate until they arrive), projections, budget alerts, yearly subscriptions spread over months, bank-statement imports and receipt scans may be inaccurate or incomplete.',

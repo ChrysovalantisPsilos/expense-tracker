@@ -1,5 +1,6 @@
 import { toBaseMinor, minorFactor, formatMoney } from '../../shared/lib/currency.js'
-import { isoDate, monthTitle } from '../../shared/lib/dates.js'
+import { isoDate, monthName, monthTitle } from '../../shared/lib/dates.js'
+import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 import { rowEffect, potSign } from '../../shared/lib/savings.js'
 import { MARK_ARCS } from '../../shared/ui/markGeometry.js'
 
@@ -117,14 +118,14 @@ export const HISTORY_MORE = 3
 export function monthHeading(key, now = new Date()) {
   const [y, m] = key.split('-').map(Number)
   const d = new Date(y, m - 1, 1)
-  return y === now.getFullYear() ? d.toLocaleDateString('en-US', { month: 'long' }) : monthTitle(d)
+  return y === now.getFullYear() ? monthName(d) : monthTitle(d)
 }
 
 // An amount without a zero fraction ("€899", but "€709.40"), for the short
 // phrases (the month's chip, a goal's pace).
 export function wholeMoney(minor, currency = 'EUR') {
   if (minor % minorFactor(currency) !== 0) return formatMoney(minor, currency)
-  return new Intl.NumberFormat(undefined, {
+  return new Intl.NumberFormat(intlLocale(), {
     style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0,
   }).format(minor / minorFactor(currency))
 }

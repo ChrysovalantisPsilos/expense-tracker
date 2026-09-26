@@ -5438,11 +5438,71 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 89. 0091: profiles.language (the app's language; null = follow the device).
+--     Starts null; the owner sets 'el', reads it back and clears it again;
+--     another user can't change it (RLS: 0 rows), nor can anon (no column
+--     grant); only 'en' / 'el' are accepted; export_my_data() includes it.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; v text; n int; doc jsonb;
+begin
+  begin
+    u1 := pg_temp.zz_user('lang');
+    u2 := pg_temp.zz_user('langx');
+    if (select language from public.profiles where id = u1) is not null then
+      raise exception 'language starts set';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set language = 'el' where id = u1;
+    select language into v from public.profiles where id = u1;
+    if v is distinct from 'el' then execute 'reset role'; raise exception 'owner read back %', v; end if;
+    update public.profiles set language = null where id = u1;
+    select language into v from public.profiles where id = u1;
+    if v is not null then execute 'reset role'; raise exception 'owner could not go back to the device (%)', v; end if;
+    update public.profiles set language = 'en' where id = u1;
+    update public.profiles set language = 'el' where id = u2;  -- RLS: 0 rows
+    get diagnostics n = row_count;
+    if n <> 0 then execute 'reset role'; raise exception 'set another user''s language'; end if;
+    foreach v in array array['fr', 'EL', 'el-GR', 'english', '', 'system'] loop
+      begin
+        update public.profiles set language = v where id = u1;
+        execute 'reset role';
+        raise exception 'GUARD_MISSED: stored %', v;
+      exception when check_violation then null;
+      end;
+    end loop;
+    doc := public.export_my_data();
+    execute 'reset role';
+    if doc->'profile'->>'language' is distinct from 'en' then raise exception 'language missing from the export'; end if;
+    if (select language from public.profiles where id = u2) is not null then
+      raise exception 'language leaked onto another user';
+    end if;
+
+    perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+    begin
+      execute 'set local role anon';
+      update public.profiles set language = 'el' where id = u2;
+      execute 'reset role';
+      raise exception 'anon could update language';
+    exception when insufficient_privilege then
+      execute 'reset role';
+    end;
+    if (select language from public.profiles where id = u2) is not null then raise exception 'anon set language'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: profiles.language owner-only (not other users, not anon), en/el/null only, exported';
+    else update _t set fails = fails + 1; raise notice 'FAIL: profiles.language — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 89; f int; p int;  -- tests 1–88 + B-0059
+declare expected_tests constant int := 90; f int; p int;  -- tests 1–89 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;
