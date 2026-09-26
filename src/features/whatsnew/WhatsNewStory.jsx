@@ -9,7 +9,8 @@ import { ArrowRight } from 'lucide-react'
 import Eyebrow from '../../shared/ui/Eyebrow.jsx'
 import LooseRing from '../../shared/ui/LooseRing.jsx'
 import { SHORT_LANDSCAPE } from '../../shared/lib/shortLandscape.js'
-import { releaseDay, ringVariant } from './whatsNewMath.js'
+import { releaseDay, releaseText, ringVariant } from './whatsNewMath.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // A horizontal swipe this long (px), and more sideways than up/down, turns the page.
 const SWIPE = 50
@@ -76,8 +77,11 @@ function Illustration({ page }) {
 // page's `action` opens that page of the app and closes the story. Pass
 // `release` to open it (null closes); `onClose` runs on Skip, Done, Escape
 // or an action. Focus moves to Next and returns on close (Chakra's Modal);
-// the page counter is a live region, so a page turn is announced.
-export default function WhatsNewStory({ release, onClose }) {
+// the page counter is a live region, so a page turn is announced. The words
+// come from the whatsnew dictionary (releaseText), in the app's language.
+export default function WhatsNewStory({ release: shown, onClose }) {
+  const t = useT('whatsnew')
+  const release = releaseText(shown, t)
   const navigate = useNavigate()
   const reduceMotion = usePrefersReducedMotion()
   const [index, setIndex] = useState(0)
@@ -85,7 +89,7 @@ export default function WhatsNewStory({ release, onClose }) {
   const nextRef = useRef(null)
   const touch = useRef(null)
 
-  useEffect(() => { setIndex(0) }, [release])
+  useEffect(() => { setIndex(0) }, [shown])
 
   const pages = release?.pages ?? []
   const page = pages[Math.min(index, pages.length - 1)]
@@ -111,16 +115,16 @@ export default function WhatsNewStory({ release, onClose }) {
     if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1) }
   }
   function onTouchStart(e) {
-    const t = e.touches[0]
-    touch.current = { x: t.clientX, y: t.clientY }
+    const p = e.touches[0]
+    touch.current = { x: p.clientX, y: p.clientY }
   }
   function onTouchEnd(e) {
     const start = touch.current
     touch.current = null
     if (!start) return
-    const t = e.changedTouches[0]
-    const dx = t.clientX - start.x
-    const dy = t.clientY - start.y
+    const p = e.changedTouches[0]
+    const dx = p.clientX - start.x
+    const dy = p.clientY - start.y
     if (Math.abs(dx) >= SWIPE && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1)
   }
 
@@ -143,7 +147,7 @@ export default function WhatsNewStory({ release, onClose }) {
         px={6} display="flex" flexDirection="column" overflow="hidden" sx={SHORT_CARD}>
         <HStack spacing={1.5} aria-hidden="true" sx={area('bar', { mb: 3 })}>
           {pages.map((p, i) => (
-            <Box key={p.title} flex="1" h="4px" borderRadius="full"
+            <Box key={p.id} flex="1" h="4px" borderRadius="full"
               bg={i <= index ? 'brand.500' : 'border.default'} transition="background .2s" />
           ))}
         </HStack>
@@ -155,7 +159,7 @@ export default function WhatsNewStory({ release, onClose }) {
           <Illustration page={page} />
         </Flex>
         <Eyebrow aria-live="polite" aria-atomic="true" sx={area('count')}>
-          New · {index + 1} of {pages.length} · {releaseDay(release.date)}
+          {t('story.counter', { page: index + 1, pages: pages.length, day: releaseDay(release.date) })}
         </Eyebrow>
         <Box key={`text-${index}`} sx={{ ...animate, ...area('text') }}>
           <ModalHeader as="h2" p={0} mt={1.5} fontSize="2xl" lineHeight="1.25">{page.title}</ModalHeader>
@@ -171,8 +175,8 @@ export default function WhatsNewStory({ release, onClose }) {
         </Box>
 
         <HStack spacing={3} mt={6} sx={area('buttons', { mt: 4 })}>
-          <Button variant="ghost" color="text.primary" onClick={onClose} px={5}>Skip</Button>
-          <Button ref={nextRef} flex="1" onClick={next}>{last ? 'Done' : 'Next'}</Button>
+          <Button variant="ghost" color="text.primary" onClick={onClose} px={5}>{t('story.skip')}</Button>
+          <Button ref={nextRef} flex="1" onClick={next}>{last ? t('story.done') : t('story.next')}</Button>
         </HStack>
       </ModalContent>
     </Modal>

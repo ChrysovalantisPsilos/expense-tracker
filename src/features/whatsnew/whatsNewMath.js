@@ -1,4 +1,6 @@
 import { RETIRED_STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { shortMonth } from '../../shared/lib/dates.js'
+import { getLanguage, intlLocale } from '../../shared/lib/i18n/i18n.js'
 
 // Which "What's new" release to show, and what to remember (per account, in
 // profiles.whats_new_seen, 0087: the id of the newest release seen).
@@ -29,18 +31,42 @@ export function pickRelease(releases, { seenId, onboardedAt } = {}) {
 const RING_VARIANTS = ['update', 'start', 'split']
 export const ringVariant = (page) => (RING_VARIANTS.includes(page?.variant) ? page.variant : 'update')
 
+// A release in words: each page's title, body, chips and action label from
+// the whatsnew dictionary (releases.js holds only ids). `t` is useT('whatsnew')
+// or any t that resolves keys in that namespace.
+export function releaseText(release, t) {
+  if (!release) return release
+  return {
+    ...release,
+    pages: release.pages.map((p) => {
+      const key = (part) => `releases.${release.id}.${p.id}.${part}`
+      return {
+        ...p,
+        title: t(key('title')),
+        body: t(key('body')),
+        chips: (p.chips ?? []).map((c) => t(key(`chips.${c}`))),
+        ...(p.action ? { action: { ...p.action, label: t(key('action')) } } : {}),
+      }
+    }),
+  }
+}
+
 // Fixed English month names: Intl's short months differ by ICU version ("Sept").
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
   'August', 'September', 'October', 'November', 'December']
 const parts = (iso) => iso.split('-').map(Number)
-// '2026-09-26' → '26 Sep' (the story's eyebrow) and '26 September 2026' (Settings).
+// '2026-09-26' → '26 Sep' (the story's eyebrow) and '26 September 2026'
+// (Settings); in Greek '26 Σεπ' and '26 Σεπτεμβρίου 2026' (a day takes the
+// genitive month, which Intl gives).
 export function releaseDay(iso) {
   const [, m, d] = parts(iso)
-  return `${d} ${MONTHS[m - 1].slice(0, 3)}`
+  return `${d} ${shortMonth(m - 1)}`
 }
 export function releaseDate(iso) {
   const [y, m, d] = parts(iso)
-  return `${d} ${MONTHS[m - 1]} ${y}`
+  if (getLanguage() === 'en') return `${d} ${MONTHS[m - 1]} ${y}`
+  return new Intl.DateTimeFormat(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+    .format(Date.UTC(y, m - 1, d))
 }
 
 // A release id, as profiles_whats_new_seen_check (0087) accepts it.
