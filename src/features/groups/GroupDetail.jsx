@@ -18,6 +18,7 @@ import GroupHistory from './GroupHistory.jsx'
 import { GroupDetailSkeleton } from './GroupSkeletons.jsx'
 import { DeleteGroupModal, LeaveGroupModal } from './GroupModals.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { copyText } from '../../shared/lib/clipboard.js'
 import { BusyNote } from '../../shared/ui/RingLoader.jsx'
 
 // A group's page: its header, balances and history. Adding or editing an
@@ -69,10 +70,9 @@ export default function GroupDetail() {
         if (e?.name === 'AbortError') return // the user closed the share sheet
       }
     }
-    try {
-      await navigator.clipboard.writeText(text)
+    if (await copyText(text)) {
       toast({ title: 'Summary copied', description: 'Paste it into your group chat.', status: 'success' })
-    } catch {
+    } else {
       toast({ title: 'Couldn’t share the summary', status: 'error' })
     }
   }

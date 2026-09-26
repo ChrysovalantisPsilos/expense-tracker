@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import {
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Stack, Text, FormControl, FormLabel, Input, Button, Checkbox,
+  Stack, Text, FormControl, FormLabel, Input, Button, Checkbox, useToast,
 } from '@chakra-ui/react'
 import { Users } from 'lucide-react'
+import { copyText } from '../../shared/lib/clipboard.js'
 
 // The group's confirmation dialogs (its forms are full pages).
 
@@ -115,6 +116,48 @@ export function RemoveMemberModal({ member, onClose, busy, onConfirm }) {
         <ModalFooter gap={2}>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button colorScheme="red" isLoading={busy} onClick={onConfirm}>Remove</Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  )
+}
+
+// The invite link, shown when the browser wouldn't copy it (or the email
+// couldn't be sent): selectable in a field, with a fresh tap to copy or to
+// open the share sheet — both work here because they run inside that tap.
+export function InviteLinkModal({ link, onClose }) {
+  const toast = useToast()
+  async function copy() {
+    if (await copyText(link?.url)) {
+      toast({ title: 'Invite link copied', status: 'success' })
+      onClose()
+    } else {
+      toast({ title: 'Select the link and copy it', status: 'info' })
+    }
+  }
+  async function share() {
+    try {
+      await navigator.share({ title: 'Join my group on Budgeer', url: link.url })
+      onClose()
+    } catch (e) {
+      if (e?.name !== 'AbortError') copy()
+    }
+  }
+  return (
+    <Modal isOpen={!!link} onClose={onClose} isCentered>
+      <ModalOverlay />
+      <ModalContent mx={4}>
+        <ModalHeader>{link?.title ?? 'Your invite link'}</ModalHeader>
+        <ModalBody>
+          <Text color="text.muted" mb={3}>Send it to your friends in any chat. They join once they accept.</Text>
+          <Input value={link?.url ?? ''} isReadOnly aria-label="Invite link"
+            onFocus={(e) => e.target.select()} />
+        </ModalBody>
+        <ModalFooter gap={2}>
+          {typeof navigator !== 'undefined' && navigator.share && (
+            <Button variant="outline" onClick={share}>Share</Button>
+          )}
+          <Button onClick={copy}>Copy link</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
