@@ -11,6 +11,7 @@ import { useRecentSignIn } from './useRecentSignIn.js'
 import ReauthNotice from './ReauthNotice.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import DemoNotice from './DemoNotice.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Sign-in methods (email & password, Google, passkeys), then the password and
 // passkey cards, then account deletion. The passkey list is read once here
@@ -20,14 +21,12 @@ import DemoNotice from './DemoNotice.jsx'
 // deleting the account need it. On the shared demo login (0090) none of it
 // is offered: the sign-in belongs to everyone who has it.
 export default function SecuritySettings() {
+  const t = useT('settings')
   const { isDemo } = useProfile()
   if (isDemo) {
     return (
-      <SettingsPage title="Security">
-        <DemoNotice>
-          The password, email, passkeys, Google sign-in and account deletion can’t be changed on the
-          shared demo account.
-        </DemoNotice>
+      <SettingsPage title={t('security.title')}>
+        <DemoNotice>{t('security.demo')}</DemoNotice>
       </SettingsPage>
     )
   }
@@ -35,17 +34,16 @@ export default function SecuritySettings() {
 }
 
 function AccountSecurity() {
+  const t = useT('settings')
   const { user } = useAuth()
   const identities = useIdentities()
   const passkeys = usePasskeys()
   const passkeyList = passkeys.error ? null : passkeys.data
   const recent = useRecentSignIn()
-  const what = hasPasswordIdentity(user)
-    ? 'add a passkey or change your Google connection'
-    : 'add a passkey, change your Google connection or delete your account'
+  const reason = hasPasswordIdentity(user) ? 'passkeyGoogle' : 'passkeyGoogleDelete'
   return (
-    <SettingsPage title="Security">
-      {!recent && <Panel><ReauthNotice what={what} /></Panel>}
+    <SettingsPage title={t('security.title')}>
+      {!recent && <Panel><ReauthNotice reason={reason} /></Panel>}
       <SignInMethodsCard user={user} identities={identities} passkeys={passkeyList} />
       <PasswordCard user={user} />
       <PasskeysCard passkeys={passkeys} />

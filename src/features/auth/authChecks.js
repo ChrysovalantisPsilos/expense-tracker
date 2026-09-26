@@ -1,5 +1,6 @@
 import { emailError, fieldErrors, requiredError } from '../../shared/lib/formChecks.js'
 import { validatePassword } from '../../shared/lib/password.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // The sign-in / sign-up form's inline errors, by field. Signing in only needs
 // something in each field (the server checks it); signing up also applies the
@@ -11,12 +12,12 @@ export function authErrors({ mode, email, password, accepted }) {
     email: emailError(email),
     password: mode === 'signup'
       ? validatePassword(password ?? '')
-      : requiredError(password, 'Enter your password.'),
+      : requiredError(password, t('auth:password.required')),
     consent: consentError({ mode, accepted }),
   })
 }
 
 // Signing up, by email or with Google, needs the Terms/Privacy tick.
 export function consentError({ mode, accepted }) {
-  return mode === 'signup' && !accepted ? 'Please accept the Terms of Use and Privacy Notice' : null
+  return mode === 'signup' && !accepted ? t('auth:signup.consentError') : null
 }

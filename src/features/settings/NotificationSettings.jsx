@@ -9,10 +9,12 @@ import SettingsPage from './SettingsPage.jsx'
 import PrefRow from './PrefRow.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 export default function NotificationSettings() {
+  const t = useT('settings')
   return (
-    <SettingsPage title="Notifications">
+    <SettingsPage title={t('notifications.title')}>
       <NotificationPrefs />
     </SettingsPage>
   )
@@ -22,6 +24,7 @@ export default function NotificationSettings() {
 // you give or withdraw consent; every change is recorded server-side in your
 // consent history (0072). The weekly summary is opt-in (off for new accounts).
 export function NotificationPrefs({ title, onChanged }) {
+  const t = useT('settings')
   const { user } = useAuth()
   const toast = useToast()
   // The shared demo login (0090) sends no messages: the server refuses
@@ -47,17 +50,17 @@ export function NotificationPrefs({ title, onChanged }) {
       if (field === 'notify_push' && value) {
         const status = await enablePush()
         if (status === 'denied') {
-          toast({ title: 'This browser blocks notifications', status: 'info',
-            description: 'Allow them in your browser settings to get push here. Other devices are unaffected.' })
+          toast({ title: t('notifications.blocked.title'), status: 'info',
+            description: t('notifications.blocked.body') })
         } else if (status === 'unsupported') {
-          toast({ title: 'Push isn’t available in this browser', status: 'info',
-            description: 'On iPhone, install Budgeer to your home screen first.' })
+          toast({ title: t('notifications.unsupported.title'), status: 'info',
+            description: t('notifications.unsupported.body') })
         }
       }
     } catch (e) {
       setPrefs(prev)
       console.error('[settings] notification setting not saved:', e)
-      toast({ title: 'Couldn’t save', description: userMessage(e), status: 'error' })
+      toast({ title: t('common:errors.notSaved'), description: userMessage(e), status: 'error' })
     }
   }
 
@@ -67,20 +70,20 @@ export function NotificationPrefs({ title, onChanged }) {
         <RingLoader compact />
       ) : (
         <Stack spacing={4} divider={<Divider />}>
-          <PrefRow id="pref-push" label="Push notifications"
-            hint="Group activity, payment reminders and budget alerts, on every device you’ve allowed."
+          <PrefRow id="pref-push" label={t('notifications.push.label')}
+            hint={t('notifications.push.hint')}
             isChecked={prefs.notify_push} isDisabled={isDemo}
             onChange={(e) => setPref('notify_push', e.target.checked)} />
-          <PrefRow id="pref-email" label="Email me"
-            hint="Big events only: group invites, members joining or leaving."
+          <PrefRow id="pref-email" label={t('notifications.email.label')}
+            hint={t('notifications.email.hint')}
             isChecked={prefs.notify_email} isDisabled={isDemo}
             onChange={(e) => setPref('notify_email', e.target.checked)} />
-          <PrefRow id="pref-digest" label="Weekly summary"
-            hint="Optional: every Sunday, how many expenses you logged and your top category."
+          <PrefRow id="pref-digest" label={t('notifications.digest.label')}
+            hint={t('notifications.digest.hint')}
             isChecked={!!prefs.notify_digest} isDisabled={isDemo}
             onChange={(e) => setPref('notify_digest', e.target.checked)} />
           {isDemo && (
-            <Text fontSize="sm" color="text.muted">Messages stay off on the shared demo account.</Text>
+            <Text fontSize="sm" color="text.muted">{t('notifications.demoOff')}</Text>
           )}
         </Stack>
       )}

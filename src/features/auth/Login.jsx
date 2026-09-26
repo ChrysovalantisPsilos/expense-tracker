@@ -10,7 +10,7 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { isSupabaseConfigured, passkeysSupported } from '../../shared/lib/supabase.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { NEXT_PARAM, rememberReturnPath, safeReturnPath } from '../../shared/lib/returnPath.js'
-import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { signupConsentMetadata } from '../privacy/legal.js'
 import { rememberConsentMarker } from '../privacy/legalConsentStore.js'
 import AuthLayout from './AuthLayout.jsx'
@@ -20,7 +20,7 @@ import { firstInvalid } from '../../shared/lib/formChecks.js'
 import { AUTH_FIELDS, authErrors, consentError } from './authChecks.js'
 
 export default function Login() {
-  const t = useT()
+  const t = useT('auth')
   const { signInWithPassword, signUp, signInWithPasskey, signInWithProvider } = useAuth()
   const [searchParams] = useSearchParams()
   const [mode, setMode] = useState(searchParams.get('signup') ? 'signup' : 'signin')
@@ -56,7 +56,7 @@ export default function Login() {
     setPasskeyBusy(false)
     if (error) {
       console.error('[auth] passkey sign-in failed:', error)
-      toast({ title: 'Passkey sign-in failed', description: userMessage(error), status: 'error' })
+      toast({ title: t('login.passkeyFailed'), description: userMessage(error), status: 'error' })
       return
     }
     navigate(landing, { replace: true })
@@ -109,7 +109,7 @@ export default function Login() {
       // own words; anything else, including a bodiless 500 when the
       // confirmation email can't be sent, a generic line.
       console.error('[auth] sign-in/up failed:', error)
-      setServerError(userMessage(error, 'Something went wrong on our side — please try again in a moment.'))
+      setServerError(userMessage(error, t('serverError')))
       return
     }
     // Sign-up with email confirmation ON returns no session (go check your
@@ -124,29 +124,24 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title={mode === 'signin' ? 'Welcome back' : 'Create your account'}
-      subtitle={mode === 'signin'
-        ? 'Log in to your groups and budgets'
-        : 'Free — track your money and split with friends'}>
+      title={mode === 'signin' ? t('login.title') : t('signup.title')}
+      subtitle={mode === 'signin' ? t('login.subtitle') : t('signup.subtitle')}>
       {/* A local-setup hint for developers only; never shown on a built site. */}
       {import.meta.env.DEV && !isSupabaseConfigured && (
-        <Text fontSize="sm" color="status.warning" textAlign="center">
-          Supabase isn’t configured yet — set VITE_SUPABASE_URL and
-          VITE_SUPABASE_ANON_KEY in .env.
-        </Text>
+        <Text fontSize="sm" color="status.warning" textAlign="center">{t('notConfigured')}</Text>
       )}
 
       <form onSubmit={handleSubmit} noValidate>
         <Stack spacing={4}>
           <FormControl isRequired isInvalid={!!errors.email}>
-            <FormLabel>Email</FormLabel>
+            <FormLabel>{t('email')}</FormLabel>
             <Input ref={fieldRefs.email} type="email" name="email" autoComplete="email"
               inputMode="email" autoCapitalize="none" spellCheck={false}
               value={email} onChange={(e) => setEmail(e.target.value)} />
             <FormErrorMessage>{errors.email}</FormErrorMessage>
           </FormControl>
           <FormControl isRequired isInvalid={!!errors.password}>
-            <FormLabel>Password</FormLabel>
+            <FormLabel>{t('password.label')}</FormLabel>
             <InputGroup>
               <Input ref={fieldRefs.password} type={showPassword ? 'text' : 'password'} name="password"
                 value={password} pr="48px"
@@ -154,13 +149,13 @@ export default function Login() {
                 onChange={(e) => setPassword(e.target.value)} />
               <InputRightElement>
                 <IconButton size="sm" variant="ghost" aria-pressed={showPassword}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('password.hide') : t('password.show')}
                   icon={showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   onClick={() => setShowPassword((v) => !v)} />
               </InputRightElement>
             </InputGroup>
             {mode === 'signup' && !errors.password && (
-              <FormHelperText>At least 8 characters, with a letter and a number.</FormHelperText>
+              <FormHelperText>{t('password.hint')}</FormHelperText>
             )}
             <FormErrorMessage>{errors.password}</FormErrorMessage>
           </FormControl>
@@ -170,22 +165,22 @@ export default function Login() {
                 onChange={(e) => setAccepted(e.target.checked)}
                 alignItems="flex-start" colorScheme="brand" spacing={3}>
                 <Text as="span" fontSize="sm" color="text.muted" display="block" mt="-1px">
-                  I’m 16 or older and I accept the{' '}
-                  <Link as={RouterLink} to="/terms" target="_blank" variant="inline">Terms of Use</Link>{' '}
-                  and the{' '}
-                  <Link as={RouterLink} to="/privacy" target="_blank" variant="inline">Privacy Notice</Link>.
+                  <Trans t={t} k="signup.consent" components={{
+                    terms: <Link as={RouterLink} to="/terms" target="_blank" variant="inline" />,
+                    privacy: <Link as={RouterLink} to="/privacy" target="_blank" variant="inline" />,
+                  }} />
                 </Text>
               </Checkbox>
               <FormErrorMessage>{consentMsg}</FormErrorMessage>
             </FormControl>
           )}
           {mode === 'signup' && (
-            <Text fontSize="xs" color="text.muted">{t('hobby.disclaimer')}</Text>
+            <Text fontSize="xs" color="text.muted">{t('common:hobby.disclaimer')}</Text>
           )}
           {mode === 'signin' && (
             <Button variant="link" colorScheme="brand" size="sm" alignSelf="flex-end"
               onClick={() => { rememberReturnPath(next); navigate('/forgot-password') }}>
-              Forgot password?
+              {t('login.forgot')}
             </Button>
           )}
           {serverError && (
@@ -195,14 +190,14 @@ export default function Login() {
             </Alert>
           )}
           <Button type="submit" isLoading={busy} w="full">
-            {mode === 'signin' ? 'Log in' : 'Sign up'}
+            {mode === 'signin' ? t('common:actions.logIn') : t('common:actions.signUp')}
           </Button>
         </Stack>
       </form>
 
       <HStack>
         <Divider />
-        <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">or continue with</Text>
+        <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">{t('orContinue')}</Text>
         <Divider />
       </HStack>
       <Stack spacing={3}>
@@ -214,23 +209,22 @@ export default function Login() {
           _hover={{ bg: 'gray.50' }} _active={{ bg: 'gray.100' }}
           leftIcon={<GoogleIcon boxSize={5} />}
           onClick={handleGoogle}>
-          {mode === 'signin' ? 'Sign in with Google' : 'Sign up with Google'}
+          {mode === 'signin' ? t('login.google') : t('signup.google')}
         </Button>
         {mode === 'signin' && passkeysSupported && (
           <Button variant="outline" colorScheme="gray" w="full"
             leftIcon={<KeyRound size={18} />} isLoading={passkeyBusy}
             onClick={handlePasskey}>
-            Log in with a passkey
+            {t('login.passkey')}
           </Button>
         )}
       </Stack>
 
       <Text fontSize="sm" textAlign="center" color="text.muted">
-        {mode === 'signin' ? 'Don’t have an account? ' : 'Already have one? '}
-        <Button variant="link" colorScheme="brand" size="sm"
-          onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}>
-          {mode === 'signin' ? 'Sign up' : 'Log in'}
-        </Button>
+        <Trans t={t} k={mode === 'signin' ? 'login.switch' : 'signup.switch'} components={{
+          action: <Button variant="link" colorScheme="brand" size="sm"
+            onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')} />,
+        }} />
       </Text>
     </AuthLayout>
   )

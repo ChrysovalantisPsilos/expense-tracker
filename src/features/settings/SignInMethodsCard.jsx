@@ -14,6 +14,7 @@ import {
 } from './authMethods.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Set before leaving for Google's consent screen; its presence on the way
 // back means "this load is the end of a link attempt" (sessionStorage: the
@@ -27,6 +28,7 @@ const ICONS = { password: KeyRound, passkeys: Fingerprint }
 // for a Google-only account. The last way in can't be removed
 // (googleDisconnectBlock; Supabase enforces it too).
 export default function SignInMethodsCard({ user, identities, passkeys }) {
+  const t = useT('settings')
   const { linkGoogle, unlinkIdentity, setFirstPassword, markPasswordSet } = useAuth()
   const toast = useToast()
   const location = useLocation()
@@ -47,14 +49,14 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
     try { sessionStorage.removeItem(LINKING) } catch { /* storage blocked */ }
     if (err) {
       console.error('[settings] Google link came back with an error:', err)
-      toast({ title: 'Google wasn’t connected', description: linkErrorMessage(err), status: 'error' })
+      toast({ title: t('signIn.google.notLinked'), description: linkErrorMessage(err), status: 'error' })
     } else if (ids.some((i) => i.provider === 'google')) {
-      toast({ title: 'Google connected', description: 'You can now log in with Google too.', status: 'success' })
+      toast({ title: t('signIn.google.linked'), description: t('signIn.google.linkedBody'), status: 'success' })
     } else {
-      toast({ title: 'Google wasn’t connected', status: 'warning' })
+      toast({ title: t('signIn.google.notLinked'), status: 'warning' })
     }
     if (location.search || window.location.hash) navigate(location.pathname, { replace: true })
-  }, [ids, location.pathname, location.search, navigate, toast])
+  }, [ids, location.pathname, location.search, navigate, toast, t])
 
   async function connect() {
     setBusy('google')
@@ -65,7 +67,7 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
       try { sessionStorage.removeItem(LINKING) } catch { /* storage blocked */ }
       setBusy(null)
       console.error('[settings] Google link failed:', error)
-      toast({ title: 'Couldn’t connect Google', description: linkErrorMessage(error), status: 'error' })
+      toast({ title: t('signIn.google.connectFailed'), description: linkErrorMessage(error), status: 'error' })
     }
   }
 
@@ -76,13 +78,13 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
     if (error) {
       console.error('[settings] Google unlink failed:', error)
       toast({
-        title: 'Couldn’t disconnect Google',
-        description: linkErrorMessage(error, 'Google is still connected. Please try again.'),
+        title: t('signIn.google.disconnectFailed'),
+        description: linkErrorMessage(error, t('signIn.google.stillConnected')),
         status: 'error',
       })
       return
     }
-    toast({ title: 'Google disconnected', status: 'success' })
+    toast({ title: t('signIn.google.disconnected'), status: 'success' })
     identities.reload()
   }
 
@@ -92,23 +94,22 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
   function action(m) {
     if (m.key === 'google') {
       if (!m.connected) {
-        return <Button size="sm" onClick={connect} isLoading={busy === 'google'}>Connect</Button>
+        return <Button size="sm" onClick={connect} isLoading={busy === 'google'}>{t('signIn.connect')}</Button>
       }
       const button = (
         <Button size="sm" variant="outline" isDisabled={!!block} isLoading={busy === 'google'}
-          onClick={() => disconnect(m.identity)}>Disconnect</Button>
+          onClick={() => disconnect(m.identity)}>{t('signIn.disconnect')}</Button>
       )
       return block ? <Tooltip label={block}><span>{button}</span></Tooltip> : button
     }
     if (m.key === 'password' && !m.connected && !settingPassword) {
-      return <Button size="sm" onClick={() => setSettingPassword(true)}>Set a password</Button>
+      return <Button size="sm" onClick={() => setSettingPassword(true)}>{t('signIn.setPassword')}</Button>
     }
     return null
   }
 
   return (
-    <Panel title="Sign-in methods" icon={LogIn}
-      subtitle="Ways you can log in to this account. At least one always stays.">
+    <Panel title={t('signIn.title')} icon={LogIn} subtitle={t('signIn.subtitle')}>
       <Stack spacing={1}>
         {methods.map((m) => (
           <ItemRow key={m.key} media={m.key === 'google' ? <GoogleTile /> : undefined}
@@ -137,6 +138,7 @@ function GoogleTile() {
 
 // A first password for a Google-only account (same rules as sign-up).
 function SetPasswordForm({ email, onCancel, onDone, setFirstPassword, markPasswordSet }) {
+  const t = useT('settings')
   const toast = useToast()
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -146,7 +148,7 @@ function SetPasswordForm({ email, onCancel, onDone, setFirstPassword, markPasswo
     e.preventDefault()
     const err = validatePassword(next)
     if (err) { toast({ title: err, status: 'warning' }); return }
-    if (next !== confirm) { toast({ title: 'Passwords don’t match.', status: 'warning' }); return }
+    if (next !== confirm) { toast({ title: t('auth:password.mismatch'), status: 'warning' }); return }
     setBusy(true)
     const { error } = await setFirstPassword(next)
     setBusy(false)
@@ -154,8 +156,8 @@ function SetPasswordForm({ email, onCancel, onDone, setFirstPassword, markPasswo
       // It already had one: show the change-password card instead.
       await markPasswordSet()
       toast({
-        title: 'This account already has a password',
-        description: 'Change it under Password below, or use “Forgot password?” on the log-in page.',
+        title: t('signIn.firstPassword.hasOne'),
+        description: t('signIn.firstPassword.hasOneBody'),
         status: 'info',
       })
       onDone()
@@ -163,30 +165,30 @@ function SetPasswordForm({ email, onCancel, onDone, setFirstPassword, markPasswo
     }
     if (error) {
       console.error('[settings] first password failed:', error)
-      toast({ title: 'Couldn’t set the password', description: userMessage(error), status: 'error' })
+      toast({ title: t('signIn.firstPassword.failed'), description: userMessage(error), status: 'error' })
       return
     }
-    toast({ title: 'Password set', description: `You can now also log in with ${email} and this password.`, status: 'success' })
+    toast({ title: t('signIn.firstPassword.done'), description: t('signIn.firstPassword.doneBody', { email }), status: 'success' })
     onDone()
   }
 
   return (
     <Stack as="form" onSubmit={submit} spacing={3} maxW="sm" mt={4}>
-      <Text fontSize="sm" color="text.muted">
-        Log in with your email ({email}) and a password as well as with Google.
-      </Text>
+      <Text fontSize="sm" color="text.muted">{t('signIn.firstPassword.lead', { email })}</Text>
       <FormControl isRequired>
-        <FormLabel>New password</FormLabel>
+        <FormLabel>{t('auth:password.new')}</FormLabel>
         <Input type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
-        <Text fontSize="xs" color="text.muted" mt={1}>At least 8 characters, with a letter and a number.</Text>
+        <Text fontSize="xs" color="text.muted" mt={1}>{t('auth:password.hint')}</Text>
       </FormControl>
       <FormControl isRequired>
-        <FormLabel>Confirm password</FormLabel>
+        <FormLabel>{t('auth:password.confirm')}</FormLabel>
         <Input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
       </FormControl>
       <Stack direction="row" spacing={2}>
-        <Button type="submit" isLoading={busy} isDisabled={!next || !confirm}>Set password</Button>
-        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" isLoading={busy} isDisabled={!next || !confirm}>
+          {t('signIn.firstPassword.submit')}
+        </Button>
+        <Button variant="ghost" onClick={onCancel}>{t('signIn.firstPassword.cancel')}</Button>
       </Stack>
     </Stack>
   )

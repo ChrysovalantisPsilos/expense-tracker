@@ -12,6 +12,7 @@ import { getProfile, updateProfile } from '../../shared/lib/profile.js'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { toPasskeyList } from './authMethods.js'
 import { userMessage } from '../../shared/lib/errors.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // sessionStorage can be unavailable (private mode, blocked site data): treat
 // that as "not shown yet" and never let it break the prompt.
@@ -28,6 +29,7 @@ function markShown() {
 // aren't enabled server-side (listPasskeys errors), so it never nags in
 // unsupported setups.
 export default function PasskeyPrompt() {
+  const t = useT('settings')
   const { user, listPasskeys, registerPasskey } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -63,10 +65,10 @@ export default function PasskeyPrompt() {
     setBusy(false)
     if (error) {
       console.error('[passkeys] create failed:', error)
-      toast({ title: 'Couldn’t create passkey', description: userMessage(error), status: 'error' })
+      toast({ title: t('passkeyPrompt.createFailed'), description: userMessage(error), status: 'error' })
       return
     }
-    toast({ title: 'Passkey added — you can use it to log in next time', status: 'success' })
+    toast({ title: t('passkeyPrompt.created'), status: 'success' })
     close()
   }
 
@@ -83,30 +85,25 @@ export default function PasskeyPrompt() {
         <ModalHeader>
           <HStack>
             <IconTile icon={KeyRound} size={36} />
-            <Text>Add a passkey</Text>
+            <Text>{t('passkeyPrompt.title')}</Text>
           </HStack>
         </ModalHeader>
         <ModalBody>
-          <Text color="text.muted">
-            Log in faster and more securely next time with Face ID, Touch ID, or
-            your device PIN — no password to remember.
-          </Text>
+          <Text color="text.muted">{t('passkeyPrompt.body')}</Text>
           <FormControl display="flex" alignItems="center" mt={5}>
             <Switch id="passkey-never" isChecked={never} onChange={(e) => setNever(e.target.checked)} />
             <FormLabel htmlFor="passkey-never" mb={0} ml={3} fontWeight="500">
-              Don’t remind me again
+              {t('passkeyPrompt.never')}
             </FormLabel>
           </FormControl>
           {never && (
-            <Text fontSize="xs" color="text.muted" mt={2}>
-              You can still add a passkey anytime in Settings → Security.
-            </Text>
+            <Text fontSize="xs" color="text.muted" mt={2}>{t('passkeyPrompt.later')}</Text>
           )}
         </ModalBody>
         <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={close}>Not now</Button>
+          <Button variant="ghost" onClick={close}>{t('passkeyPrompt.notNow')}</Button>
           <Button leftIcon={<KeyRound size={16} />} isLoading={busy} onClick={create}>
-            Create passkey
+            {t('passkeyPrompt.create')}
           </Button>
         </ModalFooter>
       </ModalContent>

@@ -1,6 +1,8 @@
 // Pure helpers about how a user signs in. No Supabase calls — callers pass in
-// the auth user / API responses they already have.
+// the auth user / API responses they already have. Labels and messages come
+// in the app's language (settings:signIn.*).
 import { userMessage } from '../../shared/lib/errors.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // True when the account has an email/password identity (so it has a password
 // to change or re-enter). Defaults to true when the providers can't be read,
@@ -41,19 +43,19 @@ export function signInMethods({ user, identities, passkeys }) {
   const withPassword = hasPassword(user)
   const methods = [
     {
-      key: 'password', label: 'Email & password', connected: withPassword,
-      detail: withPassword ? user?.email ?? '' : 'No password yet',
+      key: 'password', label: t('settings:signIn.methods.password'), connected: withPassword,
+      detail: withPassword ? user?.email ?? '' : t('settings:signIn.noPassword'),
     },
     {
-      key: 'google', label: 'Google', connected: !!google, identity: google,
-      detail: google ? google.identity_data?.email ?? 'Connected' : 'Not connected',
+      key: 'google', label: t('settings:signIn.methods.google'), connected: !!google, identity: google,
+      detail: google ? google.identity_data?.email ?? t('settings:signIn.connected') : t('settings:signIn.notConnected'),
     },
   ]
   if (Array.isArray(passkeys)) {
     const n = passkeys.length
     methods.push({
-      key: 'passkeys', label: 'Passkeys', connected: n > 0,
-      detail: n ? `${n} passkey${n === 1 ? '' : 's'}` : 'None yet',
+      key: 'passkeys', label: t('settings:signIn.methods.passkeys'), connected: n > 0,
+      detail: n ? t('settings:signIn.passkeyCount', { count: n }) : t('settings:signIn.noneYet'),
     })
   }
   return methods
@@ -64,25 +66,19 @@ export function signInMethods({ user, identities, passkeys }) {
 // loses its last way in (a password set on a Google account isn't an
 // identity of its own, so it doesn't count).
 export function googleDisconnectBlock({ user, identities }) {
-  if (!identities) return 'Still loading your sign-in methods.'
-  if (!identities.some((i) => i.provider === 'google')) return 'Google isn’t connected.'
+  if (!identities) return t('settings:signIn.block.loading')
+  if (!identities.some((i) => i.provider === 'google')) return t('settings:signIn.block.notConnected')
   if (identities.length >= 2) return null
-  return hasPassword(user)
-    ? 'This account was created with Google, so Google stays connected. You can log in with either.'
-    : 'Google is your only way to log in. Set a password first.'
+  return hasPassword(user) ? t('settings:signIn.block.createdWithGoogle') : t('settings:signIn.block.onlyWay')
 }
 
 // A user-facing message for a failed link, from supabase-js' error or the
 // error the OAuth redirect came back with (redirectError). Anything without
 // words of our own gets `fallback`, never Supabase's or Google's text.
-export function linkErrorMessage(error, fallback = 'Google wasn’t connected. Please try again.') {
+export function linkErrorMessage(error, fallback = t('settings:signIn.linkError.fallback')) {
   const code = error?.code
-  if (code === 'manual_linking_disabled') {
-    return 'Connecting a Google account isn’t switched on for this site yet. Please try again later.'
-  }
-  if (code === 'identity_already_exists') {
-    return 'That Google account already belongs to another Budgeer account.'
-  }
+  if (code === 'manual_linking_disabled') return t('settings:signIn.linkError.disabled')
+  if (code === 'identity_already_exists') return t('settings:signIn.linkError.taken')
   return userMessage(error, fallback)
 }
 

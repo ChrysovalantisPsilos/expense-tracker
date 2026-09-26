@@ -9,8 +9,10 @@ import { validatePassword } from '../../shared/lib/password.js'
 import AuthLayout from './AuthLayout.jsx'
 import LinkExpired from './LinkExpired.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 export default function ResetPassword() {
+  const t = useT('auth')
   const navigate = useNavigate()
   const toast = useToast()
   const { session, recovering, updatePassword, clearRecovery } = useAuth()
@@ -26,40 +28,40 @@ export default function ResetPassword() {
     e.preventDefault()
     const err = validatePassword(password)
     if (err) { toast({ title: err, status: 'warning' }); return }
-    if (password !== confirm) { toast({ title: 'Passwords don’t match.', status: 'warning' }); return }
+    if (password !== confirm) { toast({ title: t('password.mismatch'), status: 'warning' }); return }
     setBusy(true)
     const { error } = await updatePassword(password)
     setBusy(false)
     if (error) {
       console.error('[auth] password update failed:', error)
-      toast({ title: userMessage(error, 'Couldn’t update your password — the link may have expired.'), status: 'error' })
+      toast({ title: userMessage(error, t('reset.failed')), status: 'error' })
       return
     }
     clearRecovery()
-    toast({ title: 'Password updated', status: 'success' })
+    toast({ title: t('password.updated'), status: 'success' })
     navigate('/', { replace: true })
   }
 
   if (!canReset) return <LinkExpired type="recovery" />
 
   return (
-    <AuthLayout icon={<KeyRound size={28} />} title="Choose a new password"
+    <AuthLayout icon={<KeyRound size={28} />} title={t('reset.title')}
       showHome={!recovering}>
       <form onSubmit={handleSubmit}>
         <Stack spacing={4}>
           <FormControl isRequired>
-            <FormLabel>New password</FormLabel>
+            <FormLabel>{t('password.new')}</FormLabel>
             <Input type="password" autoComplete="new-password" value={password}
               onChange={(e) => setPassword(e.target.value)} />
-            <FormHelperText>At least 8 characters, with a letter and a number.</FormHelperText>
+            <FormHelperText>{t('password.hint')}</FormHelperText>
           </FormControl>
           <FormControl isRequired>
-            <FormLabel>Confirm new password</FormLabel>
+            <FormLabel>{t('password.confirmNew')}</FormLabel>
             <Input type="password" autoComplete="new-password" value={confirm}
               onChange={(e) => setConfirm(e.target.value)} />
           </FormControl>
           <Button type="submit" isLoading={busy} w="full">
-            Update password
+            {t('password.update')}
           </Button>
         </Stack>
       </form>
