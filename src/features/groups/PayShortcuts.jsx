@@ -5,6 +5,7 @@ import {
 import { ExternalLink, Info, QrCode, Copy } from 'lucide-react'
 import { memberPaymentInfo } from './groups.js'
 import { revolutUrl, paypalUrl, sepaQrPayload } from '../../shared/lib/payLinks.js'
+import { copyText } from '../../shared/lib/clipboard.js'
 
 // One-tap ways to actually pay a co-member the settle-up amount, driven by
 // the payment details they saved in Settings → Account → Getting paid (readable to
@@ -78,12 +79,8 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
   const qrUrl = showQr && qr?.payload === payload ? qr.url : null
 
   async function copyIban() {
-    try {
-      await navigator.clipboard.writeText(iban)
-      toast({ title: 'IBAN copied', status: 'success' })
-    } catch {
-      toast({ title: iban, status: 'info', duration: 8000 })
-    }
+    if (await copyText(iban)) toast({ title: 'IBAN copied', status: 'success' })
+    else toast({ title: iban, status: 'info', duration: 8000 })
   }
 
   return (

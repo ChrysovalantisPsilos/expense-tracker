@@ -8,6 +8,7 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { unsavedFormAttr } from '../../shared/lib/autoUpdate.js'
 import { userMessage } from '../../shared/lib/errors.js'
+import { copyText } from '../../shared/lib/clipboard.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import {
@@ -15,7 +16,7 @@ import {
 } from './groups.js'
 import { pluralise, sortMembers } from './groupFormat.js'
 import GroupFormPage from './GroupFormPage.jsx'
-import { RemoveMemberModal } from './GroupModals.jsx'
+import { InviteLinkModal, RemoveMemberModal } from './GroupModals.jsx'
 
 // /groups/:id/members — who's in the group (you and the owner first, no
 // balances: the group page's "Who owes whom" covers those), the owner's
@@ -33,6 +34,7 @@ function Members({ group, members, myMember, isOwner, reload }) {
   const { user } = useAuth()
   const toast = useToast()
   const [removing, setRemoving] = useState(null)
+  const [shownLink, setShownLink] = useState(null)
   const { busy: removeBusy, run: runRemove } = useAsyncSubmit()
 
   async function doRemove() {
@@ -45,14 +47,24 @@ function Members({ group, members, myMember, isOwner, reload }) {
     }, { errorTitle: 'Couldn’t remove' })
   }
 
+  // The copy starts inside the tap, before the link exists (copyText), so
+  // Safari on iPhone allows it. If the browser still refuses, the link is
+  // shown in a dialog to copy or share from there.
   async function copyInvite() {
+    const link = createInviteLink(group.id)
+    const copied = copyText(link)
+    let url
     try {
-      const url = await createInviteLink(group.id)
-      await navigator.clipboard.writeText(url)
-      toast({ title: 'Invite link copied', description: 'Paste it in a chat to invite friends.', status: 'success' })
+      url = await link
     } catch (e) {
       console.error('[groups] invite link failed:', e)
       toast({ title: 'Could not create invite', description: userMessage(e), status: 'error' })
+      return
+    }
+    if (await copied) {
+      toast({ title: 'Invite link copied', description: 'Paste it in a chat to invite friends.', status: 'success' })
+    } else {
+      setShownLink({ url })
     }
   }
 
@@ -83,7 +95,8 @@ function Members({ group, members, myMember, isOwner, reload }) {
         </List>
       </Panel>
 
-      {myMember && <InvitePanel group={group} onCopyLink={copyInvite} />}
+      {myMember && <InvitePanel group={group} onCopyLink={copyInvite} onShowLink={setShownLink} />}
+      <InviteLinkModal link={shownLink} onClose={() => setShownLink(null)} />
 
       <RemoveMemberModal member={removing} onClose={() => setRemoving(null)}
         busy={removeBusy} onConfirm={doRemove} />
@@ -99,7 +112,7 @@ const INVITE_STATUS_MESSAGE = {
 // Invite by email (an in-app request to an existing Budgeer user, else an
 // emailed join link), or copy a share link. The field clears after each
 // invite, so several people can be asked in a row.
-function InvitePanel({ group, onCopyLink }) {
+function InvitePanel({ group, onCopyLink, onShowLink }) {
   const toast = useToast()
   const [email, setEmail] = useState('')
   const { busy, run } = useAsyncSubmit()
@@ -121,10 +134,9 @@ function InvitePanel({ group, onCopyLink }) {
           await emailInvite({ to: addr, token })
           toast({ title: `Invite emailed to ${addr}`, status: 'success' })
         } catch (mailErr) {
-          await navigator.clipboard.writeText(url)
+          // Too late in the tap to copy on iPhone: show the link to share instead.
           console.error('[groups] invite email failed:', mailErr)
-          toast({ title: 'Couldn’t send the email — link copied instead',
-            description: userMessage(mailErr), status: 'warning', duration: 8000 })
+          onShowLink({ url, title: 'Couldn’t send the email — share this link instead' })
         }
         setEmail('')
       } else {

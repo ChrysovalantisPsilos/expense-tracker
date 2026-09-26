@@ -24,6 +24,7 @@ import {
   anchorFromHash, applyOpenIndexes, countItems, filterFaq, openIndexes, questionLink,
 } from './faqMath.js'
 import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
+import { copyText } from '../../shared/lib/clipboard.js'
 
 const PATH = '/help'
 const INTRO = 'Answers to the questions people ask most. Search, or browse by topic.'
@@ -116,10 +117,9 @@ function FaqBody() {
 
   async function onCopyLink(id) {
     navigate({ hash: id }, { replace: true })
-    try {
-      await navigator.clipboard.writeText(questionLink(shareOrigin(CURRENT_ENV, window.location.origin), PATH, id))
+    if (await copyText(questionLink(shareOrigin(CURRENT_ENV, window.location.origin), PATH, id))) {
       toast({ title: 'Link copied', status: 'success', duration: 2000 })
-    } catch {
+    } else {
       toast({ title: 'The link is in the address bar', status: 'info', duration: 3000 })
     }
   }
