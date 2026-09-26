@@ -9,6 +9,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, savingsNoteLabel, isSpending, netSign, savingsPotMinor,
+  isSavingsAccount, savingsTotal,
 } from '../src/shared/lib/savings.js'
 import { potSign, savingsSource } from '../supabase/functions/_shared/savings.ts'
 import { formatMoney } from '../src/shared/lib/currency.js'
@@ -16,7 +17,7 @@ import { spendRows } from '../src/shared/lib/spread.js'
 import {
   periodTotals, periodProjection, projectedTotals, netNote, savedNote,
 } from '../src/features/dashboard/dashboardMath.js'
-import { buildTrend, netWorth } from '../src/features/insights/insightsMath.js'
+import { accountSections, buildTrend, netWorth } from '../src/features/insights/insightsMath.js'
 import { netBaseMinor } from '../src/features/transactions/txnFilter.js'
 import { incomePerMonth, planRepeat, repeatDraft, ruleFromTransaction } from '../src/features/recurring/recurringMath.js'
 import { periodFromValue } from '../src/features/transactions/periods.js'
@@ -193,10 +194,10 @@ test('Insights: net worth adds the savings line (both kinds) to assets and net',
     { type: 'asset', balance_minor: 100000 },
     { type: 'liability', balance_minor: 40000 },
   ]
-  assert.deepEqual(netWorth(accounts, 42000), { assets: 142000, liabilities: 40000, net: 102000 })
-  assert.deepEqual(netWorth(accounts), { assets: 100000, liabilities: 40000, net: 60000 })
+  assert.deepEqual(netWorth(accounts, 42000), { assets: 142000, liabilities: 40000, net: 102000, showPot: true })
+  assert.deepEqual(netWorth(accounts), { assets: 100000, liabilities: 40000, net: 60000, showPot: false })
   // Savings alone (no accounts yet).
-  assert.deepEqual(netWorth([], savingsPotMinor(rows, IDS, 'EUR')), { assets: 42000, liabilities: 0, net: 42000 })
+  assert.deepEqual(netWorth([], savingsPotMinor(rows, IDS, 'EUR')), { assets: 42000, liabilities: 0, net: 42000, showPot: true })
 })
 
 test('Transactions: a search\'s net is Home\'s net', () => {
@@ -311,12 +312,12 @@ test('Insights: spending counts it, "Left over" doesn\'t; the Savings line takes
   const pot = savingsPotMinor(withLaptop, IDS, 'EUR')
   assert.equal(pot, 42000 - 90000)
   const accounts = [{ type: 'asset', balance_minor: 100000 }, { type: 'liability', balance_minor: 40000 }]
-  assert.deepEqual(netWorth(accounts, pot), { assets: 100000, liabilities: 40000 + 48000, net: 100000 - 40000 - 48000 })
-  assert.deepEqual(netWorth([], pot), { assets: 0, liabilities: 48000, net: -48000 })
+  assert.deepEqual(netWorth(accounts, pot), { assets: 100000, liabilities: 40000 + 48000, net: 100000 - 40000 - 48000, showPot: true })
+  assert.deepEqual(netWorth([], pot), { assets: 0, liabilities: 48000, net: -48000, showPot: true })
   // Less paid out than saved: still an asset, reduced.
   const small = [...rows, { ...laptop, amount_minor: 10000 }]
   assert.equal(savingsPotMinor(small, IDS, 'EUR'), 32000)
-  assert.deepEqual(netWorth([], savingsPotMinor(small, IDS, 'EUR')), { assets: 32000, liabilities: 0, net: 32000 })
+  assert.deepEqual(netWorth([], savingsPotMinor(small, IDS, 'EUR')), { assets: 32000, liabilities: 0, net: 32000, showPot: true })
   // Exactly used up: zero (the line is hidden).
   assert.equal(savingsPotMinor([...rows, { ...laptop, amount_minor: 42000 }], IDS, 'EUR'), 0)
   // Each at its captured rate: £100 × 1.2 in, $50 × 0.9 out.
@@ -365,4 +366,54 @@ test('statement: an expense paid from savings is spending, left out of the net, 
   const none = buildStatement(rows.slice().reverse(), 'EUR', { from: '2026-09-01', to: '2026-09-30', savingsIds: IDS })
   assert.equal(none.spentFromSavings, 0)
   assert.ok(!statementSheets(none, 'EUR', [])[0].rows.some((r) => r[0] === 'Of which paid from savings'))
+})
+
+// ── Savings accounts (0092) ─────────────────────────────────────────────────
+// The owner's case: a manual "Savings" account of €10,213 holding the money
+// the savings entries recorded going in (a €420 pot here).
+const current = { id: 'a1', type: 'asset', name: 'Current', balance_minor: 250000, currency: 'EUR' }
+const card = { id: 'a2', type: 'liability', name: 'Card', balance_minor: 40000, currency: 'EUR' }
+const kept = { id: 'a3', type: 'savings', name: 'Savings', balance_minor: 1021300, currency: 'EUR' }
+const deposit = { id: 'a4', type: 'savings', name: 'Deposit', balance_minor: 500000, currency: 'EUR' }
+
+test('isSavingsAccount: only type savings', () => {
+  assert.equal(isSavingsAccount(kept), true)
+  for (const a of [current, card, {}, null, undefined]) assert.equal(isSavingsAccount(a), false)
+})
+
+test('savingsTotal: savings accounts ARE the total; without one, the pot from the entries', () => {
+  const pot = savingsPotMinor(rows, IDS, 'EUR')
+  assert.equal(pot, 42000)
+  // No savings account: exactly as before.
+  assert.deepEqual(savingsTotal([current, card], pot), { minor: 42000, source: 'entries', accounts: [] })
+  assert.deepEqual(savingsTotal([], -500), { minor: -500, source: 'entries', accounts: [] })
+  assert.deepEqual(savingsTotal(null, 0), { minor: 0, source: 'entries', accounts: [] })
+  // One: its balance, the pot not added on top.
+  assert.deepEqual(savingsTotal([current, kept, card], pot), { minor: 1021300, source: 'accounts', accounts: [kept] })
+  // Several: their sum, whatever the pot (even with no entries at all).
+  assert.deepEqual(savingsTotal([kept, current, deposit], 0).minor, 1521300)
+  assert.equal(savingsTotal([kept, deposit], -99999).minor, 1521300)
+  // Balances as the RPC may return them (bigint as text) still add up.
+  assert.equal(savingsTotal([{ type: 'savings', balance_minor: '100' }, { type: 'savings', balance_minor: 5 }], 0).minor, 105)
+})
+
+test('net worth: savings accounts count once, and the computed Savings line goes', () => {
+  const pot = savingsPotMinor(rows, IDS, 'EUR')
+  // Without a savings account the pot line stays (as today).
+  assert.deepEqual(netWorth([current, card], pot),
+    { assets: 250000 + 42000, liabilities: 40000, net: 250000 + 42000 - 40000, showPot: true })
+  // With one: its balance is an asset, the pot isn't added — nothing twice.
+  assert.deepEqual(netWorth([current, card, kept], pot),
+    { assets: 250000 + 1021300, liabilities: 40000, net: 250000 + 1021300 - 40000, showPot: false })
+  // A negative pot (more paid from savings than recorded) isn't a debt then either.
+  assert.deepEqual(netWorth([kept], -48000), { assets: 1021300, liabilities: 0, net: 1021300, showPot: false })
+  // Net worth's savings figure is the Savings page's total.
+  const withAccounts = netWorth([kept, deposit], pot)
+  assert.equal(withAccounts.assets, savingsTotal([kept, deposit], pot).minor)
+})
+
+test('net worth lists: savings accounts under Savings, the rest under Accounts, in order', () => {
+  assert.deepEqual(accountSections([current, kept, card, deposit]),
+    { savings: [kept, deposit], other: [current, card] })
+  assert.deepEqual(accountSections([current]), { savings: [], other: [current] })
 })

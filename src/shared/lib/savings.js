@@ -10,6 +10,7 @@ import { t } from './i18n/i18n.js'
 
 export {
   EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, isSpending, netSign, potSign, savingsPotMinor,
+  isSavingsAccount, savingsTotal,
 } from '../../../supabase/functions/_shared/savings.ts'
 
 const NOTE_KEYS = { 'from income': 'fromIncome', received: 'received', 'from savings': 'fromSavings' }

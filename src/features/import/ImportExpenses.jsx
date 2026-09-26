@@ -24,6 +24,7 @@ import {
   previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder,
 } from './importMath.js'
 import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
+import { displayDescription } from './kbcLabels.js'
 import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { userMessage } from '../../shared/lib/errors.js'
@@ -233,7 +234,7 @@ export default function ImportExpenses() {
               </Text>
             ) : (
               preview.rows.map((d, i) => (
-                <ItemRow key={i} title={d.description || '—'} meta={`${d.spent_at} · ${t(`preview.kind.${d.kind}`)}`}
+                <ItemRow key={i} title={displayDescription(d) || '—'} meta={`${d.spent_at} · ${t(`preview.kind.${d.kind}`)}`}
                   amount={`${d.kind === 'income' ? '+' : '−'}${formatMoney(d.amount_minor, d.currency)}`} />
               ))
             )}

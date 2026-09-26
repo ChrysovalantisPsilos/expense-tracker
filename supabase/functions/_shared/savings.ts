@@ -93,3 +93,27 @@ export const potSign = (effect: Effect): number =>
 export const savingsPotMinor = (rows: Row[], savingsIds: Set<string>, baseCurrency: string): number =>
   rows.reduce((sum, r) => sum
     + potSign(rowEffect(r, savingsIds)) * toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency), 0)
+
+// ── Savings accounts (0092) ─────────────────────────────────────────────────
+// A net-worth account of type 'savings' is money the user holds as savings.
+// When they have one or more, those balances ARE their savings: the Savings
+// page's total is their sum (the pot worked out from the entries above is
+// not added on top — the entries are how money moved into those accounts, so
+// adding both would count it twice), and net worth counts the accounts once
+// and leaves out its computed "Savings" line. With no savings account the pot
+// is the total, as before. Account balances are in the base currency (the
+// base currency is locked once an account exists, 0078), and are summed
+// exactly as net worth sums them.
+
+export const isSavingsAccount = (account: Row): boolean => account?.type === 'savings'
+
+export type SavingsTotal = { minor: number, source: 'accounts' | 'entries', accounts: Row[] }
+
+// The user's savings total: { minor, source, accounts } — the savings
+// accounts' balances (source 'accounts', `accounts` those accounts) when
+// there are any, else `potMinor` (source 'entries', no accounts).
+export function savingsTotal(accounts: Row[] | null | undefined, potMinor: number): SavingsTotal {
+  const held = (accounts ?? []).filter(isSavingsAccount)
+  if (!held.length) return { minor: potMinor, source: 'entries', accounts: [] }
+  return { minor: held.reduce((sum, a) => sum + Number(a.balance_minor ?? 0), 0), source: 'accounts', accounts: held }
+}

@@ -206,6 +206,22 @@ export function savingsCategoryOf(categories) {
   return (categories ?? []).find((c) => c.kind === 'income' && c.is_savings === true && !c.is_archived)?.id ?? null
 }
 
+// ── Savings accounts (0092) ─────────────────────────────────────────────────
+// Where the page's total comes from (savingsTotal's `source`), as the line
+// under it says it.
+export const totalSourceNote = (source) =>
+  (source === 'accounts' ? 'From your savings accounts' : 'From your savings entries')
+
+// The pot's month-end line when the total comes from savings accounts: the
+// entries' line moved so its last point (this month's end) is the accounts'
+// total, each earlier month being that total less what the entries recorded
+// since. With the entries as the source, `series` as it is.
+export function anchoredSeries(series, total) {
+  if (total.source !== 'accounts' || !series.length) return series
+  const shift = total.minor - series[series.length - 1].pot
+  return series.map((s) => ({ ...s, pot: s.pot + shift }))
+}
+
 // ── Layout ──────────────────────────────────────────────────────────────────
 // The page's cards by id. Two columns that each flow on their own (desktop,
 // tablet): the pot and this month on the left, goals and the history on the

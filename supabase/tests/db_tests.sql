@@ -5498,6 +5498,121 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 90. 0092: savings accounts. save_account takes type 'savings' (new and
+--     edit), my_accounts reads it back; an unknown type is still refused by
+--     the RPC and by the table's CHECK; the RPC stays a pinned-search_path
+--     definer that anon can't call.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; aid uuid; t text; n bigint;
+begin
+  begin
+    u1 := pg_temp.zz_user('savacct');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    aid := public.save_account(null, 'ZZ savings', 'savings', 1021300, 'EUR');
+    select type, balance_minor into t, n from public.my_accounts() where id = aid;
+    if t is distinct from 'savings' or n <> 1021300 then execute 'reset role'; raise exception 'read back % %', t, n; end if;
+    perform public.save_account(aid, 'ZZ savings', 'asset', 500, 'EUR');
+    perform public.save_account(aid, 'ZZ savings', 'savings', 600, 'EUR');
+    select type into t from public.my_accounts() where id = aid;
+    if t is distinct from 'savings' then execute 'reset role'; raise exception 'edit to savings kept %', t; end if;
+    begin
+      perform public.save_account(null, 'ZZ bad', 'pension', 1, 'EUR');
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: unknown type saved';
+    exception when others then if sqlerrm not like '%bad type%' then raise; end if; end;
+    execute 'reset role';
+    begin
+      update public.accounts set type = 'pension' where id = aid;
+      raise exception 'GUARD_MISSED: CHECK allowed an unknown type';
+    exception when check_violation then null; end;
+    if has_function_privilege('anon', 'public.save_account(uuid, text, text, bigint, text)', 'execute') then
+      raise exception 'anon can call save_account';
+    end if;
+    if not exists (select 1 from pg_proc where oid = 'public.save_account(uuid, text, text, bigint, text)'::regprocedure
+                   and prosecdef and proconfig::text like '%search_path=public%') then
+      raise exception 'save_account lost its definer / pinned search_path';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: savings accounts saved and read back; unknown types refused; save_account pinned, not anon';
+    else update _t set fails = fails + 1; raise notice 'FAIL: savings accounts — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 91. 0093: import rules (category_rules) are editable from Settings. An
+--     insert is stamped with the caller; a rule can only point at the
+--     owner's own category (insert and update); it can't move to another
+--     account; the pattern is trimmed; another user can neither see, edit nor
+--     delete it; the owner can edit and delete it.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; c1 uuid; c2 uuid; cother uuid; rid uuid; owner uuid; p text; n int;
+begin
+  begin
+    u1 := pg_temp.zz_user('rule');
+    u2 := pg_temp.zz_user('rulex');
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZ rule a', 'expense') returning id into c1;
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZ rule b', 'income') returning id into c2;
+    insert into public.categories (user_id, name, kind) values (u2, 'ZZ rule other', 'expense') returning id into cother;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    -- "For another user": stamped with the caller instead.
+    insert into public.category_rules (user_id, pattern, category_id)
+      values (u2, '  ZZ   LIDL  ', c1) returning id, user_id, pattern into rid, owner, p;
+    if owner is distinct from u1 then execute 'reset role'; raise exception 'insert not stamped with the caller'; end if;
+    if p is distinct from 'ZZ LIDL' then execute 'reset role'; raise exception 'pattern not trimmed (%)', p; end if;
+    begin
+      insert into public.category_rules (pattern, category_id) values ('ZZ HIJACK', cother);
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: rule on another user''s category';
+    exception when others then if sqlerrm not like '%category not found%' then raise; end if; end;
+    update public.category_rules set pattern = 'ZZ ALDI', category_id = c2 where id = rid;
+    get diagnostics n = row_count;
+    if n <> 1 then execute 'reset role'; raise exception 'owner could not edit the rule'; end if;
+    begin
+      update public.category_rules set category_id = cother where id = rid;
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: moved onto another user''s category';
+    exception when others then if sqlerrm not like '%category not found%' then raise; end if; end;
+    begin
+      update public.category_rules set user_id = u2 where id = rid;
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: moved to another account';
+    exception when others then if sqlerrm not like '%not allowed%' then raise; end if; end;
+    execute 'reset role';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select count(*) into n from public.category_rules where id = rid;
+    if n <> 0 then execute 'reset role'; raise exception 'another user sees the rule'; end if;
+    update public.category_rules set pattern = 'ZZ OWNED' where id = rid;
+    get diagnostics n = row_count;
+    if n <> 0 then execute 'reset role'; raise exception 'another user edited the rule'; end if;
+    delete from public.category_rules where id = rid;
+    get diagnostics n = row_count;
+    if n <> 0 then execute 'reset role'; raise exception 'another user deleted the rule'; end if;
+    execute 'reset role';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select pattern into p from public.category_rules where id = rid;
+    if p is distinct from 'ZZ ALDI' then execute 'reset role'; raise exception 'edit lost (%)', p; end if;
+    delete from public.category_rules where id = rid;
+    get diagnostics n = row_count;
+    execute 'reset role';
+    if n <> 1 then raise exception 'owner could not delete the rule'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: import rules stamped, own categories only, not movable, trimmed; owner-only read/edit/delete';
+    else update _t set fails = fails + 1; raise notice 'FAIL: import rules guard — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- 92. 0094: categories.default_key (a default category's name in the app's
 --     language). The seed sets it; a rename clears it and other edits keep
 --     it; a client can't set it (an insert's key is only a re-derived hint,
@@ -5568,7 +5683,7 @@ end $$;
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 91; f int; p int;  -- tests 1–89, 92 + B-0059
+declare expected_tests constant int := 93; f int; p int;  -- tests 1–92 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

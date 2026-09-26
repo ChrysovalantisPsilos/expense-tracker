@@ -276,7 +276,9 @@ export default function AppShell({ hideAddExpense = false }) {
           position="sticky" top={0} zIndex={10}
           display={{ base: 'flex', md: 'none' }}
         >
-          <Logo size={26} />
+          {/* As on the sign-in pages' header on a phone: the mark alone,
+              so the bar's buttons (and the test site's DEV tag) have room. */}
+          <Logo size={26} showWord={false} />
           <Spacer />
           <OfflineIndicator />
           <Flex align="center" gap={3} data-tour="account">

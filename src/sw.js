@@ -6,12 +6,14 @@
 
 import { precacheAndRoute, cleanupOutdatedCaches, createHandlerBoundToURL } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { NetworkFirst } from 'workbox-strategies'
+import { CacheFirst, NetworkFirst } from 'workbox-strategies'
 import { CacheExpiration, ExpirationPlugin } from 'workbox-expiration'
 import { offlineReadRpc, offlineReadKey, requestUser } from './shared/lib/offlineReads.js'
 import {
   REST_CACHE, RPC_CACHE, REST_CACHE_LIMITS, RPC_CACHE_LIMITS, NETWORK_TIMEOUT_SECONDS, isLegacyRpcKey,
+  STATEMENT_FONT_CACHE, STATEMENT_FONT_CACHE_LIMITS,
 } from './shared/lib/userDataCaches.js'
+import { STATEMENT_FONT_DIR } from '../supabase/functions/_shared/brandFonts.ts'
 
 cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
@@ -66,6 +68,17 @@ registerRoute(
     }
   },
   'POST',
+)
+
+// The statement PDFs' fonts (made on the device, src/shared/lib/pdf.js): kept
+// after the first export, so a later one works offline. The path carries each
+// font's package version, so a new pin is a new entry; the old ones age out.
+registerRoute(
+  ({ url }) => url.origin === self.location.origin && url.pathname.startsWith(`/${STATEMENT_FONT_DIR}/`),
+  new CacheFirst({
+    cacheName: STATEMENT_FONT_CACHE,
+    plugins: [new ExpirationPlugin(STATEMENT_FONT_CACHE_LIMITS)],
+  }),
 )
 
 // RPC reads cached by earlier versions sit in the REST cache with no expiry.

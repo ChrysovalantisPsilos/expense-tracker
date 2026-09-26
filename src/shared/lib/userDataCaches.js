@@ -9,6 +9,11 @@ export const REST_CACHE = 'supabase-rest'
 // POST read RPCs, filed by hand under synthetic GET keys (offlineReads.js).
 export const RPC_CACHE = 'supabase-rpc'
 
+// The statement PDFs' fonts (src/shared/lib/pdf.js), kept after the first
+// export. Public files, no user data, so a sign-out leaves them.
+export const STATEMENT_FONT_CACHE = 'statement-fonts'
+export const STATEMENT_FONT_CACHE_LIMITS = { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 }
+
 // How long a read waits for the network before falling back to the cache.
 export const NETWORK_TIMEOUT_SECONDS = 5
 

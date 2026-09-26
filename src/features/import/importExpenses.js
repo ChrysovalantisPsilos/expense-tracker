@@ -7,6 +7,7 @@ import { rateOnOrBefore } from '../../shared/lib/currency.js'
 import { getRateSeriesMap } from '../../shared/lib/fx.js'
 import { importFileProblem, rowsToObjects } from './sheetParse.js'
 import { detectMapping, headerSignature, savedMappingFor } from './statementDetect.js'
+import { displayDescription } from './kbcLabels.js'
 // Pure helpers (parsing, drafts, deterministic identity) live in
 // importMath.js so they're unit-testable.
 import {
@@ -180,7 +181,8 @@ export async function buildTransactions({
       amount_minor,
       currency,
       exchange_rate,
-      description,
+      // Saved shorter for KBC rows; the raw text above made the key and the rule match.
+      description: displayDescription(draft),
       spent_at,
       client_uuid,
     })

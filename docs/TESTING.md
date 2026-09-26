@@ -166,6 +166,32 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 ### I. Reports
 29. Insights → Statement export: personal PDF downloads with brand styling.
     Group page → Download statement: per-member balances match the app.
+    Both are made on the device (see "Statements on the device" below): with
+    DevTools → Network open, an export makes no `functions/v1` request, only
+    the usual reads, and the console shows no
+    `using the server fallback` warning. Export once online, then go offline
+    (DevTools → Network → Offline) and export the same range again: it still
+    downloads, in the brand fonts, while the reads are in the offline cache.
+
+#### Statements on the device
+The PDF and Excel statements are built in the browser (`src/features/insights/
+deviceStatement.js`, `src/features/groups/deviceGroupStatement.js`) from the
+same modules the edge functions use (`supabase/functions/generate-report/
+statementFile.ts`, `group-report/groupStatement.ts`, `_shared/pdf.ts`).
+`test/deviceStatements.test.js` runs both edge functions under Node and checks
+that the device makes byte-identical files from the same data.
+
+> **TODO (the release after next):** remove the server fallback. Delete the
+> `generate-report` and `group-report` edge functions (their folders and
+> `supabase/config.toml` entries, then `supabase functions delete` on TEST and
+> PROD), `src/shared/lib/deviceFirst.js`, the `…FromServer` calls in
+> `src/features/insights/reports.js` and `src/features/groups/groups.js`,
+> `_shared/pdfDeno.ts`, `_shared/files.ts`'s octet-stream workaround and
+> `test/reportDownload.test.js`'s functions-js round trip, and the edge-function
+> half of `test/deviceStatements.test.js`. Move `statementFile.ts`,
+> `statementMath.ts` and `groupStatement.ts` next to their features. Until
+> then, a `[statement] couldn't be made on this device; using the server
+> fallback.` warning in the console marks each time the fallback was used.
 
 ### J. Backup & restore **[2 accounts]**
 30. Settings → Your data → Export backup, once with no password and once

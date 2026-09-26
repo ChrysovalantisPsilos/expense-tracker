@@ -26,9 +26,9 @@ import { isSavingsRow } from '../../shared/lib/savings.js'
 import { useCategories } from '../transactions/useData.js'
 import { useRecurring } from '../recurring/recurring.js'
 import { frequencyLabel } from '../recurring/recurringMath.js'
-import { useGoals, useSavingsMoves } from './savings.js'
+import { useGoals, useSavingsBalance } from './savings.js'
 import {
-  changeChip, potSeries, savingsCategoryOf, savingsStacks, seriesLength, wholeMoney,
+  anchoredSeries, changeChip, potSeries, savingsCategoryOf, savingsStacks, seriesLength, totalSourceNote, wholeMoney,
 } from './savingsMath.js'
 import GoalsCard from './GoalsCard.jsx'
 import SavingsHistory from './SavingsHistory.jsx'
@@ -46,7 +46,7 @@ export default function Savings() {
   const navigate = useNavigate()
   const t = useT('savings')
   const sideways = useShortLandscape()
-  const { moves, pot, savingsIds, baseCurrency, loading, error, reload } = useSavingsMoves()
+  const { moves, total, savingsIds, baseCurrency, loading, error, reload } = useSavingsBalance()
   const goals = useGoals()
   const { rules } = useRecurring()
   const { categories } = useCategories('income')
@@ -59,6 +59,7 @@ export default function Savings() {
     const n = seriesLength(moves)
     return n ? potSeries(moves, savingsIds, baseCurrency, lastMonths(n)) : []
   }, [moves, savingsIds, baseCurrency])
+  const line = useMemo(() => anchoredSeries(series, total), [series, total])
   const month = series[series.length - 1] ?? { fromIncome: 0, received: 0, fromSavings: 0, net: 0 }
   const savingRules = useMemo(
     () => rules.filter((r) => r.is_active && isSavingsRow(r, savingsIds)), [rules, savingsIds])
@@ -66,10 +67,10 @@ export default function Savings() {
   let body
   if (error) body = <Panel><QueryError error={error} onRetry={reload} what={t('what')} /></Panel>
   else if (loading) body = <SavingsSkeleton />
-  else if (moves.length === 0) body = <FirstSavings add={add} goals={goals} />
+  else if (moves.length === 0 && total.source === 'entries') body = <FirstSavings add={add} goals={goals} />
   else {
     const card = {
-      pot: <PotCard pot={pot} month={month} series={series} currency={baseCurrency} add={add} strip={sideways} />,
+      pot: <PotCard total={total} month={month} series={line} currency={baseCurrency} add={add} strip={sideways} />,
       month: <MonthCard month={month} rules={savingRules} currency={baseCurrency} />,
       goals: <GoalsCard {...goals} />,
       history: <SavingsHistory moves={moves} savingsIds={savingsIds} baseCurrency={baseCurrency} reload={reload} />,
@@ -106,13 +107,15 @@ function AddButton({ add, ...props }) {
 // Its total, this month's chip, the month-end line and "Add to savings".
 // `strip` (a phone held sideways): the figures and the button beside the
 // chart rather than over it.
-function PotCard({ pot, month, series, currency, add, strip }) {
+function PotCard({ total, month, series, currency, add, strip }) {
   const t = useT('savings')
+  const pot = total.minor
   const since = series.length ? t('pot.since', { month: series[0].label, count: series.length }) : null
   const figures = (
     <Box minW={0}>
       <Figure label={t('pot.label')} size="hero"
         value={`${pot < 0 ? '−' : ''}${money(Math.abs(pot), currency)}`} tone={pot < 0 ? 'negative' : 'default'} />
+      <Text fontSize="xs" color="text.muted" mt={1}>{totalSourceNote(total.source)}</Text>
       <HStack justify="space-between" mt={2} spacing={2} flexWrap="wrap" rowGap={1}>
         <MonthChip flow={month} currency={currency} small={strip} />
         {since && <Text fontSize="xs" color="text.muted">{since}</Text>}
@@ -127,7 +130,7 @@ function PotCard({ pot, month, series, currency, add, strip }) {
             {figures}
             <AddButton add={add} size="sm" w="full" />
           </Stack>
-          <PotArea series={series} currency={currency} h="120px" />
+          {series.length > 0 && <PotArea series={series} currency={currency} h="120px" />}
         </SimpleGrid>
       </Panel>
     )
@@ -135,7 +138,7 @@ function PotCard({ pot, month, series, currency, add, strip }) {
   return (
     <Panel>
       {figures}
-      <PotArea series={series} currency={currency} h="150px" />
+      {series.length > 0 && <PotArea series={series} currency={currency} h="150px" />}
       <AddButton add={add} w="full" mt={3} />
     </Panel>
   )

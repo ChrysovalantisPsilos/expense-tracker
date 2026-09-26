@@ -2,8 +2,8 @@
 // backup document from rows the data layer gathered, read + validate a file,
 // and plan a restore (category/account remap, duplicate detection, what's new).
 //
-// FORMAT (version 3) — one JSON file, budgeer-backup-YYYY-MM-DD.json:
-//   { format: 'budgeer-backup', version: 3, exportedAt, app: { name },
+// FORMAT (version 4) — one JSON file, budgeer-backup-YYYY-MM-DD.json:
+//   { format: 'budgeer-backup', version: 4, exportedAt, app: { name },
 //     data: { profile, payment, categories, categoryRules, accounts, goals,
 //             budgets, recurring, transactions },
 //     groupHistory: [...] }                    ← read-only record, never restored
@@ -21,7 +21,11 @@
 // profile.salary_category (a category key, remapped on restore like every
 // other reference); older files read as off. Files older than version 3 also
 // follow the renames the server made to the default categories since (see
-// upgradeCategories). Names the server caps at 60 characters (display
+// upgradeCategories). Version 4 allows an account's type 'savings' (0092:
+// a savings account, whose balance is the savings total); older files only
+// have 'asset' and 'liability' and read as before, and an older app refuses a
+// version 4 file with "update the app" rather than a damaged-file error.
+// Names the server caps at 60 characters (display
 // name, category names, group names) are trimmed to fit instead of failing.
 // Deliberately NOT in a backup: UI state (whats_new_seen, tour_done,
 // passkey_reminder_off, onboarded_at, language), the weekly-digest opt-in (a consent,
@@ -42,12 +46,12 @@ import { translate } from '../../shared/lib/i18n/i18n.js'
 const say = (key, vars) => translate(key, vars, { defaultNs: 'backup' })
 
 export const BACKUP_FORMAT = 'budgeer-backup'
-export const BACKUP_VERSION = 3
+export const BACKUP_VERSION = 4
 
 // The profiles.base_currency column default.
 const DEFAULT_CURRENCY = 'EUR'
 const KINDS = ['expense', 'income']
-const ACCOUNT_TYPES = ['asset', 'liability']
+const ACCOUNT_TYPES = ['asset', 'liability', 'savings']
 const SPLIT_NOTE_PREFIX = 'Group: '
 const MAX_MINOR = Number.MAX_SAFE_INTEGER
 

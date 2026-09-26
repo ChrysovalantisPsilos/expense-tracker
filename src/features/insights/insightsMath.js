@@ -1,6 +1,6 @@
 import { toBaseMinor, minorFactor, baseEquivalent } from '../../shared/lib/currency.js'
 import { bucketLabel, bucketLabels, bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
-import { isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
+import { isSavingsAccount, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { categoryBars } from '../dashboard/categoryBars.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
@@ -49,13 +49,28 @@ export function spendDelta(trend) {
 // time: every savings entry, 0084, minus every expense paid from savings,
 // 0085) — is the read-only "Savings" line: an asset, or, once more was paid
 // from savings than was recorded going in, a liability of the shortfall.
+// Savings accounts (type 'savings', 0092) are assets like any other; while
+// the user has one, they ARE the savings (savingsTotal in shared/lib/savings),
+// so the pot line is left out and nothing is counted twice. `showPot` says
+// whether the pot line is shown (it's hidden at exactly zero, too).
 export function netWorth(accounts, savings = 0) {
-  let assets = Math.max(0, savings), liabilities = Math.max(0, -savings)
+  const showPot = savings !== 0 && !accounts.some(isSavingsAccount)
+  const pot = showPot ? savings : 0
+  let assets = Math.max(0, pot), liabilities = Math.max(0, -pot)
   for (const acc of accounts) {
     if (acc.type === 'liability') liabilities += acc.balance_minor
     else assets += acc.balance_minor
   }
-  return { assets, liabilities, net: assets - liabilities }
+  return { assets, liabilities, net: assets - liabilities, showPot }
+}
+
+// Net worth's two lists: the savings accounts (under "Savings", 0092) and
+// every other account (under "Accounts"), each in the order given.
+export function accountSections(accounts) {
+  return {
+    savings: accounts.filter(isSavingsAccount),
+    other: accounts.filter((a) => !isSavingsAccount(a)),
+  }
 }
 
 // Y-axis tick label for the trend chart (major units): "800", "1.6k", "2.4k",
