@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/ProfileProvider.jsx'
 import Logo from '../shared/ui/Logo.jsx'
+import { isTestSite } from '../shared/lib/environment.js'
 import RingLoader from '../shared/ui/RingLoader.jsx'
 import OfflineIndicator from '../shared/ui/OfflineIndicator.jsx'
 import ThemeToggle from '../shared/ui/ThemeToggle.jsx'
@@ -276,7 +277,9 @@ export default function AppShell({ hideAddExpense = false }) {
           position="sticky" top={0} zIndex={10}
           display={{ base: 'flex', md: 'none' }}
         >
-          <Logo size={26} />
+          {/* As on the sign-in pages: on the test site the DEV tag takes the
+              wordmark's room next to the bar's buttons, so the mark alone. */}
+          <Logo size={26} showWord={!isTestSite} />
           <Spacer />
           <OfflineIndicator />
           <Flex align="center" gap={3} data-tour="account">
