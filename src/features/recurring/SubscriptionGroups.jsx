@@ -3,6 +3,7 @@ import { Box, HStack, Tab, TabList, TabPanel, TabPanels, Tabs, Text } from '@cha
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { CONVERTED_NOTE, missingRatesNote, ruleInBase } from '../../shared/lib/ruleFx.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Frequency chips over subscriptionGroups() (recurringMath.js) — Home's
 // Recurring card and the Recurring page's Subscriptions tab. One tab per
@@ -31,12 +32,16 @@ export function GroupTabs({ groups, label, children }) {
 // currencies count at today's rate (subscriptionGroups); the line under it
 // says so, and names any left out for want of a rate.
 export function GroupTotal({ group: g, baseCurrency, ...props }) {
+  const t = useT('recurring')
   return (
     <Box {...props}>
       <HStack justify="space-between" align="end" spacing={3} flexWrap="wrap">
-        <Figure label={`${g.label} total`} size="lg" value={`${formatMoney(g.total, baseCurrency)}/${g.unit}`} />
+        <Figure label={t(`groups.total.${g.key}`)} size="lg"
+          value={t(`groups.perUnit.${g.unit}`, { amount: formatMoney(g.total, baseCurrency) })} />
         {g.unit !== 'month' && (
-          <Text fontSize="sm" color="text.muted">≈ {formatMoney(g.perMonth, baseCurrency)}/month</Text>
+          <Text fontSize="sm" color="text.muted">
+            {t('groups.aboutPerMonth', { amount: formatMoney(g.perMonth, baseCurrency) })}
+          </Text>
         )}
       </HStack>
       <RatesNote converted={g.converted} missing={g.missing} mt={1} />

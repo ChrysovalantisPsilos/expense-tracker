@@ -6,6 +6,7 @@ import { toBaseMinor } from '../../shared/lib/currency.js'
 import { rulesInBase } from '../../shared/lib/ruleFx.js'
 import { countedDate } from '../../shared/lib/salaryShift.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // A rule's cost in monthly minor units (shared with the statement).
 export { monthlyMinor }
@@ -17,10 +18,9 @@ export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly']
 // The frequencies a user picks from. "Quarterly" is not a stored frequency: it
 // is a monthly rule every 3 months (no schema change), shown as its own choice
 // and labelled "every quarter". It has no "every N" of its own — a monthly
-// rule every 6 months is "Monthly, every 6".
-export const REPEAT_CHOICES = [
-  ['daily', 'Daily'], ['weekly', 'Weekly'], ['monthly', 'Monthly'], ['quarterly', 'Quarterly'], ['yearly', 'Yearly'],
-]
+// rule every 6 months is "Monthly, every 6". Each is [value, its label's key].
+export const REPEAT_CHOICES = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly']
+  .map((v) => [v, `recurring:choices.${v}`])
 
 const isQuarterly = (r) => r.frequency === 'monthly' && Number(r.interval_n) === 3
 
@@ -39,11 +39,13 @@ export function ruleToChoice(rule) {
   return { choice: rule.frequency, n: every(rule.interval_n) }
 }
 
-// "every month", "every 2 weeks", "every quarter", "every day"…
+// "every month", "every 2 weeks", "every quarter", "every day"… in the app's
+// language.
 export function frequencyLabel({ frequency, interval_n = 1 }) {
-  if (isQuarterly({ frequency, interval_n })) return 'every quarter'
-  const unit = { daily: 'day', weekly: 'week', monthly: 'month', yearly: 'year' }[frequency]
-  return interval_n > 1 ? `every ${interval_n} ${unit}s` : `every ${unit}`
+  if (isQuarterly({ frequency, interval_n })) return t('recurring:frequency.quarterly')
+  return interval_n > 1
+    ? t(`recurring:frequency.everyN.${frequency}`, { count: Number(interval_n) })
+    : t(`recurring:frequency.every.${frequency}`)
 }
 
 // The date one recurrence step after `iso` ('YYYY-MM-DD'), exactly as the SQL
@@ -225,12 +227,14 @@ export function planRepeat({ rule, repeat, draft, before, entry }) {
 // Expense rules grouped by how often they charge. Other intervals fold into
 // their base unit (every 2 months → Monthly, every 2 years → Yearly), a daily
 // rule folds into Weekly, and a monthly rule every 3 months is Quarterly.
+// Each group's `label` (recurring:choices.<key>) is made when the groups are.
 const SUBSCRIPTION_GROUPS = [
-  { key: 'weekly', label: 'Weekly', unit: 'week' },
-  { key: 'monthly', label: 'Monthly', unit: 'month' },
-  { key: 'quarterly', label: 'Quarterly', unit: 'quarter' },
-  { key: 'yearly', label: 'Yearly', unit: 'year' },
+  { key: 'weekly', unit: 'week' },
+  { key: 'monthly', unit: 'month' },
+  { key: 'quarterly', unit: 'quarter' },
+  { key: 'yearly', unit: 'year' },
 ]
+const withLabel = (g) => ({ ...g, label: t(`recurring:choices.${g.key}`) })
 
 export function subscriptionGroup(rule) {
   if (rule.frequency === 'daily' || rule.frequency === 'weekly') return 'weekly'
@@ -279,7 +283,7 @@ export function subscriptionGroups(rules, baseCurrency, { limit = 3, upcomingOnl
     if (!all.length || (upcomingOnly && !live.length)) continue
     const fx = rulesInBase(live, baseCurrency, rates)
     out.push({
-      ...g,
+      ...withLabel(g),
       rules: all,
       total: fx.rules.reduce((s, r) => s + periodMinor(r), 0),
       perMonth: fx.rules.reduce((s, r) => s + monthlyMinor(r), 0),
@@ -313,7 +317,7 @@ export function chargedGroups(rows, baseCurrency) {
     const mine = charges.filter((r) => subscriptionGroup(r.recurring ?? { frequency: 'monthly' }) === g.key)
     if (!mine.length) continue
     out.push({
-      ...g,
+      ...withLabel(g),
       total: mine.reduce((s, r) => s + toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency), 0),
       charges: mine,
     })
@@ -323,9 +327,14 @@ export function chargedGroups(rows, baseCurrency) {
 
 // The card's wording for a period's charges: { subtitle, empty }.
 export function chargedWording(period) {
-  if (period.value === 'all') return { subtitle: 'Charged so far', empty: 'No recurring charges yet.' }
-  const when = period.label === 'This year' ? 'this year' : `in ${period.label}`
-  return { subtitle: `Charged ${when}`, empty: `No recurring charges ${when}.` }
+  if (period.value === 'all') return { subtitle: t('recurring:charged.soFar'), empty: t('recurring:charged.noneYet') }
+  if (period.label === t('transactions:periods.thisYear')) {
+    return { subtitle: t('recurring:charged.thisYear'), empty: t('recurring:charged.noneThisYear') }
+  }
+  return {
+    subtitle: t('recurring:charged.inPeriod', { period: period.label }),
+    empty: t('recurring:charged.noneInPeriod', { period: period.label }),
+  }
 }
 
 // What the active income rules bring in per month (the Recurring page's

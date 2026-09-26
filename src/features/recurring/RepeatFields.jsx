@@ -8,8 +8,7 @@ import { enablePush } from '../../shared/lib/push.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { REPEAT_CHOICES, choiceToRule, monthlyBudgetShare } from './recurringMath.js'
-
-const UNIT = { daily: 'days', weekly: 'weeks', monthly: 'months', yearly: 'years' }
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // The schedule of a recurring rule — how often, every N, next charge, end
 // date, reminder, and (with `pausable`) paused — shared by the transaction
@@ -21,6 +20,7 @@ const UNIT = { daily: 'days', weekly: 'weeks', monthly: 'months', yearly: 'years
 export default function RepeatFields({
   value: d, onChange, nextHelp, pausable = false, kind, amountMinor, currency, idPrefix = 'repeat',
 }) {
+  const t = useT('recurring')
   const toast = useToast()
   const { separateYearly } = useProfile()
   const { frequency, interval_n } = choiceToRule(d.choice, d.n)
@@ -39,15 +39,12 @@ export default function RepeatFields({
     try {
       const status = await enablePush()
       if (status === 'denied') {
-        toast({ title: 'Push blocked', status: 'info',
-          description: 'Reminders will show in the app’s notification bell instead.' })
+        toast({ title: t('repeat.push.blocked'), status: 'info', description: t('repeat.push.blockedText') })
       } else if (status === 'unsupported') {
-        toast({ title: 'Push isn’t available in this browser', status: 'info',
-          description: 'On iPhone, install Budgeer to your home screen first. Reminders will still show in the bell.' })
+        toast({ title: t('repeat.push.unsupported'), status: 'info', description: t('repeat.push.unsupportedText') })
       }
     } catch {
-      toast({ title: 'Couldn’t enable push on this device', status: 'warning',
-        description: 'Reminders will show in the app’s notification bell.' })
+      toast({ title: t('repeat.push.failed'), status: 'warning', description: t('repeat.push.failedText') })
     }
   }
 
@@ -55,37 +52,39 @@ export default function RepeatFields({
     <Stack spacing={4}>
       <HStack align="end" spacing={3}>
         <FormControl flex="1">
-          <FormLabel>How often</FormLabel>
+          <FormLabel>{t('repeat.howOften')}</FormLabel>
           <Select value={d.choice} onChange={(e) => onChange({ choice: e.target.value })}>
-            {REPEAT_CHOICES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            {REPEAT_CHOICES.map(([v, key]) => <option key={v} value={v}>{t(key)}</option>)}
           </Select>
         </FormControl>
         {d.choice !== 'quarterly' && (
           <FormControl w="auto" flexShrink={0}>
-            <FormLabel>Every</FormLabel>
+            <FormLabel>{t('repeat.every')}</FormLabel>
             <HStack spacing={2}>
               <NumberInput min={1} maxW="80px" value={d.n} onChange={(v) => onChange({ n: v })}>
-                <NumberInputField aria-label={`Every how many ${UNIT[d.choice]}`} />
+                <NumberInputField aria-label={t(`repeat.everyHowMany.${d.choice}`)} />
               </NumberInput>
-              <Text fontSize="sm" color="text.muted">{UNIT[d.choice]}</Text>
+              <Text fontSize="sm" color="text.muted">{t(`repeat.units.${d.choice}`)}</Text>
             </HStack>
           </FormControl>
         )}
       </HStack>
       {share && (
         <Text fontSize="sm" color="text.muted" mt={-2}>
-          {`Counts as ${share.exact ? '' : 'about '}${formatMoney(share.perMonth, currency)}/month in budgets, spread over ${share.months} months.`}
+          {t(share.exact ? 'repeat.countsAs' : 'repeat.countsAsAbout', {
+            amount: formatMoney(share.perMonth, currency), months: share.months,
+          })}
         </Text>
       )}
 
       <FormControl>
-        <FormLabel>Next charge</FormLabel>
+        <FormLabel>{t('repeat.nextCharge')}</FormLabel>
         <Input type="date" value={d.nextRun} onChange={(e) => onChange({ nextRun: e.target.value })} />
         {nextHelp && <FormHelperText>{nextHelp}</FormHelperText>}
       </FormControl>
 
       <FormControl>
-        <OptionalDate label="Set an end date" value={d.endDate} onChange={(v) => onChange({ endDate: v })} />
+        <OptionalDate label={t('repeat.endDate')} value={d.endDate} onChange={(v) => onChange({ endDate: v })} />
       </FormControl>
 
       <FormControl>
@@ -93,7 +92,7 @@ export default function RepeatFields({
           <FormLabel mb={0} htmlFor={`${idPrefix}-remind`}>
             <HStack spacing={2}>
               <Bell size={15} aria-hidden />
-              <Text>Remind me before each charge</Text>
+              <Text>{t('repeat.remind')}</Text>
             </HStack>
           </FormLabel>
           <Switch id={`${idPrefix}-remind`} isChecked={d.remind} onChange={toggleRemind} />
@@ -102,9 +101,9 @@ export default function RepeatFields({
           <HStack mt={3} spacing={2}>
             <NumberInput min={1} max={60} maxW="90px" value={d.remindDays}
               onChange={(v) => onChange({ remindDays: v })}>
-              <NumberInputField aria-label="Days before each charge" />
+              <NumberInputField aria-label={t('repeat.remindDays')} />
             </NumberInput>
-            <Text fontSize="sm" color="text.muted">days before, via notification</Text>
+            <Text fontSize="sm" color="text.muted">{t('repeat.daysBefore')}</Text>
           </HStack>
         )}
       </FormControl>
@@ -112,11 +111,11 @@ export default function RepeatFields({
       {pausable && (
         <FormControl>
           <HStack justify="space-between">
-            <FormLabel mb={0} htmlFor={`${idPrefix}-paused`}>Paused</FormLabel>
+            <FormLabel mb={0} htmlFor={`${idPrefix}-paused`}>{t('repeat.paused')}</FormLabel>
             <Switch id={`${idPrefix}-paused`} isChecked={!d.active}
               onChange={(e) => onChange({ active: !e.target.checked })} />
           </HStack>
-          <FormHelperText>No new charges are added while it’s paused.</FormHelperText>
+          <FormHelperText>{t('repeat.pausedHelp')}</FormHelperText>
         </FormControl>
       )}
     </Stack>

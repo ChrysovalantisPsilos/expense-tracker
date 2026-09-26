@@ -24,9 +24,9 @@ import { GroupTabs, GroupTotal, RatesNote, baseHint } from './SubscriptionGroups
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const TABS = ['expense', 'income']
-const INCOME_INTRO = 'Money that comes in on a schedule, like your salary — it’s added to your income on each date.'
 
 // The Recurring page (/recurring): "Subscriptions" (money going out, by
 // frequency — the same groups as Home's card, each with its total) and
@@ -34,6 +34,7 @@ const INCOME_INTRO = 'Money that comes in on a schedule, like your salary — it
 // editing open a rule's own page (RecurringPage). The open tab is kept in the
 // address (?tab=income), so coming back from a rule's page lands on it.
 export default function Recurring() {
+  const t = useT('recurring')
   const { baseCurrency = 'EUR' } = useProfile()
   const { rules, loading: rulesLoading, error, reload } = useRecurring()
   // Totals count foreign rules at today's ECB rate; rows keep their currency.
@@ -60,17 +61,17 @@ export default function Recurring() {
     try { await setRecurringActive(r.id, !r.is_active); reload() }
     catch (e) {
       console.error('[recurring] pause/resume failed:', e)
-      toast({ title: userMessage(e, 'Couldn’t update the recurring entry. Please try again.'), status: 'error' })
+      toast({ title: userMessage(e, t('list.updateFailed')), status: 'error' })
     }
   }
   async function confirmRemove() {
     try {
       await deleteRecurring(removing.id)
-      toast({ title: 'Recurring entry removed', status: 'success' })
+      toast({ title: t('list.removed'), status: 'success' })
       setRemoving(null); reload()
     } catch (e) {
       console.error('[recurring] remove failed:', e)
-      toast({ title: userMessage(e, 'Couldn’t remove the recurring entry. Please try again.'), status: 'error' })
+      toast({ title: userMessage(e, t('list.removeFailed')), status: 'error' })
     }
   }
 
@@ -90,11 +91,11 @@ export default function Recurring() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader title="Recurring"
-        action={<PageAction icon={<Plus size={16} />} label="Add" onClick={openNew} />} />
+      <PageHeader title={t('list.title')}
+        action={<PageAction icon={<Plus size={16} />} label={t('list.add')} onClick={openNew} />} />
 
       <Panel>
-        {error ? <QueryError error={error} onRetry={reload} what="recurring payments" /> : loading ? (
+        {error ? <QueryError error={error} onRetry={reload} what={t('list.what')} /> : loading ? (
           <SkeletonRegion>
             <SimpleGrid columns={2} spacing={6} px={6} pb={4} mb={2} borderBottomWidth="2px" borderColor="border.default">
               <SkeletonBlock h="14px" />
@@ -105,15 +106,14 @@ export default function Recurring() {
         ) : (
           <Tabs colorScheme="brand" index={tab} onChange={setTab} isFitted>
             <TabList>
-              <Tab fontWeight="600">Subscriptions</Tab>
-              <Tab fontWeight="600">Income</Tab>
+              <Tab fontWeight="600">{t('list.tabs.subscriptions')}</Tab>
+              <Tab fontWeight="600">{t('list.tabs.income')}</Tab>
             </TabList>
             <TabPanels>
               <TabPanel px={0} pb={0}>
-                {groups.length === 0 ? empty('No subscriptions or bills yet',
-                  'Add the bills and subscriptions that repeat, like rent or streaming, and Budgeer logs each one on its date.',
-                  'Add a subscription or bill') : (
-                  <GroupTabs groups={groups} label="Subscriptions by frequency">
+                {groups.length === 0 ? empty(t('list.emptySubscriptions.title'),
+                  t('list.emptySubscriptions.text'), t('list.emptySubscriptions.add')) : (
+                  <GroupTabs groups={groups} label={t('list.byFrequency')}>
                     {(g) => (
                       <>
                         <GroupTotal group={g} baseCurrency={baseCurrency} mb={3} />
@@ -124,14 +124,13 @@ export default function Recurring() {
                 )}
               </TabPanel>
               <TabPanel px={0} pb={0}>
-                {income.length === 0 ? empty('No recurring income yet',
-                  INCOME_INTRO,
-                  'Add recurring income') : (
+                {income.length === 0 ? empty(t('list.emptyIncome.title'),
+                  t('list.incomeIntro'), t('list.emptyIncome.add')) : (
                   <>
-                    <Text fontSize="sm" color="text.muted" mb={4}>{INCOME_INTRO}</Text>
+                    <Text fontSize="sm" color="text.muted" mb={4}>{t('list.incomeIntro')}</Text>
                     <Box mb={3}>
-                      <Figure label="Recurring income" size="lg" tone="positive"
-                        value={`≈ ${formatMoney(incomeMonthly.perMonth, baseCurrency)}/month`} />
+                      <Figure label={t('list.recurringIncome')} size="lg" tone="positive"
+                        value={t('groups.aboutPerMonth', { amount: formatMoney(incomeMonthly.perMonth, baseCurrency) })} />
                       <RatesNote converted={incomeMonthly.converted} missing={incomeMonthly.missing} mt={1} />
                     </Box>
                     {list(income)}
@@ -146,16 +145,17 @@ export default function Recurring() {
       <Modal isOpen={!!removing} onClose={() => setRemoving(null)} isCentered>
         <ModalOverlay />
         <ModalContent mx={4}>
-          <ModalHeader>Remove recurring entry?</ModalHeader>
+          <ModalHeader>{t('list.remove.title')}</ModalHeader>
           <ModalBody>
             <Text color="text.muted">
-              “{removing?.description || removing?.categories?.name || 'This entry'}” will stop repeating.
-              Transactions it already created stay.
+              {t('list.remove.body', {
+                name: removing?.description || removing?.categories?.name || t('list.remove.thisEntry'),
+              })}
             </Text>
           </ModalBody>
           <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={() => setRemoving(null)}>Cancel</Button>
-            <Button colorScheme="red" onClick={confirmRemove}>Remove</Button>
+            <Button variant="ghost" onClick={() => setRemoving(null)}>{t('list.remove.cancel')}</Button>
+            <Button colorScheme="red" onClick={confirmRemove}>{t('list.remove.confirm')}</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -166,22 +166,23 @@ export default function Recurring() {
 // One rule: what it charges, how often and when next, with pause/edit/delete.
 // `hint`: a foreign rule's charge in the base currency at today's rate.
 function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
+  const t = useT('recurring')
   return (
     <ItemRow py={2.5} dimmed={!r.is_active}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-      title={r.description || r.categories?.name || (r.kind === 'income' ? 'Income' : 'Expense')}
+      title={r.description || r.categories?.name || t(`kinds.${r.kind === 'income' ? 'income' : 'expense'}`)}
       meta={<RuleMeta rule={r} />}
       amount={formatMoney(r.amount_minor, r.currency)} amountMeta={hint}
       amountTone={r.kind === 'income' ? 'positive' : 'default'}
       trailing={
         <Box display={{ base: 'none', sm: 'block' }} flexShrink={0}>
-          <Switch isChecked={r.is_active} onChange={onToggle} aria-label={r.is_active ? 'Pause' : 'Resume'} />
+          <Switch isChecked={r.is_active} onChange={onToggle} aria-label={t(r.is_active ? 'row.pause' : 'row.resume')} />
         </Box>
       }
       actionSlots={2} actions={[
-        { label: r.is_active ? 'Pause' : 'Resume', icon: r.is_active ? Pause : Play, menuOnly: true, onClick: onToggle },
-        { label: 'Edit', icon: Pencil, onClick: onEdit },
-        { label: 'Delete', icon: Trash2, danger: true, onClick: onRemove },
+        { label: t(r.is_active ? 'row.pause' : 'row.resume'), icon: r.is_active ? Pause : Play, menuOnly: true, onClick: onToggle },
+        { label: t('row.edit'), icon: Pencil, onClick: onEdit },
+        { label: t('row.delete'), icon: Trash2, danger: true, onClick: onRemove },
       ]} />
   )
 }
@@ -190,23 +191,24 @@ function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
 // expense counts per month in budgets (unless the user keeps yearly
 // subscriptions out of monthly spending), plus reminder/paused tags.
 function RuleMeta({ rule: r }) {
+  const t = useT('recurring')
   const { separateYearly } = useProfile()
   const share = separateYearly ? null : monthlyBudgetShare(r)
   return (
     <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted">
       <Text whiteSpace="nowrap">{frequencyLabel(r)}</Text>
-      <Text whiteSpace="nowrap">· next {shortDate(r.next_run)}</Text>
+      <Text whiteSpace="nowrap">· {t('row.next', { date: shortDate(r.next_run) })}</Text>
       {share && (
         <Text whiteSpace="nowrap">
-          · {share.exact ? '' : '≈ '}{formatMoney(share.perMonth, r.currency)}/mo in budgets
+          · {share.exact ? '' : '≈ '}{t('row.budgetShare', { amount: formatMoney(share.perMonth, r.currency) })}
         </Text>
       )}
       {r.remind_days_before != null && (
         <Tag size="sm" colorScheme="brand" borderRadius="full" px={2}>
-          <Bell size={10} style={{ marginRight: 3 }} /> {r.remind_days_before}d
+          <Bell size={10} style={{ marginRight: 3 }} /> {t('row.remindDays', { days: r.remind_days_before })}
         </Tag>
       )}
-      {!r.is_active && <Tag size="sm" borderRadius="full">Paused</Tag>}
+      {!r.is_active && <Tag size="sm" borderRadius="full">{t('row.paused')}</Tag>}
     </Flex>
   )
 }

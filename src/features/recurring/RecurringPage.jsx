@@ -8,6 +8,7 @@ import useGoBack from '../../shared/ui/useGoBack.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring } from './recurring.js'
 import RecurringForm from './RecurringForm.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // A recurring rule's page:
 //   /recurring/new?kind=expense|income   a new rule
@@ -16,6 +17,7 @@ import RecurringForm from './RecurringForm.jsx'
 //                                        shared link finds it in the list)
 // Saving goes back to wherever the user came from, else to Recurring.
 export default function RecurringPage() {
+  const t = useT('recurring')
   const { id } = useParams()
   const [params] = useSearchParams()
   const location = useLocation()
@@ -28,15 +30,15 @@ export default function RecurringPage() {
   const kind = params.get('kind') === 'income' ? 'income' : 'expense'
 
   let body
-  if (id && !rule && error) body = <Panel><QueryError error={error} onRetry={reload} what="this recurring entry" /></Panel>
+  if (id && !rule && error) body = <Panel><QueryError error={error} onRetry={reload} what={t('page.what')} /></Panel>
   // A new rule starts in the base currency, which the form reads once.
   else if ((id && !rule && loading) || (!profile && profileLoading)) body = <RingLoader />
   else if (id && !rule) {
     body = (
       <Panel>
         <Stack spacing={3} align="start">
-          <Text color="text.muted">This recurring entry doesn’t exist any more.</Text>
-          <Button as={RouterLink} to="/recurring" size="sm">Go to Recurring</Button>
+          <Text color="text.muted">{t('page.gone')}</Text>
+          <Button as={RouterLink} to="/recurring" size="sm">{t('page.goToList')}</Button>
         </Stack>
       </Panel>
     )
@@ -48,8 +50,8 @@ export default function RecurringPage() {
   }
 
   return (
-    <FormPage eyebrow="Recurring" fallback="/recurring"
-      title={id ? 'Edit recurring entry' : 'New recurring entry'}>
+    <FormPage eyebrow={t('list.title')} fallback="/recurring"
+      title={t(id ? 'page.editTitle' : 'page.newTitle')}>
       {body}
     </FormPage>
   )

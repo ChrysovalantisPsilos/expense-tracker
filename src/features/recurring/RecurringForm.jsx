@@ -11,6 +11,7 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { saveRecurring } from './recurring.js'
 import { editRepeat, repeatDraft, repeatRuleFields } from './recurringMath.js'
 import RepeatFields from './RepeatFields.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // The body of a recurring rule's page (RecurringPage). `rule` edits an
 // existing one; otherwise a new one starts as `kind`. Pausing lives on the
@@ -21,6 +22,7 @@ import RepeatFields from './RepeatFields.jsx'
 // new rule, as stored when editing) once the user has a savings category, and
 // hands it to its entries the same way. `onSaved` runs after a successful save.
 export default function RecurringForm({ rule, kind: initialKind = 'expense', baseCurrency, onSaved }) {
+  const t = useT('recurring')
   const toast = useToast()
   const isEdit = !!rule
   const [kind, setKind] = useState(rule?.kind ?? initialKind)
@@ -38,7 +40,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
   const { busy, run } = useAsyncSubmit()
 
   async function submit() {
-    if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
+    if (!amount || Number(amount) <= 0) return toast({ title: t('form.enterAmount'), status: 'warning' })
     await run(async () => {
       await saveRecurring({
         id: rule?.id,
@@ -51,7 +53,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
         paid_from_savings: showFromSavings && fromSavings,
         ...repeatRuleFields(draft),
       })
-      toast({ title: isEdit ? 'Recurring entry updated' : 'Recurring entry added', status: 'success' })
+      toast({ title: t(isEdit ? 'form.updated' : 'form.added'), status: 'success' })
       onSaved()
     })
   }
@@ -59,32 +61,32 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
   const pickKind = (k) => { setKind(k); setCategoryId('') }
 
   return (
-    <PageForm onSubmit={submit} busy={busy} submitLabel={isEdit ? 'Save changes' : 'Add recurring entry'}
+    <PageForm onSubmit={submit} busy={busy} submitLabel={t(isEdit ? 'form.saveChanges' : 'form.submit')}
       submitProps={{ isDisabled: savingsLoading }}>
       <Stack spacing={4}>
         <HStack spacing={2}>
           <Button flex="1" variant={kind === 'expense' ? 'solid' : 'outline'}
             colorScheme={kind === 'expense' ? 'brand' : 'gray'} aria-pressed={kind === 'expense'}
-            onClick={() => pickKind('expense')}>Expense</Button>
+            onClick={() => pickKind('expense')}>{t('kinds.expense')}</Button>
           <Button flex="1" variant={kind === 'income' ? 'solid' : 'outline'}
             colorScheme={kind === 'income' ? 'brand' : 'gray'} aria-pressed={kind === 'income'}
-            onClick={() => pickKind('income')}>Income</Button>
+            onClick={() => pickKind('income')}>{t('kinds.income')}</Button>
         </HStack>
 
         <FormControl isRequired>
-          <FormLabel>Description</FormLabel>
+          <FormLabel>{t('form.description')}</FormLabel>
           <Input value={description} onChange={(e) => setDescription(e.target.value)}
-            placeholder={kind === 'income' ? 'Salary' : 'Netflix, rent, gym…'} />
+            placeholder={t(`form.placeholder.${kind}`)} />
         </FormControl>
 
         <FormControl isRequired>
-          <FormLabel>Amount ({currency})</FormLabel>
+          <FormLabel>{t('form.amount', { currency })}</FormLabel>
           <MoneyInput currency={currency} value={amount} onChange={setAmount} />
         </FormControl>
 
         <FormControl>
-          <FormLabel>Category</FormLabel>
-          <Select placeholder="Uncategorized" value={categoryId}
+          <FormLabel>{t('form.category')}</FormLabel>
+          <Select placeholder={t('form.uncategorized')} value={categoryId}
             onChange={(e) => setCategoryId(e.target.value)}>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </Select>
