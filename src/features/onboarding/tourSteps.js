@@ -12,6 +12,7 @@ const NAV = ['right', 'bottom', 'top']
 const copy = (key) => ({ title: `tour.${key}.title`, body: `tour.${key}.body` })
 
 export const TOUR_STEPS = [
+  { id: 'period', route: '/', target: 'period', ...copy('period') },
   { id: 'overview', route: '/', target: 'overview', ...copy('overview') },
   { id: 'categories', route: '/', target: 'categories', ...copy('categories') },
   { id: 'subscriptions', route: '/', target: 'subscriptions', ...copy('subscriptions') },

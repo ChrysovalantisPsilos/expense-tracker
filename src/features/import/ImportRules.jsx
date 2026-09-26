@@ -23,6 +23,10 @@ import { useImportRules, updateRule, deleteRule } from './importRules.js'
 import {
   PATTERN_MAX, RULE_FILTERS, cleanPattern, directionLabel, filterRules, patternProblem, ruleRows, ruleTargets,
 } from './importRulesMath.js'
+import Paginator from '../../shared/ui/Paginator.jsx'
+import { usePaged } from '../../shared/ui/usePaged.js'
+
+const PAGE_SIZE = 15
 
 // Settings › Import rules: the "description contains → category" rules the
 // import wizard learns when the user picks categories for new merchants.
@@ -41,6 +45,8 @@ export default function ImportRules() {
 
   const rows = useMemo(() => ruleRows(rules.rows, categories.rows), [rules.rows, categories.rows])
   const shown = useMemo(() => filterRules(rows, { query, filter }), [rows, query, filter])
+  // Long rule lists page like the other lists; a new search or filter starts at page 1.
+  const paged = usePaged(shown, PAGE_SIZE, `${query}|${filter}`)
   const error = rules.error ?? categories.error
   const reload = () => { rules.reload(); categories.reload() }
 
@@ -67,7 +73,7 @@ export default function ImportRules() {
           <Text color="text.muted" fontSize="sm">{t('rules.noMatch')}</Text>
         ) : (
           <Stack spacing={0} role="list" aria-label={t('rules.title')}>
-            {shown.map((r) => (
+            {paged.pageItems.map((r) => (
               <Box key={r.id} role="listitem">
                 <ItemRow media={<CategoryBadge category={r.category} kind={r.kind} size={32} />}
                   title={r.pattern}
@@ -85,6 +91,7 @@ export default function ImportRules() {
             ))}
           </Stack>
         )}
+        <Paginator page={paged.page} count={paged.count} onPage={paged.setPage} />
       </Stack>
     )
   }

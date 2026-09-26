@@ -108,7 +108,7 @@ test('TOUR_STEPS: well formed, and each viewport gets a sensible tour', () => {
     assert.equal(new Set(ids).size, ids.length, 'one step per id on each viewport')
     assert.equal(steps.at(-1).target, undefined, 'ends on a centred card')
     assert.ok(steps.slice(0, -1).every((s) => s.target), 'every other stop points at something')
-    assert.deepEqual(ids, ['overview', 'categories', 'subscriptions', 'add-expense', 'search',
+    assert.deepEqual(ids, ['period', 'overview', 'categories', 'subscriptions', 'add-expense', 'search',
       'groups', 'budgets', 'more', 'account', 'privacy', 'done'])
   }
 })

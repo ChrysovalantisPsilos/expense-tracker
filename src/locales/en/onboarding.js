@@ -39,9 +39,13 @@ export default {
   tourLabel: 'App tour',
   // The app tour's stops (tourSteps.js holds these keys).
   tour: {
+    period: {
+      title: 'Pick the period',
+      body: 'Home shows this month. Switch to another month, this year or all time here, and every card follows.',
+    },
     overview: {
       title: 'Your month at a glance',
-      body: 'What you spent, earned and kept this month. Pick another period from the menu above.',
+      body: 'What you spent, earned and kept in the period you picked.',
     },
     categories: {
       title: 'Where it goes',
