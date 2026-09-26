@@ -25,20 +25,18 @@ import MemberSelect from './MemberSelect.jsx'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
+import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const FIELDS = ['description', 'amount', 'paidBy']
-const checkFields = ({ description, amount, paidBy }) => fieldErrors({
-  description: requiredError(description, 'Add a description'),
+const checkFields = ({ description, amount, paidBy }, t) => fieldErrors({
+  description: requiredError(description, t('form.errors.description')),
   amount: amountError(amount),
-  paidBy: requiredError(paidBy, 'Who paid?'),
+  paidBy: requiredError(paidBy, t('form.errors.paidBy')),
 })
 
-const MODES = [
-  { key: 'equal', label: 'Equally' },
-  { key: 'exact', label: 'Amounts' },
-  { key: 'percent', label: 'Percent' },
-  { key: 'shares', label: 'Shares' },
-]
+// The split modes; each one's button reads groups:form.modes.<mode>.
+const MODES = ['equal', 'exact', 'percent', 'shares']
 
 // The body of a group expense's page (GroupExpensePage): a new expense, or
 // (`expense`) an existing one, with a Delete button when `onDelete` is given
@@ -62,6 +60,7 @@ export default function GroupExpenseForm({
   quick = false, lead = null, initial = null, onDraft, myUserId,
 }) {
   const toast = useToast()
+  const t = useT('groups')
   const isEdit = !!expense
   const cur = group.currency // shares and balances
 
@@ -85,7 +84,7 @@ export default function GroupExpenseForm({
   // Inline errors for the required fields, shown from the first submit on.
   const [tried, setTried] = useState(false)
   const refs = { description: useRef(null), amount: useRef(null), paidBy: useRef(null) }
-  const errors = tried ? checkFields({ description, amount, paidBy }) : {}
+  const errors = tried ? checkFields({ description, amount, paidBy }, t) : {}
   const [adjust, setAdjust] = useState(false)
   const adjustId = useId()
   const sideways = !!useShellHeader()
@@ -139,7 +138,7 @@ export default function GroupExpenseForm({
   }
 
   async function submit() {
-    const first = firstInvalid(checkFields({ description, amount, paidBy }), FIELDS)
+    const first = firstInvalid(checkFields({ description, amount, paidBy }, t), FIELDS)
     if (first) {
       setTried(true)
       refs[first].current?.focus()
@@ -148,25 +147,25 @@ export default function GroupExpenseForm({
     // Never split a foreign amount without a real rate (no silent 1:1).
     if (!rate) {
       return toast({
-        title: fx.status === 'loading' ? 'Still fetching the exchange rate…' : 'Enter the exchange rate',
+        title: t(fx.status === 'loading' ? 'form.toast.fxLoading' : 'form.toast.fxMissing'),
         status: 'warning',
       })
     }
-    if (includedIds.length === 0) return toast({ title: 'Split between at least one person', status: 'warning' })
+    if (includedIds.length === 0) return toast({ title: t('form.toast.nobody'), status: 'warning' })
 
     if (mode === 'exact' && computed.assigned !== totalMinor) {
       const diff = totalMinor - computed.assigned
       return toast({
-        title: 'Amounts must add up to the total',
-        description: `${diff > 0 ? 'Missing' : 'Over by'} ${formatMoney(Math.abs(diff), cur)}`,
+        title: t('form.toast.exactTitle'),
+        description: t(diff > 0 ? 'form.toast.missing' : 'form.toast.overBy', { amount: formatMoney(Math.abs(diff), cur) }),
         status: 'warning',
       })
     }
     if (mode === 'percent' && !computed.ok) {
-      return toast({ title: 'Percentages must add up to 100%', status: 'warning' })
+      return toast({ title: t('form.toast.percent'), status: 'warning' })
     }
     if (mode === 'shares' && !computed.ok) {
-      return toast({ title: 'Give at least one person a share', status: 'warning' })
+      return toast({ title: t('form.toast.shares'), status: 'warning' })
     }
 
     const shares = mode === 'equal' ? null : includedIds.map((id) => shareOf(id))
@@ -178,7 +177,7 @@ export default function GroupExpenseForm({
           exchangeRate: needsFx ? rate : null,
           paidBy, spentAt, memberIds: includedIds, shares, splitType: mode,
         })
-        toast({ title: 'Expense updated', status: 'success' })
+        toast({ title: t('form.toast.updated'), status: 'success' })
       } else {
         await addSharedExpense({
           groupId: group.id, description, amountMinor: paidMinor, currency: paidCurrency,
@@ -186,12 +185,12 @@ export default function GroupExpenseForm({
           paidBy, spentAt, memberIds: includedIds, shares, splitType: mode,
         })
         toast(quick ? {
-          title: `Added to ${group.name}`,
+          title: t('form.toast.addedTo', { name: group.name }),
           description: myShare > 0
-            ? `Your share, ${formatMoney(myShare, cur)}, is in your expenses.`
-            : 'It isn’t split with you, so nothing goes in your expenses.',
+            ? t('form.toast.yourShare', { amount: formatMoney(myShare, cur) })
+            : t('form.toast.notYours'),
           status: 'success',
-        } : { title: 'Expense added', status: 'success' })
+        } : { title: t('form.toast.added'), status: 'success' })
       }
       onSaved?.()
     })
@@ -201,19 +200,21 @@ export default function GroupExpenseForm({
   const pctSum = mode === 'percent' ? (computed.wsum ?? 0) : 0
 
   function summary() {
-    if (includedIds.length === 0) return 'Pick at least one person.'
-    if (needsFx && paidMinor && !rate) return 'The split needs the exchange rate.'
-    if (!totalMinor) return 'Enter an amount to see the split.'
-    if (mode === 'equal') return `${formatMoney(splitEqually(totalMinor, includedIds.length)[0], cur)} each`
+    if (includedIds.length === 0) return t('form.summary.pickOne')
+    if (needsFx && paidMinor && !rate) return t('form.summary.needsRate')
+    if (!totalMinor) return t('form.summary.enterAmount')
+    if (mode === 'equal') return t('form.summary.each', { amount: formatMoney(splitEqually(totalMinor, includedIds.length)[0], cur) })
     if (mode === 'exact') {
-      if (remaining === 0) return 'Adds up to the total ✓'
-      return `${formatMoney(Math.abs(remaining), cur)} ${remaining > 0 ? 'left to assign' : 'over the total'}`
+      if (remaining === 0) return t('form.summary.addsUp')
+      return t(remaining > 0 ? 'form.summary.left' : 'form.summary.over', { amount: formatMoney(Math.abs(remaining), cur) })
     }
     if (mode === 'percent') {
       const r = Math.round((pctSum) * 10) / 10
-      return r === 100 ? 'Adds up to 100% ✓' : `${r}% of 100% assigned`
+      // English keeps its plain "33.3"; Greek writes "33,3".
+      const pct = intlLocale() ? r.toLocaleString(intlLocale()) : String(r)
+      return r === 100 ? t('form.summary.pctOk') : t('form.summary.pctPartial', { pct })
     }
-    return computed.wsum > 0 ? 'Split by shares' : 'Give someone a share'
+    return t(computed.wsum > 0 ? 'form.summary.byShares' : 'form.summary.giveShare')
   }
   const summaryOk = includedIds.length > 0 && totalMinor > 0 &&
     (mode === 'equal' || computed.ok)
@@ -223,9 +224,9 @@ export default function GroupExpenseForm({
   const scanner = !isEdit && <ReceiptScanner onScan={handleScan} />
   const descriptionField = (
     <FormControl isRequired isInvalid={!!errors.description}>
-      <FormLabel>Description</FormLabel>
+      <FormLabel>{t('form.description')}</FormLabel>
       <Input ref={refs.description} value={description} onChange={(e) => setDescription(e.target.value)}
-        placeholder="Dinner, taxi, groceries…" />
+        placeholder={t('form.descriptionHint')} />
       <FormErrorMessage>{errors.description}</FormErrorMessage>
     </FormControl>
   )
@@ -233,13 +234,13 @@ export default function GroupExpenseForm({
     <>
       <HStack align="start">
         <FormControl isRequired isInvalid={!!errors.amount}>
-          <FormLabel>Amount</FormLabel>
+          <FormLabel>{t('form.amount')}</FormLabel>
           <MoneyInput ref={refs.amount} currency={paidCurrency} value={amount} onChange={setAmount} />
           <FormErrorMessage>{errors.amount}</FormErrorMessage>
         </FormControl>
         <FormControl maxW="110px">
-          <FormLabel>Currency</FormLabel>
-          <Select value={paidCurrency} aria-label="Currency paid in"
+          <FormLabel>{t('form.currency')}</FormLabel>
+          <Select value={paidCurrency} aria-label={t('form.currencyPaid')}
             onChange={(e) => { setPaidCurrency(e.target.value); setCurrencyPicked(true) }}>
             {(CURRENCIES.includes(cur) ? CURRENCIES : [cur, ...CURRENCIES]).map((c) => (
               <option key={c} value={c}>{c}</option>
@@ -256,13 +257,13 @@ export default function GroupExpenseForm({
   )
   const dateField = (
     <FormControl maxW={quick ? undefined : '200px'}>
-      <FormLabel>Date</FormLabel>
+      <FormLabel>{t('form.date')}</FormLabel>
       <Input type="date" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} />
     </FormControl>
   )
   const payerField = (
     <FormControl isRequired isInvalid={!!errors.paidBy}>
-      <FormLabel>Paid by</FormLabel>
+      <FormLabel>{t('form.paidBy')}</FormLabel>
       <MemberSelect ref={refs.paidBy} members={members} value={paidBy} onChange={setPaidBy}
         myMemberId={myMemberId} />
       <FormErrorMessage>{errors.paidBy}</FormErrorMessage>
@@ -271,13 +272,13 @@ export default function GroupExpenseForm({
   const splitEditor = (
     <>
       <ButtonGroup size="sm" isAttached variant="outline" mb={3} flexWrap="wrap"
-        aria-label={quick ? 'Split' : undefined}>
+        aria-label={quick ? t('form.split') : undefined}>
         {MODES.map((m) => (
-          <Button key={m.key}
-            onClick={() => pickMode(m.key)}
-            variant={mode === m.key ? 'solid' : 'outline'}
-            colorScheme={mode === m.key ? 'brand' : 'gray'}>
-            {m.label}
+          <Button key={m}
+            onClick={() => pickMode(m)}
+            variant={mode === m ? 'solid' : 'outline'}
+            colorScheme={mode === m ? 'brand' : 'gray'}>
+            {t(`form.modes.${m}`)}
           </Button>
         ))}
       </ButtonGroup>
@@ -298,7 +299,7 @@ export default function GroupExpenseForm({
                 <InputGroup size="sm" maxW="130px">
                   <MoneyInput textAlign="right" placeholder="0" borderEndRadius={0}
                     currency={mode === 'exact' ? cur : undefined}
-                    aria-label={`${m.display_name}’s ${mode === 'exact' ? 'amount' : mode === 'percent' ? 'percentage' : 'shares'}`}
+                    aria-label={t(`form.shareInput.${mode}`, { name: m.display_name })}
                     value={values[m.id]} onChange={(v) => setVal(m.id, v)} />
                   <InputRightAddon>{addon}</InputRightAddon>
                 </InputGroup>
@@ -320,10 +321,10 @@ export default function GroupExpenseForm({
     </>
   )
 
-  const submitLabel = isEdit ? 'Save changes' : quick ? `Add to ${group.name}` : 'Add expense'
+  const submitLabel = isEdit ? t('form.save') : quick ? t('form.addTo', { name: group.name }) : t('form.add')
   const deleteButton = onDelete && (
     <Button variant="outline" colorScheme="red" leftIcon={<Trash2 size={16} />} onClick={onDelete}>
-      Delete
+      {t('actions.delete')}
     </Button>
   )
 
@@ -337,7 +338,7 @@ export default function GroupExpenseForm({
           {dateField}
           {payerField}
           <FormControl>
-            <FormLabel mb={2}>Split</FormLabel>
+            <FormLabel mb={2}>{t('form.split')}</FormLabel>
             {splitEditor}
           </FormControl>
         </Stack>
@@ -352,14 +353,14 @@ export default function GroupExpenseForm({
         <AvatarStack members={members.filter((m) => splitWith.includes(m.id))} myUserId={myUserId}
           ring="bg.surface" />
         <Box flex="1" minW={0}>
-          <Text fontSize="sm" fontWeight="600">{mode === 'equal' ? 'Split equally' : 'Custom split'}</Text>
+          <Text fontSize="sm" fontWeight="600">{t(mode === 'equal' ? 'form.splitEqually' : 'form.customSplit')}</Text>
           <Text fontSize="xs" color="text.muted">
             {splitCountLabel(includedIds.length, members.length)} · {summary()}
           </Text>
         </Box>
         <FormControl display="flex" alignItems="center" w="auto" flexShrink={0} minH="44px">
           <FormLabel htmlFor={adjustId} mb={0} mr={2} fontSize="sm" fontWeight="400" color="text.muted" cursor="pointer">
-            Adjust
+            {t('form.adjust')}
           </FormLabel>
           <Switch id={adjustId} isChecked={adjust} onChange={(e) => setAdjust(e.target.checked)} />
         </FormControl>

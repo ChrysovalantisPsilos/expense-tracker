@@ -2,7 +2,7 @@ import { toBaseMinor, minorFactor, baseEquivalent } from '../../shared/lib/curre
 import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { categoryBars } from '../dashboard/categoryBars.js'
-import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 
 // Income/expense trend in MAJOR base-currency units, one entry per month bucket
 // (keyed by YYYY-MM). `months` come from lastMonths(); rows outside those months
@@ -31,7 +31,7 @@ export function buildTrend(rows, months, baseCurrency, savingsIds = new Set()) {
 // Whether a trend has anything to draw: some income or spending in any of
 // its months. An all-zero trend shows a note instead of an empty chart.
 export function hasTrendData(trend) {
-  return (trend ?? []).some((t) => t.income > 0 || t.expense > 0)
+  return (trend ?? []).some((m) => m.income > 0 || m.expense > 0)
 }
 
 // Percent change in spend from the previous month to the latest one, or null
@@ -91,7 +91,7 @@ export function foreignSpending(rows, monthKey, baseCurrency) {
     const conv = baseEquivalent(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
     if (!conv) continue
     items.push({
-      id: r.id, label: r.description || r.categories?.name || 'Expense',
+      id: r.id, label: r.description || r.categories?.name || t('insights:expense'),
       currency: r.currency, minor: r.amount_minor, rate: conv.rate, baseMinor: conv.baseMinor,
     })
   }

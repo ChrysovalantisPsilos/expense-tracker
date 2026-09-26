@@ -6,6 +6,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { useGroup } from './groups.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // The shell of a group's own pages (settle up, add or edit an expense,
 // comments, members, edit group): loads the group live (useGroup), heads the
@@ -17,6 +18,7 @@ import { useGroup } from './groups.js'
 export default function GroupFormPage({ title, description, children }) {
   const { id } = useParams()
   const { user } = useAuth()
+  const t = useT('groups')
   const { data, loading, error, reload } = useGroup(id)
   const groupPath = `/groups/${id}`
 
@@ -29,13 +31,13 @@ export default function GroupFormPage({ title, description, children }) {
   } : null
 
   let body
-  if (error) body = <Panel><QueryError error={error} onRetry={reload} what="this group" py={8} /></Panel>
+  if (error) body = <Panel><QueryError error={error} onRetry={reload} what={t('whatGroup')} py={8} /></Panel>
   else if (loading) body = <RingLoader />
-  else if (!ctx) body = <Panel><Text color="text.muted">Group not found.</Text></Panel>
+  else if (!ctx) body = <Panel><Text color="text.muted">{t('notFound')}</Text></Panel>
   else body = children(ctx)
 
   return (
-    <FormPage eyebrow={ctx?.group.name ?? 'Groups'} title={title} fallback={groupPath}
+    <FormPage eyebrow={ctx?.group.name ?? t('title')} title={title} fallback={groupPath}
       description={typeof description === 'function' ? ctx && description(ctx) : description}>
       {body}
     </FormPage>

@@ -36,11 +36,13 @@ import {
 import ReportsCard from './ReportsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // How many foreign-currency rows "Spending abroad" lists (the total covers all).
 const ABROAD_ROWS = 5
 
 export default function Insights() {
+  const t = useT('insights')
   const { baseCurrency = 'EUR', separateYearly, salaryShift } = useProfile()
   const months = useMemo(() => lastMonths(6), [])
   const from = months[0].from
@@ -56,7 +58,7 @@ export default function Insights() {
   const spend = useMemo(
     () => spendRows(rows, baseCurrency, from, to, { separateYearly, salaryShift }),
     [rows, baseCurrency, from, to, separateYearly, salaryShift])
-  const failed = error ? <QueryError error={error} onRetry={reload} what="your transactions" /> : null
+  const failed = error ? <QueryError error={error} onRetry={reload} what={t('what')} /> : null
   const thisMonth = months[months.length - 1].key
 
   // Trend values are major units (chart axis); `money` converts back to minor.
@@ -68,8 +70,8 @@ export default function Insights() {
   // to its group); the folded "Other" merges several buckets, so it has no link.
   const shares = useMemo(() => linkBuckets(
     spendingShares(spend, thisMonth, baseCurrency), spend,
-    { ...months[months.length - 1], label: 'This month' }, (s) => s.label,
-  ), [spend, months, thisMonth, baseCurrency])
+    { ...months[months.length - 1], label: t('thisMonth') }, (s) => s.label,
+  ), [spend, months, thisMonth, baseCurrency, t])
   // Spending abroad lists actual payments (each at its own rate), not shares.
   const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
   // Nothing ever logged (null; undefined while unknown): the statement export
@@ -79,7 +81,7 @@ export default function Insights() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader title="Insights" />
+      <PageHeader title={t('title')} />
       <SpendingCard loading={loading} failed={failed} shares={shares} trend={trend} money={money} />
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}
       <IncomeCard loading={loading} failed={failed} trend={trend} money={money} />
@@ -154,13 +156,14 @@ function NetWorthSkeleton() {
 // ── Where your money went ───────────────────────────────────────────────────
 // This month's spending split by category, then six months of spending.
 function SpendingCard({ loading, failed, shares, trend, money }) {
+  const t = useT('insights')
   const latest = trend[trend.length - 1]
   return (
-    <Panel title="Where your money went" subtitle="This month">
+    <Panel title={t('spending.title')} subtitle={t('thisMonth')}>
       {failed ? failed : loading ? <SpendingSkeleton /> : (
         <Stack spacing={5}>
           {shares.length === 0 ? (
-            <Text color="text.muted" fontSize="sm">No spending yet this month.</Text>
+            <Text color="text.muted" fontSize="sm">{t('spending.empty')}</Text>
           ) : (
             <Box>
               <StackedBar items={shares} />
@@ -170,9 +173,9 @@ function SpendingCard({ loading, failed, shares, trend, money }) {
           {hasTrendData(trend) && (
             <Box>
               <SectionLabel mb={3} aside={`${latest.label}: ${money(latest.expense)}`}>
-                Last 6 months
+                {t('lastMonths')}
               </SectionLabel>
-              <TrendBars bars={trend.map((t) => ({ label: t.label, value: t.expense }))} />
+              <TrendBars bars={trend.map((m) => ({ label: m.label, value: m.expense }))} />
             </Box>
           )}
         </Stack>
@@ -185,9 +188,10 @@ function SpendingCard({ loading, failed, shares, trend, money }) {
 // This month's foreign-currency expenses at the rate captured when each was
 // added, and what they came to in the base currency.
 function AbroadCard({ abroad, baseCurrency }) {
+  const t = useT('insights')
   const more = abroad.items.length - ABROAD_ROWS
   return (
-    <Panel title="Spending abroad" subtitle={`This month, in ${baseCurrency}`}>
+    <Panel title={t('abroad.title')} subtitle={t('abroad.subtitle', { currency: baseCurrency })}>
       <Stack spacing={3}>
         {abroad.items.slice(0, ABROAD_ROWS).map((i) => (
           <ConversionRow key={i.id} label={i.label} rate={i.rate}
@@ -195,11 +199,11 @@ function AbroadCard({ abroad, baseCurrency }) {
         ))}
         {more > 0 && (
           <Text fontSize="xs" color="text.muted">
-            and {more} more, included in the total
+            {t('abroad.more', { count: more })}
           </Text>
         )}
         <Divider borderColor="border.default" />
-        <Figure layout="inline" label="Total" value={formatMoney(abroad.totalBaseMinor, baseCurrency)} />
+        <Figure layout="inline" label={t('total')} value={formatMoney(abroad.totalBaseMinor, baseCurrency)} />
       </Stack>
     </Panel>
   )
@@ -207,29 +211,30 @@ function AbroadCard({ abroad, baseCurrency }) {
 
 // ── Income vs expenses ──────────────────────────────────────────────────────
 function IncomeCard({ loading, failed, trend, money }) {
+  const t = useT('insights')
   const chart = useChartTheme()
   const delta = spendDelta(trend)
   const latest = trend[trend.length - 1]
   const net = signedAmount(latest.net, money) // income − expenses − savings taken from income
   return (
-    <Panel title="Income vs expenses" action={delta != null && <SpendDelta delta={delta} />}>
+    <Panel title={t('income.title')} action={delta != null && <SpendDelta delta={delta} />}>
       {failed ? failed : loading ? <IncomeSkeleton /> : (
         <Stack spacing={5}>
           <Box>
-            <SectionLabel mb={3}>This month</SectionLabel>
+            <SectionLabel mb={3}>{t('thisMonth')}</SectionLabel>
             <BalanceGrid>
-              <BalanceTile label="Income" value={money(latest.income)} tone="positive" />
-              <BalanceTile label="Spent" value={money(latest.expense)} />
+              <BalanceTile label={t('income.income')} value={money(latest.income)} tone="positive" />
+              <BalanceTile label={t('income.spent')} value={money(latest.expense)} />
             </BalanceGrid>
-            <Figure layout="inline" label="Left over" value={net.text} tone={net.tone} mt={3} />
+            <Figure layout="inline" label={t('income.leftOver')} value={net.text} tone={net.tone} mt={3} />
           </Box>
           {!hasTrendData(trend) ? (
             <Text color="text.muted" fontSize="sm">
-              Nothing to compare yet. Your income and spending of the last six months show here.
+              {t('income.empty')}
             </Text>
           ) : (
           <Box>
-            <SectionLabel mb={3}>Last 6 months</SectionLabel>
+            <SectionLabel mb={3}>{t('lastMonths')}</SectionLabel>
             <Box h="220px">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={trend} barGap={2}>
@@ -239,8 +244,8 @@ function IncomeCard({ loading, failed, trend, money }) {
                     tickFormatter={axisTick} width={44} />
                   <Tooltip formatter={money} {...chart.tooltip} />
                   <Legend formatter={chart.legendFormatter} />
-                  <Bar dataKey="income" name="Income" fill={chart.positive} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expense" name="Expenses" fill={chart.series[0]} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="income" name={t('income.income')} fill={chart.positive} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="expense" name={t('income.expenses')} fill={chart.series[0]} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </Box>
@@ -255,6 +260,7 @@ function IncomeCard({ loading, failed, trend, money }) {
 // Spending change vs last month. Up is the bad direction for spending, so it
 // takes the negative tone; the comparison words drop on phones.
 function SpendDelta({ delta }) {
+  const t = useT('insights')
   const up = delta > 0
   const Arrow = up ? ArrowUpRight : ArrowDownRight
   return (
@@ -262,7 +268,7 @@ function SpendDelta({ delta }) {
       <Arrow size={16} />
       <Text>{Math.abs(delta)}%</Text>
       <Text as="span" fontWeight="500" color="text.muted" display={{ base: 'none', sm: 'inline' }}>
-        vs last month
+        {t('income.vsLastMonth')}
       </Text>
     </HStack>
   )
@@ -279,6 +285,7 @@ function NetWorthCard({ baseCurrency }) {
   const { pot: savings, loading: savingsLoading } = useSavingsMoves()
   const toast = useToast()
   const navigate = useNavigate()
+  const t = useT('insights')
 
   const { assets, liabilities, net } = useMemo(() => netWorth(accounts, savings), [accounts, savings])
   const loading = accountsLoading || savingsLoading
@@ -287,36 +294,36 @@ function NetWorthCard({ baseCurrency }) {
     try { await deleteAccount(acc.id); reload() }
     catch (e) {
       console.error('[insights] account delete failed:', e)
-      toast({ title: userMessage(e, 'Couldn’t remove it from your net worth. Please try again.'), status: 'error' })
+      toast({ title: userMessage(e, t('netWorth.removeFailed')), status: 'error' })
     }
   }
 
   return (
-    <Panel title="Net worth" action={
+    <Panel title={t('netWorth.title')} action={
       <Button size="xs" leftIcon={<Plus size={14} />}
-        onClick={() => navigate('/insights/accounts/new')}>Account</Button>
+        onClick={() => navigate('/insights/accounts/new')}>{t('netWorth.add')}</Button>
     }>
-      {error ? <QueryError error={error} onRetry={reload} what="your accounts" /> : loading ? <NetWorthSkeleton /> : (
+      {error ? <QueryError error={error} onRetry={reload} what={t('netWorth.what')} /> : loading ? <NetWorthSkeleton /> : (
         <Stack spacing={4}>
           <BalanceGrid>
-            <BalanceTile label="Assets" value={formatMoney(assets, baseCurrency)} tone="positive" />
-            <BalanceTile label="Debts" value={formatMoney(liabilities, baseCurrency)}
+            <BalanceTile label={t('netWorth.assets')} value={formatMoney(assets, baseCurrency)} tone="positive" />
+            <BalanceTile label={t('netWorth.debts')} value={formatMoney(liabilities, baseCurrency)}
               tone={liabilities > 0 ? 'negative' : 'muted'} />
           </BalanceGrid>
 
           {accounts.length === 0 && savings === 0 ? (
             <Text color="text.muted" fontSize="sm">
-              Add your account balances (bank, savings, card, loan) to track net worth.
+              {t('netWorth.empty')}
             </Text>
           ) : (
             <Box>
-              <SectionLabel mb={1}>Accounts</SectionLabel>
+              <SectionLabel mb={1}>{t('netWorth.accounts')}</SectionLabel>
               {savings !== 0 && (
-                <ItemRow icon={PiggyBank} title="Savings" onClick={() => navigate('/savings')}
+                <ItemRow icon={PiggyBank} title={t('netWorth.savings')} onClick={() => navigate('/savings')}
                   meta={
                     <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">
-                      {savings < 0 && 'More paid from savings than saved · '}
-                      <Text as="span" color="accent.fg" fontWeight="600" whiteSpace="nowrap">See savings ›</Text>
+                      {savings < 0 && t('netWorth.overdrawn')}
+                      <Text as="span" color="accent.fg" fontWeight="600" whiteSpace="nowrap">{t('netWorth.seeSavings')}</Text>
                     </Text>
                   }
                   amount={`${savings < 0 ? '−' : ''}${formatMoney(Math.abs(savings), baseCurrency)}`}
@@ -328,12 +335,12 @@ function NetWorthCard({ baseCurrency }) {
                 const debt = acc.type === 'liability'
                 return (
                   <ItemRow key={acc.id} icon={debt ? CreditCard : Landmark} title={acc.name}
-                    meta={debt ? 'Debt' : 'Asset'}
+                    meta={t(debt ? 'netWorth.debt' : 'netWorth.asset')}
                     amount={`${debt ? '−' : ''}${formatMoney(acc.balance_minor, acc.currency)}`}
                     amountTone={debt ? 'negative' : 'default'}
                     actions={[
-                      { label: 'Edit', icon: Pencil, onClick: () => navigate(`/insights/accounts/${acc.id}`, { state: { account: acc } }) },
-                      { label: 'Delete', icon: Trash2, onClick: () => remove(acc), danger: true },
+                      { label: t('actions.edit'), icon: Pencil, onClick: () => navigate(`/insights/accounts/${acc.id}`, { state: { account: acc } }) },
+                      { label: t('actions.delete'), icon: Trash2, onClick: () => remove(acc), danger: true },
                     ]} />
                 )
               })}
@@ -341,7 +348,7 @@ function NetWorthCard({ baseCurrency }) {
           )}
 
           <Divider borderColor="border.default" />
-          <Figure layout="inline" label="Net worth" value={formatMoney(net, baseCurrency)}
+          <Figure layout="inline" label={t('netWorth.title')} value={formatMoney(net, baseCurrency)}
             tone={net < 0 ? 'negative' : 'default'} />
         </Stack>
       )}

@@ -8,6 +8,7 @@ import { monthRange } from '../../shared/lib/dates.js'
 import { downloadStatement } from './reports.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { BusyNote, RingSpinner } from '../../shared/ui/RingLoader.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Financial-statement export (PDF/Excel) for a date range, on the Insights page.
 // `noEntries`: nothing has been logged yet, so the buttons are off with a hint.
@@ -17,6 +18,7 @@ export default function ReportsCard({ noEntries = false }) {
   const [to, setTo] = useState(mTo)
   const [busy, setBusy] = useState(null) // 'xlsx' | 'pdf' | null
   const toast = useToast()
+  const t = useT('insights')
 
   async function generate(format) {
     setBusy(format)
@@ -24,45 +26,42 @@ export default function ReportsCard({ noEntries = false }) {
       await downloadStatement({ from, to, format })
     } catch (e) {
       console.error('[insights] report failed:', e)
-      toast({ title: 'Could not generate report', description: userMessage(e), status: 'error' })
+      toast({ title: t('reports.failed'), description: userMessage(e), status: 'error' })
     } finally {
       setBusy(null)
     }
   }
 
   return (
-    <Panel title="Export statement">
-      <Text color="text.muted" fontSize="sm" mb={4} mt={-1}>
-        A full financial statement — summary, transactions, income vs. expenses
-        and category breakdown — for a date range.
-      </Text>
+    <Panel title={t('reports.title')}>
+      <Text color="text.muted" fontSize="sm" mb={4} mt={-1}>{t('reports.lead')}</Text>
       <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3} mb={4}>
         <FormControl>
-          <FormLabel fontSize="sm">From</FormLabel>
+          <FormLabel fontSize="sm">{t('reports.from')}</FormLabel>
           <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         </FormControl>
         <FormControl>
-          <FormLabel fontSize="sm">To</FormLabel>
+          <FormLabel fontSize="sm">{t('reports.to')}</FormLabel>
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         </FormControl>
       </SimpleGrid>
       <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3}>
         <Button leftIcon={<FileText size={18} />} onClick={() => generate('pdf')}
-          isLoading={busy === 'pdf'} isDisabled={busy !== null || noEntries} loadingText="Building…" spinner={<RingSpinner />}>
-          Export PDF
+          isLoading={busy === 'pdf'} isDisabled={busy !== null || noEntries} loadingText={t('reports.building')} spinner={<RingSpinner />}>
+          {t('reports.pdf')}
         </Button>
         <Button leftIcon={<FileSpreadsheet size={18} />} onClick={() => generate('xlsx')}
-          isLoading={busy === 'xlsx'} isDisabled={busy !== null || noEntries} loadingText="Building…" spinner={<RingSpinner />}
+          isLoading={busy === 'xlsx'} isDisabled={busy !== null || noEntries} loadingText={t('reports.building')} spinner={<RingSpinner />}
           variant="outline">
-          Export Excel
+          {t('reports.excel')}
         </Button>
       </SimpleGrid>
       {noEntries && (
         <Text fontSize="sm" color="text.muted" mt={3}>
-          Nothing to export yet — add an expense or income first.
+          {t('reports.noEntries')}
         </Text>
       )}
-      {busy && <BusyNote mt={4}>Preparing your {busy === 'pdf' ? 'PDF' : 'Excel'} statement…</BusyNote>}
+      {busy && <BusyNote mt={4}>{t(busy === 'pdf' ? 'reports.preparingPdf' : 'reports.preparingExcel')}</BusyNote>}
     </Panel>
   )
 }

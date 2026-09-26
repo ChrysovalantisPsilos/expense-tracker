@@ -9,6 +9,7 @@ import { formatMoney } from '../../shared/lib/currency.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { saveGoal, deleteGoal } from './savings.js'
 import { goalProgress, goalRingArcs, goalSavedAfter, goalStatus } from './savingsMath.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const RING = { size: 48, stroke: 6 }
 // The ring's text column starts after the ring and the row's gap.
@@ -46,12 +47,13 @@ function GoalRing({ pct }) {
 export default function GoalsCard({ goals, loading, error, reload }) {
   const toast = useToast()
   const navigate = useNavigate()
+  const t = useT('savings')
 
   async function remove(g) {
     try { await deleteGoal(g.id); reload() }
     catch (e) {
       console.error('[savings] goal delete failed:', e)
-      toast({ title: userMessage(e, 'Couldn’t delete the goal. Please try again.'), status: 'error' })
+      toast({ title: userMessage(e, t('goals.deleteFailed')), status: 'error' })
     }
   }
   async function addTo(g, deltaMinor) {
@@ -61,16 +63,16 @@ export default function GoalsCard({ goals, loading, error, reload }) {
       reload()
     } catch (e) {
       console.error('[savings] goal update failed:', e)
-      toast({ title: userMessage(e, 'Couldn’t update the goal. Please try again.'), status: 'error' })
+      toast({ title: userMessage(e, t('goals.updateFailed')), status: 'error' })
     }
   }
 
   return (
-    <Panel icon={Target} title="Goals" action={
+    <Panel icon={Target} title={t('goals.title')} action={
       <Button size="xs" leftIcon={<Plus size={14} />}
-        onClick={() => navigate('/savings/goals/new')}>Goal</Button>
+        onClick={() => navigate('/savings/goals/new')}>{t('goals.add')}</Button>
     }>
-      {error ? <QueryError error={error} onRetry={reload} what="your goals" /> : loading ? (
+      {error ? <QueryError error={error} onRetry={reload} what={t('goals.what')} /> : loading ? (
         <SkeletonRegion>
           <Stack spacing={4}>
             {[0, 1].map((i) => (
@@ -82,7 +84,7 @@ export default function GoalsCard({ goals, loading, error, reload }) {
           </Stack>
         </SkeletonRegion>
       ) : goals.length === 0 ? (
-        <Text color="text.muted" fontSize="sm">No goals yet — set one to start saving toward it.</Text>
+        <Text color="text.muted" fontSize="sm">{t('goals.empty')}</Text>
       ) : (
         <Stack spacing={4}>
           {goals.map((g) => {
@@ -95,7 +97,7 @@ export default function GoalsCard({ goals, loading, error, reload }) {
                   <Box flex="1" minW={0}>
                     <Text fontSize="sm" fontWeight="600" noOfLines={1}>{g.name}</Text>
                     <Text fontSize="xs" color="text.muted" noOfLines={1}>
-                      {formatMoney(g.saved_minor, g.currency)} of {formatMoney(g.target_minor, g.currency)}
+                      {t('goals.of', { saved: formatMoney(g.saved_minor, g.currency), target: formatMoney(g.target_minor, g.currency) })}
                     </Text>
                     <Text fontSize="xs" noOfLines={2} color={pace.strong ? 'text.primary' : 'text.muted'}
                       fontWeight={pace.strong ? 600 : 400}>
@@ -103,8 +105,8 @@ export default function GoalsCard({ goals, loading, error, reload }) {
                     </Text>
                   </Box>
                   <RowActions actions={[
-                    { label: 'Edit', icon: Pencil, onClick: () => navigate(`/savings/goals/${g.id}`, { state: { goal: g } }) },
-                    { label: 'Delete', icon: Trash2, onClick: () => remove(g), danger: true },
+                    { label: t('actions.edit'), icon: Pencil, onClick: () => navigate(`/savings/goals/${g.id}`, { state: { goal: g } }) },
+                    { label: t('actions.delete'), icon: Trash2, onClick: () => remove(g), danger: true },
                   ]} />
                 </HStack>
                 {!done && (

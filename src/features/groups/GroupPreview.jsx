@@ -13,12 +13,14 @@ import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { pluralise } from './groupFormat.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const PENDING_INVITE = STORAGE_KEYS.pendingInvite
 
 export default function GroupPreview() {
   const { token } = useParams()
   const navigate = useNavigate()
+  const t = useT('groups')
   const [data, setData] = useState(undefined) // undefined=loading, null=invalid
 
   useEffect(() => {
@@ -41,9 +43,9 @@ export default function GroupPreview() {
         <PublicHeader />
         <Stack as="main" id={MAIN_ID} flex="1" spacing={4} textAlign="center" maxW="sm" w="full" mx="auto"
           px={4} pt={{ base: 16, md: 24 }}>
-          <Heading as="h1" size="lg">Invite not found</Heading>
-          <Text color="text.muted">This invite link is invalid or has expired.</Text>
-          <Button as={RouterLink} to="/">Go to Budgeer</Button>
+          <Heading as="h1" size="lg">{t('preview.notFound')}</Heading>
+          <Text color="text.muted">{t('preview.invalid')}</Text>
+          <Button as={RouterLink} to="/">{t('preview.home')}</Button>
         </Stack>
       </Flex>
     )
@@ -72,7 +74,7 @@ export default function GroupPreview() {
                 borderRadius="2xl" bg="bg.subtle" color="accent.fg"><Users size={28} /></Flex>
             )}
             <Heading as="h1" size="lg">{data.group?.name}</Heading>
-            <Text color="text.muted">{data.invited_by} invited you to this group</Text>
+            <Text color="text.muted">{t('preview.invitedYou', { name: data.invited_by })}</Text>
             <HStack justify="center" spacing={2} mt={3} color="text.muted" fontSize="sm">
               <HStack spacing={-2} aria-hidden>
                 <UserAvatar size="sm" name={data.invited_by} borderWidth="2px" borderColor="bg.canvas" />
@@ -88,24 +90,24 @@ export default function GroupPreview() {
             </HStack>
             {data.expires_at && (
               <Text fontSize="xs" color="text.muted" mt={1}>
-                Invite expires {shortDateTime(data.expires_at)}
+                {t('preview.expires', { date: shortDateTime(data.expires_at) })}
               </Text>
             )}
           </Box>
 
           <Text textAlign="center" fontSize="md">
-            Budgeer splits shared costs and shows who owes whom — free.
+            {t('preview.pitch')}
           </Text>
 
           {/* The way in, right under the invite (not pinned to the bottom). */}
           <Stack spacing={3} bg="bg.surface" borderWidth="1px" borderColor="border.default"
             borderRadius="2xl" p={5} boxShadow="soft">
             <Stack direction={{ base: 'column', sm: 'row' }} spacing={3}>
-              <Button flex={{ sm: 1 }} onClick={goSignup}>Sign up</Button>
-              <Button flex={{ sm: 1 }} variant="outline" colorScheme="gray" onClick={goLogin}>Log in</Button>
+              <Button flex={{ sm: 1 }} onClick={goSignup}>{t('common:actions.signUp')}</Button>
+              <Button flex={{ sm: 1 }} variant="outline" colorScheme="gray" onClick={goLogin}>{t('common:actions.logIn')}</Button>
             </Stack>
             <HStack justify="center" color="text.muted" fontSize="xs">
-              <Lock size={12} /><Text>Sign up free to join and add expenses</Text>
+              <Lock size={12} /><Text>{t('preview.signUpHint')}</Text>
             </HStack>
           </Stack>
         </Stack>

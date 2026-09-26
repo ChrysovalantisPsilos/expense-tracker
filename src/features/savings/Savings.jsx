@@ -32,6 +32,7 @@ import {
 } from './savingsMath.js'
 import GoalsCard from './GoalsCard.jsx'
 import SavingsHistory from './SavingsHistory.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const money = (minor, currency) => formatMoney(minor, currency)
 
@@ -42,6 +43,7 @@ const money = (minor, currency) => formatMoney(minor, currency)
 // work instead. Live: every read here refetches on changes (useOwnedQuery).
 export default function Savings() {
   const navigate = useNavigate()
+  const t = useT('savings')
   const sideways = useShortLandscape()
   const { moves, pot, savingsIds, baseCurrency, loading, error, reload } = useSavingsMoves()
   const goals = useGoals()
@@ -61,7 +63,7 @@ export default function Savings() {
     () => rules.filter((r) => r.is_active && isSavingsRow(r, savingsIds)), [rules, savingsIds])
 
   let body
-  if (error) body = <Panel><QueryError error={error} onRetry={reload} what="your savings" /></Panel>
+  if (error) body = <Panel><QueryError error={error} onRetry={reload} what={t('what')} /></Panel>
   else if (loading) body = <SavingsSkeleton />
   else if (moves.length === 0) body = <FirstSavings add={add} goals={goals} />
   else {
@@ -88,14 +90,15 @@ export default function Savings() {
 
   return (
     <Stack spacing={sideways ? 3 : 5}>
-      <PageHeader title="Savings" />
+      <PageHeader title={t('title')} />
       {body}
     </Stack>
   )
 }
 
 function AddButton({ add, ...props }) {
-  return <Button leftIcon={<Plus size={16} />} onClick={add} {...props}>Add to savings</Button>
+  const t = useT('savings')
+  return <Button leftIcon={<Plus size={16} />} onClick={add} {...props}>{t('add')}</Button>
 }
 
 // ── The pot ─────────────────────────────────────────────────────────────────
@@ -103,10 +106,11 @@ function AddButton({ add, ...props }) {
 // `strip` (a phone held sideways): the figures and the button beside the
 // chart rather than over it.
 function PotCard({ pot, month, series, currency, add, strip }) {
-  const since = series.length ? `since ${series[0].label} · ${series.length} months` : null
+  const t = useT('savings')
+  const since = series.length ? t('pot.since', { month: series[0].label, count: series.length }) : null
   const figures = (
     <Box minW={0}>
-      <Figure label="Your savings pot" size="hero"
+      <Figure label={t('pot.label')} size="hero"
         value={`${pot < 0 ? '−' : ''}${money(Math.abs(pot), currency)}`} tone={pot < 0 ? 'negative' : 'default'} />
       <HStack justify="space-between" mt={2} spacing={2} flexWrap="wrap" rowGap={1}>
         <MonthChip flow={month} currency={currency} small={strip} />
@@ -140,6 +144,7 @@ function PotCard({ pot, month, series, currency, add, strip }) {
 // muted, neutral chip (what was spent from it, or no change). Never red.
 // `small` (the sideways strip) steps the text down so it stays on one line.
 function MonthChip({ flow, currency, small }) {
+  const t = useT('savings')
   const fontSize = small ? 'xs' : 'sm'
   const chip = changeChip(flow)
   if (chip.kind === 'up') {
@@ -147,7 +152,7 @@ function MonthChip({ flow, currency, small }) {
       <HStack spacing={1} px={2} py={0.5} borderRadius="full" bg="green.50" _dark={{ bg: 'whiteAlpha.100' }}
         color="status.positive" fontSize={fontSize} fontWeight="700">
         <ArrowUpRight size={15} aria-hidden />
-        <Text>+{wholeMoney(chip.minor, currency)} this month</Text>
+        <Text>{t('chip.up', { amount: wholeMoney(chip.minor, currency) })}</Text>
       </HStack>
     )
   }
@@ -156,7 +161,7 @@ function MonthChip({ flow, currency, small }) {
       fontSize={fontSize} fontWeight="600" minW={0}>
       <ShoppingBag size={14} aria-hidden />
       <Text>
-        {chip.kind === 'spent' ? `${wholeMoney(chip.minor, currency)} spent from savings this month` : 'No change this month'}
+        {chip.kind === 'spent' ? t('chip.spent', { amount: wholeMoney(chip.minor, currency) }) : t('chip.none')}
       </Text>
     </HStack>
   )
@@ -164,13 +169,14 @@ function MonthChip({ flow, currency, small }) {
 
 // The pot's month-end totals as a soft coral area (the brand's chart colour).
 function PotArea({ series, currency, h }) {
+  const t = useT('savings')
   const chart = useChartTheme()
   const [coral] = useToken('colors', ['brand.500'])
   const factor = minorFactor(currency)
   const data = series.map((s) => ({ label: s.label, pot: s.pot / factor }))
   return (
     <Box h={h} mx={-1} minW={0} role="img"
-      aria-label={`Your savings pot at the end of each month, ${series.map((s) => `${s.label}: ${money(s.pot, currency)}`).join(', ')}`}>
+      aria-label={t('pot.chart', { points: series.map((s) => `${s.label}: ${money(s.pot, currency)}`).join(', ') })}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
           <defs>
@@ -183,7 +189,7 @@ function PotArea({ series, currency, h }) {
             interval="preserveStartEnd" padding={{ left: 14, right: 14 }} />
           <YAxis hide domain={[(min) => Math.min(0, min), 'dataMax']} />
           <Tooltip formatter={(v) => money(Math.round(v * factor), currency)} {...chart.tooltip} />
-          <Area type="monotone" dataKey="pot" name="Pot" stroke={coral} strokeWidth={2.5} fill="url(#potFill)"
+          <Area type="monotone" dataKey="pot" name={t('pot.series')} stroke={coral} strokeWidth={2.5} fill="url(#potFill)"
             dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
         </AreaChart>
       </ResponsiveContainer>
@@ -196,27 +202,28 @@ function PotArea({ series, currency, h }) {
 // savings that repeat (active rules in a savings category).
 function MonthCard({ month, rules, currency }) {
   const navigate = useNavigate()
+  const t = useT('savings')
   const signed = (m) => signedAmount(m, (x) => money(x, currency))
   const net = signed(month.net)
   const monthName = nameOfMonth()
   return (
-    <Panel title="This month" subtitle={monthName}>
+    <Panel title={t('month.title')} subtitle={monthName}>
       <BalanceGrid columns={3}>
-        <BalanceTile label="From income" value={signed(month.fromIncome).text} tone={month.fromIncome ? 'positive' : 'muted'} />
-        <BalanceTile label="Received" value={signed(month.received).text} tone={month.received ? 'positive' : 'muted'} />
-        <BalanceTile label="From savings" value={signed(-month.fromSavings).text}
+        <BalanceTile label={t('month.fromIncome')} value={signed(month.fromIncome).text} tone={month.fromIncome ? 'positive' : 'muted'} />
+        <BalanceTile label={t('month.received')} value={signed(month.received).text} tone={month.received ? 'positive' : 'muted'} />
+        <BalanceTile label={t('month.fromSavings')} value={signed(-month.fromSavings).text}
           tone={month.fromSavings ? 'default' : 'muted'} />
       </BalanceGrid>
       {/* No red on a savings page: money taken out is shown plainly, only growth in green. */}
-      <Figure layout="inline" label="Net change" value={net.text} tone={month.net > 0 ? 'positive' : 'default'} mt={3} />
+      <Figure layout="inline" label={t('month.net')} value={net.text} tone={month.net > 0 ? 'positive' : 'default'} mt={3} />
       {rules.length > 0 && (
         <>
           <Divider borderColor="border.default" my={3} />
-          <SectionLabel mb={1}>Repeating</SectionLabel>
+          <SectionLabel mb={1}>{t('month.repeating')}</SectionLabel>
           {rules.map((r) => (
             <ItemRow key={r.id} icon={Repeat} chevron onClick={() => navigate(`/recurring/${r.id}`)}
               title={`${money(r.amount_minor, r.currency)} ${frequencyLabel(r)}`}
-              meta={`${r.description || r.categories?.name || 'Savings'} · next on ${shortDate(r.next_run)}`} />
+              meta={t('month.next', { name: r.description || r.categories?.name || t('fallbackName'), date: shortDate(r.next_run) })} />
           ))}
         </>
       )}
@@ -240,34 +247,37 @@ function SavingsSkeleton() {
 }
 
 // ── Nothing saved yet ───────────────────────────────────────────────────────
+// Each kind's words are how.<id>.title / .meta.
 const HOW = [
-  { icon: Wallet, title: 'Saved from your income', meta: 'Money you set aside from what you earn. It lowers what’s left over that month.' },
-  { icon: Gift, title: 'Received into savings', meta: 'Interest, a gift or a refund paid straight in. Your month’s net stays as it is.' },
-  { icon: ShoppingBag, title: 'Paid from savings', meta: 'A big buy the pot covers. It’s still spending, but it doesn’t eat into your month.' },
+  { id: 'fromIncome', icon: Wallet },
+  { id: 'received', icon: Gift },
+  { id: 'fromSavings', icon: ShoppingBag },
 ]
 
 function FirstSavings({ add, goals }) {
   const navigate = useNavigate()
+  const t = useT('savings')
   return (
     <>
       <Panel>
-        <EmptyState title="Start your savings pot"
-          text="Everything you put aside adds up here, month by month, so you can watch it grow and aim it at a goal."
+        <EmptyState title={t('empty.title')} text={t('empty.text')}
           actions={<>
             <AddButton add={add} />
             {goals.goals.length === 0 && (
               <Button variant="outline" leftIcon={<Target size={16} />}
-                onClick={() => navigate('/savings/goals/new')}>Set a goal</Button>
+                onClick={() => navigate('/savings/goals/new')}>{t('empty.setGoal')}</Button>
             )}
           </>} />
       </Panel>
       {goals.goals.length > 0 && <GoalsCard {...goals} />}
-      <Panel title="How savings work" subtitle="Add an entry in the Savings category">
+      <Panel title={t('how.title')} subtitle={t('how.subtitle')}>
         <Stack spacing={1}>
-          {HOW.map((h) => <ItemRow key={h.title} icon={h.icon} title={h.title} meta={h.meta} />)}
+          {HOW.map((h) => (
+            <ItemRow key={h.id} icon={h.icon} title={t(`how.${h.id}.title`)} meta={t(`how.${h.id}.meta`)} />
+          ))}
         </Stack>
         <Divider borderColor="border.default" my={3} />
-        <ItemRow icon={Repeat} title="Make it automatic" meta="Set an amount to go in every month"
+        <ItemRow icon={Repeat} title={t('how.auto.title')} meta={t('how.auto.meta')}
           onClick={() => navigate('/recurring/new?kind=income')} chevron />
       </Panel>
     </>

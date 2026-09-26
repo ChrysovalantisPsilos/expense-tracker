@@ -17,17 +17,19 @@ import { deleteTransaction } from '../transactions/writes.js'
 import {
   HISTORY_FILTERS, HISTORY_MONTHS, HISTORY_MORE, monthGroups, monthHeading, moveDirection,
 } from './savingsMath.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // One entry: its date and where the money came from or went ("from income",
 // "received", "from savings"), a repeat mark when a rule adds it, and the
 // amount signed by what it did to the pot. No category tag: everything here
 // is savings. Title and meta each keep to one line.
 function SavingsRow({ row: r, savingsIds, open, remove }) {
+  const t = useT('savings')
   const out = moveDirection(r, savingsIds) === 'out'
   return (
     <ItemRow py={1.5} onClick={() => open(r)}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-      title={<Box as="span" display="block" sx={ONE_LINE}>{r.description || r.categories?.name || 'Savings'}</Box>}
+      title={<Box as="span" display="block" sx={ONE_LINE}>{r.description || r.categories?.name || t('fallbackName')}</Box>}
       meta={
         <HStack spacing={1.5} fontSize="xs" color="text.muted" minW={0}>
           <Text sx={ONE_LINE} minW={0}>
@@ -37,7 +39,7 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
             </Text>
           </Text>
           {r.recurring_rule_id && (
-            <Box as="span" flexShrink={0} display="inline-flex" aria-label="Repeats" role="img">
+            <Box as="span" flexShrink={0} display="inline-flex" aria-label={t('history.repeats')} role="img">
               <Repeat size={11} aria-hidden />
             </Box>
           )}
@@ -46,8 +48,8 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
       amount={`${out ? '−' : '+'}${formatMoney(r.amount_minor, r.currency)}`}
       amountTone={out ? 'default' : 'positive'}
       actionSlots={2} actions={[
-        { label: 'Edit', icon: Pencil, onClick: () => open(r) },
-        { label: 'Delete', icon: Trash2, danger: true, onClick: () => remove(r) },
+        { label: t('actions.edit'), icon: Pencil, onClick: () => open(r) },
+        { label: t('actions.delete'), icon: Trash2, danger: true, onClick: () => remove(r) },
       ]} />
   )
 }
@@ -59,6 +61,7 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
 export default function SavingsHistory({ moves, savingsIds, baseCurrency, reload }) {
   const navigate = useNavigate()
   const toast = useToast()
+  const t = useT('savings')
   const [filter, setFilter] = useState('all')
   const [months, setMonths] = useState(HISTORY_MONTHS)
   const [removing, setRemoving] = useState(null)
@@ -73,21 +76,22 @@ export default function SavingsHistory({ moves, savingsIds, baseCurrency, reload
     setBusy(true)
     try {
       await deleteTransaction(removing.id)
-      toast({ title: `${removing.kind === 'income' ? 'Income' : 'Expense'} deleted`, status: 'success' })
+      toast({ title: t(removing.kind === 'income' ? 'history.deletedIncome' : 'history.deletedExpense'), status: 'success' })
       reload()
     } catch (e) {
-      toast(saveErrorToast(e, 'Couldn’t delete'))
+      toast(saveErrorToast(e, t('history.deleteFailed')))
     } finally {
       setBusy(false); setRemoving(null)
     }
   }
 
   return (
-    <Panel icon={PiggyBank} title="Savings history" subtitle="Only what moves your pot">
-      <SegmentedControl options={HISTORY_FILTERS} value={filter} onChange={setFilter} isFitted label="Show" />
+    <Panel icon={PiggyBank} title={t('history.title')} subtitle={t('history.subtitle')}>
+      <SegmentedControl options={HISTORY_FILTERS.map(([v, k]) => [v, t(k)])} value={filter} onChange={setFilter}
+        isFitted label={t('history.show')} />
       {groups.length === 0 ? (
         <Text color="text.muted" fontSize="sm" mt={4}>
-          {filter === 'out' ? 'Nothing paid from savings yet.' : 'Nothing put into savings yet.'}
+          {t(filter === 'out' ? 'history.emptyOut' : 'history.emptyIn')}
         </Text>
       ) : (
         <Stack spacing={4} mt={4}>
@@ -112,7 +116,7 @@ export default function SavingsHistory({ moves, savingsIds, baseCurrency, reload
       )}
       {groups.length > months && (
         <Button variant="outline" size="sm" w="full" mt={4} onClick={() => setMonths((n) => n + HISTORY_MORE)}>
-          Show older
+          {t('history.older')}
         </Button>
       )}
 

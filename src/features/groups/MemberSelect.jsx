@@ -6,6 +6,7 @@ import {
 import { ChevronDown } from 'lucide-react'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { viewerName } from './groupFormat.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // A member picker that shows each member's profile picture (a native <select>
 // can only show text): the chosen member on the button, everyone in the list,
@@ -20,6 +21,7 @@ import { viewerName } from './groupFormat.js'
 const MemberSelect = forwardRef(function MemberSelect(
   { members, value, onChange, myMemberId }, ref,
 ) {
+  const t = useT('groups')
   const field = useMultiStyleConfig('Input', {}).field
   const control = useFormControl({})
   // The button's name is the label plus the chosen member ("Paid by, You").
@@ -40,7 +42,7 @@ const MemberSelect = forwardRef(function MemberSelect(
             {avatar(chosen)}
             <Text as="span" id={valueId} noOfLines={1}>{who(chosen)}</Text>
           </HStack>
-        ) : <Text as="span" id={valueId} color="text.muted">Choose…</Text>}
+        ) : <Text as="span" id={valueId} color="text.muted">{t('form.choose')}</Text>}
       </MenuButton>
       <MenuList minW="224px" maxW="calc(100vw - 32px)" maxH="60vh" overflowY="auto">
         <MenuOptionGroup type="radio" value={value} onChange={onChange}>

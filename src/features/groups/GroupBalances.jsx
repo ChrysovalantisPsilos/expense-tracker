@@ -10,6 +10,7 @@ import TransferRow from '../../shared/ui/kit/TransferRow.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Where the group stands: your balance (with Settle up), everyone's net, the
 // line that matters most to you, then the whole group's settle-up plan
@@ -24,18 +25,19 @@ export default function GroupBalances({ group, members, balances, myMember, myUs
   const avatarOf = (mid) => members.find((m) => m.id === mid)?.avatar_url
   const mine = signedAmount(myMember ? (balances.get(myMember.id) ?? 0) : 0, money)
   const sideways = useShortLandscape()
+  const t = useT('groups')
 
   return (
     <>
       <Panel>
         <HStack align="center" spacing={3}>
-          <Figure label="Your balance" value={mine.text} tone={mine.tone} size={sideways ? 'lg' : 'xl'} flex="1" />
+          <Figure label={t('balances.yours')} value={mine.text} tone={mine.tone} size={sideways ? 'lg' : 'xl'} flex="1" />
           <Button size="sm" variant="outline" leftIcon={<HandCoins size={16} />} flexShrink={0}
-            onClick={onSettle}>Settle up</Button>
+            onClick={onSettle}>{t('balances.settleUp')}</Button>
         </HStack>
         {memberNets.length > 1 && (
           <>
-            <SectionLabel mt={sideways ? 3 : 4} mb={2}>Balances</SectionLabel>
+            <SectionLabel mt={sideways ? 3 : 4} mb={2}>{t('balances.title')}</SectionLabel>
             <BalanceGrid columns={sideways ? Math.min(memberNets.length, 4) : undefined}>
               {memberNets.map((b) => {
                 const { text, tone } = signedAmount(b.net, money)
@@ -46,18 +48,18 @@ export default function GroupBalances({ group, members, balances, myMember, myUs
         )}
         <HighlightPill mt={3} amount={highlight ? money(highlight.amount) : undefined}
           amountTone={highlight?.tone}>
-          {highlight ? highlight.text : 'You’re all settled up'}
+          {highlight ? highlight.text : t('balances.allSettled')}
         </HighlightPill>
       </Panel>
 
       {plan.length > 0 && (
-        <Panel icon={ArrowRightLeft} title="Who owes whom"
-          subtitle={`${pluralise(plan.length, 'payment')} to settle everyone up`}>
+        <Panel icon={ArrowRightLeft} title={t('balances.whoOwes')}
+          subtitle={t('balances.plan', { payments: pluralise(plan.length, 'payment') })}>
           <Stack spacing={2}>
-            {plan.map((t) => (
-              <TransferRow key={`${t.from}-${t.to}`} amount={money(t.amount)} amountTone={t.tone}
-                from={{ name: t.fromName, src: avatarOf(t.from), highlight: t.from === myMember?.id }}
-                to={{ name: t.toName, src: avatarOf(t.to), highlight: t.to === myMember?.id }} />
+            {plan.map((p) => (
+              <TransferRow key={`${p.from}-${p.to}`} amount={money(p.amount)} amountTone={p.tone}
+                from={{ name: p.fromName, src: avatarOf(p.from), highlight: p.from === myMember?.id }}
+                to={{ name: p.toName, src: avatarOf(p.to), highlight: p.to === myMember?.id }} />
             ))}
           </Stack>
         </Panel>

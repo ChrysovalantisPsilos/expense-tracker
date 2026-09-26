@@ -20,6 +20,7 @@ import { DeleteGroupModal, LeaveGroupModal } from './GroupModals.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { copyText } from '../../shared/lib/clipboard.js'
 import { BusyNote } from '../../shared/ui/RingLoader.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // A group's page: its header, balances and history. Adding or editing an
 // expense, settling up, comments, members and editing the group are pages of
@@ -29,6 +30,7 @@ export default function GroupDetail() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const toast = useToast()
+  const t = useT('groups')
   // Live: when anyone in the group adds/edits expenses, settles up, or
   // joins/leaves, refetch — no manual refresh (useGroup).
   const { data, loading, error, reload: load } = useGroup(id, { activity: true })
@@ -48,7 +50,7 @@ export default function GroupDetail() {
 
   async function downloadReport() {
     await runReport(() => downloadGroupReport(id, data?.group?.name || 'group'),
-      { errorTitle: 'Couldn’t generate the report' })
+      { errorTitle: t('detail.reportFailed') })
   }
 
   const balances = data?.balances ?? new Map()
@@ -71,9 +73,9 @@ export default function GroupDetail() {
       }
     }
     if (await copyText(text)) {
-      toast({ title: 'Summary copied', description: 'Paste it into your group chat.', status: 'success' })
+      toast({ title: t('detail.summaryCopied'), description: t('detail.summaryPaste'), status: 'success' })
     } else {
-      toast({ title: 'Couldn’t share the summary', status: 'error' })
+      toast({ title: t('detail.summaryFailed'), status: 'error' })
     }
   }
 
@@ -81,11 +83,11 @@ export default function GroupDetail() {
     setActionBusy(true)
     try {
       await removeMember(myMember.id, silent)
-      toast({ title: 'You left the group', status: 'success' })
+      toast({ title: t('detail.left'), status: 'success' })
       navigate('/groups')
     } catch (e) {
       console.error('[groups] leave failed:', e)
-      toast({ title: 'Couldn’t leave', description: userMessage(e), status: 'error' })
+      toast({ title: t('detail.leaveFailed'), description: userMessage(e), status: 'error' })
     }
     finally { setActionBusy(false); leaveModal.onClose() }
   }
@@ -94,11 +96,11 @@ export default function GroupDetail() {
     setActionBusy(true)
     try {
       await deleteGroup(id)
-      toast({ title: 'Group deleted', status: 'success' })
+      toast({ title: t('detail.deleted'), status: 'success' })
       navigate('/groups')
     } catch (e) {
       console.error('[groups] delete failed:', e)
-      toast({ title: 'Couldn’t delete', description: userMessage(e), status: 'error' })
+      toast({ title: t('detail.deleteFailed'), description: userMessage(e), status: 'error' })
     }
     finally { setActionBusy(false); deleteModal.onClose() }
   }
@@ -108,11 +110,11 @@ export default function GroupDetail() {
   if (error || !data) {
     return (
       <Stack spacing={5}>
-        <PageHeader eyebrow="Groups" title="Group" leading={<BackButton fallback="/groups" />} />
+        <PageHeader eyebrow={t('title')} title={t('group')} leading={<BackButton fallback="/groups" />} />
         <Panel>
           {error
-            ? <QueryError error={error} onRetry={load} what="this group" py={12} />
-            : <Text color="text.muted">Group not found.</Text>}
+            ? <QueryError error={error} onRetry={load} what={t('whatGroup')} py={12} />
+            : <Text color="text.muted">{t('notFound')}</Text>}
         </Panel>
       </Stack>
     )
@@ -129,7 +131,7 @@ export default function GroupDetail() {
         onReport={downloadReport} onShare={shareSummary} onRename={to('edit')}
         onLeave={myMember ? leaveModal.onOpen : undefined} onDelete={deleteModal.onOpen} />
 
-      {reportBusy && <BusyNote>Preparing the group statement…</BusyNote>}
+      {reportBusy && <BusyNote>{t('detail.reportBusy')}</BusyNote>}
 
       <GroupBalances group={group} members={members} balances={balances} myMember={myMember}
         myUserId={user.id} onSettle={to('settle')} />

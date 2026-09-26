@@ -7,13 +7,15 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import FormPage, { PageForm } from '../../shared/ui/FormPage.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { createGroup } from './groups.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // /groups/new — name a group and pick its currency, then land in it (the
 // new group replaces this page in history, so Back from it goes to Groups).
 export default function NewGroupPage() {
   const { baseCurrency, profile, loading } = useProfile()
+  const t = useT('groups')
   return (
-    <FormPage eyebrow="Groups" title="New group" fallback="/groups">
+    <FormPage eyebrow={t('title')} title={t('create.title')} fallback="/groups">
       {/* The currency starts on the base currency, which the form reads once:
           wait for the profile rather than freeze the placeholder. */}
       {!profile && loading ? <RingLoader /> : <NewGroupForm baseCurrency={baseCurrency} />}
@@ -23,6 +25,7 @@ export default function NewGroupPage() {
 
 function NewGroupForm({ baseCurrency }) {
   const navigate = useNavigate()
+  const t = useT('groups')
   const [name, setName] = useState('')
   const [currency, setCurrency] = useState(baseCurrency || 'EUR')
   const { busy, run } = useAsyncSubmit()
@@ -36,14 +39,14 @@ function NewGroupForm({ baseCurrency }) {
   }
 
   return (
-    <PageForm onSubmit={submit} busy={busy} submitLabel="Create group">
+    <PageForm onSubmit={submit} busy={busy} submitLabel={t('create.submit')}>
       <Stack spacing={4}>
         <FormControl isRequired>
-          <FormLabel>Name</FormLabel>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Italy 2026, Flat 3B…" />
+          <FormLabel>{t('create.name')}</FormLabel>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('create.nameHint')} />
         </FormControl>
         <FormControl>
-          <FormLabel>Currency</FormLabel>
+          <FormLabel>{t('create.currency')}</FormLabel>
           <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </Select>

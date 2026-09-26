@@ -17,13 +17,15 @@ import useGoBack from '../../shared/ui/useGoBack.js'
 import PayShortcuts from './PayShortcuts.jsx'
 import PaymentDetailsAsk from './PaymentDetailsAsk.jsx'
 import GroupFormPage from './GroupFormPage.jsx'
+import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // /groups/:id/settle — record a payment between you and another member.
 export default function SettleUpPage() {
+  const t = useT('groups')
   return (
-    <GroupFormPage title="Settle up">
+    <GroupFormPage title={t('settle.title')}>
       {(ctx) => (ctx.myMember ? <SettleUpForm {...ctx} /> : (
-        <Panel><Text color="text.muted">Only the group’s members can settle up.</Text></Panel>
+        <Panel><Text color="text.muted">{t('settle.onlyMembers')}</Text></Panel>
       ))}
     </GroupFormPage>
   )
@@ -37,6 +39,7 @@ export default function SettleUpPage() {
 // and recording it is one tap on Record.
 function SettleUpForm({ group, members, myMember, balances, groupPath }) {
   const toast = useToast()
+  const t = useT('groups')
   const back = useGoBack(groupPath)
   const others = members.filter((m) => m.id !== myMember.id)
   // Minimal set of transfers that settles the whole group; surface only the
@@ -55,10 +58,10 @@ function SettleUpForm({ group, members, myMember, balances, groupPath }) {
   const otherName = others.find((m) => m.id === otherId)?.display_name ?? ''
   const nameOf = (id) => memberName(members, id)
 
-  function applySuggestion(t, i) {
-    setDirection(t.direction)
-    setOtherId(t.otherId)
-    setAmount(minorToInput(t.amount, group.currency))
+  function applySuggestion(s, i) {
+    setDirection(s.direction)
+    setOtherId(s.otherId)
+    setAmount(minorToInput(s.amount, group.currency))
     setPicked(i)
   }
 
@@ -68,16 +71,16 @@ function SettleUpForm({ group, members, myMember, balances, groupPath }) {
   async function nudge(memberId) {
     try {
       await nudgeMember(group.id, memberId)
-      toast({ title: 'Reminder sent', status: 'success' })
+      toast({ title: t('settle.reminderSent'), status: 'success' })
     } catch (e) {
       console.error('[groups] reminder failed:', e)
-      toast({ title: userMessage(e, 'Couldn’t send the reminder. Please try again.'), status: 'info' })
+      toast({ title: userMessage(e, t('settle.reminderFailed')), status: 'info' })
     }
   }
 
   async function submit() {
-    if (!otherId) return toast({ title: 'Pick a person', status: 'warning' })
-    if (!amount || Number(amount) <= 0) return toast({ title: 'Enter an amount', status: 'warning' })
+    if (!otherId) return toast({ title: t('settle.pickPerson'), status: 'warning' })
+    if (!amount || Number(amount) <= 0) return toast({ title: t('settle.enterAmount'), status: 'warning' })
     const from = direction === 'out' ? myMember.id : otherId
     const to = direction === 'out' ? otherId : myMember.id
     await run(async () => {
@@ -85,27 +88,27 @@ function SettleUpForm({ group, members, myMember, balances, groupPath }) {
         groupId: group.id, fromMember: from, toMember: to,
         amountMinor: toMinor(amount, group.currency), currency: group.currency, settledAt,
       })
-      toast({ title: 'Settlement recorded', status: 'success' })
+      toast({ title: t('settle.recorded'), status: 'success' })
       back()
     })
   }
 
   if (others.length === 0) {
-    return <Panel><Text color="text.muted">Add another member first.</Text></Panel>
+    return <Panel><Text color="text.muted">{t('settle.addMemberFirst')}</Text></Panel>
   }
 
   return (
-    <PageForm onSubmit={submit} busy={busy} submitLabel="Record">
+    <PageForm onSubmit={submit} busy={busy} submitLabel={t('settle.record')}>
       <Stack spacing={4}>
         {myPlan.length > 0 && (
           <Box borderWidth="1px" borderColor="border.default" borderRadius="lg" p={3}>
             <HStack mb={2} color="accent.fg">
               <Wand2 size={15} />
-              <Text fontSize="sm" fontWeight="600">Suggested to settle up</Text>
+              <Text fontSize="sm" fontWeight="600">{t('settle.suggested')}</Text>
             </HStack>
             <Stack spacing={1}>
-              {myPlan.map((t, i) => {
-                const iPay = t.direction === 'out'
+              {myPlan.map((s, i) => {
+                const iPay = s.direction === 'out'
                 const on = picked === i
                 return (
                   <HStack key={i} spacing={1}>
@@ -114,17 +117,16 @@ function SettleUpForm({ group, members, myMember, balances, groupPath }) {
                       justifyContent="flex-start" textAlign="left" whiteSpace="normal"
                       fontWeight="400" fontSize="sm" color="text.primary"
                       bg={on ? 'bg.subtle' : undefined} aria-pressed={on}
-                      onClick={() => applySuggestion(t, i)}>
+                      onClick={() => applySuggestion(s, i)}>
                       <Text as="span" overflowWrap="anywhere">
-                        {iPay
-                          ? <>Pay <b>{nameOf(t.to)}</b> {formatMoney(t.amount, group.currency)}</>
-                          : <><b>{nameOf(t.from)}</b> pays you {formatMoney(t.amount, group.currency)}</>}
+                        <Trans t={t} k={iPay ? 'settle.payOut' : 'settle.payIn'} components={{ b: <b /> }}
+                          values={{ name: nameOf(iPay ? s.to : s.from), amount: formatMoney(s.amount, group.currency) }} />
                       </Text>
                     </Button>
-                    {!iPay && members.find((m) => m.id === t.from)?.user_id && (
-                      <Tooltip label="Send them a reminder">
-                        <IconButton aria-label={`Remind ${nameOf(t.from)} to settle`} size="md" variant="ghost"
-                          icon={<BellRing size={18} />} onClick={() => nudge(t.from)} />
+                    {!iPay && members.find((m) => m.id === s.from)?.user_id && (
+                      <Tooltip label={t('settle.remindTip')}>
+                        <IconButton aria-label={t('settle.remind', { name: nameOf(s.from) })} size="md" variant="ghost"
+                          icon={<BellRing size={18} />} onClick={() => nudge(s.from)} />
                       </Tooltip>
                     )}
                   </HStack>
@@ -136,43 +138,43 @@ function SettleUpForm({ group, members, myMember, balances, groupPath }) {
         <HStack spacing={2}>
           <Button flex="1" variant={direction === 'out' ? 'solid' : 'outline'}
             colorScheme={direction === 'out' ? 'brand' : 'gray'} aria-pressed={direction === 'out'}
-            onClick={() => edited(setDirection)('out')}>I paid</Button>
+            onClick={() => edited(setDirection)('out')}>{t('settle.iPaid')}</Button>
           <Button flex="1" variant={direction === 'in' ? 'solid' : 'outline'}
             colorScheme={direction === 'in' ? 'brand' : 'gray'} aria-pressed={direction === 'in'}
-            onClick={() => edited(setDirection)('in')}>I received</Button>
+            onClick={() => edited(setDirection)('in')}>{t('settle.iReceived')}</Button>
         </HStack>
 
         <FormControl isRequired>
-          <FormLabel>{direction === 'out' ? 'Paid to' : 'Received from'}</FormLabel>
+          <FormLabel>{t(direction === 'out' ? 'settle.paidTo' : 'settle.receivedFrom')}</FormLabel>
           <Select value={otherId} onChange={(e) => edited(setOtherId)(e.target.value)}>
             {others.map((m) => <option key={m.id} value={m.id}>{m.display_name}</option>)}
           </Select>
           {otherId && (
             <Text fontSize="xs" color="text.muted" mt={1}>
-              {otherNet === 0 ? `${otherName} is settled up`
-                : otherNet > 0 ? `${otherName} is owed ${formatMoney(otherNet, group.currency)} overall`
-                : `${otherName} owes ${formatMoney(-otherNet, group.currency)} overall`}
+              {otherNet === 0 ? t('settle.otherSettled', { name: otherName })
+                : t(otherNet > 0 ? 'settle.otherOwed' : 'settle.otherOwes',
+                  { name: otherName, amount: formatMoney(Math.abs(otherNet), group.currency) })}
             </Text>
           )}
         </FormControl>
 
         <HStack align="end" justify="center" color="text.muted" fontSize="sm">
           <Text fontWeight="600" color="text.primary">
-            {direction === 'out' ? 'You' : otherName || '—'}
+            {direction === 'out' ? t('you') : otherName || '—'}
           </Text>
           <ArrowRight size={16} />
           <Text fontWeight="600" color="text.primary">
-            {direction === 'out' ? otherName || '—' : 'You'}
+            {direction === 'out' ? otherName || '—' : t('you')}
           </Text>
         </HStack>
 
         <HStack>
           <FormControl isRequired>
-            <FormLabel>Amount ({group.currency})</FormLabel>
+            <FormLabel>{t('settle.amount', { currency: group.currency })}</FormLabel>
             <MoneyInput currency={group.currency} value={amount} onChange={edited(setAmount)} />
           </FormControl>
           <FormControl maxW="160px">
-            <FormLabel>Date</FormLabel>
+            <FormLabel>{t('settle.date')}</FormLabel>
             <Input type="date" value={settledAt} onChange={(e) => setSettledAt(e.target.value)} />
           </FormControl>
         </HStack>
