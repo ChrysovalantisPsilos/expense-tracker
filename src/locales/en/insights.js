@@ -72,6 +72,7 @@ export default {
     excel: 'Export Excel',
     noEntries: 'Nothing to export yet — add an expense or income first.',
     preparingPdf: 'Preparing your PDF statement…',
+    preparingPdfPage: 'Preparing your PDF statement… page {{page}}',
     preparingExcel: 'Preparing your Excel statement…',
   },
 }

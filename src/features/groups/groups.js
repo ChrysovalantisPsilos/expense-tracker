@@ -297,10 +297,11 @@ async function listAuditLog(groupId, limit = 200) {
 // Generate the group PDF statement (balances + settlements + audit trail) and
 // trigger a download. Returns nothing; throws on failure. Made on the device
 // (deviceGroupStatement.js, loaded on demand); for one release the
-// `group-report` edge function remains the fallback (deviceFirst.js).
+// `group-report` edge function remains the fallback (deviceFirst.js), also
+// when the device takes too long.
 export async function downloadGroupReport(groupId, groupName = 'group') {
   const file = await deviceFirst('group statement',
-    async () => (await import('./deviceGroupStatement.js')).groupStatementOnDevice(supabase, groupId),
+    async (signal) => (await import('./deviceGroupStatement.js')).groupStatementOnDevice(supabase, groupId, { signal }),
     () => groupReportFromServer(groupId))
   saveBlob(toBlob(file, FILE_TYPES.pdf), `${fileStem(groupName, 'group')}-statement.pdf`)
 }

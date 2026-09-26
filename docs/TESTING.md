@@ -181,6 +181,18 @@ statementFile.ts`, `group-report/groupStatement.ts`, `_shared/pdf.ts`).
 `test/deviceStatements.test.js` runs both edge functions under Node and checks
 that the device makes byte-identical files from the same data.
 
+The page only reads; the file itself is made in a Web Worker
+(`src/shared/lib/statementWorker.js`, via `statementOffThread.js`), so a long
+statement never freezes the app, and the PDF line shows the page being made
+("Preparing your PDF statement… page 12"). A device that takes over 45 s
+(`deviceFirst.js`) is stopped and the server makes the file instead; any
+failure ends in the "Could not generate report" toast. Long statements stay
+fast because a cell too wide for its column is cut in a few measurements, not
+one character at a time (`test/statementScale.test.js` counts them).
+Manual check: on an account with a few thousand transactions (bank imports),
+Insights › Export statement over 18 months → PDF: the page line counts up,
+the app stays scrollable, and the file downloads within seconds.
+
 > **TODO (the release after next):** remove the server fallback. Delete the
 > `generate-report` and `group-report` edge functions (their folders and
 > `supabase/config.toml` entries, then `supabase functions delete` on TEST and

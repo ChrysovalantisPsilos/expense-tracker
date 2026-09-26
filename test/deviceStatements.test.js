@@ -3,7 +3,10 @@
 //
 //  - The PDF toolkit (supabase/functions/_shared/pdf.ts) with pdf-lib and the
 //    fonts injected: font roles, fallbacks, Unicode runs, the words object.
-//  - deviceFirst: the device first, the server only when that throws.
+//  - The statement worker (src/shared/lib/statementWorker.js), run here in
+//    process: progress, stopping it, and one that fails.
+//  - deviceFirst: the device first, the server only when that throws or
+//    takes too long.
 //  - Parity: generate-report and group-report are run end to end here (their
 //    esm.sh imports mapped to the npm builds, Deno.serve captured, a fake
 //    Supabase client) and must produce byte-identical files to the app's
@@ -11,6 +14,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { register } from 'node:module'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { readFileSync } from 'node:fs'
 import * as XLSX from 'xlsx'
 import { PDFDocument } from 'pdf-lib'
@@ -19,6 +23,7 @@ import { Statement } from '../supabase/functions/_shared/pdf.ts'
 import { BRAND_FONTS, cdnFontUrl, fontPath } from '../supabase/functions/_shared/brandFonts.ts'
 import { STATEMENT_TEXT } from '../supabase/functions/_shared/statementText.ts'
 import { deviceFirst } from '../src/shared/lib/deviceFirst.js'
+import { statementOffThread } from '../src/shared/lib/statementOffThread.js'
 import { UserError } from '../src/shared/lib/errors.js'
 import { statementOnDevice } from '../src/features/insights/deviceStatement.js'
 import { groupStatementOnDevice } from '../src/features/groups/deviceGroupStatement.js'
@@ -73,6 +78,28 @@ globalThis.fetch = async (url) => {
   return new Response(readFileSync(file))
 }
 
+// The statement worker, run in this process: a Worker stand-in that loads
+// src/shared/lib/statementWorker.js with a `self` of its own and passes
+// messages both ways through structuredClone, as a browser would. Each job's
+// answers go to its own worker, even after that one is terminated.
+const answerTo = new AsyncLocalStorage()
+const scope = { postMessage: (m) => answerTo.getStore()(m) }
+globalThis.self = scope
+const workers = []
+class InProcessWorker {
+  constructor(url, options) {
+    Object.assign(this, { url: String(url), options, terminated: false })
+    workers.push(this)
+  }
+  postMessage(job) {
+    const data = structuredClone(job)
+    const answer = (m) => { if (!this.terminated) this.onmessage?.({ data: structuredClone(m) }) }
+    import(this.url).then(() => answerTo.run(answer, () => scope.onmessage({ data })))
+  }
+  terminate() { this.terminated = true }
+}
+globalThis.Worker = InProcessWorker
+
 async function viaServer(handler, client, body) {
   globalThis.__edgeClient = client
   const res = await handler(new Request('https://project.test/functions/v1/x', {
@@ -118,6 +145,56 @@ test('group statement: the device makes the server\'s file', async () => {
 
 test('group statement: a group the user can\'t see is refused, not sent to the server', async () => {
   await assert.rejects(groupStatementOnDevice(fakeSupabase(), 'other'), UserError)
+})
+
+test('the worker: the file is made off the page\'s thread, with each page reported as it is begun', async () => {
+  const before = workers.length
+  const pages = []
+  const bytes = await statementOnDevice(fakeSupabase({ yearlySeparate: true }),
+    { from: FROM, to: TO, format: 'pdf', onProgress: (p) => pages.push(p) })
+  const worker = workers.at(-1)
+  assert.equal(workers.length, before + 1)
+  assert.match(worker.url, /\/src\/shared\/lib\/statementWorker\.js$/)
+  assert.deepEqual(worker.options, { type: 'module' })
+  assert.equal(worker.terminated, true)
+  const count = (await PDFDocument.load(bytes)).getPageCount()
+  assert.deepEqual(pages, Array.from({ length: count }, (_, i) => i + 1))
+})
+
+test('the worker: stopped (the time limit), it is terminated and the work rejects with the reason', async () => {
+  const stop = new AbortController()
+  const reason = new Error('too slow')
+  const made = statementOnDevice(fakeSupabase(), {
+    from: FROM, to: TO, format: 'pdf', signal: stop.signal, onProgress: () => stop.abort(reason),
+  })
+  await assert.rejects(made, (err) => err === reason)
+  assert.equal(workers.at(-1).terminated, true)
+  // Stopped before the reads are done, no worker is started.
+  const before = workers.length
+  await assert.rejects(statementOnDevice(fakeSupabase(), { from: FROM, to: TO, format: 'xlsx', signal: stop.signal }))
+  assert.equal(workers.length, before)
+})
+
+test('the worker: one that can\'t start, or fails, rejects (and deviceFirst asks the server)', async () => {
+  globalThis.Worker = class extends InProcessWorker {
+    postMessage() { queueMicrotask(() => this.onerror({ message: 'module workers unsupported' })) }
+  }
+  try {
+    await assert.rejects(statementOnDevice(fakeSupabase(), { from: FROM, to: TO, format: 'pdf' }),
+      /statement worker: module workers unsupported/)
+    assert.equal(workers.at(-1).terminated, true)
+  } finally {
+    globalThis.Worker = InProcessWorker
+  }
+  // A job the worker can't make answers { error } (and logs the details there).
+  const logged = console.error
+  console.error = () => {}
+  try {
+    await assert.rejects(statementOffThread({ kind: 'personal', format: 'pdf', input: {} }), /statement worker: /)
+  } finally {
+    console.error = logged
+  }
+  assert.equal(workers.at(-1).terminated, true)
 })
 
 test('fonts: the device fetches them from its own origin, the server from jsDelivr', () => {
@@ -239,6 +316,18 @@ test('deviceFirst: an error for the user is an answer, not retried on the server
     UserError,
   )
   assert.equal(asked, false)
+})
+
+test('deviceFirst: a device slower than the time limit is stopped, and the server makes the file', async () => {
+  const log = quietLog()
+  let stopped = null
+  const out = await deviceFirst('statement', (signal) => new Promise(() => {
+    signal.addEventListener('abort', () => { stopped = signal.reason })
+  }), async () => 'server', log, { timeoutMs: 20 })
+  assert.equal(out, 'server')
+  assert.equal(stopped?.name, 'TimeoutError')
+  assert.match(stopped.message, /statement took over 0\.02 s/)
+  assert.equal(log.warned[0][1], stopped)
 })
 
 test('deviceFirst: the server\'s error when both fail', async () => {

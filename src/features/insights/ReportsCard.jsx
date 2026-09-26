@@ -17,18 +17,21 @@ export default function ReportsCard({ noEntries = false }) {
   const [from, setFrom] = useState(mFrom)
   const [to, setTo] = useState(mTo)
   const [busy, setBusy] = useState(null) // 'xlsx' | 'pdf' | null
+  const [page, setPage] = useState(null) // the PDF page being made, once known
   const toast = useToast()
   const t = useT('insights')
 
   async function generate(format) {
     setBusy(format)
+    setPage(null)
     try {
-      await downloadStatement({ from, to, format })
+      await downloadStatement({ from, to, format, onProgress: setPage })
     } catch (e) {
       console.error('[insights] report failed:', e)
       toast({ title: t('reports.failed'), description: userMessage(e), status: 'error' })
     } finally {
       setBusy(null)
+      setPage(null)
     }
   }
 
@@ -61,7 +64,12 @@ export default function ReportsCard({ noEntries = false }) {
           {t('reports.noEntries')}
         </Text>
       )}
-      {busy && <BusyNote mt={4}>{t(busy === 'pdf' ? 'reports.preparingPdf' : 'reports.preparingExcel')}</BusyNote>}
+      {busy && (
+        <BusyNote mt={4}>
+          {busy === 'xlsx' ? t('reports.preparingExcel')
+            : page ? t('reports.preparingPdfPage', { page }) : t('reports.preparingPdf')}
+        </BusyNote>
+      )}
     </Panel>
   )
 }
