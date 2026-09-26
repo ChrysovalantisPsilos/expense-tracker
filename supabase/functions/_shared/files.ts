@@ -1,4 +1,6 @@
-// Sending a generated file (a PDF or Excel report) back to the app.
+// Sending a generated file (a PDF or Excel report) back to the app, and the
+// file types the app saves them as. The statements are made on the device
+// now; the report functions below are its one-release fallback.
 //
 // The app calls the report functions through supabase.functions.invoke, which
 // reads a response as a Blob only when its Content-Type is
@@ -14,6 +16,11 @@ export const FILE_TYPES = {
 } as const
 
 export type FileFormat = keyof typeof FILE_TYPES
+
+// The personal statement's file name (the app's saved file, and the edge
+// function's Content-Disposition).
+export const statementFilename = (from: string, to: string, format: FileFormat): string =>
+  `financial-statement_${from}_${to}.${format}`
 
 // Only these types reach the app as bytes (functions-js's Blob branch).
 const WIRE_TYPE: Record<FileFormat, string> = {

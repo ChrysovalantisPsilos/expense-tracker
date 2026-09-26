@@ -55,7 +55,7 @@ function sheetsFor(mode) {
   return statementSheets(stmt, 'EUR', notes)
 }
 
-// What generate-report's buildXlsx does with the sheets.
+// What statementFile.ts's statementXlsx does with the sheets.
 function workbookBytes(sheets) {
   const wb = XLSX.utils.book_new()
   for (const s of sheets) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s.rows), s.name)
