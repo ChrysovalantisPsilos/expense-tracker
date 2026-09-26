@@ -205,9 +205,10 @@ function MonthCard({ month, rules, currency }) {
         <BalanceTile label="From income" value={signed(month.fromIncome).text} tone={month.fromIncome ? 'positive' : 'muted'} />
         <BalanceTile label="Received" value={signed(month.received).text} tone={month.received ? 'positive' : 'muted'} />
         <BalanceTile label="From savings" value={signed(-month.fromSavings).text}
-          tone={month.fromSavings ? 'negative' : 'muted'} />
+          tone={month.fromSavings ? 'default' : 'muted'} />
       </BalanceGrid>
-      <Figure layout="inline" label="Net change" value={net.text} tone={net.tone} mt={3} />
+      {/* No red on a savings page: money taken out is shown plainly, only growth in green. */}
+      <Figure layout="inline" label="Net change" value={net.text} tone={month.net > 0 ? 'positive' : 'default'} mt={3} />
       {rules.length > 0 && (
         <>
           <Divider borderColor="border.default" my={3} />
