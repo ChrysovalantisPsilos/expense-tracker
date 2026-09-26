@@ -11,6 +11,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { minorToInput, toMinor } from '../../shared/lib/currency.js'
 import { useAccounts, saveAccount } from './insights.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // A net-worth account's page (a balance you keep up to date by hand):
 //   /insights/accounts/new   a new account
@@ -20,19 +21,20 @@ import { useAccounts, saveAccount } from './insights.js'
 export default function AccountPage() {
   const { id } = useParams()
   const location = useLocation()
+  const t = useT('insights')
   const { baseCurrency, profile, loading: profileLoading } = useProfile()
   const { accounts, loading, error, reload } = useAccounts()
   const passed = location.state?.account
   const account = id ? accounts.find((a) => a.id === id) ?? (passed?.id === id ? passed : null) : null
 
   let body
-  if (id && !account && error) body = <Panel><QueryError error={error} onRetry={reload} what="this account" /></Panel>
+  if (id && !account && error) body = <Panel><QueryError error={error} onRetry={reload} what={t('account.what')} /></Panel>
   else if ((id && !account && loading) || (!profile && profileLoading)) body = <RingLoader />
-  else if (id && !account) body = <Panel><Text color="text.muted">This account doesn’t exist any more.</Text></Panel>
+  else if (id && !account) body = <Panel><Text color="text.muted">{t('account.gone')}</Text></Panel>
   else body = <AccountForm key={account?.id ?? 'new'} account={account} baseCurrency={baseCurrency} />
 
   return (
-    <FormPage eyebrow="Net worth" title={id ? 'Edit account' : 'Add account'} fallback="/insights">
+    <FormPage eyebrow={t('account.eyebrow')} title={t(id ? 'account.titleEdit' : 'account.titleNew')} fallback="/insights">
       {body}
     </FormPage>
   )
@@ -40,6 +42,7 @@ export default function AccountPage() {
 
 function AccountForm({ account, baseCurrency }) {
   const toast = useToast()
+  const t = useT('insights')
   const back = useGoBack('/insights')
   const isEdit = !!account
   const [name, setName] = useState(account?.name ?? '')
@@ -49,7 +52,7 @@ function AccountForm({ account, baseCurrency }) {
   const { busy, run } = useAsyncSubmit()
 
   async function submit() {
-    if (!name.trim()) return toast({ title: 'Name it', status: 'warning' })
+    if (!name.trim()) return toast({ title: t('account.nameIt'), status: 'warning' })
     await run(async () => {
       await saveAccount({
         id: account?.id, name: name.trim(), type,
@@ -60,21 +63,21 @@ function AccountForm({ account, baseCurrency }) {
   }
 
   return (
-    <PageForm onSubmit={submit} busy={busy} submitLabel={isEdit ? 'Save changes' : 'Add account'}>
+    <PageForm onSubmit={submit} busy={busy} submitLabel={t(isEdit ? 'account.save' : 'account.add')}>
       <Stack spacing={4}>
         <FormControl isRequired>
-          <FormLabel>Name</FormLabel>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Checking, Visa, Savings…" />
+          <FormLabel>{t('account.name')}</FormLabel>
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('account.nameHint')} />
         </FormControl>
         <FormControl>
-          <FormLabel>Type</FormLabel>
+          <FormLabel>{t('account.type')}</FormLabel>
           <Select value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="asset">Asset (what you own)</option>
-            <option value="liability">Debt (what you owe)</option>
+            <option value="asset">{t('account.asset')}</option>
+            <option value="liability">{t('account.liability')}</option>
           </Select>
         </FormControl>
         <FormControl isRequired>
-          <FormLabel>Balance ({currency})</FormLabel>
+          <FormLabel>{t('account.balance', { currency })}</FormLabel>
           <MoneyInput allowNegative currency={currency} value={balance} onChange={setBalance} placeholder="0" />
         </FormControl>
       </Stack>
