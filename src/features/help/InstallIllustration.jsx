@@ -3,12 +3,18 @@ import {
   BookOpen, ChevronLeft, ChevronRight, Copy, EllipsisVertical, History, House, Lock, Menu,
   MonitorDown, Plus, Share, SquarePlus, Star, Smartphone,
 } from 'lucide-react'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Simplified, generic sketches of each browser's install controls for the
 // FAQ's install guide: the button to tap on the left, the menu entry on the
 // right, highlighted in coral. Our own drawings — not the browsers' artwork.
+// The words are in the `help` namespace under install.<platform>: the
+// description, the menu rows (as the browser shows them in that language)
+// and the two captions (step1, step2).
 
 const ICON = 14
+const SITE = 'www.budgeer.com'
+const APP_LINE = `Budgeer · ${SITE}` // the install prompt's app and site
 
 // The control to tap: coral fill, white icon.
 function Hit({ icon: Icon, label }) {
@@ -42,7 +48,7 @@ function Address() {
     <HStack flex="1" minW={0} spacing={1} h="22px" px={2} borderRadius="full" bg="bg.subtle"
       color="text.muted" fontSize="2xs">
       <Lock size={9} />
-      <Text as="span" noOfLines={1}>www.budgeer.com</Text>
+      <Text as="span" noOfLines={1}>{SITE}</Text>
     </HStack>
   )
 }
@@ -75,9 +81,9 @@ function MenuList({ rows, hit }) {
   )
 }
 
+// Each sketch's second screen takes `tr`, which reads its platform's words.
 const SKETCHES = {
   iphone: {
-    label: 'Safari on an iPhone: tap the Share button in the bottom toolbar, then Add to Home Screen in the list that opens.',
     first: (
       <Screen>
         <PageLines n={4} />
@@ -87,16 +93,15 @@ const SKETCHES = {
         </HStack>
       </Screen>
     ),
-    second: (
+    second: (tr) => (
       <Screen>
         <PageLines n={1} />
-        <MenuList rows={[[Copy, 'Copy'], [Star, 'Add to Favourites']]}
-          hit={{ icon: SquarePlus, label: 'Add to Home Screen' }} />
+        <MenuList rows={[[Copy, tr('copy')], [Star, tr('favourites')]]}
+          hit={{ icon: SquarePlus, label: tr('addToHome') }} />
       </Screen>
     ),
   },
   android: {
-    label: 'Chrome on Android: tap the three-dot menu at the top right, then Install app.',
     first: (
       <Screen>
         <HStack spacing={1} px={1.5} py={1.5} borderBottomWidth="1px" borderColor="border.default">
@@ -105,15 +110,14 @@ const SKETCHES = {
         <PageLines n={5} />
       </Screen>
     ),
-    second: (
+    second: (tr) => (
       <Screen>
-        <MenuList rows={[[Plus, 'New tab'], [History, 'History']]}
-          hit={{ icon: Smartphone, label: 'Install app' }} />
+        <MenuList rows={[[Plus, tr('newTab')], [History, tr('history')]]}
+          hit={{ icon: Smartphone, label: tr('installApp') }} />
       </Screen>
     ),
   },
   samsung: {
-    label: 'Samsung Internet: tap the menu at the bottom right, then Add page to, Home screen.',
     first: (
       <Screen>
         <HStack spacing={1} px={1.5} py={1.5} borderBottomWidth="1px" borderColor="border.default">
@@ -126,15 +130,14 @@ const SKETCHES = {
         </HStack>
       </Screen>
     ),
-    second: (
+    second: (tr) => (
       <Screen>
-        <MenuList rows={[[Star, 'Add page to'], [BookOpen, 'Bookmarks']]}
-          hit={{ icon: House, label: 'Home screen' }} />
+        <MenuList rows={[[Star, tr('addPageTo')], [BookOpen, tr('bookmarks')]]}
+          hit={{ icon: House, label: tr('homeScreen') }} />
       </Screen>
     ),
   },
   desktop: {
-    label: 'Chrome or Edge on a computer: click the install icon at the right of the address bar, then Install.',
     first: (
       <Screen wide>
         <HStack spacing={1.5} px={2} py={1.5} borderBottomWidth="1px" borderColor="border.default">
@@ -143,13 +146,13 @@ const SKETCHES = {
         <PageLines n={3} />
       </Screen>
     ),
-    second: (
+    second: (tr) => (
       <Screen wide>
         <Stack spacing={2} m="auto" p={3} w="80%" bg="bg.subtle" borderRadius="lg">
-          <Text fontSize="2xs" fontWeight="700">Install app?</Text>
-          <Text fontSize="2xs" color="text.muted">Budgeer · www.budgeer.com</Text>
+          <Text fontSize="2xs" fontWeight="700">{tr('prompt')}</Text>
+          <Text fontSize="2xs" color="text.muted">{APP_LINE}</Text>
           <HStack justify="flex-end" spacing={1.5}>
-            <Hit icon={MonitorDown} label="Install" />
+            <Hit icon={MonitorDown} label={tr('install')} />
           </HStack>
         </Stack>
       </Screen>
@@ -165,23 +168,17 @@ function Caption({ n, children }) {
   )
 }
 
-const CAPTIONS = {
-  iphone: ['Tap Share', 'Add to Home Screen'],
-  android: ['Tap ⋮', 'Install app'],
-  samsung: ['Tap the menu', 'Add page to → Home screen'],
-  desktop: ['Click the install icon', 'Install'],
-}
-
 // The two-step sketch for one platform ('iphone' | 'android' | 'samsung' | 'desktop').
 export default function InstallIllustration({ platform }) {
+  const t = useT('help')
+  const tr = (key) => t(`install.${platform}.${key}`)
   const sketch = SKETCHES[platform]
-  const [a, b] = CAPTIONS[platform]
   return (
-    <Box role="img" aria-label={sketch.label} bg="bg.canvas" borderWidth="1px" borderColor="border.default"
+    <Box role="img" aria-label={tr('label')} bg="bg.canvas" borderWidth="1px" borderColor="border.default"
       borderRadius="xl" p={3} maxW="420px">
       <SimpleGrid columns={platform === 'desktop' ? { base: 1, sm: 2 } : 2} spacing={3} aria-hidden>
-        <Box>{sketch.first}<Caption n={1}>{a}</Caption></Box>
-        <Box>{sketch.second}<Caption n={2}>{b}</Caption></Box>
+        <Box>{sketch.first}<Caption n={1}>{tr('step1')}</Caption></Box>
+        <Box>{sketch.second(tr)}<Caption n={2}>{tr('step2')}</Caption></Box>
       </SimpleGrid>
     </Box>
   )

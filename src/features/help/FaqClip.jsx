@@ -3,6 +3,7 @@ import { Box, IconButton } from '@chakra-ui/react'
 import { useInView } from 'framer-motion'
 import { Pause, Play } from 'lucide-react'
 import { usePlayback } from '../../shared/ui/kit/motion.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { clipSources } from './faqMath.js'
 
 // Displayed size of a clip (recorded at phone size, 5:9 portrait). The box
@@ -17,6 +18,7 @@ const RATIO = '5 / 9'
 // motion — then it shows the poster with a play button. A pause/play button
 // is always there, and the description is the image's alt and video's label.
 export default function FaqClip({ name, alt }) {
+  const t = useT('help')
   const { ref, reduce, inView } = usePlayback({ amount: 0.6 })
   const near = useInView(ref, { once: true, margin: '200px' })
   // null = follow the automatic behaviour; true/false = the visitor's choice.
@@ -50,7 +52,7 @@ export default function FaqClip({ name, alt }) {
           <source src={video} type="video/webm" />
         </Box>
       )}
-      <IconButton aria-label={playing ? 'Pause the clip' : 'Play the clip'} size="sm" isRound
+      <IconButton aria-label={playing ? t('clip.pause') : t('clip.play')} size="sm" isRound
         position="absolute" right={2} bottom={2} bg="blackAlpha.600" color="white"
         _hover={{ bg: 'blackAlpha.700' }} _active={{ bg: 'blackAlpha.800' }}
         icon={playing ? <Pause size={16} /> : <Play size={16} />}

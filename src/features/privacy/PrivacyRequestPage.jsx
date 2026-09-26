@@ -6,15 +6,17 @@ import {
 import FormPage, { PageForm } from '../../shared/ui/FormPage.jsx'
 import useGoBack from '../../shared/ui/useGoBack.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { MESSAGE_MAX, REQUEST_KINDS, responseDeadline, validatePrivacyRequest } from './legal.js'
+import { MESSAGE_MAX, REQUEST_KINDS, requestErrorKey, responseDeadline, validatePrivacyRequest } from './legal.js'
 import { sendPrivacyRequest } from './privacyData.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // /settings/privacy/request — restrict, object, or any other privacy
 // request. It goes to the privacy inbox, and the reply goes to the account's
 // email address. Sending goes back to Privacy.
 export default function PrivacyRequestPage() {
+  const t = useT('privacy')
   const toast = useToast()
   const back = useGoBack('/settings/privacy')
   const [kind, setKind] = useState('restrict')
@@ -25,33 +27,36 @@ export default function PrivacyRequestPage() {
 
   async function submit() {
     const checked = validatePrivacyRequest({ kind, message })
-    if (checked.error) { toast({ title: checked.error, status: 'warning' }); return }
+    if (checked.error) {
+      const key = requestErrorKey(checked.error)
+      toast({ title: key ? t(`request.errors.${key}`, { max: MESSAGE_MAX }) : checked.error, status: 'warning' })
+      return
+    }
     await run(async () => {
       await sendPrivacyRequest(checked)
       const by = responseDeadline().toLocaleDateString(intlLocale('en-GB'), { day: 'numeric', month: 'long', year: 'numeric' })
-      toast({ title: 'Request sent', status: 'success',
-        description: `We’ve emailed you a receipt, and we’ll reply to your account’s email address by ${by}.` })
+      toast({ title: t('request.sent'), status: 'success', description: t('request.sentBody', { date: by }) })
       back()
-    }, { errorTitle: 'Couldn’t send your request' })
+    }, { errorTitle: t('request.failed') })
   }
 
   if (isDemo) return <Navigate to="/settings/privacy" replace />
   return (
-    <FormPage eyebrow="Privacy" title="Privacy request" fallback="/settings/privacy">
-      <PageForm onSubmit={submit} busy={busy} submitLabel="Send request">
+    <FormPage eyebrow={t('request.eyebrow')} title={t('request.title')} fallback="/settings/privacy">
+      <PageForm onSubmit={submit} busy={busy} submitLabel={t('request.send')}>
         <Stack spacing={4}>
           <FormControl>
-            <FormLabel>What is it about?</FormLabel>
+            <FormLabel>{t('request.about')}</FormLabel>
             <Select value={kind} onChange={(e) => setKind(e.target.value)}>
-              {Object.entries(REQUEST_KINDS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+              {Object.keys(REQUEST_KINDS).map((k) => <option key={k} value={k}>{t(`request.kinds.${k}`)}</option>)}
             </Select>
           </FormControl>
           <FormControl>
-            <FormLabel>Your request</FormLabel>
+            <FormLabel>{t('request.yourRequest')}</FormLabel>
             <Textarea rows={6} value={message} maxLength={MESSAGE_MAX}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="Tell us what you’d like us to do, and which data it concerns." />
-            <FormHelperText>We answer within one month. Up to 3 requests a day.</FormHelperText>
+              placeholder={t('request.placeholder')} />
+            <FormHelperText>{t('request.help')}</FormHelperText>
           </FormControl>
         </Stack>
       </PageForm>
