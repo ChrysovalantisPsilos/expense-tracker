@@ -52,6 +52,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 **Groups**
 - Groups with invites via link, email, or in-app; join/decline inbox
 - Expenses split equally, by exact amounts, percentages, or shares
+- Add a group expense straight from the main Add form ("Who's it for?")
 - Balances, "simplify debts" settlement plan, recorded settlements
 - Your share auto-mirrored into your personal expenses
 - Comments on expenses & settlements; immutable audit log
@@ -386,6 +387,41 @@ at 390px (light and dark), desktop 1280, and sideways at 844×390 and 667×375.
     stacks (This month and Goals | History) under the slim header; at 667
     the rows fold their actions into ⋯ and the cards drop their header tiles.
 11. Home's "Saved €X this month" and Insights' "See savings ›" open Savings.
+
+### K4. Add to a group from Add ("Who's it for?")
+
+Fake data: an account in three groups (one owned by someone else, one in
+another currency), plus an account with no groups and one with eight. Check
+at 390px (light and dark), desktop 1280, and sideways at 844×390.
+
+1. No groups: New expense is exactly as before — no "Who's it for?", no
+   placeholder, nothing moves in while it loads.
+2. With groups: under Expense/Income, "Just me" (picked) then the groups,
+   last added to first, then newest first; each with its picture or mark.
+   Eight groups scroll sideways with a fade at the edge that has more; the
+   picked chip is scrolled into view. Income (or editing an entry) shows no row.
+3. Keyboard / screen reader: Tab reaches the row as one radio group
+   ("Who's it for?"); ← / → move the pick and keep the focus on the chips.
+   Each chip is at least 44px tall.
+4. Pick a group: the page becomes "<Group> · Shared expense" — amount first,
+   date and Paid by on one row, the split as one card ("Split equally · All
+   4 · €21.15 each"); Adjust opens the usual split editor. The button reads
+   "Add to <group>". The URL gains `?group=<id>` without a new history entry
+   (Back still leaves Add); reloading keeps the group; a `?group=` that isn't
+   one of your groups opens on Just me.
+5. Carry-over: type an amount, description and date, switch Just me ↔ group
+   ↔ another group — they stay. An untouched currency follows each side's
+   default (base ↔ group currency); a currency you picked stays. A foreign
+   currency shows the conversion line on both sides.
+6. Income from a group's form returns to Just me as New income, keeping
+   what was typed.
+7. Save: back to where Add was opened (Home, Transactions…), toast "Added to
+   <group> — Your share, €X, is in your expenses."; the share is in your
+   expenses, the group shows the expense live, and the group now comes first
+   in the row. The in-group page (`/groups/<id>/expenses/new`) keeps its
+   layout.
+8. Sideways: the fields and chips on the left, the split card on the right,
+   "Add to <group>" in the slim header.
 
 ### L. Privacy & legal (GDPR)
 
