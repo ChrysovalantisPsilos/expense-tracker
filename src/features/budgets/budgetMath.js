@@ -1,7 +1,8 @@
 // Pure budget helpers (no I/O) — unit-tested in test/budgetMath.test.js.
 import { toMinor } from '../../shared/lib/currency.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
-import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
+import { monthTitle } from '../../shared/lib/dates.js'
 import { isMonthPeriod } from '../transactions/periods.js'
 
 // How close spend is to its cap, as the tone its progress bar takes (the
@@ -52,12 +53,23 @@ export function carriedFrom(rows, periodStart) {
 }
 
 // "Carried over from August" (the year is added when it isn't this one's).
+// The month is its in-a-date form, which Greek needs here («Ίδια όρια με του
+// Αυγούστου»): the month-and-year format would give the nominative.
 export function carriedLabel(source, periodStart, locale = intlLocale()) {
   const [y, m] = source.split('-').map(Number)
-  const month = new Date(Date.UTC(y, m - 1, 1)).toLocaleString(locale, {
-    month: 'long', timeZone: 'UTC', ...(periodStart.slice(0, 4) !== source.slice(0, 4) ? { year: 'numeric' } : {}),
-  })
-  return `Carried over from ${month}`
+  const name = new Date(Date.UTC(y, m - 1, 1)).toLocaleString(locale, { month: 'long', timeZone: 'UTC' })
+  const month = periodStart.slice(0, 4) !== source.slice(0, 4) ? `${name} ${y}` : name
+  return t('budgets:carriedFrom', { month })
+}
+
+// Whether a period's label names it from today ("This month", "This year")
+// rather than by its date: periods.js labels every other month with
+// monthTitle and every other year with its number. Works in any language.
+export function isRelativeLabel(period) {
+  if (!period?.from || period.value === 'all') return false
+  const [y, m] = period.from.split('-').map(Number)
+  const plain = isMonthPeriod(period) ? monthTitle(new Date(y, m - 1, 1)) : String(y)
+  return period.label !== plain
 }
 
 // ---- A period's budgets (Home's Budgets card follows the period picker) ----
@@ -154,7 +166,7 @@ export function periodBudgets({ sets, span, spend, baseCurrency }) {
     id: categoryId,
     categoryId,
     category: a.category,
-    name: a.category?.name ?? 'Category',
+    name: a.category?.name ?? t('budgets:fallbackName'),
     limit: a.limit,
     spent: a.spent,
     tone: budgetTone(a.spent, a.limit),
@@ -168,18 +180,18 @@ export function periodBudgets({ sets, span, spend, baseCurrency }) {
 // months it adds up ("2025 · 12 months").
 export function budgetSubtitle(period, { months = 0, carried = null, periodStart } = {}) {
   if (!isMonthPeriod(period)) {
-    return months ? `${period.label} · ${months} ${months === 1 ? 'month' : 'months'}` : period.label
+    return months ? t('budgets:card.months', { period: period.label, count: months }) : period.label
   }
   if (!carried) return period.label
   const label = carriedLabel(carried, periodStart)
-  return period.label === 'This month' ? label : `${period.label} · ${label}`
+  return isRelativeLabel(period) ? label : t('budgets:card.carried', { period: period.label, carried: label })
 }
 
 // The card's empty state, { text, canSet }: setting a budget is offered only
 // for a period that includes this month (`current`), the month budgets are
 // set for.
 export function budgetsEmpty(period, current) {
-  if (!current) return { text: `No budgets in ${period.label}.`, canSet: false }
-  const when = period.label === 'This year' ? 'this year' : 'yet'
-  return { text: `No budgets ${when}. Set monthly caps per category to track them here.`, canSet: true }
+  if (!current) return { text: t('budgets:card.emptyPast', { period: period.label }), canSet: false }
+  const thisYear = !isMonthPeriod(period) && isRelativeLabel(period)
+  return { text: t(thisYear ? 'budgets:card.emptyThisYear' : 'budgets:card.emptyYet'), canSet: true }
 }

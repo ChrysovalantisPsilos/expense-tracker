@@ -1,3 +1,31 @@
-// Namespace `notifications` (Greek): src/features/notifications. Not converted yet: its strings are
-// still literals in the feature's components (docs/I18N.md, "Converting a feature").
-export default {}
+// Namespace `notifications` (Greek). Glossary and tone: docs/i18n-glossary-el.md.
+export default {
+  bell: {
+    title: 'Ειδοποιήσεις',
+    labelUnread_one: 'Ειδοποιήσεις, {{count}} αδιάβαστη',
+    labelUnread_other: 'Ειδοποιήσεις, {{count}} αδιάβαστες',
+    empty: 'Δεν έχεις κάτι καινούργιο.',
+    viewInvites: 'Δες τις προσκλήσεις',
+    what: 'οι ειδοποιήσεις',
+  },
+  prompt: {
+    title: 'Να ενεργοποιηθούν οι ειδοποιήσεις;',
+    body: 'Μάθε αμέσως όταν φίλοι προσθέτουν έξοδα ή σε καλούν σε μια ομάδα, και πάρε υπενθυμίσεις πριν λήξουν οι λογαριασμοί σου. Μπορείς να το αλλάξεις όποτε θέλεις στις Ρυθμίσεις → Ειδοποιήσεις.',
+    emailToo: 'Στείλε μου και email για τα σημαντικά — προσκλήσεις, μέλη που μπαίνουν ή φεύγουν',
+    notNow: 'Όχι τώρα',
+    enable: 'Ενεργοποίηση',
+    on: {
+      title: 'Οι ειδοποιήσεις ενεργοποιήθηκαν',
+      body: 'Θα λαμβάνεις τη δραστηριότητα των ομάδων και υπενθυμίσεις πληρωμών σε αυτή τη συσκευή.',
+    },
+    blocked: {
+      title: 'Οι ειδοποιήσεις είναι μπλοκαρισμένες',
+      body: 'Μπορείς να τις επιτρέψεις όποτε θέλεις από τις ρυθμίσεις του browser.',
+    },
+    unsupported: {
+      title: 'Οι ειδοποιήσεις push δεν υποστηρίζονται σε αυτόν τον browser',
+      body: 'Σε iPhone, πρόσθεσε πρώτα το Budgeer στην οθόνη αφετηρίας.',
+    },
+    failed: 'Δεν ενεργοποιήθηκαν οι ειδοποιήσεις σε αυτή τη συσκευή',
+  },
+}

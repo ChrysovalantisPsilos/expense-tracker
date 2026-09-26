@@ -9,6 +9,7 @@ import { patchRow } from '../../shared/lib/db.js'
 import { enablePush, pushSupported } from '../../shared/lib/push.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { claimPromptSlot, releasePromptSlot, whenPromptSlotFree } from '../../shared/lib/promptGate.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const SEEN = STORAGE_KEYS.notifPrompted
 
@@ -17,6 +18,7 @@ const SEEN = STORAGE_KEYS.notifPrompted
 // the Settings switches stay the way to change either choice later. Waits for
 // the prompt slot so it never stacks on the passkey prompt.
 export default function NotificationPrompt() {
+  const t = useT('notifications')
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -38,14 +40,14 @@ export default function NotificationPrompt() {
       return
     }
     let active = true
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       whenPromptSlotFree(() => {
         if (!active) return
         claimPromptSlot()
         setOpen(true)
       })
     }, 1200)
-    return () => { active = false; clearTimeout(t) }
+    return () => { active = false; clearTimeout(timer) }
   }, [])
 
   function close() {
@@ -63,17 +65,17 @@ export default function NotificationPrompt() {
     try {
       const status = await enablePush()
       if (status === 'subscribed') {
-        toast({ title: 'Notifications on', status: 'success',
-          description: 'You’ll get group activity and payment reminders on this device.' })
+        toast({ title: t('prompt.on.title'), status: 'success',
+          description: t('prompt.on.body') })
       } else if (status === 'denied') {
-        toast({ title: 'Notifications blocked', status: 'info',
-          description: 'You can allow them in your browser settings anytime.' })
+        toast({ title: t('prompt.blocked.title'), status: 'info',
+          description: t('prompt.blocked.body') })
       } else {
-        toast({ title: 'Push isn’t available in this browser', status: 'info',
-          description: 'On iPhone, install Budgeer to your home screen first.' })
+        toast({ title: t('prompt.unsupported.title'), status: 'info',
+          description: t('prompt.unsupported.body') })
       }
     } catch {
-      toast({ title: 'Couldn’t enable notifications on this device', status: 'warning' })
+      toast({ title: t('prompt.failed'), status: 'warning' })
     }
     setBusy(false)
     close()
@@ -87,28 +89,26 @@ export default function NotificationPrompt() {
           <HStack>
             <Flex boxSize="36px" align="center" justify="center" borderRadius="lg"
               bg="bg.subtle" color="accent.fg"><BellRing size={20} /></Flex>
-            <Text>Turn on notifications?</Text>
+            <Text>{t('prompt.title')}</Text>
           </HStack>
         </ModalHeader>
         <ModalBody>
           <Stack spacing={4}>
             <Text color="text.muted">
-              Get a heads-up when friends add expenses or invite you to a group,
-              and reminders before your bills are due. You can change this
-              anytime in Settings → Notifications.
+              {t('prompt.body')}
             </Text>
             <Checkbox isChecked={emailToo}
               onChange={(e) => setEmailToo(e.target.checked)}>
               <Text fontSize="sm">
-                Also email me about big events — invites, members joining or leaving
+                {t('prompt.emailToo')}
               </Text>
             </Checkbox>
           </Stack>
         </ModalBody>
         <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={close}>Not now</Button>
+          <Button variant="ghost" onClick={close}>{t('prompt.notNow')}</Button>
           <Button leftIcon={<BellRing size={16} />} isLoading={busy} onClick={enable}>
-            Enable
+            {t('prompt.enable')}
           </Button>
         </ModalFooter>
       </ModalContent>

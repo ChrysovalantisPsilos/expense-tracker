@@ -10,6 +10,7 @@ import {
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { SHORT_LANDSCAPE } from '../../shared/lib/shortLandscape.js'
 import { markAllRead } from './notifications.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const ICON = {
   invite: UserPlus, expense: ReceiptText, settlement: HandCoins,
@@ -22,12 +23,13 @@ const ICON = {
 // sideways bells share it rather than each opening a channel. The list opens
 // under the bell; on a phone held sideways it's capped to the short screen.
 export default function NotificationBell({ feed }) {
+  const t = useT('notifications')
   const navigate = useNavigate()
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { items, error, reload, setItems } = feed
 
   const unread = items.filter((n) => !n.read_at).length
-  const label = unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'
+  const label = unread > 0 ? t('bell.labelUnread', { count: unread }) : t('bell.title')
 
   async function handleOpen() {
     onOpen()
@@ -49,14 +51,14 @@ export default function NotificationBell({ feed }) {
 
   const list = (
     <PopoverContent w="320px">
-      <PopoverHeader>Notifications</PopoverHeader>
+      <PopoverHeader>{t('bell.title')}</PopoverHeader>
       <PopoverBody px={0} maxH="380px" overflowY="auto"
         sx={{ [SHORT_LANDSCAPE]: { maxH: 'calc(100dvh - 120px)' } }}>
         {error ? (
-          <QueryError error={error} onRetry={reload} what="notifications" py={4} />
+          <QueryError error={error} onRetry={reload} what={t('bell.what')} py={4} />
         ) : items.length === 0 ? (
           <Text px={4} py={6} color="text.muted" fontSize="sm" textAlign="center">
-            You’re all caught up.
+            {t('bell.empty')}
           </Text>
         ) : (
           <Stack spacing={0}>
@@ -85,7 +87,7 @@ export default function NotificationBell({ feed }) {
       {items.some((n) => n.type === 'invite') && (
         <Box px={4} py={2} borderTopWidth="1px">
           <Button size="sm" variant="ghost" w="full" onClick={() => go({ type: 'invite' })}>
-            View invites
+            {t('bell.viewInvites')}
           </Button>
         </Box>
       )}

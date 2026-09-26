@@ -68,9 +68,10 @@ test('budgetChange: set, change, remove or nothing to do', () => {
 
 // ---- A period's budgets (Home's card follows the period picker) --------------
 import {
-  budgetWindow, capsInMonth, periodBudgets, budgetSubtitle, budgetsEmpty,
+  budgetWindow, capsInMonth, periodBudgets, budgetSubtitle, budgetsEmpty, isRelativeLabel,
 } from '../src/features/budgets/budgetMath.js'
 import { periodFromValue } from '../src/features/transactions/periods.js'
+import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 
 const NOW = new Date(2026, 8, 25) // 25 Sep 2026
 const TODAY = '2026-09-25'
@@ -192,4 +193,26 @@ test('budgetsEmpty: past periods just say so; only periods with this month offer
   assert.equal(budgetsEmpty(P('y:2026'), true).canSet, true)
   assert.match(budgetsEmpty(P('y:2026'), true).text, /^No budgets this year\./)
   assert.match(budgetsEmpty(P('m:2026-9'), true).text, /^No budgets yet\./)
+})
+
+test('isRelativeLabel: "This month" / "This year" name a period from today, in any language', () => {
+  assert.equal(isRelativeLabel(P('m:2026-9')), true)
+  assert.equal(isRelativeLabel(P('y:2026')), true)
+  assert.equal(isRelativeLabel(P('m:2025-3')), false)
+  assert.equal(isRelativeLabel(P('y:2025')), false)
+  assert.equal(isRelativeLabel(P('all')), false)
+  assert.equal(isRelativeLabel({ ...P('m:2026-9'), label: 'Αυτός ο μήνας' }), true)
+})
+
+test('budget labels in Greek: the month in its genitive, a plural for months', async () => {
+  await loadLanguage('el')
+  try {
+    assert.equal(carriedLabel('2026-08-01', '2026-09-01', 'el-GR'), 'Ίδια όρια με του Αυγούστου')
+    assert.equal(carriedLabel('2025-12-01', '2026-01-01', 'el-GR'), 'Ίδια όρια με του Δεκεμβρίου 2025')
+    assert.equal(budgetSubtitle(P('y:2025'), { months: 12 }), '2025 · 12 μήνες')
+    assert.equal(budgetSubtitle(P('y:2025'), { months: 1 }), '2025 · 1 μήνας')
+    assert.deepEqual(budgetsEmpty(P('m:2025-3'), false), { text: 'Χωρίς προϋπολογισμούς: Μάρτιος 2025.', canSet: false })
+  } finally {
+    await loadLanguage('en')
+  }
 })

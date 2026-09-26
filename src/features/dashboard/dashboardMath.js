@@ -4,6 +4,9 @@ import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
 import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { EFFECTS, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { expectedInWindow } from '../recurring/recurringMath.js'
+import { isMonthPeriod } from '../transactions/periods.js'
+import { isRelativeLabel } from '../budgets/budgetMath.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 const NO_SAVINGS = new Set()
 
@@ -94,20 +97,22 @@ export function projectedTotals(totals, proj) {
 // what it is — "excl. spending from savings" once some expenses were paid
 // from savings, "− savings" once some savings were taken from income.
 export function netNote(proj, fromIncomeTotal, fromSavingsTotal) {
-  if (proj.expense > 0 || proj.income > 0 || proj.savedFromIncome > 0) return 'incl. upcoming recurring'
-  if (fromSavingsTotal > 0) return 'excl. spending from savings'
-  return fromIncomeTotal > 0 ? 'income − expenses − savings' : 'income − expenses'
+  if (proj.expense > 0 || proj.income > 0 || proj.savedFromIncome > 0) return t('dashboard:netNote.upcoming')
+  if (fromSavingsTotal > 0) return t('dashboard:netNote.exclSavings')
+  return t(fromIncomeTotal > 0 ? 'dashboard:netNote.withSavings' : 'dashboard:netNote.plain')
 }
 
 // The Overview's note on a period's savings (both kinds) — "Saved €300.00
-// this month", "… in March 2025", "… in 2025", "… in total" (all time) — or
-// null when nothing was saved in it.
+// this month", "… this year", "… in March 2025", "… in 2025", "… in total"
+// (all time) — or null when nothing was saved in it.
 export function savedNote(saved, period, baseCurrency) {
   if (!(saved > 0)) return null
-  const label = String(period?.label ?? '')
-  const when = period?.value === 'all' ? 'in total'
-    : /^This /.test(label) ? label.toLowerCase() : `in ${label}`
-  return `Saved ${formatMoney(saved, baseCurrency)} ${when}`
+  const amount = formatMoney(saved, baseCurrency)
+  if (period?.value === 'all') return t('dashboard:saved.total', { amount })
+  if (isRelativeLabel(period)) {
+    return t(isMonthPeriod(period) ? 'dashboard:saved.thisMonth' : 'dashboard:saved.thisYear', { amount })
+  }
+  return t('dashboard:saved.in', { amount, period: String(period?.label ?? '') })
 }
 
 // "Spending by category" lists every category (no folded "Other" on Home);

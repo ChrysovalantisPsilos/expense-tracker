@@ -23,8 +23,10 @@ import { categoryPath } from '../categories/categoryLinks.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 export default function Budgets() {
+  const t = useT('budgets')
   const { baseCurrency } = useProfile()
   const { categories } = useCategories('expense')
   // Progress (budgets + their spend) is the single source, shared with the
@@ -58,11 +60,11 @@ export default function Budgets() {
         periodStart,
       })
       setAmount(''); setCatId('')
-      toast({ title: 'Budget saved', status: 'success' })
+      toast({ title: t('saved'), status: 'success' })
       reload() // live via realtime too; this covers a dropped socket
     } catch (err) {
       console.error('[budgets] save failed:', err)
-      toast({ title: userMessage(err, 'Couldn’t save the budget. Please try again.'), status: 'error' })
+      toast({ title: userMessage(err, t('saveFailed')), status: 'error' })
     }
   }
 
@@ -74,18 +76,18 @@ export default function Budgets() {
   async function remove(item) {
     try {
       await deleteBudget({ categoryId: item.categoryId, periodStart })
-      toast({ title: `${item.name} budget removed`, status: 'success' })
+      toast({ title: t('removed', { name: item.name }), status: 'success' })
       reload()
     } catch (err) {
       console.error('[budgets] remove failed:', err)
-      toast({ title: userMessage(err, 'Couldn’t remove the budget. Please try again.'), status: 'error' })
+      toast({ title: userMessage(err, t('removeFailed')), status: 'error' })
     }
   }
 
   async function copy() {
     await run(async () => {
       const n = await copyPreviousBudgets(periodStart)
-      toast({ title: `Copied ${n} ${n === 1 ? 'budget' : 'budgets'} from last month`, status: 'success' })
+      toast({ title: t('copied', { count: n }), status: 'success' })
       setConfirmCopy(false)
       reload()
     })
@@ -97,7 +99,7 @@ export default function Budgets() {
   const copyButton = canCopy && (
     <Button size="xs" variant="ghost" leftIcon={<Copy size={14} />} isLoading={copying}
       onClick={() => setConfirmCopy(true)}>
-      Copy last month’s budgets
+      {t('copy.button')}
     </Button>
   )
 
@@ -107,20 +109,20 @@ export default function Budgets() {
   const empty = !error && !loading && items.length === 0
 
   const form = (
-    <Panel ref={formRef} icon={Target} title="Set a monthly cap">
+    <Panel ref={formRef} icon={Target} title={t('form.title')}>
       <form onSubmit={addBudget} {...unsavedFormAttr(!!(catId || amount))}>
         <HStack align="end" spacing={3}>
           <FormControl>
-            <FormLabel>Category</FormLabel>
-            <Select ref={categoryRef} placeholder="Select" value={catId} onChange={(e) => setCatId(e.target.value)}>
+            <FormLabel>{t('form.category')}</FormLabel>
+            <Select ref={categoryRef} placeholder={t('form.select')} value={catId} onChange={(e) => setCatId(e.target.value)}>
               {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           </FormControl>
           <FormControl maxW="160px">
-            <FormLabel>Monthly cap</FormLabel>
+            <FormLabel>{t('form.cap')}</FormLabel>
             <MoneyInput currency={baseCurrency} value={amount} onChange={setAmount} />
           </FormControl>
-          <Button type="submit">Set</Button>
+          <Button type="submit">{t('form.submit')}</Button>
         </HStack>
       </form>
     </Panel>
@@ -128,19 +130,19 @@ export default function Budgets() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader eyebrow={monthTitle()} title="Budgets" />
+      <PageHeader eyebrow={monthTitle()} title={t('title')} />
 
       {empty ? (
         <>
           <Panel>
-            <EmptyState title="No budgets yet"
-              text="Set a monthly cap per category and Budgeer shows how close you are as you spend."
+            <EmptyState title={t('empty.title')}
+              text={t('empty.text')}
               actions={<>
-                <Button leftIcon={<Target size={18} />} onClick={goToForm}>Set your first budget</Button>
+                <Button leftIcon={<Target size={18} />} onClick={goToForm}>{t('empty.first')}</Button>
                 {canCopy && (
                   <Button variant="outline" colorScheme="gray" leftIcon={<Copy size={18} />}
                     isLoading={copying} onClick={copy}>
-                    Copy last month’s budgets
+                    {t('copy.button')}
                   </Button>
                 )}
               </>} />
@@ -150,26 +152,26 @@ export default function Budgets() {
       ) : (
         <>
           {form}
-          <Panel icon={CalendarDays} title="This month"
+          <Panel icon={CalendarDays} title={t('thisMonth')}
             subtitle={carriedFrom ? carriedLabel(carriedFrom, periodStart) : undefined}
             action={items.length > 0 ? copyButton : undefined}>
-            {error ? <QueryError error={error} onRetry={reload} what="budgets" /> : loading ? (
+            {error ? <QueryError error={error} onRetry={reload} what={t('what')} /> : loading ? (
               <SkeletonRegion><SkeletonRows count={4} progress spacing={5} /></SkeletonRegion>
             ) : (
               <Stack spacing={5}>
                 <Text color="text.muted" fontSize="sm">
-                  Tap a budget to see what you spent and change it.
+                  {t('hint')}
                 </Text>
                 {carriedFrom && (
                   <Text color="text.muted" fontSize="sm">
-                    Budgets roll over until you change them. Edit or delete one and this month gets its own.
+                    {t('rollover')}
                   </Text>
                 )}
-                <Stack spacing={5} role="list" aria-label="Budgets">
+                <Stack spacing={5} role="list" aria-label={t('title')}>
                   {items.map((b) => (
                     <BudgetRow key={b.id} item={b} currency={baseCurrency} actions={[
-                      { label: `Edit ${b.name} budget`, icon: Pencil, onClick: () => startEdit(b) },
-                      { label: `Delete ${b.name} budget`, icon: Trash2, danger: true, onClick: () => remove(b) },
+                      { label: t('edit', { name: b.name }), icon: Pencil, onClick: () => startEdit(b) },
+                      { label: t('delete', { name: b.name }), icon: Trash2, danger: true, onClick: () => remove(b) },
                     ]} />
                   ))}
                 </Stack>
@@ -182,16 +184,15 @@ export default function Budgets() {
       <Modal isOpen={confirmCopy} onClose={() => setConfirmCopy(false)} isCentered>
         <ModalOverlay />
         <ModalContent mx={4}>
-          <ModalHeader>Copy last month’s budgets?</ModalHeader>
+          <ModalHeader>{t('copy.title')}</ModalHeader>
           <ModalBody>
             <Text color="text.muted">
-              This month’s {items.length} {items.length === 1 ? 'cap is' : 'caps are'} replaced
-              by last month’s {prev.rows.length}.
+              {t('copy.body', { count: items.length, previous: prev.rows.length })}
             </Text>
           </ModalBody>
           <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={() => setConfirmCopy(false)}>Cancel</Button>
-            <Button isLoading={copying} onClick={copy}>Copy</Button>
+            <Button variant="ghost" onClick={() => setConfirmCopy(false)}>{t('common:actions.cancel')}</Button>
+            <Button isLoading={copying} onClick={copy}>{t('copy.confirm')}</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>

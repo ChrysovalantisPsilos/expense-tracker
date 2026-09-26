@@ -1,3 +1,42 @@
-// Namespace `dashboard` (Greek): src/features/dashboard. Not converted yet: its strings are
-// still literals in the feature's components (docs/I18N.md, "Converting a feature").
-export default {}
+// Namespace `dashboard` (Greek). Glossary and tone: docs/i18n-glossary-el.md.
+export default {
+  title: 'Επισκόπηση',
+  period: 'Περίοδος',
+  unavailable: 'Δεν είναι διαθέσιμο μέχρι να φορτώσουν οι κινήσεις σου.',
+  what: 'οι κινήσεις σου',
+  overview: {
+    spent: 'Έξοδα',
+    income: 'Έσοδα',
+    net: 'Καθαρό',
+    upcoming: 'μαζί με {{amount}} που έρχονται',
+    fromSavings: 'μαζί με {{amount}} από αποταμιεύσεις',
+  },
+  netNote: {
+    upcoming: 'μαζί με τα επαναλαμβανόμενα που έρχονται',
+    exclSavings: 'χωρίς τα έξοδα από αποταμιεύσεις',
+    withSavings: 'έσοδα − έξοδα − αποταμιεύσεις',
+    plain: 'έσοδα − έξοδα',
+  },
+  saved: {
+    thisMonth: 'Αποταμίευσες {{amount}} αυτόν τον μήνα',
+    thisYear: 'Αποταμίευσες {{amount}} φέτος',
+    total: 'Αποταμίευσες {{amount}} συνολικά',
+    in: '{{period}}: αποταμίευσες {{amount}}',
+  },
+  categories: {
+    title: 'Έξοδα ανά κατηγορία',
+    chart: 'Γράφημα',
+    chartView: 'Προβολή γραφήματος',
+    table: 'Πίνακας',
+    tableView: 'Προβολή πίνακα',
+    category: 'Κατηγορία',
+    amount: 'Ποσό',
+    share: 'Ποσοστό',
+    add: 'Πρόσθεσε έξοδο',
+    tooltip: '{{name}}: {{amount}} ({{share}}%)',
+    showTop: 'Δείξε τις {{n}} πρώτες',
+    showAll: 'Δείξε όλες τις {{n}} κατηγορίες',
+  },
+  noExpenses: 'Δεν υπάρχουν έξοδα σε αυτή την περίοδο.',
+  noIncome: 'Δεν υπάρχουν έσοδα σε αυτή την περίοδο.',
+}

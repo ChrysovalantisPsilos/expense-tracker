@@ -43,12 +43,14 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { NARROW_STACKS } from '../../shared/ui/narrowStacks.js'
 import { SkeletonBlock, SkeletonFigure, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
 
-const UNAVAILABLE = 'Not available until your transactions load.'
-
 export default function Dashboard() {
+  const t = useT('dashboard')
+  // What a card that needs the transactions shows when they couldn't load.
+  const unavailable = <Text color="text.muted" fontSize="sm">{t('unavailable')}</Text>
   const { baseCurrency, separateYearly, salaryShift } = useProfile()
   const { rules, loading: rulesLoading, error: rulesError, reload: reloadRules } = useRecurring()
   // Foreign rules count at today's ECB rate (the projection, the Recurring card).
@@ -131,30 +133,30 @@ export default function Dashboard() {
     overview: error ? (
         // One error (with Retry) for the transactions every card below needs,
         // instead of €0.00 totals that look real.
-        <Panel data-tour="overview"><QueryError error={error} onRetry={reload} what="your transactions" /></Panel>
+        <Panel data-tour="overview"><QueryError error={error} onRetry={reload} what={t('what')} /></Panel>
       ) : (
       <Panel data-tour="overview">
         {loading ? <OverviewSkeleton grid={overviewGrid} /> : (
         <SimpleGrid {...overviewGrid} spacing={4} alignItems="center">
           <Box>
-            <Figure label="Spent" size="hero" value={formatMoney(spentTotal, baseCurrency)} />
+            <Figure label={t('overview.spent')} size="hero" value={formatMoney(spentTotal, baseCurrency)} />
             {proj.expense > 0 && (
               <Text fontSize="xs" color="text.muted" mt={1}>
-                incl. {formatMoney(proj.expense, baseCurrency)} upcoming
+                {t('overview.upcoming', { amount: formatMoney(proj.expense, baseCurrency) })}
               </Text>
             )}
             {/* Expenses paid from savings (0085) are spending, but not
                 against the Net. */}
             {fromSavingsTotal > 0 && (
               <Text fontSize="xs" color="text.muted" mt={proj.expense > 0 ? 0 : 1}>
-                incl. {formatMoney(fromSavingsTotal, baseCurrency)} paid from savings
+                {t('overview.fromSavings', { amount: formatMoney(fromSavingsTotal, baseCurrency) })}
               </Text>
             )}
           </Box>
           <SimpleGrid columns={2} spacing={2}>
-            <BalanceTile size="md" label="Income" value={formatMoney(earnedTotal, baseCurrency)} tone="positive"
-              note={proj.income > 0 ? `incl. ${formatMoney(proj.income, baseCurrency)} upcoming` : undefined} />
-            <BalanceTile size="md" label="Net" value={net.text} tone={net.tone}
+            <BalanceTile size="md" label={t('overview.income')} value={formatMoney(earnedTotal, baseCurrency)} tone="positive"
+              note={proj.income > 0 ? t('overview.upcoming', { amount: formatMoney(proj.income, baseCurrency) }) : undefined} />
+            <BalanceTile size="md" label={t('overview.net')} value={net.text} tone={net.tone}
               note={netNote(proj, fromIncomeTotal, fromSavingsTotal)} />
             {/* Savings aren't income (those taken from it lower the net): a quiet
                 line says what was put aside, both kinds, and opens Savings. */}
@@ -177,38 +179,38 @@ export default function Dashboard() {
     firstEntry: <Panel><FirstEntry /></Panel>,
 
     categories: (
-      <Panel data-tour="categories" icon={ChartBarDecreasing} title="Spending by category" action={
+      <Panel data-tour="categories" icon={ChartBarDecreasing} title={t('categories.title')} action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
-            <CkTooltip label="Chart">
-              <IconButton aria-label="Chart view" size="xs" icon={<ChartBarDecreasing size={15} />}
+            <CkTooltip label={t('categories.chart')}>
+              <IconButton aria-label={t('categories.chartView')} size="xs" icon={<ChartBarDecreasing size={15} />}
                 variant={view !== 'table' ? 'solid' : 'ghost'}
                 colorScheme={view !== 'table' ? 'brand' : 'gray'}
                 onClick={() => chooseView('chart')} />
             </CkTooltip>
-            <CkTooltip label="Table">
-              <IconButton aria-label="Table view" size="xs" icon={<TableIcon size={15} />}
+            <CkTooltip label={t('categories.table')}>
+              <IconButton aria-label={t('categories.tableView')} size="xs" icon={<TableIcon size={15} />}
                 variant={view === 'table' ? 'solid' : 'ghost'}
                 colorScheme={view === 'table' ? 'brand' : 'gray'}
                 onClick={() => chooseView('table')} />
             </CkTooltip>
           </HStack>
         }>
-        {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
+        {error ? unavailable : loading ? (
           <SkeletonRegion><SkeletonRows count={4} progress /></SkeletonRegion>
         ) : byCategory.length === 0 ? (
           // On a first run the "Nothing logged yet" card above already offers
           // the next step, so no second button here.
-          <CardEmptyState text="No expenses in this period."
+          <CardEmptyState text={t('noExpenses')}
             action={!firstRun && (
-              <Button as={RouterLink} to="/transactions/new" size="sm" variant="outline">Add an expense</Button>
+              <Button as={RouterLink} to="/transactions/new" size="sm" variant="outline">{t('categories.add')}</Button>
             )} />
         ) : view === 'table' ? (
           <Table size="sm" variant="simple">
             <Thead>
               <Tr>
-                <Th>Category</Th>
-                <Th isNumeric>Amount</Th>
-                <Th isNumeric>Share</Th>
+                <Th>{t('categories.category')}</Th>
+                <Th isNumeric>{t('categories.amount')}</Th>
+                <Th isNumeric>{t('categories.share')}</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -227,11 +229,11 @@ export default function Dashboard() {
           // Ranked bars: one hue (identity is the label, not a colour), each row
           // labelled with its amount and share, so nothing depends on hover.
           <Stack spacing={4}>
-          <Stack spacing={4} role="list" aria-label="Spending by category" id="spending-bars">
+          <Stack spacing={4} role="list" aria-label={t('categories.title')} id="spending-bars">
             {shownBars.rows.map((c) => (
               <ProgressRow key={c.name} role="listitem"
                 title={c.name} meta={formatMoney(c.value, baseCurrency)}
-                tooltip={`${c.name}: ${formatMoney(c.value, baseCurrency)} (${c.share}%)`}
+                tooltip={t('categories.tooltip', { name: c.name, amount: formatMoney(c.value, baseCurrency), share: c.share })}
                 media={<BucketIcon row={bucketRow.get(c.name)} />}
                 percent={Math.max(c.ratio * 100, 2)} valueLabel={`${c.share}%`}
                 to={c.to} linkLabel={c.linkLabel} />
@@ -241,7 +243,7 @@ export default function Dashboard() {
             <Button size="sm" variant="outline" colorScheme="gray" w="full" aria-controls="spending-bars"
               aria-expanded={showAllBars} onClick={() => setShowAllBars((v) => !v)}
               rightIcon={showAllBars ? <ChevronUp size={16} /> : <ChevronDown size={16} />}>
-              {showAllBars ? `Show top ${TOP_CATEGORIES}` : `Show all ${bars.length} categories`}
+              {showAllBars ? t('categories.showTop', { n: TOP_CATEGORIES }) : t('categories.showAll', { n: bars.length })}
             </Button>
           )}
           </Stack>
@@ -253,10 +255,10 @@ export default function Dashboard() {
 
     expenses: (
       <Panel icon={ReceiptText} title={expHead.title} subtitle={expHead.subtitle} divider>
-        {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
+        {error ? unavailable : loading ? (
           <SkeletonRegion><SkeletonRows count={5} py={2.5} /></SkeletonRegion>
         ) : expenses.length === 0 ? (
-          <Text color="text.muted" fontSize="sm">No expenses in this period.</Text>
+          <Text color="text.muted" fontSize="sm">{t('noExpenses')}</Text>
         ) : (
           <>
             <TransactionList rows={expPage.pageItems} kind="expense" baseCurrency={baseCurrency}
@@ -269,10 +271,10 @@ export default function Dashboard() {
 
     income: (
       <Panel icon={Wallet} iconTone="positive" title={incHead.title} subtitle={incHead.subtitle} divider>
-        {error ? <Text color="text.muted" fontSize="sm">{UNAVAILABLE}</Text> : loading ? (
+        {error ? unavailable : loading ? (
           <SkeletonRegion><SkeletonRows count={3} py={2.5} /></SkeletonRegion>
         ) : income.length === 0 ? (
-          <Text color="text.muted" fontSize="sm">No income in this period.</Text>
+          <Text color="text.muted" fontSize="sm">{t('noIncome')}</Text>
         ) : (
           <>
             <TransactionList rows={incPage.pageItems} kind="income" baseCurrency={baseCurrency}
@@ -293,9 +295,9 @@ export default function Dashboard() {
 
   return (
     <Stack spacing={sideways ? 3 : 5}>
-      <PageHeader title="Overview" action={
+      <PageHeader title={t('title')} action={
         <Select w={{ base: '140px', sm: '200px' }} size="sm" borderRadius="lg" value={periodValue}
-          aria-label="Period" onChange={(e) => setPeriodValue(e.target.value)}>
+          aria-label={t('period')} onChange={(e) => setPeriodValue(e.target.value)}>
           {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </Select>
       } />

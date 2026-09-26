@@ -20,6 +20,7 @@ import { buildTrend, netWorth } from '../src/features/insights/insightsMath.js'
 import { netBaseMinor } from '../src/features/transactions/txnFilter.js'
 import { incomePerMonth, planRepeat, repeatDraft, ruleFromTransaction } from '../src/features/recurring/recurringMath.js'
 import { periodFromValue } from '../src/features/transactions/periods.js'
+import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 import {
   buildStatement, fromSavingsNote, savingsNote, statementSheets,
 } from '../supabase/functions/generate-report/statementMath.ts'
@@ -165,6 +166,20 @@ test('Home: the "Saved" note per period, or none', () => {
   assert.equal(savedNote(30000, periodFromValue('all', d), 'EUR'), `Saved ${eur(30000)} in total`)
   assert.equal(savedNote(0, periodFromValue('all', d), 'EUR'), null)
   assert.equal(savedNote(-500, periodFromValue('all', d), 'EUR'), null)
+})
+
+test('Home: the "Saved" note in Greek, from the period (not its English label)', async () => {
+  const d = new Date(2026, 8, 25)
+  await loadLanguage('el')
+  try {
+    const eur = formatMoney(30000, 'EUR')
+    assert.equal(savedNote(30000, periodFromValue('m:2026-9', d), 'EUR'), `Αποταμίευσες ${eur} αυτόν τον μήνα`)
+    assert.equal(savedNote(30000, periodFromValue('y:2026', d), 'EUR'), `Αποταμίευσες ${eur} φέτος`)
+    assert.equal(savedNote(30000, periodFromValue('m:2025-3', d), 'EUR'), `Μάρτιος 2025: αποταμίευσες ${eur}`)
+    assert.equal(savedNote(30000, periodFromValue('all', d), 'EUR'), `Αποταμίευσες ${eur} συνολικά`)
+  } finally {
+    await loadLanguage('en')
+  }
 })
 
 test('Insights: the trend leaves savings out of income; left over takes those from income', () => {
