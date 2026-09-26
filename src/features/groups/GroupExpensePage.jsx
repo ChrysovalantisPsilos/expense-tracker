@@ -7,12 +7,15 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { deleteSharedExpense } from './groups.js'
 import GroupFormPage from './GroupFormPage.jsx'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
+import { rememberGroup } from './myGroups.js'
 import DeleteTransactionDialog from '../transactions/DeleteTransactionDialog.jsx'
 
 // A group expense's page:
 //   /groups/:id/expenses/new          add one (you're the payer to start)
 //   /groups/:id/expenses/:expenseId   edit one — its creator or the owner
 // Saving or deleting goes back to wherever the user came from, else the group.
+// Adding one also moves the group to the front of the Add form's "Who's it
+// for?" row (rememberGroup).
 export default function GroupExpensePage() {
   const { expenseId } = useParams()
   return (
@@ -49,7 +52,8 @@ function ExpenseBody({ ctx, expenseId }) {
   return (
     <>
       <GroupExpenseForm group={group} members={members} myMemberId={myMember.id}
-        defaultPayer={myMember.id} expense={expense} onSaved={back}
+        defaultPayer={myMember.id} expense={expense}
+        onSaved={() => { if (!expense) rememberGroup(group.id); back() }}
         onDelete={expense ? () => setConfirming(true) : undefined} />
       <DeleteTransactionDialog row={confirming ? expense : null} onClose={() => setConfirming(false)}
         onConfirm={remove} busy={deleting}

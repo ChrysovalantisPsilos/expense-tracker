@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Button, FormControl, FormErrorMessage, FormHelperText, FormLabel, HStack, Input, Link, Select, Stack,
@@ -28,7 +28,7 @@ import CategoryGrid from './CategoryGrid.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 
-const KINDS = [['expense', 'Expense'], ['income', 'Income']]
+export const KINDS = [['expense', 'Expense'], ['income', 'Income']]
 const FIELDS = ['amount', 'date']
 const checkFields = ({ amount, spentAt }) => fieldErrors({
   amount: amountError(amount),
@@ -53,17 +53,23 @@ const KIND_LABEL = Object.fromEntries(KINDS)
 // the link's ?category=): it's picked once the categories load, and only if
 // it's one of the user's own of this kind (presetCategoryId). On a phone held sideways the fields take the left column and
 // the categories a grid of tiles on the right (CategoryGrid).
+// A new entry on the Add page can also start from `initial` (what the user
+// typed in a group's form: { amount, currency, currencyPicked, description,
+// spentAt }), reports the same through `onDraft`, and its kind through
+// `onKind`; `who` (the "Who's it for?" row) sits under the kind switch while
+// it's an expense.
 export default function TransactionForm({
   kind: initialKind = 'expense', baseCurrency = 'EUR', transaction = null, rule = null, onSaved, onDelete,
-  initialCategory = null,
+  initialCategory = null, initial = null, onDraft, onKind, who = null,
 }) {
   const isEdit = !!transaction
   const [kind, setKind] = useState(transaction?.kind ?? initialKind) // fixed once saved
   const { categories, loading: categoriesLoading } = useCategories(kind)
   const toast = useToast()
   const [amount, setAmount] = useState(
-    transaction ? minorToInput(transaction.amount_minor, transaction.currency) : '')
-  const [currency, setCurrency] = useState(transaction?.currency ?? baseCurrency)
+    transaction ? minorToInput(transaction.amount_minor, transaction.currency) : initial?.amount ?? '')
+  const [currency, setCurrency] = useState(transaction?.currency ?? initial?.currency ?? baseCurrency)
+  const [currencyPicked, setCurrencyPicked] = useState(!!initial?.currencyPicked)
   const [categoryId, setCategoryId] = useState(transaction?.category_id ?? '')
   // The link's category, until the categories are known to check it against.
   const [preset, setPreset] = useState(transaction ? '' : initialCategory ?? '')
@@ -72,8 +78,8 @@ export default function TransactionForm({
     const id = presetCategoryId(preset, categories, kind)
     if (id) setCategoryId(id)
   }
-  const [description, setDescription] = useState(transaction?.description ?? '')
-  const [spentAt, setSpentAt] = useState(transaction?.spent_at ?? today)
+  const [description, setDescription] = useState(transaction?.description ?? initial?.description ?? '')
+  const [spentAt, setSpentAt] = useState(transaction?.spent_at ?? initial?.spentAt ?? today)
   const [notes, setNotes] = useState(transaction?.notes ?? '')
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
   const isSavings = kind === 'income' && savingsIds.has(categoryId)
@@ -106,6 +112,16 @@ export default function TransactionForm({
   const clientUuid = useRef(crypto.randomUUID())
   const amountMinor = Number(amount) > 0 ? toMinor(amount, currency) : 0
 
+  // What the user typed, for the Add page to carry into a group's form.
+  useEffect(() => {
+    onDraft?.({ amount, currency, currencyPicked, description, spentAt })
+  }, [onDraft, amount, currency, currencyPicked, description, spentAt])
+
+  function pickCurrency(c) {
+    setCurrency(c)
+    setCurrencyPicked(true)
+  }
+
   // The next charge follows the entry's date until the user picks one.
   function changeDate(v) {
     setSpentAt(v)
@@ -119,11 +135,12 @@ export default function TransactionForm({
     if (total != null) setAmount(minorToInput(toMinor(total, cur), cur))
     if (date) changeDate(date)
     if (merchant && !description.trim()) setDescription(merchant)
-    if (cur !== currency) setCurrency(cur)
+    if (cur !== currency) pickCurrency(cur)
   }
 
   function pickKind(k) {
     setKind(k)
+    onKind?.(k)
     setPreset('')
     setCategoryId('') // categories are per kind
   }
@@ -226,7 +243,7 @@ export default function TransactionForm({
         </FormControl>
         <FormControl maxW="110px">
           <FormLabel>Currency</FormLabel>
-          <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+          <Select value={currency} onChange={(e) => pickCurrency(e.target.value)}>
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </Select>
         </FormControl>
@@ -283,6 +300,7 @@ export default function TransactionForm({
           <Panel>
             <Stack spacing={4}>
               {kindField}
+              {kind === 'expense' && who}
               {amountFields}
               {savingsSwitches}
               {otherFields}
@@ -300,6 +318,7 @@ export default function TransactionForm({
       <Panel>
         <Stack spacing={4}>
           {kindField}
+          {kind === 'expense' && who}
           {amountFields}
 
           <FormControl>

@@ -73,21 +73,22 @@ export function useGroup(groupId, { activity = false } = {}) {
 // The groups list's per-group extras, for the given group ids: each group's
 // members (+avatars) and server-computed balances. One members query for all
 // groups plus the two existing per-group RPCs, all in parallel. A group whose
-// RPCs fail just comes back without that part.
+// RPCs fail just comes back without that part. `balances: false` skips the
+// balances RPCs (the Add form's group picker only needs the members).
 // Map<groupId, { members: [...member, avatar_url], balances: Map<memberId, net> }>
-export async function listGroupSummaries(groupIds) {
+export async function listGroupSummaries(groupIds, { balances = true } = {}) {
   if (!groupIds?.length) return new Map()
   const [members, ...perGroup] = await Promise.all([
     supabase.from('group_members').select('*').in('group_id', groupIds).order('created_at'),
-    ...groupIds.flatMap((id) => [
+    ...groupIds.map((id) => Promise.all([
       supabase.rpc('group_member_avatars', { p_group: id }),
-      supabase.rpc('group_balances', { p_group: id }),
-    ]),
+      balances ? supabase.rpc('group_balances', { p_group: id }) : { data: null },
+    ])),
   ])
   if (members.error) throw members.error
   return new Map(groupIds.map((id, i) => [id, {
-    members: withAvatars((members.data ?? []).filter((m) => m.group_id === id), perGroup[2 * i].data),
-    balances: balanceMap(perGroup[2 * i + 1].data),
+    members: withAvatars((members.data ?? []).filter((m) => m.group_id === id), perGroup[i][0].data),
+    balances: balanceMap(perGroup[i][1].data),
   }]))
 }
 
