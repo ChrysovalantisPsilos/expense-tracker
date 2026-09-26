@@ -1,6 +1,7 @@
 import { NO_CATEGORY } from '../transactions/txnFilter.js'
 import { periodFromValue } from '../transactions/periods.js'
 import { bucketOf } from '../../shared/lib/txnRollup.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // The category page's URL contract, and the drill-down links other pages
 // build against it. Pure (no React/supabase) so it's unit-testable.
@@ -30,7 +31,8 @@ export function parseCategoryRoute(id, params, d = new Date()) {
 const thisMonthValue = (d) => `m:${d.getFullYear()}-${d.getMonth() + 1}`
 
 // "This month" → "this month", "All time" → "all time"; a named month or
-// year ("September 2026", "2025") stays as is.
+// year ("September 2026", "2025") stays as is. (English only: the Greek
+// sentence puts the period after a "·", where it keeps its capital.)
 const periodPhrase = (label) => (/^(This|All) /.test(label) ? label.toLowerCase() : label)
 
 // A link to one category's page (`categoryId` may be NO_CATEGORY) for a
@@ -40,7 +42,7 @@ const periodPhrase = (label) => (/^(This|All) /.test(label) ? label.toLowerCase(
 export function categoryLink(name, categoryId, { value, label }) {
   return {
     to: categoryPath(categoryId, value),
-    label: `Show ${name} expenses for ${periodPhrase(label)}`,
+    label: t('categories:links.show', { name, period: periodPhrase(label) }),
   }
 }
 
@@ -63,16 +65,16 @@ function bucketLinks(rows, period) {
     const day = String(r.spent_at).slice(0, 10)
     if ((from && day < from) || (to && day > to)) continue
     const name = bucketOf(r)
-    const t = targetOf(r)
-    if (!targets.has(name)) targets.set(name, t)
-    else if (targets.get(name) !== t) targets.set(name, null)
+    const target = targetOf(r)
+    if (!targets.has(name)) targets.set(name, target)
+    else if (targets.get(name) !== target) targets.set(name, null)
   }
   const links = new Map()
-  for (const [name, t] of targets) {
-    if (!t) continue
-    const [kind, id] = t.split(':')
+  for (const [name, target] of targets) {
+    if (!target) continue
+    const [kind, id] = target.split(':')
     links.set(name, kind === 'group'
-      ? { to: `/groups/${id}`, label: `Open the ${name} group` }
+      ? { to: `/groups/${id}`, label: t('categories:links.group', { name }) }
       : categoryLink(name, id, period))
   }
   return links

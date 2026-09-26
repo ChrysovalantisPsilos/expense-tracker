@@ -7,6 +7,7 @@
 import { NO_CATEGORY } from '../transactions/txnFilter.js'
 import { paidInWindow, spendRows } from '../../shared/lib/spread.js'
 import { toBaseMinor } from '../../shared/lib/currency.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 export const CATEGORY_NAME_MAX = 60
 
@@ -14,15 +15,16 @@ export const CATEGORY_NAME_MAX = 60
 const CONTROL = /[\u0000-\u001f\u007f-\u009f]/
 
 // Why `name` can't be saved, or null when it can. `others` are the user's
-// categories of the same kind (archived included), without the one being edited.
+// categories of the same kind (archived included), without the one being
+// edited. The reason is in the app's language.
 export function categoryNameError(name, others = []) {
   const n = String(name ?? '').trim()
-  if (!n) return 'Give the category a name.'
-  if ([...n].length > CATEGORY_NAME_MAX) return `Keep it to ${CATEGORY_NAME_MAX} characters.`
-  if (CONTROL.test(n)) return 'Use letters, numbers and punctuation only.'
+  if (!n) return t('categories:nameErrors.empty')
+  if ([...n].length > CATEGORY_NAME_MAX) return t('categories:nameErrors.tooLong', { max: CATEGORY_NAME_MAX })
+  if (CONTROL.test(n)) return t('categories:nameErrors.characters')
   const key = n.toLocaleLowerCase()
   if (others.some((c) => String(c.name).trim().toLocaleLowerCase() === key)) {
-    return 'You already have a category with that name.'
+    return t('categories:nameErrors.taken')
   }
   return null
 }

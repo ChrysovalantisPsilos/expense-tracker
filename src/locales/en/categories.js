@@ -1,3 +1,138 @@
-// Namespace `categories`: src/features/categories. Not converted yet: its strings are
-// still literals in the feature's components (docs/I18N.md, "Converting a feature").
-export default {}
+// Namespace `categories`: src/features/categories (Settings › Categories, a
+// category's page, the new-category page and the shared name/icon/colour
+// fields), plus the name rules and drill-down labels built in its .js
+// modules. Category names are the user's data and are never translated.
+// Conventions: docs/I18N.md.
+export default {
+  kinds: {
+    expense: 'Expenses',
+    income: 'Income',
+  },
+  uncategorized: 'Uncategorized',
+  actions: {
+    add: 'Add',
+    edit: 'Edit',
+    close: 'Close',
+    save: 'Save',
+    cancel: 'Cancel',
+    delete: 'Delete',
+    archive: 'Archive',
+    unarchive: 'Unarchive',
+  },
+  list: {
+    title: 'Categories',
+    description: 'Add your own, rename them, pick an icon and colour, or archive the ones you no longer use. Archived categories stay on past entries.',
+    yours: 'Your categories',
+    typeLabel: 'Category type',
+    what: 'categories',
+    empty: {
+      expense: 'No expense categories yet — add one.',
+      income: 'No income categories yet — add one.',
+    },
+    listLabel: {
+      expense: 'Expense categories',
+      income: 'Income categories',
+    },
+    new: 'New',
+    archived: 'Archived',
+    savings: 'Savings, not income',
+    editOne: 'Edit {{name}}',
+    archiveOne: 'Archive {{name}}',
+    unarchiveOne: 'Unarchive {{name}}',
+    deleteOne: 'Delete {{name}}',
+  },
+  toasts: {
+    unarchived: '{{name}} is back in your pickers',
+    archived: '{{name}} archived',
+    notUpdated: 'Couldn’t update the category. Please try again.',
+    deleted: '{{name}} deleted',
+    moved_one: '{{count}} entry moved to {{target}}.',
+    moved_other: '{{count}} entries moved to {{target}}.',
+    added: '{{name}} added',
+    saved: 'Saved',
+    nothingToSave: 'Nothing to save',
+  },
+  deleteDialog: {
+    title: 'Delete “{{name}}”?',
+    checking: 'Checking its entries…',
+    unused: 'No entries use this category.',
+    moveTo: 'Move its entries to',
+    moveCount_one: 'Move its {{count}} entry to',
+    moveCount_other: 'Move its {{count}} entries to',
+    leave: 'Leave them uncategorised',
+    movesToo: 'Recurring entries and import rules move too.',
+    budgetsGo: 'Its budgets are removed. To keep it on past entries instead, archive it.',
+  },
+  fields: {
+    name: 'Name',
+    placeholder: {
+      expense: 'Pets',
+      income: 'Freelance',
+    },
+    icon: 'Icon',
+    colour: 'Colour',
+    defaultColour: 'Default',
+    colours: {
+      coral: 'coral',
+      amber: 'amber',
+      green: 'green',
+      teal: 'teal',
+      blue: 'blue',
+      purple: 'purple',
+      pink: 'pink',
+      slate: 'slate',
+    },
+    colourHelp: 'Used for the category’s icon everywhere in the app.',
+    savings: 'Counts as savings (not income)',
+    savingsHelp: 'For money you set aside or that arrives in a savings account. It’s shown as saved, not added to your income, and adds to your net worth.',
+  },
+  // categoryNameError(): why a name can't be saved.
+  nameErrors: {
+    empty: 'Give the category a name.',
+    tooLong: 'Keep it to {{max}} characters.',
+    characters: 'Use letters, numbers and punctuation only.',
+    taken: 'You already have a category with that name.',
+  },
+  newPage: {
+    eyebrow: 'Categories',
+    title: {
+      expense: 'New expense category',
+      income: 'New income category',
+    },
+    submit: 'Add category',
+  },
+  page: {
+    notFound: 'Category not found',
+    notFoundText: 'This category doesn’t exist or was deleted.',
+    eyebrow: {
+      archived: 'Archived category',
+      savings: 'Savings category',
+      income: 'Income category',
+      expense: 'Category',
+    },
+    total: {
+      saved: 'Saved',
+      earned: 'Earned',
+      spent: 'Spent',
+    },
+    period: 'Period',
+    what: 'these entries',
+    empty: 'Nothing here for this period.',
+    budgetsMonthly: 'Budgets are monthly — pick a month to see one.',
+    budget: 'Budget',
+    budgetOf: '{{spent}} of {{cap}}',
+    setBudget: 'Set a budget',
+    noBudget: 'No budget in {{period}}.',
+    editTitle: 'Edit {{name}}',
+    monthlyBudget: 'Monthly budget',
+    noBudgetPlaceholder: 'No budget',
+    budgetNew: 'A monthly cap for this category, from this month on.',
+    budgetChange: 'Changes this month’s cap and the months after it. Clear it to remove the budget.',
+    budgetPast: 'Budgets can be changed from this month’s view.',
+  },
+  // categoryLinks.js: drill-down links' accessible names.
+  links: {
+    show: 'Show {{name}} expenses for {{period}}',
+    group: 'Open the {{name}} group',
+  },
+}

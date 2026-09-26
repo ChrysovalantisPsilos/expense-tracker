@@ -34,6 +34,7 @@ import { useAllCategories, updateCategory } from './categories.js'
 import { categoryPatch, categoryPeriod, sameKindOthers } from './categoryMath.js'
 import { parseCategoryRoute } from './categoryLinks.js'
 import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // One category's page (/categories/:id?period=…) — where Home's category
 // bars, Insights' legend, budget rows and the Categories list drill down to.
@@ -46,6 +47,7 @@ import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
 // A savings category's total is what was saved (0084), never "Earned", and
 // its list is headed "Savings", never "Income".
 export default function CategoryPage() {
+  const t = useT('categories')
   const { id } = useParams()
   const [params, setParams] = useSearchParams()
   const location = useLocation()
@@ -92,14 +94,14 @@ export default function CategoryPage() {
   const [focusBudget, setFocusBudget] = useState(false)
   const openEdit = (withBudget) => { setFocusBudget(withBudget); setEditing(true) }
 
-  const name = uncategorised ? 'Uncategorized' : category?.name ?? ''
+  const name = uncategorised ? t('uncategorized') : category?.name ?? ''
   const pickPeriod = (value) => setParams({ period: value }, { replace: true })
 
   if (missing) {
     return (
       <Stack spacing={5}>
-        <PageHeader title="Category not found" leading={<BackButton />} />
-        <Panel><Text color="text.muted">This category doesn’t exist or was deleted.</Text></Panel>
+        <PageHeader title={t('page.notFound')} leading={<BackButton />} />
+        <Panel><Text color="text.muted">{t('page.notFoundText')}</Text></Panel>
       </Stack>
     )
   }
@@ -107,8 +109,8 @@ export default function CategoryPage() {
   return (
     <Stack spacing={5}>
       <PageHeader title={name || '…'}
-        eyebrow={category?.is_archived ? 'Archived category'
-          : category?.is_savings ? 'Savings category' : kind === 'income' ? 'Income category' : 'Category'}
+        eyebrow={t(`page.eyebrow.${category?.is_archived ? 'archived'
+          : category?.is_savings ? 'savings' : kind === 'income' ? 'income' : 'expense'}`)}
         leading={(
           <HStack spacing={3} flexShrink={0}>
             <BackButton />
@@ -118,7 +120,7 @@ export default function CategoryPage() {
         action={category && (
           <PageAction h="44px" minW="44px" aria-expanded={editing}
             icon={editing ? <X size={18} /> : <Pencil size={18} />}
-            label={editing ? 'Close' : 'Edit'} variant={editing ? 'outline' : 'solid'}
+            label={t(editing ? 'actions.close' : 'actions.edit')} variant={editing ? 'outline' : 'solid'}
             onClick={() => (editing ? setEditing(false) : openEdit(false))} />
         )} />
 
@@ -135,10 +137,10 @@ export default function CategoryPage() {
           {txns.loading ? (
             <SkeletonRegion flex="1"><SkeletonFigure size="xl" w="160px" /></SkeletonRegion>
           ) : (
-            <Figure label={category?.is_savings ? 'Saved' : kind === 'income' ? 'Earned' : 'Spent'} size="xl"
+            <Figure label={t(`page.total.${category?.is_savings ? 'saved' : kind === 'income' ? 'earned' : 'spent'}`)} size="xl"
               value={formatMoney(total, baseCurrency)} />
           )}
-          <Select w={{ base: '150px', sm: '200px' }} size="md" borderRadius="lg" aria-label="Period"
+          <Select w={{ base: '180px', sm: '200px' }} size="md" borderRadius="lg" aria-label={t('page.period')}
             value={period.value} onChange={(e) => pickPeriod(e.target.value)}>
             {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </Select>
@@ -153,10 +155,10 @@ export default function CategoryPage() {
       </Panel>
 
       <Panel icon={ReceiptText} title={listHead.title} subtitle={listHead.subtitle} divider>
-        {txns.error ? <QueryError error={txns.error} onRetry={txns.reload} what="these entries" /> : txns.loading ? (
+        {txns.error ? <QueryError error={txns.error} onRetry={txns.reload} what={t('page.what')} /> : txns.loading ? (
           <SkeletonRegion><SkeletonRows count={6} py={2.5} /></SkeletonRegion>
         ) : listed.length === 0 ? (
-          <Text color="text.muted" fontSize="sm">Nothing here for this period.</Text>
+          <Text color="text.muted" fontSize="sm">{t('page.empty')}</Text>
         ) : (
           <>
             <TransactionList rows={paged.pageItems} kind={kind} baseCurrency={baseCurrency}
@@ -171,16 +173,19 @@ export default function CategoryPage() {
 
 // The period's budget: a progress bar against the cap, or a way to set one.
 function BudgetSummary({ budget, spent, month, canEdit, period, loading, baseCurrency, onSetBudget }) {
+  const t = useT('categories')
   if (!month) {
-    return <Text color="text.muted" fontSize="sm">Budgets are monthly — pick a month to see one.</Text>
+    return <Text color="text.muted" fontSize="sm">{t('page.budgetsMonthly')}</Text>
   }
   if (loading) return <SkeletonRegion><SkeletonProgressRow /></SkeletonRegion>
   if (budget) {
     const carried = budget.period_start < period.from ? carriedLabel(budget.period_start, period.from) : null
     return (
       <>
-        <ProgressRow icon={Target} title="Budget"
-          meta={`${formatMoney(spent, baseCurrency)} of ${formatMoney(budget.amount_minor, baseCurrency)}`}
+        <ProgressRow icon={Target} title={t('page.budget')}
+          meta={t('page.budgetOf', {
+            spent: formatMoney(spent, baseCurrency), cap: formatMoney(budget.amount_minor, baseCurrency),
+          })}
           percent={budgetPercent(spent, budget.amount_minor)}
           tone={budgetTone(spent, budget.amount_minor)} over={spent > budget.amount_minor} />
         {carried && <Text color="text.muted" fontSize="xs" mt={2}>{carried}</Text>}
@@ -189,16 +194,17 @@ function BudgetSummary({ budget, spent, month, canEdit, period, loading, baseCur
   }
   return canEdit ? (
     <Button variant="outline" h="44px" leftIcon={<Target size={16} />} onClick={onSetBudget}>
-      Set a budget
+      {t('page.setBudget')}
     </Button>
   ) : (
-    <Text color="text.muted" fontSize="sm">No budget in {period.label}.</Text>
+    <Text color="text.muted" fontSize="sm">{t('page.noBudget', { period: period.label })}</Text>
   )
 }
 
 // The in-page Edit panel: this month's cap, then the category's name, icon
 // and colour, and archiving. One Save applies whatever changed.
 function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurrency, focusBudget, onClose, onSaved }) {
+  const t = useT('categories')
   const toast = useToast()
   const draft = useCategoryDraft(category, sameKindOthers(all, category))
   const current = budget?.amount_minor ?? null
@@ -222,7 +228,7 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
       } else if (change?.remove) {
         await deleteBudget({ categoryId: category.id, periodStart })
       }
-      toast({ title: patch || change ? 'Saved' : 'Nothing to save', status: patch || change ? 'success' : 'info' })
+      toast({ title: t(patch || change ? 'toasts.saved' : 'toasts.nothingToSave'), status: patch || change ? 'success' : 'info' })
       await onSaved()
       onClose()
     })
@@ -232,7 +238,7 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
     await run(async () => {
       await updateCategory(category.id, { is_archived: !category.is_archived })
       toast({
-        title: category.is_archived ? `${category.name} is back in your pickers` : `${category.name} archived`,
+        title: t(category.is_archived ? 'toasts.unarchived' : 'toasts.archived', { name: category.name }),
         status: 'success',
       })
       await onSaved()
@@ -240,23 +246,19 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
   }
 
   return (
-    <Panel icon={Pencil} title={`Edit ${category.name}`}>
+    <Panel icon={Pencil} title={t('page.editTitle', { name: category.name })}>
       <form onSubmit={save} {...unsaved}>
         <Stack spacing={5}>
           {category.kind === 'expense' && (
             canEditBudget ? (
               <FormControl>
-                <FormLabel>Monthly budget</FormLabel>
-                <MoneyInput ref={amountRef} currency={baseCurrency} value={amount} onChange={setAmount} placeholder="No budget" />
-                <FormHelperText>
-                  {current == null ? 'A monthly cap for this category, from this month on.'
-                    : 'Changes this month’s cap and the months after it. Clear it to remove the budget.'}
-                </FormHelperText>
+                <FormLabel>{t('page.monthlyBudget')}</FormLabel>
+                <MoneyInput ref={amountRef} currency={baseCurrency} value={amount} onChange={setAmount}
+                  placeholder={t('page.noBudgetPlaceholder')} />
+                <FormHelperText>{t(current == null ? 'page.budgetNew' : 'page.budgetChange')}</FormHelperText>
               </FormControl>
             ) : (
-              <Text color="text.muted" fontSize="sm">
-                Budgets can be changed from this month’s view.
-              </Text>
+              <Text color="text.muted" fontSize="sm">{t('page.budgetPast')}</Text>
             )
           )}
           <Divider />
@@ -264,11 +266,11 @@ function EditPanel({ category, all, budget, canEditBudget, periodStart, baseCurr
           <Flex gap={2} wrap="wrap" justify="space-between">
             <Button variant="ghost" h="44px" isDisabled={busy} onClick={toggleArchive}
               leftIcon={category.is_archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}>
-              {category.is_archived ? 'Unarchive' : 'Archive'}
+              {t(category.is_archived ? 'actions.unarchive' : 'actions.archive')}
             </Button>
             <HStack spacing={2}>
-              <Button variant="ghost" h="44px" onClick={onClose}>Cancel</Button>
-              <Button type="submit" h="44px" isLoading={busy}>Save</Button>
+              <Button variant="ghost" h="44px" onClick={onClose}>{t('actions.cancel')}</Button>
+              <Button type="submit" h="44px" isLoading={busy}>{t('actions.save')}</Button>
             </HStack>
           </Flex>
         </Stack>

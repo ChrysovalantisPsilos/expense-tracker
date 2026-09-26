@@ -10,6 +10,7 @@ import {
   CATEGORY_COLORS, CATEGORY_COLOR_KEYS, CATEGORY_ICON_GROUPS, CATEGORY_ICON_LABELS, categoryIconKey,
 } from '../../shared/lib/categoryStyle.js'
 import { CATEGORY_NAME_MAX, categoryNameError } from './categoryMath.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // The name / icon / colour form a category is added or edited with — the
 // new-category page and the category page's Edit panel share it. An income
@@ -33,6 +34,7 @@ export function useCategoryDraft(category, others) {
 }
 
 export default function CategoryFields({ draft, kind }) {
+  const t = useT('categories')
   const {
     name, setName, icon, setIcon, color, setColor, savings, setSavings, touched, setTouched, nameError,
   } = draft
@@ -41,41 +43,38 @@ export default function CategoryFields({ draft, kind }) {
       <HStack spacing={3} align="start">
         <Box pt={8}><CategoryBadge category={draft.values} kind={kind} size={40} /></Box>
         <FormControl isRequired isInvalid={touched && !!nameError}>
-          <FormLabel>Name</FormLabel>
+          <FormLabel>{t('fields.name')}</FormLabel>
           <Input value={name} maxLength={CATEGORY_NAME_MAX + 10}
             onChange={(e) => setName(e.target.value)} onBlur={() => name && setTouched(true)}
-            placeholder={kind === 'income' ? 'Freelance' : 'Pets'} />
+            placeholder={t(`fields.placeholder.${kind === 'income' ? 'income' : 'expense'}`)} />
           <FormErrorMessage>{nameError}</FormErrorMessage>
         </FormControl>
       </HStack>
 
       <FormControl as="fieldset">
-        <FormLabel as="legend">Icon</FormLabel>
+        <FormLabel as="legend">{t('fields.icon')}</FormLabel>
         <IconPicker value={icon} onChange={setIcon} />
       </FormControl>
 
       <FormControl as="fieldset">
-        <FormLabel as="legend">Colour</FormLabel>
-        <HStack spacing={2} flexWrap="wrap" role="radiogroup" aria-label="Colour">
-          <Swatch label="Default" on={!color} onClick={() => setColor(null)} />
+        <FormLabel as="legend">{t('fields.colour')}</FormLabel>
+        <HStack spacing={2} flexWrap="wrap" role="radiogroup" aria-label={t('fields.colour')}>
+          <Swatch label={t('fields.defaultColour')} on={!color} onClick={() => setColor(null)} />
           {CATEGORY_COLOR_KEYS.map((k) => (
-            <Swatch key={k} label={k} hex={CATEGORY_COLORS[k]} on={color === k}
+            <Swatch key={k} label={t(`fields.colours.${k}`)} hex={CATEGORY_COLORS[k]} on={color === k}
               onClick={() => setColor(k)} />
           ))}
         </HStack>
-        <FormHelperText>Used for the category’s icon everywhere in the app.</FormHelperText>
+        <FormHelperText>{t('fields.colourHelp')}</FormHelperText>
       </FormControl>
 
       {kind === 'income' && (
         <FormControl>
           <HStack justify="space-between" spacing={4}>
-            <FormLabel htmlFor="category-savings" mb={0}>Counts as savings (not income)</FormLabel>
+            <FormLabel htmlFor="category-savings" mb={0}>{t('fields.savings')}</FormLabel>
             <Switch id="category-savings" isChecked={savings} onChange={(e) => setSavings(e.target.checked)} />
           </HStack>
-          <FormHelperText>
-            For money you set aside or that arrives in a savings account. It’s shown as saved,
-            not added to your income, and adds to your net worth.
-          </FormHelperText>
+          <FormHelperText>{t('fields.savingsHelp')}</FormHelperText>
         </FormControl>
       )}
     </Stack>
@@ -86,8 +85,9 @@ export default function CategoryFields({ draft, kind }) {
 // push the rest of the form off a phone screen. 44px targets; the grid fills
 // the width (six across on a 390px phone).
 function IconPicker({ value, onChange }) {
+  const t = useT('categories')
   return (
-    <Box role="radiogroup" aria-label="Icon" maxH="264px" overflowY="auto" borderWidth="1px"
+    <Box role="radiogroup" aria-label={t('fields.icon')} maxH="264px" overflowY="auto" borderWidth="1px"
       borderColor="border.default" borderRadius="lg" px={2} pb={2}>
       {CATEGORY_ICON_GROUPS.map((g) => (
         <Box key={g.label} role="group" aria-label={g.label}>

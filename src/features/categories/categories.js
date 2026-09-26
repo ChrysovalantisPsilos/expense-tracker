@@ -8,6 +8,7 @@ import { supabase } from '../../shared/lib/supabase.js'
 import { useOwnedQuery } from '../../shared/lib/db.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
 import { savingsIdsOf } from '../../shared/lib/savings.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // Every category the user has, archived included (live).
 export function useAllCategories() {
@@ -31,7 +32,7 @@ export function useSavingsIds() {
 
 // A duplicate name is the one database refusal worth telling the user about.
 const friendly = (error) => (error.code === '23505'
-  ? new UserError('You already have a category with that name.')
+  ? new UserError(t('categories:nameErrors.taken'))
   : dbError(error))
 
 // `savings` (income only; the server's CHECK refuses it on an expense
