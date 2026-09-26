@@ -14,7 +14,7 @@ import HobbyNotice from '../../shared/ui/HobbyNotice.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import PublicHeader from '../../shared/ui/PublicHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { STATUS_URL } from '../../shared/lib/contact.js'
 import { CURRENT_ENV, shareOrigin } from '../../shared/lib/environment.js'
 import { FAQ_SECTIONS } from './faqContent.js'
@@ -27,7 +27,6 @@ import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 import { copyText } from '../../shared/lib/clipboard.js'
 
 const PATH = '/help'
-const INTRO = 'Answers to the questions people ask most. Search, or browse by topic.'
 
 // An answer's optional illustration: an install sketch or a clip of the app.
 function Media({ media }) {
@@ -39,6 +38,7 @@ function Media({ media }) {
 // button; arrow keys, Home and End move between them). `open` is the page's
 // set of open question ids, so a #link can open any item.
 function FaqSection({ section, open, onOpenChange, onCopyLink }) {
+  const t = useT('help')
   return (
     <Panel as="section" aria-labelledby={`section-${section.id}`} p={{ base: 2, md: 3 }}>
       <Heading as="h2" id={`section-${section.id}`} size="sm" lineHeight="1.5"
@@ -73,7 +73,7 @@ function FaqSection({ section, open, onOpenChange, onCopyLink }) {
                 <Box>
                   <Button size="xs" variant="ghost" ml={-2} leftIcon={<LinkIcon size={14} />}
                     onClick={() => onCopyLink(item.id)}>
-                    Copy link to this answer
+                    {t('copyLink')}
                   </Button>
                 </Box>
               </Stack>
@@ -88,7 +88,7 @@ function FaqSection({ section, open, onOpenChange, onCopyLink }) {
 // Search box, result count, the sections, and the disclaimer. Owns which
 // questions are open and follows the URL's #anchor.
 function FaqBody() {
-  const t = useT()
+  const t = useT('help')
   const { hash } = useLocation()
   const navigate = useNavigate()
   const toast = useToast()
@@ -119,9 +119,9 @@ function FaqBody() {
   async function onCopyLink(id) {
     navigate({ hash: id }, { replace: true })
     if (await copyText(questionLink(shareOrigin(CURRENT_ENV, window.location.origin), PATH, id))) {
-      toast({ title: 'Link copied', status: 'success', duration: 2000 })
+      toast({ title: t('linkCopied'), status: 'success', duration: 2000 })
     } else {
-      toast({ title: 'The link is in the address bar', status: 'info', duration: 3000 })
+      toast({ title: t('linkInAddressBar'), status: 'info', duration: 3000 })
     }
   }
 
@@ -131,19 +131,19 @@ function FaqBody() {
       <Box role="search">
         <InputGroup size="lg">
           <InputLeftElement pointerEvents="none" color="text.muted"><Search size={18} /></InputLeftElement>
-          <Input type="search" enterKeyHint="search" aria-label="Search questions"
-            placeholder="Search questions" value={query} bg="bg.surface"
+          <Input type="search" enterKeyHint="search" aria-label={t('search.label')}
+            placeholder={t('search.label')} value={query} bg="bg.surface"
             sx={{ '&::-webkit-search-cancel-button': { display: 'none' } }}
             onChange={(e) => setQuery(e.target.value)} />
           {query && (
             <InputRightElement>
-              <IconButton aria-label="Clear search" size="sm" variant="ghost"
+              <IconButton aria-label={t('search.clear')} size="sm" variant="ghost"
                 icon={<X size={16} />} onClick={() => setQuery('')} />
             </InputRightElement>
           )}
         </InputGroup>
         <Text aria-live="polite" fontSize="sm" color="text.muted" mt={2} minH="1.5em">
-          {query.trim() ? `${total} ${total === 1 ? 'answer' : 'answers'} found` : ''}
+          {query.trim() ? t('search.found', { count: total }) : ''}
         </Text>
       </Box>
 
@@ -154,19 +154,19 @@ function FaqBody() {
 
       {total === 0 && (
         <Panel textAlign="center">
-          <Text fontWeight="600">No answers match “{query.trim()}”.</Text>
-          <Text color="text.muted" fontSize="sm" mt={1}>Try other words, or browse all the questions.</Text>
-          <Button size="sm" variant="outline" mt={4} onClick={() => setQuery('')}>Show all questions</Button>
+          <Text fontWeight="600">{t('search.none', { query: query.trim() })}</Text>
+          <Text color="text.muted" fontSize="sm" mt={1}>{t('search.noneHint')}</Text>
+          <Button size="sm" variant="outline" mt={4} onClick={() => setQuery('')}>{t('search.showAll')}</Button>
         </Panel>
       )}
 
       <Text fontSize="sm" color="text.muted" textAlign="center" pt={2}>
-        {t('hobby.disclaimer')} See also the{' '}
-        <Link as={RouterLink} to="/privacy" variant="inline" fontWeight="600">Privacy page</Link>.
+        <Trans t={t} k="seeAlso" values={{ disclaimer: t('common:hobby.disclaimer') }}
+          components={{ link: <Link as={RouterLink} to="/privacy" variant="inline" fontWeight="600" /> }} />
       </Text>
       <Text fontSize="sm" color="text.muted" textAlign="center">
-        Something not working? Check the{' '}
-        <Link href={STATUS_URL} isExternal variant="inline" fontWeight="600">service status</Link>.
+        <Trans t={t} k="status"
+          components={{ link: <Link href={STATUS_URL} isExternal variant="inline" fontWeight="600" /> }} />
       </Text>
     </Stack>
   )
@@ -176,13 +176,14 @@ function FaqBody() {
 // back to where the user came from, else Settings) when signed in, on the
 // public layout when signed out or reached from the legal prompt.
 export default function Help() {
+  const t = useT('help')
   const { user } = useAuth()
   const inShell = useInAppShell()
 
   if (inShell) {
     return (
       <Stack spacing={5}>
-        <PageHeader eyebrow="Help" title="Help & FAQ" description={INTRO}
+        <PageHeader eyebrow={t('eyebrow')} title={t('title')} description={t('intro')}
           leading={<BackButton fallback="/settings" />} />
         <FaqBody />
       </Stack>
@@ -194,19 +195,19 @@ export default function Help() {
       <PublicHeader>
         {!user && (
           <>
-            <Button as={RouterLink} to="/login" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}>Log in</Button>
-            <Button as={RouterLink} to="/login?signup=1" size="sm" px={{ base: 3, sm: 4 }}>Sign up</Button>
+            <Button as={RouterLink} to="/login" size="sm" variant="ghost" px={{ base: 2, sm: 3 }}>{t('common:actions.logIn')}</Button>
+            <Button as={RouterLink} to="/login?signup=1" size="sm" px={{ base: 3, sm: 4 }}>{t('common:actions.signUp')}</Button>
           </>
         )}
       </PublicHeader>
       <Container as="main" id={MAIN_ID} maxW="3xl" px={{ base: 4, md: 6 }} py={{ base: 10, md: 16 }}>
         <Stack spacing={{ base: 8, md: 10 }}>
           <Stack spacing={3}>
-            <Eyebrow fontSize="sm" lineHeight="base">Help</Eyebrow>
+            <Eyebrow fontSize="sm" lineHeight="base">{t('eyebrow')}</Eyebrow>
             <Heading as="h1" fontSize={{ base: '3xl', md: '4xl' }} letterSpacing="-0.03em" lineHeight="1.1">
-              Frequently asked questions
+              {t('publicTitle')}
             </Heading>
-            <Text color="text.muted" fontSize={{ base: 'md', md: 'lg' }} lineHeight="1.7">{INTRO}</Text>
+            <Text color="text.muted" fontSize={{ base: 'md', md: 'lg' }} lineHeight="1.7">{t('intro')}</Text>
           </Stack>
           <FaqBody />
         </Stack>
