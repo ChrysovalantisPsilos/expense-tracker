@@ -3,8 +3,9 @@ import assert from 'node:assert/strict'
 import {
   merchantKey, merchantName, groupMerchants, rowMerchantName, isOwnTransfer, rowToDraft, previewDrafts, parseAmount,
   parseDate, deterministicUuid, normalizeCurrency, cleanHolderName, suggestedHolder, fileHolder,
-  merchantGroups, groupIdOf, ruleCategory,
+  merchantGroups, groupIdOf, ruleCategory, descriptionParts,
 } from '../src/features/import/importMath.js'
+import { displayDescription, kbcLabel, titleCase } from '../src/features/import/kbcLabels.js'
 
 // A key becomes a "description contains …" rule: it must be in the text.
 const key = (description, opts) => {
@@ -408,4 +409,90 @@ test('ruleCategory: a rule only files rows of its category\'s kind', () => {
   assert.equal(ruleCategory(rules, kindOf, 'lidl leuven', 'expense'), 'food')
   assert.equal(ruleCategory(rules, kindOf, 'LIDL RETURN', 'income'), null)
   assert.equal(ruleCategory(rules, kindOf, '', 'expense'), null)
+})
+
+// ── KBC's shorter saved descriptions (kbcLabels.js) ─────────────────────────
+// Made-up merchants, names, card numbers and IBANs.
+const label = (description, o = {}) => kbcLabel({ cells: { description, ...o.cells }, kind: o.kind ?? 'expense' })
+
+test('kbcLabel: card payments keep the merchant and the town, never the card or its holder', () => {
+  assert.equal(label(en('LIDL 1153 LEUVEN', 'BE3000 LEUVEN')), 'Lidl · Leuven')
+  assert.equal(label(nl('DELHAIZE WATERSPORT NV', 'BE9000 GENT')), 'Delhaize Watersport · Gent')
+  assert.equal(label(nl('ST. PIERRE', 'BE9000 GENT')), 'St. Pierre · Gent')
+  assert.equal(label(fr('SUMUP *BOULANGERIE DUPONT', 'BE5000 NAMUR')), 'Boulangerie Dupont · Namur')
+  assert.equal(label(en('AMZN MKTP DE*AB12CD', 'LU1855 LUXEMBOURG')), 'Amzn MKTP De · Luxembourg')
+  assert.equal(label('PAYMENT VIA DEBIT MASTERCARD 29-12-2025 AT 22.01 TIME MCDONALD S W.SALONICA GR54627 THESSALONIKI WITH APPLE PAY 5127 88XX XXXX 1234 VIRTUAL CARD NUMBER FOR CONTACTLESS: 5315 88XX XXXX 5678'),
+    'Mcdonald S W.Salonica · Thessaloniki')
+  // No postcode + town on the line: the merchant alone.
+  assert.equal(label('BETALING VIA MAESTRO 02-10-2023 OM 08.23 UUR STAD GENT PARKEREN BE GENT MET KBC-DEBETKAART 6703 42XX XXXX X201 0 KAARTHOUDER: JANSSENS ELS'),
+    'Stad Gent Parkeren')
+  // No time stamp: the counterparty column names the shop.
+  assert.equal(label('BETALING VIA BANCONTACT', { cells: { counterparty: 'ZZMART GENT' } }), 'Zzmart Gent')
+  for (const d of [en('LIDL 1153 LEUVEN', 'BE3000 LEUVEN'), nl('CAFE ZZ', 'BE9000 GENT'), fr('ZZ PAIN', 'BE1000 BRUXELLES')]) {
+    const l = label(d)
+    assert.ok(!/\d{4}|XX|DOE|JANSSENS|KAARTHOUDER|CARDHOLDER|TITULAIRE/i.test(l), l)
+  }
+})
+
+test('kbcLabel: cash withdrawals and deposits say so, with the town', () => {
+  assert.equal(label('CASH WITHDRAWAL 18-01-2026 AT 14.02 TIME KBC LEUVEN BE3000 LEUVEN WITH KBC DEBIT CARD 5127 88XX XXXX 1234'),
+    'Cash withdrawal · Leuven')
+  assert.equal(label('GELDOPNEMING 18-01-2026 OM 14.02 UUR KBC GENT BE9000 GENT MET KBC-DEBETKAART 4972 55XX XXXX 3390'),
+    'Cash withdrawal · Gent')
+  assert.equal(label('DEPOSIT OF CASH 19-01-2026 KBC LEUVEN', { kind: 'income' }), 'Cash deposit · Leuven')
+  assert.equal(label('STORTING CONTANTEN 19-01-2026 KBC LEUVEN', { kind: 'income' }), 'Cash deposit · Leuven')
+  assert.equal(label('CASH DEPOSIT', { kind: 'income' }), 'Cash deposit')
+})
+
+test('kbcLabel: transfers name the other party and keep the free message', () => {
+  assert.equal(label('EUROPESE OVERSCHRIJVING VAN', { kind: 'income', cells: { counterparty: 'K. DE SMET', details: 'Verjaardag' } }),
+    'Transfer from K. De Smet · Verjaardag')
+  assert.equal(label("SENDING MONEY INSTANTLY TO BE00 0000 0000 0003 BENEFICIARY'S BANK: GEBABEBBXXX KUMAR RAVI DINNER AT 20.15 WITH KBC MOBILE"),
+    'Transfer to Kumar Ravi Dinner')
+  assert.equal(label('INSTANTOVERSCHRIJVING NAAR 27-12 BE00 0000 0000 0001 BANKIER BEGUNSTIGDE: KREDBEBBXXX PIETERS TOM OM 17.11 UUR MET KBC MOBILE',
+    { cells: { counterparty: 'PIETERS TOM', details: 'Huur oktober' } }), 'Transfer to Pieters Tom · Huur oktober')
+  assert.equal(label('VIREMENT EUROPEEN VERS BE00 0000 0000 0004 BANQUE DU BENEFICIAIRE: KREDBEBB IMMO ZZ LOYER'),
+    'Transfer to Immo ZZ Loyer')
+  // Nobody named anywhere: the raw text is kept.
+  assert.equal(label('EUROPESE OVERSCHRIJVING VAN 04-01', { kind: 'income' }), null)
+})
+
+test('kbcLabel: direct debits name the creditor; the bank\'s fees and settlements are named plainly', () => {
+  assert.equal(label('EUROPEAN DIRECT DEBIT CREDITOR : ZZTEL CREDITOR REF.: 123456 MANDATE REFERENCE : 9988'), 'Zztel · Direct debit')
+  assert.equal(label('EUROPESE DOMICILIERING SCHULDEISER : KBC VERZEKERINGEN REF. SCHULDEISER: 390666825141 MANDAATREFERTE : L00223506492V0001 EIGEN OMSCHR. : GEZINSPOLIS'),
+    'KBC Verzekeringen · Direct debit')
+  assert.equal(label('DOMICILIATION EUROPEENNE CREANCIER : ZZ ENERGIE REF. CREANCIER : 998877'), 'ZZ Energie · Direct debit')
+  assert.equal(label('BIJDRAGE 01-02-2018 - 28-02-2018 28-02 KBC-PLUSREKENING'), 'Account fee · KBC-Plusrekening')
+  assert.equal(label('SETTLEMENT KBC CREDIT CARD 5127 88XX XXXX 9999'), 'Credit card settlement')
+  assert.equal(label('KOSTEN KBC-PLUSREKENING'), 'Bank fees')
+  // Fee words without the bank's name aren't KBC's: kept as they are.
+  assert.equal(label('FEES FOR FOREIGN PAYMENT'), null)
+})
+
+test('kbcLabel: other banks\' lines are left alone; the raw text is what matches', () => {
+  for (const d of ['NETFLIX.COM', 'Transfer to Jane Doe', 'Top-Up by *1234', 'PAYCONIQ BY BANCONTACT DELHAIZE 5678 GENT', '']) {
+    assert.equal(label(d), null, d)
+  }
+  assert.equal(displayDescription({ cells: { description: 'NETFLIX.COM' }, description: 'NETFLIX.COM' }), 'NETFLIX.COM')
+  assert.equal(displayDescription({ cells: {}, description: null }), null)
+  // A KBC row: the draft keeps the raw description (duplicate key, rules,
+  // merchant key) and only the saved text is short.
+  const mapping = { date: 'Datum', amount: 'Bedrag', description: 'Omschrijving', counterparty: 'Naam tegenpartij', details: 'Vrije mededeling', decimal: ',' }
+  const raw = en('ZZMART 0412 LEUVEN', 'BE3000 LEUVEN')
+  const draft = rowToDraft({ Datum: '06/01/2026', Bedrag: '-8,00', Omschrijving: raw, 'Naam tegenpartij': '', 'Vrije mededeling': '' }, mapping, 'EUR')
+  assert.equal(draft.description, raw)
+  assert.equal(draft.merchant, 'ZZMART')
+  assert.equal(displayDescription(draft), 'Zzmart · Leuven')
+  const rules = [{ pattern: 'ZZMART', category_id: 'food' }]
+  assert.equal(ruleCategory(rules, new Map([['food', 'expense']]), draft.description, 'expense'), 'food')
+  assert.equal(label(titleCase('')), null)
+  assert.equal(titleCase('KBC-PLUSREKENING K. DE SMET'), 'KBC-Plusrekening K. De Smet')
+})
+
+test('descriptionParts: what the labels are built from', () => {
+  assert.deepEqual(descriptionParts(en('LIDL 1153 LEUVEN', 'BE3000 LEUVEN')),
+    { cash: null, card: { name: 'LIDL', segment: 'LIDL 1153 LEUVEN', town: 'LEUVEN' }, creditor: null, party: null })
+  assert.equal(descriptionParts('EUROPEAN DIRECT DEBIT CREDITOR : ZZTEL CREDITOR REF.: 1').creditor, 'ZZTEL')
+  assert.equal(descriptionParts('DEPOSIT OF CASH 19-01-2026 KBC LEUVEN').cash, 'DEPOSIT OF CASH')
+  assert.deepEqual(descriptionParts(null), { cash: null, card: null, creditor: null, party: null })
 })

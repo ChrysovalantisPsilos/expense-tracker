@@ -10,6 +10,7 @@ import { parseSheet, rowsToObjects } from '../src/features/import/sheetParse.js'
 import { detectMapping, CONFIDENCE_THRESHOLD } from '../src/features/import/statementDetect.js'
 import { rowToDraft, signedConvention, merchantKey, groupMerchants } from '../src/features/import/importMath.js'
 import { PRESETS, matchPreset, normHeader } from '../src/features/import/bankPresets.js'
+import { displayDescription } from '../src/features/import/kbcLabels.js'
 
 function read(buf) {
   const { headers, rows, lines } = parseSheet(XLSX, buf)
@@ -77,6 +78,8 @@ test('KBC: "Valuta" is the value date — currency comes from "Munt"', () => {
   assert.match(r.booked[1].description, /^K\. DE SMET · EUROPESE OVERSCHRIJVING VAN · Verjaardag$/)
   assert.equal(r.detection.mapping.holder, 'Naam')
   assert.deepEqual(r.booked.map((d) => d.merchant), ['ALDI', 'DE SMET'])
+  // Saved shorter (kbcLabels); the raw description above is what matches.
+  assert.deepEqual(r.booked.map(displayDescription), ['Aldi Gent', 'Transfer from K. De Smet · Verjaardag'])
 })
 
 // The English KBC header as exported (with Heading), and as some exports
@@ -105,6 +108,7 @@ test('KBC (EN): "Name" is the account holder, "Counterparty name" the payee', ()
     assert.equal(r.drafts.filter((d) => d.skip === 'own transfer').length, 1)
     // Card merchant; employer (merchant names, before the file's grouping).
     assert.deepEqual(r.booked.map((d) => d.merchant), ['LIDL', 'ACME CLINICAL RESEARCH'])
+    assert.deepEqual(r.booked.map(displayDescription), ['Lidl · Leuven', 'Transfer from Acme Clinical Research BV'])
   }
 })
 
