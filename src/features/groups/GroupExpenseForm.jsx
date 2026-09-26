@@ -21,6 +21,8 @@ import { PageForm } from '../../shared/ui/FormPage.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useShellHeader } from '../../shared/ui/ShellHeader.jsx'
 import AvatarStack from './AvatarStack.jsx'
+import MemberSelect from './MemberSelect.jsx'
+import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 
@@ -261,9 +263,8 @@ export default function GroupExpenseForm({
   const payerField = (
     <FormControl isRequired isInvalid={!!errors.paidBy}>
       <FormLabel>Paid by</FormLabel>
-      <Select ref={refs.paidBy} value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
-        {members.map((m) => <option key={m.id} value={m.id}>{viewerName(members, m.id, myMemberId)}</option>)}
-      </Select>
+      <MemberSelect ref={refs.paidBy} members={members} value={paidBy} onChange={setPaidBy}
+        myMemberId={myMemberId} />
       <FormErrorMessage>{errors.paidBy}</FormErrorMessage>
     </FormControl>
   )
@@ -287,7 +288,11 @@ export default function GroupExpenseForm({
           return (
             <HStack key={m.id} spacing={3}>
               <Checkbox isChecked={on} onChange={() => toggle(m.id)} flex="1" minW={0}>
-                <Text overflowWrap="anywhere">{viewerName(members, m.id, myMemberId)}</Text>
+                <HStack spacing={2} minW={0}>
+                  <UserAvatar size="xs" name={m.display_name} src={m.avatar_url} highlight={m.id === myMemberId}
+                    aria-hidden />
+                  <Text overflowWrap="anywhere">{viewerName(members, m.id, myMemberId)}</Text>
+                </HStack>
               </Checkbox>
               {on && mode !== 'equal' && (
                 <InputGroup size="sm" maxW="130px">
