@@ -5,6 +5,7 @@ import { Landmark } from 'lucide-react'
 import { getMyPaymentInfo } from '../../shared/lib/profile.js'
 import { askForPaymentDetails } from '../../shared/lib/payLinks.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const DISMISSED = STORAGE_KEYS.paymentAskDismissed
 
@@ -19,6 +20,7 @@ function wasDismissed() {
 // Settings. `direction` is the settle-up form's ('in' = you're being paid).
 export default function PaymentDetailsAsk({ direction }) {
   const navigate = useNavigate()
+  const t = useT('groups')
   const [info, setInfo] = useState(null) // null until loaded (or if it fails)
   const [dismissed, setDismissed] = useState(wasDismissed)
 
@@ -41,14 +43,12 @@ export default function PaymentDetailsAsk({ direction }) {
       <HStack align="start" spacing={3}>
         <Box color="accent.fg" pt={0.5}><Landmark size={18} /></Box>
         <Stack spacing={2} flex="1" minW={0}>
-          <Text fontSize="sm">
-            Add your payment details so friends can pay you back in one tap.
-          </Text>
+          <Text fontSize="sm">{t('paymentAsk.body')}</Text>
           <HStack spacing={2} flexWrap="wrap">
             <Button size="sm" variant="outline" onClick={() => navigate('/settings/account')}>
-              Add payment details
+              {t('paymentAsk.add')}
             </Button>
-            <Button size="sm" variant="ghost" onClick={notNow}>Not now</Button>
+            <Button size="sm" variant="ghost" onClick={notNow}>{t('paymentAsk.notNow')}</Button>
           </HStack>
         </Stack>
       </HStack>

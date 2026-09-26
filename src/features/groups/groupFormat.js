@@ -1,4 +1,5 @@
 import { simplifyDebts } from './splitMath.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // Display name for a member id within a group's member list. Falls back to an
 // em dash for unknown/removed ids. (Members carry their own display_name, so
@@ -35,9 +36,10 @@ export function avatarStack(members, max = 4) {
   return { shown: list.slice(0, cap), overflow: Math.max(0, list.length - cap) }
 }
 
-// "1 member" / "3 members". `plural` covers irregular words (person/people).
-export function pluralise(n, singular, plural = `${singular}s`) {
-  return `${n} ${n === 1 ? singular : plural}`
+// "1 member" / "3 members", in the app's language: `noun` is one of
+// groups:count's words (member, payment, person, way).
+export function pluralise(n, noun) {
+  return t(`groups:count.${noun}`, { count: n })
 }
 
 // How an expense is split, for its row: "split 3 ways", or "custom split ·
@@ -45,18 +47,18 @@ export function pluralise(n, singular, plural = `${singular}s`) {
 export function splitLabel(expense) {
   const n = expense?.expense_splits?.length ?? 0
   return expense?.split_type && expense.split_type !== 'equal'
-    ? `custom split · ${pluralise(n, 'person', 'people')}`
-    : `split ${pluralise(n, 'way')}`
+    ? t('groups:format.splitCustom', { people: pluralise(n, 'person') })
+    : t('groups:format.splitEqual', { ways: pluralise(n, 'way') })
 }
 
 // A member's name as the viewer reads it: "You" for themselves.
 export function viewerName(members, id, myMemberId) {
-  return id === myMemberId ? 'You' : memberName(members, id)
+  return id === myMemberId ? t('groups:you') : memberName(members, id)
 }
 
 // The name an expense goes by in its row and its comments' page.
 export function expenseLabel(expense) {
-  return expense?.description || 'Expense'
+  return expense?.description || t('groups:expense')
 }
 
 // A settlement's name, from the viewer's side: "You → Sam".
@@ -79,7 +81,9 @@ export function commentTarget({ expenses, settlements, members }, itemId, myMemb
 
 // An expense row's payer line: "Paid by You" / "Paid by Anna".
 export function paidByLabel(members, payerId, myMemberId) {
-  return `Paid by ${viewerName(members, payerId, myMemberId)}`
+  return payerId === myMemberId
+    ? t('groups:format.paidByYou')
+    : t('groups:format.paidBy', { name: memberName(members, payerId) })
 }
 
 // The group's total spend (the header's "Total"), in minor units of the
@@ -99,7 +103,7 @@ export function groupTotal(expenses, currency) {
 export function memberBalances(balances, members, myUserId) {
   return sortMembers(members, myUserId).map((m) => {
     const mine = m.user_id === myUserId
-    return { id: m.id, label: mine ? 'You' : m.display_name, net: balances?.get(m.id) ?? 0, mine }
+    return { id: m.id, label: mine ? t('groups:you') : m.display_name, net: balances?.get(m.id) ?? 0, mine }
   })
 }
 
@@ -121,9 +125,9 @@ export function isEveryoneEqualSplit(expense, members) {
 export function myGroupBalance(balances, members, myUserId) {
   const me = (members ?? []).find((m) => m.user_id === myUserId)
   const net = me ? (balances?.get(me.id) ?? 0) : 0
-  if (net > 0) return { label: 'You’re owed', amount: net, tone: 'positive' }
-  if (net < 0) return { label: 'You owe', amount: -net, tone: 'negative' }
-  return { label: 'Settled up', amount: null, tone: 'muted' }
+  if (net > 0) return { label: t('groups:format.balance.owed'), amount: net, tone: 'positive' }
+  if (net < 0) return { label: t('groups:format.balance.owe'), amount: -net, tone: 'negative' }
+  return { label: t('groups:format.balance.settled'), amount: null, tone: 'muted' }
 }
 
 // The group's full settle-up plan (fewest payments, from simplifyDebts) with
@@ -132,13 +136,13 @@ export function myGroupBalance(balances, members, myUserId) {
 // 'positive' = you receive, 'negative' = you pay, 'default' = between others.
 // [{ from, to, fromName, toName, amount, mine, tone }]
 export function settlePlan(balances, members, myMemberId) {
-  const toneOf = (t) => (t.to === myMemberId ? 'positive' : t.from === myMemberId ? 'negative' : 'default')
-  return simplifyDebts(balances ?? new Map()).map((t) => ({
-    ...t,
-    fromName: viewerName(members, t.from, myMemberId),
-    toName: viewerName(members, t.to, myMemberId),
-    mine: t.from === myMemberId || t.to === myMemberId,
-    tone: toneOf(t),
+  const toneOf = (x) => (x.to === myMemberId ? 'positive' : x.from === myMemberId ? 'negative' : 'default')
+  return simplifyDebts(balances ?? new Map()).map((x) => ({
+    ...x,
+    fromName: viewerName(members, x.from, myMemberId),
+    toName: viewerName(members, x.to, myMemberId),
+    mine: x.from === myMemberId || x.to === myMemberId,
+    tone: toneOf(x),
   }))
 }
 
@@ -147,12 +151,12 @@ export function settlePlan(balances, members, myMemberId) {
 // Alex" plus its amount (minor). null when the viewer has nothing to settle.
 // Ties go to money owed to you. { text, amount, tone }
 export function balanceHighlight(plan) {
-  const best = (plan ?? []).filter((t) => t.mine)
-    .reduce((a, t) => (!a || t.amount > a.amount || (t.amount === a.amount && t.tone === 'positive') ? t : a), null)
+  const best = (plan ?? []).filter((x) => x.mine)
+    .reduce((a, x) => (!a || x.amount > a.amount || (x.amount === a.amount && x.tone === 'positive') ? x : a), null)
   if (!best) return null
   return best.tone === 'positive'
-    ? { text: `${best.fromName} owes you`, amount: best.amount, tone: 'positive' }
-    : { text: `You owe ${best.toName}`, amount: best.amount, tone: 'negative' }
+    ? { text: t('groups:format.owesYou', { name: best.fromName }), amount: best.amount, tone: 'positive' }
+    : { text: t('groups:format.youOwe', { name: best.toName }), amount: best.amount, tone: 'negative' }
 }
 
 // The settle-up page's suggestions: the fewest-payments plan's transfers
@@ -165,11 +169,11 @@ export function balanceHighlight(plan) {
 export function mySettleSuggestions(balances, myMemberId) {
   if (!myMemberId) return []
   return simplifyDebts(balances ?? new Map())
-    .filter((t) => t.from === myMemberId || t.to === myMemberId)
-    .map((t) => ({
-      ...t,
-      direction: t.from === myMemberId ? 'out' : 'in',
-      otherId: t.from === myMemberId ? t.to : t.from,
+    .filter((x) => x.from === myMemberId || x.to === myMemberId)
+    .map((x) => ({
+      ...x,
+      direction: x.from === myMemberId ? 'out' : 'in',
+      otherId: x.from === myMemberId ? x.to : x.from,
     }))
     .sort((a, b) => b.amount - a.amount)
 }
@@ -177,15 +181,17 @@ export function mySettleSuggestions(balances, myMemberId) {
 // The "Share summary" text (WhatsApp, Messages…): the group's name and total,
 // then who owes whom by name — never "You", since friends read it. Text only:
 // no expense descriptions, notes or comments. `format(minor)` formats money in
-// the group currency.
+// the group currency. In the app's language, like the rest of the page.
 export function groupSummaryText({ name, total, balances, members, format }) {
   const plan = settlePlan(balances, members, null)
-  const lines = [`${name}: ${format(total)} spent in total`, '']
-  if (plan.length === 0) lines.push('Everyone is settled up.')
+  const lines = [t('groups:format.summary.total', { name, total: format(total) }), '']
+  if (plan.length === 0) lines.push(t('groups:format.summary.settled'))
   else {
-    lines.push(`To settle up (${pluralise(plan.length, 'payment')}):`)
-    for (const t of plan) lines.push(`• ${t.fromName} owes ${t.toName} ${format(t.amount)}`)
+    lines.push(t('groups:format.summary.toSettle', { payments: pluralise(plan.length, 'payment') }))
+    for (const p of plan) {
+      lines.push(t('groups:format.summary.line', { from: p.fromName, to: p.toName, amount: format(p.amount) }))
+    }
   }
-  lines.push('', 'Shared from Budgeer')
+  lines.push('', t('groups:format.summary.footer'))
   return lines.join('\n')
 }

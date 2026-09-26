@@ -10,13 +10,13 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import GroupMark from './GroupMark.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
-
-const INVITE_UNAVAILABLE = 'This invite link is invalid or has expired. Ask whoever invited you for a fresh link.'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 export default function JoinGroup() {
   const { token } = useParams()
   const navigate = useNavigate()
   const toast = useToast()
+  const t = useT('groups')
   const [state, setState] = useState({ status: 'loading' })
   const [busy, setBusy] = useState(null) // 'accept' | 'decline'
 
@@ -34,10 +34,10 @@ export default function JoinGroup() {
       })
       .catch((e) => {
         console.error('[groups] invite preview failed:', e)
-        if (active) setState({ status: 'error', message: userMessage(e, INVITE_UNAVAILABLE) })
+        if (active) setState({ status: 'error', message: userMessage(e, t('join.unavailable')) })
       })
     return () => { active = false }
-  }, [token, navigate])
+  }, [token, navigate, t])
 
   async function accept() {
     setBusy('accept')
@@ -46,7 +46,7 @@ export default function JoinGroup() {
       navigate(`/groups/${gid}`, { replace: true })
     } catch (e) {
       console.error('[groups] join failed:', e)
-      toast({ title: 'Couldn’t join', description: userMessage(e), status: 'error' })
+      toast({ title: t('join.failed'), description: userMessage(e), status: 'error' })
       setBusy(null)
     }
   }
@@ -56,18 +56,18 @@ export default function JoinGroup() {
   }
 
   if (state.status === 'loading') {
-    return <RingLoader fullScreen caption="Loading invite…" />
+    return <RingLoader fullScreen caption={t('join.loading')} />
   }
 
   if (state.status === 'invalid' || state.status === 'error') {
     return (
       <Center h="100dvh" px={4}>
         <Stack spacing={4} textAlign="center" maxW="sm">
-          <Heading size="md">Invite unavailable</Heading>
+          <Heading size="md">{t('join.unavailableTitle')}</Heading>
           <Text color="text.muted">
-            {state.message || INVITE_UNAVAILABLE}
+            {state.message || t('join.unavailable')}
           </Text>
-          <Button onClick={() => navigate('/groups')}>Go to groups</Button>
+          <Button onClick={() => navigate('/groups')}>{t('join.toGroups')}</Button>
         </Stack>
       </Center>
     )
@@ -86,12 +86,12 @@ export default function JoinGroup() {
             <Flex justify="center" mb={3}>
               <GroupMark name={group.name} src={group.image_url} size={56} />
             </Flex>
-            <Heading size="lg">{group.name || 'Group invite'}</Heading>
-            <Text color="text.muted" mt={1}>You’ve been invited to join</Text>
+            <Heading size="lg">{group.name || t('join.groupInvite')}</Heading>
+            <Text color="text.muted" mt={1}>{t('join.invited')}</Text>
           </Box>
 
           {members.length > 0 && (
-            <Panel title="Members">
+            <Panel title={t('join.members')}>
               <List spacing={0}>
                 {members.map((m, i) => (
                   <ListItem key={m.id}>
@@ -110,11 +110,11 @@ export default function JoinGroup() {
           <Stack spacing={2}>
             <Button leftIcon={<Check size={18} />} onClick={accept}
               isLoading={busy === 'accept'} isDisabled={busy != null}>
-              Accept &amp; join
+              {t('join.accept')}
             </Button>
             <Button variant="ghost" leftIcon={<X size={18} />} onClick={decline}
               isDisabled={busy != null}>
-              Decline
+              {t('actions.decline')}
             </Button>
           </Stack>
         </Stack>

@@ -3,6 +3,7 @@ import { Box, Flex, Text, useRadio, useRadioGroup } from '@chakra-ui/react'
 import { User } from 'lucide-react'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
 import GroupMark from './GroupMark.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // "Just me" as a radio value (a radio can't hold null).
 const ME = 'me'
@@ -24,6 +25,7 @@ function edges(row) {
 // after a pick, the keyboard focus across that swap. The page renders it
 // only when the viewer has at least one group.
 export default function WhoForChips({ groups, value, onChange, memory }) {
+  const t = useT('groups')
   const labelId = useId()
   const rowRef = useRef(null)
   const [fade, setFade] = useState({ start: false, end: false })
@@ -78,14 +80,14 @@ export default function WhoForChips({ groups, value, onChange, memory }) {
   const mask = `linear-gradient(to right, ${fade.start ? 'transparent' : 'black'}, black ${FADE}, black calc(100% - ${FADE}), ${fade.end ? 'transparent' : 'black'})`
   return (
     <Box>
-      <Text id={labelId} fontWeight="500" mb={2}>Who’s it for?</Text>
+      <Text id={labelId} fontWeight="500" mb={2}>{t('whoFor.label')}</Text>
       <Flex {...getRootProps({}, rowRef)} aria-labelledby={labelId} position="relative" gap={2}
         overflowX="auto" mx={-1} px={1} py={1}
         sx={{
           scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' },
           maskImage: mask, WebkitMaskImage: mask,
         }}>
-        <Chip {...getRadioProps({ value: ME })} label="Just me" icon={(
+        <Chip {...getRadioProps({ value: ME })} label={t('whoFor.justMe')} icon={(
           <Flex boxSize="28px" borderRadius="full" bg="bg.subtle" color="text.muted" align="center"
             justify="center" flexShrink={0}>
             <User size={15} />

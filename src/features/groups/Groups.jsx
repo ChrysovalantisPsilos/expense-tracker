@@ -15,6 +15,7 @@ import AvatarStack from './AvatarStack.jsx'
 import { GroupsSkeleton } from './GroupSkeletons.jsx'
 import { textColor } from '../../shared/ui/kit/kitMath.js'
 import { userMessage } from '../../shared/lib/errors.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const NO_GROUPS = { groups: [], summaries: new Map(), invites: [] }
 
@@ -22,6 +23,7 @@ export default function Groups() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const toast = useToast()
+  const t = useT('groups')
 
   // Live overview: balances, memberships, and the invite inbox update as they
   // change. No filters — RLS already scopes events to groups you belong to
@@ -52,7 +54,7 @@ export default function Groups() {
       else load()
     } catch (e) {
       console.error('[groups] invite response failed:', e)
-      toast({ title: userMessage(e, 'Couldn’t answer the invite. Please try again.'), status: 'error' })
+      toast({ title: userMessage(e, t('list.answerFailed')), status: 'error' })
     }
   }
 
@@ -60,8 +62,8 @@ export default function Groups() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader title="Groups"
-        action={<PageAction icon={<Plus size={16} />} label="New group" onClick={openNew} />} />
+      <PageHeader title={t('title')}
+        action={<PageAction icon={<Plus size={16} />} label={t('list.newGroup')} onClick={openNew} />} />
 
       {invites.length > 0 && (
         <Stack spacing={2}>
@@ -74,16 +76,16 @@ export default function Groups() {
                   <GroupMark name={inv.group_name} size={40} />
                   <Stack spacing={0} flex="1" minW={0}>
                     <Text fontWeight="600" noOfLines={2} wordBreak="break-word">{inv.group_name}</Text>
-                    <Text fontSize="xs" color="text.muted" noOfLines={2} wordBreak="break-word">{inv.invited_by} invited you</Text>
+                    <Text fontSize="xs" color="text.muted" noOfLines={2} wordBreak="break-word">{t('list.invitedYou', { name: inv.invited_by })}</Text>
                   </Stack>
                 </HStack>
                 <HStack spacing={2} justify="flex-end" flexShrink={0}>
                   <Button size="sm" leftIcon={<Check size={16} />} onClick={() => respond(inv.invite_id, true)}>
-                    Accept
+                    {t('actions.accept')}
                   </Button>
                   <Button size="sm" variant="ghost" leftIcon={<X size={16} />}
                     onClick={() => respond(inv.invite_id, false)}>
-                    Decline
+                    {t('actions.decline')}
                   </Button>
                 </HStack>
               </Stack>
@@ -93,14 +95,13 @@ export default function Groups() {
       )}
 
       {error ? (
-        <QueryError error={error} onRetry={load} what="your groups" py={16} />
+        <QueryError error={error} onRetry={load} what={t('whatGroups')} py={16} />
       ) : loading ? (
         <GroupsSkeleton />
       ) : groups.length === 0 ? (
         <Panel>
-          <EmptyState variant="split" title="No groups yet"
-            text="Create a group for a trip or household, add the people in it, and start splitting shared expenses."
-            actions={<Button as={RouterLink} to="/groups/new" leftIcon={<Plus size={18} />}>Create your first group</Button>} />
+          <EmptyState variant="split" title={t('list.empty.title')} text={t('list.empty.text')}
+            actions={<Button as={RouterLink} to="/groups/new" leftIcon={<Plus size={18} />}>{t('list.empty.action')}</Button>} />
         </Panel>
       ) : (
         <Stack spacing={3}>

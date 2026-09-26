@@ -17,14 +17,16 @@ import {
 import { pluralise, sortMembers } from './groupFormat.js'
 import GroupFormPage from './GroupFormPage.jsx'
 import { InviteLinkModal, RemoveMemberModal } from './GroupModals.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // /groups/:id/members — who's in the group (you and the owner first, no
 // balances: the group page's "Who owes whom" covers those), the owner's
 // remove buttons (each confirmed in a small dialog), and inviting people by
 // email or with a share link. Leaving is in the group page's ⋯ menu.
 export default function MembersPage() {
+  const t = useT('groups')
   return (
-    <GroupFormPage title="Members">
+    <GroupFormPage title={t('members.title')}>
       {(ctx) => <Members {...ctx} />}
     </GroupFormPage>
   )
@@ -33,6 +35,7 @@ export default function MembersPage() {
 function Members({ group, members, myMember, isOwner, reload }) {
   const { user } = useAuth()
   const toast = useToast()
+  const t = useT('groups')
   const [removing, setRemoving] = useState(null)
   const [shownLink, setShownLink] = useState(null)
   const { busy: removeBusy, run: runRemove } = useAsyncSubmit()
@@ -41,10 +44,10 @@ function Members({ group, members, myMember, isOwner, reload }) {
     const who = removing
     await runRemove(async () => {
       await removeMember(who.id)
-      toast({ title: `Removed ${who.display_name}`, status: 'success' })
+      toast({ title: t('members.removed', { name: who.display_name }), status: 'success' })
       setRemoving(null)
       reload() // live via realtime too; this covers a dropped socket
-    }, { errorTitle: 'Couldn’t remove' })
+    }, { errorTitle: t('members.removeFailed') })
   }
 
   // The copy starts inside the tap, before the link exists (copyText), so
@@ -58,11 +61,11 @@ function Members({ group, members, myMember, isOwner, reload }) {
       url = await link
     } catch (e) {
       console.error('[groups] invite link failed:', e)
-      toast({ title: 'Could not create invite', description: userMessage(e), status: 'error' })
+      toast({ title: t('members.inviteFailed'), description: userMessage(e), status: 'error' })
       return
     }
     if (await copied) {
-      toast({ title: 'Invite link copied', description: 'Paste it in a chat to invite friends.', status: 'success' })
+      toast({ title: t('modals.invite.copied'), description: t('members.linkCopiedHint'), status: 'success' })
     } else {
       setShownLink({ url })
     }
@@ -70,7 +73,7 @@ function Members({ group, members, myMember, isOwner, reload }) {
 
   return (
     <>
-      <Panel icon={Users} title="In this group" subtitle={pluralise(members.length, 'member')}>
+      <Panel icon={Users} title={t('members.inGroup')} subtitle={pluralise(members.length, 'member')}>
         <List spacing={0}>
           {sortMembers(members, user.id).map((m, i) => {
             const isMe = m.user_id === user.id
@@ -80,11 +83,11 @@ function Members({ group, members, myMember, isOwner, reload }) {
                 <HStack py={2.5} spacing={3} minH="56px">
                   <UserAvatar size="sm" name={m.display_name} src={m.avatar_url} highlight={isMe} />
                   <Text fontWeight={isMe ? '700' : '500'} minW={0} overflowWrap="anywhere">
-                    {m.display_name}{isMe ? ' (you)' : ''}
+                    {isMe ? t('members.me', { name: m.display_name }) : m.display_name}
                   </Text>
-                  {m.role === 'owner' && <Badge colorScheme="brand" flexShrink={0}>Owner</Badge>}
+                  {m.role === 'owner' && <Badge colorScheme="brand" flexShrink={0}>{t('members.owner')}</Badge>}
                   {isOwner && !isMe && (
-                    <IconButton aria-label={`Remove ${m.display_name}`} size="sm" variant="ghost"
+                    <IconButton aria-label={t('members.remove', { name: m.display_name })} size="sm" variant="ghost"
                       ml="auto" flexShrink={0} color="status.negative" icon={<UserMinus size={16} />}
                       onClick={() => setRemoving(m)} />
                   )}
@@ -104,9 +107,10 @@ function Members({ group, members, myMember, isOwner, reload }) {
   )
 }
 
-const INVITE_STATUS_MESSAGE = {
-  already_member: 'That person is already in this group.',
-  already_invited: 'They already have a pending invite to this group.',
+// invite_existing_user's refusals → their words (groups:members.status.*).
+const INVITE_STATUS_KEY = {
+  already_member: 'members.status.alreadyMember',
+  already_invited: 'members.status.alreadyInvited',
 }
 
 // Invite by email (an in-app request to an existing Budgeer user, else an
@@ -114,6 +118,7 @@ const INVITE_STATUS_MESSAGE = {
 // invite, so several people can be asked in a row.
 function InvitePanel({ group, onCopyLink, onShowLink }) {
   const toast = useToast()
+  const t = useT('groups')
   const [email, setEmail] = useState('')
   const { busy, run } = useAsyncSubmit()
 
@@ -125,42 +130,41 @@ function InvitePanel({ group, onCopyLink, onShowLink }) {
       // First try to invite an existing Budgeer user (in-app request).
       const status = await inviteExistingUser(group.id, addr)
       if (status === 'invited') {
-        toast({ title: `Request sent to ${addr}`, description: 'They’ll see it in Budgeer.', status: 'success' })
+        toast({ title: t('members.requestSent', { email: addr }), description: t('members.requestSentHint'), status: 'success' })
         setEmail('')
       } else if (status === 'no_account') {
         // No account yet — send an emailable join link.
         const { token, url } = await createInvite(group.id, { email: addr })
         try {
           await emailInvite({ to: addr, token })
-          toast({ title: `Invite emailed to ${addr}`, status: 'success' })
+          toast({ title: t('members.emailed', { email: addr }), status: 'success' })
         } catch (mailErr) {
           // Too late in the tap to copy on iPhone: show the link to share instead.
           console.error('[groups] invite email failed:', mailErr)
-          onShowLink({ url, title: 'Couldn’t send the email — share this link instead' })
+          onShowLink({ url, title: t('members.emailFailed') })
         }
         setEmail('')
       } else {
-        toast({ title: INVITE_STATUS_MESSAGE[status] ?? 'Couldn’t send the invite.', status: 'error' })
+        toast({ title: t(INVITE_STATUS_KEY[status] ?? 'members.sendFailed'), status: 'error' })
       }
     })
   }
 
   return (
-    <Panel icon={Mail} title="Invite people"
-      subtitle="By email or a share link — they join once they accept.">
+    <Panel icon={Mail} title={t('members.invite.title')} subtitle={t('members.invite.subtitle')}>
       <Stack as="form" spacing={3} onSubmit={submit} {...unsavedFormAttr(!!email.trim())}>
         <FormControl isRequired>
-          <FormLabel>Email address</FormLabel>
+          <FormLabel>{t('members.invite.email')}</FormLabel>
           <Input type="email" value={email} autoComplete="email"
             onChange={(e) => setEmail(e.target.value)} placeholder="friend@example.com" />
-          <FormHelperText>Someone already on Budgeer gets the invite in the app.</FormHelperText>
+          <FormHelperText>{t('members.invite.emailHint')}</FormHelperText>
         </FormControl>
         <Stack direction={{ base: 'column-reverse', sm: 'row' }} spacing={3}>
           <Button variant="outline" leftIcon={<Link2 size={16} />} onClick={onCopyLink}>
-            Copy invite link
+            {t('members.invite.copyLink')}
           </Button>
           <Button type="submit" flex={{ sm: 1 }} leftIcon={<Mail size={16} />} isLoading={busy}>
-            Send invite
+            {t('members.invite.send')}
           </Button>
         </Stack>
       </Stack>

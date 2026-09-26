@@ -3,6 +3,7 @@
 // the user switches between "Just me" and a group, and which ?group= link is
 // honoured. No I/O: myGroups.js reads and writes the device's list.
 import { CURRENCIES, minorFactor, minorToInput, toMinor } from '../../shared/lib/currency.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // How many recently used groups the device remembers.
 export const RECENT_MAX = 20
@@ -63,5 +64,7 @@ export function carryDraft(draft, toDefault) {
 
 // Who a split covers, for the collapsed split card: "All 4", or "3 of 4".
 export function splitCountLabel(included, total) {
-  return included === total ? `All ${total}` : `${included} of ${total}`
+  return included === total
+    ? t('groups:splitCount.all', { total })
+    : t('groups:splitCount.some', { included, total })
 }

@@ -6,6 +6,12 @@ import { ExternalLink, Info, QrCode, Copy } from 'lucide-react'
 import { memberPaymentInfo } from './groups.js'
 import { revolutUrl, paypalUrl, sepaQrPayload } from '../../shared/lib/payLinks.js'
 import { copyText } from '../../shared/lib/clipboard.js'
+import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+
+// Brand names: the same in every language.
+const REVOLUT = 'Revolut'
+const PAYPAL = 'PayPal'
 
 // One-tap ways to actually pay a co-member the settle-up amount, driven by
 // the payment details they saved in Settings → Account → Getting paid (readable to
@@ -16,6 +22,7 @@ import { copyText } from '../../shared/lib/clipboard.js'
 // transfers are EUR-only, so it hides for other group currencies).
 export default function PayShortcuts({ member, amountMinor, currency, groupName }) {
   const toast = useToast()
+  const t = useT('groups')
   const [info, setInfo] = useState(null)
   const [qr, setQr] = useState(null) // { payload, url }
   const [showQr, setShowQr] = useState(false)
@@ -32,7 +39,10 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
 
   const iban = info?.payment_iban
   const eur = currency === 'EUR'
-  const amountStr = (amountMinor / 100).toFixed(2)
+  // "12.50" (English, as before) or "12,50" (Greek), for the QR's caption.
+  const amountStr = intlLocale()
+    ? (amountMinor / 100).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : (amountMinor / 100).toFixed(2)
   // The QR belongs to one payload: a new amount (or payee) builds a new one,
   // so a stale code is never shown.
   const payload = iban && eur ? sepaQrPayload({
@@ -49,10 +59,10 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
       .catch(() => {
         if (!active) return
         setShowQr(false)
-        toast({ title: 'Couldn’t build the QR code', status: 'error' })
+        toast({ title: t('pay.qrFailed'), status: 'error' })
       })
     return () => { active = false }
-  }, [showQr, payload, qr?.payload, toast])
+  }, [showQr, payload, qr?.payload, toast, t])
 
   const revolut = revolutUrl(info?.payment_revolut, amountMinor, currency)
   const paypal = paypalUrl(info?.payment_paypal, amountMinor, currency)
@@ -64,12 +74,10 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
       <Box borderWidth="1px" borderColor="border.default" borderRadius="lg" p={3}>
         <HStack spacing={2} mb={1}>
           <Info size={15} aria-hidden />
-          <Text fontSize="sm" fontWeight="600">Pay {member.display_name} directly</Text>
+          <Text fontSize="sm" fontWeight="600">{t('pay.direct', { name: member.display_name })}</Text>
         </HStack>
         <Text fontSize="xs" color="text.muted">
-          {member.user_id
-            ? `${member.display_name} hasn’t added payment details yet. Once they add an IBAN, Revolut or PayPal in Settings › Account › Getting paid, you can pay them here with a bank QR or in one tap.`
-            : `Once ${member.display_name} joins Budgeer and adds an IBAN, Revolut or PayPal, you can pay them here with a bank QR or in one tap.`}
+          {t(member.user_id ? 'pay.noDetails' : 'pay.notJoined', { name: member.display_name })}
         </Text>
       </Box>
     )
@@ -79,50 +87,50 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
   const qrUrl = showQr && qr?.payload === payload ? qr.url : null
 
   async function copyIban() {
-    if (await copyText(iban)) toast({ title: 'IBAN copied', status: 'success' })
+    if (await copyText(iban)) toast({ title: t('pay.ibanCopied'), status: 'success' })
     else toast({ title: iban, status: 'info', duration: 8000 })
   }
 
   return (
     <Box borderWidth="1px" borderColor="border.default" borderRadius="lg" p={3}>
       <Text fontSize="sm" fontWeight="600" mb={2}>
-        Pay {member.display_name} directly
+        {t('pay.direct', { name: member.display_name })}
       </Text>
       <HStack spacing={2} flexWrap="wrap">
         {revolut && (
           <Button as="a" size="sm" target="_blank" rel="noopener noreferrer" href={revolut}
             rightIcon={<ExternalLink size={13} />}>
-            Revolut
+            {REVOLUT}
           </Button>
         )}
         {paypal && (
           <Button as="a" size="sm" target="_blank" rel="noopener noreferrer" href={paypal}
             rightIcon={<ExternalLink size={13} />}>
-            PayPal
+            {PAYPAL}
           </Button>
         )}
         {payload && (
           <Button size="sm" variant="outline" leftIcon={<QrCode size={14} />} onClick={() => setShowQr((v) => !v)}>
-            {showQr ? 'Hide bank QR' : 'Bank QR'}
+            {t(showQr ? 'pay.hideQr' : 'pay.showQr')}
           </Button>
         )}
         {iban && (
           <Button size="sm" variant="ghost" leftIcon={<Copy size={14} />} onClick={copyIban}>
-            Copy IBAN
+            {t('pay.copyIban')}
           </Button>
         )}
       </HStack>
       {qrUrl && (
         <Center pt={3} flexDirection="column">
           {/* White backing keeps the QR scannable in dark mode. */}
-          <Image src={qrUrl} boxSize="200px" borderRadius="md" bg="white" p={2} alt="SEPA payment QR" />
+          <Image src={qrUrl} boxSize="200px" borderRadius="md" bg="white" p={2} alt={t('pay.qrAlt')} />
           <Text fontSize="xs" color="text.muted" mt={2}>
-            Scan with your banking app — payee and {amountStr} EUR are pre-filled.
+            {t('pay.scan', { amount: amountStr })}
           </Text>
         </Center>
       )}
       <Text fontSize="xs" color="text.muted" mt={2}>
-        After paying, hit Record below so the group’s books match.
+        {t('pay.afterPaying')}
       </Text>
     </Box>
   )

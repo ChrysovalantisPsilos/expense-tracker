@@ -14,6 +14,7 @@ import AvatarStack from './AvatarStack.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { ShellSlot, useShellHeader } from '../../shared/ui/ShellHeader.jsx'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // The photo button on a small (sideways header) photo: smaller, tucked in.
 const SMALL_CAMERA = { boxSize: '20px', minW: '20px', bottom: '-4px', right: '-4px' }
@@ -32,6 +33,7 @@ export default function GroupHeader({
 }) {
   const navigate = useNavigate()
   const toast = useToast()
+  const t = useT('groups')
   const imgRef = useRef(null)
   const [uploading, setUploading] = useState(false)
   const sideways = !!useShellHeader()
@@ -44,10 +46,10 @@ export default function GroupHeader({
     try {
       await uploadGroupImage(group.id, file)
       await onPhotoChanged()
-      toast({ title: 'Group photo updated', status: 'success' })
+      toast({ title: t('header.photoUpdated'), status: 'success' })
     } catch (err) {
       console.error('[groups] photo upload failed:', err)
-      toast({ title: 'Couldn’t update photo', description: userMessage(err), status: 'error' })
+      toast({ title: t('header.photoFailed'), description: userMessage(err), status: 'error' })
     }
     finally { setUploading(false) }
   }
@@ -58,7 +60,7 @@ export default function GroupHeader({
       <GroupMark name={group.name} src={group.image_url} size={size} />
       {isOwner && (
         <>
-          <IconButton aria-label="Change group photo" icon={<Camera size={size < 40 ? 10 : 12} />}
+          <IconButton aria-label={t('header.changePhoto')} icon={<Camera size={size < 40 ? 10 : 12} />}
             size="xs" borderRadius="full" position="absolute"
             {...(size < 40 ? SMALL_CAMERA : { bottom: '-6px', right: '-6px' })}
             isLoading={uploading} onClick={() => imgRef.current?.click()} />
@@ -68,27 +70,27 @@ export default function GroupHeader({
     </Box>
   )
   const back = (props) => (
-    <IconButton aria-label="Back" variant="ghost" size="sm" ml={-2} {...props}
+    <IconButton aria-label={t('back')} variant="ghost" size="sm" ml={-2} {...props}
       icon={<ArrowLeft size={18} />} onClick={() => navigate('/groups')} />
   )
   const menu = (
     <Menu>
-      <MenuButton as={IconButton} aria-label="Group options" size="sm" mr={-2}
+      <MenuButton as={IconButton} aria-label={t('header.options')} size="sm" mr={-2}
         variant="ghost" icon={<MoreVertical size={18} />} />
       <MenuList>
-        <MenuItem icon={<Share2 size={16} />} onClick={onShare}>Share summary</MenuItem>
+        <MenuItem icon={<Share2 size={16} />} onClick={onShare}>{t('header.shareSummary')}</MenuItem>
         <MenuItem icon={<FileDown size={16} />} onClick={onReport}>
-          Download statement (PDF)
+          {t('header.statement')}
         </MenuItem>
         {isOwner && (
-          <MenuItem icon={<Pencil size={16} />} onClick={onRename}>Rename group</MenuItem>
+          <MenuItem icon={<Pencil size={16} />} onClick={onRename}>{t('header.rename')}</MenuItem>
         )}
         {onLeave && (
-          <MenuItem icon={<LogOut size={16} />} onClick={onLeave}>Leave group</MenuItem>
+          <MenuItem icon={<LogOut size={16} />} onClick={onLeave}>{t('header.leave')}</MenuItem>
         )}
         {isOwner && (
           <MenuItem icon={<Trash2 size={16} />} color="status.negative" onClick={onDelete}>
-            Delete group
+            {t('header.delete')}
           </MenuItem>
         )}
       </MenuList>
@@ -110,7 +112,7 @@ export default function GroupHeader({
             </Heading>
             <MemberStack members={members} myUserId={myUserId} onClick={onMembers} compact />
           </Box>
-          <Figure label="Total" value={total} size="md" align="right" flexShrink={0} lineHeight="1.2" />
+          <Figure label={t('total')} value={total} size="md" align="right" flexShrink={0} lineHeight="1.2" />
           {menu}
         </HStack>
       </ShellSlot>
@@ -134,11 +136,11 @@ export default function GroupHeader({
             <MemberStack members={members} myUserId={myUserId} onClick={onMembers} />
           </Box>
         </Box>
-        <Figure label="Total" value={total} size="lg" align="right" flexShrink={0} />
+        <Figure label={t('total')} value={total} size="lg" align="right" flexShrink={0} />
       </HStack>
 
       <HStack gridArea="actions" spacing={2}>
-        <PageAction icon={<Plus size={16} />} label="Add expense" onClick={onAdd} />
+        <PageAction icon={<Plus size={16} />} label={t('header.addExpense')} onClick={onAdd} />
         {menu}
       </HStack>
     </Grid>
@@ -148,10 +150,11 @@ export default function GroupHeader({
 // The avatar stack and member count — one button that opens the Members page.
 // `compact`: just the count, in small type (the sideways header).
 function MemberStack({ members, myUserId, onClick, compact = false }) {
+  const t = useT('groups')
   const count = pluralise(members.length, 'member')
   return (
     <HStack as="button" type="button" onClick={onClick} spacing={2} maxW="100%"
-      aria-label={`${count} — show members`}
+      aria-label={t('header.showMembers', { members: count })}
       borderRadius="full" pr={2} ml={-0.5} layerStyle="hitArea" _hover={{ bg: 'bg.subtle' }}
       _focusVisible={{ boxShadow: 'outline' }} transition="background 0.1s">
       {!compact && <AvatarStack members={members} myUserId={myUserId} />}

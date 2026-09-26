@@ -14,6 +14,7 @@ import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { listComments, addComment, deleteComment } from './comments.js'
 import { commentTarget } from './groupFormat.js'
 import GroupFormPage from './GroupFormPage.jsx'
+import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // /groups/:id/comments/:itemId — the comment thread on one expense or
 // settlement of the group, under the item's name. Live: new comments from
@@ -21,14 +22,15 @@ import GroupFormPage from './GroupFormPage.jsx'
 // catch up when it's opened again.)
 export default function CommentsPage() {
   const { itemId } = useParams()
+  const t = useT('groups')
   return (
-    <GroupFormPage title="Comments"
+    <GroupFormPage title={t('comments.title')}
       description={(ctx) => commentTarget(ctx, itemId, ctx.myMember?.id)?.label}>
       {(ctx) => {
         const target = commentTarget(ctx, itemId, ctx.myMember?.id)
         return target
           ? <Thread groupId={ctx.group.id} target={target} myMember={ctx.myMember} />
-          : <Panel><Text color="text.muted">This item doesn’t exist any more.</Text></Panel>
+          : <Panel><Text color="text.muted">{t('comments.gone')}</Text></Panel>
       }}
     </GroupFormPage>
   )
@@ -36,6 +38,7 @@ export default function CommentsPage() {
 
 function Thread({ groupId, target, myMember }) {
   const { user } = useAuth()
+  const t = useT('groups')
   const [body, setBody] = useState('')
   const { busy, run } = useAsyncSubmit()
 
@@ -71,11 +74,11 @@ function Thread({ groupId, target, myMember }) {
     <>
       <Panel>
         {error ? (
-          <QueryError error={error} onRetry={reload} what="comments" py={4} />
+          <QueryError error={error} onRetry={reload} what={t('comments.what')} py={4} />
         ) : loading ? (
           <RingLoader />
         ) : comments.length === 0 ? (
-          <Text color="text.muted" fontSize="sm">No comments yet. Start the thread.</Text>
+          <Text color="text.muted" fontSize="sm">{t('comments.empty')}</Text>
         ) : (
           <Stack spacing={4}>
             {comments.map((cm) => (
@@ -84,12 +87,12 @@ function Thread({ groupId, target, myMember }) {
                 <Box flex="1" minW={0}>
                   <HStack spacing={2} mb={0.5} align="center">
                     <Text fontSize="sm" fontWeight="600" minW={0} overflowWrap="anywhere">
-                      {cm.author?.display_name || 'Member'}
+                      {cm.author?.display_name || t('member')}
                     </Text>
                     <Text fontSize="xs" color="text.muted">{shortDateTime(cm.created_at)}</Text>
                     <Box flex="1" />
                     {cm.author_id === user?.id && (
-                      <IconButton aria-label="Delete comment" size="xs" variant="ghost" color="status.negative"
+                      <IconButton aria-label={t('comments.delete')} size="xs" variant="ghost" color="status.negative"
                         icon={<Trash2 size={13} />} isDisabled={busy} onClick={() => remove(cm.id)} />
                     )}
                   </HStack>
@@ -104,13 +107,13 @@ function Thread({ groupId, target, myMember }) {
       {myMember ? (
         <HStack as="form" onSubmit={send} align="end" spacing={2} {...unsavedFormAttr(!!body.trim())}>
           <Textarea rows={2} value={body} onChange={(e) => setBody(e.target.value)} bg="bg.surface"
-            aria-label="Write a comment" placeholder="Write a comment…" resize="vertical"
+            aria-label={t('comments.write')} placeholder={t('comments.placeholder')} resize="vertical"
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) send(e) }} />
-          <IconButton type="submit" aria-label="Send comment" icon={<Send size={18} />}
+          <IconButton type="submit" aria-label={t('comments.send')} icon={<Send size={18} />}
             isLoading={busy} isDisabled={!body.trim()} />
         </HStack>
       ) : (
-        <Text fontSize="sm" color="text.muted">Join the group to comment.</Text>
+        <Text fontSize="sm" color="text.muted">{t('comments.joinFirst')}</Text>
       )}
     </>
   )

@@ -5,6 +5,7 @@ import {
 } from '@chakra-ui/react'
 import { Users } from 'lucide-react'
 import { copyText } from '../../shared/lib/clipboard.js'
+import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // The group's confirmation dialogs (its forms are full pages).
 
@@ -12,6 +13,7 @@ import { copyText } from '../../shared/lib/clipboard.js'
 // (`check` from groupDeleteCheck) it explains instead, with a way to the
 // members list; delete_group refuses the same case on the server.
 export function DeleteGroupModal({ group, check, isOpen, onClose, busy, onConfirm, onMembers }) {
+  const t = useT('groups')
   const [text, setText] = useState('')
   const match = text.trim() === group.name
   if (!check.canDelete) {
@@ -19,23 +21,21 @@ export function DeleteGroupModal({ group, check, isOpen, onClose, busy, onConfir
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
         <ModalContent mx={4}>
-          <ModalHeader>Can’t delete “{group.name}” yet</ModalHeader>
+          <ModalHeader>{t('modals.deleteBlocked.title', { name: group.name })}</ModalHeader>
           <ModalBody>
             <Stack spacing={3}>
-              <Text color="text.muted">
-                You can only delete a group once everyone else has left. Remove
-                the other members (or ask them to leave) first.
-              </Text>
+              <Text color="text.muted">{t('modals.deleteBlocked.body')}</Text>
               {check.others.length > 0 && (
                 <Text fontSize="sm">
-                  Still in the group: <b>{check.others.map((m) => m.display_name).join(', ')}</b>
+                  <Trans t={t} k="modals.deleteBlocked.stillIn" components={{ b: <b /> }}
+                    values={{ names: check.others.map((m) => m.display_name).join(', ') }} />
                 </Text>
               )}
             </Stack>
           </ModalBody>
           <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={onClose}>Close</Button>
-            <Button leftIcon={<Users size={16} />} onClick={onMembers}>Manage members</Button>
+            <Button variant="ghost" onClick={onClose}>{t('actions.close')}</Button>
+            <Button leftIcon={<Users size={16} />} onClick={onMembers}>{t('modals.deleteBlocked.manage')}</Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
@@ -45,25 +45,22 @@ export function DeleteGroupModal({ group, check, isOpen, onClose, busy, onConfir
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent mx={4}>
-        <ModalHeader>Delete “{group.name}”?</ModalHeader>
+        <ModalHeader>{t('modals.delete.title', { name: group.name })}</ModalHeader>
         <ModalBody>
           <Stack spacing={3}>
             <Text color="text.muted">
-              This permanently deletes the group and all its expenses, balances,
-              and settlements for <b>everyone</b> — and removes the shared
-              expenses mirrored into members’ personal trackers. Only possible
-              when everyone is settled up. This can’t be undone.
+              <Trans t={t} k="modals.delete.body" components={{ b: <b /> }} />
             </Text>
             <FormControl>
-              <FormLabel fontSize="sm">Type the group name to confirm</FormLabel>
+              <FormLabel fontSize="sm">{t('modals.delete.confirm')}</FormLabel>
               <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={group.name} />
             </FormControl>
           </Stack>
         </ModalBody>
         <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
           <Button colorScheme="red" isDisabled={!match} isLoading={busy} onClick={onConfirm}>
-            Delete group
+            {t('header.delete')}
           </Button>
         </ModalFooter>
       </ModalContent>
@@ -73,27 +70,24 @@ export function DeleteGroupModal({ group, check, isOpen, onClose, busy, onConfir
 
 // Leave confirm; `onConfirm(silent)` — silent skips notifying the group.
 export function LeaveGroupModal({ group, isOwner, isOpen, onClose, busy, onConfirm }) {
+  const t = useT('groups')
   const [silent, setSilent] = useState(false)
   return (
     <Modal isOpen={isOpen} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent mx={4}>
-        <ModalHeader>Leave “{group.name}”?</ModalHeader>
+        <ModalHeader>{t('modals.leave.title', { name: group.name })}</ModalHeader>
         <ModalBody>
           <Stack spacing={4}>
-            <Text color="text.muted">
-              You can only leave once your balance is settled. Your past expenses
-              stay in the group for everyone else.
-              {isOwner && ' As the owner, ownership passes to another member.'}
-            </Text>
+            <Text color="text.muted">{t(isOwner ? 'modals.leave.bodyOwner' : 'modals.leave.body')}</Text>
             <Checkbox isChecked={silent} onChange={(e) => setSilent(e.target.checked)}>
-              <Text fontSize="sm">Leave silently — don’t notify the group</Text>
+              <Text fontSize="sm">{t('modals.leave.silent')}</Text>
             </Checkbox>
           </Stack>
         </ModalBody>
         <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button colorScheme="red" isLoading={busy} onClick={() => onConfirm(silent)}>Leave</Button>
+          <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
+          <Button colorScheme="red" isLoading={busy} onClick={() => onConfirm(silent)}>{t('modals.leave.confirm')}</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
@@ -102,20 +96,18 @@ export function LeaveGroupModal({ group, isOwner, isOpen, onClose, busy, onConfi
 
 // Remove-member confirm (owner only); `member` null = closed.
 export function RemoveMemberModal({ member, onClose, busy, onConfirm }) {
+  const t = useT('groups')
   return (
     <Modal isOpen={!!member} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent mx={4}>
-        <ModalHeader>Remove {member?.display_name}?</ModalHeader>
+        <ModalHeader>{t('modals.remove.title', { name: member?.display_name })}</ModalHeader>
         <ModalBody>
-          <Text color="text.muted">
-            They can only be removed if settled up. If they’ve been part of any
-            expenses, their history is kept.
-          </Text>
+          <Text color="text.muted">{t('modals.remove.body')}</Text>
         </ModalBody>
         <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button colorScheme="red" isLoading={busy} onClick={onConfirm}>Remove</Button>
+          <Button variant="ghost" onClick={onClose}>{t('actions.cancel')}</Button>
+          <Button colorScheme="red" isLoading={busy} onClick={onConfirm}>{t('modals.remove.confirm')}</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
@@ -126,18 +118,19 @@ export function RemoveMemberModal({ member, onClose, busy, onConfirm }) {
 // couldn't be sent): selectable in a field, with a fresh tap to copy or to
 // open the share sheet — both work here because they run inside that tap.
 export function InviteLinkModal({ link, onClose }) {
+  const t = useT('groups')
   const toast = useToast()
   async function copy() {
     if (await copyText(link?.url)) {
-      toast({ title: 'Invite link copied', status: 'success' })
+      toast({ title: t('modals.invite.copied'), status: 'success' })
       onClose()
     } else {
-      toast({ title: 'Select the link and copy it', status: 'info' })
+      toast({ title: t('modals.invite.selectIt'), status: 'info' })
     }
   }
   async function share() {
     try {
-      await navigator.share({ title: 'Join my group on Budgeer', url: link.url })
+      await navigator.share({ title: t('modals.invite.shareTitle'), url: link.url })
       onClose()
     } catch (e) {
       if (e?.name !== 'AbortError') copy()
@@ -147,17 +140,17 @@ export function InviteLinkModal({ link, onClose }) {
     <Modal isOpen={!!link} onClose={onClose} isCentered>
       <ModalOverlay />
       <ModalContent mx={4}>
-        <ModalHeader>{link?.title ?? 'Your invite link'}</ModalHeader>
+        <ModalHeader>{link?.title ?? t('modals.invite.title')}</ModalHeader>
         <ModalBody>
-          <Text color="text.muted" mb={3}>Send it to your friends in any chat. They join once they accept.</Text>
-          <Input value={link?.url ?? ''} isReadOnly aria-label="Invite link"
+          <Text color="text.muted" mb={3}>{t('modals.invite.body')}</Text>
+          <Input value={link?.url ?? ''} isReadOnly aria-label={t('modals.invite.field')}
             onFocus={(e) => e.target.select()} />
         </ModalBody>
         <ModalFooter gap={2}>
           {typeof navigator !== 'undefined' && navigator.share && (
-            <Button variant="outline" onClick={share}>Share</Button>
+            <Button variant="outline" onClick={share}>{t('actions.share')}</Button>
           )}
-          <Button onClick={copy}>Copy link</Button>
+          <Button onClick={copy}>{t('modals.invite.copy')}</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
