@@ -1,18 +1,19 @@
 import { toBaseMinor } from './currency.js'
+import { t } from './i18n/i18n.js'
 
 // Bucket label for a transaction row in category breakdowns: a mirrored group
 // expense rolls up under its group's name; everything else uses its category
-// (or 'Uncategorized'). Kept in one place because the dashboard breakdown, the
+// (or Uncategorized, in the app's language). Kept in one place because the dashboard breakdown, the
 // transaction list's group tag, and the server report must all agree.
 export function bucketOf(row) {
   return row.group_expense_id
-    ? (row.group_expenses?.groups?.name ?? 'Group')
-    : (row.categories?.name ?? 'Uncategorized')
+    ? (row.group_expenses?.groups?.name ?? t('common:bucket.group'))
+    : (row.categories?.name ?? t('common:bucket.uncategorized'))
 }
 
 // Just the group label for a row (used where only shared rows are shown).
 export function groupLabel(row) {
-  return row.group_expenses?.groups?.name ?? 'Group'
+  return row.group_expenses?.groups?.name ?? t('common:bucket.group')
 }
 
 // Sum rows into a Map keyed by keyFn(row), converting each amount to the base

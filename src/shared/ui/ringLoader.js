@@ -49,17 +49,20 @@ export function markTree(size, { mono = false } = {}) {
 }
 
 const SCREEN_MARK_SIZE = 84
+// The boot loader's label: index.html carries it before any JavaScript (so
+// before a language is known); in the app, callers pass common:loading.
 export const LOADING_LABEL = 'Loading…'
 
 // The full-screen loader: the mark over the wordmark, centred. `caption`
-// adds a line under them (and is what screen readers hear).
-export function screenTree({ caption } = {}) {
+// adds a line under them (and is what screen readers hear); otherwise
+// screen readers hear `label`.
+export function screenTree({ caption, label = LOADING_LABEL } = {}) {
   return ['div', { class: 'rl-screen', role: 'status' }, [
     markTree(SCREEN_MARK_SIZE),
     ['span', { class: 'rl-word', 'aria-hidden': 'true' }, ['budgeer']],
     caption
       ? ['span', { class: 'rl-caption' }, [caption]]
-      : ['span', { class: 'rl-sr' }, [LOADING_LABEL]],
+      : ['span', { class: 'rl-sr' }, [label]],
   ]]
 }
 

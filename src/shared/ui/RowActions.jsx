@@ -1,5 +1,6 @@
 import { Box, HStack, IconButton, Menu, MenuButton, MenuItem, MenuList } from '@chakra-ui/react'
 import { MoreVertical } from 'lucide-react'
+import { useT } from '../lib/i18n/I18nProvider.jsx'
 
 const GAP_PX = 4
 // 'xs': compact 24px buttons for dense lists; 'lg': 44×44 touch targets, for
@@ -25,6 +26,7 @@ export const FOLD_ROW_ACTIONS = {
 // `menuOnly` actions appear only in the phone menu (e.g. when the row already
 // has its own desktop control for them). `size`: 'xs' (default) | 'lg'.
 export default function RowActions({ actions, slots = actions.length, size = 'xs' }) {
+  const t = useT()
   const s = SIZES[size]
   const inline = actions.filter((a) => !a.menuOnly)
   return (
@@ -44,7 +46,7 @@ export default function RowActions({ actions, slots = actions.length, size = 'xs
           // a positioned row (a linked ProgressRow) an absolute one would
           // widen the page past the screen edge.
           <Menu placement="bottom-end" isLazy strategy="fixed">
-            <MenuButton as={IconButton} aria-label="More actions" {...s.button} variant="ghost"
+            <MenuButton as={IconButton} aria-label={t('actions.moreActions')} {...s.button} variant="ghost"
               color="text.muted" icon={<MoreVertical size={s.menuIcon} />} />
             <MenuList minW="170px">
               {actions.map(({ label, icon: Icon, onClick, danger }) => (

@@ -4,6 +4,8 @@
 // 0071_more_category_icons.sql (icons) — test/categoryMath.test.js compares
 // them. icons.jsx maps each icon key to its Lucide component.
 
+import { t } from './i18n/i18n.js'
+
 export const CATEGORY_ICON_KEYS = [
   'utensils', 'groceries', 'transport', 'fuel', 'housing', 'utilities', 'shopping', 'health',
   'entertainment', 'salary', 'travel', 'coffee', 'fitness', 'education', 'gifts',
@@ -16,46 +18,38 @@ export const CATEGORY_ICON_KEYS = [
   'electronics',
 ]
 
-// Each icon's accessible name in the picker.
-export const CATEGORY_ICON_LABELS = {
-  utensils: 'Food & dining', groceries: 'Groceries', transport: 'Car', fuel: 'Fuel',
-  housing: 'Housing', utilities: 'Utilities', shopping: 'Shopping', health: 'Health',
-  entertainment: 'Entertainment', salary: 'Salary', travel: 'Travel', coffee: 'Coffee',
-  fitness: 'Fitness', education: 'Education', gifts: 'Gifts', savings: 'Savings', other: 'Other',
-  rent: 'Rent', phone: 'Phone', internet: 'Internet', insurance: 'Insurance', taxes: 'Taxes',
-  'bank-fees': 'Bank fees', streaming: 'Subscriptions & streaming', water: 'Water',
-  electricity: 'Electricity',
-  parking: 'Parking', bus: 'Public transport', taxi: 'Taxi', bike: 'Bike', flights: 'Flights',
-  hotel: 'Hotel', bars: 'Bars & drinks', games: 'Games', music: 'Music', books: 'Books',
-  sports: 'Sports', hobbies: 'Hobbies',
-  freelance: 'Freelance', investments: 'Investments', refunds: 'Refunds',
-  'gifts-received': 'Gifts received', cash: 'Cash withdrawal', transfer: 'Savings transfer',
-  business: 'Business expenses', electronics: 'Electronics',
-}
+// A read-only table whose values are translated when read (each is a getter),
+// so a picker that reads TABLE[k] at render gets the app's language.
+const translated = (entries) => Object.defineProperties({},
+  Object.fromEntries(entries.map(([k, key]) => [k, { enumerable: true, get: () => t(key) }])))
+
+// Each icon's accessible name in the picker (common:categoryIcons.labels).
+export const CATEGORY_ICON_LABELS = translated(
+  CATEGORY_ICON_KEYS.map((k) => [k, `common:categoryIcons.labels.${k}`]))
 
 // The icon picker's labelled sections; every key sits in exactly one.
 export const CATEGORY_ICON_GROUPS = [
   {
-    label: 'Everyday',
+    id: 'everyday',
     keys: ['utensils', 'groceries', 'coffee', 'shopping', 'health', 'fitness', 'education',
       'gifts', 'entertainment', 'other'],
   },
   {
-    label: 'Home & bills',
+    id: 'home',
     keys: ['housing', 'rent', 'utilities', 'electricity', 'water', 'internet', 'phone',
       'streaming', 'insurance', 'taxes', 'bank-fees'],
   },
   {
-    label: 'Getting around & leisure',
+    id: 'leisure',
     keys: ['transport', 'fuel', 'parking', 'bus', 'taxi', 'bike', 'travel', 'flights', 'hotel',
       'bars', 'games', 'music', 'books', 'sports', 'hobbies'],
   },
   {
-    label: 'Money & work',
+    id: 'money',
     keys: ['salary', 'freelance', 'business', 'electronics', 'savings', 'transfer',
       'investments', 'refunds', 'gifts-received', 'cash'],
   },
-]
+].map(({ id, keys }) => Object.assign(translated([['label', `common:categoryIcons.groups.${id}`]]), { keys }))
 
 // A category without a stored icon (or with a legacy value) shows the icon
 // its name suggests. Most specific first: "Taxi" must not read as "Taxes",

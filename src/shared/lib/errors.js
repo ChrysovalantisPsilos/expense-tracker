@@ -17,12 +17,19 @@
 // Edge-function text is still checked for anything code-like (a snake_case
 // token, brackets, a stack line) and falls back when it has some.
 
+// The copy itself lives in the dictionaries (common:errors.*): the tables
+// below hold keys, translated when a message is asked for.
 import { DEMO_REFUSAL } from './demoAccount.js'
+import { t, translate } from './i18n/i18n.js'
 
-export const GENERIC_ERROR = 'Something went wrong. Please try again.'
-export const CONNECTION_ERROR = 'Couldn’t reach the server. Check your connection and try again.'
-const SESSION_EXPIRED = 'Your session has expired. Please sign in again.'
-const TOO_MANY = 'Too many attempts. Please wait a few minutes and try again.'
+const msg = (key) => t(`common:errors.${key}`)
+
+// The generic and connection lines in English (the source text), for
+// comparing against; users get them in their language from userMessage.
+export const GENERIC_ERROR = translate('common:errors.generic', undefined, { lang: 'en' })
+export const CONNECTION_ERROR = translate('common:errors.connection', undefined, { lang: 'en' })
+const SESSION_EXPIRED = 'sessionExpired'
+const TOO_MANY = 'tooMany'
 
 // An error whose message was written for the user.
 export class UserError extends Error {
@@ -54,17 +61,17 @@ export async function edgeFunctionError(error) {
   return error
 }
 
-// Supabase Auth error codes → our copy.
+// Supabase Auth error codes → our copy (keys under common:errors).
 const AUTH_MESSAGES = {
-  invalid_credentials: 'Wrong email or password.',
-  email_not_confirmed: 'Please confirm your email first. Check your inbox for the link.',
-  email_address_invalid: 'Please enter a valid email address.',
-  user_already_exists: 'An account with this email already exists. Try signing in.',
-  email_exists: 'An account with this email already exists. Try signing in.',
-  weak_password: 'That password is too easy to guess. Please pick a stronger one.',
-  same_password: 'Your new password must be different from the current one.',
-  current_password_invalid: 'Current password is incorrect.',
-  otp_expired: 'This link has expired. Please request a new one.',
+  invalid_credentials: 'auth.invalidCredentials',
+  email_not_confirmed: 'auth.emailNotConfirmed',
+  email_address_invalid: 'emailInvalid',
+  user_already_exists: 'auth.accountExists',
+  email_exists: 'auth.accountExists',
+  weak_password: 'auth.weakPassword',
+  same_password: 'auth.samePassword',
+  current_password_invalid: 'auth.currentPasswordInvalid',
+  otp_expired: 'auth.linkExpired',
   over_request_rate_limit: TOO_MANY,
   over_email_send_rate_limit: TOO_MANY,
   over_sms_send_rate_limit: TOO_MANY,
@@ -77,12 +84,12 @@ const AUTH_MESSAGES = {
 }
 
 // WebAuthn (passkey) failures, by supabase-js' code or the browser's name.
-const PASSKEY_CANCELLED = 'The passkey request was cancelled or timed out.'
+const PASSKEY_CANCELLED = 'passkey.cancelled'
 const PASSKEY_MESSAGES = {
   ERROR_CEREMONY_ABORTED: PASSKEY_CANCELLED,
   NotAllowedError: PASSKEY_CANCELLED,
   AbortError: PASSKEY_CANCELLED,
-  ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED: 'This device already has a passkey for your account.',
+  ERROR_AUTHENTICATOR_PREVIOUSLY_REGISTERED: 'passkey.registered',
 }
 
 const NETWORK_NAMES = new Set(['AuthRetryableFetchError', 'FunctionsFetchError'])
@@ -97,71 +104,74 @@ function isNetworkError(error) {
 
 // The RAISE EXCEPTION messages in supabase/migrations that are copy for the
 // user (validation, permission and rate-limit refusals), exactly as raised,
-// mapped to what to show: null shows the message itself as a sentence.
+// mapped to the key of what to show (common:errors.<key>). The server keeps
+// raising stable English; the English copy is the raise as a sentence
+// ("the split must add up to the total" → "The split must add up to the
+// total."), and test/errors.test.js checks it still is.
 // Every other raise there is an internal guard and gets the fallback.
 // test/errors.test.js reads the migrations and fails when a raise is in
 // neither this list nor its list of internal guards.
 export const SQL_USER_MESSAGES = new Map([
   // Signed out mid-session (every definer function checks auth.uid()).
-  ['not authenticated', SESSION_EXPIRED],
+  ['not authenticated', 'sessionExpired'],
   // Permissions and membership
-  ['not allowed', null],
-  ['not a member', null],
-  ['not a member of this group', null],
-  ['only the owner can delete this group', null],
-  ['Only the person who added this expense (or the group owner) can edit it.', null],
-  ['You can only record settlements you are part of.', null],
-  ['Payer is not a member of this group', null],
-  ['Settlement members must belong to this group', null],
-  ["Split member is not in this expense's group", null],
+  ['not allowed', 'sql.notAllowed'],
+  ['not a member', 'sql.notMember'],
+  ['not a member of this group', 'sql.notGroupMember'],
+  ['only the owner can delete this group', 'sql.ownerDeletes'],
+  ['Only the person who added this expense (or the group owner) can edit it.', 'sql.editExpense'],
+  ['You can only record settlements you are part of.', 'sql.ownSettlements'],
+  ['Payer is not a member of this group', 'sql.payerNotMember'],
+  ['Settlement members must belong to this group', 'sql.settlementMembers'],
+  ["Split member is not in this expense's group", 'sql.splitMember'],
   // Leaving, removing, deleting
-  ['Everyone must be settled up before the group can be deleted.', null],
-  ['Remove the other members before deleting this group.', null],
-  ['This member still has an outstanding balance — settle up first.', null],
-  ["This person has expense history and can't be removed individually — delete the group instead.", null],
-  ['You are the only member — delete the group instead.', null],
+  ['Everyone must be settled up before the group can be deleted.', 'sql.settleBeforeDelete'],
+  ['Remove the other members before deleting this group.', 'sql.removeMembersFirst'],
+  ['This member still has an outstanding balance — settle up first.', 'sql.memberOwes'],
+  ["This person has expense history and can't be removed individually — delete the group instead.", 'sql.memberHistory'],
+  ['You are the only member — delete the group instead.', 'sql.onlyMember'],
   // Invites and reminders
-  ['invalid email', null],
-  ['invite expired', null],
-  ['invite invalid or expired', null],
-  ['already responded', null],
-  ['That person is already in this group.', null],
-  ['They already have a pending invite to this group.', null],
-  ["You've already reminded them today.", null],
+  ['invalid email', 'sql.invalidEmail'],
+  ['invite expired', 'sql.inviteExpired'],
+  ['invite invalid or expired', 'sql.inviteInvalid'],
+  ['already responded', 'sql.alreadyResponded'],
+  ['That person is already in this group.', 'sql.alreadyInGroup'],
+  ['They already have a pending invite to this group.', 'sql.alreadyInvited'],
+  ["You've already reminded them today.", 'sql.alreadyReminded'],
   // Amounts and splits
-  ['amount must be positive', null],
-  ['amount must be zero or more', null],
-  ['each person needs a share', null],
-  ['shares cannot be negative', null],
-  ['split between at least one person', null],
-  ['the split must add up to the total', null],
-  ['A foreign-currency entry needs a positive exchange rate.', null],
-  ['A foreign-currency expense needs a positive exchange rate.', null],
+  ['amount must be positive', 'sql.amountPositive'],
+  ['amount must be zero or more', 'sql.amountZeroOrMore'],
+  ['each person needs a share', 'sql.shareEach'],
+  ['shares cannot be negative', 'sql.sharesNegative'],
+  ['split between at least one person', 'sql.splitSomeone'],
+  ['the split must add up to the total', 'sql.splitTotal'],
+  ['A foreign-currency entry needs a positive exchange rate.', 'sql.entryRate'],
+  ['A foreign-currency expense needs a positive exchange rate.', 'sql.expenseRate'],
   // Entries, categories, budgets, recurring, comments, payment details, profile
-  ['An entry’s type can’t be changed once it’s saved.', null],
-  ["That entry can't be made recurring.", null],
-  ['You can have at most 200 recurring entries.', null],
-  ["A category can't be moved to another account.", null],
-  ["A category's type (expense or income) can't change.", null],
-  ['Pick a different category to move its entries to.', null],
-  ['Last month has no budgets to copy.', null],
-  ['A comment must be 1–2000 characters.', null],
-  ['A PayPal.me name is up to 20 letters and numbers.', null],
-  ['Your base currency is fixed once you’ve added entries, so past amounts stay correct.', null],
-  ['Payment details are too long.', null],
-  ['Choose one of your own income categories for your salary.', null],
+  ['An entry’s type can’t be changed once it’s saved.', 'sql.entryType'],
+  ["That entry can't be made recurring.", 'sql.notRecurring'],
+  ['You can have at most 200 recurring entries.', 'sql.recurringMax'],
+  ["A category can't be moved to another account.", 'sql.categoryAccount'],
+  ["A category's type (expense or income) can't change.", 'sql.categoryType'],
+  ['Pick a different category to move its entries to.', 'sql.moveCategory'],
+  ['Last month has no budgets to copy.', 'sql.noBudgetsToCopy'],
+  ['A comment must be 1–2000 characters.', 'sql.commentLength'],
+  ['A PayPal.me name is up to 20 letters and numbers.', 'sql.paypalName'],
+  ['Your base currency is fixed once you’ve added entries, so past amounts stay correct.', 'sql.baseCurrencyFixed'],
+  ['Payment details are too long.', 'sql.paymentDetailsLong'],
+  ['Choose one of your own income categories for your salary.', 'sql.salaryCategory'],
   // Rate limits
-  ['Too many changes — please try again later.', null],
-  ['Too many comments — please slow down.', null],
-  ['Too many expenses added — please slow down.', null],
-  ['Too many exports — please try again later.', null],
-  ['Too many groups joined — please try again later.', null],
-  ['Too many invites — please slow down.', null],
-  ['Too many requests — please try again later.', null],
-  ['Too many saves — please slow down.', null],
-  ['Too many settlements — please slow down.', null],
+  ['Too many changes — please try again later.', 'sql.tooManyChanges'],
+  ['Too many comments — please slow down.', 'sql.tooManyComments'],
+  ['Too many expenses added — please slow down.', 'sql.tooManyExpenses'],
+  ['Too many exports — please try again later.', 'sql.tooManyExports'],
+  ['Too many groups joined — please try again later.', 'sql.tooManyGroups'],
+  ['Too many invites — please slow down.', 'sql.tooManyInvites'],
+  ['Too many requests — please try again later.', 'sql.tooManyRequests'],
+  ['Too many saves — please slow down.', 'sql.tooManySaves'],
+  ['Too many settlements — please slow down.', 'sql.tooManySettlements'],
   // The shared demo account (0090): invites, links, reminders, push, emails.
-  [DEMO_REFUSAL, null],
+  [DEMO_REFUSAL, 'sql.demo'],
 ])
 
 // Code-like content that must never reach the user, even from our own
@@ -182,18 +192,19 @@ function sentence(message) {
 
 // The copy for a P0001 raise, or null when it isn't on the allowlist.
 function sqlCopy(message) {
-  if (!SQL_USER_MESSAGES.has(message)) return null
-  return SQL_USER_MESSAGES.get(message) ?? sentence(message)
+  return SQL_USER_MESSAGES.has(message) ? msg(SQL_USER_MESSAGES.get(message)) : null
 }
 
 // The message to show for `error`: ours when it is ours, otherwise `fallback`
-// (network failures get the connection message instead).
-export function userMessage(error, fallback = GENERIC_ERROR) {
+// (the generic line when there's none; network failures get the connection
+// message instead). Our client and server copy is shown in the app's
+// language; an edge function's own `error` text is shown as it comes.
+export function userMessage(error, fallback = msg('generic')) {
   if (!error || typeof error !== 'object') return fallback
   if (error instanceof UserError) return error.message || fallback
-  if (isNetworkError(error)) return CONNECTION_ERROR
+  if (isNetworkError(error)) return msg('connection')
   const mapped = AUTH_MESSAGES[error.code] ?? PASSKEY_MESSAGES[error.code] ?? PASSKEY_MESSAGES[error.name]
-  if (mapped) return mapped
+  if (mapped) return msg(mapped)
   if (error.code === 'P0001') return sqlCopy(error.message) ?? fallback
   if (error.serverMessage === true && plainWording(error.message)) return sentence(error.message)
   return fallback
@@ -203,6 +214,6 @@ export function userMessage(error, fallback = GENERIC_ERROR) {
 // connection hint, then our own copy, else a generic line. `online` is
 // navigator.onLine; only an explicit false means offline.
 export function loadErrorMessage(error, online) {
-  if (online === false) return 'You’re offline. Reconnect and try again.'
+  if (online === false) return msg('offlineRetry')
   return userMessage(error)
 }

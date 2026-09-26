@@ -6,6 +6,7 @@ import Panel from './kit/Panel.jsx'
 import { ShellSlot, useShellHeader } from './ShellHeader.jsx'
 import { useUnsavedForm } from '../lib/useUnsavedForm.js'
 import { landscapeOnly } from '../lib/shortLandscape.js'
+import { useT } from '../lib/i18n/I18nProvider.jsx'
 
 // A form page's column: 640px wide, or the whole page column on a phone held
 // sideways, so forms line up with the list pages there.
@@ -38,8 +39,10 @@ export default function FormPage({ eyebrow, title, description, fallback, backDi
 // header instead (always in view; it submits this form through its `form`
 // attribute), and only `secondary` stays at the bottom.
 export function PageForm({
-  onSubmit, busy, submitLabel = 'Save', submitProps, secondary, noValidate, bare, unsaved, children,
+  onSubmit, busy, submitLabel, submitProps, secondary, noValidate, bare, unsaved, children,
 }) {
+  const t = useT()
+  const label = submitLabel ?? t('actions.save')
   const unsavedProps = useUnsavedForm(unsaved)
   const formId = useId()
   const inHeader = !!useShellHeader()
@@ -54,7 +57,7 @@ export function PageForm({
         <>
           {secondary && <Stack direction="row" spacing={3}>{secondary}</Stack>}
           <ShellSlot slot="actions">
-            <Button type="submit" form={formId} size="sm" isLoading={busy} {...submitProps}>{submitLabel}</Button>
+            <Button type="submit" form={formId} size="sm" isLoading={busy} {...submitProps}>{label}</Button>
           </ShellSlot>
         </>
       ) : (
@@ -62,7 +65,7 @@ export function PageForm({
           {secondary}
           {/* Grows only in the row layout: a flex-basis of 0 in the phone's
               column would collapse the button to its padding. */}
-          <Button type="submit" flex={{ sm: 1 }} isLoading={busy} {...submitProps}>{submitLabel}</Button>
+          <Button type="submit" flex={{ sm: 1 }} isLoading={busy} {...submitProps}>{label}</Button>
         </Stack>
       )}
     </Stack>

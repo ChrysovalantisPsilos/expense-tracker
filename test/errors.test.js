@@ -5,6 +5,7 @@ import {
   CONNECTION_ERROR, GENERIC_ERROR, SQL_USER_MESSAGES, UserError, dbError, edgeFunctionError, loadErrorMessage,
   userMessage,
 } from '../src/shared/lib/errors.js'
+import { loadLanguage, t, translate } from '../src/shared/lib/i18n/i18n.js'
 
 const FALLBACK = 'Couldn’t save the expense. Please try again.'
 const pg = (message, code) => ({ message, code, details: null, hint: null })
@@ -220,4 +221,23 @@ test('the browser-called edge functions’ error strings pass through', () => {
   }
   // Only developer-facing request checks (a client bug, never user input).
   assert.deepEqual(hidden.sort(), ['group_id is required'])
+})
+
+test('userMessage in Greek: our copy is translated, the raw SQL text still maps to it', async () => {
+  await loadLanguage('el')
+  try {
+    assert.equal(userMessage(pg('the split must add up to the total', 'P0001')), 'Το μοίρασμα πρέπει να βγάζει το σύνολο.')
+    assert.equal(userMessage(pg('not authenticated', 'P0001')), 'Η σύνδεσή σου έληξε. Συνδέσου ξανά.')
+    assert.equal(userMessage(new Error('boom')), 'Κάτι πήγε στραβά. Δοκίμασε ξανά.')
+    assert.equal(userMessage(new Error('Failed to fetch'), FALLBACK), t('common:errors.connection'))
+    assert.equal(loadErrorMessage(null, false), 'Είσαι εκτός σύνδεσης. Συνδέσου ξανά και δοκίμασε πάλι.')
+    // An internal guard still falls back; every allowlisted raise has Greek copy.
+    assert.equal(userMessage(pg('unknown quota scope', 'P0001'), FALLBACK), FALLBACK)
+    for (const m of SQL_USER_MESSAGES.keys()) {
+      const english = translate(`common:errors.${SQL_USER_MESSAGES.get(m)}`, null, { lang: 'en' })
+      assert.notEqual(userMessage(pg(m, 'P0001'), FALLBACK), english, m)
+    }
+  } finally {
+    await loadLanguage('en')
+  }
 })

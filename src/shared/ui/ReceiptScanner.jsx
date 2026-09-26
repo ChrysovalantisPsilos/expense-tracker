@@ -12,6 +12,7 @@ import { useAsyncSubmit } from '../lib/useAsyncSubmit.js'
 import FormModal from './FormModal.jsx'
 import MoneyInput from './MoneyInput.jsx'
 import { RingMark, RingSpinner } from './RingLoader.jsx'
+import { useT } from '../lib/i18n/I18nProvider.jsx'
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v))
 
@@ -23,6 +24,7 @@ const clamp01 = (v) => Math.min(1, Math.max(0, v))
 // string or null); onScan({ file: null, total: null, date: null }) when the
 // user removes the scanned receipt.
 export default function ReceiptScanner({ onScan }) {
+  const t = useT()
   const inputRef = useRef(null)
   const toast = useToast()
   const { busy, run } = useAsyncSubmit()
@@ -55,7 +57,7 @@ export default function ReceiptScanner({ onScan }) {
       setCrop(null)
       setStage('crop')
     } catch {
-      toast({ title: 'That photo couldn’t be opened — try another one.', status: 'warning' })
+      toast({ title: t('receipt.openFailed'), status: 'warning' })
     }
   }
 
@@ -87,7 +89,7 @@ export default function ReceiptScanner({ onScan }) {
         currency: r.currency ?? '',
       })
       setStage('confirm')
-    }, { errorTitle: 'Scan failed' })
+    }, { errorTitle: t('receipt.scanFailed') })
   }
 
   function confirm() {
@@ -122,18 +124,18 @@ export default function ReceiptScanner({ onScan }) {
       {stage === 'done' && display ? (
         <HStack align="start" spacing={3}>
           <Box position="relative">
-            <Image src={display} alt="Receipt" boxSize="64px" objectFit="cover" borderRadius="lg" />
-            <IconButton aria-label="Remove receipt" icon={<X size={14} />} size="xs"
+            <Image src={display} alt={t('receipt.alt')} boxSize="64px" objectFit="cover" borderRadius="lg" />
+            <IconButton aria-label={t('receipt.remove')} icon={<X size={14} />} size="xs"
               position="absolute" top="-8px" right="-8px" borderRadius="full" onClick={clear} />
           </Box>
           <Text flex="1" fontSize="sm" color="text.muted">
-            Receipt read on your device (the photo isn’t saved). Check the details below.
+            {t('receipt.readNote')}
           </Text>
         </HStack>
       ) : (
         <Button leftIcon={<Camera size={18} />} variant="outline"
           onClick={() => inputRef.current?.click()}>
-          Scan a receipt
+          {t('receipt.scan')}
         </Button>
       )}
 
@@ -141,12 +143,11 @@ export default function ReceiptScanner({ onScan }) {
         closeOnOverlayClick={!busy}>
         <ModalOverlay />
         <ModalContent mx={4}>
-          <ModalHeader>Scan receipt</ModalHeader>
+          <ModalHeader>{t('receipt.title')}</ModalHeader>
           <ModalBody>
             <Stack spacing={3}>
               <Text fontSize="sm" color="text.muted">
-                Drag across the photo to crop to the receipt (optional), and turn it
-                if it’s sideways. It’s read on this device — nothing is uploaded.
+                {t('receipt.cropHint')}
               </Text>
               {display && (
                 // Shrink-wrapped to the photo, so crop fractions are fractions of the image.
@@ -155,7 +156,7 @@ export default function ReceiptScanner({ onScan }) {
                   onPointerDown={busy ? undefined : startCrop} onPointerMove={moveCrop}
                   onPointerUp={() => { dragFrom.current = null }}
                   onPointerCancel={() => { dragFrom.current = null }}>
-                  <Image src={display} alt="Receipt photo" display="block" maxW="100%" maxH="60vh"
+                  <Image src={display} alt={t('receipt.photoAlt')} display="block" maxW="100%" maxH="60vh"
                     draggable={false} />
                   {crop && (
                     <Box position="absolute" pointerEvents="none" borderWidth="2px" borderColor="brand.500"
@@ -169,56 +170,56 @@ export default function ReceiptScanner({ onScan }) {
                 <Box>
                   <HStack spacing={2.5} fontSize="sm" color="text.muted" mb={2}>
                     <RingMark size={20} />
-                    <Text>Reading your receipt…</Text>
+                    <Text>{t('receipt.reading')}</Text>
                   </HStack>
-                  <Progress value={progress * 100} size="sm" aria-label="Reading receipt" />
+                  <Progress value={progress * 100} size="sm" aria-label={t('receipt.progress')} />
                 </Box>
               )}
             </Stack>
           </ModalBody>
           <ModalFooter gap={2}>
-            <IconButton aria-label="Turn 90°" variant="ghost" icon={<RotateCw size={18} />}
-              isDisabled={busy} onClick={() => { setTurns((t) => t + 1); setCrop(null) }} />
+            <IconButton aria-label={t('receipt.turn')} variant="ghost" icon={<RotateCw size={18} />}
+              isDisabled={busy} onClick={() => { setTurns((n) => n + 1); setCrop(null) }} />
             <Button variant="ghost" size="sm" isDisabled={busy || !crop} onClick={() => setCrop(null)}>
-              Reset crop
+              {t('receipt.resetCrop')}
             </Button>
             <Spacer />
-            <Button variant="ghost" isDisabled={busy} onClick={cancel}>Cancel</Button>
-            <Button leftIcon={<ScanText size={16} />} isLoading={busy} loadingText="Reading"
+            <Button variant="ghost" isDisabled={busy} onClick={cancel}>{t('actions.cancel')}</Button>
+            <Button leftIcon={<ScanText size={16} />} isLoading={busy} loadingText={t('receipt.readingShort')}
               spinner={<RingSpinner />} onClick={read}>
-              Read receipt
+              {t('receipt.read')}
             </Button>
           </ModalFooter>
         </ModalContent>
       </Modal>
 
-      <FormModal isOpen={stage === 'confirm'} onClose={cancel} title="Check what was read"
-        onSubmit={confirm} submitLabel="Use these"
-        footerStart={<Button variant="ghost" onClick={() => setStage('crop')}>Back</Button>}>
+      <FormModal isOpen={stage === 'confirm'} onClose={cancel} title={t('receipt.checkTitle')}
+        onSubmit={confirm} submitLabel={t('receipt.use')}
+        footerStart={<Button variant="ghost" onClick={() => setStage('crop')}>{t('actions.back')}</Button>}>
         <Stack spacing={3}>
           <Text fontSize="sm" color="text.muted">
             {nothingRead
-              ? 'Couldn’t read much from this photo — fill in what you can, or go back and crop closer.'
-              : 'Correct anything that was misread, then use these details.'}
+              ? t('receipt.nothingRead')
+              : t('receipt.correct')}
           </Text>
           <FormControl>
-            <FormLabel fontSize="sm">Merchant</FormLabel>
+            <FormLabel fontSize="sm">{t('receipt.merchant')}</FormLabel>
             <Input value={fields.merchant} maxLength={120} onChange={(e) => set('merchant')(e.target.value)} />
           </FormControl>
           <HStack align="end">
             <FormControl>
-              <FormLabel fontSize="sm">Total</FormLabel>
+              <FormLabel fontSize="sm">{t('receipt.total')}</FormLabel>
               <MoneyInput currency={fields.currency || undefined} value={fields.total} onChange={set('total')} />
             </FormControl>
             <FormControl maxW="120px">
-              <FormLabel fontSize="sm">Currency</FormLabel>
+              <FormLabel fontSize="sm">{t('receipt.currency')}</FormLabel>
               <Select value={fields.currency} placeholder="—" onChange={(e) => set('currency')(e.target.value)}>
                 {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </Select>
             </FormControl>
           </HStack>
           <FormControl>
-            <FormLabel fontSize="sm">Date</FormLabel>
+            <FormLabel fontSize="sm">{t('receipt.date')}</FormLabel>
             <Input type="date" value={fields.date} onChange={(e) => set('date')(e.target.value)} />
           </FormControl>
         </Stack>

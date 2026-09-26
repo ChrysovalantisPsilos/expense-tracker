@@ -1,6 +1,6 @@
 import { Box, HStack, Stack, VisuallyHidden } from '@chakra-ui/react'
 import { keyframes } from '@emotion/react'
-import { LOADING_LABEL } from './ringLoader.js'
+import { useT } from '../lib/i18n/I18nProvider.jsx'
 import { useLoaderReveal } from './useLoaderReveal.js'
 
 // Skeleton screens (idea C): soft sand shapes where a page's cards, rows and
@@ -42,12 +42,13 @@ export function SkeletonBlock({ w = 'full', h = '12px', radius = 'full', onCanva
 
 // Wraps a page's skeleton: one "Loading…" status for screen readers, the
 // shapes hidden from them.
-export function SkeletonRegion({ label = LOADING_LABEL, children, ...props }) {
+export function SkeletonRegion({ label, children, ...props }) {
+  const t = useT()
   const { shown } = useLoaderReveal()
   return (
     <Box role="status" aria-busy="true" visibility={shown ? 'visible' : 'hidden'}
       sx={shown ? { [MOTION]: { animation: `${fadeIn} .25s ease-out` } } : undefined} {...props}>
-      {shown && <VisuallyHidden>{label}</VisuallyHidden>}
+      {shown && <VisuallyHidden>{label ?? t('loading')}</VisuallyHidden>}
       <Box aria-hidden="true">{children}</Box>
     </Box>
   )

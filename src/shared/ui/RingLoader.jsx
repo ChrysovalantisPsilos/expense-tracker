@@ -1,7 +1,8 @@
 import { cloneElement, createElement } from 'react'
 import { Box, Center, HStack, Text } from '@chakra-ui/react'
-import { LOADING_LABEL, markTree, screenTree } from './ringLoader.js'
+import { markTree, screenTree } from './ringLoader.js'
 import { useLoaderReveal, useRingPhase } from './useLoaderReveal.js'
+import { useT } from '../lib/i18n/I18nProvider.jsx'
 
 // The loading ring in the app (idea A). Drawn from ringLoader.js's element
 // trees and styled by its stylesheet, which index.html carries (vite.config.js
@@ -34,8 +35,9 @@ export function RingSpinner() {
 }
 
 function RingScreen({ continued, caption }) {
+  const t = useT()
   const phase = useRingPhase(continued)
-  return cloneElement(toReact(screenTree({ caption })), { style: { '--rl-phase': `${phase}ms` } })
+  return cloneElement(toReact(screenTree({ caption, label: t('loading') })), { style: { '--rl-phase': `${phase}ms` } })
 }
 
 // A page-level loader: centred in the content area, or `fullScreen` (the mark
@@ -44,6 +46,7 @@ function RingScreen({ continued, caption }) {
 // `compact` is a smaller one for inside a card.
 export default function RingLoader({ fullScreen = false, caption, compact = false }) {
   const { shown, continued } = useLoaderReveal()
+  const t = useT()
   if (fullScreen) return shown ? <RingScreen continued={continued} caption={caption} /> : <Box minH="100dvh" />
   const { size, minH } = compact ? COMPACT : INLINE
   return (
@@ -51,7 +54,7 @@ export default function RingLoader({ fullScreen = false, caption, compact = fals
       {shown && (
         <Box role="status">
           <RingMark size={size} />
-          <span className="rl-sr">{LOADING_LABEL}</span>
+          <span className="rl-sr">{t('loading')}</span>
         </Box>
       )}
     </Center>

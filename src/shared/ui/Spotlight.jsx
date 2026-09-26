@@ -7,6 +7,7 @@ import {
   fullyVisible, indexAfterMissing, moveStep, placePopover, spotlightRect, stepsFor,
 } from './spotlightMath.js'
 import { useShortLandscape } from './useShortLandscape.js'
+import { useT } from '../lib/i18n/I18nProvider.jsx'
 
 // How long a step waits for its target (a lazy page and its first render)
 // before the tour skips it.
@@ -49,7 +50,8 @@ function waitForTarget(name, isCancelled) {
 // e.g. to change route. `onClose('done' | 'skip')` ends it; the parent
 // unmounts the Spotlight. Esc skips, ←/→ step, Tab stays inside the popover;
 // focus goes back where it was (or to `returnFocus`, a selector) afterwards.
-export default function Spotlight({ steps, onStep, onClose, returnFocus, label = 'App tour' }) {
+export default function Spotlight({ steps, onStep, onClose, returnFocus, label }) {
+  const t = useT()
   // A phone held sideways has the phone's navigation (a rail with More and
   // the account icons), so it takes the phone's steps.
   const shortLandscape = useShortLandscape()
@@ -214,20 +216,20 @@ export default function Spotlight({ steps, onStep, onClose, returnFocus, label =
         borderRadius="2xl" boxShadow="lifted" p={4}
         transition={reduce ? 'none' : 'top 0.25s ease, left 0.25s ease'}>
         <Text fontSize="xs" fontWeight="700" color="accent.fg" textTransform="uppercase" letterSpacing="0.08em">
-          <VisuallyHidden>{label}: </VisuallyHidden>Step {i + 1} of {count}
+          <VisuallyHidden>{label ?? t('tour.label')}: </VisuallyHidden>{t('tour.step', { n: i + 1, total: count })}
         </Text>
         <Heading id={titleId} as="h2" size="sm" mt={1}>{step.title}</Heading>
         <Text id={bodyId} fontSize="sm" color="text.muted" mt={1.5}>{step.body}</Text>
         <HStack mt={4} spacing={2}>
           {!isLast && (
-            <Button size="sm" variant="ghost" onClick={() => onCloseRef.current('skip')}>Skip</Button>
+            <Button size="sm" variant="ghost" onClick={() => onCloseRef.current('skip')}>{t('actions.skip')}</Button>
           )}
           <Box flex="1" />
-          {i > 0 && <Button size="sm" variant="ghost" onClick={back}>Back</Button>}
-          <Button ref={nextRef} size="sm" onClick={next}>{isLast ? 'Done' : 'Next'}</Button>
+          {i > 0 && <Button size="sm" variant="ghost" onClick={back}>{t('actions.back')}</Button>}
+          <Button ref={nextRef} size="sm" onClick={next}>{isLast ? t('actions.done') : t('actions.next')}</Button>
         </HStack>
       </Box>
-      <VisuallyHidden aria-live="polite">{shown ? `Step ${i + 1} of ${count}: ${step.title}` : ''}</VisuallyHidden>
+      <VisuallyHidden aria-live="polite">{shown ? t('tour.announce', { n: i + 1, total: count, title: step.title }) : ''}</VisuallyHidden>
     </Portal>
   )
 }

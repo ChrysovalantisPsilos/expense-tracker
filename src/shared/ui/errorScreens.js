@@ -8,33 +8,11 @@
 // Actions are ids; the caller maps them to links or handlers:
 //   home, help, back (history back, else Home), reload.
 
-const SAFE = 'your data is safe on the server.'
+import { t } from '../lib/i18n/i18n.js'
 
-const COPY = {
-  notFound: {
-    eyebrow: '404 · Page not found',
-    title: 'This page rolled away',
-    body: 'We couldn’t find what you were looking for. It may have moved, or the link is off by a digit.',
-  },
-  crash: {
-    eyebrow: 'Unexpected error',
-    title: 'Something went wrong',
-    body: `Budgeer hit an unexpected error. Reloading usually fixes it — ${SAFE}`,
-  },
-  update: {
-    eyebrow: 'Update',
-    title: 'A new version of Budgeer is ready',
-    body: `This page changed in the latest update. Reload to pick it up — ${SAFE}`,
-  },
-  offline: {
-    eyebrow: 'No connection',
-    title: 'You’re offline',
-    body: `This page needs a connection to load. Check your Wi-Fi or mobile data, then try again — ${SAFE}`,
-  },
-}
-
-// Every variant, in the order the dev gallery shows them.
-export const ERROR_VARIANTS = Object.keys(COPY)
+// Every variant, in the order the dev gallery shows them. Their words are
+// common:errorScreen.<variant>.{eyebrow,title,body}.
+export const ERROR_VARIANTS = ['notFound', 'crash', 'update', 'offline']
 
 // The messages browsers and bundlers give when a lazily imported chunk can't
 // be fetched: Chrome, Safari, Firefox, Vite's CSS preload, webpack-style.
@@ -60,18 +38,19 @@ export function errorVariant(error, online) {
   return isChunkLoadError(error) ? 'update' : 'crash'
 }
 
+// Each action's label is its key under common:errorScreen.actions.
 function actionsFor(variant, signedIn) {
   switch (variant) {
     case 'notFound':
       return signedIn
-        ? [{ id: 'home', label: 'Back to Home', primary: true }, { id: 'back', label: 'Go back' }]
-        : [{ id: 'home', label: 'Go to Home', primary: true }, { id: 'help', label: 'Help & FAQ' }]
+        ? [{ id: 'home', label: 'backHome', primary: true }, { id: 'back', label: 'goBack' }]
+        : [{ id: 'home', label: 'goHome', primary: true }, { id: 'help', label: 'help' }]
     case 'crash':
-      return [{ id: 'reload', label: 'Reload', primary: true }, { id: 'home', label: 'Go to Home' }]
+      return [{ id: 'reload', label: 'reload', primary: true }, { id: 'home', label: 'goHome' }]
     case 'update':
-      return [{ id: 'reload', label: 'Reload', primary: true }]
+      return [{ id: 'reload', label: 'reload', primary: true }]
     case 'offline':
-      return [{ id: 'reload', label: 'Try again', primary: true }]
+      return [{ id: 'reload', label: 'tryAgain', primary: true }]
     default:
       throw new Error(`Unknown error screen: ${variant}`)
   }
@@ -82,5 +61,7 @@ function actionsFor(variant, signedIn) {
 // message; the error boundary logs it to the console.
 export function errorScreen(variant, { signedIn = false } = {}) {
   const actions = actionsFor(variant, signedIn)
-  return { variant, ...COPY[variant], actions }
+    .map((a) => ({ ...a, label: t(`common:errorScreen.actions.${a.label}`) }))
+  const copy = (part) => t(`common:errorScreen.${variant}.${part}`)
+  return { variant, eyebrow: copy('eyebrow'), title: copy('title'), body: copy('body'), actions }
 }
