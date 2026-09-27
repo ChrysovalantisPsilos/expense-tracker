@@ -55,6 +55,13 @@ Read `CLAUDE.md` or the design-system docs for the component kit and tokens.
   `flow-1-entry.png`…, `empty.png`, `A-dark.png`. Add an `overview.png` with
   the flow side by side.
 
+**Keep rounds lean,** since every image you look at is expensive:
+- In the first round, shoot the main screen of each concept and the key flow
+  steps.
+- Add dark mode, sideways, desktop and full-page shots only for the concept
+  the owner picks, or where layout is the question.
+- On revisions, re-shoot only the screens that changed.
+
 ## Check before sending
 
 - Open every PNG. Look for:

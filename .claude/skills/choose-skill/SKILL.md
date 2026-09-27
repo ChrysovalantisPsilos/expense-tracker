@@ -56,6 +56,9 @@ Common chains:
 - **Designs stay designs** until the owner asks to build.
 - **When two skills could fit,** pick the narrower one, and say which and why
   in one line.
+- **Mind the cost:** use the lightest route that does the job well. Don't
+  wrap small work in `delegate-and-review`. When the owner sends several
+  small requests, suggest doing them as one batch.
 - **Recurring work with no fitting skill:** do it directly, then suggest a new
   skill via `improve-skills`.
 

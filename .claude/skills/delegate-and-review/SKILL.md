@@ -57,6 +57,23 @@ A helper has none of your conversation. Every brief includes:
 Prefer precise instructions over hopes. "Run the whole suite; it must end
 with ALL TESTS PASSED (N)" beats "make sure tests pass".
 
+## Keep usage down
+
+Helpers are the biggest cost: each starts from zero and reads files, images and
+results on its own.
+- **Delegate only when it pays:** large builds, long runs, or parallel parts.
+  A small fix, one deploy or one query is cheaper done directly.
+- **Pick the model by the job.** Mechanical work (running test chunks,
+  deploying functions, screenshot sweeps, simple lookups) goes to a smaller,
+  cheaper model. Keep the strongest model for building, design judgement and
+  reviews.
+- **Point helpers at files.** Name the exact files, paths and commands in the
+  brief so they don't explore.
+- **Ask for short reports:** counts and file lists, not pasted output.
+- **Don't duplicate:** don't re-run a helper's whole job to verify it.
+  Spot-check what matters (the tests, the diff, the key screenshots) and run
+  full checks once, on the merged result.
+
 ## 3. Launch
 
 - Run independent helpers in parallel, in one message. Run dependent steps
