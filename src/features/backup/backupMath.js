@@ -28,9 +28,11 @@
 // Plan mode (0095, optional, still version 4 — an older app ignores it):
 // each recurring entry has a `key` ("r1") and data.plan holds the one saved
 // plan with its references as keys: { changes: [{ rule: 'r1', snap, cancel? |
-// amount_minor?, … }], adds: [{ …, category: 'c1' | null }], dismissed }. A
-// restore only brings it back into an account that has no plan, and drops
-// the changes whose recurring entry isn't there (restorePlan).
+// amount_minor?, … }], adds: [{ …, category: 'c1' | null }], dismissed,
+// salary?: { amount_minor?, cancel? } } (the what-if on the Salary row worked
+// out from salary entries; it references nothing). A restore only brings it
+// back into an account that has no plan, and drops the changes whose
+// recurring entry isn't there (restorePlan).
 // Names the server caps at 60 characters (display
 // name, category names, group names) are trimmed to fit instead of failing.
 // Deliberately NOT in a backup: UI state (whats_new_seen, tour_done,
@@ -41,7 +43,7 @@
 // account's).
 import { deterministicUuid } from '../import/importMath.js'
 import { FREQUENCIES } from '../recurring/recurringMath.js'
-import { PLAN_VERSION, isEmptyPlan, normalisePlan } from '../plan/planMath.js'
+import { PLAN_VERSION, cleanSalary, isEmptyPlan, normalisePlan } from '../plan/planMath.js'
 import { sealText, openText } from './backupCrypto.js'
 import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import { CATEGORY_ICON_KEYS, CATEGORY_COLOR_KEYS } from '../../shared/lib/categoryStyle.js'
@@ -202,6 +204,7 @@ function planForBackup(plan, ruleKey, catKey) {
       .map(({ rule_id: id, ...c }) => ({ rule: ruleKey.get(id), ...c })),
     adds: plan.adds.map(({ category_id: id, ...a }) => ({ ...a, category: id ? catKey.get(id) ?? null : null })),
     dismissed: plan.dismissed,
+    ...(plan.salary ? { salary: plan.salary } : {}),
   }
 }
 
@@ -518,7 +521,8 @@ function readBackupPlan(raw, recKeys, catKeys) {
   const adds = v.list(raw.adds, 'additions', 50).filter(isObj)
     .map((a) => ({ ...a, category: catKeys.has(a.category) ? a.category : null }))
   const dismissed = v.list(raw.dismissed, 'dismissed ideas', 100).filter((d) => typeof d === 'string')
-  return { changes, adds, dismissed }
+  const salary = cleanSalary(raw.salary)
+  return { changes, adds, dismissed, ...(salary ? { salary } : {}) }
 }
 
 // The backup's plan for the account being restored into, as a plan document
@@ -538,6 +542,7 @@ export function restorePlan(backupPlan, backupRules, rulesNow, categoryIdByKey) 
       .map(({ rule, ...c }) => ({ ...c, rule_id: idByKey.get(rule) })),
     adds: backupPlan.adds.map(({ category, ...a }) => ({ ...a, category_id: category ? categoryIdByKey.get(category) ?? null : null })),
     dismissed: backupPlan.dismissed,
+    salary: backupPlan.salary,
   })
 }
 

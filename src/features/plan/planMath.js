@@ -21,16 +21,34 @@
 //                 frequency?, interval_n? }],
 //     adds: [{ id, kind, name, amount_minor, currency, frequency, interval_n,
 //              start, category_id }],
-//     dismissed: ['<idea id>'] }
+//     dismissed: ['<idea id>'],
+//     salary?: { amount_minor?, cancel? } }
 // `snap` is the rule as it was when the change was first planned: "before"
 // always uses today's rule, and a snapshot that differs says "Updated since
 // your plan".
+//
+// Salary from entries: a salary is always recurring income, but many users
+// log it as ordinary income entries. When there's no active recurring income
+// rule in the salary category (the profile's salary_category_id, else the
+// default "Salary" category), the plan gets a derived Salary row: the average
+// monthly salary over the last 3 full calendar months that had salary entries
+// (derivedSalary). Its what-if edit lives in `salary`: plan-only, never sent
+// by apply (it isn't a recurring payment). The server (0095) only checks v,
+// changes, adds and dismissed, and deletes a plan whose three lists are
+// empty, so storedPlan() keeps a salary-only plan with a marker in
+// `dismissed` that normalisePlan() drops again.
+//
+// No recurring income at all (no income row, derived or planned): the page
+// shows the recurring payments instead of a negative net (planSummary's
+// `mode: 'payments'`, headline()).
 import { FREQUENCIES } from '../recurring/recurringMath.js'
 import { budgetWindow, periodBudgets } from '../budgets/budgetMath.js'
 import { ruleInBase } from '../../shared/lib/ruleFx.js'
 import { rowEffect } from '../../shared/lib/savings.js'
 import { spendRows } from '../../shared/lib/spread.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
+import { countedDate } from '../../shared/lib/salaryShift.js'
 
 export const PLAN_VERSION = 1
 // The server's caps (0095 recurring_plan_check).
@@ -64,6 +82,12 @@ export const UNDO_HOURS = 24
 // How long "Applied … · View in Recurring" stays once undo has run out.
 const APPLIED_NOTE_DAYS = 7
 
+// The derived Salary row's id, the full months its average looks at, and the
+// marker that keeps a salary-only plan on the server (see the header).
+export const SALARY_ID = 'salary'
+export const SALARY_MONTHS = 3
+const SALARY_MARK = 'plan:salary'
+
 const RULE_FIELDS = ['amount_minor', 'currency', 'frequency', 'interval_n']
 const PER_YEAR = { daily: 365, weekly: 52, monthly: 12, yearly: 1 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -91,7 +115,15 @@ export const emptyPlan = () => ({ v: PLAN_VERSION, changes: [], adds: [], dismis
 // "Clear plan": every change and add goes, the dismissed ideas stay dismissed.
 export const startOver = (plan) => ({ ...emptyPlan(), dismissed: plan.dismissed })
 
-export const isEmptyPlan = (plan) => !plan.changes.length && !plan.adds.length && !plan.dismissed.length
+export const isEmptyPlan = (plan) =>
+  !plan.changes.length && !plan.adds.length && !plan.dismissed.length && !plan.salary
+
+// The document as it's sent to the server: a plan whose only content is its
+// salary change carries SALARY_MARK in `dismissed`, or 0095 would delete it.
+export function storedPlan(plan) {
+  if (!plan.salary || plan.changes.length || plan.adds.length || plan.dismissed.length) return plan
+  return { ...plan, dismissed: [SALARY_MARK] }
+}
 
 const isAmount = (v) => Number.isSafeInteger(v) && v > 0
 const isCurrency = (v) => typeof v === 'string' && /^[A-Z]{3}$/.test(v)
@@ -135,6 +167,16 @@ function cleanAdd(a) {
   }
 }
 
+// A salary change, only its valid parts; null when nothing's left.
+export function cleanSalary(s) {
+  if (!isObj(s)) return null
+  const out = {
+    ...(s.cancel === true ? { cancel: true } : {}),
+    ...(isAmount(s.amount_minor) ? { amount_minor: s.amount_minor } : {}),
+  }
+  return Object.keys(out).length ? out : null
+}
+
 // Any stored or restored document → a valid plan: malformed entries are
 // dropped, duplicates and anything past the server's caps too.
 export function normalisePlan(raw) {
@@ -152,12 +194,14 @@ export function normalisePlan(raw) {
   const adds = (Array.isArray(raw.adds) ? raw.adds : []).map(cleanAdd)
     .filter((a) => a && !addIds.has(a.id) && addIds.add(a.id))
   const dismissed = [...new Set((Array.isArray(raw.dismissed) ? raw.dismissed : [])
-    .filter((d) => typeof d === 'string' && d && d.length <= 120))]
+    .filter((d) => typeof d === 'string' && d && d.length <= 120 && d !== SALARY_MARK))]
+  const salary = cleanSalary(raw.salary)
   return {
     v: PLAN_VERSION,
     changes: changes.slice(0, MAX_CHANGES),
     adds: adds.slice(0, MAX_ADDS),
     dismissed: dismissed.slice(-MAX_DISMISSED),
+    ...(salary ? { salary } : {}),
   }
 }
 
@@ -182,6 +226,67 @@ export const snapOf = (rule, name = ruleName(rule)) => ({ name: String(name).sli
 
 const snapDiffers = (snap, rule) => RULE_FIELDS.some((k) => snap[k] !== pickRule(rule)[k])
 
+// ---- Salary from entries ---------------------------------------------------------
+
+// The user's salary category: the profile's choice (0081) when set, else
+// their income category whose default_key is 'salary' (an unarchived one
+// first). null when there's none.
+export function salaryCategoryId(profile, categories = []) {
+  if (profile?.salary_category_id) return profile.salary_category_id
+  const own = categories.filter((c) => c.kind === 'income' && c.default_key === 'salary')
+  return (own.find((c) => !c.is_archived) ?? own[0])?.id ?? null
+}
+
+const pad2 = (n) => String(n).padStart(2, '0')
+
+// The SALARY_MONTHS full calendar months before `todayISO`'s (this month is
+// never counted): { from, to, months: ['YYYY-MM-01', …] }, oldest first.
+export function salaryWindow(todayISO) {
+  const months = recentMonths(todayISO, SALARY_MONTHS + 1).slice(0, SALARY_MONTHS)
+  const [y, m] = todayISO.split('-').map(Number)
+  const last = new Date(Date.UTC(y, m - 1, 0))
+  return { from: months[0], to: `${last.getUTCFullYear()}-${pad2(last.getUTCMonth() + 1)}-${pad2(last.getUTCDate())}`, months }
+}
+
+// Whether the plan gets a derived Salary row, and its amount:
+//   { state: 'none' }                 no salary category, or no entries
+//   { state: 'rule', categoryId }     an active recurring income rule in the
+//                                     category: the rule is the salary
+//   { state: 'derived', categoryId, amount_minor, months }
+//        the average of the monthly totals (base currency, each entry at its
+//        captured rate) over the months of salaryWindow that had entries
+// `entries` are income transactions; a salary paid late in the month counts
+// in the next one while the salary shift is on (0081, `salaryShift`).
+export function derivedSalary({ rules, savingsIds, categoryId, entries = [], todayISO, baseCurrency, salaryShift = null }) {
+  if (!categoryId) return { state: 'none' }
+  if (planRules(rules, savingsIds).some((r) => r.kind === 'income' && r.category_id === categoryId)) {
+    return { state: 'rule', categoryId }
+  }
+  const keys = new Set(salaryWindow(todayISO).months.map((m) => m.slice(0, 7)))
+  const mine = entries.filter((r) => r.kind === 'income' && r.category_id === categoryId)
+  const totals = sumToBaseByKey(mine, baseCurrency, (r) => {
+    const k = countedDate(r, salaryShift).slice(0, 7)
+    return keys.has(k) ? k : null
+  })
+  const amount = totals.size ? Math.round([...totals.values()].reduce((s, v) => s + v, 0) / totals.size) : 0
+  return amount > 0
+    ? { state: 'derived', categoryId, amount_minor: amount, months: totals.size }
+    : { state: 'none', categoryId }
+}
+
+// Edit the derived Salary row in the plan: `patch` is any of { cancel,
+// amount_minor }; `amount` is the derived average. An amount back at the
+// average is dropped, and a change with nothing left leaves the plan.
+export function setSalary(plan, patch, amount) {
+  const merged = { ...plan.salary, ...patch }
+  const next = cleanSalary({ ...merged, amount_minor: merged.amount_minor === amount ? undefined : merged.amount_minor })
+  const rest = { ...plan }
+  delete rest.salary
+  return next ? { ...rest, salary: next } : rest
+}
+
+export const resetSalary = (plan) => setSalary(plan, { cancel: false, amount_minor: undefined }, 0)
+
 // ---- Items: every row of the plan, before → after ----------------------------
 
 // The group a row sits in: Income, then Bills (an expense in a home, utility,
@@ -203,8 +308,11 @@ function money(fields, baseCurrency, rates) {
 //   beforeYear / afterYear   per year in the base currency (0 when missing)
 //   cancelled, changed, stale (its rule changed since the snapshot), snap
 //   missing          no exchange rate right now: left out of every figure
-// `categoriesById` gives an add's category its name/icon/colour.
-export function buildItems({ rules, plan, savingsIds, baseCurrency, rates = {}, categoriesById = new Map() }) {
+//   salary           the derived Salary row (id SALARY_ID, monthly, in the
+//                    base currency), listed first when `salary`
+//                    (derivedSalary's answer) is 'derived'
+// `categoriesById` gives an add's (and the salary's) category its name/icon/colour.
+export function buildItems({ rules, plan, savingsIds, baseCurrency, rates = {}, categoriesById = new Map(), salary = null }) {
   const changeBy = new Map(plan.changes.map((c) => [c.rule_id, c]))
   const real = planRules(rules, savingsIds).map((rule) => {
     const change = changeBy.get(rule.id) ?? null
@@ -236,7 +344,20 @@ export function buildItems({ rules, plan, savingsIds, baseCurrency, rates = {}, 
       cancelled: false, changed: true, stale: false, snap: null, add,
     }
   })
-  return [...real, ...adds]
+  const derived = salary?.state === 'derived' ? [salaryItem(salary, plan.salary, baseCurrency, categoriesById)] : []
+  return [...derived, ...real, ...adds]
+}
+
+function salaryItem(salary, change, baseCurrency, categoriesById) {
+  const before = { amount_minor: salary.amount_minor, currency: baseCurrency, frequency: 'monthly', interval_n: 1 }
+  const after = change?.cancel ? null : { ...before, amount_minor: change?.amount_minor ?? before.amount_minor }
+  return {
+    id: SALARY_ID, ruleId: null, added: false, salary: true, kind: 'income', name: '',
+    category: categoriesById.get(salary.categoryId) ?? null, categoryId: salary.categoryId,
+    group: 'income', next: null, before, after,
+    beforeYear: yearMinor(before), afterYear: after ? yearMinor(after) : 0, missing: false,
+    cancelled: !after, changed: !after || after.amount_minor !== before.amount_minor, stale: false, snap: null,
+  }
 }
 
 // The rows by group, in GROUP_ORDER, each with its total after the plan
@@ -251,8 +372,10 @@ export function planGroups(items) {
 // How a row moves the net over a year (+ = more left over).
 export const effectOf = (item) => sign(item.kind) * (item.afterYear - item.beforeYear)
 
-// The whole plan: net before (today's real rules) and after, per year, and
-// the rows it changes (in list order).
+// The whole plan: net before (today's real rules) and after, per year, the
+// rows it changes (in list order), and the mode the page shows it in: 'net',
+// or 'payments' when there's no income row at all (no rule, no salary from
+// entries, none planned), where a net would only be minus the payments.
 export function planSummary(items) {
   let before = 0
   let after = 0
@@ -261,8 +384,22 @@ export function planSummary(items) {
     after += sign(i.kind) * i.afterYear
   }
   const changes = items.filter((i) => i.changed)
-  return { before, after, delta: after - before, changes }
+  const mode = items.some((i) => i.kind === 'income') ? 'net' : 'payments'
+  return { mode, before, after, delta: after - before, changes }
 }
+
+// The header's figures, per year: in 'net' mode the net; in 'payments' mode
+// the recurring payments as a positive amount (with no income the net is
+// minus the payments). `change` moves the figure shown; `good` > 0 means more
+// left over (green) in either mode.
+export function headline(sum) {
+  const flip = (v) => asShown(v, sum.mode)
+  return { mode: sum.mode, before: flip(sum.before), after: flip(sum.after), change: flip(sum.delta), good: sum.delta }
+}
+
+// A change's effect (effectOf: + = more left over) as the page shows it in
+// `mode`: in 'payments' mode as the move in payments (a saving is minus).
+export const asShown = (effect, mode) => (mode === 'payments' && effect ? -effect : effect)
 
 // The rules whose rates the figures need: every rule's currency, and any
 // other currency the plan's edits and adds use.
@@ -321,7 +458,12 @@ export const dismissIdea = (plan, id) =>
 //            'stopped' } (stopped: paused, ended or now a savings rule)
 //   stale    changes whose rule changed since the snapshot: { ruleId, name,
 //            snap, now } — "before" already uses `now`
-export function reconcile(plan, rules, savingsIds = new Set()) {
+//            The salary change (ruleId SALARY_ID) drops out too once the
+//            derived row is gone: reason 'salaryRule' (a recurring salary
+//            rule now) or 'salaryGone' (no salary entries in the months
+//            looked at). `salary` is derivedSalary's answer; null (not read)
+//            leaves it be.
+export function reconcile(plan, rules, savingsIds = new Set(), salary = null) {
   const live = new Set(planRules(rules, savingsIds).map((r) => r.id))
   const byId = new Map(rules.map((r) => [r.id, r]))
   const dropped = []
@@ -331,17 +473,20 @@ export function reconcile(plan, rules, savingsIds = new Set()) {
     if (!live.has(c.rule_id)) dropped.push({ ruleId: c.rule_id, name: c.snap.name, reason: rule ? 'stopped' : 'deleted' })
     else if (snapDiffers(c.snap, rule)) stale.push({ ruleId: c.rule_id, name: c.snap.name, snap: c.snap, now: pickRule(rule) })
   }
+  if (plan.salary && salary && salary.state !== 'derived') {
+    dropped.push({ ruleId: SALARY_ID, name: '', reason: salary.state === 'rule' ? 'salaryRule' : 'salaryGone' })
+  }
   return { dropped, stale }
 }
 
 // "OK" on the banner: the dropped changes leave the plan and the stale ones
 // take today's rule as their new snapshot (the plan's own edits stay).
-export function acknowledge(plan, rules, savingsIds = new Set()) {
-  const { dropped } = reconcile(plan, rules, savingsIds)
+export function acknowledge(plan, rules, savingsIds = new Set(), salary = null) {
+  const { dropped } = reconcile(plan, rules, savingsIds, salary)
   const gone = new Set(dropped.map((d) => d.ruleId))
   const byId = new Map(rules.map((r) => [r.id, r]))
   return {
-    ...plan,
+    ...(gone.has(SALARY_ID) ? resetSalary(plan) : plan),
     changes: plan.changes.filter((c) => !gone.has(c.rule_id))
       .map((c) => ({ ...c, snap: snapOf(byId.get(c.rule_id), c.snap.name) })),
   }
@@ -512,8 +657,12 @@ export function overlapPick(items, idea, pickedIds) {
 
 // ---- Apply and undo ----------------------------------------------------------------
 
+// The changes Apply can send: every change but the salary's (plan-only).
+export const applicable = (items) => items.filter((i) => i.changed && !i.salary)
+
 // What "Apply N changes" sends for the picked rows (ids), and the plan left
-// behind (the changes not picked stay):
+// behind (the changes not picked stay, and so does the salary change, which
+// is plan-only and never sent):
 //   apply      { changes: [{ rule_id, cancel: true } | { rule_id, amount_minor,
 //              currency, frequency, interval_n }], adds: [{ kind, description,
 //              amount_minor, currency, frequency, interval_n, next_run,
@@ -521,7 +670,7 @@ export function overlapPick(items, idea, pickedIds) {
 //   remaining  the plan without them
 //   count      how many changes; effect  their move on the net, per year
 export function applySelection(items, plan, pickedIds) {
-  const picked = items.filter((i) => i.changed && pickedIds.has(i.id))
+  const picked = applicable(items).filter((i) => pickedIds.has(i.id))
   const rules = picked.filter((i) => !i.added)
   const adds = picked.filter((i) => i.added)
   const ruleIds = new Set(rules.map((i) => i.id))

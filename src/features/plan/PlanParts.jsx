@@ -17,7 +17,7 @@ import { intlLocale, t as tr } from '../../shared/lib/i18n/i18n.js'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { frequencyLabel, ruleToChoice } from '../recurring/recurringMath.js'
 import { RatesNote } from '../recurring/SubscriptionGroups.jsx'
-import { effectOf, inView, monthOf } from './planMath.js'
+import { applicable, asShown, effectOf, headline, inView, monthOf } from './planMath.js'
 
 // ---- Wording ---------------------------------------------------------------------
 
@@ -41,8 +41,10 @@ export function perUnit(fields) {
   return n > 1 ? tr('plan:units.custom', { amount, frequency: frequencyLabel(fields) }) : tr(`plan:units.${choice}`, { amount })
 }
 
-// A row's display name: its own, else its category's, else its kind.
-export const itemName = (item) => item.name || tr(`recurring:kinds.${item.kind === 'income' ? 'income' : 'expense'}`)
+// A row's display name: its own, else its category's, else its kind ("Salary"
+// for the derived salary row).
+export const itemName = (item) => (item.salary ? tr('plan:salary.name')
+  : item.name || tr(`recurring:kinds.${item.kind === 'income' ? 'income' : 'expense'}`))
 
 // "Jul, Aug and Sep" from 'YYYY-MM-01' keys.
 export function monthList(months) {
@@ -79,51 +81,78 @@ export function SavedNote({ status, onRetry }) {
   )
 }
 
-export function DeltaChip({ delta, currency }) {
+// The move in the header's figure: "+€15.00" for the net; for the payments,
+// "€385.09 less" (green) or "€20.00 more" (red). `good` > 0 is green.
+export function DeltaChip({ change, good, mode, currency }) {
   const t = useT('plan')
+  const text = change === 0 ? t('impact.noChanges')
+    : mode === 'payments' ? t(change < 0 ? 'impact.less' : 'impact.more', { amount: formatMoney(Math.abs(change), currency) })
+      : signed(change, currency)
   return (
     <Tag size="md" borderRadius="full" px={3} py={1} fontWeight="800" flexShrink={0} whiteSpace="nowrap"
-      bg={delta > 0 ? 'status.positiveSubtle' : delta < 0 ? 'status.negativeSubtle' : 'bg.subtle'}
-      color={toneOf(delta)} fontSize="sm">
-      {delta === 0 ? t('impact.noChanges') : signed(delta, currency)}
+      bg={good > 0 ? 'status.positiveSubtle' : good < 0 ? 'status.negativeSubtle' : 'bg.subtle'}
+      color={toneOf(good)} fontSize="sm">
+      {text}
     </Tag>
   )
 }
 
-// Net after the plan in the chosen unit, "was" struck through when it moved,
-// the delta, the other unit's figure, and the one-line rule.
+// The figure after the plan in the chosen unit (the net, or with no recurring
+// income the recurring payments), "was" struck through when it moved, the
+// move, the other unit's figure, and the one-line rule (payments: a nudge to
+// add the salary as recurring income instead).
 export function ImpactHeader({ sum, view, onView, currency, rates }) {
   const t = useT('plan')
-  const after = inView(sum.after, view)
-  const delta = inView(sum.delta, view)
+  const h = headline(sum)
+  const after = inView(h.after, view)
   const other = view === 'year'
-    ? t('impact.aboutPerMonth', { amount: signed(monthOf(sum.delta), currency) })
-    : t('impact.perYear', { amount: signed(sum.delta, currency) })
+    ? t('impact.aboutPerMonth', { amount: signed(monthOf(h.change), currency) })
+    : t('impact.perYear', { amount: signed(h.change, currency) })
   return (
     <Panel p={4}>
       <Flex justify="space-between" align="center" gap={2} flexWrap="wrap" mt={-1}>
-        <Text fontSize="xs" color="text.muted" fontWeight="600">{t(`impact.net.${view}`)}</Text>
+        <Text fontSize="xs" color="text.muted" fontWeight="600">{t(`impact.${h.mode}.${view}`)}</Text>
         <ViewSwitch view={view} onChange={onView} />
       </Flex>
       <Flex align="center" gap={2} mt={1} flexWrap="wrap">
         <Text fontFamily="heading" fontWeight="700" fontSize="2xl" lineHeight="1.15" whiteSpace="nowrap" flex="1">
           {formatMoney(after, currency)}
         </Text>
-        <DeltaChip delta={delta} currency={currency} />
+        <DeltaChip change={inView(h.change, view)} good={h.good} mode={h.mode} currency={currency} />
       </Flex>
-      {sum.delta !== 0 && (
+      {h.change !== 0 && (
         <HStack spacing={1.5} mt={0.5} fontSize="sm" flexWrap="wrap">
           <Text color="text.muted">
-            <Trans t={t} k="impact.was" values={{ amount: formatMoney(inView(sum.before, view), currency) }}
+            <Trans t={t} k="impact.was" values={{ amount: formatMoney(inView(h.before, view), currency) }}
               components={{ s: <Text as="s" /> }} />
           </Text>
           <Text color="text.muted" aria-hidden>·</Text>
-          <Text fontWeight="700" color={toneOf(sum.delta)}>{other}</Text>
+          <Text fontWeight="700" color={toneOf(h.good)}>{other}</Text>
         </HStack>
       )}
-      <Text fontSize="xs" color="text.muted" mt={1}>{t('impact.rule')}</Text>
+      {h.mode === 'payments' ? <IncomeHint /> : <Text fontSize="xs" color="text.muted" mt={1}>{t('impact.rule')}</Text>}
       <RatesNote converted={rates.converted} missing={rates.missing} mt={1} />
     </Panel>
+  )
+}
+
+// No recurring income: the net would only be minus the payments, so the card
+// shows the payments and asks for the salary as recurring income (the real
+// form, preset to income).
+function IncomeHint() {
+  const t = useT('plan')
+  return (
+    <Box mt={3} bg="bg.subtle" borderRadius="lg" px={3} py={2.5}>
+      <HStack align="start" spacing={2}>
+        <Box color="accent.fg" mt="2px" flexShrink={0}><Info size={16} /></Box>
+        <Text fontSize="sm">{t('impact.addIncome')}</Text>
+      </HStack>
+      <Button as={RouterLink} to="/recurring/new?kind=income" size="sm" variant="outline" mt={2} ml={6}
+        maxW="calc(100% - 24px)" h="auto" minH="36px" py={1.5} whiteSpace="normal" textAlign="left"
+        leftIcon={<Plus size={16} />}>
+        {t('impact.addIncomeButton')}
+      </Button>
+    </Box>
   )
 }
 
@@ -151,6 +180,7 @@ export function SignalTag({ tag, ...props }) {
 // The muted line under a row's name.
 function rowMeta(item, view, t) {
   const f = item.after ?? item.before
+  if (item.salary) return t('row.salary')
   if (item.added) return t('row.from', { frequency: freqLabel(f), date: shortDate(item.next) })
   const b = item.before
   if (view === 'month' && b.frequency === 'yearly' && Number(b.interval_n) === 1 && !item.changed) {
@@ -324,8 +354,13 @@ export function changeLine(item, t) {
   return t('changes.editLine', { was: perUnit(item.before), now: perUnit(item.after) })
 }
 
+// "Your changes": each with what it does to the figure the header shows (the
+// net, or the payments), the total, then Apply (when anything can be applied:
+// the salary change is only in the plan) and Clear plan.
 export function ChangesPanel({ sum, currency, onApply, onClear }) {
   const t = useT('plan')
+  const h = headline(sum)
+  const canApply = applicable(sum.changes).length > 0
   return (
     <Panel p={4} as="section" aria-label={t('changes.title', { count: sum.changes.length })}>
       <Box mb={1}>
@@ -334,39 +369,42 @@ export function ChangesPanel({ sum, currency, onApply, onClear }) {
       <Box as="ul" listStyleType="none">
         {sum.changes.map((it) => {
           const eff = effectOf(it)
+          const shown = asShown(eff, sum.mode)
           return (
             <HStack as="li" key={it.id} spacing={3} py={2.5} borderBottomWidth="1px" borderColor="border.default" align="start">
               <Box pt={0.5}><CategoryBadge category={it.category} kind={it.kind} size={32} /></Box>
               <Box flex="1" minW={0}>
                 <Text fontSize="sm" fontWeight="600" noOfLines={1}>{itemName(it)}</Text>
                 <Text fontSize="xs" color="text.muted">{changeLine(it, t)}</Text>
-                {it.added
-                  ? <Text fontSize="xs" color="text.muted" mt={1}>{t('changes.notYet')}</Text>
+                {it.added || it.salary
+                  ? <Text fontSize="xs" color="text.muted" mt={1}>{t(it.salary ? 'changes.planOnly' : 'changes.notYet')}</Text>
                   : (
                     <Button as={RouterLink} to={`/recurring/${it.id}`} variant="link" size="xs" color="accent.fg" mt={1}
                       rightIcon={<ExternalLink size={12} />}>{t('changes.open')}</Button>
                   )}
               </Box>
               <Box textAlign="right" flexShrink={0}>
-                <Text fontSize="sm" fontWeight="700" color={toneOf(eff)}>{t('changes.perMonth', { amount: signed(monthOf(eff), currency) })}</Text>
-                <Text fontSize="xs" color="text.muted">{t('changes.perYear', { amount: signed(eff, currency) })}</Text>
+                <Text fontSize="sm" fontWeight="700" color={toneOf(eff)}>{t('changes.perMonth', { amount: signed(monthOf(shown), currency) })}</Text>
+                <Text fontSize="xs" color="text.muted">{t('changes.perYear', { amount: signed(shown, currency) })}</Text>
               </Box>
             </HStack>
           )
         })}
       </Box>
       <HStack pt={3} justify="space-between" align="baseline">
-        <Text fontSize="sm" fontWeight="700">{t('changes.net')}</Text>
+        <Text fontSize="sm" fontWeight="700">{t(`changes.total.${h.mode}`)}</Text>
         <Box textAlign="right">
-          <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={toneOf(sum.delta)}>
-            {t('changes.perMonth', { amount: signed(monthOf(sum.delta), currency) })}
+          <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={toneOf(h.good)}>
+            {t('changes.perMonth', { amount: signed(monthOf(h.change), currency) })}
           </Text>
-          <Text fontSize="xs" color="text.muted" fontWeight="600">{t('changes.perYear', { amount: signed(sum.delta, currency) })}</Text>
+          <Text fontSize="xs" color="text.muted" fontWeight="600">{t('changes.perYear', { amount: signed(h.change, currency) })}</Text>
         </Box>
       </HStack>
       <Stack direction={{ base: 'column', sm: 'row' }} spacing={2} pt={4}>
-        <Button flex="1" minH="48px" h="auto" py={2} whiteSpace="normal" onClick={onApply}>{t('changes.apply')}</Button>
-        <Button flex={{ sm: '0 0 auto' }} minH="48px" variant="outline" leftIcon={<RotateCcw size={16} />} onClick={onClear}>
+        {canApply && (
+          <Button flex="1" minH="48px" h="auto" py={2} whiteSpace="normal" onClick={onApply}>{t('changes.apply')}</Button>
+        )}
+        <Button flex={canApply ? { sm: '0 0 auto' } : '1'} minH="48px" variant="outline" leftIcon={<RotateCcw size={16} />} onClick={onClear}>
           {t('changes.clear')}
         </Button>
       </Stack>

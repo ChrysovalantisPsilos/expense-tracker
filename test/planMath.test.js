@@ -5,6 +5,8 @@ import {
   planSummary, effectOf, setChange, resetChange, cancelRules, upsertAdd, removeAdd, dismissIdea, reconcile,
   acknowledge, priceRises, recentMonths, overBudgetMonths, signalsFor, rowTag, planIdeas, overlapPick,
   applySelection, undoState, snapOf, rateNeeds, startOver, tryIdea, MAX_IDEAS,
+  SALARY_ID, salaryCategoryId, salaryWindow, derivedSalary, setSalary, resetSalary, storedPlan, applicable, headline,
+  asShown,
 } from '../src/features/plan/planMath.js'
 
 // Fake ids (uuid-shaped, as the server's rule ids are).
@@ -379,4 +381,196 @@ test('trying an idea cancels its picked rules and retires the idea, even after a
   assert.ok(plan.dismissed.includes(overlap.id))
   plan = resetChange(plan, NETFLIX.id)
   assert.equal(planIdeas(items(plan), signals, plan.dismissed).some((i) => i.id === overlap.id), false)
+})
+
+// ---- Salary from entries, and the payments view ------------------------------------
+
+const NO_PAY_RULES = RULES.filter((r) => r !== SALARY)
+const entry = (spent_at, amount_minor, extra = {}) => ({
+  id: `t-${spent_at}-${amount_minor}`, kind: 'income', category_id: PAY, amount_minor, currency: 'EUR',
+  exchange_rate: 1, spent_at, ...extra,
+})
+const TODAY = '2026-09-27' // the full months looked at: June, July, August
+const derive = (entries, extra = {}) => derivedSalary({
+  rules: NO_PAY_RULES, savingsIds: SAVINGS_IDS, categoryId: PAY, entries, todayISO: TODAY, baseCurrency: 'EUR', ...extra,
+})
+const SAL = derive([entry('2026-06-25', 300000), entry('2026-07-24', 310000), entry('2026-08-25', 320000)])
+const salaryItems = (plan = emptyPlan(), salary = SAL) => buildItems({
+  rules: NO_PAY_RULES, plan, savingsIds: SAVINGS_IDS, baseCurrency: 'EUR', salary,
+  categoriesById: new Map([[PAY, cats[PAY]]]),
+})
+const EXPENSES_YEAR = (115000 + 1399 + 1099 + 899 + 3990) * 12 + 48000
+
+test('salary category: the profile’s choice, else the default Salary income category', () => {
+  const cat = (cid, extra) => ({ id: cid, kind: 'income', default_key: null, is_archived: false, ...extra })
+  const list = [cat('c-bonus'), cat('c-old', { default_key: 'salary', is_archived: true }), cat('c-pay', { default_key: 'salary' }),
+    { id: 'c-exp', kind: 'expense', default_key: 'salary' }]
+  assert.equal(salaryCategoryId({ salary_category_id: 'c-bonus' }, list), 'c-bonus')
+  assert.equal(salaryCategoryId({ salary_category_id: null }, list), 'c-pay')
+  assert.equal(salaryCategoryId(null, [list[1]]), 'c-old', 'an archived Salary still counts when it’s the only one')
+  assert.equal(salaryCategoryId({}, [cat('c-bonus'), list[3]]), null)
+})
+
+test('salary window: the 3 full months before this one, in the local calendar', () => {
+  assert.deepEqual(salaryWindow(TODAY), { from: '2026-06-01', to: '2026-08-31', months: ['2026-06-01', '2026-07-01', '2026-08-01'] })
+  assert.deepEqual(salaryWindow('2026-01-01'), { from: '2025-10-01', to: '2025-12-31', months: ['2025-10-01', '2025-11-01', '2025-12-01'] })
+  assert.equal(salaryWindow('2024-03-31').to, '2024-02-29')
+})
+
+test('derived salary: the average over the months that had entries (1, 2 or 3), this month left out', () => {
+  assert.deepEqual(SAL, { state: 'derived', categoryId: PAY, amount_minor: 310000, months: 3 })
+  // A new user: one month is not divided by 3.
+  assert.deepEqual(derive([entry('2026-08-25', 300000)]), { state: 'derived', categoryId: PAY, amount_minor: 300000, months: 1 })
+  // Two months; a month with two entries (salary + bonus) is summed first.
+  const two = derive([entry('2026-07-25', 300000), entry('2026-08-10', 300000), entry('2026-08-25', 21000)])
+  assert.equal(two.amount_minor, Math.round((300000 + 321000) / 2))
+  assert.equal(two.months, 2)
+  // This month and anything before June don't count; nor other categories or kinds.
+  const noise = [entry('2026-09-25', 999999), entry('2026-05-29', 999999), entry('2026-08-25', 5000, { category_id: 'other' }),
+    entry('2026-08-25', 5000, { kind: 'expense' })]
+  assert.deepEqual(derive(noise), { state: 'none', categoryId: PAY })
+  assert.equal(derive([...noise, entry('2026-08-25', 300000)]).amount_minor, 300000)
+  // Foreign entries at their captured rate.
+  assert.equal(derive([entry('2026-08-25', 100000, { currency: 'USD', exchange_rate: 0.9 })]).amount_minor, 90000)
+  assert.deepEqual(derive([], { categoryId: null }), { state: 'none' })
+})
+
+test('derived salary: salary paid late counts in the next month while the salary shift is on', () => {
+  const shift = { fromDay: 25, categoryId: PAY }
+  const rows = [entry('2026-05-28', 300000), entry('2026-06-28', 310000), entry('2026-08-28', 999999)]
+  // May 28 → June, June 28 → July, Aug 28 → September (this month: left out).
+  assert.equal(derive(rows, { salaryShift: shift }).amount_minor, 305000)
+  assert.equal(derive(rows).amount_minor, Math.round((310000 + 999999) / 2))
+})
+
+test('derived salary: an active recurring salary rule takes precedence; a paused one doesn’t', () => {
+  const rows = [entry('2026-08-25', 300000)]
+  assert.deepEqual(derive(rows, { rules: RULES }), { state: 'rule', categoryId: PAY })
+  assert.equal(derive(rows, { rules: [...NO_PAY_RULES, { ...SALARY, is_active: false }] }).state, 'derived')
+  // A recurring income in another category doesn't replace the salary.
+  assert.equal(derive(rows, { rules: [...NO_PAY_RULES, rule(20, 'Tutoring', 20000, { kind: 'income' })] }).state, 'derived')
+  // With the rule, no Salary row: the rule is the salary.
+  assert.equal(salaryItems(emptyPlan(), derive(rows, { rules: RULES })).some((i) => i.salary), false)
+})
+
+test('the Salary row: first in Income, monthly in the base currency, counts in the net', () => {
+  const list = salaryItems()
+  const s = list[0]
+  assert.equal(s.id, SALARY_ID)
+  assert.equal(s.salary, true)
+  assert.equal(s.group, 'income')
+  assert.deepEqual(s.before, { amount_minor: 310000, currency: 'EUR', frequency: 'monthly', interval_n: 1 })
+  assert.equal(s.beforeYear, 310000 * 12)
+  assert.equal(s.changed, false)
+  assert.equal(s.category, cats[PAY])
+  const sum = planSummary(list)
+  assert.equal(sum.mode, 'net')
+  assert.equal(sum.before, 310000 * 12 - EXPENSES_YEAR)
+  assert.deepEqual(planGroups(list)[0].items.map((i) => i.id), [SALARY_ID])
+  assert.equal(salaryItems(emptyPlan(), { state: 'none' }).some((i) => i.salary), false)
+})
+
+test('the Salary row: a what-if raise and switching it off live in plan.salary; back to the average drops it', () => {
+  let plan = setSalary(emptyPlan(), { amount_minor: 330000 }, 310000)
+  assert.deepEqual(plan.salary, { amount_minor: 330000 })
+  assert.equal(isEmptyPlan(plan), false)
+  let s = salaryItems(plan)[0]
+  assert.equal(s.changed, true)
+  assert.equal(s.after.amount_minor, 330000)
+  assert.equal(effectOf(s), 20000 * 12)
+  assert.equal(planSummary(salaryItems(plan)).delta, 20000 * 12)
+  // Off: counts nothing; on again keeps the raise.
+  plan = setSalary(plan, { cancel: true }, 310000)
+  s = salaryItems(plan)[0]
+  assert.equal(s.cancelled, true)
+  assert.equal(s.afterYear, 0)
+  assert.equal(effectOf(s), -310000 * 12)
+  plan = setSalary(plan, { cancel: false }, 310000)
+  assert.deepEqual(plan.salary, { amount_minor: 330000 })
+  // Back to the average: no change left.
+  assert.equal('salary' in setSalary(plan, { amount_minor: 310000 }, 310000), false)
+  assert.equal('salary' in resetSalary(setSalary(plan, { cancel: true }, 310000)), false)
+  // Clear plan clears it too.
+  assert.equal('salary' in startOver(plan), false)
+})
+
+test('the salary change on the server: kept by a marker when it’s all the plan holds; normalised back', () => {
+  const only = setSalary(emptyPlan(), { cancel: true }, 310000)
+  const stored = storedPlan(only)
+  assert.deepEqual(stored.dismissed, ['plan:salary'], '0095 deletes a plan whose three lists are empty')
+  assert.deepEqual(normalisePlan(stored), only)
+  const more = dismissIdea(only, 'biggest:x')
+  assert.equal(storedPlan(more), more)
+  assert.equal(storedPlan(emptyPlan()).dismissed.length, 0)
+  assert.deepEqual(normalisePlan({ v: 1, changes: [], adds: [], dismissed: [], salary: { amount_minor: -5, cancel: 'yes', x: 1 } }),
+    emptyPlan())
+  assert.deepEqual(normalisePlan({ v: 1, salary: { amount_minor: 330000, x: 1 } }).salary, { amount_minor: 330000 })
+})
+
+test('apply: the salary change is plan-only — never sent, and it stays in the plan', () => {
+  let plan = setSalary(emptyPlan(), { amount_minor: 330000 }, 310000)
+  plan = setChange(plan, NETFLIX, { cancel: true })
+  const list = salaryItems(plan)
+  assert.deepEqual(applicable(list).map((i) => i.id), [NETFLIX.id])
+  const sel = applySelection(list, plan, new Set([SALARY_ID, NETFLIX.id]))
+  assert.deepEqual(sel.apply, { changes: [{ rule_id: NETFLIX.id, cancel: true }], adds: [] })
+  assert.equal(sel.count, 1)
+  assert.equal(sel.effect, 1399 * 12)
+  assert.deepEqual(sel.remaining.salary, { amount_minor: 330000 })
+  assert.equal(sel.remaining.changes.length, 0)
+  assert.equal(isEmptyPlan(sel.remaining), false)
+})
+
+test('plans follow reality: a new recurring salary rule or no entries drops the salary change', () => {
+  const plan = setChange(setSalary(emptyPlan(), { amount_minor: 330000 }, 310000), NETFLIX, { cancel: true })
+  assert.deepEqual(reconcile(plan, NO_PAY_RULES, SAVINGS_IDS, SAL).dropped, [])
+  assert.deepEqual(reconcile(plan, NO_PAY_RULES, SAVINGS_IDS, null).dropped, [], 'entries not read: leave it be')
+  assert.deepEqual(reconcile(plan, RULES, SAVINGS_IDS, { state: 'rule', categoryId: PAY }).dropped,
+    [{ ruleId: SALARY_ID, name: '', reason: 'salaryRule' }])
+  assert.deepEqual(reconcile(plan, NO_PAY_RULES, SAVINGS_IDS, { state: 'none', categoryId: PAY }).dropped,
+    [{ ruleId: SALARY_ID, name: '', reason: 'salaryGone' }])
+  const ok = acknowledge(plan, RULES, SAVINGS_IDS, { state: 'rule', categoryId: PAY })
+  assert.equal('salary' in ok, false)
+  assert.deepEqual(ok.changes.map((c) => c.rule_id), [NETFLIX.id])
+  assert.deepEqual(acknowledge(plan, NO_PAY_RULES, SAVINGS_IDS, SAL).salary, { amount_minor: 330000 })
+})
+
+test('ideas and signals ignore the Salary row', () => {
+  const list = salaryItems(setSalary(emptyPlan(), { amount_minor: 330000 }, 310000))
+  const signals = signalsFor(list, { rises: new Map([[SALARY_ID, { pct: 10 }]]), overCats: new Map([[PAY, ['2026-08-01']]]) })
+  assert.equal(signals.has(SALARY_ID), false)
+  assert.equal(planIdeas(list, signals).some((i) => i.ruleIds.includes(SALARY_ID)), false)
+})
+
+test('no recurring income: the payments view — a positive total, a saving is a minus', () => {
+  let list = salaryItems(emptyPlan(), { state: 'none' })
+  let sum = planSummary(list)
+  assert.equal(sum.mode, 'payments')
+  assert.deepEqual(headline(sum), { mode: 'payments', before: EXPENSES_YEAR, after: EXPENSES_YEAR, change: 0, good: 0 })
+  const plan = setChange(setChange(emptyPlan(), NETFLIX, { cancel: true }), GYM, { amount_minor: 4990 })
+  list = salaryItems(plan, { state: 'none' })
+  sum = planSummary(list)
+  const h = headline(sum)
+  assert.equal(h.before, EXPENSES_YEAR)
+  assert.equal(h.after, EXPENSES_YEAR - 1399 * 12 + 1000 * 12)
+  assert.equal(h.change, (-1399 + 1000) * 12, 'payments went down: a minus')
+  assert.equal(h.good, (1399 - 1000) * 12, 'more left over: green')
+  const netflix = list.find((i) => i.id === NETFLIX.id)
+  assert.equal(asShown(effectOf(netflix), sum.mode), -1399 * 12)
+  // Payments after applying Netflix only.
+  assert.equal(asShown(sum.before + effectOf(netflix), sum.mode), EXPENSES_YEAR - 1399 * 12)
+  // In net mode nothing flips.
+  assert.equal(asShown(effectOf(netflix), 'net'), 1399 * 12)
+  assert.deepEqual(headline({ mode: 'net', before: -5, after: 7, delta: 12 }), { mode: 'net', before: -5, after: 7, change: 12, good: 12 })
+})
+
+test('the card switches back to net once there’s any income: salary entries, a rule, or a planned one', () => {
+  assert.equal(planSummary(salaryItems(emptyPlan(), SAL)).mode, 'net')
+  assert.equal(planSummary(items()).mode, 'net')
+  const add = upsertAdd(emptyPlan(), { id: 'a1', kind: 'income', name: 'Tutoring', amount_minor: 12000, currency: 'EUR',
+    frequency: 'monthly', interval_n: 1, start: '2026-10-01' })
+  assert.equal(planSummary(salaryItems(add, { state: 'none' })).mode, 'net')
+  // Switched off in the plan, the salary is still there: net (it would be minus the payments).
+  const off = salaryItems(setSalary(emptyPlan(), { cancel: true }, 310000))
+  assert.equal(planSummary(off).mode, 'net')
 })

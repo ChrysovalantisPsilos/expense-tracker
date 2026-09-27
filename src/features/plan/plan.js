@@ -3,19 +3,21 @@
 // all in planMath.js.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../shared/lib/supabase.js'
-import { useLiveQuery } from '../../shared/lib/db.js'
+import { useLiveQuery, useOwnedQuery } from '../../shared/lib/db.js'
 import { dbError } from '../../shared/lib/errors.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useLatestRates } from '../../shared/lib/fx.js'
 import { foreignCurrencies } from '../../shared/lib/ruleFx.js'
+import { shiftFetchFrom } from '../../shared/lib/salaryShift.js'
 import { monthRange, today } from '../../shared/lib/dates.js'
 import { useRecurring } from '../recurring/recurring.js'
 import { useAllCategories, useSavingsIds } from '../categories/categories.js'
-import { useTransactions } from '../transactions/useData.js'
+import { listTransactions, useTransactions } from '../transactions/useData.js'
 import { useBudgetSets } from '../budgets/budgets.js'
 import {
-  OVER_BUDGET_MONTHS, PRICE_MONTHS, isEmptyPlan, normalisePlan, rateNeeds, recentMonths,
+  OVER_BUDGET_MONTHS, PRICE_MONTHS, derivedSalary, isEmptyPlan, normalisePlan, rateNeeds, recentMonths,
+  salaryCategoryId, salaryWindow, storedPlan,
 } from './planMath.js'
 
 // How long the plan waits after the last edit before it's saved.
@@ -32,7 +34,7 @@ async function fetchPlan() {
 async function storePlan(plan) {
   const { error } = isEmptyPlan(plan)
     ? await supabase.rpc('clear_recurring_plan')
-    : await supabase.rpc('save_recurring_plan', { p_plan: plan })
+    : await supabase.rpc('save_recurring_plan', { p_plan: storedPlan(plan) })
   if (error) throw dbError(error)
 }
 
@@ -41,7 +43,7 @@ async function storePlan(plan) {
 // { applied_at, change_count, undo_until }.
 export async function applyPlan(apply, remaining) {
   const { data, error } = await supabase.rpc('apply_recurring_plan', {
-    p_apply: apply, p_remaining: isEmptyPlan(remaining) ? null : remaining,
+    p_apply: apply, p_remaining: isEmptyPlan(remaining) ? null : storedPlan(remaining),
   })
   if (error) throw dbError(error)
   return data
@@ -125,18 +127,41 @@ function useSavedPlan() {
   }
 }
 
+// The salary entries behind the derived Salary row (planMath.derivedSalary):
+// the income in the salary category over the last full months, from the
+// same decrypting read as every list (my_transactions), live. With the
+// salary shift on it reaches back for the salary that counts in the first
+// month. No category: nothing to read.
+function useSalaryEntries(categoryId, todayISO) {
+  const { baseCurrency, salaryShift } = useProfile()
+  const win = salaryWindow(todayISO)
+  const from = shiftFetchFrom(win.from, salaryShift)
+  return useOwnedQuery('transactions', {
+    fetch: () => (categoryId
+      ? listTransactions({ kind: 'income', categoryId, from, to: win.to, baseCurrency })
+      : []),
+    deps: [categoryId, from, win.to, baseCurrency],
+  })
+}
+
 // Everything Plan mode reads. The recurring rules are live (realtime), so
 // "before" always follows the real rules; the charges and budgets behind the
 // suggestions are optional — if they can't be read the page works without
-// ideas.
+// ideas. `salary` is derivedSalary's answer (null when the entries couldn't
+// be read: the page works without the Salary row).
 export function usePlanData() {
-  const { baseCurrency = 'EUR', separateYearly } = useProfile()
+  const { baseCurrency = 'EUR', separateYearly, profile, salaryShift } = useProfile()
   const saved = useSavedPlan()
   const { rules, loading: rulesLoading, error: rulesError, reload: reloadRules } = useRecurring()
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
-  const { rows: categories } = useAllCategories()
+  const { rows: categories, loading: categoriesLoading } = useAllCategories()
 
   const todayISO = today()
+  const salaryCat = salaryCategoryId(profile, categories)
+  const entries = useSalaryEntries(salaryCat, todayISO)
+  const salary = useMemo(() => (entries.error ? null : derivedSalary({
+    rules, savingsIds, categoryId: salaryCat, entries: entries.rows, todayISO, baseCurrency, salaryShift,
+  })), [entries.error, entries.rows, rules, savingsIds, salaryCat, todayISO, baseCurrency, salaryShift])
   const months = useMemo(() => recentMonths(todayISO, PRICE_MONTHS), [todayISO])
   const charges = useTransactions({ kind: 'expense', from: months[0], to: monthRange().to, spread: true })
   const budgetMonths = months.slice(-OVER_BUDGET_MONTHS)
@@ -151,12 +176,13 @@ export function usePlanData() {
 
   return {
     ...saved,
-    baseCurrency, separateYearly, rules, savingsIds, categories, todayISO,
+    baseCurrency, separateYearly, rules, savingsIds, categories, todayISO, salary,
     rates: fx.rates,
     charges: charges.error ? [] : charges.rows,
     budgetSets: budgets.error ? [] : budgets.sets,
     budgetMonths,
-    loading: saved.loading || rulesLoading || savingsLoading || (fx.loading && !ratesSeen.current),
+    loading: saved.loading || rulesLoading || savingsLoading || categoriesLoading || entries.loading
+      || (fx.loading && !ratesSeen.current),
     error: rulesError ?? saved.error,
     reload: () => Promise.all([reloadRules(), saved.reload()]),
     reloadRules,

@@ -5,7 +5,7 @@ import {
   Box, Button, Checkbox, Drawer, DrawerBody, DrawerContent, DrawerFooter, DrawerOverlay, FormControl, FormLabel,
   HStack, Input, InputGroup, InputLeftAddon, Select, Stack, Text,
 } from '@chakra-ui/react'
-import { AlertTriangle, Plus } from 'lucide-react'
+import { AlertTriangle, Info, Plus } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
@@ -17,7 +17,7 @@ import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { ruleInBase } from '../../shared/lib/ruleFx.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { REPEAT_CHOICES, choiceToRule, frequencyLabel, ruleToChoice } from '../recurring/recurringMath.js'
-import { NAME_MAX, effectOf, monthOf, overlapPick, yearMinor } from './planMath.js'
+import { NAME_MAX, applicable, asShown, effectOf, monthOf, overlapPick, yearMinor } from './planMath.js'
 import { SignalTag, ideaText, itemName, monthList, perUnit, signed, toneOf } from './PlanParts.jsx'
 
 function Sheet({ children, onClose, initialFocusRef, label }) {
@@ -95,7 +95,8 @@ function AmountField({ id, label, text, onText, currency, inputRef, isDisabled, 
 }
 
 // The edit sheet for one real row: amount (with the live delta), how often,
-// keep or cancel, and Reset.
+// keep or cancel, and Reset. The derived Salary row stays monthly (no "how
+// often") and says its change is only in the plan.
 export function EditSheet({ item, signal, currency, onChange, onReset, onClose }) {
   const t = useT('plan')
   const amountRef = useRef(null)
@@ -117,7 +118,7 @@ export function EditSheet({ item, signal, currency, onChange, onReset, onClose }
   return (
     <Sheet onClose={onClose} initialFocusRef={amountRef} label={name}>
       <SheetHead media={<CategoryBadge category={item.category} kind={item.kind} size={40} />}
-        title={name} sub={t('edit.now', { amount: perUnit(item.before) })}
+        title={name} sub={t(item.salary ? 'edit.salaryNow' : 'edit.now', { amount: perUnit(item.before) })}
         action={<Button variant="ghost" size="sm" color="accent.fg" onClick={reset} isDisabled={!item.changed}>{t('edit.reset')}</Button>} />
       <DrawerBody px={5} pt={3} pb={2}>
         <Stack spacing={4}>
@@ -125,8 +126,10 @@ export function EditSheet({ item, signal, currency, onChange, onReset, onClose }
           <AmountField id="plan-edit-amount" label={t('edit.amount')} text={text} onText={onText} inputRef={amountRef}
             currency={fields.currency} addon={fields.currency} isDisabled={item.cancelled} />
           <DeltaTile effect={effectOf(item)} kind={item.kind} currency={currency} />
-          <FrequencySelect id="plan-edit-frequency" fields={fields} isDisabled={item.cancelled}
-            onChange={(f) => onChange(f)} />
+          {item.salary ? <PlanOnlyNote text={t('edit.salaryNote')} /> : (
+            <FrequencySelect id="plan-edit-frequency" fields={fields} isDisabled={item.cancelled}
+              onChange={(f) => onChange(f)} />
+          )}
           <Box>
             <Text fontSize="sm" fontWeight="600" mb={1.5}>{t('edit.inPlan')}</Text>
             <SegmentedControl label={t('edit.inPlan')} size="sm" isFitted value={item.cancelled ? 'cancel' : 'keep'}
@@ -139,6 +142,16 @@ export function EditSheet({ item, signal, currency, onChange, onReset, onClose }
         <Button size="lg" w="full" onClick={onClose}>{t('edit.done')}</Button>
       </DrawerFooter>
     </Sheet>
+  )
+}
+
+// A quiet line: this change stays in the plan (the salary).
+function PlanOnlyNote({ text }) {
+  return (
+    <HStack role="note" spacing={2} align="start" color="text.muted">
+      <Box mt="2px" flexShrink={0}><Info size={14} /></Box>
+      <Text fontSize="xs">{text}</Text>
+    </HStack>
   )
 }
 
@@ -308,10 +321,15 @@ function applyLine(item, t) {
 }
 
 // Pick, then confirm: every change ticked; the warning shows before the button.
+// The salary change isn't a recurring payment: it's left out, with a note, and
+// stays in the plan. The figure after applying is the net, or the payments
+// when there's no recurring income.
 export function ApplySheet({ sum, currency, busy, onApply, onClose }) {
   const t = useT('plan')
   const [off, setOff] = useState(() => new Set())
-  const picked = sum.changes.filter((c) => !off.has(c.id))
+  const list = applicable(sum.changes)
+  const salaryKept = sum.changes.some((c) => c.salary)
+  const picked = list.filter((c) => !off.has(c.id))
   const effect = picked.reduce((s, it) => s + effectOf(it), 0)
   const toggle = (id) => setOff((s) => {
     const next = new Set(s)
@@ -322,7 +340,7 @@ export function ApplySheet({ sum, currency, busy, onApply, onClose }) {
     <Sheet onClose={onClose} label={t('apply.title')}>
       <SheetHead title={t('apply.title')} sub={t('apply.sub')} />
       <DrawerBody px={5} pt={0} pb={2}>
-        {sum.changes.map((it) => {
+        {list.map((it) => {
           const eff = effectOf(it)
           return (
             <Checkbox key={it.id} size="lg" isChecked={!off.has(it.id)} w="full" py={2}
@@ -335,20 +353,21 @@ export function ApplySheet({ sum, currency, busy, onApply, onClose }) {
                   <Text fontSize="xs" color="text.muted">{applyLine(it, t)}</Text>
                 </Box>
                 <Text fontSize="sm" fontWeight="700" color={toneOf(eff)} whiteSpace="nowrap">
-                  {t('changes.perMonth', { amount: signed(monthOf(eff), currency) })}
+                  {t('changes.perMonth', { amount: signed(monthOf(asShown(eff, sum.mode)), currency) })}
                 </Text>
               </HStack>
             </Checkbox>
           )
         })}
+        {salaryKept && <Box pt={3}><PlanOnlyNote text={t('apply.salaryNote')} /></Box>}
       </DrawerBody>
       {/* The net and the warning stay in view above the button, however
           long the list (a phone held sideways scrolls the list instead). */}
       <DrawerFooter px={5} pt={2} pb={3} flexDir="column" gap={1} alignItems="stretch">
         <HStack justify="space-between" flexWrap="wrap" columnGap={3}>
-          <Text fontSize="sm" color="text.muted">{t('apply.netAfter')}</Text>
+          <Text fontSize="sm" color="text.muted">{t(`apply.after.${sum.mode}`)}</Text>
           <Text fontSize="sm" fontWeight="700">
-            {t('apply.netValue', { amount: formatMoney(monthOf(sum.before + effect), currency) })}
+            {t('apply.netValue', { amount: formatMoney(monthOf(asShown(sum.before + effect, sum.mode)), currency) })}
           </Text>
         </HStack>
         <HStack role="note" align="start" spacing={2.5} my={2} bg="status.warningSubtle" borderWidth="1px"

@@ -969,6 +969,21 @@ test('plan: the saved plan rides along with keys, round-trips, and restores onto
   assert.deepEqual(restorePlan(undefined, [], [], new Map()), { v: 1, changes: [], adds: [], dismissed: [] })
 })
 
+test('plan: the salary what-if (Salary row from entries) survives backup and restore', async () => {
+  const plan = { v: 1, changes: [], adds: [], dismissed: [], salary: { amount_minor: 330000, cancel: true } }
+  const doc = buildBackup({ userId: 'u-source', categories: CATS, plan })
+  assert.deepEqual(doc.data.plan.salary, { amount_minor: 330000, cancel: true }, 'a salary-only plan is written')
+  const back = readBackup(await serializeBackup(doc, null)).backup
+  assert.deepEqual(back.data.plan, doc.data.plan)
+  assert.deepEqual(restorePlan(back.data.plan, [], [], new Map()), plan)
+  // A damaged salary entry loses its bad parts, never the file.
+  const bad = sourceDoc()
+  bad.data.plan = { changes: [], adds: [], dismissed: ['x'], salary: { amount_minor: 'lots', cancel: true, extra: 1 } }
+  assert.deepEqual(readBackup(JSON.stringify(bad)).backup.data.plan.salary, { cancel: true })
+  bad.data.plan.salary = { amount_minor: -1 }
+  assert.equal('salary' in readBackup(JSON.stringify(bad)).backup.data.plan, false)
+})
+
 test('plan: a damaged plan in the file is refused; one naming an unknown entry loses that change', () => {
   const doc = sourceDoc()
   doc.data.plan = { changes: 'nope', adds: [], dismissed: [] }

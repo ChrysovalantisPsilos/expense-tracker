@@ -12,8 +12,10 @@ import { isoDate, shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { perUnit } from './PlanParts.jsx'
 
-// Just applied: what happened, Undo, and until when.
-export function AppliedBanner({ state, net, currency, onUndo }) {
+// Just applied: what happened, Undo, and until when. `amount` is the net a
+// month now, or the payments a month when there's no recurring income
+// (`mode` 'payments').
+export function AppliedBanner({ state, amount, mode, currency, onUndo }) {
   const t = useT('plan')
   return (
     <Panel p={4} borderColor="status.positive" role="status">
@@ -21,7 +23,7 @@ export function AppliedBanner({ state, net, currency, onUndo }) {
         <IconTile icon={Check} size={40} radius="xl" tone="positive" bg="status.positiveSubtle" />
         <Box flex="1" minW={0}>
           <Text fontFamily="heading" fontWeight="700" fontSize="md">{t('applied.title', { count: state.count })}</Text>
-          <Text fontSize="sm" color="text.muted">{t('applied.body', { amount: formatMoney(net, currency) })}</Text>
+          <Text fontSize="sm" color="text.muted">{t(`applied.body.${mode}`, { amount: formatMoney(amount, currency) })}</Text>
           <HStack mt={2} spacing={2} flexWrap="wrap">
             <Button size="sm" variant="outline" onClick={onUndo}>{t('applied.undo')}</Button>
             <Button as={RouterLink} to="/recurring" size="sm" variant="ghost">{t('applied.view')}</Button>

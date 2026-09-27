@@ -42,7 +42,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Multi-currency: the ECB rate for the expense's date is shown before saving and captured with the entry, so history never shifts. A failed lookup asks for a rate and never saves 1:1
 - Budgets per category/month, with 80% / 100% push alerts
 - Recurring rules (subscriptions, salary) auto-logged nightly, with per-rule payment reminders
-- Plan mode (/plan): try changes to your recurring payments and income (cancel, change the amount or how often, add a new one) and see the monthly net before → after; ideas to save computed on the device; the plan is saved to the account (encrypted); optional Apply changes the real rules in one step, with Undo for 24 hours
+- Plan mode (/plan): try changes to your recurring payments and income (cancel, change the amount or how often, add a new one) and see the monthly net before → after (a salary logged as entries counts as a derived Salary row; with no recurring income the card shows the payments total instead); ideas to save computed on the device; the plan is saved to the account (encrypted); optional Apply changes the real rules in one step, with Undo for 24 hours
 - Savings page: the pot (all time, month by month), this month's flow, repeating savings, goals and a savings-only history
 - Net worth (accounts), insights & 6-month trends
 - One Transactions page (Expenses / Income / All switch) with search & filters across all history
@@ -517,7 +517,31 @@ over last month. Check at 390px (light and dark, English and Greek), desktop
     Recurring".
 11. Backup: a backup made with a saved plan restores it into an account
     that has none (changes follow the matching recurring entries); Settings
-    → Privacy → Download my data includes `recurring_plan`.
+    → Privacy → Download my data includes `recurring_plan`. A plan with a
+    salary change (step 12) keeps it through backup and restore.
+12. Salary from entries: a second account with no recurring salary rule
+    but salary entries (the Salary category, or the one chosen in Settings
+    → Monthly spending) in the last three full months. Income shows a
+    "Salary" row, "Average of the last 3 months · from your entries", equal
+    to the average of the months that had entries (one month only: that
+    month; this month's salary never counts). Tap it → the edit sheet has
+    the amount (no "How often") and a note that the change stays in the
+    plan; the switch turns it off. "Your changes" shows it with "Only in
+    your plan" (no "Open payment"); the Apply sheet leaves it out with a
+    one-line note, and after Apply it's still in the plan; Clear plan
+    clears it. A salary-only plan survives a reload. Add a recurring salary
+    rule in that category → the derived row goes and the banner says its
+    change left the plan. No idea ever points at the Salary row.
+13. No recurring income: an account with recurring payments only (no income
+    rule, no salary entries). The card reads "Recurring payments a month"
+    (Year: "…a year") with the total as a positive amount; cancelling one
+    strikes the old total through and the chip says "€13.99 less" in
+    green. The hint "Add your salary as recurring income to see your net."
+    with "Add recurring income" opens the Recurring form set to Income.
+    "Your changes" totals "Change in payments" (a saving is a minus, in
+    green) and the Apply sheet says "Payments after applying". Adding a
+    recurring income (or salary entries, or an income in "What if I add…")
+    switches the card back to the net.
 
 ### L. Privacy & legal (GDPR)
 

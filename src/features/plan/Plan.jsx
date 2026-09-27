@@ -14,9 +14,9 @@ import { rulesInBase } from '../../shared/lib/ruleFx.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { applyPlan, undoLastApply, usePlanData } from './plan.js'
 import {
-  acknowledge, applySelection, buildItems, dismissIdea, emptyPlan, inView, monthOf, overBudgetMonths,
-  planGroups, planIdeas, planRules, planSummary, priceRises, reconcile, removeAdd, resetChange, rowTag, setChange,
-  signalsFor, startOver, tryIdea, undoState, upsertAdd,
+  acknowledge, applySelection, buildItems, dismissIdea, emptyPlan, headline, inView, monthOf, overBudgetMonths,
+  planGroups, planIdeas, planRules, planSummary, priceRises, reconcile, removeAdd, resetChange, resetSalary, rowTag,
+  setChange, setSalary, signalsFor, startOver, tryIdea, undoState, upsertAdd,
 } from './planMath.js'
 import {
   ChangesPanel, IdeasStrip, ImpactHeader, PlanHint, PlanRow, SavedNote, WhatIfRow, itemName,
@@ -27,7 +27,9 @@ import { AppliedBanner, AppliedNote, ClearDialog, RealityBanner, UndoDialog } fr
 // Plan mode (/plan): a sandbox over the user's recurring payments and income.
 // Every edit shows at once how the monthly net moves, before → after; the plan
 // is saved to the account by itself, and nothing real changes until the user
-// applies it (then Undo for 24 hours). Savings transfers are left out.
+// applies it (then Undo for 24 hours). Savings transfers are left out. A
+// salary logged as entries shows as a derived Salary row (plan-only edits);
+// with no recurring income at all the card shows the payments instead.
 export default function Plan() {
   const t = useT('plan')
   const toast = useToast()
@@ -41,9 +43,10 @@ export default function Plan() {
   const categoriesById = useMemo(() => new Map(d.categories.map((c) => [c.id, c])), [d.categories])
   const items = useMemo(() => buildItems({
     rules: d.rules, plan, savingsIds: d.savingsIds, baseCurrency: currency, rates: d.rates, categoriesById,
-  }), [d.rules, plan, d.savingsIds, currency, d.rates, categoriesById])
+    salary: d.salary,
+  }), [d.rules, plan, d.savingsIds, currency, d.rates, categoriesById, d.salary])
   const sum = useMemo(() => planSummary(items), [items])
-  const reality = useMemo(() => reconcile(plan, d.rules, d.savingsIds), [plan, d.rules, d.savingsIds])
+  const reality = useMemo(() => reconcile(plan, d.rules, d.savingsIds, d.salary), [plan, d.rules, d.savingsIds, d.salary])
   const signals = useMemo(() => {
     const live = planRules(d.rules, d.savingsIds)
     return signalsFor(items, {
@@ -85,7 +88,9 @@ export default function Plan() {
 
   const byId = new Map(items.map((i) => [i.id, i]))
   const ruleOf = (id) => d.rules.find((r) => r.id === id)
-  const edit = (item, patch) => d.setPlan((p) => setChange(p, ruleOf(item.id), patch, itemName(item)))
+  const edit = (item, patch) => d.setPlan((p) => (item.salary
+    ? setSalary(p, patch, item.before.amount_minor)
+    : setChange(p, ruleOf(item.id), patch, itemName(item))))
   const toggle = (item) => {
     if (item.added) d.setPlan((p) => removeAdd(p, item.id))
     else edit(item, { cancel: !item.cancelled })
@@ -138,13 +143,13 @@ export default function Plan() {
     <Stack spacing={4}>
       {header}
       {applied?.canUndo && (
-        <AppliedBanner state={applied} net={monthOf(sum.before)} currency={currency}
+        <AppliedBanner state={applied} amount={monthOf(headline(sum).before)} mode={sum.mode} currency={currency}
           onUndo={() => setSheet({ type: 'undo' })} />
       )}
       {applied && !applied.canUndo && <AppliedNote state={applied} todayISO={d.todayISO} />}
       {(reality.dropped.length > 0 || reality.stale.length > 0) && (
         <RealityBanner dropped={reality.dropped} stale={reality.stale}
-          onOk={() => d.setPlan((p) => acknowledge(p, d.rules, d.savingsIds))} />
+          onOk={() => d.setPlan((p) => acknowledge(p, d.rules, d.savingsIds, d.salary))} />
       )}
       <ImpactHeader sum={sum} view={view} onView={setView} currency={currency} rates={rates} />
       <IdeasStrip ideas={ideas} view={view} currency={currency} onTry={onTry}
@@ -169,7 +174,8 @@ export default function Plan() {
       {sheet?.type === 'edit' && sheetItem && (
         <EditSheet key={sheetItem.id} item={sheetItem} signal={signals.get(sheetItem.id)} currency={currency}
           onChange={(patch) => edit(sheetItem, patch)}
-          onReset={() => d.setPlan((p) => resetChange(p, sheetItem.id))} onClose={close} />
+          onReset={() => d.setPlan((p) => (sheetItem.salary ? resetSalary(p) : resetChange(p, sheetItem.id)))}
+          onClose={close} />
       )}
       {sheet?.type === 'add' && (
         <AddSheet add={sheetItem?.add} categories={d.categories} todayISO={d.todayISO} currency={currency}
