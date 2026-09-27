@@ -20,6 +20,9 @@ this file current, so add project facts here, not in the skills.
 - **Owner preferences:**
   - Decides from pictures: show renders or screenshots before design
     decisions.
+  - Action buttons sit inline, at the end of the content they act on, not in
+    sticky or floating bars over the page. Any "apply" gets a clear or
+    cancel button beside it.
   - Short, plain replies. Questions go as multiple choice with a
     recommendation. Don't repeat "Noted." after hook feedback.
   - Dev and PROD behave identically; existing and future accounts get every

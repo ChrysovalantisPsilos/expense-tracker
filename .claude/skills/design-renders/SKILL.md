@@ -66,7 +66,9 @@ Read `CLAUDE.md` or the design-system docs for the component kit and tokens.
 
 - Open every PNG. Look for:
   - clipped or overflowing text (translations run longer)
-  - overlap, and sheets or bars covering content
+  - overlap, and sheets or bars covering content, including sticky or
+    floating bars over the list mid-scroll (shoot one mid-scroll frame,
+    not just the top)
   - sideways scroll
   - numbers that don't add up
 - Fix and re-shoot. Never send a render you haven't looked at.
