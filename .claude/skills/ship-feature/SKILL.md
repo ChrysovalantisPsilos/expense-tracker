@@ -13,17 +13,10 @@ bar is the acceptance test for every step below.
 ## 0. Before writing code
 
 - **Design undecided? Show renders first.** When the look or flow isn't settled
-  (a new screen, a new layout, "come up with designs"), build prototypes and
-  send screenshots before building for real. Options A/B/C with a
-  recommendation work well. Use fake data only.
-  - **Harness:** copy the app to a scratch folder, add prototype routes, and
-    serve it with `VITE_SUPABASE_URL=https://fake.supabase.co
-    VITE_SUPABASE_ANON_KEY=fake`. Mock Supabase in Playwright, which uses the
-    preinstalled Chromium (`/opt/pw-browsers`).
-  - **Screenshots:** take them at 390×844 with dsf 2, plus desktop when
-    navigation changes.
-  - **Check before sending:** look at every PNG yourself. Look for clipped
-    text, overlap, sideways scroll and numbers that don't add up.
+  (a new screen, a new layout, "come up with designs"), follow the
+  `design-renders` skill: prototypes in a scratch copy with fake data,
+  options A/B/C with a recommendation, and every screenshot checked before
+  sending. Build for real only once the owner has picked.
 - **Ambiguous product decisions go to the owner** as a short multiple-choice
   question with a recommendation. Examples: what a number means, what "apply"
   changes, where an entry point lives. Don't guess on money semantics.
@@ -181,8 +174,8 @@ npm run build
   `git push origin develop`. Vercel deploys dev.budgeer.com.
   - Each push to develop makes open dev apps reload within a minute
     (`AutoUpdate.jsx`). Batch small pushes when the owner is testing.
-- **Never push to `main`.** That's the PROD release, and only with the
-  owner's explicit go.
+- **Never push to `main`.** That's the PROD release (the `release-to-prod`
+  skill), and only with the owner's explicit go.
 
 ## 7. Report to the owner
 
