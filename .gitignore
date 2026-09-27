@@ -25,3 +25,6 @@ supabase/.temp
 # Status page Worker: local wrangler state and secrets (status/.dev.vars)
 status/.dev.vars
 status/.wrangler/
+
+# Local agent scratch checkouts
+.claude/worktrees/
