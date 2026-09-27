@@ -17,6 +17,7 @@ import { intlLocale, t as tr } from '../../shared/lib/i18n/i18n.js'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { frequencyLabel, ruleToChoice } from '../recurring/recurringMath.js'
 import { RatesNote } from '../recurring/SubscriptionGroups.jsx'
+import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { effectOf, inView, monthOf } from './planMath.js'
 
 // ---- Wording ---------------------------------------------------------------------
@@ -176,11 +177,11 @@ export function PlanRow({ item, view, currency, tag, onOpen, onToggle }) {
             <CategoryBadge category={item.category} kind={item.kind} size={32} />
           </Box>
           <Box flex="1" minW={0}>
-            <HStack spacing={1.5} minW={0}>
+            <Flex columnGap={1.5} rowGap={0.5} minW={0} flexWrap="wrap" align="center">
               <Text fontSize="sm" fontWeight="600" noOfLines={1} color={item.cancelled ? 'text.muted' : undefined}>{name}</Text>
               <StateTag item={item} />
-            </HStack>
-            <Text fontSize="xs" color="text.muted" noOfLines={1}>{rowMeta(item, view, t)}</Text>
+            </Flex>
+            <Text fontSize="xs" color="text.muted" noOfLines={2}>{rowMeta(item, view, t)}</Text>
             {tag && <SignalTag tag={tag} mt={1} />}
           </Box>
           <Stack spacing={0} align="flex-end" flexShrink={0}>
@@ -301,12 +302,12 @@ export function IdeasStrip({ ideas, view, currency, onTry, onDismiss }) {
               </HStack>
               <Text fontFamily="heading" fontWeight="700" fontSize="md" lineHeight="1.25">{text.title}</Text>
               <Text fontSize="xs" color="text.muted" mt={1} flex="1">{text.body}</Text>
-              <HStack mt={3} justify="space-between" spacing={2}>
-                <Text fontSize="sm" fontWeight="700" color="status.positive" minW={0}>
+              <Flex mt={3} justify="space-between" align="center" columnGap={2} rowGap={2} flexWrap="wrap">
+                <Text fontSize="sm" fontWeight="700" color="status.positive" whiteSpace="nowrap">
                   {t(`ideas.save.${view}`, { amount: formatMoney(inView(idea.saves, view), currency) })}
                 </Text>
-                <Button size="sm" flexShrink={0} onClick={() => onTry(idea)}>{t('ideas.try')}</Button>
-              </HStack>
+                <Button size="sm" flexShrink={0} ml="auto" onClick={() => onTry(idea)}>{t('ideas.try')}</Button>
+              </Flex>
             </Panel>
           )
         })}
@@ -371,12 +372,14 @@ export function ChangesPanel({ sum, currency, onStartOver }) {
   )
 }
 
-// Sticks above the phone's tab bar (at the bottom elsewhere): how many
+// Sticks above the phone's tab bar (at the bottom elsewhere; a phone held
+// sideways has too little height, so there it ends the page): how many
 // changes and what they do a month, and "Apply to my recurring…".
 export function ApplyBar({ count, delta, currency, onApply }) {
   const t = useT('plan')
+  const short = useShortLandscape()
   return (
-    <Box position={count > 0 ? 'sticky' : 'static'} zIndex={5}
+    <Box position={count > 0 && !short ? 'sticky' : 'static'} zIndex={5}
       bottom={{ base: 'calc(76px + env(safe-area-inset-bottom, 0px))', md: 4 }}>
       <Panel p={3} boxShadow="lifted">
         {count > 0 ? (

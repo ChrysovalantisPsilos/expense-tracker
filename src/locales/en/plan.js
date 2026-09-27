@@ -27,6 +27,8 @@ export default {
   },
   groups: {
     income: 'Income',
+    bills: 'Bills',
+    subscriptions: 'Subscriptions',
   },
   tags: {
     new: 'New',

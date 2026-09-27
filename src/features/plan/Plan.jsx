@@ -14,9 +14,9 @@ import { rulesInBase } from '../../shared/lib/ruleFx.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { applyPlan, undoLastApply, usePlanData } from './plan.js'
 import {
-  acknowledge, applySelection, buildItems, cancelRules, dismissIdea, emptyPlan, inView, monthOf, overBudgetMonths,
+  acknowledge, applySelection, buildItems, dismissIdea, emptyPlan, inView, monthOf, overBudgetMonths,
   planGroups, planIdeas, planRules, planSummary, priceRises, reconcile, removeAdd, resetChange, rowTag, setChange,
-  signalsFor, undoState, upsertAdd,
+  signalsFor, startOver, tryIdea, undoState, upsertAdd,
 } from './planMath.js'
 import {
   ApplyBar, ChangesPanel, IdeasStrip, ImpactHeader, PlanRow, SavedNote, WhatIfRow, itemName,
@@ -91,9 +91,9 @@ export default function Plan() {
     else edit(item, { cancel: !item.cancelled })
   }
   const open = (item) => setSheet({ type: item.added ? 'add' : 'edit', id: item.id })
-  const tryIdea = (idea) => {
+  const onTry = (idea) => {
     if (idea.kind === 'overlap') setSheet({ type: 'pick', id: idea.id })
-    else edit(byId.get(idea.ruleIds[0]), { cancel: true })
+    else d.setPlan((p) => tryIdea(p, idea, [ruleOf(idea.ruleIds[0])]))
   }
   const close = () => setSheet(null)
 
@@ -101,6 +101,7 @@ export default function Plan() {
     const sel = applySelection(items, plan, pickedIds)
     setBusy(true)
     try {
+      await d.settle()
       await applyPlan(sel.apply, sel.remaining)
       d.replace(sel.remaining)
       await Promise.all([d.reloadRules(), d.reloadUndo()])
@@ -109,6 +110,7 @@ export default function Plan() {
     } catch (e) {
       console.error('[plan] apply failed:', e)
       toast({ title: userMessage(e, t('apply.failed')), status: 'error' })
+      d.retry() // the save settle() held back, if any
     } finally {
       setBusy(false)
     }
@@ -145,11 +147,11 @@ export default function Plan() {
           onOk={() => d.setPlan((p) => acknowledge(p, d.rules, d.savingsIds))} />
       )}
       <ImpactHeader sum={sum} view={view} onView={setView} currency={currency} rates={rates} />
-      <IdeasStrip ideas={ideas} view={view} currency={currency} onTry={tryIdea}
+      <IdeasStrip ideas={ideas} view={view} currency={currency} onTry={onTry}
         onDismiss={(idea) => d.setPlan((p) => dismissIdea(p, idea.id))} />
       {planGroups(items).map((g) => (
-        <Panel key={g.key} p={4} pb={2} as="section" aria-label={groupLabel(g.key, t)}>
-          <SectionLabel mb={1} aside={formatMoney(inView(g.total, view), currency)}>{groupLabel(g.key, t)}</SectionLabel>
+        <Panel key={g.key} p={4} pb={2} as="section" aria-label={t(`groups.${g.key}`)}>
+          <SectionLabel mb={1} aside={formatMoney(inView(g.total, view), currency)}>{t(`groups.${g.key}`)}</SectionLabel>
           <Box as="ul">
             {g.items.map((it) => (
               <PlanRow key={it.id} item={it} view={view} currency={currency} tag={rowTag(it, signals)}
@@ -160,7 +162,7 @@ export default function Plan() {
       ))}
       <WhatIfRow onClick={() => setSheet({ type: 'add' })} />
       {sum.changes.length > 0 && (
-        <ChangesPanel sum={sum} currency={currency} onStartOver={() => d.setPlan(emptyPlan())} />
+        <ChangesPanel sum={sum} currency={currency} onStartOver={() => d.setPlan(startOver)} />
       )}
       <ApplyBar count={sum.changes.length} delta={monthOf(sum.delta)} currency={currency}
         onApply={() => setSheet({ type: 'apply' })} />
@@ -178,7 +180,7 @@ export default function Plan() {
       )}
       {pickIdea && (
         <PickSheet idea={pickIdea} items={items} currency={currency} onClose={close}
-          onAdd={(rows) => { d.setPlan((p) => cancelRules(p, rows.map((r) => ruleOf(r.id)))); close() }} />
+          onAdd={(rows) => { d.setPlan((p) => tryIdea(p, pickIdea, rows.map((r) => ruleOf(r.id)))); close() }} />
       )}
       {sheet?.type === 'apply' && sum.changes.length > 0 && (
         <ApplySheet sum={sum} currency={currency} busy={busy} onApply={apply} onClose={close} />
@@ -190,4 +192,3 @@ export default function Plan() {
   )
 }
 
-const groupLabel = (key, t) => (key === 'income' ? t('groups.income') : t(`recurring:choices.${key}`))

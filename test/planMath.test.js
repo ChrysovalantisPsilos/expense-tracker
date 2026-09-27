@@ -4,7 +4,7 @@ import {
   yearMinor, monthOf, inView, emptyPlan, isEmptyPlan, normalisePlan, planRules, buildItems, planGroups,
   planSummary, effectOf, setChange, resetChange, cancelRules, upsertAdd, removeAdd, dismissIdea, reconcile,
   acknowledge, priceRises, recentMonths, overBudgetMonths, signalsFor, rowTag, planIdeas, overlapPick,
-  applySelection, undoState, snapOf, rateNeeds, MAX_IDEAS,
+  applySelection, undoState, snapOf, rateNeeds, startOver, tryIdea, MAX_IDEAS,
 } from '../src/features/plan/planMath.js'
 
 // Fake ids (uuid-shaped, as the server's rule ids are).
@@ -92,12 +92,27 @@ test('currency: foreign rules count at today’s rate; one with no rate is left 
   })).map((r) => r.currency), ['USD', 'GBP'])
 })
 
-test('groups: income first, then by how often they charge; totals follow the plan', () => {
+test('groups: Income, then Bills (home, utilities, health… by key or icon), then Subscriptions; totals follow the plan', () => {
   const plan = setChange(emptyPlan(), NETFLIX, { cancel: true })
   const groups = planGroups(items(plan))
-  assert.deepEqual(groups.map((g) => g.key), ['income', 'monthly', 'yearly'])
-  const monthly = groups.find((g) => g.key === 'monthly')
-  assert.equal(monthly.total, 12 * (115000 + 1099 + 899 + 3990))
+  assert.deepEqual(groups.map((g) => g.key), ['income', 'bills', 'subscriptions'])
+  assert.deepEqual(groups.map((g) => g.items.map((i) => i.name)), [
+    ['Salary'], ['Rent'], ['Netflix', 'Spotify', 'Disney+', 'Gym', 'Car insurance'],
+  ])
+  assert.equal(groups[1].total, 12 * 115000)
+  assert.equal(groups[2].total, 12 * (1099 + 899 + 3990) + 48000)
+  // The user's own category counts by its icon; an add by its category.
+  const phone = { ...rule(30, 'Phone', 2000, { category_id: id(930) }), categories: { name: 'Mobile', icon: 'phone' } }
+  const ELEC = id(931)
+  const withAdd = upsertAdd(emptyPlan(), {
+    id: 'a1', kind: 'expense', name: 'Power', amount_minor: 5000, currency: 'EUR', frequency: 'monthly',
+    interval_n: 1, start: '2026-10-01', category_id: ELEC,
+  })
+  const list = buildItems({
+    rules: [phone], plan: withAdd, baseCurrency: 'EUR',
+    categoriesById: new Map([[ELEC, { name: 'Electricity', icon: 'electricity' }]]),
+  })
+  assert.deepEqual(list.map((i) => i.group), ['bills', 'bills'])
 })
 
 test('edits: amount and frequency change the net; editing back removes the change', () => {
@@ -112,7 +127,7 @@ test('edits: amount and frequency change the net; editing back removes the chang
   plan = setChange(plan, GYM, { frequency: 'yearly' })
   gym = items(plan).find((i) => i.id === GYM.id)
   assert.equal(gym.afterYear, 2490)
-  assert.equal(gym.group, 'monthly', 'rows keep their place while edited')
+  assert.equal(gym.group, 'subscriptions', 'rows keep their place while edited')
 
   plan = setChange(plan, GYM, { amount_minor: 3990, frequency: 'monthly' })
   assert.equal(plan.changes.length, 0)
@@ -342,4 +357,26 @@ test('undo state: undo for 24 hours, then a quiet note for a week', () => {
   assert.equal(late.canUndo, false)
   assert.equal(late.count, 4)
   assert.equal(undoState({ applied_at: at, change_count: 4 }, new Date('2026-10-05T12:00:00Z')), null)
+})
+
+test('Start over drops every change and add but keeps the dismissed ideas', () => {
+  let plan = setChange(emptyPlan(), NETFLIX, { cancel: true })
+  plan = upsertAdd(plan, {
+    id: 'a1', kind: 'income', name: 'Tutoring', amount_minor: 12000, currency: 'EUR', frequency: 'monthly',
+    interval_n: 1, start: '2026-10-01',
+  })
+  plan = dismissIdea(plan, 'biggest:x')
+  assert.deepEqual(startOver(plan), { ...emptyPlan(), dismissed: ['biggest:x'] })
+  assert.equal(isEmptyPlan(startOver(setChange(emptyPlan(), GYM, { cancel: true }))), true)
+})
+
+test('trying an idea cancels its picked rules and retires the idea, even after a reset', () => {
+  const list = items()
+  const signals = signalsFor(list)
+  const overlap = planIdeas(list, signals).find((i) => i.kind === 'overlap')
+  let plan = tryIdea(emptyPlan(), overlap, [NETFLIX])
+  assert.deepEqual(plan.changes.map((c) => [c.rule_id, c.cancel]), [[NETFLIX.id, true]])
+  assert.ok(plan.dismissed.includes(overlap.id))
+  plan = resetChange(plan, NETFLIX.id)
+  assert.equal(planIdeas(items(plan), signals, plan.dismissed).some((i) => i.id === overlap.id), false)
 })

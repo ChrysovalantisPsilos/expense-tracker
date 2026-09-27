@@ -27,6 +27,8 @@ export default {
   },
   groups: {
     income: 'Έσοδα',
+    bills: 'Λογαριασμοί',
+    subscriptions: 'Συνδρομές',
   },
   tags: {
     new: 'Νέο',

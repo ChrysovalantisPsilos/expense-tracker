@@ -4,7 +4,7 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION, BackupError, backupFileName, normText, txnKey, groupShareNote,
   buildBackup, serializeBackup, readBackup, unlockBackup, backupContents, mapCategories,
   matchByName, planRules, planTransactions, planBudgets, planRecurring, planProfile, planSalaryShift, planPayment,
-  currencyChange,
+  currencyChange, restorePlan,
   restoreSummary, splitDateRange, rebaseRateSpans, rebaseBackupData,
 } from '../src/features/backup/backupMath.js'
 import { UserError } from '../src/shared/lib/errors.js'
@@ -921,4 +921,58 @@ test('categories: the upgrade leaves newer files and deliberate names alone', ()
   // Version 3: a "Friend Transfer" is the user's own choice.
   const v3 = buildBackup({ userId: 'u', categories: [cats[0]] })
   assert.equal(readBackup(JSON.stringify(v3)).backup.data.categories[0].name, 'Friend Transfer')
+})
+
+test('plan: the saved plan rides along with keys, round-trips, and restores onto the matching entries', async () => {
+  const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+  const snap = { name: 'Netflix', amount_minor: 999, currency: 'EUR', frequency: 'monthly', interval_n: 1 }
+  const recurring = [
+    { id: 'rule-net', kind: 'expense', category_id: 'cat-food', account_id: null, amount_minor: 999, currency: 'EUR',
+      description: 'Netflix', frequency: 'monthly', interval_n: 1, next_run: '2026-10-01', end_date: null, is_active: true },
+    { id: 'rule-gym', kind: 'expense', category_id: null, account_id: null, amount_minor: 3990, currency: 'EUR',
+      description: 'Gym', frequency: 'monthly', interval_n: 1, next_run: '2026-10-03', end_date: null, is_active: true },
+  ]
+  const plan = {
+    v: 1,
+    changes: [
+      { rule_id: 'rule-net', snap, cancel: true },
+      { rule_id: 'rule-gym', snap: { ...snap, name: 'Gym', amount_minor: 3990 }, amount_minor: 2490 },
+      { rule_id: 'rule-gone', snap, cancel: true },
+    ],
+    adds: [
+      { id: 'a1', kind: 'income', name: 'Tutoring', amount_minor: 12000, currency: 'EUR', frequency: 'monthly',
+        interval_n: 1, start: '2026-10-01', category_id: 'cat-pay' },
+      { id: 'a2', kind: 'expense', name: 'Climbing', amount_minor: 4500, currency: 'EUR', frequency: 'monthly',
+        interval_n: 1, start: '2026-11-01', category_id: 'cat-missing' },
+    ],
+    dismissed: ['biggest:rule-gym'],
+  }
+  const doc = buildBackup({ userId: 'u-source', categories: CATS, recurring, plan })
+  assert.deepEqual(doc.data.recurring.map((r) => r.key), ['r1', 'r2'])
+  assert.deepEqual(doc.data.plan.changes.map((c) => c.rule), ['r1', 'r2'], 'a change to a rule not in the file is left out')
+  assert.deepEqual(doc.data.plan.adds.map((a) => a.category), ['c3', null])
+  for (const id of ['rule-net', 'rule-gym', 'cat-pay']) assert.ok(!JSON.stringify(doc).includes(`"${id}"`), id)
+
+  const back = readBackup(await serializeBackup(doc, null)).backup
+  assert.deepEqual(back.data.plan, doc.data.plan)
+  assert.equal(readBackup(JSON.stringify(buildBackup({ userId: 'u', plan: { v: 1, changes: [], adds: [], dismissed: [] } })))
+    .backup.data.plan, undefined, 'an empty plan isn’t written')
+
+  // Restored into an account whose Netflix entry already exists (matched as
+  // planRecurring matches it) and whose Gym entry doesn't: Netflix's change
+  // follows it, Gym's is dropped; the add's category maps to the account's.
+  const rulesNow = [{ id: uuid(1), kind: 'expense', amount_minor: '999', frequency: 'monthly', description: 'NETFLIX' }]
+  const restored = restorePlan(back.data.plan, back.data.recurring, rulesNow, new Map([['c3', uuid(9)]]))
+  assert.deepEqual(restored.changes, [{ rule_id: uuid(1), snap, cancel: true }])
+  assert.deepEqual(restored.adds.map((a) => [a.name, a.category_id]), [['Tutoring', uuid(9)], ['Climbing', null]])
+  assert.deepEqual(restored.dismissed, ['biggest:rule-gym'])
+  assert.deepEqual(restorePlan(undefined, [], [], new Map()), { v: 1, changes: [], adds: [], dismissed: [] })
+})
+
+test('plan: a damaged plan in the file is refused; one naming an unknown entry loses that change', () => {
+  const doc = sourceDoc()
+  doc.data.plan = { changes: 'nope', adds: [], dismissed: [] }
+  assert.throws(() => readBackup(JSON.stringify(doc)), BackupError)
+  doc.data.plan = { changes: [{ rule: 'r9', cancel: true }], adds: [], dismissed: ['x'] }
+  assert.deepEqual(readBackup(JSON.stringify(doc)).backup.data.plan, { changes: [], adds: [], dismissed: ['x'] })
 })

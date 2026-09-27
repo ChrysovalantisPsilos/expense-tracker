@@ -5971,11 +5971,58 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 96. 0095: the plan tables leave with their user. demo_wipe (0090's nightly
+--     demo reset) clears the demo accounts' plans and undo records and no
+--     one else's; deleting an account cascades both away.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; r1 uuid; n int;
+        plan jsonb := jsonb_build_object('v', 1, 'dismissed', jsonb_build_array('biggest:x'));
+begin
+  begin
+    u1 := pg_temp.zz_user('wipe1');
+    u2 := pg_temp.zz_user('wipe2');
+    foreach n in array array[1, 2] loop
+      perform set_config('request.jwt.claims', json_build_object('sub', case n when 1 then u1 else u2 end,
+        'role', 'authenticated')::text, true);
+      execute 'set local role authenticated';
+      r1 := public.save_recurring_rule(null, jsonb_build_object('kind', 'expense', 'amount_minor', 1000,
+        'currency', 'EUR', 'description', 'ZZ Stream', 'frequency', 'monthly', 'next_run', current_date + 3));
+      perform public.apply_recurring_plan(jsonb_build_object('changes', jsonb_build_array(
+        jsonb_build_object('rule_id', r1, 'cancel', true))), plan);
+      execute 'reset role';
+    end loop;
+    select count(*) into n from public.recurring_plans where user_id in (u1, u2);
+    if n <> 2 then raise exception 'setup: % plans', n; end if;
+
+    perform public.demo_wipe(array[u1]);
+    if exists (select 1 from public.recurring_plans where user_id = u1)
+       or exists (select 1 from public.recurring_plan_undo where user_id = u1) then
+      raise exception 'demo_wipe left the plan or its undo record';
+    end if;
+    if not exists (select 1 from public.recurring_plans where user_id = u2)
+       or not exists (select 1 from public.recurring_plan_undo where user_id = u2) then
+      raise exception 'demo_wipe touched another account''s plan';
+    end if;
+
+    delete from auth.users where id = u2;
+    if exists (select 1 from public.recurring_plans where user_id = u2)
+       or exists (select 1 from public.recurring_plan_undo where user_id = u2) then
+      raise exception 'account deletion left the plan or its undo record';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: demo_wipe and account deletion clear the plan and its undo record, only for those users';
+    else update _t set fails = fails + 1; raise notice 'FAIL: plan cleanup — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 96; f int; p int;  -- tests 1–95 + B-0059
+declare expected_tests constant int := 97; f int; p int;  -- tests 1–96 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

@@ -25,7 +25,7 @@
 // `snap` is the rule as it was when the change was first planned: "before"
 // always uses today's rule, and a snapshot that differs says "Updated since
 // your plan".
-import { FREQUENCIES, subscriptionGroup } from '../recurring/recurringMath.js'
+import { FREQUENCIES } from '../recurring/recurringMath.js'
 import { budgetWindow, periodBudgets } from '../budgets/budgetMath.js'
 import { ruleInBase } from '../../shared/lib/ruleFx.js'
 import { rowEffect } from '../../shared/lib/savings.js'
@@ -55,6 +55,10 @@ const BIGGEST_MIN_EXPENSES = 3
 // Facts about them (a price rise, over budget) still show.
 const ESSENTIAL_KEYS = new Set(['housing', 'utilities', 'health'])
 const ESSENTIAL_ICONS = new Set(['housing', 'rent', 'utilities', 'electricity', 'water', 'health', 'taxes', 'insurance'])
+// Bills: the essentials plus the other running costs of a home (the icon
+// picker's "home" section without streaming). Every other expense is a
+// subscription.
+const BILL_ICONS = new Set([...ESSENTIAL_ICONS, 'internet', 'phone', 'bank-fees'])
 
 export const UNDO_HOURS = 24
 // How long "Applied … · View in Recurring" stays once undo has run out.
@@ -83,6 +87,9 @@ export const inView = (yearMinorValue, view) => (view === 'year' ? yearMinorValu
 // ---- The plan document ---------------------------------------------------------
 
 export const emptyPlan = () => ({ v: PLAN_VERSION, changes: [], adds: [], dismissed: [] })
+
+// "Start over": every change and add goes, the dismissed ideas stay dismissed.
+export const startOver = (plan) => ({ ...emptyPlan(), dismissed: plan.dismissed })
 
 export const isEmptyPlan = (plan) => !plan.changes.length && !plan.adds.length && !plan.dismissed.length
 
@@ -177,10 +184,12 @@ const snapDiffers = (snap, rule) => RULE_FIELDS.some((k) => snap[k] !== pickRule
 
 // ---- Items: every row of the plan, before → after ----------------------------
 
-// The group a row sits in: income first, then the Recurring page's groups
-// by how often they charge (recurringMath.subscriptionGroup).
-export const GROUP_ORDER = ['income', 'weekly', 'monthly', 'quarterly', 'yearly']
-const groupOf = (kind, fields) => (kind === 'income' ? 'income' : subscriptionGroup(fields))
+// The group a row sits in: Income, then Bills (an expense in a home, utility,
+// health, tax or insurance category — by the default category's key, or by
+// the icon for the user's own), then Subscriptions (every other expense).
+export const GROUP_ORDER = ['income', 'bills', 'subscriptions']
+const isBill = (category) => ESSENTIAL_KEYS.has(category?.default_key) || BILL_ICONS.has(category?.icon)
+const groupOf = (kind, category) => (kind === 'income' ? 'income' : isBill(category) ? 'bills' : 'subscriptions')
 
 function money(fields, baseCurrency, rates) {
   const b = fields && ruleInBase(fields, baseCurrency, rates)
@@ -207,7 +216,7 @@ export function buildItems({ rules, plan, savingsIds, baseCurrency, rates = {}, 
     return {
       id: rule.id, ruleId: rule.id, added: false, kind: rule.kind, name: ruleName(rule),
       category: rule.categories ?? null, categoryId: rule.category_id ?? null,
-      group: groupOf(rule.kind, before), next: rule.next_run, before, after,
+      group: groupOf(rule.kind, rule.categories), next: rule.next_run, before, after,
       beforeYear: missing ? 0 : b, afterYear: missing ? 0 : a, missing,
       cancelled: !!change?.cancel,
       changed: !!change && (!!change.cancel || RULE_FIELDS.some((k) => after[k] !== before[k])),
@@ -217,11 +226,12 @@ export function buildItems({ rules, plan, savingsIds, baseCurrency, rates = {}, 
   })
   const adds = plan.adds.map((add) => {
     const after = pickRule(add)
+    const category = categoriesById.get(add.category_id) ?? null
     const a = money(after, baseCurrency, rates)
     return {
       id: add.id, ruleId: null, added: true, kind: add.kind, name: add.name,
-      category: categoriesById.get(add.category_id) ?? null, categoryId: add.category_id,
-      group: groupOf(add.kind, after), next: add.start, before: null, after,
+      category, categoryId: add.category_id,
+      group: groupOf(add.kind, category), next: add.start, before: null, after,
       beforeYear: 0, afterYear: a ?? 0, missing: a == null,
       cancelled: false, changed: true, stale: false, snap: null, add,
     }
@@ -285,6 +295,11 @@ export const resetChange = (plan, ruleId) => ({ ...plan, changes: plan.changes.f
 
 // Cancel several rules at once (an overlap idea's picks).
 export const cancelRules = (plan, rules) => rules.reduce((p, r) => setChange(p, r, { cancel: true }), plan)
+
+// "Try it" on an idea: its picked rules (every rule of a single-rule idea)
+// are cancelled in the plan, and the idea is gone for good — resetting the
+// change later doesn't bring it back.
+export const tryIdea = (plan, idea, rules) => dismissIdea(cancelRules(plan, rules), idea.id)
 
 // Add or replace a "What if I add…" item (validated like a stored one).
 export function upsertAdd(plan, add) {

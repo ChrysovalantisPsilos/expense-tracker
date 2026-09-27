@@ -66,6 +66,8 @@ export const savePlan = storePlan
 //   plan      the plan (null until read)
 //   setPlan   edit it: setPlan(next) or setPlan(prev => next)
 //   replace   take a plan the server already holds (after an apply), unsaved
+//   settle    stop a save still waiting and wait for one on its way, so an
+//             apply's own copy of the plan is the last word
 //   status    'saved' | 'saving' | 'error'
 //   undo      the last apply ({ applied_at, change_count }) or null
 function useSavedPlan() {
@@ -76,6 +78,8 @@ function useSavedPlan() {
   const [status, setStatus] = useState('saved')
   const dirty = useRef(false)
   const latest = useRef(null)
+  const timer = useRef(null)
+  const inflight = useRef(Promise.resolve())
   latest.current = plan
 
   useEffect(() => {
@@ -85,15 +89,16 @@ function useSavedPlan() {
   useEffect(() => {
     if (!dirty.current || !plan) return undefined
     setStatus('saving')
-    const timer = setTimeout(() => {
+    timer.current = setTimeout(() => {
+      timer.current = null
       dirty.current = false
-      storePlan(plan).then(() => setStatus('saved'), (e) => {
+      inflight.current = storePlan(plan).then(() => setStatus('saved'), (e) => {
         console.error('[plan] save failed:', e)
         dirty.current = true
         setStatus('error')
       })
     }, SAVE_DELAY_MS)
-    return () => clearTimeout(timer)
+    return () => clearTimeout(timer.current)
   }, [plan])
 
   // Leaving the page with an edit still waiting: save it now.
@@ -107,9 +112,14 @@ function useSavedPlan() {
   }, [])
   const replace = useCallback((next) => { dirty.current = false; setPlanState(next); setStatus('saved') }, [])
   const retry = useCallback(() => setPlanState((p) => (p ? { ...p } : p)), [])
+  const settle = useCallback(() => {
+    clearTimeout(timer.current)
+    timer.current = null
+    return inflight.current
+  }, [])
 
   return {
-    plan, setPlan, replace, status, retry,
+    plan, setPlan, replace, settle, status, retry,
     undo: q.data?.undo ?? null, reloadUndo: q.reload,
     loading: q.loading || (!!q.data && plan === null), error: q.error, reload: q.reload,
   }

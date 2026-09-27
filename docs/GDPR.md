@@ -43,6 +43,7 @@ the owner deletes it or the account (and at most until the inactivity sweep).
 | `categories`, `category_rules` | names, `is_savings` (0084); the defaults "Friends & family", "Bonus" and "Savings" were added to every existing account (0082–0084), no other data touched; rule patterns (“description contains”), also saved from the import's New merchants list — can be a payee's name | Organise own records | (b); payee names in patterns (f) | account | owner |
 | `transactions` | amount/description/notes (enc), currency, rate, date, category, account, group link, `savings_from_income` (0084), `paid_from_savings` (0085); imported descriptions carry the statement's payee/payer names (never the holder's own name column) | Expense/income tracking | (b); third-party names in imported descriptions (f) | account | owner |
 | `accounts`, `budgets`, `savings_goals`, `recurring_rules` | names; balances/amounts/targets (enc); schedule; rules' `savings_from_income`/`paid_from_savings` (0084/0085) | Personal finance features | (b) | account | owner |
+| `recurring_plans`, `recurring_plan_undo` (0095) | Plan mode: the one saved plan (planned changes to recurring rules — amounts, schedules, cancels — hypothetical new payments/income with names, dismissed ideas) and, for 24 hours after an apply, each touched rule's prior amount/schedule/state and the ids it created (both enc); the plan's ideas are computed on the device | Try changes to recurring payments before making them; undo an apply | (b) | account (plan until cleared or applied; undo record replaced by the next apply or removed by undo) | owner (only through the definer functions; no table grants) |
 | `groups` | name, picture, owner | Bill splitting | (b); for non-users (f) | until the group is deleted | members |
 | `group_members` | display_name, user link, former_user_id, role | Who is in a group | (b)/(f) | group lifetime; on account deletion renamed "Former member" and unlinked (0072) | members |
 | `group_expenses`, `expense_splits`, `settlements` | amounts, descriptions, notes (enc), payer, shares, dates | Shared ledger and balances | (b)/(f) | group lifetime (other members rely on it) | members |
@@ -94,7 +95,7 @@ creation/refresh (an installed PWA refreshes its session when opened).
 
 | Right | In the app | Server path |
 | --- | --- | --- |
-| Access / portability (15/20) | Settings → Privacy → Download my data | `export_my_data()` (0074/0076; caller only, decrypted, rate-limited 10/h; each download emails a security notice) |
+| Access / portability (15/20) | Settings → Privacy → Download my data | `export_my_data()` (0074/0076/0095; caller only, decrypted, rate-limited 10/h; each download emails a security notice) |
 | Rectification (16) | Settings → Account; edit any record | normal RLS writes |
 | Erasure (17) | Settings → Security → Delete account | edge `delete-account` → `_shared/accountDeletion.ts` + `anonymise_departing_user` trigger |
 | Restriction / objection (18/21), other | Settings → Privacy → Send a request, or email | edge `privacy-request` → privacy@ via Resend (3/day) |

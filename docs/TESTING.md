@@ -42,6 +42,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Multi-currency: the ECB rate for the expense's date is shown before saving and captured with the entry, so history never shifts. A failed lookup asks for a rate and never saves 1:1
 - Budgets per category/month, with 80% / 100% push alerts
 - Recurring rules (subscriptions, salary) auto-logged nightly, with per-rule payment reminders
+- Plan mode (/plan): try changes to your recurring payments and income (cancel, change the amount or how often, add a new one) and see the monthly net before → after; ideas to save computed on the device; the plan is saved to the account (encrypted); optional Apply changes the real rules in one step, with Undo for 24 hours
 - Savings page: the pot (all time, month by month), this month's flow, repeating savings, goals and a savings-only history
 - Net worth (accounts), insights & 6-month trends
 - One Transactions page (Expenses / Income / All switch) with search & filters across all history
@@ -245,10 +246,10 @@ the app stays scrollable, and the file downloads within seconds.
 34. Phone width: the bottom bar is exactly Home · Transactions · Groups ·
     Budgets · More; the top bar is bell, theme toggle, avatar (plus the
     offline badge when offline). Transactions stays lit on `/import`; More
-    stays lit on Insights, Savings, Recurring and every Settings page; Groups stays lit
+    stays lit on Insights, Savings, Recurring, Plan and every Settings page; Groups stays lit
     inside a group.
 35. Desktop: the sidebar is Home, Transactions, Groups, Budgets, a divider,
-    Insights, Savings, Recurring, then the user row (→ Settings), theme toggle and sign
+    Insights, Savings, Recurring, Plan, then the user row (→ Settings), theme toggle and sign
     out. No More or Search entries. Tablets, desktops and portrait phones
     look exactly as before whatever the sideways layout below does.
 35a. A phone held sideways (landscape, ≤ 500px tall: 844×390, 667×375, and
@@ -356,7 +357,7 @@ camera step inside the expense page, and it never submits that page.
 | `/groups/<id>/comments/<itemId>` | the comment icon on an expense or settlement |
 | `/groups/<id>/members` | the member stack under the group's name |
 | `/groups/<id>/edit` | ⋯ → Rename group (owner) |
-| `/recurring/new?kind=…`, `/recurring/<id>` | Recurring → Add; a rule's Edit |
+| `/recurring/new?kind=…`, `/recurring/<id>` | Recurring → Add; a rule's Edit; Plan's "Open payment" |
 | `/savings/goals/new`, `/savings/goals/<id>` | Savings → Goal; a goal's Edit (the old `/insights/goals/…` links redirect here) |
 | `/insights/accounts/new`, `/insights/accounts/<id>` | Insights → Account; an account's Edit |
 | `/settings/categories/new?kind=…` | Settings → Categories → Add (Edit opens the category's page with its Edit panel, like Budgets → Edit) |
@@ -460,6 +461,61 @@ at 390px (light and dark), desktop 1280, and sideways at 844×390.
    layout.
 8. Sideways: the fields and chips on the left, the split card on the right,
    "Add to <group>" in the slim header.
+
+### K5. Plan mode
+
+Fake data: an account with a salary, rent (Housing), three streaming
+subscriptions in one category (one of them with two charges at different
+prices), a gym, a yearly insurance, a savings transfer ("Taken from my
+income") and one rule in USD; a budget on the streaming category that went
+over last month. Check at 390px (light and dark, English and Greek), desktop
+1280, and sideways at 844×390.
+
+1. Entry: the sidebar has Plan right after Recurring; on a phone it's in
+   More (More stays lit on `/plan`); sideways, through the rail's More.
+   Nothing new on Home or Recurring.
+2. The impact card: "Net a month" = recurring income − recurring payments,
+   yearly ones at ÷ 12 and the USD rule at today's rate (with the rates
+   note); the savings transfer isn't anywhere on the page. Month/Year
+   changes every figure on the page (card, groups, rows, ideas).
+3. Rows sit under Income, Bills (rent, insurance, utilities…) and
+   Subscriptions, each with its total. Turn a switch off → the row's amount
+   is struck through, "Cancelled" (income: "Stopped"), the chip shows the
+   gain, the sticky bar reads "1 change · +€X/mo".
+4. Tap a row → the edit sheet: type a new amount → the delta updates live;
+   change how often; Keep/Cancel; Reset puts it back. A changed row shows
+   the old amount struck through. Income (a raise) works the same.
+5. "What if I add…" → a new cost or income (name, amount, currency, how
+   often, start, category) → it's listed as "New" and moves the net; tap it
+   to edit or remove it.
+6. Ideas to save: at most three cards (overlap, price went up, biggest
+   saver, over budget) and one tag per row. × dismisses one for good (also
+   after a reload). Try it cancels that payment in the plan and the card
+   goes. The overlap's Try it opens the picker: most expensive first, none
+   ticked, "Add to plan" disabled until one is ticked, the saving follows
+   the ticks. A card also goes once any of its payments is changed by hand.
+7. "Your changes": each change with its saving a month and a year, "Open
+   payment" (the rule's page), the net change, and Start over (clears the
+   changes and adds; dismissed ideas stay dismissed).
+8. Saved: the header says "Plan saved"; reload, or open the page on another
+   device → the same plan. Edit a planned rule on Recurring (another
+   amount) → back on Plan the row says "Updated since your plan" and the
+   banner lists it; delete a planned rule → its change leaves the plan with
+   a note. OK clears the banner.
+9. Apply: "Apply to my recurring…" → every change ticked, "Net after
+   applying" follows the ticks, the amber warning (real payments change,
+   nothing is cancelled with providers, undo for 24 hours) shows above the
+   button without scrolling. Apply → toast, the applied changes leave the
+   plan (unticked ones stay), Recurring shows the cancelled rule paused
+   (history kept), the edit from its next charge, the add as a new rule.
+10. Undo (in the green banner, for 24 hours): the dialog says entries
+    already added today stay → Undo → every rule exactly as before (paused
+    ones running again, added ones gone). After 24 hours the server refuses
+    it and the page shows a quiet "Applied yesterday · N changes · View in
+    Recurring".
+11. Backup: a backup made with a saved plan restores it into an account
+    that has none (changes follow the matching recurring entries); Settings
+    → Privacy → Download my data includes `recurring_plan`.
 
 ### L. Privacy & legal (GDPR)
 
