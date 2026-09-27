@@ -97,6 +97,8 @@ export default {
     budgets_other: '{{count}} budgets',
     recurring_one: '{{count}} recurring entry',
     recurring_other: '{{count}} recurring entries',
+    plan_one: '{{count}} plan',
+    plan_other: '{{count}} plans',
     accounts_one: '{{count}} account',
     accounts_other: '{{count}} accounts',
     goals_one: '{{count}} savings goal',

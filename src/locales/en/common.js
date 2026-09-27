@@ -110,6 +110,8 @@ export default {
       baseCurrencyFixed: 'Your base currency is fixed once you’ve added entries, so past amounts stay correct.',
       paymentDetailsLong: 'Payment details are too long.',
       salaryCategory: 'Choose one of your own income categories for your salary.',
+      planTooBig: 'Your plan is too big.',
+      undoExpired: 'Undo is no longer available.',
       tooManyChanges: 'Too many changes — please try again later.',
       tooManyComments: 'Too many comments — please slow down.',
       tooManyExpenses: 'Too many expenses added — please slow down.',

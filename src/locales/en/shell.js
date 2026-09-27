@@ -8,6 +8,7 @@ export default {
     insights: 'Insights',
     savings: 'Savings',
     recurring: 'Recurring',
+    plan: 'Plan',
     more: 'More',
     settings: 'Settings',
   },
@@ -20,6 +21,7 @@ export default {
     insights: 'Trends & net worth',
     savings: 'Your pot, goals & history',
     recurring: 'Subscriptions & recurring bills',
+    plan: 'Try changes to your recurring, safely',
     settings: 'Account, notifications & security',
   },
 }

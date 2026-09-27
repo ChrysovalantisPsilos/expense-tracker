@@ -5679,11 +5679,303 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 93. 0095: Plan mode — the plan is the caller's only. A user reads and saves
+--     their own plan (encrypted at rest); another user sees none of it and
+--     can't overwrite or clear it; the tables are closed to API roles (the
+--     owner guard files even a definer write under the caller); anon can't
+--     call the RPCs; a malformed or oversized plan is refused; "Start over"
+--     clears it.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; doc jsonb; n int; raw bytea;
+        plan jsonb := jsonb_build_object('v', 1,
+          'changes', jsonb_build_array(jsonb_build_object(
+            'rule_id', '00000000-0000-4000-8000-00000000abcd', 'cancel', true,
+            'snap', jsonb_build_object('name', 'ZZ Netflix', 'amount_minor', 1399, 'currency', 'EUR',
+                                       'frequency', 'monthly', 'interval_n', 1))),
+          'adds', '[]'::jsonb, 'dismissed', jsonb_build_array('overlap:x'));
+begin
+  begin
+    u1 := pg_temp.zz_user('plan1');
+    u2 := pg_temp.zz_user('plan2');
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_recurring_plan(plan);
+    doc := public.my_recurring_plan();
+    if doc->'plan' is distinct from plan then execute 'reset role'; raise exception 'own plan not read back: %', doc; end if;
+    begin
+      perform count(*) from public.recurring_plans;
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: recurring_plans readable by authenticated';
+    exception when insufficient_privilege then null;
+    end;
+    begin
+      insert into public.recurring_plans (user_id, payload_enc) values (u2, '\x00');
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: recurring_plans writable by authenticated';
+    exception when insufficient_privilege then null;
+    end;
+    begin
+      perform public.save_recurring_plan(jsonb_build_object('v', 1, 'changes', jsonb_build_array(
+        jsonb_build_object('rule_id', 'not-a-uuid', 'snap', '{}'::jsonb))));
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: malformed plan saved';
+    exception when others then if sqlerrm <> 'bad plan' then raise; end if; end;
+    begin
+      perform public.save_recurring_plan(jsonb_build_object('v', 1, 'dismissed', jsonb_build_array('x'),
+        'pad', repeat('y', 70000)));
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: oversized plan saved';
+    exception when others then if sqlerrm <> 'Your plan is too big.' then raise; end if; end;
+    execute 'reset role';
+
+    select payload_enc into raw from public.recurring_plans where user_id = u1;
+    if raw is null or position(convert_to('ZZ Netflix', 'UTF8') in raw) > 0 then
+      raise exception 'plan not stored encrypted';
+    end if;
+
+    -- Another user: sees no plan, and saving or clearing touches only their own.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    doc := public.my_recurring_plan();
+    if doc->'plan' <> 'null'::jsonb or doc->'undo' <> 'null'::jsonb then
+      execute 'reset role'; raise exception 'another user read a plan: %', doc;
+    end if;
+    perform public.save_recurring_plan(jsonb_build_object('v', 1, 'dismissed', jsonb_build_array('mine')));
+    perform public.clear_recurring_plan();
+    execute 'reset role';
+    select count(*) into n from public.recurring_plans where user_id = u1;
+    if n <> 1 then raise exception 'another user''s clear removed the plan'; end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    if public.my_recurring_plan()->'plan' is distinct from plan then
+      execute 'reset role'; raise exception 'another user changed the plan';
+    end if;
+    execute 'reset role';
+
+    -- The owner guard: a definer-side write is filed under the caller.
+    insert into public.recurring_plan_undo (user_id, snapshot_enc, change_count)
+      values (u2, public.enc_text('{}'), 1);
+    if not exists (select 1 from public.recurring_plan_undo where user_id = u1)
+       or exists (select 1 from public.recurring_plan_undo where user_id = u2) then
+      raise exception 'owner guard did not force the caller';
+    end if;
+    delete from public.recurring_plan_undo where user_id = u1;
+
+    -- anon: none of the RPCs.
+    perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+    execute 'set local role anon';
+    begin
+      perform public.my_recurring_plan();
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: anon read a plan';
+    exception when insufficient_privilege then null;
+    end;
+    begin
+      perform public.save_recurring_plan(plan);
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: anon saved a plan';
+    exception when insufficient_privilege then null;
+    end;
+    execute 'reset role';
+    if exists (select 1 from pg_proc p cross join (values ('anon'), ('authenticated')) r(rolname)
+                where p.pronamespace = 'public'::regnamespace
+                  and (p.proname in ('recurring_plan_check', 'recurring_plan_fields', 'store_recurring_plan',
+                                     'recurring_plan_owner_guard')
+                       or (r.rolname = 'anon' and p.proname in ('my_recurring_plan', 'save_recurring_plan',
+                             'clear_recurring_plan', 'apply_recurring_plan', 'undo_recurring_plan')))
+                  and has_function_privilege(r.rolname, p.oid, 'execute')) then
+      raise exception 'a plan function is over-granted';
+    end if;
+
+    -- "Start over".
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.clear_recurring_plan();
+    doc := public.my_recurring_plan();
+    execute 'reset role';
+    if doc->'plan' <> 'null'::jsonb then raise exception 'start over kept the plan'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: plan is own-only, encrypted, closed to API roles and anon, shape-checked, cleared by Start over';
+    else update _t set fails = fails + 1; raise notice 'FAIL: plan isolation — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 94. 0095: apply_recurring_plan changes the caller's real rules in one go.
+--     Another user's rule_id is refused and nothing is applied; a cancel sets
+--     is_active = false and keeps the rule; an edit changes amount, currency,
+--     frequency and interval; an add creates a rule (never starting in the
+--     past); the rest of the plan stays saved; bad input is refused whole.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; r1 uuid; r2 uuid; rx uuid; res jsonb; rec record; n int; doc jsonb;
+        rest jsonb := jsonb_build_object('v', 1, 'dismissed', jsonb_build_array('biggest:x'));
+begin
+  begin
+    u1 := pg_temp.zz_user('apply1');
+    u2 := pg_temp.zz_user('apply2');
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    rx := public.save_recurring_rule(null, jsonb_build_object('kind', 'expense', 'amount_minor', 999,
+      'currency', 'EUR', 'description', 'ZZ theirs', 'frequency', 'monthly', 'next_run', current_date + 5));
+    execute 'reset role';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    r1 := public.save_recurring_rule(null, jsonb_build_object('kind', 'expense', 'amount_minor', 1399,
+      'currency', 'EUR', 'description', 'ZZ Netflix', 'frequency', 'monthly', 'next_run', current_date + 3));
+    r2 := public.save_recurring_rule(null, jsonb_build_object('kind', 'expense', 'amount_minor', 3990,
+      'currency', 'EUR', 'description', 'ZZ Gym', 'frequency', 'monthly', 'next_run', current_date + 7));
+    begin
+      perform public.apply_recurring_plan(jsonb_build_object('changes', jsonb_build_array(
+        jsonb_build_object('rule_id', r1, 'cancel', true),
+        jsonb_build_object('rule_id', rx, 'cancel', true))), null);
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: another user''s rule applied';
+    exception when others then if sqlerrm <> 'not found' then raise; end if; end;
+    execute 'reset role';
+    if not (select is_active from public.recurring_rules where id = r1)
+       or not (select is_active from public.recurring_rules where id = rx) then
+      raise exception 'a refused apply changed something';
+    end if;
+    if exists (select 1 from public.recurring_plan_undo where user_id = u1) then
+      raise exception 'a refused apply left an undo record';
+    end if;
+
+    execute 'set local role authenticated';
+    res := public.apply_recurring_plan(jsonb_build_object(
+      'changes', jsonb_build_array(
+        jsonb_build_object('rule_id', r1, 'cancel', true),
+        jsonb_build_object('rule_id', r2, 'amount_minor', 29900, 'currency', 'USD',
+                           'frequency', 'yearly', 'interval_n', 1)),
+      'adds', jsonb_build_array(jsonb_build_object('kind', 'income', 'description', 'ZZ Tutoring',
+        'amount_minor', 12000, 'currency', 'EUR', 'frequency', 'monthly', 'interval_n', 1,
+        'next_run', (current_date - 30)::text, 'category_id', null))), rest);
+    doc := public.my_recurring_plan();
+    execute 'reset role';
+    if (res->>'change_count')::int <> 3 then raise exception 'change_count = %', res; end if;
+    if doc->'plan' is distinct from rest then raise exception 'rest of the plan not kept: %', doc->'plan'; end if;
+    if (doc->'undo'->>'change_count')::int is distinct from 3 then raise exception 'undo record missing'; end if;
+
+    select is_active, public.dec_minor(amount_enc) as amt into rec from public.recurring_rules where id = r1;
+    if rec.is_active is distinct from false or rec.amt <> 1399 then raise exception 'cancel wrong (%)', rec; end if;
+    select public.dec_minor(amount_enc) as amt, currency, frequency::text as f, interval_n, is_active
+      into rec from public.recurring_rules where id = r2;
+    if rec.amt <> 29900 or rec.currency <> 'USD' or rec.f <> 'yearly' or rec.interval_n <> 1 or not rec.is_active then
+      raise exception 'edit wrong (%)', rec;
+    end if;
+    select count(*) into n from public.recurring_rules
+     where user_id = u1 and kind = 'income' and public.dec_text(description_enc) = 'ZZ Tutoring'
+       and public.dec_minor(amount_enc) = 12000 and next_run = current_date and is_active;
+    if n <> 1 then raise exception 'add not created as asked (%)', n; end if;
+
+    execute 'set local role authenticated';
+    begin
+      perform public.apply_recurring_plan(jsonb_build_object('changes', jsonb_build_array(
+        jsonb_build_object('rule_id', r2, 'amount_minor', -5, 'currency', 'EUR',
+                           'frequency', 'monthly', 'interval_n', 1))), null);
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: negative amount applied';
+    exception when others then if sqlerrm <> 'bad plan' then raise; end if; end;
+    begin
+      perform public.apply_recurring_plan('{}'::jsonb, null);
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: empty apply accepted';
+    exception when others then if sqlerrm <> 'bad plan' then raise; end if; end;
+    execute 'reset role';
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: apply refuses another user''s rule; cancel keeps the rule inactive; edit and add work; rest of the plan kept';
+    else update _t set fails = fails + 1; raise notice 'FAIL: apply_recurring_plan — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 95. 0095: undo_recurring_plan puts the last apply back exactly (amounts,
+--     currency, frequency, interval, active) and removes the rules it
+--     created, once; after 24 hours it's refused; export_my_data() carries
+--     the plan and the undo record.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; r1 uuid; r2 uuid; before jsonb; after jsonb; n int; doc jsonb;
+        rest jsonb := jsonb_build_object('v', 1, 'dismissed', jsonb_build_array('priceUp:x'));
+begin
+  begin
+    u1 := pg_temp.zz_user('undo');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    r1 := public.save_recurring_rule(null, jsonb_build_object('kind', 'expense', 'amount_minor', 899,
+      'currency', 'EUR', 'description', 'ZZ Disney', 'frequency', 'monthly', 'next_run', current_date + 3));
+    r2 := public.save_recurring_rule(null, jsonb_build_object('kind', 'expense', 'amount_minor', 1800,
+      'currency', 'JPY', 'description', 'ZZ Cloud', 'frequency', 'weekly', 'interval_n', 2,
+      'next_run', current_date + 4));
+    execute 'reset role';
+    select jsonb_agg(jsonb_build_object('id', id, 'a', public.dec_minor(amount_enc), 'c', currency,
+             'f', frequency, 'n', interval_n, 'on', is_active, 'next', next_run) order by id)
+      into before from public.recurring_rules where user_id = u1;
+
+    execute 'set local role authenticated';
+    perform public.apply_recurring_plan(jsonb_build_object(
+      'changes', jsonb_build_array(
+        jsonb_build_object('rule_id', r1, 'cancel', true),
+        jsonb_build_object('rule_id', r2, 'amount_minor', 2500, 'currency', 'EUR',
+                           'frequency', 'monthly', 'interval_n', 3)),
+      'adds', jsonb_build_array(jsonb_build_object('kind', 'expense', 'description', 'ZZ New',
+        'amount_minor', 500, 'currency', 'EUR', 'frequency', 'yearly', 'interval_n', 1,
+        'next_run', (current_date + 10)::text))), rest);
+    doc := public.export_my_data();
+    execute 'reset role';
+    if doc->'recurring_plan'->'plan' is distinct from rest then raise exception 'export lacks the plan: %', doc->'recurring_plan'; end if;
+    if (doc->'recurring_plan_undo'->>'change_count')::int is distinct from 3
+       or jsonb_array_length(doc->'recurring_plan_undo'->'snapshot'->'created') <> 1 then
+      raise exception 'export lacks the undo record';
+    end if;
+
+    execute 'set local role authenticated';
+    n := public.undo_recurring_plan();
+    execute 'reset role';
+    if n <> 3 then raise exception 'undo count %', n; end if;
+    select jsonb_agg(jsonb_build_object('id', id, 'a', public.dec_minor(amount_enc), 'c', currency,
+             'f', frequency, 'n', interval_n, 'on', is_active, 'next', next_run) order by id)
+      into after from public.recurring_rules where user_id = u1;
+    if after is distinct from before then raise exception 'not restored exactly: % vs %', after, before; end if;
+    if exists (select 1 from public.recurring_plan_undo where user_id = u1) then raise exception 'undo record kept'; end if;
+
+    execute 'set local role authenticated';
+    begin
+      perform public.undo_recurring_plan();
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: undone twice';
+    exception when others then if sqlerrm <> 'Undo is no longer available.' then raise; end if; end;
+    -- Apply again, then let the 24 hours pass.
+    perform public.apply_recurring_plan(jsonb_build_object('changes', jsonb_build_array(
+      jsonb_build_object('rule_id', r1, 'cancel', true))), null);
+    execute 'reset role';
+    update public.recurring_plan_undo set applied_at = now() - interval '25 hours' where user_id = u1;
+    execute 'set local role authenticated';
+    begin
+      perform public.undo_recurring_plan();
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: undo after 24 hours';
+    exception when others then if sqlerrm <> 'Undo is no longer available.' then raise; end if; end;
+    execute 'reset role';
+    if (select is_active from public.recurring_rules where id = r1) then raise exception 'late undo changed the rule'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: undo restores exactly and removes created rules, once, within 24 hours; export carries the plan';
+    else update _t set fails = fails + 1; raise notice 'FAIL: undo_recurring_plan — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 93; f int; p int;  -- tests 1–92 + B-0059
+declare expected_tests constant int := 96; f int; p int;  -- tests 1–95 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

@@ -91,6 +91,8 @@ export default {
     budgets_other: '{{count}} προϋπολογισμοί',
     recurring_one: '{{count}} επαναλαμβανόμενη κίνηση',
     recurring_other: '{{count}} επαναλαμβανόμενες κινήσεις',
+    plan_one: '{{count}} πλάνο',
+    plan_other: '{{count}} πλάνα',
     accounts_one: '{{count}} λογαριασμός',
     accounts_other: '{{count}} λογαριασμοί',
     goals_one: '{{count}} στόχος αποταμίευσης',

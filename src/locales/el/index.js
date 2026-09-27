@@ -14,6 +14,7 @@ import insights from './insights.js'
 import landing from './landing.js'
 import notifications from './notifications.js'
 import onboarding from './onboarding.js'
+import plan from './plan.js'
 import privacy from './privacy.js'
 import recurring from './recurring.js'
 import savings from './savings.js'
@@ -36,6 +37,7 @@ export default {
   landing,
   notifications,
   onboarding,
+  plan,
   privacy,
   recurring,
   savings,

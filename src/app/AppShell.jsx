@@ -6,7 +6,7 @@ import {
 import UserAvatar from '../shared/ui/UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Users,
-  LogOut, Repeat, TrendingUp, PiggyBank, MoreHorizontal, Settings, Plus,
+  LogOut, Repeat, TrendingUp, PiggyBank, MoreHorizontal, Settings, Plus, Calculator,
 } from 'lucide-react'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/ProfileProvider.jsx'
@@ -42,6 +42,7 @@ const SECONDARY = [
   { to: '/insights', label: 'nav.insights', icon: TrendingUp },
   { to: '/savings', label: 'nav.savings', icon: PiggyBank },
   { to: '/recurring', label: 'nav.recurring', icon: Repeat },
+  { to: '/plan', label: 'nav.plan', icon: Calculator },
 ]
 // Mobile bottom bar (and a landscape phone's rail): the four primary tabs
 // plus a "More" entry.

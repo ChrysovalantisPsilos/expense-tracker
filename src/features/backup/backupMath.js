@@ -25,6 +25,12 @@
 // a savings account, whose balance is the savings total); older files only
 // have 'asset' and 'liability' and read as before, and an older app refuses a
 // version 4 file with "update the app" rather than a damaged-file error.
+// Plan mode (0095, optional, still version 4 — an older app ignores it):
+// each recurring entry has a `key` ("r1") and data.plan holds the one saved
+// plan with its references as keys: { changes: [{ rule: 'r1', snap, cancel? |
+// amount_minor?, … }], adds: [{ …, category: 'c1' | null }], dismissed }. A
+// restore only brings it back into an account that has no plan, and drops
+// the changes whose recurring entry isn't there (restorePlan).
 // Names the server caps at 60 characters (display
 // name, category names, group names) are trimmed to fit instead of failing.
 // Deliberately NOT in a backup: UI state (whats_new_seen, tour_done,
@@ -35,6 +41,7 @@
 // account's).
 import { deterministicUuid } from '../import/importMath.js'
 import { FREQUENCIES } from '../recurring/recurringMath.js'
+import { PLAN_VERSION, isEmptyPlan, normalisePlan } from '../plan/planMath.js'
 import { sealText, openText } from './backupCrypto.js'
 import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import { CATEGORY_ICON_KEYS, CATEGORY_COLOR_KEYS } from '../../shared/lib/categoryStyle.js'
@@ -110,10 +117,11 @@ export function groupShareNote(notes, groupName) {
 export function buildBackup({
   exportedAt = new Date().toISOString(), userId, profile = {}, payment = {},
   categories = [], categoryRules = [], accounts = [], goals = [], budgets = [],
-  recurring = [], transactions = [], groupNames = new Map(), groups = [],
+  recurring = [], transactions = [], groupNames = new Map(), groups = [], plan = null,
 }) {
   const catKey = new Map(categories.map((c, i) => [c.id, `c${i + 1}`]))
   const acctKey = new Map(accounts.map((a, i) => [a.id, `a${i + 1}`]))
+  const ruleKey = new Map(recurring.map((r, i) => [r.id, `r${i + 1}`]))
   const ref = (map, id) => (id ? map.get(id) ?? null : null)
 
   return {
@@ -157,7 +165,8 @@ export function buildBackup({
         category: catKey.get(b.category_id), period_start: b.period_start,
         amount_minor: Number(b.amount_minor), currency: b.currency,
       })),
-      recurring: recurring.map((r) => ({
+      recurring: recurring.map((r, i) => ({
+        key: `r${i + 1}`,
         kind: r.kind, category: ref(catKey, r.category_id), account: ref(acctKey, r.account_id),
         amount_minor: Number(r.amount_minor), currency: r.currency, description: r.description ?? null,
         frequency: r.frequency, interval_n: r.interval_n ?? 1, next_run: r.next_run,
@@ -180,8 +189,19 @@ export function buildBackup({
           } : {}),
         }
       }),
+      ...(plan && !isEmptyPlan(plan) ? { plan: planForBackup(plan, ruleKey, catKey) } : {}),
     },
     groupHistory: groups.map((g) => groupRecord(g, userId)),
+  }
+}
+
+// The saved plan with keys for its references (see the header).
+function planForBackup(plan, ruleKey, catKey) {
+  return {
+    changes: plan.changes.filter((c) => ruleKey.has(c.rule_id))
+      .map(({ rule_id: id, ...c }) => ({ rule: ruleKey.get(id), ...c })),
+    adds: plan.adds.map(({ category_id: id, ...a }) => ({ ...a, category: id ? catKey.get(id) ?? null : null })),
+    dismissed: plan.dismissed,
   }
 }
 
@@ -434,6 +454,7 @@ function validateBackup(doc) {
     const v = checker(`recurring entry #${i + 1}`)
     v.obj(r, 'entry')
     return {
+      key: v.text(r.key, 'key', { max: 40 }),
       kind: v.oneOf(r.kind, KINDS, 'kind'),
       category: v.ref(r.category, catKeys, 'category'),
       account: v.ref(r.account, acctKeys, 'account'),
@@ -470,14 +491,54 @@ function validateBackup(doc) {
     }
   })
 
+  const recKeys = new Set(recurring.map((r) => r.key).filter(Boolean))
+  if (recKeys.size !== recurring.filter((r) => r.key).length) damaged('recurring', 'duplicate key')
+  const plan = data.plan == null ? null : readBackupPlan(data.plan, recKeys, catKeys)
+
   const groupHistory = top.list(doc.groupHistory, 'groupHistory', 1000)
 
   return {
     version: doc.version,
     exportedAt,
-    data: { profile, payment, categories, categoryRules, accounts, goals, budgets, recurring, transactions },
+    data: {
+      profile, payment, categories, categoryRules, accounts, goals, budgets, recurring, transactions,
+      ...(plan ? { plan } : {}),
+    },
     groupCount: groupHistory.length,
   }
+}
+
+// A backup's plan: the shape checked here, the entries themselves by
+// planMath.normalisePlan on restore. A change naming no recurring entry of the
+// file is dropped; an add's unknown category becomes none.
+function readBackupPlan(raw, recKeys, catKeys) {
+  const v = checker('plan')
+  v.obj(raw, 'plan')
+  const changes = v.list(raw.changes, 'changes', 200).filter((c) => isObj(c) && recKeys.has(c.rule))
+  const adds = v.list(raw.adds, 'additions', 50).filter(isObj)
+    .map((a) => ({ ...a, category: catKeys.has(a.category) ? a.category : null }))
+  const dismissed = v.list(raw.dismissed, 'dismissed ideas', 100).filter((d) => typeof d === 'string')
+  return { changes, adds, dismissed }
+}
+
+// The backup's plan for the account being restored into, as a plan document
+// (planMath's shape), or an empty one. Each change moves from the file's
+// recurring entry to the account's matching one (the same match planRecurring
+// uses to skip duplicates, so a restored or already-there entry is found);
+// a change whose entry isn't in the account is dropped. `rulesNow` is the
+// account's recurring entries after the restore added the missing ones.
+export function restorePlan(backupPlan, backupRules, rulesNow, categoryIdByKey) {
+  if (!backupPlan) return normalisePlan(null)
+  const idByMatch = new Map(rulesNow.map((r) => [recurringKey({ ...r, amount_minor: Number(r.amount_minor) }), r.id]))
+  const idByKey = new Map(backupRules.filter((r) => r.key && idByMatch.has(recurringKey(r)))
+    .map((r) => [r.key, idByMatch.get(recurringKey(r))]))
+  return normalisePlan({
+    v: PLAN_VERSION,
+    changes: backupPlan.changes.filter((c) => idByKey.has(c.rule))
+      .map(({ rule, ...c }) => ({ ...c, rule_id: idByKey.get(rule) })),
+    adds: backupPlan.adds.map(({ category, ...a }) => ({ ...a, category_id: category ? categoryIdByKey.get(category) ?? null : null })),
+    dismissed: backupPlan.dismissed,
+  })
 }
 
 // What a validated backup holds, for the confirm step.
@@ -787,7 +848,7 @@ const listOf = (items) => (items.length < 2 ? items.join('')
   : say('summary.list', { rest: items.slice(0, -1).join(', '), last: items[items.length - 1] }))
 
 // The tallies the summary counts, in order (backup:summary.<id>_one/_other).
-const TALLIES = ['expenses', 'income', 'categories', 'rules', 'budgets', 'recurring', 'accounts', 'goals',
+const TALLIES = ['expenses', 'income', 'categories', 'rules', 'budgets', 'recurring', 'plan', 'accounts', 'goals',
   'budgetsUpdated', 'settings']
 
 // "Added 212 expenses, 14 categories… Skipped 3 duplicates." from the restore's

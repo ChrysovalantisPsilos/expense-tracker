@@ -26,7 +26,7 @@ test('real signed-in pages match, including the legacy redirects', () => {
   for (const p of [
     '/', '/transactions', '/transactions/123', '/transactions/new', '/groups/abc', '/groups',
     '/settings/security', '/budgets', '/categories/c1', '/import', '/more', '/insights', '/savings',
-    '/recurring', '/settings', '/settings/data', '/profile', '/expenses', '/income', '/search',
+    '/recurring', '/plan', '/settings', '/settings/data', '/profile', '/expenses', '/income', '/search',
     // The form pages (no dialogs): a signed-out deep link signs in and comes back.
     '/groups/new', '/groups/abc/settle', '/groups/abc/edit', '/groups/abc/members',
     '/groups/abc/expenses/new', '/groups/abc/expenses/e1', '/groups/abc/comments/e1',

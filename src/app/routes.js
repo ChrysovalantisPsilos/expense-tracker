@@ -9,6 +9,7 @@ export const SIGNED_IN_ROUTES = [
   '/recurring',
   '/recurring/new',
   '/recurring/:id',
+  '/plan',
   '/insights',
   '/insights/accounts/new',
   '/insights/accounts/:id',

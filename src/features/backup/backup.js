@@ -7,6 +7,8 @@ import {
   listTransactions, countTransactions, oldestTransactionDate, listAllCategories, createCategories,
 } from '../transactions/useData.js'
 import { listRecurring, saveRecurring } from '../recurring/recurring.js'
+import { readPlan, savePlan } from '../plan/plan.js'
+import { isEmptyPlan } from '../plan/planMath.js'
 import { listBudgets, budgetPeriods, saveBudget } from '../budgets/budgets.js'
 import { listAccounts, saveAccount } from '../insights/insights.js'
 import { listGoals, saveGoal } from '../savings/savings.js'
@@ -20,7 +22,7 @@ import { listComments, commentCounts } from '../groups/comments.js'
 import { listRules, saveRule, importTransactions } from '../import/importExpenses.js'
 import {
   buildBackup, serializeBackup, backupFileName, splitDateRange, mapCategories, matchByName,
-  planRules, planTransactions, planBudgets, planRecurring, planProfile, planSalaryShift, planPayment,
+  planRules, planTransactions, planBudgets, planRecurring, planProfile, planSalaryShift, planPayment, restorePlan,
   rebaseRateSpans, rebaseBackupData, currencyChange,
 } from './backupMath.js'
 import { UserError } from '../../shared/lib/errors.js'
@@ -90,7 +92,7 @@ async function gatherBackup(userId, onStep = () => {}) {
     listAllCategories(), listRules(), listAccounts(), listGoals(),
   ])
   onStep(t('backup:export.steps.plans'))
-  const [budgets, recurring] = await Promise.all([allBudgets(), listRecurring()])
+  const [budgets, recurring, plan] = await Promise.all([allBudgets(), listRecurring(), readPlan()])
   onStep(t('backup:export.steps.entries'))
   const transactions = await allTransactions(profile?.base_currency || 'EUR')
   onStep(t('backup:export.steps.groups'))
@@ -98,7 +100,7 @@ async function gatherBackup(userId, onStep = () => {}) {
   const groups = await groupLedgers(groupList)
   return buildBackup({
     userId, profile: profile ?? {}, payment, categories, categoryRules, accounts, goals,
-    budgets, recurring, transactions,
+    budgets, recurring, transactions, plan,
     groupNames: new Map(groupList.map((g) => [g.id, g.name])), groups,
   })
 }
@@ -148,7 +150,7 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   const step = (id, done = 0, total = 0) => onProgress({ label: t(`backup:restore.progressSteps.${id}`), done, total })
   const tally = {
     expenses: 0, income: 0, categories: 0, rules: 0, budgets: 0, budgetsUpdated: 0,
-    recurring: 0, accounts: 0, goals: 0, settings: 0, duplicates: 0, kept: [],
+    recurring: 0, plan: 0, accounts: 0, goals: 0, settings: 0, duplicates: 0, kept: [],
   }
 
   step('checking')
@@ -225,6 +227,16 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   for (const r of recPlan.create) await saveRecurring(r)
   tally.recurring = recPlan.create.length
   tally.duplicates += recPlan.skipped
+
+  // Plan mode's plan: only into an account that has none (never over the
+  // user's own), with the changes whose recurring entry is here.
+  if (data.plan && isEmptyPlan(await readPlan())) {
+    const plan = restorePlan(data.plan, data.recurring, await listRecurring(), categoryIdByKey)
+    if (!isEmptyPlan(plan)) {
+      await savePlan(plan)
+      tally.plan = 1
+    }
+  }
 
   step('budgets')
   const budPlan = planBudgets(data.budgets, await allBudgets(), categoryIdByKey)

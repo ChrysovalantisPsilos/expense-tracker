@@ -15,8 +15,8 @@ test('Transactions owns /transactions and /import', () => {
   assert.equal(isNavActive('/transactions', '/importer'), false)
 })
 
-test('More owns /more, /insights, /savings, /recurring, /help, the legal pages and every /settings page', () => {
-  for (const p of ['/more', '/insights', '/savings', '/recurring', '/settings', '/settings/account', '/settings/data', '/help', '/privacy', '/terms']) {
+test('More owns /more, /insights, /savings, /recurring, /plan, /help, the legal pages and every /settings page', () => {
+  for (const p of ['/more', '/insights', '/savings', '/recurring', '/plan', '/settings', '/settings/account', '/settings/data', '/help', '/privacy', '/terms']) {
     assert.equal(isNavActive('/more', p), true, p)
   }
   assert.equal(isNavActive('/more', '/transactions'), false)

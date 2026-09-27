@@ -162,6 +162,9 @@ export const SQL_USER_MESSAGES = new Map([
   ['Your base currency is fixed once you’ve added entries, so past amounts stay correct.', 'sql.baseCurrencyFixed'],
   ['Payment details are too long.', 'sql.paymentDetailsLong'],
   ['Choose one of your own income categories for your salary.', 'sql.salaryCategory'],
+  // Plan mode (0095)
+  ['Your plan is too big.', 'sql.planTooBig'],
+  ['Undo is no longer available.', 'sql.undoExpired'],
   // Rate limits
   ['Too many changes — please try again later.', 'sql.tooManyChanges'],
   ['Too many comments — please slow down.', 'sql.tooManyComments'],

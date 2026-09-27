@@ -1,5 +1,5 @@
 import { Stack } from '@chakra-ui/react'
-import { TrendingUp, PiggyBank, Repeat, Settings } from 'lucide-react'
+import { TrendingUp, PiggyBank, Repeat, Settings, Calculator } from 'lucide-react'
 import PageHeader from '../shared/ui/PageHeader.jsx'
 import { NavList, NavRow } from '../shared/ui/NavList.jsx'
 import { useT } from '../shared/lib/i18n/I18nProvider.jsx'
@@ -12,6 +12,7 @@ const SECTIONS = [
     { to: '/insights', id: 'insights', icon: TrendingUp },
     { to: '/savings', id: 'savings', icon: PiggyBank },
     { to: '/recurring', id: 'recurring', icon: Repeat },
+    { to: '/plan', id: 'plan', icon: Calculator },
   ] },
   { label: 'more.account', links: [
     { to: '/settings', id: 'settings', icon: Settings },

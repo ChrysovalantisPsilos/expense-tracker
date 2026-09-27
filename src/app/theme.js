@@ -49,6 +49,11 @@ const semanticTokens = {
     'status.negativeSubtle': { default: 'red.50', _dark: 'rgba(242, 145, 127, 0.14)' },
     'status.negativeBorder': { default: 'red.100', _dark: 'rgba(242, 145, 127, 0.32)' },
     'status.warning': { default: 'amber.700', _dark: 'amber.400' },
+    // Tint + hairline for a caution block (Plan mode's apply warning and
+    // "changed since you planned" notes), and a pale green behind a gain.
+    'status.warningSubtle': { default: 'amber.50', _dark: 'rgba(245, 158, 11, 0.12)' },
+    'status.warningBorder': { default: 'amber.200', _dark: 'rgba(245, 158, 11, 0.32)' },
+    'status.positiveSubtle': { default: 'rgba(47, 122, 69, 0.12)', _dark: 'rgba(134, 201, 138, 0.16)' },
 
     // Categorical chart series, coral/amber first. The two sand tones swap in
     // dark mode so neither disappears into its background.
