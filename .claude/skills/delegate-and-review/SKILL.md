@@ -92,6 +92,12 @@ results on its own.
   right away (SendMessage). Say what it replaces.
 - A finished helper can be resumed with a follow-up message and keeps its
   context. Use that for revisions instead of starting fresh.
+- **Helpers stop when your session restarts** and can't be resumed. After a
+  restart, check each helper's worktree, commit its work in progress to its
+  own branch (never the integration branch) so it isn't lost, then restart
+  from that branch. A separate cloud session, if available, suits long
+  builds: it survives your session, but it doesn't report back, so schedule
+  a check-in.
 - Answer the user's other questions in the meantime. Never report a helper's
   result before it arrives.
 

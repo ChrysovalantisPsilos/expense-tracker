@@ -150,6 +150,10 @@ npm run dev       # Vite
   and mock Supabase in Playwright. Past harnesses live in the session
   scratchpad (`group-add-design/`, `plan-design/`: `harness.mjs`,
   `mockdata.mjs`, `shoot.mjs`, `vite.shots.mjs`).
+- **Serving the harness:** run it with the harness's own Vite config
+  (`vite.shots.mjs`, which sets `allowedHosts: true`), or Vite blocks the
+  mapped `www.budgeer.com` host. Stop the server by PID. `pkill -f` with the
+  port in the pattern also kills your own shell.
 - **Sizes:** phone 390×844 (dsf 2), sideways phone 844×390
   (`shortLandscape.js`), desktop 1280×800, plus dark mode.
 - **Live sites from the cloud sandbox:** Chromium needs
