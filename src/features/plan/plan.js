@@ -17,7 +17,7 @@ import { listTransactions, useTransactions } from '../transactions/useData.js'
 import { useBudgetSets } from '../budgets/budgets.js'
 import {
   OVER_BUDGET_MONTHS, PRICE_MONTHS, derivedSalary, isEmptyPlan, normalisePlan, rateNeeds, recentMonths,
-  salaryCategoryId, salaryWindow, storedPlan,
+  salaryCategoryId, salaryWindow,
 } from './planMath.js'
 
 // How long the plan waits after the last edit before it's saved.
@@ -34,7 +34,7 @@ async function fetchPlan() {
 async function storePlan(plan) {
   const { error } = isEmptyPlan(plan)
     ? await supabase.rpc('clear_recurring_plan')
-    : await supabase.rpc('save_recurring_plan', { p_plan: storedPlan(plan) })
+    : await supabase.rpc('save_recurring_plan', { p_plan: plan })
   if (error) throw dbError(error)
 }
 
@@ -43,7 +43,7 @@ async function storePlan(plan) {
 // { applied_at, change_count, undo_until }.
 export async function applyPlan(apply, remaining) {
   const { data, error } = await supabase.rpc('apply_recurring_plan', {
-    p_apply: apply, p_remaining: isEmptyPlan(remaining) ? null : storedPlan(remaining),
+    p_apply: apply, p_remaining: isEmptyPlan(remaining) ? null : remaining,
   })
   if (error) throw dbError(error)
   return data

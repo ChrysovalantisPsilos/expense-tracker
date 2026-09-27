@@ -6018,11 +6018,55 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 97. 0096: a plan's salary edit. A plan holding only a salary edit is kept
+--     (0095 dropped it) and read back; a malformed salary (negative amount,
+--     extra key, cancel not true, not an object, empty) is refused; with no
+--     salary and empty lists the plan is still removed.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; doc jsonb; bad jsonb;
+        plan jsonb := jsonb_build_object('v', 1, 'changes', '[]'::jsonb, 'adds', '[]'::jsonb,
+          'dismissed', '[]'::jsonb, 'salary', jsonb_build_object('amount_minor', 350000));
+begin
+  begin
+    u1 := pg_temp.zz_user('plansal');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_recurring_plan(plan);
+    doc := public.my_recurring_plan();
+    if doc->'plan' is distinct from plan then execute 'reset role'; raise exception 'salary-only plan not kept: %', doc; end if;
+    perform public.save_recurring_plan(jsonb_build_object('v', 1, 'salary', jsonb_build_object('cancel', true)));
+    if public.my_recurring_plan()->'plan'->'salary' is distinct from '{"cancel": true}'::jsonb then
+      execute 'reset role'; raise exception 'salary cancel not kept';
+    end if;
+    foreach bad in array array[
+      '{"amount_minor": -5}'::jsonb, '{"amount_minor": 100, "x": 1}'::jsonb, '{"cancel": false}'::jsonb,
+      '{"amount_minor": "100"}'::jsonb, '[1]'::jsonb, '{}'::jsonb] loop
+      begin
+        perform public.save_recurring_plan(jsonb_build_object('v', 1, 'salary', bad));
+        execute 'reset role';
+        raise exception 'GUARD_MISSED: malformed salary % saved', bad;
+      exception when others then if sqlerrm <> 'bad plan' then raise; end if; end;
+    end loop;
+    perform public.save_recurring_plan(jsonb_build_object('v', 1, 'changes', '[]'::jsonb, 'adds', '[]'::jsonb,
+      'dismissed', '[]'::jsonb));
+    execute 'reset role';
+    if exists (select 1 from public.recurring_plans where user_id = u1) then
+      raise exception 'an empty plan without salary was kept';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: plan salary edit kept on its own, malformed salary refused, empty plan still removed';
+    else update _t set fails = fails + 1; raise notice 'FAIL: plan salary edit — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 97; f int; p int;  -- tests 1–96 + B-0059
+declare expected_tests constant int := 98; f int; p int;  -- tests 1–97 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

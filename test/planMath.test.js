@@ -5,7 +5,7 @@ import {
   planSummary, effectOf, setChange, resetChange, cancelRules, upsertAdd, removeAdd, dismissIdea, reconcile,
   acknowledge, priceRises, recentMonths, overBudgetMonths, signalsFor, rowTag, planIdeas, overlapPick,
   applySelection, undoState, snapOf, rateNeeds, startOver, tryIdea, MAX_IDEAS,
-  SALARY_ID, salaryCategoryId, salaryWindow, derivedSalary, setSalary, resetSalary, storedPlan, applicable, headline,
+  SALARY_ID, salaryCategoryId, salaryWindow, derivedSalary, setSalary, resetSalary, applicable, headline,
   asShown,
 } from '../src/features/plan/planMath.js'
 
@@ -494,14 +494,10 @@ test('the Salary row: a what-if raise and switching it off live in plan.salary; 
   assert.equal('salary' in startOver(plan), false)
 })
 
-test('the salary change on the server: kept by a marker when it’s all the plan holds; normalised back', () => {
+test('the salary change survives a round trip, and a malformed one is dropped', () => {
   const only = setSalary(emptyPlan(), { cancel: true }, 310000)
-  const stored = storedPlan(only)
-  assert.deepEqual(stored.dismissed, ['plan:salary'], '0095 deletes a plan whose three lists are empty')
-  assert.deepEqual(normalisePlan(stored), only)
-  const more = dismissIdea(only, 'biggest:x')
-  assert.equal(storedPlan(more), more)
-  assert.equal(storedPlan(emptyPlan()).dismissed.length, 0)
+  assert.equal(isEmptyPlan(only), false, 'a salary-only plan is a plan (0096 keeps it)')
+  assert.deepEqual(normalisePlan(only), only)
   assert.deepEqual(normalisePlan({ v: 1, changes: [], adds: [], dismissed: [], salary: { amount_minor: -5, cancel: 'yes', x: 1 } }),
     emptyPlan())
   assert.deepEqual(normalisePlan({ v: 1, salary: { amount_minor: 330000, x: 1 } }).salary, { amount_minor: 330000 })

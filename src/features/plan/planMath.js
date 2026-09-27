@@ -33,10 +33,8 @@
 // default "Salary" category), the plan gets a derived Salary row: the average
 // monthly salary over the last 3 full calendar months that had salary entries
 // (derivedSalary). Its what-if edit lives in `salary`: plan-only, never sent
-// by apply (it isn't a recurring payment). The server (0095) only checks v,
-// changes, adds and dismissed, and deletes a plan whose three lists are
-// empty, so storedPlan() keeps a salary-only plan with a marker in
-// `dismissed` that normalisePlan() drops again.
+// by apply (it isn't a recurring payment). The server checks its shape and
+// keeps a plan that holds only a salary edit (0096).
 //
 // No recurring income at all (no income row, derived or planned): the page
 // shows the recurring payments instead of a negative net (planSummary's
@@ -86,8 +84,6 @@ const APPLIED_NOTE_DAYS = 7
 // marker that keeps a salary-only plan on the server (see the header).
 export const SALARY_ID = 'salary'
 export const SALARY_MONTHS = 3
-const SALARY_MARK = 'plan:salary'
-
 const RULE_FIELDS = ['amount_minor', 'currency', 'frequency', 'interval_n']
 const PER_YEAR = { daily: 365, weekly: 52, monthly: 12, yearly: 1 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -117,13 +113,6 @@ export const startOver = (plan) => ({ ...emptyPlan(), dismissed: plan.dismissed 
 
 export const isEmptyPlan = (plan) =>
   !plan.changes.length && !plan.adds.length && !plan.dismissed.length && !plan.salary
-
-// The document as it's sent to the server: a plan whose only content is its
-// salary change carries SALARY_MARK in `dismissed`, or 0095 would delete it.
-export function storedPlan(plan) {
-  if (!plan.salary || plan.changes.length || plan.adds.length || plan.dismissed.length) return plan
-  return { ...plan, dismissed: [SALARY_MARK] }
-}
 
 const isAmount = (v) => Number.isSafeInteger(v) && v > 0
 const isCurrency = (v) => typeof v === 'string' && /^[A-Z]{3}$/.test(v)
@@ -194,7 +183,7 @@ export function normalisePlan(raw) {
   const adds = (Array.isArray(raw.adds) ? raw.adds : []).map(cleanAdd)
     .filter((a) => a && !addIds.has(a.id) && addIds.add(a.id))
   const dismissed = [...new Set((Array.isArray(raw.dismissed) ? raw.dismissed : [])
-    .filter((d) => typeof d === 'string' && d && d.length <= 120 && d !== SALARY_MARK))]
+    .filter((d) => typeof d === 'string' && d && d.length <= 120))]
   const salary = cleanSalary(raw.salary)
   return {
     v: PLAN_VERSION,
