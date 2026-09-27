@@ -198,6 +198,33 @@ npm run dev       # Vite
   (1200×630). Invite links (`/join/…`) currently share the generic preview.
 - **Rule:** the landing copy never opens with "Free app".
 
+## iOS app (planned)
+
+- **Approach:** wrap the existing React app with Capacitor, keeping one
+  codebase, and add native value for App Store guideline 4.2:
+  - Apple push notifications (APNs)
+  - Face ID lock
+  - share sheet and file save for statements
+  - camera for receipts
+  - haptics
+- **Required by Apple:** Sign in with Apple (because Google sign-in is
+  offered), the privacy label and manifest, and a reviewer account on PROD.
+- **What changes inside the shell:**
+  - no service worker, so offline reads and updates need another route
+  - web push becomes APNs
+  - deep links and universal links for auth redirects, email links and
+    `/join/…`
+  - passkeys need associated domains
+- **Owner decisions:**
+  - builds on the owner's own Mac with Xcode (this cloud sandbox can't build
+    iOS)
+  - the Apple Developer account in the owner's personal name (public as the
+    App Store seller)
+  - iPhone only for v1
+- **Phases:** accounts → Capacitor shell to TestFlight (pointing at dev) →
+  native essentials → App Store submission (EN + EL listing) → later
+  widgets, iPad, Android.
+
 ## Follow-ups a feature here usually needs
 
 - **Backups:** the data round-trips through `src/features/backup/`, tested in
