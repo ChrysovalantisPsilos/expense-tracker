@@ -13,6 +13,10 @@ this file current, so add project facts here, not in the skills.
   RLS, definer functions, Edge Functions, Auth, Realtime) on the back end.
 - **Owner:** Chrysovalantis Psilos. They decide product questions and approve
   PROD releases explicitly, every time.
+- **Which skills to use:** the ones in this repo's `.claude/skills/`, the
+  maintained copies that improve-skills edits. Don't use the uploaded
+  organisation copies (`anthropic-skills:…`), which may be stale, or the
+  separate `claude-skills` repo, which is parked for now.
 - **Owner preferences:**
   - Decides from pictures: show renders or screenshots before design
     decisions.
