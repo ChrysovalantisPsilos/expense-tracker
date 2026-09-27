@@ -38,9 +38,10 @@ A helper has none of your conversation. Every brief includes:
 - **Context and decisions:** every choice the user has made, stated as final,
   in plain terms. Include the numbers, names and wording they approved, and
   point to prior artefacts (design renders, earlier branches).
-- **Rules to follow:** the project's own guides first (CLAUDE.md, repo
-  skills, docs), plus the standing user rules: commit identity, no AI
-  mentions in commits, fake data only, never print secrets.
+- **Rules to follow:** the project's own guides first (`.claude/project.md`,
+  CLAUDE.md, repo skills, docs), plus the owner's standing rules from the
+  profile (commit identity, commit hygiene, fake data only, never print
+  secrets). Tell the helper which skill to follow.
 - **Boundaries:**
   - where to work (its own worktree or branch) and where not (the main
     checkout, protected branches)
@@ -115,3 +116,9 @@ to the same helper with specifics. Don't pass along work you haven't checked.
   - anything that didn't go to plan, stated plainly
 
 Don't narrate the internal choreography. Keep it to results.
+
+## 7. Improve
+
+Run `improve-skills`. Brief gaps you found (something a helper needed but
+wasn't told) and checks that caught real problems go into this skill. Project
+facts go into `.claude/project.md`.

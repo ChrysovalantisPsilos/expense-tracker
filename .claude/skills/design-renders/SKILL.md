@@ -1,87 +1,76 @@
 ---
 name: design-renders
-description: Produce screenshot renders of proposed Budgeer screens before anything is built — prototypes inside a scratch copy of the app (real theme and kit, mocked Supabase, fake data), shot with Playwright at phone and desktop sizes, checked, and sent to the owner as options with a recommendation. Use when the owner asks for designs, mockups, renders, "how would it look", or when a feature's look or flow isn't decided yet. Designs only: never changes the real repo.
+description: Produce screenshot renders of proposed app screens before anything is built — prototypes inside a scratch copy of the app (its real theme and components, mocked back end, fake data), shot at phone and desktop sizes, checked, and sent to the owner as options with a recommendation, then updated as decisions come in. Use when the owner asks for designs, mockups, renders, "how would it look", or when a feature's look or flow isn't decided. Designs only: never changes the real repo. For logos and marketing images use brand-designs.
 ---
 
 # Design renders
 
-The owner decides from pictures, so a design question is answered with real
-screenshots, not descriptions. Renders are built from the app's own theme and
-kit so they look exactly like Budgeer. Nothing here touches the real repo or
-either Supabase project.
+Owners decide from pictures. Answer a design question with real screenshots
+built from the app's own theme and components, so they look exactly like the
+product. Nothing here touches the real repo or any real environment.
+
+## Start here
+
+Read `.claude/project.md` for:
+- the browser and tooling paths, and how to serve a prototype
+- any existing render harness
+- screen sizes and modes to cover
+- the owner's preferences
+
+Read `CLAUDE.md` or the design-system docs for the component kit and tokens.
 
 ## Rules
 
-- **Designs only.** No edits, commits or pushes in `/home/user/expense-tracker`.
-  Prototypes live in a scratch copy under the session scratchpad.
-- **Fake data only:** believable names, shops and amounts. Never real CSV
-  rows, names, IBANs or card numbers. Keep the numbers consistent across every
-  screen of a flow; totals must add up.
+- **Designs only.** Prototypes live in a scratch copy outside the repo; no
+  commits.
+- **Fake data only:** believable, never real people's data. Keep the numbers
+  consistent across every screen of a flow; totals must add up.
 - **Options:**
-  - Offer 2–3 distinct concepts (A/B/C) for a new screen, each shown in a
-    realistic state (with data, with a few edits made).
-  - Then show the full flow for the recommended one.
+  - Offer 2–3 distinct concepts (A/B/C) for a new screen, each in a realistic
+    state.
+  - Then show the full flow for the recommended one: entry point, first open,
+    each step, confirmation, empty state, error or edge states, dark mode.
   - Recommend one and say why in 2–3 sentences.
-- **Plain, short copy,** in English unless Greek is the point. Tap targets are
-  ≥ 44px and contrast has to be readable.
+- **Plain, short copy.** Tap targets ≥ 44px, readable contrast.
 
-## Set up a prototype app
+## Build the prototype
 
-1. Copy an existing harness folder from the scratchpad if one exists, e.g.
-   `group-add-design/` or `plan-design/`. They hold:
-   - `app/`: a copy of the repo, with `node_modules` symlinked to the real
-     one
-   - `harness.mjs`: Playwright plus a mocked Supabase REST/auth, with the
-     fixtures in `mockdata.mjs`
-   - `shoot.mjs`: a JSON job list
-   - `vite.shots.mjs`: serves a checkout with the repo's own Vite config
-2. Otherwise: `cp -r` the repo without `node_modules`, and symlink
-   `node_modules` to the real one.
-3. Add the prototype as a feature folder (e.g. `app/src/features/plan/`) with
-   a route. Pick the variant with a query parameter (`?proto=A`). Use the real
-   kit (`src/shared/ui/kit/`), the theme tokens, the lucide icons and the app
-   shell, so navigation, header and bottom bar are real.
-4. Serve it:
-   ```bash
-   VITE_SUPABASE_URL=https://fake.supabase.co VITE_SUPABASE_ANON_KEY=fake \
-     npx vite --config <harness>/vite.shots.mjs --port <free port>
-   ```
-   Pick a port nobody is using, and stop the server when done.
+1. **Reuse a previous harness** if the profile lists one. Otherwise:
+   1. Copy the repo without dependencies and link the real dependency folder.
+   2. Add the prototype as a feature folder with a route, picking the
+      variant with a query parameter (`?proto=A`).
+   3. Use the real components, theme, icons and app shell, so navigation looks
+      real.
+2. **Serve it with a mocked back end:** fake env values plus request
+   interception in the browser automation, answered from fixtures. Pick a free
+   port, and stop the server when done.
 
 ## Shoot
 
-- **Browser:** Chromium is preinstalled at
-  `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, with Playwright from
-  `/opt/node22/lib/node_modules/`. Never run `playwright install`.
-- **Phone:** 390×844, device scale factor 2, taken as a viewport shot plus a
-  full-page shot where the screen scrolls.
-- **Desktop:** 1280×800, whenever navigation or the sidebar matters.
-- **Dark mode and sideways phones:** add a dark-mode shot of the main screen,
-  and a sideways-phone shot (landscape ≤ 500px tall) when layout is in
-  question.
-- **File names sort in order:** `A-main.png`, `B-main.png`,
-  `flow-1-entry.png` … `flow-N-….png`, `empty.png`, `A-dark.png`.
-- **Overview sheet:** build `overview.png` with the flow side by side.
+- **Phone:** 390×844 at 2× (viewport and full page), plus sideways-phone and
+  desktop shots when layout or navigation matters.
+- **Dark mode:** a shot of the main screen.
+- **Other languages:** a shot of each when the app ships them.
+- **File names that sort:** `A-main.png`, `B-main.png`,
+  `flow-1-entry.png`…, `empty.png`, `A-dark.png`. Add an `overview.png` with
+  the flow side by side.
 
 ## Check before sending
 
-- Read every PNG yourself. Look for:
-  - clipped or truncated text, and one-line chips that overflow (Greek runs
-    20–30% longer)
-  - overlapping elements, and sheets or bars covering content
-  - sideways page scroll
-  - numbers that don't add up across screens
-- Fix and re-shoot. Don't send a render you haven't looked at.
+- Open every PNG. Look for:
+  - clipped or overflowing text (translations run longer)
+  - overlap, and sheets or bars covering content
+  - sideways scroll
+  - numbers that don't add up
+- Fix and re-shoot. Never send a render you haven't looked at.
 
-## Hand over
+## Hand over and iterate
 
-- Send the overview first, then the concepts, then the flow. Use
-  `SendUserFile` (display render), with a one-line caption per batch.
-- Report:
-  - the recommendation
-  - behaviour notes (what each action really changes)
-  - ≤ 4 open questions, each explained in plain words, with options and a
-    recommended answer
-- **Record decisions as they come in:** when the owner answers, update the
-  renders to match and re-send only what changed. Nothing gets built until the
-  owner asks for it.
+- **Send** the overview first, then the concepts, then the flow, with a
+  one-line caption per batch.
+- **Report:** the recommendation, behaviour notes (what each action really
+  changes), and ≤ 4 open questions, each in plain words with options and a
+  recommended answer.
+- **When decisions come in,** update the renders and re-send only what
+  changed. Nothing is built until the owner asks.
+- **Afterwards, run `improve-skills`.**
