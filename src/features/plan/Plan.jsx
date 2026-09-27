@@ -19,10 +19,10 @@ import {
   signalsFor, startOver, tryIdea, undoState, upsertAdd,
 } from './planMath.js'
 import {
-  ApplyBar, ChangesPanel, IdeasStrip, ImpactHeader, PlanRow, SavedNote, WhatIfRow, itemName,
+  ChangesPanel, IdeasStrip, ImpactHeader, PlanHint, PlanRow, SavedNote, WhatIfRow, itemName,
 } from './PlanParts.jsx'
 import { AddSheet, ApplySheet, EditSheet, PickSheet } from './PlanSheets.jsx'
-import { AppliedBanner, AppliedNote, RealityBanner, UndoDialog } from './PlanBanners.jsx'
+import { AppliedBanner, AppliedNote, ClearDialog, RealityBanner, UndoDialog } from './PlanBanners.jsx'
 
 // Plan mode (/plan): a sandbox over the user's recurring payments and income.
 // Every edit shows at once how the monthly net moves, before → after; the plan
@@ -161,11 +161,10 @@ export default function Plan() {
         </Panel>
       ))}
       <WhatIfRow onClick={() => setSheet({ type: 'add' })} />
-      {sum.changes.length > 0 && (
-        <ChangesPanel sum={sum} currency={currency} onStartOver={() => d.setPlan(startOver)} />
-      )}
-      <ApplyBar count={sum.changes.length} delta={monthOf(sum.delta)} currency={currency}
-        onApply={() => setSheet({ type: 'apply' })} />
+      {sum.changes.length > 0
+        ? <ChangesPanel sum={sum} currency={currency} onApply={() => setSheet({ type: 'apply' })}
+            onClear={() => setSheet({ type: 'clear' })} />
+        : <PlanHint />}
 
       {sheet?.type === 'edit' && sheetItem && (
         <EditSheet key={sheetItem.id} item={sheetItem} signal={signals.get(sheetItem.id)} currency={currency}
@@ -184,6 +183,9 @@ export default function Plan() {
       )}
       {sheet?.type === 'apply' && sum.changes.length > 0 && (
         <ApplySheet sum={sum} currency={currency} busy={busy} onApply={apply} onClose={close} />
+      )}
+      {sheet?.type === 'clear' && (
+        <ClearDialog onClear={() => { d.setPlan(startOver); close() }} onClose={close} />
       )}
       {sheet?.type === 'undo' && applied?.canUndo && (
         <UndoDialog count={applied.count} busy={busy} onUndo={undo} onClose={close} />

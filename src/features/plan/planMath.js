@@ -88,7 +88,7 @@ export const inView = (yearMinorValue, view) => (view === 'year' ? yearMinorValu
 
 export const emptyPlan = () => ({ v: PLAN_VERSION, changes: [], adds: [], dismissed: [] })
 
-// "Start over": every change and add goes, the dismissed ideas stay dismissed.
+// "Clear plan": every change and add goes, the dismissed ideas stay dismissed.
 export const startOver = (plan) => ({ ...emptyPlan(), dismissed: plan.dismissed })
 
 export const isEmptyPlan = (plan) => !plan.changes.length && !plan.adds.length && !plan.dismissed.length

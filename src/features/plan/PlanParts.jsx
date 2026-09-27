@@ -1,6 +1,6 @@
 // Plan mode's building blocks: the impact card, a plan row, the ideas strip,
-// "Your changes", the sticky apply bar, and the money/frequency wording they
-// share. The maths behind every figure is planMath.js.
+// "Your changes" (with Apply and Clear plan), the hint, and the
+// money/frequency wording they share. The maths behind every figure is planMath.js.
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Box, Button, Flex, HStack, IconButton, Stack, Switch, Tag, Text,
@@ -17,7 +17,6 @@ import { intlLocale, t as tr } from '../../shared/lib/i18n/i18n.js'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { frequencyLabel, ruleToChoice } from '../recurring/recurringMath.js'
 import { RatesNote } from '../recurring/SubscriptionGroups.jsx'
-import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { effectOf, inView, monthOf } from './planMath.js'
 
 // ---- Wording ---------------------------------------------------------------------
@@ -316,7 +315,7 @@ export function IdeasStrip({ ideas, view, currency, onTry, onDismiss }) {
   )
 }
 
-// ---- Your changes and the apply bar -----------------------------------------------
+// ---- Your changes -----------------------------------------------
 
 // "Before → after" for one change, in words.
 export function changeLine(item, t) {
@@ -325,16 +324,13 @@ export function changeLine(item, t) {
   return t('changes.editLine', { was: perUnit(item.before), now: perUnit(item.after) })
 }
 
-export function ChangesPanel({ sum, currency, onStartOver }) {
+export function ChangesPanel({ sum, currency, onApply, onClear }) {
   const t = useT('plan')
   return (
     <Panel p={4} as="section" aria-label={t('changes.title', { count: sum.changes.length })}>
-      <HStack justify="space-between" mb={1}>
+      <Box mb={1}>
         <SectionLabel>{t('changes.title', { count: sum.changes.length })}</SectionLabel>
-        <Button size="sm" variant="ghost" leftIcon={<RotateCcw size={14} />} onClick={onStartOver} mr={-2}>
-          {t('changes.startOver')}
-        </Button>
-      </HStack>
+      </Box>
       <Box as="ul" listStyleType="none">
         {sum.changes.map((it) => {
           const eff = effectOf(it)
@@ -368,39 +364,23 @@ export function ChangesPanel({ sum, currency, onStartOver }) {
           <Text fontSize="xs" color="text.muted" fontWeight="600">{t('changes.perYear', { amount: signed(sum.delta, currency) })}</Text>
         </Box>
       </HStack>
+      <Stack direction={{ base: 'column', sm: 'row' }} spacing={2} pt={4}>
+        <Button flex="1" minH="48px" h="auto" py={2} whiteSpace="normal" onClick={onApply}>{t('changes.apply')}</Button>
+        <Button flex={{ sm: '0 0 auto' }} minH="48px" variant="outline" leftIcon={<RotateCcw size={16} />} onClick={onClear}>
+          {t('changes.clear')}
+        </Button>
+      </Stack>
     </Panel>
   )
 }
 
-// Sticks above the phone's tab bar (at the bottom elsewhere; a phone held
-// sideways has too little height, so there it ends the page): how many
-// changes and what they do a month, and "Apply to my recurring…".
-export function ApplyBar({ count, delta, currency, onApply }) {
+// Before any change: a quiet hint where "Your changes" will appear.
+export function PlanHint() {
   const t = useT('plan')
-  const short = useShortLandscape()
   return (
-    <Box position={count > 0 && !short ? 'sticky' : 'static'} zIndex={5}
-      bottom={{ base: 'calc(76px + env(safe-area-inset-bottom, 0px))', md: 4 }}>
-      <Panel p={3} boxShadow="lifted">
-        {count > 0 ? (
-          <HStack spacing={3}>
-            <Box pl={1} flexShrink={0}>
-              <Text fontSize="xs" color="text.muted" whiteSpace="nowrap">{t('bar.count', { count })}</Text>
-              <Text fontWeight="800" color={toneOf(delta)} whiteSpace="nowrap">
-                {t('changes.perMonth', { amount: signed(delta, currency) })}
-              </Text>
-            </Box>
-            <Button flex="1" minW={0} h="auto" minH="48px" py={2} whiteSpace="normal" onClick={onApply}>
-              {t('bar.apply')}
-            </Button>
-          </HStack>
-        ) : (
-          <HStack spacing={2} justify="center" py={2} color="text.muted">
-            <Info size={16} />
-            <Text fontSize="sm">{t('bar.hint')}</Text>
-          </HStack>
-        )}
-      </Panel>
-    </Box>
+    <HStack spacing={2} justify="center" py={3} color="text.muted">
+      <Info size={16} />
+      <Text fontSize="sm">{t('hint')}</Text>
+    </HStack>
   )
 }

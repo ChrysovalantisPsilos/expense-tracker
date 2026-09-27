@@ -93,7 +93,8 @@ export default {
   },
   changes: {
     title: 'Your changes · {{count}}',
-    startOver: 'Start over',
+    apply: 'Apply to my recurring…',
+    clear: 'Clear plan',
     newIncome: 'New income · {{amount}}',
     newCost: 'New payment · {{amount}}',
     cancelLine: '{{was}} → cancelled',
@@ -105,12 +106,7 @@ export default {
     perYear: '{{amount}}/yr',
     net: 'Net change',
   },
-  bar: {
-    count_one: '{{count}} change',
-    count_other: '{{count}} changes',
-    apply: 'Apply to my recurring…',
-    hint: 'Tap a payment to try a change.',
-  },
+  hint: 'Tap a payment to try a change.',
   edit: {
     now: 'Now {{amount}}',
     reset: 'Reset',
@@ -197,6 +193,12 @@ export default {
     on_one: 'Applied {{date}} · {{count}} change',
     on_other: 'Applied {{date}} · {{count}} changes',
     viewIn: 'View in Recurring',
+  },
+  clear: {
+    title: 'Clear your plan?',
+    body: 'Every change and added payment leaves the plan. Your real recurring payments aren’t affected.',
+    keep: 'Keep plan',
+    confirm: 'Clear plan',
   },
   undo: {
     title_one: 'Undo {{count}} change?',

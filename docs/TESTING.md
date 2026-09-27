@@ -481,7 +481,7 @@ over last month. Check at 390px (light and dark, English and Greek), desktop
 3. Rows sit under Income, Bills (rent, insurance, utilities…) and
    Subscriptions, each with its total. Turn a switch off → the row's amount
    is struck through, "Cancelled" (income: "Stopped"), the chip shows the
-   gain, the sticky bar reads "1 change · +€X/mo".
+   gain, and "Your changes" appears with 1 change and its saving.
 4. Tap a row → the edit sheet: type a new amount → the delta updates live;
    change how often; Keep/Cancel; Reset puts it back. A changed row shows
    the old amount struck through. Income (a raise) works the same.
@@ -495,8 +495,10 @@ over last month. Check at 390px (light and dark, English and Greek), desktop
    ticked, "Add to plan" disabled until one is ticked, the saving follows
    the ticks. A card also goes once any of its payments is changed by hand.
 7. "Your changes": each change with its saving a month and a year, "Open
-   payment" (the rule's page), the net change, and Start over (clears the
-   changes and adds; dismissed ideas stay dismissed).
+   payment" (the rule's page), the net change, then "Apply to my
+   recurring…" and "Clear plan" at the end of the list (nothing floats over
+   the page). Clear plan asks first, then clears the changes and adds;
+   dismissed ideas stay dismissed.
 8. Saved: the header says "Plan saved"; reload, or open the page on another
    device → the same plan. Edit a planned rule on Recurring (another
    amount) → back on Plan the row says "Updated since your plan" and the

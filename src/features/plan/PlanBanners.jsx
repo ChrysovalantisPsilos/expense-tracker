@@ -1,5 +1,5 @@
 // Plan mode's notices: the last apply (with Undo for 24 hours, then a quiet
-// note), the undo confirmation, and "Your recurring changed since you planned".
+// note), the undo and clear-plan confirmations, and "Your recurring changed since you planned".
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Box, Button, HStack, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalOverlay, Text,
@@ -67,6 +67,27 @@ export function UndoDialog({ count, busy, onUndo, onClose }) {
         <ModalFooter gap={2}>
           <Button variant="ghost" onClick={onClose}>{t('undo.keep')}</Button>
           <Button onClick={onUndo} isLoading={busy}>{t('undo.confirm')}</Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  )
+}
+
+// "Clear plan": empties the plan (changes and added payments). The real
+// recurring payments are untouched.
+export function ClearDialog({ onClear, onClose }) {
+  const t = useT('plan')
+  return (
+    <Modal isOpen onClose={onClose} isCentered>
+      <ModalOverlay />
+      <ModalContent mx={4}>
+        <ModalHeader>{t('clear.title')}</ModalHeader>
+        <ModalBody>
+          <Text color="text.muted" fontSize="sm">{t('clear.body')}</Text>
+        </ModalBody>
+        <ModalFooter gap={2}>
+          <Button variant="ghost" onClick={onClose}>{t('clear.keep')}</Button>
+          <Button colorScheme="red" onClick={onClear}>{t('clear.confirm')}</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>

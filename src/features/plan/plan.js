@@ -28,7 +28,7 @@ async function fetchPlan() {
   return data ?? { plan: null, undo: null }
 }
 
-// Save the plan; an empty one is removed ("Start over" too).
+// Save the plan; an empty one is removed ("Clear plan" too).
 async function storePlan(plan) {
   const { error } = isEmptyPlan(plan)
     ? await supabase.rpc('clear_recurring_plan')
