@@ -1,6 +1,6 @@
 ---
 name: improve-skills
-description: Capture what a finished task taught and fold it back into the skills — generic, reusable lessons go into the generic skills (ship-feature, release-to-prod, design-renders, brand-designs, delegate-and-review, and this one); project-specific facts go into that project's .claude/project.md profile. Run at the end of every task done with one of those skills, when the owner corrects how something should be done, or when asked to "improve the skills" or "learn from this project".
+description: Capture what a finished task taught and fold it back into the skills — generic, reusable lessons go into the generic skills (choose-skill, ship-feature, release-to-prod, design-renders, brand-designs, delegate-and-review, and this one); project-specific facts go into that project's .claude/project.md profile. Run at the end of every task done with one of those skills, when the owner corrects how something should be done, or when asked to "improve the skills" or "learn from this project".
 ---
 
 # Improve the skills

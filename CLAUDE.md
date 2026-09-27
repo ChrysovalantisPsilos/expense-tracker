@@ -1,7 +1,8 @@
 # Budgeer — AI Guide
 
 Workflow facts (environments, commands, commit rules, release steps, brand)
-live in `.claude/project.md`; the process skills are in `.claude/skills/`.
+live in `.claude/project.md`; the process skills are in `.claude/skills/`
+(start with `choose-skill` to pick the right one).
 
 Budgeer is a financial **PWA**: personal expense/income tracker + friend
 bill-splitter. React + Vite + Chakra UI on the client; Supabase (Postgres +
