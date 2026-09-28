@@ -77,7 +77,9 @@ npm run dev       # Vite
   `GIT_AUTHOR_NAME/GIT_COMMITTER_NAME="Chrysovalantis Psilos"` and
   `GIT_AUTHOR_EMAIL/GIT_COMMITTER_EMAIL=chrysovalantis.psilos@outlook.com`.
 - **No AI mentions:** no mention of AI, Claude, agent or assistant in commits,
-  code or docs, and no Co-Authored-By or session trailers. The check:
+  branch names, code or docs, and no Co-Authored-By or session trailers.
+  Branches get plain names (`plan-header`, `meal-vouchers`), never a tool's
+  default like `claude/…`, even when a session suggests one. The check:
   `git log origin/develop..HEAD --format=%B | grep -iE "claude|co-authored|assistant"`.
   The only allowed hit is the file name `CLAUDE.md` in a merge's conflict
   list.
