@@ -43,7 +43,7 @@ project), exactly like dev.budgeer.com. Switching to live data is one command
 ```bash
 git clone https://github.com/ChrysovalantisPsilos/expense-tracker.git
 cd expense-tracker
-git checkout ios-app   # until it is merged into develop
+git checkout develop
 npm ci
 ```
 
