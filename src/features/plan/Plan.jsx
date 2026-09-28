@@ -19,9 +19,10 @@ import {
   setChange, setSalary, signalsFor, startOver, tryIdea, undoState, upsertAdd,
 } from './planMath.js'
 import {
-  ChangesPanel, IdeasStrip, ImpactHeader, PlanHint, PlanRow, SavedNote, WhatIfRow, itemName,
+  ChangesPanel, IdeasStrip, ImpactHeader, PlanHint, PlanRow, SavedNote, WhatIfRow, changeKey, itemName,
 } from './PlanParts.jsx'
-import { AddSheet, ApplySheet, EditSheet, PickSheet } from './PlanSheets.jsx'
+import { ApplySheet } from './PlanSheets.jsx'
+import { AddForm, EditForm, PickPanel } from './PlanEditors.jsx'
 import { AppliedBanner, AppliedNote, ClearDialog, RealityBanner, UndoDialog } from './PlanBanners.jsx'
 
 // Plan mode (/plan): a sandbox over the user's recurring payments and income.
@@ -35,7 +36,13 @@ export default function Plan() {
   const toast = useToast()
   const d = usePlanData()
   const [view, setView] = useState('month')
-  const [sheet, setSheet] = useState(null) // { type: 'edit' | 'add' | 'pick' | 'apply' | 'undo', id? }
+  // The one editor open in place on the whole page: { key, at }, `key` naming
+  // what opened it (PlanParts.openerId: a row's id, changeKey(id) for its
+  // entry in "Your changes", 'new' for "What if I add…", an overlap idea's id);
+  // `at` reopens it, scrolled into view, when asked again. The real
+  // confirmations are dialogs: 'apply' | 'clear' | 'undo'.
+  const [open, setOpen] = useState(null)
+  const [dialog, setDialog] = useState(null)
   const [busy, setBusy] = useState(false)
   const plan = d.plan ?? emptyPlan()
   const currency = d.baseCurrency
@@ -86,7 +93,6 @@ export default function Plan() {
     )
   }
 
-  const byId = new Map(items.map((i) => [i.id, i]))
   const ruleOf = (id) => d.rules.find((r) => r.id === id)
   const edit = (item, patch) => d.setPlan((p) => (item.salary
     ? setSalary(p, patch, item.before.amount_minor)
@@ -95,12 +101,33 @@ export default function Plan() {
     if (item.added) d.setPlan((p) => removeAdd(p, item.id))
     else edit(item, { cancel: !item.cancelled })
   }
-  const open = (item) => setSheet({ type: item.added ? 'add' : 'edit', id: item.id })
+  const isOpen = (key) => open?.key === key
+  const openEditor = (key) => setOpen({ key, at: Date.now() })
+  const toggleOpen = (key) => (isOpen(key) ? setOpen(null) : openEditor(key))
   const onTry = (idea) => {
-    if (idea.kind === 'overlap') setSheet({ type: 'pick', id: idea.id })
+    if (idea.kind === 'overlap') toggleOpen(idea.id)
+    // A price rise on an essential: open the payment to try a lower price.
+    else if (idea.kind === 'compare') openEditor(idea.ruleIds[0])
     else d.setPlan((p) => tryIdea(p, idea, [ruleOf(idea.ruleIds[0])]))
   }
-  const close = () => setSheet(null)
+  const closeEditor = () => setOpen(null)
+  const close = () => setDialog(null)
+  // Drop one change from the plan: an edit or cancel goes back to the real
+  // payment, an added one leaves.
+  const drop = (it) => d.setPlan((p) => (it.added ? removeAdd(p, it.id) : it.salary ? resetSalary(p) : resetChange(p, it.id)))
+  const addForm = (add, key) => (
+    <AddForm key={`${key}-${open.at}`} add={add} opener={key} categories={d.categories} todayISO={d.todayISO}
+      currency={currency} rates={d.rates} onSave={(a) => d.setPlan((p) => upsertAdd(p, a))} onClose={closeEditor} />
+  )
+  // A row's editor, under the row (`key` its id) or its change (changeKey).
+  const editor = (it, key = it.id) => {
+    if (!isOpen(key)) return null
+    if (it.added) return addForm(it.add, key)
+    return (
+      <EditForm key={`${key}-${open.at}`} item={it} opener={key} signal={signals.get(it.id)} currency={currency}
+        onChange={(patch) => edit(it, patch)} onReset={() => drop(it)} onClose={closeEditor} />
+    )
+  }
 
   async function apply(pickedIds) {
     const sel = applySelection(items, plan, pickedIds)
@@ -137,14 +164,13 @@ export default function Plan() {
     }
   }
 
-  const sheetItem = sheet?.id && byId.get(sheet.id)
-  const pickIdea = sheet?.type === 'pick' && ideas.find((i) => i.id === sheet.id)
+  const pickIdea = open && ideas.find((i) => i.kind === 'overlap' && i.id === open.key)
   return (
     <Stack spacing={4}>
       {header}
       {applied?.canUndo && (
         <AppliedBanner state={applied} amount={monthOf(headline(sum).before)} mode={sum.mode} currency={currency}
-          onUndo={() => setSheet({ type: 'undo' })} />
+          onUndo={() => setDialog('undo')} />
       )}
       {applied && !applied.canUndo && <AppliedNote state={applied} todayISO={d.todayISO} />}
       {(reality.dropped.length > 0 || reality.stale.length > 0) && (
@@ -152,48 +178,37 @@ export default function Plan() {
           onOk={() => d.setPlan((p) => acknowledge(p, d.rules, d.savingsIds, d.salary))} />
       )}
       <ImpactHeader sum={sum} view={view} onView={setView} currency={currency} rates={rates} />
-      <IdeasStrip ideas={ideas} view={view} currency={currency} onTry={onTry}
+      <IdeasStrip ideas={ideas} view={view} currency={currency} picking={pickIdea?.id} onTry={onTry}
         onDismiss={(idea) => d.setPlan((p) => dismissIdea(p, idea.id))} />
+      {pickIdea && (
+        <PickPanel key={`${pickIdea.id}-${open.at}`} idea={pickIdea} items={items} currency={currency} onClose={closeEditor}
+          onAdd={(rows) => d.setPlan((p) => tryIdea(p, pickIdea, rows.map((r) => ruleOf(r.id))))} />
+      )}
       {planGroups(items).map((g) => (
         <Panel key={g.key} p={4} pb={2} as="section" aria-label={t(`groups.${g.key}`)}>
           <SectionLabel mb={1} aside={formatMoney(inView(g.total, view), currency)}>{t(`groups.${g.key}`)}</SectionLabel>
           <Box as="ul">
             {g.items.map((it) => (
               <PlanRow key={it.id} item={it} view={view} currency={currency} tag={rowTag(it, signals)}
-                onOpen={() => open(it)} onToggle={() => toggle(it)} />
+                open={isOpen(it.id)} editor={editor(it)} onOpen={() => toggleOpen(it.id)} onToggle={() => toggle(it)} />
             ))}
           </Box>
         </Panel>
       ))}
-      <WhatIfRow onClick={() => setSheet({ type: 'add' })} />
+      <WhatIfRow open={isOpen('new')} form={isOpen('new') && addForm(null, 'new')} onClick={() => toggleOpen('new')} />
       {sum.changes.length > 0
-        ? <ChangesPanel sum={sum} currency={currency} onApply={() => setSheet({ type: 'apply' })}
-            onClear={() => setSheet({ type: 'clear' })} />
+        ? <ChangesPanel sum={sum} currency={currency} isOpen={(it) => isOpen(changeKey(it.id))}
+            editor={(it) => editor(it, changeKey(it.id))} onOpen={(it) => toggleOpen(changeKey(it.id))} onDrop={drop}
+            onApply={() => setDialog('apply')} onClear={() => setDialog('clear')} />
         : <PlanHint />}
 
-      {sheet?.type === 'edit' && sheetItem && (
-        <EditSheet key={sheetItem.id} item={sheetItem} signal={signals.get(sheetItem.id)} currency={currency}
-          onChange={(patch) => edit(sheetItem, patch)}
-          onReset={() => d.setPlan((p) => (sheetItem.salary ? resetSalary(p) : resetChange(p, sheetItem.id)))}
-          onClose={close} />
-      )}
-      {sheet?.type === 'add' && (
-        <AddSheet add={sheetItem?.add} categories={d.categories} todayISO={d.todayISO} currency={currency}
-          rates={d.rates}
-          onSave={(add) => { d.setPlan((p) => upsertAdd(p, add)); close() }}
-          onRemove={() => { d.setPlan((p) => removeAdd(p, sheet.id)); close() }} onClose={close} />
-      )}
-      {pickIdea && (
-        <PickSheet idea={pickIdea} items={items} currency={currency} onClose={close}
-          onAdd={(rows) => { d.setPlan((p) => tryIdea(p, pickIdea, rows.map((r) => ruleOf(r.id)))); close() }} />
-      )}
-      {sheet?.type === 'apply' && sum.changes.length > 0 && (
+      {dialog === 'apply' && sum.changes.length > 0 && (
         <ApplySheet sum={sum} currency={currency} busy={busy} onApply={apply} onClose={close} />
       )}
-      {sheet?.type === 'clear' && (
+      {dialog === 'clear' && (
         <ClearDialog onClear={() => { d.setPlan(startOver); close() }} onClose={close} />
       )}
-      {sheet?.type === 'undo' && applied?.canUndo && (
+      {dialog === 'undo' && applied?.canUndo && (
         <UndoDialog count={applied.count} busy={busy} onUndo={undo} onClose={close} />
       )}
     </Stack>

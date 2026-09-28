@@ -43,6 +43,14 @@ export default {
     bills: 'Bills',
     subscriptions: 'Subscriptions',
   },
+  // An overlap's size and type (planCatalog.SERVICE_TYPES): "2 music services".
+  services: {
+    video: '{{count}} video services',
+    music: '{{count}} music services',
+    cloud: '{{count}} cloud storage plans',
+    vpn: '{{count}} VPNs',
+    news: '{{count}} news subscriptions',
+  },
   tags: {
     new: 'New',
     changed: 'Changed',
@@ -82,9 +90,8 @@ export default {
     count_one: '{{count}} idea',
     count_other: '{{count}} ideas',
     overlap: {
-      name: '{{count}} in {{category}}',
-      title: '{{count}} in {{category}} · {{amount}}/yr',
-      body: '{{names}}. Pick the ones you could live without.',
+      title: '{{services}} · {{amount}}/yr',
+      body: '{{names}} do the same job. Pick the ones you could live without.',
     },
     priceUp: {
       title: '{{name}} went up {{pct}}% · {{amount}}/yr',
@@ -94,6 +101,13 @@ export default {
       title: '{{name}} · over budget · {{amount}}/yr',
       body: '{{category}} went over its budget in {{months}}.',
     },
+    // A price rise on an essential (insurance, energy…): never cancelled,
+    // "Try a lower price" opens it.
+    compare: {
+      title: '{{name}} went up {{pct}}% · worth comparing offers',
+      body: '{{from}} → {{to}} since {{date}}. Try a lower quote to see what you’d save.',
+      try: 'Try a lower price',
+    },
     biggest: {
       title: '{{name}} · {{amount}}/yr',
       body: 'Your biggest recurring cost you could cut.',
@@ -101,6 +115,10 @@ export default {
     save: {
       month: 'Save {{amount}}/mo',
       year: 'Save {{amount}}/yr',
+    },
+    upBy: {
+      month: 'Up {{amount}}/mo',
+      year: 'Up {{amount}}/yr',
     },
     try: 'Try it',
     dismiss: 'Dismiss: {{title}}',
@@ -116,6 +134,11 @@ export default {
     editLine: '{{was}} → {{now}}',
     notYet: 'Not in your recurring yet',
     open: 'Open payment',
+    edit: 'Edit your change to {{name}}',
+    undo: 'Undo this change',
+    undoLabel: 'Undo the change to {{name}}',
+    remove: 'Remove',
+    removeLabel: 'Remove {{name}} from the plan',
     planOnly: 'Only in your plan',
     perMonth: '{{amount}}/mo',
     perYear: '{{amount}}/yr',
@@ -139,7 +162,7 @@ export default {
     done: 'Done',
     detail: {
       priceUp: 'Went from {{from}} to {{to}} on {{date}}.',
-      overlap: 'One of {{count}} payments in the same category.',
+      overlap: 'One of {{services}}.',
       overBudget: 'Its category went over budget in {{months}}.',
     },
   },
@@ -153,8 +176,6 @@ export default {
     perYear: '{{amount}} a year',
   },
   add: {
-    title: 'What if I add…',
-    sub: 'Only in this plan until you apply it',
     kind: 'Cost or income',
     cost: 'A cost',
     income: 'Income',
@@ -170,7 +191,6 @@ export default {
     noCategory: 'No category',
     submit: 'Add to plan',
     update: 'Save',
-    remove: 'Remove from plan',
   },
   pick: {
     sub: 'Pick the ones to cancel in your plan. Most expensive first.',

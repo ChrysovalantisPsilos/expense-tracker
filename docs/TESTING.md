@@ -464,12 +464,20 @@ at 390px (light and dark), desktop 1280, and sideways at 844×390.
 
 ### K5. Plan mode
 
-Fake data: an account with a salary, rent (Housing), three streaming
-subscriptions in one category (one of them with two charges at different
-prices), a gym, a yearly insurance, a savings transfer ("Taken from my
-income") and one rule in USD; a budget on the streaming category that went
-over last month. Check at 390px (light and dark, English and Greek), desktop
+Fake data: an account with a salary, rent (Housing), a yearly insurance, a
+savings transfer ("Taken from my income") and one rule in USD, plus nine
+payments in one broad "Subscriptions" category: Mobile Vikings, JIMS,
+Revolut, Apple iCloud, Apple Music, YouTube Premium, KBC monthly charges,
+Flighty, Amazon Prime. Add a monthly "Car insurance" with two charges at
+different prices (it went up), and a budget on a category that went over
+last month. Check at 390px (light and dark, English and Greek), desktop
 1280, and sideways at 844×390.
+
+Nothing on Plan opens a pop-up except Apply, Clear plan and Undo (real
+confirmations). Every editor opens in place, one at a time on the whole
+page: its button says `aria-expanded`, focus moves to its first field, it
+scrolls into view (above the tab bar), and Escape or Done / Cancel closes it
+and puts focus back on what opened it.
 
 1. Entry: the sidebar has Plan right after Recurring; on a phone it's in
    More (More stays lit on `/plan`); sideways, through the rail's More.
@@ -482,23 +490,38 @@ over last month. Check at 390px (light and dark, English and Greek), desktop
    Subscriptions, each with its total. Turn a switch off → the row's amount
    is struck through, "Cancelled" (income: "Stopped"), the chip shows the
    gain, and "Your changes" appears with 1 change and its saving.
-4. Tap a row → the edit sheet: type a new amount → the delta updates live;
-   change how often; Keep/Cancel; Reset puts it back. A changed row shows
-   the old amount struck through. Income (a raise) works the same.
-5. "What if I add…" → a new cost or income (name, amount, currency, how
-   often, start, category) → it's listed as "New" and moves the net; tap it
-   to edit or remove it.
-6. Ideas to save: at most three cards (overlap, price went up, biggest
-   saver, over budget) and one tag per row. × dismisses one for good (also
-   after a reload). Try it cancels that payment in the plan and the card
-   goes. The overlap's Try it opens the picker: most expensive first, none
-   ticked, "Add to plan" disabled until one is ticked, the saving follows
-   the ticks. A card also goes once any of its payments is changed by hand.
-7. "Your changes": each change with its saving a month and a year, "Open
-   payment" (the rule's page), the net change, then "Apply to my
-   recurring…" and "Clear plan" at the end of the list (nothing floats over
-   the page). Clear plan asks first, then clears the changes and adds;
-   dismissed ideas stay dismissed.
+4. Tap a row → it opens in place under the row: type a new amount → the
+   delta updates live; change how often; Keep/Cancel; Reset puts it back;
+   Done closes it. Tapping another row closes the first. A changed row
+   shows the old amount struck through. Income (a raise) works the same.
+5. "What if I add…" → the form opens in place (name, amount, currency, how
+   often, start, category, Cancel and "Add to plan") → it's listed as "New"
+   and moves the net; tap it to edit it in place; its switch removes it.
+6. Ideas to save: at most three cards and one tag per row. × dismisses one
+   for good (also after a reload); a card also goes once any of its
+   payments is changed by hand.
+   - Overlap is by what a service does, never by category: with the nine
+     subscriptions above the only overlap is "2 music services" (YouTube
+     Premium and Apple Music); nothing groups Mobile Vikings, Revolut, KBC
+     or Amazon Prime. Its Try it opens the picker in place under the ideas:
+     most expensive first, none ticked, "Add 1 to plan" disabled until one
+     is ticked, the saving follows the ticks, Cancel closes it.
+   - Car insurance that went up shows "Car insurance went up 12% · worth
+     comparing offers" with "Up €6.43/mo"; "Try a lower price" opens that
+     payment's editor (scrolled to) and cancels nothing. A price rise on a
+     non-essential payment keeps "Try it", which cancels it in the plan.
+   - Biggest saver and over budget never pick an essential (rent,
+     insurance, utilities, health, loans, taxes, school, pension, savings:
+     by category or by a word in the name, in English, Dutch, French or
+     Greek). Essential rows only ever carry "Price up".
+7. "Your changes": each change with its saving a month and a year, "Undo
+   this change" (an added one: "Remove") which drops just it with no
+   question asked, "Open payment" (the rule's page), the net change, then
+   "Apply to my recurring…" and "Clear plan" at the end of the list
+   (nothing floats over the page). Tap a change → the same editor opens
+   there (an added one: its form); the row above follows. Clear plan asks
+   first, then clears the changes and adds; dismissed ideas stay
+   dismissed.
 8. Saved: the header says "Plan saved"; reload, or open the page on another
    device → the same plan. Edit a planned rule on Recurring (another
    amount) → back on Plan the row says "Updated since your plan" and the
@@ -524,7 +547,7 @@ over last month. Check at 390px (light and dark, English and Greek), desktop
     → Monthly spending) in the last three full months. Income shows a
     "Salary" row, "Average of the last 3 months · from your entries", equal
     to the average of the months that had entries (one month only: that
-    month; this month's salary never counts). Tap it → the edit sheet has
+    month; this month's salary never counts). Tap it → its editor has
     the amount (no "How often") and a note that the change stays in the
     plan; the switch turns it off. "Your changes" shows it with "Only in
     your plan" (no "Open payment"); the Apply sheet leaves it out with a

@@ -1,6 +1,8 @@
 // Plan mode's building blocks: the impact card, a plan row, the ideas strip,
 // "Your changes" (with Apply and Clear plan), the hint, and the
-// money/frequency wording they share. The maths behind every figure is planMath.js.
+// money/frequency wording they share. The editors that open in place under a
+// row, a change or the ideas are in PlanEditors.jsx. The maths behind every
+// figure is planMath.js.
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Box, Button, Flex, HStack, IconButton, Stack, Switch, Tag, Text,
@@ -39,6 +41,30 @@ export function perUnit(fields) {
   const amount = formatMoney(fields.amount_minor, fields.currency)
   const { choice, n } = ruleToChoice(fields)
   return n > 1 ? tr('plan:units.custom', { amount, frequency: frequencyLabel(fields) }) : tr(`plan:units.${choice}`, { amount })
+}
+
+// The ids that tie an inline editor (PlanEditors) to what opens it. `key`
+// names the opener: a row's id, 'changes-<id>' for its entry in "Your
+// changes", 'new' for "What if I add…", an idea's id for its picker. The
+// opener's id gets focus back on close; the editor's is for aria-controls.
+export const changeKey = (id) => `changes-${id}`
+// What an opened editor scrolls into view (the item, with its opener) keeps
+// clear of the header and the tab bar.
+export const SCROLL_CLEAR = { scrollMarginTop: '80px', scrollMarginBottom: '96px' }
+export const openerId = (key) => `plan-open-${key}`
+export const editorId = (key) => `plan-editor-${key}`
+
+// "2 music services": an overlap's type (planCatalog.SERVICE_TYPES) and size.
+export const serviceCount = (type, count, t) => t(`services.${type}`, { count })
+
+// A quiet line: this change stays in the plan (the salary).
+export function PlanOnlyNote({ text }) {
+  return (
+    <HStack role="note" spacing={2} align="start" color="text.muted">
+      <Box mt="2px" flexShrink={0}><Info size={14} /></Box>
+      <Text fontSize="xs">{text}</Text>
+    </HStack>
+  )
 }
 
 // A row's display name: its own, else its category's, else its kind ("Salary"
@@ -189,19 +215,21 @@ function rowMeta(item, view, t) {
   return t('row.next', { frequency: freqLabel(f), date: shortDate(item.next) })
 }
 
-// One row: tap it to edit it in the plan; the switch keeps it (on) or cancels
-// it in the plan (off). A changed row shows its old amount struck through.
-export function PlanRow({ item, view, currency, tag, onOpen, onToggle }) {
+// One row: tap it to open its editor in place (`editor`, while `open`); the
+// switch keeps it (on) or cancels it in the plan (off). A changed row shows
+// its old amount struck through.
+export function PlanRow({ item, view, currency, tag, open, editor, onOpen, onToggle }) {
   const t = useT('plan')
   const name = itemName(item)
   const now = inView(item.afterYear, view)
   const was = inView(item.beforeYear, view)
   const own = (fields) => formatMoney(fields.amount_minor, fields.currency)
   return (
-    <Box as="li" listStyleType="none">
+    <Box as="li" listStyleType="none" data-plan-item="" sx={SCROLL_CLEAR}>
       <HStack spacing={1} minH="56px">
-        <HStack as="button" type="button" onClick={onOpen} spacing={3} flex="1" minW={0} py={2} px={1} mx={-1}
-          textAlign="left" borderRadius="lg" _hover={{ bg: 'bg.subtle' }} aria-label={t('row.open', { name })}>
+        <HStack as="button" type="button" id={openerId(item.id)} onClick={onOpen} spacing={3} flex="1" minW={0} py={2} px={1}
+          mx={-1} textAlign="left" borderRadius="lg" _hover={{ bg: 'bg.subtle' }} aria-label={t('row.open', { name })}
+          aria-expanded={!!open} aria-controls={open ? editorId(item.id) : undefined}>
           <Box opacity={item.cancelled ? 0.5 : 1} flexShrink={0}>
             <CategoryBadge category={item.category} kind={item.kind} size={32} />
           </Box>
@@ -234,6 +262,7 @@ export function PlanRow({ item, view, currency, tag, onOpen, onToggle }) {
         </Flex>
       </HStack>
       {item.stale && <UpdatedNote item={item} />}
+      {open && editor}
     </Box>
   )
 }
@@ -256,19 +285,23 @@ function UpdatedNote({ item }) {
   )
 }
 
-// "What if I add…" — a hypothetical payment or income, only in the plan.
-export function WhatIfRow({ onClick }) {
+// "What if I add…" — a hypothetical payment or income, only in the plan. It
+// opens into its form (`form`, while `open`) right below.
+export function WhatIfRow({ open, form, onClick }) {
   const t = useT('plan')
   return (
-    <HStack as="button" type="button" onClick={onClick} w="full" spacing={3} px={3} py={2.5} minH="56px" borderRadius="xl"
-      borderWidth="1.5px" borderStyle="dashed" borderColor="border.default" textAlign="left"
-      bg="bg.surface" _hover={{ bg: 'bg.subtle' }}>
-      <Box color="accent.fg" flexShrink={0}><Plus size={20} /></Box>
-      <Box minW={0}>
-        <Text fontSize="sm" fontWeight="700" color="accent.fg">{t('whatIf.title')}</Text>
-        <Text fontSize="xs" color="text.muted">{t('whatIf.text')}</Text>
-      </Box>
-    </HStack>
+    <Box data-plan-item="" sx={SCROLL_CLEAR}>
+      <HStack as="button" type="button" id={openerId('new')} onClick={onClick} w="full" spacing={3} px={3} py={2.5}
+        minH="56px" borderRadius="xl" borderWidth="1.5px" borderStyle="dashed" borderColor="border.default" textAlign="left"
+        bg="bg.surface" _hover={{ bg: 'bg.subtle' }} aria-expanded={!!open} aria-controls={open ? editorId('new') : undefined}>
+        <Box color="accent.fg" flexShrink={0}><Plus size={20} /></Box>
+        <Box minW={0}>
+          <Text fontSize="sm" fontWeight="700" color="accent.fg">{t('whatIf.title')}</Text>
+          <Text fontSize="xs" color="text.muted">{t('whatIf.text')}</Text>
+        </Box>
+      </HStack>
+      {open && form}
+    </Box>
   )
 }
 
@@ -280,13 +313,21 @@ export function ideaText(idea, currency, t) {
   switch (idea.kind) {
     case 'overlap': {
       const names = new Intl.ListFormat(intlLocale('en-GB'), { type: 'conjunction' }).format(idea.names.map((n) => n || '…'))
-      const category = categoryDisplayName(idea.category)
+      const services = serviceCount(idea.type, idea.ruleIds.length, t)
       return {
-        name: t('ideas.overlap.name', { count: idea.ruleIds.length, category }),
-        title: t('ideas.overlap.title', { count: idea.ruleIds.length, category, amount: year }),
+        name: services,
+        title: t('ideas.overlap.title', { services, amount: year }),
         body: t('ideas.overlap.body', { names }),
       }
     }
+    case 'compare':
+      return {
+        title: t('ideas.compare.title', { name: idea.name, pct: idea.rise.pct }),
+        body: t('ideas.compare.body', {
+          from: formatMoney(idea.rise.from, idea.rise.currency), to: formatMoney(idea.rise.to, idea.rise.currency),
+          date: shortDate(idea.rise.since),
+        }),
+      }
     case 'priceUp':
       return {
         title: t('ideas.priceUp.title', { name: idea.name, pct: idea.rise.pct, amount: year }),
@@ -305,9 +346,11 @@ export function ideaText(idea, currency, t) {
   }
 }
 
-// The "Ideas to save" strip: each idea tried in one tap (overlap: pick which)
-// or dismissed with ×.
-export function IdeasStrip({ ideas, view, currency, onTry, onDismiss }) {
+// The "Ideas to save" strip: each idea tried in one tap or dismissed with ×.
+// An overlap's "Try it" opens its picker (`picking`: that idea's id) and a
+// price rise on an essential opens the payment, to try a lower price; neither
+// cancels anything by itself.
+export function IdeasStrip({ ideas, view, currency, picking, onTry, onDismiss }) {
   const t = useT('plan')
   if (!ideas.length) return null
   return (
@@ -325,17 +368,28 @@ export function IdeasStrip({ ideas, view, currency, onTry, onDismiss }) {
             <Panel key={idea.id} elevation="soft" p={4} w={{ base: '272px', md: '288px' }} flexShrink={0}
               display="flex" flexDir="column" sx={{ scrollSnapAlign: 'start' }}>
               <HStack justify="space-between" align="start" mb={1}>
-                <SignalTag tag={{ kind: idea.kind, pct: idea.rise?.pct }} />
+                <SignalTag tag={{ kind: idea.kind === 'compare' ? 'priceUp' : idea.kind, pct: idea.rise?.pct }} />
                 <IconButton aria-label={t('ideas.dismiss', { title: text.title })} icon={<X size={16} />} size="sm"
                   variant="ghost" mt={-1.5} mr={-2} onClick={() => onDismiss(idea)} />
               </HStack>
               <Text fontFamily="heading" fontWeight="700" fontSize="md" lineHeight="1.25">{text.title}</Text>
               <Text fontSize="xs" color="text.muted" mt={1} flex="1">{text.body}</Text>
               <Flex mt={3} justify="space-between" align="center" columnGap={2} rowGap={2} flexWrap="wrap">
-                <Text fontSize="sm" fontWeight="700" color="status.positive" whiteSpace="nowrap">
-                  {t(`ideas.save.${view}`, { amount: formatMoney(inView(idea.saves, view), currency) })}
-                </Text>
-                <Button size="sm" flexShrink={0} ml="auto" onClick={() => onTry(idea)}>{t('ideas.try')}</Button>
+                {idea.kind === 'compare' ? (
+                  <Text fontSize="sm" fontWeight="700" color="status.negative" whiteSpace="nowrap">
+                    {t(`ideas.upBy.${view}`, { amount: formatMoney(inView(idea.riseYear, view), currency) })}
+                  </Text>
+                ) : (
+                  <Text fontSize="sm" fontWeight="700" color="status.positive" whiteSpace="nowrap">
+                    {t(`ideas.save.${view}`, { amount: formatMoney(inView(idea.saves, view), currency) })}
+                  </Text>
+                )}
+                <Button size="sm" flexShrink={0} ml="auto" id={openerId(idea.id)} onClick={() => onTry(idea)}
+                  {...(idea.kind === 'overlap' && {
+                    'aria-expanded': picking === idea.id, 'aria-controls': picking === idea.id ? editorId(idea.id) : undefined,
+                  })}>
+                  {t(idea.kind === 'compare' ? 'ideas.compare.try' : 'ideas.try')}
+                </Button>
               </Flex>
             </Panel>
           )
@@ -356,8 +410,10 @@ export function changeLine(item, t) {
 
 // "Your changes": each with what it does to the figure the header shows (the
 // net, or the payments), the total, then Apply (when anything can be applied:
-// the salary change is only in the plan) and Clear plan.
-export function ChangesPanel({ sum, currency, onApply, onClear }) {
+// the salary change is only in the plan) and Clear plan. Tap a change to edit
+// it in place (`editor(item)` while `isOpen(item)`: the same editor as its
+// row); "Undo this change" (or "Remove", for an added one) drops just it.
+export function ChangesPanel({ sum, currency, isOpen, editor, onOpen, onDrop, onApply, onClear }) {
   const t = useT('plan')
   const h = headline(sum)
   const canApply = applicable(sum.changes).length > 0
@@ -370,24 +426,39 @@ export function ChangesPanel({ sum, currency, onApply, onClear }) {
         {sum.changes.map((it) => {
           const eff = effectOf(it)
           const shown = asShown(eff, sum.mode)
+          const open = isOpen(it)
+          const name = itemName(it)
+          const key = changeKey(it.id)
           return (
-            <HStack as="li" key={it.id} spacing={3} py={2.5} borderBottomWidth="1px" borderColor="border.default" align="start">
-              <Box pt={0.5}><CategoryBadge category={it.category} kind={it.kind} size={32} /></Box>
-              <Box flex="1" minW={0}>
-                <Text fontSize="sm" fontWeight="600" noOfLines={1}>{itemName(it)}</Text>
-                <Text fontSize="xs" color="text.muted">{changeLine(it, t)}</Text>
-                {it.added || it.salary
-                  ? <Text fontSize="xs" color="text.muted" mt={1}>{t(it.salary ? 'changes.planOnly' : 'changes.notYet')}</Text>
-                  : (
-                    <Button as={RouterLink} to={`/recurring/${it.id}`} variant="link" size="xs" color="accent.fg" mt={1}
-                      rightIcon={<ExternalLink size={12} />}>{t('changes.open')}</Button>
+            <Box as="li" key={it.id} data-plan-item="" sx={SCROLL_CLEAR} py={1.5} borderBottomWidth="1px" borderColor="border.default">
+              <HStack as="button" type="button" id={openerId(key)} onClick={() => onOpen(it)} w="full" spacing={3} py={1.5}
+                px={1} mx={-1} align="start" textAlign="left" borderRadius="lg" _hover={{ bg: 'bg.subtle' }}
+                aria-label={t('changes.edit', { name })} aria-expanded={open} aria-controls={open ? editorId(key) : undefined}>
+                <Box pt={0.5}><CategoryBadge category={it.category} kind={it.kind} size={32} /></Box>
+                <Box flex="1" minW={0}>
+                  <Text fontSize="sm" fontWeight="600" noOfLines={1}>{name}</Text>
+                  <Text fontSize="xs" color="text.muted">{changeLine(it, t)}</Text>
+                  {(it.added || it.salary) && (
+                    <Text fontSize="xs" color="text.muted" mt={1}>{t(it.salary ? 'changes.planOnly' : 'changes.notYet')}</Text>
                   )}
-              </Box>
-              <Box textAlign="right" flexShrink={0}>
-                <Text fontSize="sm" fontWeight="700" color={toneOf(eff)}>{t('changes.perMonth', { amount: signed(monthOf(shown), currency) })}</Text>
-                <Text fontSize="xs" color="text.muted">{t('changes.perYear', { amount: signed(shown, currency) })}</Text>
-              </Box>
-            </HStack>
+                </Box>
+                <Box textAlign="right" flexShrink={0}>
+                  <Text fontSize="sm" fontWeight="700" color={toneOf(eff)}>{t('changes.perMonth', { amount: signed(monthOf(shown), currency) })}</Text>
+                  <Text fontSize="xs" color="text.muted">{t('changes.perYear', { amount: signed(shown, currency) })}</Text>
+                </Box>
+              </HStack>
+              <Flex columnGap={4} rowGap={0} pl="44px" pb={1} flexWrap="wrap" align="center">
+                <Button variant="link" size="sm" minH="44px" color="accent.fg" leftIcon={it.added ? <X size={14} /> : <RotateCcw size={14} />}
+                  aria-label={t(it.added ? 'changes.removeLabel' : 'changes.undoLabel', { name })} onClick={() => onDrop(it)}>
+                  {t(it.added ? 'changes.remove' : 'changes.undo')}
+                </Button>
+                {!it.added && !it.salary && (
+                  <Button as={RouterLink} to={`/recurring/${it.id}`} variant="link" size="sm" minH="44px" color="text.muted"
+                    rightIcon={<ExternalLink size={12} />}>{t('changes.open')}</Button>
+                )}
+              </Flex>
+              {open && editor(it)}
+            </Box>
           )
         })}
       </Box>

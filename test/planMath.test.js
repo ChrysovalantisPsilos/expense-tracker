@@ -8,6 +8,7 @@ import {
   SALARY_ID, salaryCategoryId, salaryWindow, derivedSalary, setSalary, resetSalary, applicable, headline,
   asShown,
 } from '../src/features/plan/planMath.js'
+import { SERVICE_TYPES, isEssential, serviceTypes } from '../src/features/plan/planCatalog.js'
 
 // Fake ids (uuid-shaped, as the server's rule ids are).
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
@@ -262,14 +263,16 @@ const SIGNALS_OPTS = {
 test('signals and row tags: one tag per row, price up first; none on a changed row', () => {
   const list = items()
   const sig = signalsFor(list, SIGNALS_OPTS)
-  assert.deepEqual(sig.get(NETFLIX.id).overlap, { categoryId: ENT, count: 3 })
+  // Netflix and Disney+ are both video: an overlap. Spotify (music) is alone.
+  assert.deepEqual(sig.get(NETFLIX.id).overlap, { type: 'video', count: 2 })
+  assert.equal(sig.get(SPOTIFY.id), undefined)
   assert.equal(rowTag(list.find((i) => i.id === NETFLIX.id), sig).kind, 'priceUp')
   assert.equal(rowTag(list.find((i) => i.id === NETFLIX.id), sig).pct, 17)
-  assert.equal(rowTag(list.find((i) => i.id === SPOTIFY.id), sig).kind, 'overlap')
+  assert.equal(rowTag(list.find((i) => i.id === DISNEY.id), sig).kind, 'overlap')
   assert.equal(rowTag(list.find((i) => i.id === GYM.id), sig).kind, 'overBudget')
   assert.equal(rowTag(list.find((i) => i.id === RENT.id), sig), null)
-  const changed = items(setChange(emptyPlan(), SPOTIFY, { cancel: true }))
-  assert.equal(rowTag(changed.find((i) => i.id === SPOTIFY.id), sig), null)
+  const changed = items(setChange(emptyPlan(), DISNEY, { cancel: true }))
+  assert.equal(rowTag(changed.find((i) => i.id === DISNEY.id), sig), null)
 })
 
 test('ideas: overlap, price up, over budget, biggest saver — each rule once, at most 3', () => {
@@ -277,17 +280,18 @@ test('ideas: overlap, price up, over budget, biggest saver — each rule once, a
   const ideas = planIdeas(list, signalsFor(list, SIGNALS_OPTS))
   assert.equal(ideas.length, MAX_IDEAS)
   const [overlap, second, third] = ideas
-  assert.equal(overlap.id, `overlap:${ENT}`)
-  assert.deepEqual(overlap.ruleIds, [NETFLIX.id, SPOTIFY.id, DISNEY.id], 'dearest first')
-  assert.equal(overlap.year, (1399 + 1099 + 899) * 12)
-  assert.equal(overlap.saves, (1099 + 899) * 12, 'keeping the dearest one')
+  assert.equal(overlap.id, 'overlap:video')
+  assert.equal(overlap.type, 'video')
+  assert.deepEqual(overlap.ruleIds, [NETFLIX.id, DISNEY.id], 'dearest first')
+  assert.equal(overlap.year, (1399 + 899) * 12)
+  assert.equal(overlap.saves, 899 * 12, 'keeping the dearest one')
   // Netflix is already in the overlap, so its price rise isn't an idea of its own.
   assert.equal(second.id, `overBudget:${GYM.id}`)
   assert.deepEqual(second.months, ['2026-08-01', '2026-09-01'])
-  // Biggest saver: the dearest non-essential expense not used yet (rent is
-  // housing, gym and the streams are taken).
-  assert.equal(third.id, `biggest:${CAR.id}`)
-  assert.equal(third.saves, 48000)
+  // Biggest saver: the dearest non-essential expense not used yet. Car
+  // insurance costs more but is essential; rent is housing.
+  assert.equal(third.id, `biggest:${SPOTIFY.id}`)
+  assert.equal(third.saves, 1099 * 12)
 })
 
 test('ideas: price up shows when its rule is free; dismissed and tried ideas disappear', () => {
@@ -295,11 +299,12 @@ test('ideas: price up shows when its rule is free; dismissed and tried ideas dis
   const list = buildItems({ rules: noOverlap, plan: emptyPlan(), savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' })
   const sig = signalsFor(list, SIGNALS_OPTS)
   let ideas = planIdeas(list, sig)
-  assert.deepEqual(ideas.map((i) => i.kind), ['priceUp', 'overBudget', 'biggest'])
+  // Nothing non-essential is left for "biggest saver" (rent and car insurance are essential).
+  assert.deepEqual(ideas.map((i) => i.kind), ['priceUp', 'overBudget'])
   assert.deepEqual(ideas[0].rise.pct, 17)
-  // Dismissed: gone, and the next one moves up.
+  // Dismissed: gone, and Netflix is free for the biggest saver.
   ideas = planIdeas(list, sig, [`priceUp:${NETFLIX.id}`])
-  assert.deepEqual(ideas.map((i) => i.kind), ['overBudget', 'biggest'])
+  assert.deepEqual(ideas.map((i) => i.id), [`overBudget:${GYM.id}`, `biggest:${NETFLIX.id}`])
   // Tried (any of its payments changed in the plan): gone.
   const tried = buildItems({ rules: noOverlap, plan: setChange(emptyPlan(), GYM, { amount_minor: 2490 }),
     savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' })
@@ -318,10 +323,139 @@ test('overlap picker: dearest first, nothing picked saves nothing, picks add up'
   const list = items()
   const idea = planIdeas(list, signalsFor(list))[0]
   let pick = overlapPick(list, idea, new Set())
-  assert.deepEqual(pick.rows.map((r) => r.name), ['Netflix', 'Spotify', 'Disney+'])
+  assert.deepEqual(pick.rows.map((r) => r.name), ['Netflix', 'Disney+'])
   assert.equal(pick.saves, 0)
   pick = overlapPick(list, idea, new Set([NETFLIX.id, DISNEY.id]))
   assert.equal(pick.saves, (1399 + 899) * 12)
+})
+
+// ---- The service catalogue and essentials (planCatalog) ------------------------------
+
+test('catalogue: matches names whatever the case, accents, spacing and extra words', () => {
+  assert.deepEqual(serviceTypes('Apple ICloud '), ['cloud'])
+  assert.deepEqual(serviceTypes('iCloud+ 200GB'), ['cloud'])
+  assert.deepEqual(serviceTypes('Netflix.com'), ['video'])
+  assert.deepEqual(serviceTypes('NETFLIX   Premium'), ['video'])
+  assert.deepEqual(serviceTypes('Disney+'), ['video'])
+  assert.deepEqual(serviceTypes('Dísney Plus'), ['video'])
+  assert.deepEqual(serviceTypes('SPOTIFY family'), ['music'])
+  assert.deepEqual(serviceTypes('Microsoft 365 Family'), ['cloud'])
+  assert.deepEqual(serviceTypes('NordVPN'), ['vpn'])
+  assert.deepEqual(serviceTypes('Proton  VPN'), ['vpn'])
+  assert.deepEqual(serviceTypes('Amazon Prime Video'), ['video'])
+  assert.deepEqual(serviceTypes('HBO Max'), ['video'])
+  assert.deepEqual(serviceTypes('Max'), ['video'], 'Max alone is the service')
+  assert.deepEqual(serviceTypes('Καθημερινή'), ['news'])
+  // More than one type.
+  assert.deepEqual(serviceTypes('YOUTUBE PREMIUM'), ['video', 'music'])
+  assert.deepEqual(SERVICE_TYPES, ['video', 'music', 'cloud', 'vpn', 'news'])
+})
+
+test('catalogue: no false positives — whole words only, nothing fuzzy', () => {
+  for (const name of ['Mobile Vikings', 'KBC monthly charges', 'Revolut', 'JIMS', 'Flighty', 'Amazon Prime',
+    'Max gym', 'Maxi Zoo', 'Tidalwave surf club', 'Spotifyish', 'Disneyland Paris', 'Netflixx', '', null]) {
+    assert.deepEqual(serviceTypes(name), [], String(name))
+  }
+})
+
+test('catalogue: nothing in it is essential', () => {
+  for (const name of ['Netflix', 'Spotify', 'iCloud', 'Google One', 'NordVPN', 'New York Times', 'YouTube Premium']) {
+    assert.equal(isEssential({ name, category: null }), false, name)
+  }
+})
+
+test('essentials: by the category (default key or icon)', () => {
+  assert.equal(isEssential({ name: 'Anything', category: { name: 'Housing', default_key: 'housing' } }), true)
+  assert.equal(isEssential({ name: 'Anything', category: { name: 'Utilities', default_key: 'utilities' } }), true)
+  assert.equal(isEssential({ name: 'Anything', category: { name: 'Health', default_key: 'health' } }), true)
+  assert.equal(isEssential({ name: 'Anything', category: { name: 'Mine', icon: 'insurance' } }), true)
+  assert.equal(isEssential({ name: 'Anything', category: { name: 'Mine', icon: 'taxes' } }), true)
+  assert.equal(isEssential({ name: 'Anything', category: { name: 'Fun', default_key: 'entertainment' } }), false)
+  // The user's own category name counts too.
+  assert.equal(isEssential({ name: 'KBC', category: { name: 'Verzekeringen' } }), true)
+})
+
+test('essentials: by keyword, in English, Dutch, French and Greek', () => {
+  const essential = [
+    // English
+    'Car insurance', 'Rent', 'Mortgage', 'Student loan', 'Council tax', 'Electricity', 'Water bill', 'Gas',
+    'Energy', 'Heating oil', 'School fees', 'Childcare', 'Pension', 'Dentist',
+    // Dutch
+    'Autoverzekering', 'Huur', 'Hypotheek', 'Lening auto', 'Wegenbelasting', 'Elektriciteit', 'Energie',
+    'Kinderopvang', 'Ziekenfonds', 'Pensioensparen',
+    // French
+    'Assurance habitation', 'Loyer', 'Prêt auto', 'Impôts', 'Électricité', 'Crèche', 'École', 'Mutuelle',
+    // Greek
+    'Ασφάλεια αυτοκινήτου', 'ΑΣΦΑΛΕΙΑ ΣΠΙΤΙΟΥ', 'Ενοίκιο', 'Δάνειο', 'Φόρος', 'ΕΝΦΙΑ', 'Ρεύμα', 'ΔΕΗ',
+    'Νερό', 'Φυσικό αέριο', 'Σχολείο', 'Σύνταξη',
+  ]
+  for (const name of essential) assert.equal(isEssential({ name, category: null }), true, name)
+  for (const name of ['Taxi', 'Parent club', 'Torrent seedbox', 'Netflix', 'Gym', 'Mobile Vikings', 'Revolut',
+    'KBC monthly charges', 'Apple Music', 'Flighty']) {
+    assert.equal(isEssential({ name, category: null }), false, name)
+  }
+})
+
+// The owner's kind of list: nine payments in one broad "Subscriptions"
+// category, plus car insurance whose price went up.
+const SUBS = id(950)
+const SUBS_CAT = { name: 'Subscriptions', icon: 'streaming' }
+const sub = (n, name, amount) => ({ ...rule(n, name, amount, { category_id: SUBS }), categories: SUBS_CAT })
+const OWNER = [
+  sub(60, 'Mobile Vikings', 1500), sub(61, 'JIMS', 2999), sub(62, 'Revolut', 399), sub(63, 'Apple iCloud', 299),
+  sub(64, 'Apple Music', 1099), sub(65, 'YouTube Premium', 1399), sub(66, 'KBC monthly charges', 450),
+  sub(67, 'Flighty', 599), sub(68, 'Amazon Prime', 699),
+]
+const CAR_UP = rule(69, 'Car insurance', 7200, { category_id: SUBS, categories: SUBS_CAT })
+const CAR_RISE = new Map([[CAR_UP.id, { pct: 12, from: 6429, to: 7200, currency: 'EUR', since: '2026-08-01' }]])
+
+test('the owner’s list: one music overlap (Apple Music + YouTube Premium), nothing grouping the rest', () => {
+  const list = buildItems({ rules: [SALARY, ...OWNER], plan: emptyPlan(), baseCurrency: 'EUR' })
+  const sig = signalsFor(list)
+  const ideas = planIdeas(list, sig)
+  const overlaps = ideas.filter((i) => i.kind === 'overlap')
+  assert.equal(overlaps.length, 1)
+  assert.equal(overlaps[0].type, 'music')
+  assert.deepEqual(overlaps[0].ruleIds, [id(65), id(64)], 'YouTube Premium (dearer) first')
+  assert.deepEqual([...sig].filter(([, s]) => s.overlap).map(([k]) => k).sort(), [id(64), id(65)])
+  // No category-based overlap any more, even with nine in one category.
+  assert.ok(!ideas.some((i) => i.id === `overlap:${SUBS}`))
+})
+
+test('car insurance: never a cancel idea; a price rise is worth comparing offers', () => {
+  const list = buildItems({ rules: [SALARY, ...OWNER, CAR_UP], plan: emptyPlan(), baseCurrency: 'EUR' })
+  const sig = signalsFor(list, { rises: CAR_RISE, overCats: new Map([[SUBS, ['2026-09-01']]]) })
+  const ideas = planIdeas(list, sig)
+  const car = ideas.find((i) => i.ruleIds.includes(CAR_UP.id))
+  assert.equal(car.kind, 'compare')
+  assert.equal(car.id, `compare:${CAR_UP.id}`)
+  assert.equal(car.saves, 0, 'nothing pre-cancelled')
+  assert.equal(car.rise.pct, 12)
+  assert.equal(car.riseYear, Math.round((7200 * 12 * (7200 - 6429)) / 7200))
+  // Its row shows the price rise, never overlap or over budget.
+  const row = list.find((i) => i.id === CAR_UP.id)
+  assert.deepEqual(rowTag(row, sig), { kind: 'priceUp', pct: 12 })
+  assert.equal(sig.get(CAR_UP.id).overBudget, undefined)
+  // Without a rise it's in no idea at all, however dear it is.
+  const calm = signalsFor(list, { overCats: new Map([[SUBS, ['2026-09-01']]]) })
+  const none = planIdeas(list, calm)
+  assert.ok(!none.some((i) => i.ruleIds.includes(CAR_UP.id)))
+  // A non-essential rise stays a cancel idea.
+  const rises = new Map([[id(61), { pct: 10, from: 2726, to: 2999, currency: 'EUR', since: '2026-08-01' }]])
+  const gymUp = planIdeas(list, signalsFor(list, { rises }))
+  assert.ok(gymUp.some((i) => i.id === `priceUp:${id(61)}` && i.saves === 2999 * 12))
+})
+
+test('biggest saver and over budget skip essentials', () => {
+  const HOME_INS = rule(70, 'Home insurance', 9000, { category_id: FIT })
+  const list = buildItems({ rules: [SALARY, RENT, CAR, HOME_INS, GYM, SPOTIFY], plan: emptyPlan(), baseCurrency: 'EUR' })
+  const sig = signalsFor(list, { overCats: new Map([[FIT, ['2026-09-01']], [HOME, ['2026-09-01']]]) })
+  // Over budget: gym, not the dearer home insurance in the same category, nor rent.
+  assert.equal(sig.get(HOME_INS.id)?.overBudget, undefined)
+  assert.equal(sig.get(RENT.id)?.overBudget, undefined)
+  assert.equal(rowTag(list.find((i) => i.id === HOME_INS.id), sig), null)
+  const ideas = planIdeas(list, sig)
+  assert.deepEqual(ideas.map((i) => i.id), [`overBudget:${GYM.id}`, `biggest:${SPOTIFY.id}`])
 })
 
 test('apply selection: only the ticked changes are sent; the rest stay in the plan', () => {

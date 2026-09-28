@@ -43,6 +43,13 @@ export default {
     bills: 'Λογαριασμοί',
     subscriptions: 'Συνδρομές',
   },
+  services: {
+    video: '{{count}} υπηρεσίες βίντεο',
+    music: '{{count}} υπηρεσίες μουσικής',
+    cloud: '{{count}} πακέτα cloud',
+    vpn: '{{count}} VPN',
+    news: '{{count}} συνδρομές ειδήσεων',
+  },
   tags: {
     new: 'Νέο',
     changed: 'Άλλαξε',
@@ -81,9 +88,8 @@ export default {
     count_one: '{{count}} ιδέα',
     count_other: '{{count}} ιδέες',
     overlap: {
-      name: '{{count}} στην κατηγορία {{category}}',
-      title: '{{count}} στην κατηγορία {{category}} · {{amount}}/έτος',
-      body: '{{names}}. Διάλεξε όσα μπορείς να κόψεις.',
+      title: '{{services}} · {{amount}}/έτος',
+      body: '{{names}} κάνουν την ίδια δουλειά. Διάλεξε όσα μπορείς να κόψεις.',
     },
     priceUp: {
       title: '{{name}}: ακρίβυνε {{pct}}% · {{amount}}/έτος',
@@ -93,6 +99,11 @@ export default {
       title: '{{name}} · υπέρβαση · {{amount}}/έτος',
       body: 'Η κατηγορία {{category}} ξεπέρασε το όριό της: {{months}}.',
     },
+    compare: {
+      title: '{{name}}: ακρίβυνε {{pct}}% · αξίζει να συγκρίνεις προσφορές',
+      body: '{{from}} → {{to}} από {{date}}. Δοκίμασε μια χαμηλότερη τιμή για να δεις πόσα γλιτώνεις.',
+      try: 'Δοκίμασε χαμηλότερη τιμή',
+    },
     biggest: {
       title: '{{name}} · {{amount}}/έτος',
       body: 'Το μεγαλύτερο επαναλαμβανόμενο έξοδο που θα μπορούσες να κόψεις.',
@@ -100,6 +111,10 @@ export default {
     save: {
       month: 'Γλιτώνεις {{amount}}/μήνα',
       year: 'Γλιτώνεις {{amount}}/έτος',
+    },
+    upBy: {
+      month: '+{{amount}}/μήνα',
+      year: '+{{amount}}/έτος',
     },
     try: 'Δοκίμασέ το',
     dismiss: 'Απόρριψη: {{title}}',
@@ -115,6 +130,11 @@ export default {
     editLine: '{{was}} → {{now}}',
     notYet: 'Δεν είναι ακόμα στα επαναλαμβανόμενα',
     open: 'Άνοιξε την πληρωμή',
+    edit: 'Επεξεργασία της αλλαγής: {{name}}',
+    undo: 'Αναίρεση',
+    undoLabel: 'Αναίρεσε την αλλαγή: {{name}}',
+    remove: 'Αφαίρεση',
+    removeLabel: 'Αφαίρεσε από το πλάνο: {{name}}',
     planOnly: 'Μόνο στο πλάνο σου',
     perMonth: '{{amount}}/μήνα',
     perYear: '{{amount}}/έτος',
@@ -138,7 +158,7 @@ export default {
     done: 'Έτοιμο',
     detail: {
       priceUp: 'Πήγε από {{from}} σε {{to}} στις {{date}}.',
-      overlap: 'Μία από {{count}} πληρωμές στην ίδια κατηγορία.',
+      overlap: 'Μία από {{services}}.',
       overBudget: 'Η κατηγορία του ξεπέρασε το όριο: {{months}}.',
     },
   },
@@ -152,8 +172,6 @@ export default {
     perYear: '{{amount}} τον χρόνο',
   },
   add: {
-    title: 'Κι αν προσθέσω…',
-    sub: 'Μόνο στο πλάνο, μέχρι να το εφαρμόσεις',
     kind: 'Έξοδο ή έσοδο',
     cost: 'Έξοδο',
     income: 'Έσοδο',
@@ -169,7 +187,6 @@ export default {
     noCategory: 'Χωρίς κατηγορία',
     submit: 'Προσθήκη στο πλάνο',
     update: 'Αποθήκευση',
-    remove: 'Αφαίρεση από το πλάνο',
   },
   pick: {
     sub: 'Διάλεξε ποια θα ακυρώσεις στο πλάνο σου. Πρώτα τα ακριβότερα.',

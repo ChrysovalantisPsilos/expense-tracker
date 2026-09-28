@@ -47,6 +47,7 @@ import { spendRows } from '../../shared/lib/spread.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { countedDate } from '../../shared/lib/salaryShift.js'
+import { ESSENTIAL_ICONS, ESSENTIAL_KEYS, SERVICE_TYPES, isEssential, serviceTypes } from './planCatalog.js'
 
 export const PLAN_VERSION = 1
 // The server's caps (0095 recurring_plan_check).
@@ -65,15 +66,9 @@ export const PRICE_UP_MIN_PCT = 2
 export const OVER_BUDGET_MONTHS = 3
 export const PRICE_MONTHS = 6
 const BIGGEST_MIN_EXPENSES = 3
-// Categories we never suggest cutting as a whole (overlap, biggest saver):
-// a home, its utilities, health, taxes and insurance aren't "subscriptions".
-// Known by a default category's key or, for the user's own, by its icon.
-// Facts about them (a price rise, over budget) still show.
-const ESSENTIAL_KEYS = new Set(['housing', 'utilities', 'health'])
-const ESSENTIAL_ICONS = new Set(['housing', 'rent', 'utilities', 'electricity', 'water', 'health', 'taxes', 'insurance'])
-// Bills: the essentials plus the other running costs of a home (the icon
-// picker's "home" section without streaming). Every other expense is a
-// subscription.
+// Bills: the essential categories (planCatalog) plus the other running costs
+// of a home (the icon picker's "home" section without streaming). Every other
+// expense is a subscription.
 const BILL_ICONS = new Set([...ESSENTIAL_ICONS, 'internet', 'phone', 'bank-fees'])
 
 export const UNDO_HOURS = 24
@@ -540,33 +535,30 @@ export function overBudgetMonths({ sets, rows, months, baseCurrency, separateYea
   return out
 }
 
-const isEssential = (item) => ESSENTIAL_KEYS.has(item.category?.default_key) || ESSENTIAL_ICONS.has(item.category?.icon)
 const candidates = (items) => items.filter((i) => !i.added && i.kind === 'expense' && !i.missing)
 
-// The expense rules sharing a category (2+), non-essential ones only:
-// [{ categoryId, category, items (dearest first) }].
+// Overlaps: 2+ recurring expenses of the same service type (planCatalog), in
+// any category, never an essential one: [{ type, items (dearest first) }], in
+// SERVICE_TYPES order. A service of two types (YouTube Premium) can be in two.
 function overlaps(items) {
-  const by = new Map()
-  for (const i of candidates(items)) {
-    if (!i.categoryId || isEssential(i)) continue
-    if (!by.has(i.categoryId)) by.set(i.categoryId, [])
-    by.get(i.categoryId).push(i)
-  }
-  return [...by].filter(([, list]) => list.length >= 2)
-    .map(([categoryId, list]) => ({
-      categoryId, category: list[0].category, items: [...list].sort((a, b) => b.beforeYear - a.beforeYear),
-    }))
+  const pool = candidates(items).filter((i) => !isEssential(i))
+  return SERVICE_TYPES.map((type) => ({
+    type, items: pool.filter((i) => serviceTypes(i.name).includes(type)).sort((a, b) => b.beforeYear - a.beforeYear),
+  })).filter((o) => o.items.length >= 2)
 }
 
 // Each row's signals: Map id → { priceUp?, overlap?, overBudget? }.
-// `rises` from priceRises, `overCats` from overBudgetMonths.
+// `rises` from priceRises, `overCats` from overBudgetMonths. A price rise
+// shows on any row; overlap and over budget never on an essential one.
 export function signalsFor(items, { rises = new Map(), overCats = new Map() } = {}) {
   const out = new Map()
   const add = (id, k, v) => out.set(id, { ...out.get(id), [k]: v })
-  for (const o of overlaps(items)) for (const i of o.items) add(i.id, 'overlap', { categoryId: o.categoryId, count: o.items.length })
+  for (const o of overlaps(items)) {
+    for (const i of o.items) if (!out.get(i.id)?.overlap) add(i.id, 'overlap', { type: o.type, count: o.items.length })
+  }
   for (const i of candidates(items)) {
     if (rises.has(i.id)) add(i.id, 'priceUp', rises.get(i.id))
-    if (i.categoryId && overCats.has(i.categoryId)) add(i.id, 'overBudget', { months: overCats.get(i.categoryId) })
+    if (i.categoryId && overCats.has(i.categoryId) && !isEssential(i)) add(i.id, 'overBudget', { months: overCats.get(i.categoryId) })
   }
   return out
 }
@@ -582,11 +574,15 @@ export function rowTag(item, signals) {
   return null
 }
 
-// The "Ideas to save" strip, at most MAX_IDEAS, each rule in one idea only:
-//   overlap     2+ recurring expenses in one category: the user picks which
-//               to cancel. `saves` = all but the dearest one.
-//   priceUp     a rule whose price went up; `saves` = cancelling it
-//   overBudget  the dearest rule in a category that went over its budget
+// The "Ideas to save" strip, at most MAX_IDEAS, each rule in one idea only.
+// Nothing ever suggests cancelling an essential payment (planCatalog):
+//   overlap     2+ services of one type (2 music services): the user picks
+//               which to cancel. `saves` = all but the dearest one.
+//   priceUp     a non-essential rule whose price went up; `saves` = cancelling it
+//   compare     an essential rule whose price went up: worth comparing offers.
+//               Trying it opens the rule to model a cheaper quote, never
+//               cancels it. `saves` 0; `riseYear` = what the rise costs a year
+//   overBudget  the dearest non-essential rule in a category over its budget
 //   biggest     the dearest non-essential recurring expense (3+ expenses)
 // Each: { id, kind, ruleIds, year (what its rules cost a year), saves (a
 // year), …details }. An idea disappears once dismissed or once any of its
@@ -598,20 +594,25 @@ export function planIdeas(items, signals, dismissed = []) {
   const byId = new Map(pool.map((i) => [i.id, i]))
   const single = (kind, i, extra) => ({ id: `${kind}:${i.id}`, kind, ruleIds: [i.id], name: i.name, category: i.category,
     year: i.beforeYear, saves: i.beforeYear, ...extra })
+  const risen = (i) => {
+    const rise = signals.get(i.id).priceUp
+    return isEssential(i)
+      ? single('compare', i, { rise, saves: 0, riseYear: Math.round((i.beforeYear * (rise.to - rise.from)) / rise.to) })
+      : single('priceUp', i, { rise })
+  }
 
   const found = [
     ...overlaps(items).map((o) => {
       const year = o.items.reduce((s, i) => s + i.beforeYear, 0)
-      return { id: `overlap:${o.categoryId}`, kind: 'overlap', ruleIds: o.items.map((i) => i.id),
-        names: o.items.map((i) => i.name), category: o.category, year, saves: year - o.items[0].beforeYear }
+      return { id: `overlap:${o.type}`, kind: 'overlap', type: o.type, ruleIds: o.items.map((i) => i.id),
+        names: o.items.map((i) => i.name), year, saves: year - o.items[0].beforeYear }
     }).sort((a, b) => b.saves - a.saves),
-    ...pool.filter((i) => signals.get(i.id)?.priceUp).sort((a, b) => b.beforeYear - a.beforeYear)
-      .map((i) => single('priceUp', i, { rise: signals.get(i.id).priceUp })),
+    ...pool.filter((i) => signals.get(i.id)?.priceUp).sort((a, b) => b.beforeYear - a.beforeYear).map(risen),
   ]
   const overCats = new Map()
   for (const i of pool) {
     const months = signals.get(i.id)?.overBudget?.months
-    if (months && (!overCats.has(i.categoryId) || overCats.get(i.categoryId).beforeYear < i.beforeYear)) {
+    if (months && !isEssential(i) && (!overCats.has(i.categoryId) || overCats.get(i.categoryId).beforeYear < i.beforeYear)) {
       overCats.set(i.categoryId, i)
     }
   }
