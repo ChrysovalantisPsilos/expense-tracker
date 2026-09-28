@@ -8,7 +8,7 @@ import { Repeat, Trash2 } from 'lucide-react'
 import { useCategories } from './useData.js'
 import { useSavingsIds } from '../categories/categories.js'
 import { presetCategoryId } from '../categories/categoryMath.js'
-import { PaidFromSavingsSwitch, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
+import { PaidFromChoice, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
 import { toMinor, minorToInput, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
@@ -260,7 +260,7 @@ export default function TransactionForm({
   const savingsSwitches = (
     <>
       {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
-      {showFromSavings && <PaidFromSavingsSwitch value={fromSavings} onChange={setFromSavings} />}
+      {showFromSavings && <PaidFromChoice value={fromSavings} onChange={setFromSavings} />}
     </>
   )
   const otherFields = (

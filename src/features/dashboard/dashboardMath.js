@@ -93,13 +93,19 @@ export function projectedTotals(totals, proj) {
   }
 }
 
-// The Net tile's note: what's folded in ("incl. upcoming recurring"), else
-// what it is — "excl. spending from savings" once some expenses were paid
-// from savings, "− savings" once some savings were taken from income.
-export function netNote(proj, fromIncomeTotal, fromSavingsTotal) {
-  if (proj.expense > 0 || proj.income > 0 || proj.savedFromIncome > 0) return t('dashboard:netNote.upcoming')
-  if (fromSavingsTotal > 0) return t('dashboard:netNote.exclSavings')
-  return t(fromIncomeTotal > 0 ? 'dashboard:netNote.withSavings' : 'dashboard:netNote.plain')
+// What the overview's ⓘ opens: what Spent and Income fold in (recurring
+// entries still to come, spending paid from savings), then what the Net is —
+// "− savings" once some savings were taken from income, and never the
+// spending paid from savings.
+export function overviewInfo(proj, fromIncomeTotal, fromSavingsTotal, currency) {
+  const money = (minor) => ({ amount: formatMoney(minor, currency) })
+  const lines = []
+  if (proj.expense > 0) lines.push(t('dashboard:info.spentUpcoming', money(proj.expense)))
+  if (fromSavingsTotal > 0) lines.push(t('dashboard:info.spentFromSavings', money(fromSavingsTotal)))
+  if (proj.income > 0) lines.push(t('dashboard:info.incomeUpcoming', money(proj.income)))
+  lines.push(t(fromIncomeTotal > 0 ? 'dashboard:info.netSavings' : 'dashboard:info.net'))
+  if (fromSavingsTotal > 0) lines.push(t('dashboard:info.netExclSavings'))
+  return lines
 }
 
 // The Overview's note on a period's savings (both kinds) — "Saved €300.00

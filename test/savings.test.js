@@ -15,7 +15,7 @@ import { potSign, savingsSource } from '../supabase/functions/_shared/savings.ts
 import { formatMoney } from '../src/shared/lib/currency.js'
 import { spendRows } from '../src/shared/lib/spread.js'
 import {
-  periodTotals, periodProjection, projectedTotals, netNote, savedNote,
+  periodTotals, periodProjection, projectedTotals, overviewInfo, savedNote,
 } from '../src/features/dashboard/dashboardMath.js'
 import { accountSections, buildTrend, netWorth } from '../src/features/insights/insightsMath.js'
 import { netBaseMinor } from '../src/features/transactions/txnFilter.js'
@@ -105,14 +105,20 @@ test('Home: savings aren\'t income; the net takes away only those taken from inc
   assert.equal(periodTotals(spend, 'EUR').saved, 0)
 })
 
-test('Home: the Net tile says what it takes away', () => {
+test('Home: the overview ⓘ says what Spent, Income and the Net fold in', () => {
   const none = periodProjection([], null, '2026-09-25')
-  assert.equal(netNote(none, 0, 0), 'income − expenses')
-  assert.equal(netNote(none, 30000, 0), 'income − expenses − savings')
-  assert.equal(netNote(none, 0, 90000), 'excl. spending from savings')
-  assert.equal(netNote(none, 30000, 90000), 'excl. spending from savings')
-  assert.equal(netNote({ ...none, savedFromIncome: 30000 }, 30000, 0), 'incl. upcoming recurring')
-  assert.equal(netNote({ ...none, expense: 100 }, 0, 0), 'incl. upcoming recurring')
+  assert.deepEqual(overviewInfo(none, 0, 0, 'EUR'), ['Net is income minus expenses.'])
+  assert.deepEqual(overviewInfo(none, 30000, 0, 'EUR'), ['Net is income minus expenses and what you set aside from income.'])
+  assert.deepEqual(overviewInfo(none, 0, 89900, 'EUR'), [
+    'Spent includes €899.00 paid from savings.',
+    'Net is income minus expenses.',
+    'Spending paid from savings isn’t in the Net.',
+  ])
+  assert.deepEqual(overviewInfo({ ...none, expense: 1500, income: 250000 }, 0, 0, 'EUR'), [
+    'Spent includes €15.00 of recurring payments still to come.',
+    'Income includes €2,500.00 of recurring income still to come.',
+    'Net is income minus expenses.',
+  ])
 })
 
 test('Home: a late-month salary shift still leaves savings out', () => {

@@ -10,15 +10,15 @@ export default {
     spent: 'Spent',
     income: 'Income',
     net: 'Net',
-    upcoming: 'incl. {{amount}} upcoming',
-    fromSavings: 'incl. {{amount}} paid from savings',
   },
-  // The Net tile's note (dashboardMath.netNote).
-  netNote: {
-    upcoming: 'incl. upcoming recurring',
-    exclSavings: 'excl. spending from savings',
-    withSavings: 'income − expenses − savings',
-    plain: 'income − expenses',
+  // What the overview's ⓘ opens (dashboardMath.overviewInfo).
+  info: {
+    spentUpcoming: 'Spent includes {{amount}} of recurring payments still to come.',
+    spentFromSavings: 'Spent includes {{amount}} paid from savings.',
+    incomeUpcoming: 'Income includes {{amount}} of recurring income still to come.',
+    net: 'Net is income minus expenses.',
+    netSavings: 'Net is income minus expenses and what you set aside from income.',
+    netExclSavings: 'Spending paid from savings isn’t in the Net.',
   },
   // What was put aside in the period (dashboardMath.savedNote).
   saved: {

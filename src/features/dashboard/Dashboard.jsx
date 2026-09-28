@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
-  SimpleGrid, Box, Flex, Text, Stack, HStack, IconButton, Button,
+  SimpleGrid, Flex, Text, Stack, HStack, IconButton, Button,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, ChevronDown, ChevronUp, PiggyBank, Table as TableIcon, ReceiptText, Users, Wallet } from 'lucide-react'
@@ -36,12 +36,13 @@ import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import {
-  periodTotals, periodProjection, projectedTotals, netNote, savedNote, visibleBars, TOP_CATEGORIES,
+  periodTotals, periodProjection, projectedTotals, overviewInfo, savedNote, visibleBars, TOP_CATEGORIES,
   homeCards, homeStacks,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 import SubscriptionsCard from '../recurring/SubscriptionsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import { InfoBox, InfoButton, useInfoToggle } from '../../shared/ui/InfoToggle.jsx'
 import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { NARROW_STACKS } from '../../shared/ui/narrowStacks.js'
 import { SkeletonBlock, SkeletonFigure, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
@@ -51,6 +52,7 @@ const VIEW_KEY = STORAGE_KEYS.overviewView
 
 export default function Dashboard() {
   const t = useT('dashboard')
+  const tc = useT()
   // What a card that needs the transactions shows when they couldn't load.
   const unavailable = <Text color="text.muted" fontSize="sm">{t('unavailable')}</Text>
   const { baseCurrency, separateYearly, salaryShift } = useProfile()
@@ -136,6 +138,8 @@ export default function Dashboard() {
   const sideways = useShortLandscape()
   const overviewGrid = sideways ? { templateColumns: '2fr 3fr' } : { columns: { base: 1, md: 2 } }
 
+  const info = useInfoToggle()
+
   // Every card by id; homeCards / homeStacks decide which show, and where.
   const card = {
     overview: error ? (
@@ -146,26 +150,17 @@ export default function Dashboard() {
       <Panel data-tour="overview">
         {loading ? <OverviewSkeleton grid={overviewGrid} /> : (
         <SimpleGrid {...overviewGrid} spacing={4} alignItems="center">
-          <Box>
-            <Figure label={t('overview.spent')} size="hero" value={formatMoney(spentTotal, baseCurrency)} />
-            {proj.expense > 0 && (
-              <Text fontSize="xs" color="text.muted" mt={1}>
-                {t('overview.upcoming', { amount: formatMoney(proj.expense, baseCurrency) })}
-              </Text>
-            )}
-            {/* Expenses paid from savings (0085) are spending, but not
-                against the Net. */}
-            {fromSavingsTotal > 0 && (
-              <Text fontSize="xs" color="text.muted" mt={proj.expense > 0 ? 0 : 1}>
-                {t('overview.fromSavings', { amount: formatMoney(fromSavingsTotal, baseCurrency) })}
-              </Text>
-            )}
-          </Box>
+          {/* What Spent, Income and the Net fold in sits behind the ⓘ
+              (overviewInfo). */}
+          <Figure size="hero" value={formatMoney(spentTotal, baseCurrency)} label={
+            <HStack as="span" spacing={0.5}>
+              <span>{t('overview.spent')}</span>
+              <InfoButton info={info} label={tc('info')} />
+            </HStack>
+          } />
           <SimpleGrid columns={2} spacing={2}>
-            <BalanceTile size="md" label={t('overview.income')} value={formatMoney(earnedTotal, baseCurrency)} tone="positive"
-              note={proj.income > 0 ? t('overview.upcoming', { amount: formatMoney(proj.income, baseCurrency) }) : undefined} />
-            <BalanceTile size="md" label={t('overview.net')} value={net.text} tone={net.tone}
-              note={netNote(proj, fromIncomeTotal, fromSavingsTotal)} />
+            <BalanceTile size="md" label={t('overview.income')} value={formatMoney(earnedTotal, baseCurrency)} tone="positive" />
+            <BalanceTile size="md" label={t('overview.net')} value={net.text} tone={net.tone} />
             {/* Savings aren't income (those taken from it lower the net): a quiet
                 line says what was put aside, both kinds, and opens Savings. */}
             {saved && (
@@ -178,6 +173,11 @@ export default function Dashboard() {
             )}
           </SimpleGrid>
         </SimpleGrid>
+        )}
+        {!loading && (
+          <InfoBox info={info}>
+            {overviewInfo(proj, fromIncomeTotal, fromSavingsTotal, baseCurrency).map((line) => <Text key={line}>{line}</Text>)}
+          </InfoBox>
         )}
       </Panel>
       ),

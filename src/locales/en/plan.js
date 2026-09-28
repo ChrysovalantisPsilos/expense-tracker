@@ -35,7 +35,6 @@ export default {
       year: '{{amount}} a year',
     },
     was: 'was <s>{{amount}}</s>',
-    info: 'How this is worked out',
     rule: 'Your recurring income minus recurring payments.',
   },
   // The Salary row worked out from salary entries (no recurring salary).

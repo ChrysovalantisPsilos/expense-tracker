@@ -17,6 +17,8 @@ export default {
     moreActions: 'More actions',
   },
   loading: 'Loading…',
+  // The ⓘ that opens an explanation in place (shared/ui/InfoToggle).
+  info: 'How this is worked out',
   paginator: {
     previous: 'Previous page',
     next: 'Next page',
@@ -187,10 +189,14 @@ export default {
       label: 'Taken from my income',
       hint: 'On: lowers your Net on Home. Off: money you received, like a gift or interest.',
     },
-    fromSavings: {
-      label: 'Paid from savings',
-      hint: 'On: comes out of your savings, not this month’s income.',
-    },
+  },
+  // "Paid from" on an expense (shared/ui/SavingsSwitches.PaidFromChoice).
+  paidFrom: {
+    label: 'Paid from',
+    bank: 'Bank',
+    savings: 'Savings',
+    bankInfo: 'Bank: your everyday money. It lowers your Net on Home.',
+    savingsInfo: 'Savings: comes out of your savings, not this month’s income, so your Net doesn’t change.',
   },
   receipt: {
     openFailed: 'That photo couldn’t be opened — try another one.',

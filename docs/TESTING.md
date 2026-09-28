@@ -85,8 +85,14 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
    DevTools and try again: the form asks for a rate and won't save at 1:1.
 
 ### B. Dashboard
-6. Spent/Income/Net tiles include upcoming recurring ("incl. … upcoming"
-   caption when a charge is due later this month).
+6. Spent/Income/Net include upcoming recurring. The ⓘ beside Spent opens,
+   in place, what they fold in ("Spent includes €X of recurring payments
+   still to come", "… paid from savings") and what the Net is; tapping it
+   again closes it. No captions under the figures.
+6a. New expense (and a recurring payment), with a savings category set up:
+   "Paid from" offers Bank · Savings, starts on Bank, and its ⓘ explains
+   both; Savings saves the expense as paid from savings. A savings entry's
+   "Taken from my income" switch explains itself behind its ⓘ too.
 7. Period selector only offers months since your oldest transaction;
    "All time" appears once data spans months.
 8. Pie/table toggle persists across reloads. Group-mirrored expenses bucket

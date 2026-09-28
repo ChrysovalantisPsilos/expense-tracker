@@ -3,7 +3,6 @@
 // money/frequency wording they share. The editors that open in place under a
 // row, a change or the ideas are in PlanEditors.jsx. The maths behind every
 // figure is planMath.js.
-import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Box, Button, Flex, HStack, IconButton, Stack, Switch, Tag, Text,
@@ -11,6 +10,7 @@ import {
 import { Check, ExternalLink, Info, Plus, RotateCcw, X } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
+import { InfoBox, InfoButton, useInfoToggle } from '../../shared/ui/InfoToggle.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
@@ -133,7 +133,8 @@ export function DeltaChip({ change, good, mode, view, currency }) {
 // figure (payments: a nudge to add the salary as recurring income).
 export function ImpactHeader({ sum, view, onView, currency, rates }) {
   const t = useT('plan')
-  const [info, setInfo] = useState(false)
+  const tc = useT()
+  const info = useInfoToggle()
   const h = headline(sum)
   const after = inView(h.after, view)
   const hasInfo = h.mode !== 'payments' || rates.converted
@@ -143,9 +144,7 @@ export function ImpactHeader({ sum, view, onView, currency, rates }) {
         <HStack spacing={0.5}>
           <Text fontSize="xs" color="text.muted" fontWeight="600">{t(`impact.${h.mode}.${view}`)}</Text>
           {hasInfo && (
-            <IconButton size="xs" variant="ghost" color={info ? 'accent.fg' : 'text.muted'} icon={<Info size={14} />}
-              aria-label={t('impact.info')} aria-expanded={info} aria-controls="plan-impact-info"
-              onClick={() => setInfo((v) => !v)} />
+            <InfoButton info={info} label={tc('info')} />
           )}
         </HStack>
         <ViewSwitch view={view} onChange={onView} />
@@ -162,11 +161,11 @@ export function ImpactHeader({ sum, view, onView, currency, rates }) {
             components={{ s: <Text as="s" /> }} />
         </Text>
       )}
-      {info && hasInfo && (
-        <Box id="plan-impact-info" mt={2} bg="bg.subtle" borderRadius="lg" px={3} py={2} fontSize="xs" color="text.muted">
+      {hasInfo && (
+        <InfoBox info={info}>
           {h.mode !== 'payments' && <Text>{t('impact.rule')}</Text>}
           <RatesNote converted={rates.converted} missing={[]} />
-        </Box>
+        </InfoBox>
       )}
       {h.mode === 'payments' && <IncomeHint />}
       <RatesNote converted={false} missing={rates.missing} mt={1} />

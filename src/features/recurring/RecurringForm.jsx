@@ -4,7 +4,7 @@ import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import { PageForm } from '../../shared/ui/FormPage.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { useSavingsIds } from '../categories/categories.js'
-import { PaidFromSavingsSwitch, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
+import { PaidFromChoice, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
 import { toMinor, minorToInput } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -93,7 +93,7 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
           </Select>
         </FormControl>
         {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
-        {showFromSavings && <PaidFromSavingsSwitch value={fromSavings} onChange={setFromSavings} />}
+        {showFromSavings && <PaidFromChoice value={fromSavings} onChange={setFromSavings} />}
 
         <RepeatFields value={draft} onChange={(c) => setDraft((d) => editRepeat(d, c))}
           kind={kind} currency={currency} amountMinor={Number(amount) > 0 ? toMinor(amount, currency) : 0}

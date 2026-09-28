@@ -1,39 +1,53 @@
 import { useId } from 'react'
-import { FormControl, FormHelperText, FormLabel, HStack, Switch } from '@chakra-ui/react'
+import { FormControl, FormLabel, HStack, Switch, Text } from '@chakra-ui/react'
+import SegmentedControl from './SegmentedControl.jsx'
+import { InfoBox, InfoButton, useInfoToggle } from './InfoToggle.jsx'
 import { useT } from '../lib/i18n/I18nProvider.jsx'
 
-// The two savings switches the transaction form and the recurring-entry form
-// show (the rule: supabase/functions/_shared/savings.ts).
-function FlagSwitch({ label, hint, value, onChange }) {
-  const id = useId()
-  return (
-    <FormControl>
-      <HStack justify="space-between" spacing={4}>
-        <FormLabel htmlFor={id} mb={0}>{label}</FormLabel>
-        <Switch id={id} isChecked={value} onChange={(e) => onChange(e.target.checked)} />
-      </HStack>
-      <FormHelperText>{hint}</FormHelperText>
-    </FormControl>
-  )
-}
+// The savings choices the transaction form and the recurring-entry form show
+// (the rule: supabase/functions/_shared/savings.ts). What each one means sits
+// behind an ⓘ beside its label.
 
 // "Taken from my income" on a savings entry (0084). On: set aside from salary
 // or income, so it lowers Home's Net. Off: money received (a gift, interest);
 // the Net is unchanged. Either way it's savings, never income.
 export function SavingsSourceSwitch({ value, onChange }) {
   const t = useT()
+  const id = useId()
+  const info = useInfoToggle()
   return (
-    <FlagSwitch label={t('savingsSwitch.fromIncome.label')} value={value} onChange={onChange}
-      hint={t('savingsSwitch.fromIncome.hint')} />
+    <FormControl>
+      <HStack justify="space-between" spacing={4}>
+        <HStack spacing={0.5}>
+          <FormLabel htmlFor={id} mb={0} mr={0}>{t('savingsSwitch.fromIncome.label')}</FormLabel>
+          <InfoButton info={info} label={t('info')} />
+        </HStack>
+        <Switch id={id} isChecked={value} onChange={(e) => onChange(e.target.checked)} />
+      </HStack>
+      <InfoBox info={info}><Text>{t('savingsSwitch.fromIncome.hint')}</Text></InfoBox>
+    </FormControl>
   )
 }
 
-// "Paid from savings" on an expense (0085). On: it's still spending, but it
-// comes out of the savings pot, so it doesn't lower Home's Net.
-export function PaidFromSavingsSwitch({ value, onChange }) {
+// "Paid from" on an expense: Bank or Savings (0085). Savings: it's still
+// spending, but it comes out of the savings pot, so it doesn't lower Home's
+// Net. `value` is paid_from_savings.
+export function PaidFromChoice({ value, onChange }) {
   const t = useT()
+  const info = useInfoToggle()
   return (
-    <FlagSwitch label={t('savingsSwitch.fromSavings.label')} value={value} onChange={onChange}
-      hint={t('savingsSwitch.fromSavings.hint')} />
+    <FormControl as="fieldset">
+      <HStack spacing={0.5} mb={2}>
+        <FormLabel as="legend" mb={0} mr={0}>{t('paidFrom.label')}</FormLabel>
+        <InfoButton info={info} label={t('info')} />
+      </HStack>
+      <SegmentedControl size="sm" isFitted label={t('paidFrom.label')} value={value ? 'savings' : 'bank'}
+        onChange={(v) => onChange(v === 'savings')}
+        options={[['bank', t('paidFrom.bank')], ['savings', t('paidFrom.savings')]]} />
+      <InfoBox info={info}>
+        <Text>{t('paidFrom.bankInfo')}</Text>
+        <Text>{t('paidFrom.savingsInfo')}</Text>
+      </InfoBox>
+    </FormControl>
   )
 }
