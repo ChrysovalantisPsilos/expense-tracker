@@ -29,9 +29,13 @@ export default {
     addIncome: 'Πρόσθεσε τον μισθό σου ως επαναλαμβανόμενο έσοδο για να δεις το καθαρό σου.',
     addIncomeButton: 'Πρόσθεσε επαναλαμβανόμενο έσοδο',
     noChanges: 'Καμία αλλαγή ακόμα',
+    // The change chip, in the unit the Month/Year switch shows.
+    per: {
+      month: '{{amount}} τον μήνα',
+      year: '{{amount}} τον χρόνο',
+    },
     was: 'ήταν <s>{{amount}}</s>',
-    perYear: '{{amount}} τον χρόνο',
-    aboutPerMonth: 'Περίπου {{amount}} τον μήνα',
+    info: 'Πώς υπολογίζεται',
     rule: 'Τα επαναλαμβανόμενα έσοδά σου μείον τις επαναλαμβανόμενες πληρωμές.',
   },
   // Ο μισθός από τις καταχωρίσεις σου (χωρίς επαναλαμβανόμενο μισθό).

@@ -29,9 +29,13 @@ export default {
     addIncome: 'Add your salary as recurring income to see your net.',
     addIncomeButton: 'Add recurring income',
     noChanges: 'No changes yet',
+    // The change chip, in the unit the Month/Year switch shows.
+    per: {
+      month: '{{amount}} a month',
+      year: '{{amount}} a year',
+    },
     was: 'was <s>{{amount}}</s>',
-    perYear: '{{amount}} a year',
-    aboutPerMonth: 'About {{amount}} a month',
+    info: 'How this is worked out',
     rule: 'Your recurring income minus recurring payments.',
   },
   // The Salary row worked out from salary entries (no recurring salary).

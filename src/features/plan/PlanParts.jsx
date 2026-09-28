@@ -3,6 +3,7 @@
 // money/frequency wording they share. The editors that open in place under a
 // row, a change or the ideas are in PlanEditors.jsx. The maths behind every
 // figure is planMath.js.
+import { useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import {
   Box, Button, Flex, HStack, IconButton, Stack, Switch, Tag, Text,
@@ -109,11 +110,12 @@ export function SavedNote({ status, onRetry }) {
 
 // The move in the header's figure: "+€15.00" for the net; for the payments,
 // "€385.09 less" (green) or "€20.00 more" (red). `good` > 0 is green.
-export function DeltaChip({ change, good, mode, currency }) {
+export function DeltaChip({ change, good, mode, view, currency }) {
   const t = useT('plan')
-  const text = change === 0 ? t('impact.noChanges')
-    : mode === 'payments' ? t(change < 0 ? 'impact.less' : 'impact.more', { amount: formatMoney(Math.abs(change), currency) })
-      : signed(change, currency)
+  const amount = mode === 'payments'
+    ? t(change < 0 ? 'impact.less' : 'impact.more', { amount: formatMoney(Math.abs(change), currency) })
+    : signed(change, currency)
+  const text = change === 0 ? t('impact.noChanges') : t(`impact.per.${view}`, { amount })
   return (
     <Tag size="md" borderRadius="full" px={3} py={1} fontWeight="800" flexShrink={0} whiteSpace="nowrap"
       bg={good > 0 ? 'status.positiveSubtle' : good < 0 ? 'status.negativeSubtle' : 'bg.subtle'}
@@ -124,40 +126,50 @@ export function DeltaChip({ change, good, mode, currency }) {
 }
 
 // The figure after the plan in the chosen unit (the net, or with no recurring
-// income the recurring payments), "was" struck through when it moved, the
-// move, the other unit's figure, and the one-line rule (payments: a nudge to
-// add the salary as recurring income instead).
+// income the recurring payments), "was" struck through when it moved, and the
+// move in that same unit (only that one: the Month/Year switch gives the
+// other). How the figure is worked out sits behind the ⓘ beside its label and
+// opens in place; a rate that's missing stays in view, since it changes the
+// figure (payments: a nudge to add the salary as recurring income).
 export function ImpactHeader({ sum, view, onView, currency, rates }) {
   const t = useT('plan')
+  const [info, setInfo] = useState(false)
   const h = headline(sum)
   const after = inView(h.after, view)
-  const other = view === 'year'
-    ? t('impact.aboutPerMonth', { amount: signed(monthOf(h.change), currency) })
-    : t('impact.perYear', { amount: signed(h.change, currency) })
+  const hasInfo = h.mode !== 'payments' || rates.converted
   return (
     <Panel p={4}>
       <Flex justify="space-between" align="center" gap={2} flexWrap="wrap" mt={-1}>
-        <Text fontSize="xs" color="text.muted" fontWeight="600">{t(`impact.${h.mode}.${view}`)}</Text>
+        <HStack spacing={0.5}>
+          <Text fontSize="xs" color="text.muted" fontWeight="600">{t(`impact.${h.mode}.${view}`)}</Text>
+          {hasInfo && (
+            <IconButton size="xs" variant="ghost" color={info ? 'accent.fg' : 'text.muted'} icon={<Info size={14} />}
+              aria-label={t('impact.info')} aria-expanded={info} aria-controls="plan-impact-info"
+              onClick={() => setInfo((v) => !v)} />
+          )}
+        </HStack>
         <ViewSwitch view={view} onChange={onView} />
       </Flex>
       <Flex align="center" gap={2} mt={1} flexWrap="wrap">
         <Text fontFamily="heading" fontWeight="700" fontSize="2xl" lineHeight="1.15" whiteSpace="nowrap" flex="1">
           {formatMoney(after, currency)}
         </Text>
-        <DeltaChip change={inView(h.change, view)} good={h.good} mode={h.mode} currency={currency} />
+        <DeltaChip change={inView(h.change, view)} good={h.good} mode={h.mode} view={view} currency={currency} />
       </Flex>
       {h.change !== 0 && (
-        <HStack spacing={1.5} mt={0.5} fontSize="sm" flexWrap="wrap">
-          <Text color="text.muted">
-            <Trans t={t} k="impact.was" values={{ amount: formatMoney(inView(h.before, view), currency) }}
-              components={{ s: <Text as="s" /> }} />
-          </Text>
-          <Text color="text.muted" aria-hidden>·</Text>
-          <Text fontWeight="700" color={toneOf(h.good)}>{other}</Text>
-        </HStack>
+        <Text color="text.muted" mt={0.5} fontSize="sm">
+          <Trans t={t} k="impact.was" values={{ amount: formatMoney(inView(h.before, view), currency) }}
+            components={{ s: <Text as="s" /> }} />
+        </Text>
       )}
-      {h.mode === 'payments' ? <IncomeHint /> : <Text fontSize="xs" color="text.muted" mt={1}>{t('impact.rule')}</Text>}
-      <RatesNote converted={rates.converted} missing={rates.missing} mt={1} />
+      {info && hasInfo && (
+        <Box id="plan-impact-info" mt={2} bg="bg.subtle" borderRadius="lg" px={3} py={2} fontSize="xs" color="text.muted">
+          {h.mode !== 'payments' && <Text>{t('impact.rule')}</Text>}
+          <RatesNote converted={rates.converted} missing={[]} />
+        </Box>
+      )}
+      {h.mode === 'payments' && <IncomeHint />}
+      <RatesNote converted={false} missing={rates.missing} mt={1} />
     </Panel>
   )
 }
