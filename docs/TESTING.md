@@ -64,6 +64,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Installable PWA, offline reading, realtime everywhere (no polling)
 - Notification bell + web push + email (big events only), per-account switches
 - Passkeys, sign-in methods (connect/disconnect Google, set a password on a Google account), dark/light/system appearance, account deletion with data handover
+- iOS app (Capacitor shell, `ios/`, docs/IOS.md): the same build in a native web view; Google sign-in through the system browser; invite and email links open the app (universal links once the Team ID is set)
 
 ---
 
@@ -602,3 +603,22 @@ over last month. Check at 390px (light and dark, English and Greek), desktop
     button, and with reduced motion shows the still with a play button.
     "Copy link to this answer" on the live site copies a
     https://www.budgeer.com/help#… link.
+
+### N. iOS app (on the owner's iPhone; docs/IOS.md)
+
+47. The website is unchanged: on dev.budgeer.com the service worker still
+    registers and new deploys still auto-update; no native chunk
+    (`NativeBridge-*`, `native-*`) is fetched (DevTools → Network).
+48. In the app: launch shows the canvas colour with the mark, then the
+    loader, with no white flash. The top bar sits below the status bar and
+    the Dynamic Island, the tab bar above the home indicator, in light and
+    dark and turned sideways. The status bar text is dark on the light theme
+    and light on the dark one, and follows a theme switch.
+49. Sign in with email, then sign out. Sign in with Google: the Google page
+    opens in a sheet, and after choosing the account the sheet closes and the
+    app is signed in. Settings → Security → Connect Google comes back to that
+    page with its "connected" message. No passkey buttons show in the app.
+50. Create an invite link in a group: it starts with https://dev.budgeer.com,
+    not capacitor://. On the phone, `com.budgeer.app://join/<token>` (typed in
+    Safari) opens the invite in the app. Once the Team ID is set, tapping an
+    invite link or a sign-up/reset email link opens the app on that page.
