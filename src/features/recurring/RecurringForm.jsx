@@ -5,6 +5,7 @@ import { PageForm } from '../../shared/ui/FormPage.jsx'
 import { useCategories } from '../transactions/useData.js'
 import { useSavingsIds } from '../categories/categories.js'
 import { PaidFromChoice, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
+import { paidFromSources } from '../../shared/lib/savings.js'
 import { toMinor, minorToInput } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -37,7 +38,9 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
   const isSavings = kind === 'income' && savingsIds.has(categoryId)
   const [fromIncome, setFromIncome] = useState(rule ? !!rule.savings_from_income : true)
   const [fromSavings, setFromSavings] = useState(!!rule?.paid_from_savings)
-  const showFromSavings = kind === 'expense' && (savingsIds.size > 0 || !!rule?.paid_from_savings)
+  // Recurring expenses come from the bank or savings (vouchers pay as you go).
+  const sources = kind === 'expense' ? paidFromSources({ savings: savingsIds.size > 0 || !!rule?.paid_from_savings }) : []
+  const showFromSavings = sources.length > 0
   const { busy, run } = useAsyncSubmit()
 
   async function submit() {
@@ -93,7 +96,10 @@ export default function RecurringForm({ rule, kind: initialKind = 'expense', bas
           </Select>
         </FormControl>
         {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
-        {showFromSavings && <PaidFromChoice value={fromSavings} onChange={setFromSavings} />}
+        {showFromSavings && (
+          <PaidFromChoice sources={sources} value={fromSavings ? 'savings' : 'bank'}
+            onChange={(v) => setFromSavings(v === 'savings')} />
+        )}
 
         <RepeatFields value={draft} onChange={(c) => setDraft((d) => editRepeat(d, c))}
           kind={kind} currency={currency} amountMinor={Number(amount) > 0 ? toMinor(amount, currency) : 0}

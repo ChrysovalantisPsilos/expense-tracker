@@ -6062,11 +6062,161 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 98. 0097: an expense paid with meal vouchers. save_transactions keeps the
+--     flag on an expense, drops it on income and when paid from savings too;
+--     update_transaction switches it; my_transactions returns it and filters
+--     on it; the CHECK refuses it on income or beside paid_from_savings even
+--     for a direct write.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; n int; lunch uuid; flags text;
+begin
+  begin
+    u1 := pg_temp.zz_user('vouch1');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(
+      jsonb_build_object('kind', 'expense', 'amount_minor', 1180, 'currency', 'EUR', 'description', 'ZZ Lunch',
+        'paid_with_vouchers', true),
+      jsonb_build_object('kind', 'income', 'amount_minor', 5000, 'currency', 'EUR', 'description', 'ZZ Gift',
+        'paid_with_vouchers', true),
+      jsonb_build_object('kind', 'expense', 'amount_minor', 900, 'currency', 'EUR', 'description', 'ZZ Both',
+        'paid_with_vouchers', true, 'paid_from_savings', true),
+      jsonb_build_object('kind', 'expense', 'amount_minor', 700, 'currency', 'EUR', 'description', 'ZZ Bank')));
+    select string_agg(description || '=' || paid_with_vouchers::text || '/' || paid_from_savings::text, ',' order by description)
+      into flags from public.my_transactions();
+    if flags <> 'ZZ Bank=false/false,ZZ Both=false/true,ZZ Gift=false/false,ZZ Lunch=true/false' then
+      execute 'reset role'; raise exception 'flags saved as %', flags;
+    end if;
+    select count(*) into n from public.my_transactions(p_paid_with_vouchers => true);
+    if n <> 1 then execute 'reset role'; raise exception 'filter kept % rows', n; end if;
+    select id into lunch from public.my_transactions() where description = 'ZZ Bank';
+    perform public.update_transaction(lunch, jsonb_build_object('paid_with_vouchers', true));
+    select count(*) into n from public.my_transactions(p_paid_with_vouchers => true);
+    if n <> 2 then execute 'reset role'; raise exception 'update did not set it (% rows)', n; end if;
+    perform public.update_transaction(lunch, jsonb_build_object('paid_from_savings', true));
+    select paid_with_vouchers::text || '/' || paid_from_savings::text into flags from public.my_transactions() where id = lunch;
+    if flags <> 'false/true' then execute 'reset role'; raise exception 'savings did not replace vouchers: %', flags; end if;
+    execute 'reset role';
+    begin
+      update public.transactions set paid_with_vouchers = true where user_id = u1 and kind = 'income';
+      raise exception 'GUARD_MISSED: vouchers on income';
+    exception when check_violation then null; end;
+    begin
+      update public.transactions set paid_with_vouchers = true, paid_from_savings = true where id = lunch;
+      raise exception 'GUARD_MISSED: vouchers beside savings';
+    exception when check_violation then null; end;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: paid_with_vouchers only on expenses, never beside savings; saved, updated, read and filtered';
+    else update _t set fails = fails + 1; raise notice 'FAIL: paid_with_vouchers — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 99. 0097: the meal voucher setup. Saved encrypted and read back by its
+--     owner only; the table is closed to clients (no grants) and the RPCs to
+--     anon; a malformed setup is refused; null turns vouchers off; the owner
+--     guard files a row under the caller whatever user_id is written.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; bad jsonb; n int;
+        doc jsonb := jsonb_build_object('v', 1, 'country', 'BE', 'per_day_minor', 800, 'currency', 'EUR',
+          'topup_day', 5, 'start_on', '2026-09-28', 'start_balance_minor', 6575,
+          'days', jsonb_build_object('2026-09', 20));
+begin
+  begin
+    u1 := pg_temp.zz_user('vsetup1');
+    u2 := pg_temp.zz_user('vsetup2');
+    if has_function_privilege('anon', 'public.my_meal_vouchers()', 'execute')
+       or has_function_privilege('anon', 'public.save_meal_vouchers(jsonb)', 'execute')
+       or has_function_privilege('authenticated', 'public.meal_vouchers_check(jsonb)', 'execute') then
+      raise exception 'voucher functions reachable by the wrong role';
+    end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_meal_vouchers(doc);
+    if public.my_meal_vouchers() is distinct from doc then execute 'reset role'; raise exception 'setup not read back'; end if;
+    begin
+      select count(*) into n from public.meal_vouchers;
+      execute 'reset role'; raise exception 'GUARD_MISSED: clients can read meal_vouchers';
+    exception when insufficient_privilege then null; end;
+    foreach bad in array array[
+      doc || '{"country": "FR"}', doc || '{"per_day_minor": 0}', doc || '{"per_day_minor": "800"}',
+      doc || '{"topup_day": 29}', doc || '{"start_on": "2026-02-30"}', doc || '{"start_balance_minor": -1}',
+      doc || '{"days": {"2026-13": 3}}', doc || '{"days": {"2026-09": 40}}', doc || '{"x": 1}',
+      doc || '{"v": 2}', doc - 'currency', '[1]'::jsonb] loop
+      begin
+        perform public.save_meal_vouchers(bad);
+        execute 'reset role';
+        raise exception 'GUARD_MISSED: malformed setup % saved', bad;
+      exception when others then
+        if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+      end;
+    end loop;
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    if public.my_meal_vouchers() is not null then execute 'reset role'; raise exception 'another user read the setup'; end if;
+    perform public.save_meal_vouchers(null);   -- u2 has none: a no-op
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'reset role';
+    if (select count(*) from public.meal_vouchers where user_id = u1) <> 1 then raise exception 'u1 setup missing'; end if;
+    if (select payload_enc::text like '%country%' from public.meal_vouchers where user_id = u1) then
+      raise exception 'setup stored in the clear';
+    end if;
+    -- The owner guard: a write naming u2 lands under the caller (u1).
+    update public.meal_vouchers set user_id = u2 where user_id = u1;
+    if not exists (select 1 from public.meal_vouchers where user_id = u1) then raise exception 'owner guard let the row move'; end if;
+    execute 'set local role authenticated';
+    perform public.save_meal_vouchers(null);
+    execute 'reset role';
+    if exists (select 1 from public.meal_vouchers where user_id = u1) then raise exception 'null did not turn vouchers off'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: meal voucher setup encrypted, owner-only, validated, removable; table closed to clients';
+    else update _t set fails = fails + 1; raise notice 'FAIL: meal voucher setup — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 100. 0097: the voucher setup is in the owner's data export, and leaves with
+--     its user: demo_wipe clears the demo accounts' setups only; deleting an
+--     account cascades it away.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; n int; exported jsonb;
+        doc jsonb := jsonb_build_object('v', 1, 'country', 'GR', 'per_day_minor', 600, 'currency', 'EUR',
+          'topup_day', 1, 'start_on', '2026-09-01', 'start_balance_minor', 0, 'days', '{}'::jsonb);
+begin
+  begin
+    u1 := pg_temp.zz_user('vwipe1');
+    u2 := pg_temp.zz_user('vwipe2');
+    foreach n in array array[1, 2] loop
+      perform set_config('request.jwt.claims', json_build_object('sub', case n when 1 then u1 else u2 end,
+        'role', 'authenticated')::text, true);
+      execute 'set local role authenticated';
+      perform public.save_meal_vouchers(doc);
+      if n = 1 then exported := public.export_my_data(); end if;
+      execute 'reset role';
+    end loop;
+    if exported->'meal_vouchers'->'setup' is distinct from doc then raise exception 'export left out the setup'; end if;
+    perform public.demo_wipe(array[u1]);
+    if exists (select 1 from public.meal_vouchers where user_id = u1) then raise exception 'demo_wipe left the setup'; end if;
+    if not exists (select 1 from public.meal_vouchers where user_id = u2) then raise exception 'demo_wipe touched another account'; end if;
+    delete from auth.users where id = u2;
+    if exists (select 1 from public.meal_vouchers where user_id = u2) then raise exception 'account deletion left the setup'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: voucher setup exported, cleared by demo_wipe and account deletion, only for those users';
+    else update _t set fails = fails + 1; raise notice 'FAIL: voucher setup cleanup — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 98; f int; p int;  -- tests 1–97 + B-0059
+declare expected_tests constant int := 101; f int; p int;  -- tests 1–100 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

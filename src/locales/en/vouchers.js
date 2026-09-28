@@ -1,0 +1,67 @@
+// Namespace `vouchers`: src/features/vouchers (meal vouchers: the Home card,
+// the card's page with its next top-up and history, and the setup).
+export default {
+  title: 'Meal vouchers',
+  what: 'your meal vouchers',
+  balance: 'On your card',
+  open: 'Open meal vouchers',
+  // The next top-up: "+€176.00 on 5 Oct", "September · 22 working days × €8.00".
+  next: {
+    title: 'Next top-up',
+    amount: '+{{amount}} on {{date}}',
+    days_one: '{{month}} · {{count}} working day × {{perDay}}',
+    days_other: '{{month}} · {{count}} working days × {{perDay}}',
+    fixed: 'your days',
+  },
+  // "Fix days": the days worked in the month the next top-up pays for.
+  fix: {
+    button: 'Fix days',
+    label: 'Days worked in {{month}}',
+    hint_one: 'The calendar says {{count}} working day. Take off days you were on leave or sick.',
+    hint_other: 'The calendar says {{count}} working days. Take off days you were on leave or sick.',
+    fewer: 'One day fewer',
+    more: 'One day more',
+    total: '× {{perDay}} = <b>{{amount}}</b>',
+    save: 'Save',
+    cancel: 'Cancel',
+  },
+  month: {
+    topUps: 'Topped up',
+    spent: 'Spent',
+  },
+  history: {
+    title: 'History',
+    topUp: 'Top-up',
+    topUpMeta_one: '{{date}} · {{month}} · {{count}} day',
+    topUpMeta_other: '{{date}} · {{month}} · {{count}} days',
+    start: 'On your card',
+    startMeta: '{{date}} · when you set it up',
+    noCategory: 'Uncategorized',
+    empty: 'Top-ups and what you pay with the card show here.',
+  },
+  settingsLink: 'Settings',
+  // Settings → Meal vouchers.
+  setup: {
+    title: 'Meal vouchers',
+    lead: 'An amount per working day, on its own card, on top of your salary.',
+    on: 'I get meal vouchers',
+    start: 'Set up meal vouchers',
+    perDay: 'Amount per working day',
+    perDayHint: 'Your employer’s part plus yours, as on your payslip.',
+    country: 'Working days',
+    countries: {
+      BE: 'Mon–Fri, minus Belgian holidays',
+      GR: 'Mon–Fri, minus Greek holidays',
+    },
+    topUpDay: 'Top-up day',
+    topUpDayOption: 'Day {{day}} of each month',
+    topUpDayHint: 'It pays for last month’s working days.',
+    balance: 'On your card today',
+    balanceHint: 'What’s on the card now; the app counts on from here.',
+    save: 'Save',
+    saved: 'Meal vouchers saved',
+    off: 'Meal vouchers turned off',
+    offHint: 'Your expenses paid with vouchers stay as they are.',
+    needAmount: 'Enter the amount per working day.',
+  },
+}

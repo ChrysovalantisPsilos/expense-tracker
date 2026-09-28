@@ -8,6 +8,7 @@ import {
 } from '../transactions/useData.js'
 import { listRecurring, saveRecurring } from '../recurring/recurring.js'
 import { readPlan, savePlan } from '../plan/plan.js'
+import { readMealVouchers, saveMealVouchers } from '../vouchers/vouchers.js'
 import { isEmptyPlan } from '../plan/planMath.js'
 import { listBudgets, budgetPeriods, saveBudget } from '../budgets/budgets.js'
 import { listAccounts, saveAccount } from '../insights/insights.js'
@@ -92,7 +93,9 @@ async function gatherBackup(userId, onStep = () => {}) {
     listAllCategories(), listRules(), listAccounts(), listGoals(),
   ])
   onStep(t('backup:export.steps.plans'))
-  const [budgets, recurring, plan] = await Promise.all([allBudgets(), listRecurring(), readPlan()])
+  const [budgets, recurring, plan, vouchers] = await Promise.all([
+    allBudgets(), listRecurring(), readPlan(), readMealVouchers(),
+  ])
   onStep(t('backup:export.steps.entries'))
   const transactions = await allTransactions(profile?.base_currency || 'EUR')
   onStep(t('backup:export.steps.groups'))
@@ -100,7 +103,7 @@ async function gatherBackup(userId, onStep = () => {}) {
   const groups = await groupLedgers(groupList)
   return buildBackup({
     userId, profile: profile ?? {}, payment, categories, categoryRules, accounts, goals,
-    budgets, recurring, transactions, plan,
+    budgets, recurring, transactions, plan, vouchers,
     groupNames: new Map(groupList.map((g) => [g.id, g.name])), groups,
   })
 }
@@ -237,6 +240,9 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
       tally.plan = 1
     }
   }
+
+  // The meal voucher setup: only into an account that doesn't get vouchers yet.
+  if (data.vouchers && !(await readMealVouchers())) await saveMealVouchers(user.id, data.vouchers)
 
   step('budgets')
   const budPlan = planBudgets(data.budgets, await allBudgets(), categoryIdByKey)

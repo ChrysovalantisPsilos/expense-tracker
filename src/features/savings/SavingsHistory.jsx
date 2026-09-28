@@ -8,14 +8,14 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { formatMoney } from '../../shared/lib/currency.js'
-import { shortDate } from '../../shared/lib/dates.js'
+import { monthHeading, shortDate } from '../../shared/lib/dates.js'
 import { savingsNoteLabel } from '../../shared/lib/savings.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
 import DeleteTransactionDialog from '../transactions/DeleteTransactionDialog.jsx'
 import { deleteTransaction } from '../transactions/writes.js'
 import {
-  HISTORY_FILTERS, HISTORY_MONTHS, HISTORY_MORE, monthGroups, monthHeading, moveDirection,
+  HISTORY_FILTERS, HISTORY_MONTHS, HISTORY_MORE, monthGroups, moveDirection,
 } from './savingsMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'

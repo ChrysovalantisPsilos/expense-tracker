@@ -721,6 +721,39 @@ test('backup: "Paid from savings" on expenses and recurring expenses round-trips
   assert.throws(() => readBackup(JSON.stringify(older)), UserError)
 })
 
+test('backup: meal vouchers (the flag and the setup) round-trip; older files read without them', async () => {
+  const entry = (o) => ({ kind: 'expense', category_id: null, account_id: null, amount_minor: 1180,
+    currency: 'EUR', exchange_rate: 1, description: 'Lunch', notes: null, spent_at: '2026-09-24', ...o })
+  const vouchers = { v: 1, country: 'BE', per_day_minor: 800, currency: 'EUR', topup_day: 5,
+    start_on: '2026-08-20', start_balance_minor: 3450, days: { '2026-09': 20 } }
+  const doc = buildBackup({
+    exportedAt: '2026-09-28T12:00:00.000Z', userId: 'u-source', profile: { base_currency: 'EUR' }, payment: {},
+    transactions: [entry({ id: 'a', paid_with_vouchers: true }), entry({ id: 'b', description: 'Bank lunch' })],
+    vouchers,
+  })
+  assert.deepEqual(doc.data.transactions.map((t) => t.with_vouchers), [true, undefined])
+  assert.deepEqual(doc.data.vouchers, vouchers)
+  // Never on income, never beside "from savings" (the server's CHECK).
+  doc.data.transactions.push({ ...doc.data.transactions[1], kind: 'income', with_vouchers: true })
+  doc.data.transactions.push({ ...doc.data.transactions[1], from_savings: true, with_vouchers: true })
+  const { backup } = readBackup(JSON.stringify(doc))
+  assert.deepEqual(backup.data.transactions.map((t) => t.with_vouchers), [true, undefined, undefined, undefined])
+  assert.deepEqual(backup.data.vouchers, vouchers)
+  const maps = { userId: 'u-target', categoryIdByKey: new Map(), accountIdByKey: new Map() }
+  const { rows } = await planTransactions(backup.data.transactions, [], maps)
+  assert.deepEqual(rows.map((r) => r.paid_with_vouchers), [true, undefined, undefined, undefined])
+  // A setup that isn't the server's shape is left out; the rest still reads.
+  const odd = readBackup(JSON.stringify({ ...doc, data: { ...doc.data, vouchers: { country: 'FR' } } })).backup
+  assert.equal(odd.data.vouchers, undefined)
+  // A file from before 0097 still reads, without either.
+  const older = JSON.parse(JSON.stringify(doc))
+  for (const t of older.data.transactions) delete t.with_vouchers
+  delete older.data.vouchers
+  const old = readBackup(JSON.stringify(older)).backup
+  assert.ok(old.data.transactions.every((t) => !('with_vouchers' in t)))
+  assert.equal(old.data.vouchers, undefined)
+})
+
 // ---- Version 3: the salary shift; older files follow today's defaults ------------
 
 const SALARY_SOURCE = [

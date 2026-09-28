@@ -1,7 +1,7 @@
 import { Box, Stack, Text } from '@chakra-ui/react'
 import {
   BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass, CircleHelp, Mail,
-  Scale, UserCheck, ArrowLeftRight, Sparkles, Activity, Languages, Wand2,
+  Scale, UserCheck, ArrowLeftRight, Sparkles, Activity, Languages, Wand2, Ticket,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -18,6 +18,7 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 const PREFERENCES = [
   { to: '/settings/categories', id: 'categories', icon: Tags },
   { to: '/settings/spending', id: 'spending', icon: CalendarRange },
+  { to: '/settings/vouchers', id: 'vouchers', icon: Ticket },
   { to: '/settings/notifications', id: 'notifications', icon: BellRing },
   { to: '/settings/appearance', id: 'appearance', icon: Palette },
   { to: '/settings/language', id: 'language', icon: Languages },

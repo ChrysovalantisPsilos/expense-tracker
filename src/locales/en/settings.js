@@ -13,6 +13,7 @@ export default {
   rows: {
     categories: { label: 'Categories', desc: 'Add, rename, recolour or archive' },
     spending: { label: 'Monthly spending', desc: 'How yearly subscriptions and salary count' },
+    vouchers: { label: 'Meal vouchers', desc: 'A card topped up per working day' },
     notifications: { label: 'Notifications', desc: 'Push and email alerts' },
     appearance: { label: 'Appearance', desc: 'Light, dark or match your device' },
     language: { label: 'Language', desc: 'English, Greek or match your device' },

@@ -218,9 +218,10 @@ async function statementPdf(lib: PdfLib, { from, to, base, stmt, notes, name }: 
       ],
       rows.map((r) => {
         // Yearly payments carry their mark (the totals count them per the
-        // note up top), as do expenses paid from savings; the description is
-        // truncated before the mark is.
-        const mark = [yearlyLabel(r, t), r.fromSavings ? t.fromSavingsMark : null].filter(Boolean).join('  ·  ')
+        // note up top), as do expenses paid from savings or with meal
+        // vouchers; the description is truncated before the mark is.
+        const paid = r.fromSavings ? t.fromSavingsMark : r.withVouchers ? t.withVouchersMark : null
+        const mark = [yearlyLabel(r, t), paid].filter(Boolean).join('  ·  ')
         const income = r.kind === 'income' && !r.saved
         return [
           r.date,

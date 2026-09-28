@@ -37,6 +37,8 @@ const TransactionPage = lazy(() => import('../features/transactions/TransactionP
 const Recurring = lazy(() => import('../features/recurring/Recurring.jsx'))
 const RecurringPage = lazy(() => import('../features/recurring/RecurringPage.jsx'))
 const Plan = lazy(() => import('../features/plan/Plan.jsx'))
+const Vouchers = lazy(() => import('../features/vouchers/Vouchers.jsx'))
+const VoucherSetup = lazy(() => import('../features/vouchers/VoucherSetup.jsx'))
 const Insights = lazy(() => import('../features/insights/Insights.jsx'))
 const AccountPage = lazy(() => import('../features/insights/AccountPage.jsx'))
 const Savings = lazy(() => import('../features/savings/Savings.jsx'))
@@ -177,6 +179,8 @@ function AuthedRoutes() {
           <Route path="recurring/new" element={<RecurringPage />} />
           <Route path="recurring/:id" element={<RecurringPage />} />
           <Route path="plan" element={<Plan />} />
+          <Route path="vouchers" element={<Vouchers />} />
+          <Route path="settings/vouchers" element={<VoucherSetup />} />
           <Route path="insights" element={<Insights />} />
           <Route path="insights/accounts/new" element={<AccountPage />} />
           <Route path="insights/accounts/:id" element={<AccountPage />} />

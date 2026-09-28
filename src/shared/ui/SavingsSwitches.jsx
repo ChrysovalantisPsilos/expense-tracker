@@ -29,10 +29,11 @@ export function SavingsSourceSwitch({ value, onChange }) {
   )
 }
 
-// "Paid from" on an expense: Bank or Savings (0085). Savings: it's still
-// spending, but it comes out of the savings pot, so it doesn't lower Home's
-// Net. `value` is paid_from_savings.
-export function PaidFromChoice({ value, onChange }) {
+// "Paid from" on an expense: Bank, Savings (0085) or Meal vouchers (0097).
+// Savings and vouchers are still spending, but they come out of the savings
+// pot or the voucher card, so they don't lower Home's Net. `sources` lists
+// the choices the user has (bank always first); `value` is one of them.
+export function PaidFromChoice({ sources, value, onChange }) {
   const t = useT()
   const info = useInfoToggle()
   return (
@@ -41,13 +42,12 @@ export function PaidFromChoice({ value, onChange }) {
         <FormLabel as="legend" mb={0} mr={0}>{t('paidFrom.label')}</FormLabel>
         <InfoButton info={info} label={t('info')} />
       </HStack>
-      <SegmentedControl size="sm" isFitted label={t('paidFrom.label')} value={value ? 'savings' : 'bank'}
-        onChange={(v) => onChange(v === 'savings')}
-        options={[['bank', t('paidFrom.bank')], ['savings', t('paidFrom.savings')]]} />
+      <SegmentedControl size="sm" isFitted label={t('paidFrom.label')} value={value} onChange={onChange}
+        options={sources.map((s) => [s, t(`paidFrom.${s}`)])} />
       <InfoBox info={info}>
-        <Text>{t('paidFrom.bankInfo')}</Text>
-        <Text>{t('paidFrom.savingsInfo')}</Text>
+        {sources.map((s) => <Text key={s}>{t(`paidFrom.${s}Info`)}</Text>)}
       </InfoBox>
     </FormControl>
   )
 }
+

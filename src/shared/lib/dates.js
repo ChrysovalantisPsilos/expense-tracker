@@ -31,6 +31,14 @@ export function monthName(d = new Date()) {
     .formatToParts(d).find((p) => p.type === 'month').value
 }
 
+// A month's heading from its key ('YYYY-MM'): "September", or "September
+// 2025" outside the current year (history lists).
+export function monthHeading(key, now = new Date()) {
+  const [y, m] = key.split('-').map(Number)
+  const d = new Date(y, m - 1, 1)
+  return y === now.getFullYear() ? monthName(d) : monthTitle(d)
+}
+
 // The last `n` calendar months, oldest → newest, each as
 // { key: 'YYYY-MM', label: 'Jan', from, to }.
 export function lastMonths(n, d = new Date()) {

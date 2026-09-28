@@ -195,8 +195,10 @@ export default {
     label: 'Paid from',
     bank: 'Bank',
     savings: 'Savings',
+    vouchers: 'Meal vouchers',
     bankInfo: 'Bank: your everyday money. It lowers your Net on Home.',
     savingsInfo: 'Savings: comes out of your savings, not this month’s income, so your Net doesn’t change.',
+    vouchersInfo: 'Meal vouchers: comes off your voucher card, so your Net doesn’t change.',
   },
   receipt: {
     openFailed: 'That photo couldn’t be opened — try another one.',
@@ -228,6 +230,7 @@ export default {
     fromIncome: 'from income',
     received: 'received',
     fromSavings: 'from savings',
+    withVouchers: 'meal vouchers',
   },
   // A shifted salary's note in the lists (countsForLabel); {{month}} is the
   // month's name as Intl gives it on its own (Greek: the genitive).

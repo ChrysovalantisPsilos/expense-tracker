@@ -33,6 +33,7 @@ export const STATEMENT_TEXT = {
     savingsFromIncome: 'Savings aren’t income; those taken from your income are subtracted from the net.',
     savingsReceived: 'Savings aren’t income and don’t change the net (see Saved).',
     fromSavings: 'Expenses paid from savings count as spending but not against your income.',
+    withVouchers: 'Expenses paid with meal vouchers count as spending but not against your income.',
     salary: (day: number): string => `Salary paid from day ${day} of a month counts toward the next month's totals.`,
 
     // A yearly payment's mark: "Yearly · 10.00 EUR/mo".
@@ -40,6 +41,7 @@ export const STATEMENT_TEXT = {
     everyYears: (years: number): string => `Every ${years} years`,
     perMonthSuffix: '/mo',
     fromSavingsMark: 'From savings',
+    withVouchersMark: 'Meal vouchers',
 
     // The PDF.
     title: 'Financial statement',
@@ -81,6 +83,7 @@ export const STATEMENT_TEXT = {
     totalIncome: 'Total income',
     totalExpenses: 'Total expenses',
     paidFromSavings: 'Of which paid from savings',
+    paidWithVouchers: 'Of which paid with meal vouchers',
     savedNotIncome: 'Saved (not income)',
     savedFromIncome: 'Saved from income',
     savedReceived: 'Saved, received',
@@ -93,6 +96,7 @@ export const STATEMENT_TEXT = {
     // The Type column: the row's kind, or a savings entry's source.
     kind: { income: 'income', expense: 'expense' } as Record<string, string>,
     kindFromSavings: (kind: string): string => `${kind} (from savings)`,
+    kindWithVouchers: (kind: string): string => `${kind} (meal vouchers)`,
     savedFrom: { 'from income': 'saved (from income)', received: 'saved (received)' },
     yearlyHeading: 'Yearly subscriptions (kept out of the totals)',
     paidInPeriodIn: (base: string): string => `Paid in this period (${base})`,

@@ -44,10 +44,10 @@ test('periodProjection: only ongoing periods fold in upcoming recurring', () => 
 })
 
 test('projectedTotals adds the projection and nets income − spend', () => {
-  const totals = { spent: 3000, spentFromSavings: 0, earned: 1000, savedFromIncome: 0, net: -2000 }
+  const totals = { spent: 3000, spentFromSavings: 0, spentWithVouchers: 0, earned: 1000, savedFromIncome: 0, net: -2000 }
   const proj = { expense: 500, income: 200, expenseFromSavings: 0, savedFromIncome: 0, net: -300 }
   assert.deepEqual(projectedTotals(totals, proj),
-    { spentTotal: 3500, earnedTotal: 1200, fromIncomeTotal: 0, fromSavingsTotal: 0, netTotal: -2300 })
+    { spentTotal: 3500, earnedTotal: 1200, fromIncomeTotal: 0, fromSavingsTotal: 0, withVouchersTotal: 0, netTotal: -2300 })
 })
 
 // ---- Yearly subscriptions kept separate (0068) -------------------------------
@@ -87,7 +87,7 @@ test('Home sideways: a strip, then two stacks that hold every card once, in the 
     }
   }
   assert.deepEqual(homeStacks({ firstRun: false }), {
-    strip: ['overview'], left: ['categories', 'budgets'], right: ['expenses', 'income', 'recurring'],
+    strip: ['overview'], left: ['vouchers', 'categories', 'budgets'], right: ['expenses', 'income', 'recurring'],
   })
   // Nothing logged: the way to start leads the right stack; no empty lists.
   assert.deepEqual(homeStacks({ firstRun: true }).right, ['firstEntry', 'recurring'])

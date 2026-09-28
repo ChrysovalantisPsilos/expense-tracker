@@ -29,16 +29,25 @@
 // budgets, Insights, the statement), but it doesn't lower the net, and it
 // takes away from net worth's Savings line. The flag is on the row itself, so
 // it doesn't depend on the savings categories.
+//
+// An expense can instead be paid with meal vouchers (paid_with_vouchers,
+// 0097): money off the voucher card, not out of this period's income. Like
+// one paid from savings it's spending everywhere spending counts and leaves
+// the net alone, but it never touches the savings pot. An expense is paid
+// from one or the other, never both (CHECK).
 
 import { toBaseMinor } from './money.ts'
 
 // deno-lint-ignore no-explicit-any
 type Row = any
 
-export type Effect = 'income' | 'expense' | 'expense-from-savings' | 'saved-from-income' | 'saved-received'
+export type Effect =
+  'income' | 'expense' | 'expense-from-savings' | 'expense-from-vouchers' | 'saved-from-income' | 'saved-received'
 
 // Every effect, for sums keyed by effect.
-export const EFFECTS: readonly Effect[] = ['income', 'expense', 'expense-from-savings', 'saved-from-income', 'saved-received']
+export const EFFECTS: readonly Effect[] = [
+  'income', 'expense', 'expense-from-savings', 'expense-from-vouchers', 'saved-from-income', 'saved-received',
+]
 
 // The ids of the user's savings categories (income ones marked is_savings).
 export function savingsIdsOf(categories: Row[] | null | undefined): Set<string> {
@@ -51,9 +60,13 @@ export const isSavingsRow = (row: Row, savingsIds: Set<string>): boolean =>
 
 // What a transaction (or recurring rule) is to the totals: income, an
 // expense (anything that isn't income, as everywhere else) — paid from
-// income or from savings — or savings, taken from income or received.
+// income, from savings or with meal vouchers — or savings, taken from income
+// or received.
 export function rowEffect(row: Row, savingsIds: Set<string>): Effect {
-  if (row?.kind !== 'income') return row?.paid_from_savings === true ? 'expense-from-savings' : 'expense'
+  if (row?.kind !== 'income') {
+    if (row?.paid_from_savings === true) return 'expense-from-savings'
+    return row?.paid_with_vouchers === true ? 'expense-from-vouchers' : 'expense'
+  }
   if (!isSavingsRow(row, savingsIds)) return 'income'
   return row.savings_from_income === true ? 'saved-from-income' : 'saved-received'
 }
@@ -67,19 +80,24 @@ export function savingsSource(row: Row, savingsIds: Set<string>): 'from income' 
 }
 
 // The lists' note on a row that touches savings: where a savings entry's
-// money came from, or "from savings" on an expense paid from savings; null
-// otherwise.
+// money came from, "from savings" on an expense paid from savings, or "meal
+// vouchers" on one paid with them; null otherwise.
+const PAID_NOTE: Partial<Record<Effect, string>> = {
+  'expense-from-savings': 'from savings', 'expense-from-vouchers': 'meal vouchers',
+}
 export const savingsNoteOf = (row: Row, savingsIds: Set<string>): string | null =>
-  savingsSource(row, savingsIds) ?? (rowEffect(row, savingsIds) === 'expense-from-savings' ? 'from savings' : null)
+  savingsSource(row, savingsIds) ?? PAID_NOTE[rowEffect(row, savingsIds)] ?? null
 
 // Is it spending? Every expense is, whatever paid for it.
-export const isSpending = (effect: Effect): boolean => effect === 'expense' || effect === 'expense-from-savings'
+export const isSpending = (effect: Effect): boolean =>
+  effect === 'expense' || effect === 'expense-from-savings' || effect === 'expense-from-vouchers'
 
 // How an effect moves the net: income adds, expenses paid from income and
 // savings taken from income take away; received savings and expenses paid
-// from savings leave it alone.
+// from savings or with meal vouchers leave it alone.
+const OFF_THE_NET: readonly Effect[] = ['saved-received', 'expense-from-savings', 'expense-from-vouchers']
 export const netSign = (effect: Effect): number =>
-  (effect === 'income' ? 1 : effect === 'saved-received' || effect === 'expense-from-savings' ? 0 : -1)
+  (effect === 'income' ? 1 : OFF_THE_NET.includes(effect) ? 0 : -1)
 
 // How an effect moves the savings pot (net worth's Savings line): every
 // savings entry adds, an expense paid from savings takes away.

@@ -43,29 +43,30 @@ export function useCategories(kind) {
 // the previous month's salary that counts in the range (shiftFetchFrom);
 // spendRows counts it there, paidInWindow leaves it out of lists.
 export function useTransactions({
-  kind, from, to, categoryId, limit, spread = false, paidFromSavings = false,
+  kind, from, to, categoryId, limit, spread = false, paidFromSavings = false, paidWithVouchers = false,
 } = {}) {
   const { baseCurrency, salaryShift } = useProfile()
   const fetchFrom = spread && kind !== 'expense' ? shiftFetchFrom(from, salaryShift) : from
   return useOwnedQuery('transactions', {
     cacheAs: 'transactions',
     fetch: () => listTransactions({
-      kind, from: fetchFrom, to, categoryId, limit, spread, paidFromSavings, baseCurrency,
+      kind, from: fetchFrom, to, categoryId, limit, spread, paidFromSavings, paidWithVouchers, baseCurrency,
     }),
-    deps: [kind, fetchFrom, to, categoryId, limit, spread, paidFromSavings, baseCurrency],
+    deps: [kind, fetchFrom, to, categoryId, limit, spread, paidFromSavings, paidWithVouchers, baseCurrency],
   })
 }
 
 // One-shot read behind useTransactions (same filters, same row shape). Pass
 // `baseCurrency` to have pending rates estimated.
 export async function listTransactions({
-  kind, from, to, categoryId, limit, spread = false, paidFromSavings = false, baseCurrency,
+  kind, from, to, categoryId, limit, spread = false, paidFromSavings = false, paidWithVouchers = false, baseCurrency,
 } = {}) {
   const { data, error } = await supabase.rpc('my_transactions', {
     p_kind: kind ?? null, p_from: from ?? null, p_to: to ?? null,
     p_category: categoryId ?? null, p_limit: limit ?? null, p_spread: spread,
     // Sent only when set, so every other read keeps its cache key (offline).
     ...(paidFromSavings ? { p_paid_from_savings: true } : {}),
+    ...(paidWithVouchers ? { p_paid_with_vouchers: true } : {}),
   })
   if (error) throw dbError(error)
   return baseCurrency ? fillPendingRates(data ?? [], baseCurrency) : data ?? []

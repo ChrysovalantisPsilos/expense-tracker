@@ -9,7 +9,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, savingsNoteLabel, isSpending, netSign, savingsPotMinor,
-  isSavingsAccount, savingsTotal,
+  isSavingsAccount, savingsTotal, paidFromSources, paidFromOf,
 } from '../src/shared/lib/savings.js'
 import { potSign, savingsSource } from '../supabase/functions/_shared/savings.ts'
 import { formatMoney } from '../src/shared/lib/currency.js'
@@ -23,7 +23,7 @@ import { incomePerMonth, planRepeat, repeatDraft, ruleFromTransaction } from '..
 import { periodFromValue } from '../src/features/transactions/periods.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 import {
-  buildStatement, fromSavingsNote, savingsNote, statementSheets,
+  buildStatement, fromSavingsNote, savingsNote, statementSheets, withVouchersNote,
 } from '../supabase/functions/generate-report/statementMath.ts'
 
 const SAV = 'cat-savings'
@@ -107,18 +107,37 @@ test('Home: savings aren\'t income; the net takes away only those taken from inc
 
 test('Home: the overview ⓘ says what Spent, Income and the Net fold in', () => {
   const none = periodProjection([], null, '2026-09-25')
-  assert.deepEqual(overviewInfo(none, 0, 0, 'EUR'), ['Net is income minus expenses.'])
-  assert.deepEqual(overviewInfo(none, 30000, 0, 'EUR'), ['Net is income minus expenses and what you set aside from income.'])
-  assert.deepEqual(overviewInfo(none, 0, 89900, 'EUR'), [
+  assert.deepEqual(overviewInfo({ proj: none }, 'EUR'), ['Net is income minus expenses.'])
+  assert.deepEqual(overviewInfo({ proj: none, fromIncomeTotal: 30000 }, 'EUR'), ['Net is income minus expenses and what you set aside from income.'])
+  assert.deepEqual(overviewInfo({ proj: none, fromSavingsTotal: 89900 }, 'EUR'), [
     'Spent includes €899.00 paid from savings.',
     'Net is income minus expenses.',
     'Spending paid from savings isn’t in the Net.',
   ])
-  assert.deepEqual(overviewInfo({ ...none, expense: 1500, income: 250000 }, 0, 0, 'EUR'), [
+  assert.deepEqual(overviewInfo({ proj: { ...none, expense: 1500, income: 250000 } }, 'EUR'), [
     'Spent includes €15.00 of recurring payments still to come.',
     'Income includes €2,500.00 of recurring income still to come.',
     'Net is income minus expenses.',
   ])
+  assert.deepEqual(overviewInfo({ proj: none, withVouchersTotal: 13675 }, 'EUR'), [
+    'Spent includes €136.75 paid with meal vouchers.',
+    'Net is income minus expenses.',
+    'Spending paid with meal vouchers isn’t in the Net.',
+  ])
+  assert.equal(overviewInfo({ proj: none, fromSavingsTotal: 1, withVouchersTotal: 1 }, 'EUR').at(-1),
+    'Spending paid from savings or with meal vouchers isn’t in the Net.')
+})
+
+test('meal vouchers: spending that leaves the net and the pot alone', () => {
+  const ids = new Set()
+  const lunch = { kind: 'expense', paid_with_vouchers: true, amount_minor: 1180, currency: 'EUR', exchange_rate: 1 }
+  assert.equal(rowEffect(lunch, ids), 'expense-from-vouchers')
+  assert.equal(isSpending('expense-from-vouchers'), true)
+  assert.equal(netSign('expense-from-vouchers'), 0)
+  assert.equal(potSign('expense-from-vouchers'), 0)
+  assert.equal(savingsNoteLabel(lunch, ids), 'meal vouchers')
+  const t = periodTotals([lunch, { kind: 'expense', amount_minor: 500, currency: 'EUR', exchange_rate: 1 }], 'EUR')
+  assert.deepEqual([t.spent, t.spentWithVouchers, t.net], [1680, 1180, -500])
 })
 
 test('Home: a late-month salary shift still leaves savings out', () => {
@@ -265,10 +284,11 @@ test('rowEffect: an expense paid from savings; how every effect moves spending, 
   // It means nothing on income (the CHECK keeps it off; never trusted).
   assert.equal(rowEffect(row({ kind: 'income', category_id: 'cat-salary', paid_from_savings: true }), IDS), 'income')
   assert.equal(rowEffect(row({ kind: 'income', category_id: SAV, paid_from_savings: true }), IDS), 'saved-received')
-  assert.deepEqual(EFFECTS, ['income', 'expense', 'expense-from-savings', 'saved-from-income', 'saved-received'])
-  assert.deepEqual(EFFECTS.map(isSpending), [false, true, true, false, false])
-  assert.deepEqual(EFFECTS.map(netSign), [1, -1, 0, -1, 0])
-  assert.deepEqual(EFFECTS.map(potSign), [0, 0, -1, 1, 1])
+  assert.deepEqual(EFFECTS,
+    ['income', 'expense', 'expense-from-savings', 'expense-from-vouchers', 'saved-from-income', 'saved-received'])
+  assert.deepEqual(EFFECTS.map(isSpending), [false, true, true, true, false, false])
+  assert.deepEqual(EFFECTS.map(netSign), [1, -1, 0, 0, -1, 0])
+  assert.deepEqual(EFFECTS.map(potSign), [0, 0, -1, 0, 1, 1])
   // The lists' note: "from savings" on it, the savings entries' source otherwise.
   assert.deepEqual(withLaptop.map((r) => savingsNoteLabel(r, IDS)), [null, 'from income', 'received', null, 'from savings'])
   assert.equal(savingsSource(laptop, IDS), null) // not a savings entry
@@ -374,6 +394,20 @@ test('statement: an expense paid from savings is spending, left out of the net, 
   assert.ok(!statementSheets(none, 'EUR', [])[0].rows.some((r) => r[0] === 'Of which paid from savings'))
 })
 
+test('statement: an expense paid with meal vouchers is spending, left out of the net, marked', () => {
+  const lunch = { ...laptop, id: 'lunch', paid_from_savings: false, paid_with_vouchers: true, amount_minor: 1180 }
+  const s = buildStatement([lunch, ...withLaptop.slice().reverse()], 'EUR', { from: '2026-09-01', to: '2026-09-30', savingsIds: IDS })
+  assert.equal(s.totalSpent, 450 + 900 + 11.8)
+  assert.equal(s.spentWithVouchers, 11.8)
+  assert.equal(s.net, 2000 - 450 - 300)
+  assert.equal(s.rows.at(-1).withVouchers, true)
+  assert.equal(withVouchersNote(s.spentWithVouchers), 'Expenses paid with meal vouchers count as spending but not against your income.')
+  assert.equal(withVouchersNote(0), null)
+  const [summary, list] = statementSheets(s, 'EUR', [])
+  assert.equal(Object.fromEntries(summary.rows.filter((r) => r.length === 2))['Of which paid with meal vouchers'], 11.8)
+  assert.equal(list.rows.at(-1)[1], 'expense (meal vouchers)')
+})
+
 // ── Savings accounts (0092) ─────────────────────────────────────────────────
 // The owner's case: a manual "Savings" account of €10,213 holding the money
 // the savings entries recorded going in (a €420 pot here).
@@ -422,4 +456,14 @@ test('net worth lists: savings accounts under Savings, the rest under Accounts, 
   assert.deepEqual(accountSections([current, kept, card, deposit]),
     { savings: [kept, deposit], other: [current, card] })
   assert.deepEqual(accountSections([current]), { savings: [], other: [current] })
+})
+
+test('Paid from: the choices a user has, and the one an entry was saved with', () => {
+  assert.deepEqual(paidFromSources({}), [])
+  assert.deepEqual(paidFromSources({ savings: true }), ['bank', 'savings'])
+  assert.deepEqual(paidFromSources({ vouchers: true }), ['bank', 'vouchers'])
+  assert.deepEqual(paidFromSources({ savings: true, vouchers: true }), ['bank', 'savings', 'vouchers'])
+  assert.equal(paidFromOf(null), 'bank')
+  assert.equal(paidFromOf({ paid_from_savings: true }), 'savings')
+  assert.equal(paidFromOf({ paid_with_vouchers: true }), 'vouchers')
 })

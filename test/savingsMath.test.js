@@ -7,11 +7,11 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { savingsPotMinor } from '../src/shared/lib/savings.js'
 import { formatMoney } from '../src/shared/lib/currency.js'
-import { lastMonths } from '../src/shared/lib/dates.js'
+import { lastMonths, monthHeading } from '../src/shared/lib/dates.js'
 import { MARK_ARCS } from '../src/shared/ui/markGeometry.js'
 import {
   touchesSavings, moveDirection, savingsMoves, savingsFlow, potSeries, seriesLength,
-  HISTORY_FILTERS, monthGroups, monthHeading, wholeMoney, changeChip,
+  HISTORY_FILTERS, monthGroups, wholeMoney, changeChip,
   goalProgress, goalSavedAfter, goalPace, goalStatus, goalRingArcs, savingsCategoryOf, savingsStacks,
   anchoredSeries, totalSourceNote,
 } from '../src/features/savings/savingsMath.js'

@@ -40,6 +40,7 @@ import {
   homeCards, homeStacks,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
+import VoucherCard from '../vouchers/VoucherCard.jsx'
 import SubscriptionsCard from '../recurring/SubscriptionsCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { InfoBox, InfoButton, useInfoToggle } from '../../shared/ui/InfoToggle.jsx'
@@ -119,7 +120,8 @@ export default function Dashboard() {
     () => periodProjection(rulesInBase(rules, baseCurrency, ruleFx.rates).rules, period.to, todayISO,
       separateYearly, salaryShift, savingsIds),
     [rules, baseCurrency, ruleFx.rates, period.to, todayISO, separateYearly, salaryShift, savingsIds])
-  const { spentTotal, earnedTotal, fromIncomeTotal, fromSavingsTotal, netTotal } = projectedTotals(totals, proj)
+  const figures = projectedTotals(totals, proj)
+  const { spentTotal, earnedTotal, netTotal } = figures
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
   const saved = savedNote(totals.saved, period, baseCurrency)
 
@@ -176,7 +178,7 @@ export default function Dashboard() {
         )}
         {!loading && (
           <InfoBox info={info}>
-            {overviewInfo(proj, fromIncomeTotal, fromSavingsTotal, baseCurrency).map((line) => <Text key={line}>{line}</Text>)}
+            {overviewInfo({ proj, ...figures }, baseCurrency).map((line) => <Text key={line}>{line}</Text>)}
           </InfoBox>
         )}
       </Panel>
@@ -260,6 +262,7 @@ export default function Dashboard() {
     ),
 
     budgets: <BudgetsCard period={period} />,
+    vouchers: <VoucherCard />,
 
     expenses: (
       <Panel icon={ReceiptText} title={expHead.title} subtitle={expHead.subtitle} divider>

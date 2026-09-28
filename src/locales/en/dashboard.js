@@ -19,6 +19,9 @@ export default {
     net: 'Net is income minus expenses.',
     netSavings: 'Net is income minus expenses and what you set aside from income.',
     netExclSavings: 'Spending paid from savings isn’t in the Net.',
+    netExclVouchers: 'Spending paid with meal vouchers isn’t in the Net.',
+    netExclSavingsVouchers: 'Spending paid from savings or with meal vouchers isn’t in the Net.',
+    spentWithVouchers: 'Spent includes {{amount}} paid with meal vouchers.',
   },
   // What was put aside in the period (dashboardMath.savedNote).
   saved: {

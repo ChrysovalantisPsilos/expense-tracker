@@ -13,11 +13,26 @@ export {
   isSavingsAccount, savingsTotal,
 } from '../../../supabase/functions/_shared/savings.ts'
 
-const NOTE_KEYS = { 'from income': 'fromIncome', received: 'received', 'from savings': 'fromSavings' }
+const NOTE_KEYS = {
+  'from income': 'fromIncome', received: 'received', 'from savings': 'fromSavings', 'meal vouchers': 'withVouchers',
+}
 
 // The lists' note on a row that touches savings ("from income", "received",
-// "from savings"), in the app's language; null otherwise.
+// "from savings") or was paid with meal vouchers, in the app's language;
+// null otherwise.
 export function savingsNoteLabel(row, savingsIds) {
   const note = savingsNoteOf(row, savingsIds)
   return note ? t(`common:savingsNote.${NOTE_KEYS[note]}`) : null
 }
+
+// Which "Paid from" choices an expense offers: savings once the user has a
+// savings category, vouchers once they get meal vouchers — or when the entry
+// being edited already uses one. [] when there's nothing but the bank.
+export function paidFromSources({ savings, vouchers }) {
+  const sources = ['bank', ...(savings ? ['savings'] : []), ...(vouchers ? ['vouchers'] : [])]
+  return sources.length > 1 ? sources : []
+}
+
+// The choice an entry was saved with.
+export const paidFromOf = (row) =>
+  (row?.paid_from_savings ? 'savings' : row?.paid_with_vouchers ? 'vouchers' : 'bank')

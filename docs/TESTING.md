@@ -43,6 +43,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Budgets per category/month, with 80% / 100% push alerts
 - Recurring rules (subscriptions, salary) auto-logged nightly, with per-rule payment reminders
 - Plan mode (/plan): try changes to your recurring payments and income (cancel, change the amount or how often, add a new one) and see the monthly net before → after (a salary logged as entries counts as a derived Salary row; with no recurring income the card shows the payments total instead); ideas to save computed on the device; the plan is saved to the account (encrypted); optional Apply changes the real rules in one step, with Undo for 24 hours
+- Meal vouchers (/vouchers, Settings → Meal vouchers): a card topped up on a chosen day for last month's working days (Mon–Fri minus Belgian or Greek public holidays) × the amount per day; what's on the card, this month's top-ups and spending, the next top-up with Fix days (leave, sick days), the history; a Home card; expenses "Paid from: Meal vouchers" are spending but not against the Net; the setup is encrypted, in backups and the data export
 - Savings page: the pot (all time, month by month), this month's flow, repeating savings, goals and a savings-only history
 - Net worth (accounts), insights & 6-month trends
 - One Transactions page (Expenses / Income / All switch) with search & filters across all history
@@ -631,3 +632,37 @@ and puts focus back on what opened it.
     button, and with reduced motion shows the still with a play button.
     "Copy link to this answer" on the live site copies a
     https://www.budgeer.com/help#… link.
+
+### K6. Meal vouchers
+
+Fake data: a Belgian-style setup (€8.00 a working day, top-up day 5, €34.50
+on the card) and a few lunches and groceries paid with vouchers. Check at
+390px (light and dark, English and Greek), desktop 1280 and sideways.
+
+1. Settings → Meal vouchers: the switch, amount per working day (required),
+   working days (Belgian or Greek holidays), top-up day (1–28, "for last
+   month's working days"), what's on the card today. Save → the Meal vouchers
+   page; Settings shows the row between Monthly spending and Notifications.
+2. Home: the Meal vouchers card sits under the totals (only with a setup):
+   what's on the card and "+€X on <day>" with "<month> · N working days ×
+   €8.00"; the › opens the page. Without a setup there's no card.
+3. The page: what's on the card = the balance at setup + top-ups since −
+   expenses paid with vouchers since; this month's top-ups and spending;
+   Next top-up counts last month's weekdays minus that country's holidays
+   (e.g. November in Belgium: 11 Nov off; April in Greece: Good Friday and
+   Easter Monday off). Fix days opens in place: −/+ changes the amount, Save
+   keeps it ("your days"), Cancel doesn't; setting it back to the calendar's
+   count removes the fix.
+4. History: month by month, newest first, each month's net; top-ups, the
+   expenses (tap → the entry) and "On your card" at the setup date; "Show
+   older" adds months.
+5. Add → New expense: "Paid from" offers Bank · Savings · Meal vouchers
+   (Savings only with a savings category, Meal vouchers only with a setup);
+   Meal vouchers saves the expense as paid with vouchers: it's in Spent,
+   categories and budgets, the ⓘ on Home says so, and the Net doesn't move.
+   The ledger row says "meal vouchers". Editing keeps the choice; switching
+   to income drops it.
+6. Switch meal vouchers off in Settings → the Home card goes; the expenses
+   keep their flag. Back up and restore into an empty account → the setup
+   and the flag come back. The data export includes the setup.
+

@@ -1,5 +1,5 @@
 import { toBaseMinor, minorFactor, formatMoney } from '../../shared/lib/currency.js'
-import { isoDate, monthName, monthTitle } from '../../shared/lib/dates.js'
+import { isoDate, monthTitle } from '../../shared/lib/dates.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 import { rowEffect, potSign } from '../../shared/lib/savings.js'
 import { MARK_ARCS } from '../../shared/ui/markGeometry.js'
@@ -113,14 +113,6 @@ export function monthGroups(moves, savingsIds, baseCurrency, filter = 'all') {
 // "Show older" adds.
 export const HISTORY_MONTHS = 2
 export const HISTORY_MORE = 3
-
-// A history month's heading: "September", or "September 2025" outside the
-// current year.
-export function monthHeading(key, now = new Date()) {
-  const [y, m] = key.split('-').map(Number)
-  const d = new Date(y, m - 1, 1)
-  return y === now.getFullYear() ? monthName(d) : monthTitle(d)
-}
 
 // An amount without a zero fraction ("€899", but "€709.40"), for the short
 // phrases (the month's chip, a goal's pace).

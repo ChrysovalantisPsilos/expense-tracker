@@ -33,6 +33,11 @@
 // out from salary entries; it references nothing). A restore only brings it
 // back into an account that has no plan, and drops the changes whose
 // recurring entry isn't there (restorePlan).
+// Meal vouchers (0097, optional, still version 4): an expense's optional
+// `with_vouchers` (paid with meal vouchers; never beside from_savings) reads
+// as false when absent, and data.vouchers holds the voucher setup as the app
+// keeps it (voucherMath.normaliseSettings); a restore only brings it back
+// into an account that doesn't have one.
 // Names the server caps at 60 characters (display
 // name, category names, group names) are trimmed to fit instead of failing.
 // Deliberately NOT in a backup: UI state (whats_new_seen, tour_done,
@@ -44,6 +49,7 @@
 import { deterministicUuid } from '../import/importMath.js'
 import { FREQUENCIES } from '../recurring/recurringMath.js'
 import { PLAN_VERSION, cleanSalary, isEmptyPlan, normalisePlan } from '../plan/planMath.js'
+import { normaliseSettings } from '../vouchers/voucherMath.js'
 import { sealText, openText } from './backupCrypto.js'
 import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import { CATEGORY_ICON_KEYS, CATEGORY_COLOR_KEYS } from '../../shared/lib/categoryStyle.js'
@@ -119,7 +125,7 @@ export function groupShareNote(notes, groupName) {
 export function buildBackup({
   exportedAt = new Date().toISOString(), userId, profile = {}, payment = {},
   categories = [], categoryRules = [], accounts = [], goals = [], budgets = [],
-  recurring = [], transactions = [], groupNames = new Map(), groups = [], plan = null,
+  recurring = [], transactions = [], groupNames = new Map(), groups = [], plan = null, vouchers = null,
 }) {
   const catKey = new Map(categories.map((c, i) => [c.id, `c${i + 1}`]))
   const acctKey = new Map(accounts.map((a, i) => [a.id, `a${i + 1}`]))
@@ -186,12 +192,14 @@ export function buildBackup({
           notes: t.notes ?? null, spent_at: t.spent_at,
           ...(t.savings_from_income ? { from_income: true } : {}),
           ...(t.paid_from_savings ? { from_savings: true } : {}),
+          ...(t.paid_with_vouchers ? { with_vouchers: true } : {}),
           ...(shared ? {
             group: t.group_expenses?.groups?.name ?? groupNames.get(t.group_id) ?? null,
           } : {}),
         }
       }),
       ...(plan && !isEmptyPlan(plan) ? { plan: planForBackup(plan, ruleKey, catKey) } : {}),
+      ...(vouchers ? { vouchers } : {}),
     },
     groupHistory: groups.map((g) => groupRecord(g, userId)),
   }
@@ -329,11 +337,16 @@ function checker(where) {
 
 // An entry's optional savings flags, each kept only on the kind the server's
 // CHECK allows it on: `from_income` (0084: savings taken from income) on
-// income, `from_savings` (0085: paid from savings) on an expense.
+// income, `from_savings` (0085: paid from savings) on an expense, and
+// `with_vouchers` (0097: paid with meal vouchers) on an expense not paid from
+// savings (recurring entries never carry it).
 function savingsFlags(v, entry) {
+  const expense = entry.kind === 'expense'
+  const fromSavings = v.bool(entry.from_savings ?? false, 'from savings') && expense
   return {
     ...(v.bool(entry.from_income ?? false, 'from income') && entry.kind === 'income' ? { from_income: true } : {}),
-    ...(v.bool(entry.from_savings ?? false, 'from savings') && entry.kind === 'expense' ? { from_savings: true } : {}),
+    ...(fromSavings ? { from_savings: true } : {}),
+    ...(v.bool(entry.with_vouchers ?? false, 'meal vouchers') && expense && !fromSavings ? { with_vouchers: true } : {}),
   }
 }
 
@@ -497,6 +510,7 @@ function validateBackup(doc) {
   const recKeys = new Set(recurring.map((r) => r.key).filter(Boolean))
   if (recKeys.size !== recurring.filter((r) => r.key).length) damaged('recurring', 'duplicate key')
   const plan = data.plan == null ? null : readBackupPlan(data.plan, recKeys, catKeys)
+  const vouchers = data.vouchers == null ? null : normaliseSettings(data.vouchers)
 
   const groupHistory = top.list(doc.groupHistory, 'groupHistory', 1000)
 
@@ -506,6 +520,7 @@ function validateBackup(doc) {
     data: {
       profile, payment, categories, categoryRules, accounts, goals, budgets, recurring, transactions,
       ...(plan ? { plan } : {}),
+      ...(vouchers ? { vouchers } : {}),
     },
     groupCount: groupHistory.length,
   }
@@ -642,6 +657,7 @@ export async function planTransactions(backupTxns, existingTxns, { userId, categ
       spent_at: t.spent_at,
       ...(t.from_income ? { savings_from_income: true } : {}),
       ...(t.from_savings ? { paid_from_savings: true } : {}),
+      ...(t.with_vouchers ? { paid_with_vouchers: true } : {}),
     })
   }
   return { rows, duplicates }

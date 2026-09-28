@@ -169,7 +169,7 @@ const INTERNAL_RAISES = [
   'invite not found', 'category not found', 'category or account not found', 'category to move to not found',
   // Input the app never sends.
   'bad type', 'unknown currency', 'cannot nudge yourself', 'rows must be an array', 'too many rows in one request',
-  'invalid push keys', 'unsupported push endpoint', 'no_account', 'unknown quota scope', 'bad plan',
+  'invalid push keys', 'unsupported push endpoint', 'no_account', 'unknown quota scope', 'bad plan', 'bad setup',
   // Server-only paths: cron, migrations, decryption.
   'unknown privacy email kind %', 'encrypted value is not an amount',
   'receipts bucket is not empty: empty it via the Storage API, then re-run this migration',

@@ -21,6 +21,7 @@ import savings from './savings.js'
 import settings from './settings.js'
 import shell from './shell.js'
 import transactions from './transactions.js'
+import vouchers from './vouchers.js'
 import whatsnew from './whatsnew.js'
 
 export default {
@@ -44,5 +45,6 @@ export default {
   settings,
   shell,
   transactions,
+  vouchers,
   whatsnew,
 }

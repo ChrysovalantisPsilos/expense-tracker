@@ -9,6 +9,8 @@ import { useCategories } from './useData.js'
 import { useSavingsIds } from '../categories/categories.js'
 import { presetCategoryId } from '../categories/categoryMath.js'
 import { PaidFromChoice, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
+import { paidFromOf, paidFromSources } from '../../shared/lib/savings.js'
+import { useMealVouchers } from '../vouchers/vouchers.js'
 import { toMinor, minorToInput, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
@@ -87,8 +89,14 @@ export default function TransactionForm({
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
   const isSavings = kind === 'income' && savingsIds.has(categoryId)
   const [fromIncome, setFromIncome] = useState(transaction ? !!transaction.savings_from_income : true)
-  const [fromSavings, setFromSavings] = useState(!!transaction?.paid_from_savings)
-  const showFromSavings = kind === 'expense' && (savingsIds.size > 0 || !!transaction?.paid_from_savings)
+  // "Paid from": Bank · Savings · Meal vouchers, the ones this user has.
+  const { settings: vouchers } = useMealVouchers()
+  const [paidFrom, setPaidFrom] = useState(paidFromOf(transaction))
+  const sources = kind === 'expense' ? paidFromSources({
+    savings: savingsIds.size > 0 || !!transaction?.paid_from_savings,
+    vouchers: !!vouchers || !!transaction?.paid_with_vouchers,
+  }) : []
+  const from = sources.includes(paidFrom) ? paidFrom : 'bank'
   const [busy, setBusy] = useState(false)
   // Inline field errors, shown from the first submit on.
   const [tried, setTried] = useState(false)
@@ -195,7 +203,8 @@ export default function TransactionForm({
       notes: notes || null,
       spent_at: spentAt,
       savings_from_income: isSavings && fromIncome,
-      paid_from_savings: showFromSavings && fromSavings,
+      paid_from_savings: from === 'savings',
+      paid_with_vouchers: from === 'vouchers',
     }
     setBusy(true)
     try {
@@ -260,7 +269,7 @@ export default function TransactionForm({
   const savingsSwitches = (
     <>
       {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
-      {showFromSavings && <PaidFromChoice value={fromSavings} onChange={setFromSavings} />}
+      {sources.length > 0 && <PaidFromChoice sources={sources} value={from} onChange={setPaidFrom} />}
     </>
   )
   const otherFields = (
