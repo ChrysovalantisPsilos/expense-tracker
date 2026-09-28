@@ -17,7 +17,6 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { STATUS_URL } from '../../shared/lib/contact.js'
 import { CURRENT_ENV, shareOrigin } from '../../shared/lib/environment.js'
-import { siteOrigin } from '../../shared/lib/platform.js'
 import { FAQ_SECTIONS } from './faqContent.js'
 import FaqClip from './FaqClip.jsx'
 import InstallIllustration from './InstallIllustration.jsx'
@@ -119,7 +118,7 @@ function FaqBody() {
 
   async function onCopyLink(id) {
     navigate({ hash: id }, { replace: true })
-    if (await copyText(questionLink(shareOrigin(CURRENT_ENV, siteOrigin()), PATH, id))) {
+    if (await copyText(questionLink(shareOrigin(CURRENT_ENV, window.location.origin), PATH, id))) {
       toast({ title: t('linkCopied'), status: 'success', duration: 2000 })
     } else {
       toast({ title: t('linkInAddressBar'), status: 'info', duration: 3000 })

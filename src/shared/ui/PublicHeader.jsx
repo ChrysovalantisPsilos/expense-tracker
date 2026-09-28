@@ -29,8 +29,6 @@ export default function PublicHeader({ children }) {
   const narrow = useBreakpointValue({ base: true, sm: false }, { ssr: false })
   return (
     <Box as="header" position="sticky" top={0} zIndex="sticky"
-      // The iOS app's status bar (0 on the website; see AppShell's SAFE_TOP).
-      pt="env(safe-area-inset-top, 0px)"
       bg="color-mix(in srgb, var(--chakra-colors-bg-canvas) 85%, transparent)"
       backdropFilter="saturate(1.4) blur(12px)"
       borderBottomWidth="1px" borderColor={scrolled ? 'border.default' : 'transparent'}

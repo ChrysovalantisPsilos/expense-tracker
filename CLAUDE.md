@@ -58,7 +58,6 @@ aspirations — if a change would break one, fix the cause, don't paper over it.
 | Server logic | `supabase/functions/*` (+ shared code in `functions/_shared/`) |
 | DB config (JWT verify per function) | `supabase/config.toml` |
 | Service worker (precache, offline reads, push) | `src/sw.js` |
-| iOS app (Capacitor 8 shell, SPM; guide `docs/IOS.md`) | `capacitor.config.json`, Xcode project `ios/` (lint-ignored); `shared/lib/platform.js` (`isNative()` gates every app-only path, `siteOrigin()`, the ios-dev/ios-prod build check), `shared/lib/deepLinks.js` (pure link → route, `test/deepLinks.test.js`, in step with `public/.well-known/apple-app-site-association`), app-only glue `app/NativeBridge.jsx` + `shared/lib/native.js` (lazy chunks, never loaded on the web) |
 | Public status page (Cloudflare Worker + D1, own deploy) | `status/` (pure logic in `status/src/{state,fxCalendar,uptime,validate,html,time,access}.js`, tests `test/status*.test.js`, deploy `.github/workflows/status-deploy.yml`) |
 | Lint / CI | `eslint.config.js`, `.github/workflows/test.yml` |
 

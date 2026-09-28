@@ -11,10 +11,10 @@ import { CURRENCIES, minorFactor } from '../src/shared/lib/currency.js'
 
 test('CORS names only the app origins', () => {
   const allowed = allowedOrigins('https://preview.example.dev/', ' https://extra.example.dev ,')
-  for (const o of ['https://budgeer.com', 'https://dev.budgeer.com', 'capacitor://localhost', 'https://preview.example.dev', 'https://extra.example.dev']) {
+  for (const o of ['https://budgeer.com', 'https://dev.budgeer.com', 'https://preview.example.dev', 'https://extra.example.dev']) {
     assert.equal(corsHeaders(o, allowed)['Access-Control-Allow-Origin'], o)
   }
-  for (const o of ['https://evil.example', 'https://budgeer.com.evil.example', 'capacitor://evil.example', 'ionic://localhost', null, '']) {
+  for (const o of ['https://evil.example', 'https://budgeer.com.evil.example', null, '']) {
     assert.equal(corsHeaders(o, allowed)['Access-Control-Allow-Origin'], undefined)
   }
   assert.equal(corsHeaders('https://evil.example', allowed).Vary, 'Origin')

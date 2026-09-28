@@ -15,9 +15,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 
 export default [
   // Edge functions are Deno/TypeScript and are checked by `supabase functions`.
-  // ios/ is the generated Xcode project (plus a copy of the build in
-  // ios/App/App/public after `npm run ios:sync`).
-  { ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'supabase/functions/**', '.claude/**', 'status/.wrangler/**', 'ios/**'] },
+  { ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'supabase/functions/**', '.claude/**', 'status/.wrangler/**'] },
   js.configs.recommended,
   {
     files: ['src/**/*.{js,jsx}'],

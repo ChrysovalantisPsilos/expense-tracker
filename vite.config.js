@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { readFileSync } from 'node:fs'
@@ -6,7 +6,6 @@ import { createRequire } from 'node:module'
 import { OCR_ASSET_DIR } from './src/shared/lib/receiptScan.js'
 import { RING_LOADER_CSS, bootLoaderHtml } from './src/shared/ui/ringLoader.js'
 import { BRAND_FONTS, STATEMENT_FONT_DIR, fontPath } from './supabase/functions/_shared/brandFonts.ts'
-import { nativeBuildError } from './src/shared/lib/platform.js'
 
 // Receipt OCR engine, served from our own origin instead of Tesseract's
 // jsDelivr defaults: the worker, both LSTM cores (Tesseract picks SIMD or not
@@ -89,19 +88,6 @@ function bootLoader() {
   }
 }
 
-// The iOS app's builds (--mode ios-dev / ios-prod, docs/IOS.md) stop here when
-// their gitignored .env.<mode> file is missing or names the other project.
-// Any other mode (the website's builds) passes untouched.
-function nativeBuildCheck() {
-  return {
-    name: 'native-build-check',
-    config(_config, { mode }) {
-      const problem = nativeBuildError(mode, loadEnv(mode, process.cwd(), 'VITE_'))
-      if (problem) throw new Error(problem)
-    },
-  }
-}
-
 // https://vitejs.dev/config/
 export default defineConfig({
   // Workers are module workers (created with { type: 'module' }), so they
@@ -109,7 +95,6 @@ export default defineConfig({
   // for a PDF and SheetJS for Excel, never both.
   worker: { format: 'es' },
   plugins: [
-    nativeBuildCheck(),
     react(),
     selfHosted(),
     bootLoader(),
@@ -160,13 +145,7 @@ export default defineConfig({
         // The xlsx parser worker (~500 KB) is only needed when importing a file.
         // The FAQ's how-to clips and posters (public/faq-media/) load only when an
         // answer is opened, online.
-        // The iOS app's native glue (NativeBridge, native.js + Capacitor's
-        // plugins, whose web fallbacks build as web-*.js) never runs on the
-        // website.
-        globIgnores: [
-          'og-image.png', 'email-mark.png', `${OCR_ASSET_DIR}/**`, 'assets/sheetWorker-*.js', 'faq-media/**',
-          'assets/NativeBridge-*.js', 'assets/native-*.js', 'assets/web-*.js',
-        ],
+        globIgnores: ['og-image.png', 'email-mark.png', `${OCR_ASSET_DIR}/**`, 'assets/sheetWorker-*.js', 'faq-media/**'],
       },
     }),
   ],

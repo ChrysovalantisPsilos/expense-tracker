@@ -10,8 +10,6 @@ const APP_ORIGINS = [
   // Local dev and `vite preview` against the TEST project.
   'http://localhost:5173',
   'http://localhost:4173',
-  // The iOS app (Capacitor serves the build from this origin in its web view).
-  'capacitor://localhost',
 ]
 
 // The app origins plus APP_ORIGIN and any comma-separated CORS_ORIGINS

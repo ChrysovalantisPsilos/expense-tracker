@@ -24,17 +24,11 @@ function projectRef(supabaseUrl) {
   return m ? m[1].toLowerCase() : null
 }
 
-// The site a Supabase project URL belongs to, or null for any other URL.
-export const projectEnvironment = (supabaseUrl) => PROJECT_ENV[projectRef(supabaseUrl)] ?? null
-
 export function detectEnvironment({ host = '', supabaseUrl = '' } = {}) {
-  return projectEnvironment(supabaseUrl)
+  return PROJECT_ENV[projectRef(supabaseUrl)]
     ?? HOST_ENV[String(host).toLowerCase().replace(/:\d+$/, '')]
     ?? TEST
 }
-
-// The host names a site answers on (budgeer.com and www for live).
-export const siteHosts = (env) => Object.keys(HOST_ENV).filter((h) => HOST_ENV[h] === env)
 
 export const otherEnvironment = (env) => (env === LIVE ? TEST : LIVE)
 

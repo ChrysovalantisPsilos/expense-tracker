@@ -200,50 +200,9 @@ npm run dev       # Vite
 
 ## iOS app
 
-- **Approach:** wrap the existing React app with Capacitor, keeping one
-  codebase, and add native value for App Store guideline 4.2:
-  - Apple push notifications (APNs)
-  - Face ID lock
-  - share sheet and file save for statements
-  - camera for receipts
-  - haptics
-- **Required by Apple:** Sign in with Apple (because Google sign-in is
-  offered), the privacy label and manifest, and a reviewer account on PROD.
-- **What changes inside the shell:**
-  - no service worker, so offline reads and updates need another route
-  - web push becomes APNs
-  - deep links and universal links for auth redirects, email links and
-    `/join/…`
-  - passkeys need associated domains
-- **Owner decisions:**
-  - builds on the owner's own Mac with Xcode (this cloud sandbox can't build
-    iOS)
-  - the Apple Developer account in the owner's personal name (public as the
-    App Store seller)
-  - iPhone only for v1
-- **Phases:** accounts → Capacitor shell to TestFlight (pointing at dev) →
-  native essentials → App Store submission (EN + EL listing) → later
-  widgets, iPad, Android.
-- **Shell (phase 2, built Sep 2026):** Capacitor 8 with Swift Package
-  Manager (no CocoaPods), app ID `com.budgeer.app`, iPhone only. The owner's
-  Mac guide is `docs/IOS.md`; this sandbox can generate `ios/` (`npx cap add
-  ios --packagemanager SPM`, `npx cap sync ios`) but can't build it.
-  - **Env:** `npm run ios:sync` = `vite build --mode ios-dev` (gitignored
-    `.env.ios-dev`, TEST project) + `cap sync ios`; `ios:sync:prod` uses
-    `.env.ios-prod`. `nativeBuildError` (platform.js) fails a build with a
-    missing or wrong-project file. Fake values build fine here for checks.
-  - **Gate:** `isNative()` reads `window.Capacitor` (no import). Native-only:
-    no AutoUpdate/SW, no web push, no passkeys, PKCE flowType, Google via
-    `@capacitor/browser` returning on `com.budgeer.app://auth/callback`,
-    shared links via `siteOrigin()`, header top padding from
-    `env(safe-area-inset-top)` (0 on the web).
-  - **Web must stay identical:** the native chunks (`NativeBridge-*`,
-    `native-*`, the plugins' `web-*`) are kept out of the SW precache; check
-    the precache list against a develop build after touching them.
-  - **Pending the owner:** Team ID (`grep -rn TEAM_ID public ios`), Supabase
-    Redirect URL `com.budgeer.app://**` on TEST (and PROD), and redeploying
-    the five `_shared/http.ts` functions for the `capacitor://localhost` CORS
-    origin.
+- **Dropped by the owner (28 Sep 2026)** after the Capacitor shell was built;
+  it was removed again (reverted). Budgeer stays a web app/PWA. Don't propose
+  a native app unless the owner asks.
 
 ## Follow-ups a feature here usually needs
 

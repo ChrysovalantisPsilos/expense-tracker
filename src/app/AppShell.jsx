@@ -102,10 +102,6 @@ function TabItem({ to, label, icon: Icon, tour }) {
 // floating Add expense button sits just above it.
 const TAB_BAR_H = '60px'
 const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)'
-// The status bar's band: 0 on the website (the browser, or the installed
-// app's own bar, sits above the page); in the iOS app the page runs under
-// the status bar, so the top bar pads it and its background fills it.
-const SAFE_TOP = 'env(safe-area-inset-top, 0px)'
 const NEW_EXPENSE = '/transactions/new'
 
 // Phone only: a round "Add expense" button above the bottom bar, on the main
@@ -276,7 +272,7 @@ export default function AppShell({ hideAddExpense = false }) {
         {/* Mobile top bar */}
         {!rail && (
         <Flex
-          as="header" align="center" px={4} py={3} pt={`calc(12px + ${SAFE_TOP})`} gap={3}
+          as="header" align="center" px={4} py={3} gap={3}
           borderBottomWidth="1px" borderColor="border.default" bg="bg.surface"
           position="sticky" top={0} zIndex={10}
           display={{ base: 'flex', md: 'none' }}
