@@ -5,6 +5,8 @@ import { clearUserDataCaches } from '../lib/userDataCaches.js'
 import { liveQueryCache } from '../lib/queryCache.js'
 import { REAUTH_REQUIRED, isRecentSignIn } from '../../../supabase/functions/_shared/reauth.ts'
 import { t } from '../lib/i18n/i18n.js'
+import { isNative, siteOrigin } from '../lib/platform.js'
+import { nativeAuthRedirect } from '../lib/deepLinks.js'
 
 const AuthContext = createContext(null)
 
@@ -33,6 +35,21 @@ async function reauthError(action) {
   const { data } = await supabase.auth.getSession()
   if (isRecentSignIn(data?.session?.access_token)) return null
   return Object.assign(new UserError(t(`common:errors.reauth.${action}`)), { code: REAUTH_REQUIRED })
+}
+
+// Google sign-in and linking. On the web, supabase-js leaves the page for
+// Google, which comes back to `webReturn` (a full URL). In the iOS app Google
+// refuses to sign in inside the web view, so its page opens in the system
+// browser sheet and comes back on the app's URL scheme with the app path
+// `next` (deepLinks.js); NativeBridge finishes the sign-in (PKCE code).
+async function startOAuth(start, webReturn, next) {
+  if (!isNative()) return start({ redirectTo: webReturn })
+  const res = await start({ redirectTo: nativeAuthRedirect(next), skipBrowserRedirect: true })
+  if (!res.error && res.data?.url) {
+    const { openInBrowser } = await import('../lib/native.js')
+    await openInBrowser(res.data.url)
+  }
+  return res
 }
 
 export function AuthProvider({ children }) {
@@ -102,7 +119,7 @@ export function AuthProvider({ children }) {
     const res = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: window.location.origin, data: metadata },
+      options: { emailRedirectTo: siteOrigin(), data: metadata },
     })
     pendingSignIn.current = !res.error && !res.data?.session ? { email, password } : null
     return res
@@ -133,13 +150,16 @@ export function AuthProvider({ children }) {
   }, [])
 
   const signInWithProvider = useCallback(
-    (provider) =>
-      supabase.auth.signInWithOAuth({
-        provider, // 'google' | 'apple'
-        options: { redirectTo: window.location.origin },
-      }),
+    (provider) => startOAuth(
+      (options) => supabase.auth.signInWithOAuth({ provider, options }), // provider: 'google' | 'apple'
+      window.location.origin,
+    ),
     [],
   )
+
+  // The iOS app's end of startOAuth: the code Google's redirect brought back
+  // becomes the session (PKCE; the verifier is in this web view's storage).
+  const finishNativeSignIn = useCallback((code) => supabase.auth.exchangeCodeForSession(code), [])
 
   const signOut = useCallback(async () => {
     const res = await supabase.auth.signOut()
@@ -155,7 +175,7 @@ export function AuthProvider({ children }) {
       supabase.auth.resend({
         type: 'signup',
         email,
-        options: { emailRedirectTo: window.location.origin },
+        options: { emailRedirectTo: siteOrigin() },
       }),
     [],
   )
@@ -166,7 +186,7 @@ export function AuthProvider({ children }) {
   const sendPasswordReset = useCallback(
     (email) =>
       supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${siteOrigin()}/reset-password`,
       }),
     [],
   )
@@ -215,12 +235,17 @@ export function AuthProvider({ children }) {
   }, [])
 
   // Connect a Google account to the signed-in user: Google's consent screen,
-  // then back to `returnTo`. Returns { error } when it can't start (e.g.
-  // manual linking is off for the project: code manual_linking_disabled).
-  const linkGoogle = useCallback(async (returnTo) => {
+  // then back to the app path `returnPath`. Returns { error } when it can't
+  // start (e.g. manual linking is off for the project: code
+  // manual_linking_disabled).
+  const linkGoogle = useCallback(async (returnPath) => {
     const error = await reauthError('connectGoogle')
     if (error) return { data: null, error }
-    return supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo: returnTo } })
+    return startOAuth(
+      (options) => supabase.auth.linkIdentity({ provider: 'google', options }),
+      `${window.location.origin}${returnPath}`,
+      returnPath,
+    )
   }, [])
 
   const unlinkIdentity = useCallback(async (identity) => {
@@ -272,6 +297,7 @@ export function AuthProvider({ children }) {
     signUp,
     holdPendingSignIn,
     signInWithProvider,
+    finishNativeSignIn,
     signOut,
     resendConfirmation,
     verifyEmailLink,
@@ -289,7 +315,7 @@ export function AuthProvider({ children }) {
     setFirstPassword,
     markPasswordSet,
   }), [
-    session, loading, recovering, signInWithPassword, signUp, holdPendingSignIn, signInWithProvider, signOut,
+    session, loading, recovering, signInWithPassword, signUp, holdPendingSignIn, signInWithProvider, finishNativeSignIn, signOut,
     resendConfirmation, verifyEmailLink, sendPasswordReset, updatePassword, changePassword, clearRecovery,
     signInWithPasskey, registerPasskey, listPasskeys, deletePasskey,
     getIdentities, linkGoogle, unlinkIdentity, setFirstPassword, markPasswordSet,

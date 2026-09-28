@@ -1,5 +1,6 @@
 import { supabase } from './supabase.js'
 import { dbError } from './errors.js'
+import { isNative } from './platform.js'
 
 // Web-push enrolment for payment reminders. The VAPID public key is not a
 // secret (it ships in every push subscription); its private half lives in
@@ -13,8 +14,10 @@ function urlBase64ToUint8Array(base64) {
   return Uint8Array.from(raw, (c) => c.charCodeAt(0))
 }
 
+// Not in the iOS app: its web view has no service worker (Apple push comes
+// in a later phase), so payment reminders stay in the in-app bell there.
 export function pushSupported() {
-  return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
+  return !isNative() && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 }
 
 // Ask permission (must be called from a user gesture — iOS requires it) and

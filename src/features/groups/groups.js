@@ -4,6 +4,7 @@ import { fileStem, saveBlob, toBlob } from '../../shared/lib/download.js'
 import { FILE_TYPES } from '../../../supabase/functions/_shared/files.ts'
 import { dbError, edgeFunctionError } from '../../shared/lib/errors.js'
 import { deviceFirst } from '../../shared/lib/deviceFirst.js'
+import { siteOrigin } from '../../shared/lib/platform.js'
 
 // ---- Queries -------------------------------------------------------------
 
@@ -172,7 +173,7 @@ export async function createInvite(groupId, { email = null } = {}) {
     .insert({ group_id: groupId, invited_email: email })
     .select('token').single()
   if (error) throw error
-  return { token: data.token, url: `${window.location.origin}/join/${data.token}` }
+  return { token: data.token, url: `${siteOrigin()}/join/${data.token}` }
 }
 
 // Helper for the copy-link button.

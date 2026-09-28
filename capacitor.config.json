@@ -1,0 +1,15 @@
+{
+  "appId": "com.budgeer.app",
+  "appName": "Budgeer",
+  "webDir": "dist",
+  "server": {
+    "iosScheme": "capacitor",
+    "hostname": "localhost"
+  },
+  "ios": {
+    "scheme": "App",
+    "contentInset": "never",
+    "backgroundColor": "#faf8f4",
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}

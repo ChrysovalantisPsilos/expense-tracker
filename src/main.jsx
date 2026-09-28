@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import ReactDOM from 'react-dom/client'
 // Self-hosted fonts (bundled + precached by the PWA, so they work offline).
 // Latin subset only, in the weights the theme uses: the all-subset entry
@@ -35,6 +35,14 @@ import ProfileLanguage from './shared/lib/i18n/ProfileLanguage.jsx'
 import AutoUpdate from './app/AutoUpdate.jsx'
 import { markEnvironment } from './shared/lib/environment.js'
 import { adoptBootLoader } from './shared/ui/useLoaderReveal.js'
+import { isNative } from './shared/lib/platform.js'
+
+// The iOS app (Capacitor) runs this same build. There, the web view has no
+// service worker and each app build brings its own version, so AutoUpdate
+// stays out; NativeBridge (its own chunk, never fetched on the web) handles
+// the links that open the app and the status bar.
+const native = isNative()
+const NativeBridge = native ? lazy(() => import('./app/NativeBridge.jsx')) : null
 
 // On the test site: "DEV · " tab title and the tagged favicon.
 markEnvironment(document)
@@ -63,6 +71,7 @@ bootLanguage().finally(() => ReactDOM.createRoot(root).render(
             <AppearanceProvider>
               <LanguageProvider>
                 <AuthProvider>
+                  {NativeBridge && <Suspense fallback={null}><NativeBridge /></Suspense>}
                   <ProfileProvider>
                     <ProfileLanguage />
                     <LanguageBoundary>
@@ -74,7 +83,7 @@ bootLanguage().finally(() => ReactDOM.createRoot(root).render(
             </AppearanceProvider>
           </BrowserRouter>
         </ErrorBoundary>
-        <AutoUpdate />
+        {!native && <AutoUpdate />}
       </ChakraProvider>
     </ErrorBoundary>
   </React.StrictMode>,

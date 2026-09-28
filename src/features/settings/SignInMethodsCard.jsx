@@ -61,8 +61,7 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
   async function connect() {
     setBusy('google')
     try { sessionStorage.setItem(LINKING, '1') } catch { /* storage blocked */ }
-    const returnTo = `${window.location.origin}${location.pathname}?linked=google`
-    const { error } = await linkGoogle(returnTo)
+    const { error } = await linkGoogle(`${location.pathname}?linked=google`)
     if (error) { // it never left for Google
       try { sessionStorage.removeItem(LINKING) } catch { /* storage blocked */ }
       setBusy(null)
