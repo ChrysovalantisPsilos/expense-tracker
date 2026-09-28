@@ -201,6 +201,12 @@ npm run dev       # Vite
   (1200×630). Invite links (`/join/…`) currently share the generic preview.
 - **Rule:** the landing copy never opens with "Free app".
 
+## Sign in with Apple
+
+- **Dropped by the owner (28 Sep 2026):** it needs the paid Apple Developer
+  Program ($99/yr) plus a secret rotated every 6 months, and a website doesn't
+  require it. Sign-in stays email/password, Google and passkeys.
+
 ## iOS app
 
 - **Dropped by the owner (28 Sep 2026)** after the Capacitor shell was built;
