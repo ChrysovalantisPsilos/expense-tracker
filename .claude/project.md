@@ -23,6 +23,9 @@ this file current, so add project facts here, not in the skills.
   - Action buttons sit inline, at the end of the content they act on, not in
     sticky or floating bars over the page. Any "apply" gets a clear or
     cancel button beside it.
+  - No unnecessary popups: editing and picking happen inline (rows expand
+    in place). Modals and sheets are only for real confirmations (applying
+    changes, destructive actions, undo).
   - Short, plain replies. Questions go as multiple choice with a
     recommendation. Don't repeat "Noted." after hook feedback.
   - Dev and PROD behave identically; existing and future accounts get every
