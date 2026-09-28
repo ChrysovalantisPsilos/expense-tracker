@@ -23,6 +23,9 @@ this file current, so add project facts here, not in the skills.
   - Action buttons sit inline, at the end of the content they act on, not in
     sticky or floating bars over the page. Any "apply" gets a clear or
     cancel button beside it.
+  - No unnecessary popups: editing and picking happen inline (rows expand
+    in place). Modals and sheets are only for real confirmations (applying
+    changes, destructive actions, undo).
   - Short, plain replies. Questions go as multiple choice with a
     recommendation. Don't repeat "Noted." after hook feedback.
   - Dev and PROD behave identically; existing and future accounts get every
@@ -197,6 +200,12 @@ npm run dev       # Vite
 - **Link previews:** the live OG image is `https://www.budgeer.com/og-image.png`
   (1200×630). Invite links (`/join/…`) currently share the generic preview.
 - **Rule:** the landing copy never opens with "Free app".
+
+## Sign in with Apple
+
+- **Dropped by the owner (28 Sep 2026):** it needs the paid Apple Developer
+  Program ($99/yr) plus a secret rotated every 6 months, and a website doesn't
+  require it. Sign-in stays email/password, Google and passkeys.
 
 ## iOS app
 
