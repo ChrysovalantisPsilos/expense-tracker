@@ -25,6 +25,8 @@ import { itemName } from './planText.js'
 import { ApplySheet } from './PlanSheets.jsx'
 import { AddForm, EditForm, PickPanel } from './PlanEditors.jsx'
 import { AppliedBanner, AppliedNote, ClearDialog, RealityBanner, UndoDialog } from './PlanBanners.jsx'
+import PlanWhatIf, { WHAT_IF_KEY } from './PlanWhatIf.jsx'
+import { useAiHelpers } from '../ai/ai.js'
 
 // Plan mode (/plan): a sandbox over the user's recurring payments and income.
 // Every edit shows at once how the monthly net moves, before → after; the plan
@@ -36,10 +38,12 @@ export default function Plan() {
   const t = useT('plan')
   const toast = useToast()
   const d = usePlanData()
+  const { planWhatIf } = useAiHelpers()
   const [view, setView] = useState('month')
   // The one editor open in place on the whole page: { key, at }, `key` naming
   // what opened it (PlanParts.openerId: a row's id, changeKey(id) for its
-  // entry in "Your changes", 'new' for "What if I add…", an overlap idea's id);
+  // entry in "Your changes", 'new' for "What if I add…", an overlap idea's id,
+  // WHAT_IF_KEY for the "Type a what-if" preview);
   // `at` reopens it, scrolled into view, when asked again. The real
   // confirmations are dialogs: 'apply' | 'clear' | 'undo'.
   const [open, setOpen] = useState(null)
@@ -200,6 +204,10 @@ export default function Plan() {
         </Panel>
       ))}
       <WhatIfRow open={isOpen('new')} form={isOpen('new') && addForm(null, 'new')} onClick={() => toggleOpen('new')} />
+      {planWhatIf && (
+        <PlanWhatIf open={isOpen(WHAT_IF_KEY)} onOpen={() => openEditor(WHAT_IF_KEY)} onClose={closeEditor} plan={plan}
+          setPlan={d.setPlan} items={items} rules={d.rules} categories={d.categories} todayISO={d.todayISO} />
+      )}
       {sum.changes.length > 0
         ? <ChangesPanel sum={sum} currency={currency} isOpen={(it) => isOpen(changeKey(it.id))}
             editor={(it) => editor(it, changeKey(it.id))} onOpen={(it) => toggleOpen(changeKey(it.id))} onDrop={drop}

@@ -9,10 +9,11 @@ import { MERCHANTS_MAX } from '../supabase/functions/_shared/aiHelper.ts'
 import en from '../src/locales/en/ai.js'
 
 test('helpers: each one on only by its own switch; none for the demo or before the profile loads', () => {
-  const profile = { ai_quick_entry: true, ai_import_categories: false, ai_month_summary: true }
-  assert.deepEqual(helpersOn(profile, false), { quickEntry: true, importCategories: false, monthSummary: true })
-  assert.deepEqual(helpersOn(profile, true), { quickEntry: false, importCategories: false, monthSummary: false })
-  assert.deepEqual(helpersOn(null, false), { quickEntry: false, importCategories: false, monthSummary: false })
+  const profile = { ai_quick_entry: true, ai_import_categories: false, ai_month_summary: true, ai_plan_whatif: true }
+  assert.deepEqual(helpersOn(profile, false), { quickEntry: true, importCategories: false, monthSummary: true, planWhatIf: true })
+  assert.deepEqual(helpersOn(profile, true), { quickEntry: false, importCategories: false, monthSummary: false, planWhatIf: false })
+  assert.deepEqual(helpersOn(null, false), { quickEntry: false, importCategories: false, monthSummary: false, planWhatIf: false })
+  assert.equal(helpersOn({ ai_plan_whatif: 'yes' }, false).planWhatIf, false)
   // Every switch has its words in Settings.
   for (const id of Object.keys(AI_SWITCHES)) assert.ok(en.settings[id]?.label && en.settings[id]?.more, id)
 })
@@ -130,4 +131,8 @@ test('every ai-helper error code has words', () => {
     const key = aiErrorKey(code).replace('ai:errors.', '')
     assert.ok(en.errors[key], `${code} → ${key}`)
   }
+  // A helper with its own "couldn't tell" words (the what-if) uses them for
+  // that code only.
+  assert.equal(aiErrorKey('unreadable', 'plan:typeIt.unreadable'), 'plan:typeIt.unreadable')
+  assert.equal(aiErrorKey('busy', 'plan:typeIt.unreadable'), 'ai:errors.busy')
 })

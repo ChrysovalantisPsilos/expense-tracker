@@ -19,7 +19,7 @@ export const LEGAL_CHANGES = [
     version: '2026-09-29',
     summary: 'Optional AI helpers, off until you turn them on: if you do, only what each helper needs is sent to Anthropic (Claude) to work out the answer. Anthropic doesn’t use it to train its models and deletes it within 30 days. Your name, email and bank details are never sent.',
     items: [
-      'Optional AI helpers, each off until you turn it on in Settings → AI helpers: filling in an entry from a line you type, category ideas for new merchants on import, and a short summary of your month.',
+      'Optional AI helpers, each off until you turn it on in Settings → AI helpers: filling in an entry from a line you type, category ideas for new merchants on import, a short summary of your month, and changes to your plan from a what-if you type.',
       'If you turn one on, only what it needs is sent to Anthropic (Claude), a US company, under its standard data processing terms. Anthropic doesn’t use it to train its models and deletes it within 30 days. Your name, email and bank details are never sent.',
       'Month summaries are kept for a year and deleted when you turn the helper off.',
     ],
@@ -54,4 +54,5 @@ export const CONSENT_LABELS: Record<string, string> = {
   ai_quick_entry: 'AI helper: Type to add',
   ai_import_categories: 'AI helper: Category ideas on import',
   ai_month_summary: 'AI helper: Month in plain words',
+  ai_plan_whatif: 'AI helper: What-if in your own words',
 }

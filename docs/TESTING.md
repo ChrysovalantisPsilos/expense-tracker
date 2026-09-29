@@ -45,7 +45,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Plan mode (/plan): try changes to your recurring payments and income (cancel, change the amount or how often, add a new one) and see the monthly net before → after (a salary logged as entries counts as a derived Salary row; with no recurring income the card shows the payments total instead); ideas to save computed on the device; the plan is saved to the account (encrypted); optional Apply changes the real rules in one step, with Undo for 24 hours
 - Meal vouchers (/vouchers, Settings → Meal vouchers): a card topped up on a chosen day for last month's working days (Mon–Fri minus Belgian or Greek public holidays) × the amount per day; what's on the card, this month's top-ups and spending, the next top-up with Fix days (leave, sick days), the history; a Home card; expenses "Paid from: Meal vouchers" are spending but not against the Net; the setup is encrypted, in backups and the data export
 - Your salary (Insights card → /insights/salary): regular pay over time from the Salary entries (the salary shift respected), raises (Belgian January indexation labelled), extras (holiday pay, 13th month, bonus; guessed ones correctable in place; the Bonus category by its default key or picked on the page), "If things go on" (1/3/5/10 years: my trend, indexation only, what if; monthly pay and total earned, bonuses left out), pay against Belgian or Greek inflation (Eurostat HICP, shipped with the app), year-by-year totals; the corrections are encrypted, in backups and the data export
-- Optional AI helpers (Settings → AI helpers, all off by default; Claude by Anthropic): Type to add on Add fills the form from a typed line, with Undo; category ideas for new merchants on Import; Month in plain words in Home's overview (Numbers | In words), written once and stored encrypted, with Update when the totals change
+- Optional AI helpers (Settings → AI helpers, all off by default; Claude by Anthropic): Type to add on Add fills the form from a typed line, with Undo; category ideas for new merchants on Import; Month in plain words in Home's overview (Numbers | In words), written once and stored encrypted, with Update when the totals change; What-if in your own words in Plan (a typed what-if becomes suggested plan changes to tick, edit and add, with Undo)
 - Savings page: the pot (all time, month by month), this month's flow, repeating savings, goals and a savings-only history
 - Net worth (accounts), insights & 6-month trends
 - One Transactions page (Expenses / Income / All switch) with search & filters across all history
@@ -778,13 +778,13 @@ Needs `ANTHROPIC_API_KEY` set for `ai-helper` on TEST. Fake data only: a
 throwaway account with a few categories, a budget and some months of
 entries. Check at 390px (light and dark, English and Greek) and desktop 1280.
 
-1. Settings → AI helpers: three switches, all off for a new account; each
+1. Settings → AI helpers: four switches, all off for a new account; each
    says what is sent; the note says it goes to Anthropic, isn't used for
    training and is deleted within 30 days. Turning one on or off shows at
    once and survives a reload; Settings → Privacy → consent history lists
    each change. The demo account can't turn one on.
 2. All off: no "Type it" on Add, no Suggested chips on Import, no summary on
-   Insights or Home.
+   Insights or Home, no "Type a what-if" in Plan.
 3. Type to add (Add, new entries only): "coffee 3.60 yesterday" fills
    Expense, 3.60, the main currency, yesterday, a matching category and
    "coffee", each marked Suggested; "μισθός 2792 στις 28" fills Income,
@@ -812,6 +812,18 @@ entries. Check at 390px (light and dark, English and Greek) and desktop 1280.
    since this was written." with Update; Update writes a new one. Switch the
    language → it's rewritten in that language. Insights has no summary. Turn
    the helper off → the switch is gone and the stored summaries are gone.
-6. Failures: with the key removed every helper says AI helpers aren't available, and
-   Add, Import and Insights still work normally. The data export has
+6. What-if in your own words (Plan, with a few recurring payments such as
+   Netflix, Disney+, Spotify and Rent): "✦ Type a what-if" sits under "What if
+   I add…". "cancel Netflix and Disney, add a gym at €40 a month" lists
+   Netflix and Disney+ as Cancel (−the amount a month) and Gym as Add €40.00 a
+   month, each ticked and marked ✦ Suggested; "Spotify goes up to 12.99"
+   lists Change to €12.99 a month (now …). Untick one and Edit another (its
+   Suggested mark goes); "Add N to plan" puts only the ticked ones in Your
+   changes and the header moves; Undo takes exactly those out again. A Greek
+   line works the same; a payment you don't have says it couldn't find it; a
+   line that isn't a what-if says it couldn't tell. Opening a row or "What if
+   I add…" closes the preview (one editor at a time). Nothing real changes
+   until Apply. Hidden with the switch off and on the demo.
+7. Failures: with the key removed every helper says AI helpers aren't available, and
+   Add, Import, Insights and Plan still work normally. The data export has
    "ai_month_summaries".

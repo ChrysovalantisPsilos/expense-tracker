@@ -6866,11 +6866,98 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 112. 0105: the "What-if in your own words" switch (Plan). Off for a new
+--      account; the owner turns it on and off (another user can't), each
+--      change is a consents row 'ai_plan_whatif'; the demo login can't turn it
+--      on; ai_helper_start refuses 'plan_whatif' while it's off, and once on
+--      allows 30 calls an hour per user.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; i int; n int; res jsonb; ok boolean;
+begin
+  begin
+    u1 := pg_temp.zz_user('aiwhatif1');
+    u2 := pg_temp.zz_user('aiwhatif2');
+    if (select ai_plan_whatif from public.profiles where id = u1) then raise exception 'the what-if is on for a new account'; end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.ai_helper_start('plan_whatif');
+      execute 'reset role'; raise exception 'GUARD_MISSED: the what-if started while off';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+      if sqlerrm <> 'AI helper is off' then execute 'reset role'; raise exception 'wrong refusal: %', sqlerrm; end if;
+    end;
+    update public.profiles set ai_plan_whatif = true where id = u1;
+    -- Someone else's switch: RLS leaves it alone.
+    update public.profiles set ai_plan_whatif = true where id = u2;
+    execute 'reset role';
+    if not (select ai_plan_whatif from public.profiles where id = u1) then raise exception 'the owner''s switch wasn''t saved'; end if;
+    if (select ai_plan_whatif from public.profiles where id = u2) then raise exception 'another user turned the what-if on'; end if;
+    select count(*) into n from public.consents
+     where user_id = u1 and source = 'settings' and purpose = 'ai_plan_whatif' and granted;
+    if n <> 1 then raise exception 'expected 1 consent row, got %', n; end if;
+
+    -- On: the gate returns the base currency, then 30 an hour.
+    execute 'set local role authenticated';
+    res := public.ai_helper_start('plan_whatif');
+    if res->>'base_currency' is null then execute 'reset role'; raise exception 'no base currency: %', res; end if;
+    for i in 2..30 loop perform public.ai_helper_start('plan_whatif'); end loop;
+    begin
+      perform public.ai_helper_start('plan_whatif');
+      ok := true;
+    exception when others then ok := false;
+    end;
+    if ok then execute 'reset role'; raise exception 'the 31st what-if in an hour went through'; end if;
+    -- Another helper keeps its own limit.
+    begin
+      perform public.ai_helper_start('parse_entry');
+      execute 'reset role'; raise exception 'GUARD_MISSED: Type it started while its own switch is off';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+    end;
+    update public.profiles set ai_plan_whatif = false where id = u1;
+    execute 'reset role';
+    if not exists (select 1 from public.consents where user_id = u1 and purpose = 'ai_plan_whatif' and not granted) then
+      raise exception 'turning it off wasn''t logged';
+    end if;
+
+    -- The demo login: turning it on is refused.
+    update public.profiles set is_demo = true where id = u2;
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      update public.profiles set ai_plan_whatif = true where id = u2;
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: the demo turned the what-if on';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+    end;
+    execute 'reset role';
+    -- Even switched on behind its back, the demo's gate stays shut.
+    update public.profiles set ai_plan_whatif = true where id = u2;
+    execute 'set local role authenticated';
+    begin
+      perform public.ai_helper_start('plan_whatif');
+      execute 'reset role'; raise exception 'GUARD_MISSED: the demo started the what-if';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+    end;
+    execute 'reset role';
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: what-if switch off by default, owner-only, consent-logged, closed to the demo; gate checks it and allows 30 an hour';
+    else update _t set fails = fails + 1; raise notice 'FAIL: what-if switch — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 112; f int; p int;  -- tests 1–111 + B-0059
+declare expected_tests constant int := 113; f int; p int;  -- tests 1–112 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

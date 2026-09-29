@@ -97,7 +97,7 @@ export default {
       },
       ai: {
         name: 'AI helpers (optional)',
-        what: 'Only for the helpers you turn on in Settings → AI helpers: filling in a new entry from a line you type (the line, your category names and which “Paid from” choices you have are sent), suggesting categories for new merchants when you import a statement (the merchant names, whether money went in or out, and your category names), and a short summary of your month (your total per category for the month and the six before, and your budgets). Anthropic works out the answer; it only fills in or suggests things for you to check, and nothing is saved until you do. Your name, email, bank details, the amounts of single entries, descriptions and notes are never sent.',
+        what: 'Only for the helpers you turn on in Settings → AI helpers: filling in a new entry from a line you type (the line, your category names and which “Paid from” choices you have are sent), suggesting categories for new merchants when you import a statement (the merchant names, whether money went in or out, and your category names), a short summary of your month (your total per category for the month and the six before, and your budgets), and turning a what-if you type in Plan into changes to your plan (the line, and your recurring payments and income: name, amount, currency and how often). Anthropic works out the answer; it only fills in or suggests things for you to check, and nothing is saved until you do. Your name, email and bank details, and your entries (their amounts, descriptions and notes), are never sent.',
         basis: 'Consent (Art. 6(1)(a)). Every helper is off until you turn it on, and you can turn it off at any time; each change is kept in your consent history.',
       },
       security: {
@@ -363,7 +363,7 @@ export default {
     // `items`. A version missing here is listed from legal.ts, in English.
     changes: {
       '2026-09-29': {
-        helpers: 'Optional AI helpers, each off until you turn it on in Settings → AI helpers: filling in an entry from a line you type, category ideas for new merchants on import, and a short summary of your month.',
+        helpers: 'Optional AI helpers, each off until you turn it on in Settings → AI helpers: filling in an entry from a line you type, category ideas for new merchants on import, a short summary of your month, and changes to your plan from a what-if you type.',
         anthropic: 'If you turn one on, only what it needs is sent to Anthropic (Claude), a US company, under its standard data processing terms. Anthropic doesn’t use it to train its models and deletes it within 30 days. Your name, email and bank details are never sent.',
         summaries: 'Month summaries are kept for a year and deleted when you turn the helper off.',
       },
@@ -388,6 +388,7 @@ export default {
       ai_quick_entry: 'AI helper: Type to add',
       ai_import_categories: 'AI helper: Category ideas on import',
       ai_month_summary: 'AI helper: Month in plain words',
+      ai_plan_whatif: 'AI helper: What-if in your own words',
     },
     unknown: 'Unknown',
     accepted: 'Accepted the {{document}}{{version}}{{where}}',

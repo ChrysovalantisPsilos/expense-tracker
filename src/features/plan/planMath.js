@@ -42,7 +42,7 @@
 import { FREQUENCIES } from '../recurring/recurringMath.js'
 import { budgetWindow, periodBudgets } from '../budgets/budgetMath.js'
 import { ruleInBase } from '../../shared/lib/ruleFx.js'
-import { rowEffect } from '../../shared/lib/savings.js'
+import { isPlanRule } from '../../../supabase/functions/_shared/planRules.ts'
 import { spendRows } from '../../shared/lib/spread.js'
 import { entryName } from '../../shared/lib/categoryName.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
@@ -191,15 +191,12 @@ export function normalisePlan(raw) {
 
 // ---- Which rules are in the plan -----------------------------------------------
 
-// A rule that still has a charge to come: active and not past its end date
-// (as the Recurring card counts them).
-const upcoming = (r) => r.is_active && (!r.end_date || r.next_run <= r.end_date)
-
 // The rules Plan mode shows and counts: upcoming income and expenses paid
-// from income. Savings transfers (savings_from_income), received savings (any
+// from income (_shared/planRules.isPlanRule, which ai-helper's what-if uses
+// too). Savings transfers (savings_from_income), received savings (any
 // income in a savings category) and expenses paid from savings never appear.
 export function planRules(rules, savingsIds = new Set()) {
-  return rules.filter((r) => upcoming(r) && ['income', 'expense'].includes(rowEffect(r, savingsIds)))
+  return rules.filter((r) => isPlanRule(r, savingsIds))
 }
 
 // A rule's name as a row shows it (its description, else its category's).

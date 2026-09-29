@@ -11,7 +11,8 @@
 
 import {
   type Ask, type AskResult, HELPERS, categoryChoices, normaliseEntry, normaliseSuggestions, normaliseSummary,
-  parseEntryAsk, readParseRequest, readSuggestRequest, readSummaryRequest, suggestAsk, summaryAsk,
+  normaliseWhatIf, parseEntryAsk, planPayments, readParseRequest, readSuggestRequest, readSummaryRequest,
+  readWhatIfRequest, suggestAsk, summaryAsk, whatIfAsk,
 } from '../_shared/aiHelper.ts'
 import { paidFromSources, savingsIdsOf } from '../_shared/savings.ts'
 
@@ -116,6 +117,24 @@ export async function handle(req: Request, deps: Deps): Promise<Reply> {
       status: 200,
       body: { suggestions: Object.entries(picked).map(([index, category_id]) => ({ index: Number(index), category_id })) },
     }
+  }
+
+  // plan_whatif: the payments and income come from the caller's own recurring
+  // rules (my_recurring_rules, RLS: auth.uid()), never from the request; the
+  // request gives only the line and the category names as the app shows them.
+  if (action === 'plan_whatif') {
+    const r = readWhatIfRequest(body)
+    if (!r.ok) return BAD
+    if (!deps.ask) return NOT_CONFIGURED
+    const s = await start(asUser, action)
+    if ('status' in s) return s
+    const { data: rules, error } = await asUser.rpc('my_recurring_rules', {})
+    if (error) return dbReply(error)
+    const payments = planPayments(rules ?? [], await myCategoryRows(asUser), body.labels)
+    const res = await deps.ask(whatIfAsk({ text: r.value.text, baseCurrency: s.base, payments }))
+    if (!res.ok) return askReply(res.problem, true)
+    const whatif = normaliseWhatIf(res.json, { baseCurrency: s.base, payments })
+    return whatif ? { status: 200, body: { whatif } } : fail(422, 'unreadable', 'Couldn’t read that.')
   }
 
   // month_summary: the totals come from the database, never from the request.

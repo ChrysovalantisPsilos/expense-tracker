@@ -1,7 +1,8 @@
 // Plan mode's inline editors — no pop-ups: a row opens in place (amount with
 // the live delta, how often, keep or cancel, Reset, Done), "What if I add…"
 // opens into its form, and "Try it" on an overlap idea opens the picker under
-// the ideas. Plan.jsx keeps one open at a time. Opening one scrolls it into
+// the ideas. Plan.jsx keeps one open at a time (the "Type a what-if" preview,
+// PlanWhatIf.jsx, counts as one and reuses the fields here). Opening one scrolls it into
 // view and moves focus into it; Escape (or Done / Cancel) closes it and gives
 // focus back to what opened it.
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -84,7 +85,7 @@ function DeltaTile({ effect, kind, currency }) {
 }
 
 // How often: the Repeat choices, plus the rule's own "every N" if it has one.
-function FrequencySelect({ fields, onChange, isDisabled, id }) {
+export function FrequencySelect({ fields, onChange, isDisabled, id }) {
   const t = useT('plan')
   const { choice, n } = ruleToChoice(fields)
   const custom = n > 1
@@ -100,7 +101,7 @@ function FrequencySelect({ fields, onChange, isDisabled, id }) {
   )
 }
 
-function AmountField({ id, label, text, onText, currency, inputRef, isDisabled, addon, help }) {
+export function AmountField({ id, label, text, onText, currency, inputRef, isDisabled, addon, help }) {
   return (
     <FormControl isDisabled={isDisabled}>
       <FormLabel htmlFor={id}>{label}</FormLabel>
@@ -188,7 +189,7 @@ export function EditForm({ item, opener, signal, currency, onChange, onReset, on
   )
 }
 
-const newId = () => (globalThis.crypto?.randomUUID?.() ?? `add-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+export const newId = () => (globalThis.crypto?.randomUUID?.() ?? `add-${Date.now()}-${Math.random().toString(36).slice(2)}`)
 
 // "What if I add…": a new cost or income, only in the plan, in place. `add`
 // edits one already in the plan (its row's switch, or "Remove" in "Your
