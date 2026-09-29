@@ -5,6 +5,16 @@
 // (test/edgeShared.test.js checks all three). toBaseMinor is the one copy: the
 // client re-exports it from src/shared/lib/currency.js.
 
+// Supported currencies: every currency the ECB publishes a daily reference
+// rate for (so each one can be converted to any other), EUR first — it's the
+// app default — then the most common travel currencies, then A–Z.
+export const CURRENCIES: readonly string[] = [
+  'EUR', 'USD', 'GBP', 'CHF', 'JPY',
+  'AUD', 'BRL', 'CAD', 'CNY', 'CZK', 'DKK', 'HKD', 'HUF', 'IDR', 'ILS',
+  'INR', 'ISK', 'KRW', 'MXN', 'MYR', 'NOK', 'NZD', 'PHP', 'PLN', 'RON',
+  'SEK', 'SGD', 'THB', 'TRY', 'ZAR',
+]
+
 export const ZERO_DECIMAL = new Set(['JPY', 'KRW', 'ISK', 'VND', 'CLP'])
 
 export const minorFactor = (currency: string): number =>

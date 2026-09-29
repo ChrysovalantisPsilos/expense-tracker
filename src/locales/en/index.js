@@ -2,6 +2,7 @@
 // fallback for any key another language lacks.
 // One file per namespace (a feature, or common/shell): translators each work in
 // their own file. A new namespace is added here and in the other language's index.
+import ai from './ai.js'
 import auth from './auth.js'
 import backup from './backup.js'
 import budgets from './budgets.js'
@@ -27,6 +28,7 @@ import vouchers from './vouchers.js'
 import whatsnew from './whatsnew.js'
 
 export default {
+  ai,
   auth,
   backup,
   budgets,

@@ -1,7 +1,7 @@
 import { Box, Stack, Text } from '@chakra-ui/react'
 import {
   BellRing, Palette, ShieldCheck, DatabaseBackup, FileText, LogOut, Tags, CalendarRange, Compass, CircleHelp, Mail,
-  Scale, UserCheck, ArrowLeftRight, Sparkles, Activity, Languages, Wand2, Ticket,
+  Scale, UserCheck, ArrowLeftRight, Sparkles, Sparkle, Activity, Languages, Wand2, Ticket,
 } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -23,6 +23,7 @@ const PREFERENCES = [
   { to: '/settings/appearance', id: 'appearance', icon: Palette },
   { to: '/settings/language', id: 'language', icon: Languages },
   { to: '/settings/import-rules', id: 'importRules', icon: Wand2 },
+  { to: '/settings/ai', id: 'ai', icon: Sparkle },
 ]
 const PRIVACY = [
   { to: '/settings/security', id: 'security', icon: ShieldCheck },

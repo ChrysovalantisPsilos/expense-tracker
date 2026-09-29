@@ -49,6 +49,7 @@ import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { NARROW_STACKS } from '../../shared/ui/narrowStacks.js'
 import { SkeletonBlock, SkeletonFigure, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import MonthSummary from '../ai/MonthSummary.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
 
@@ -190,6 +191,8 @@ export default function Dashboard() {
     // Nothing logged at all yet: the way to start sits right under the
     // totals, in place of the (empty) Expenses card further down.
     firstEntry: <Panel><FirstEntry /></Panel>,
+    // "Month in plain words" (Settings → AI helpers); nothing while it's off.
+    aiSummary: <MonthSummary hideable />,
 
     categories: (
       <Panel data-tour="categories" icon={ChartBarDecreasing} title={t('categories.title')} action={

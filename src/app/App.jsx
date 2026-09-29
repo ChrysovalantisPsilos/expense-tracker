@@ -39,6 +39,7 @@ const RecurringPage = lazy(() => import('../features/recurring/RecurringPage.jsx
 const Plan = lazy(() => import('../features/plan/Plan.jsx'))
 const Vouchers = lazy(() => import('../features/vouchers/Vouchers.jsx'))
 const VoucherSetup = lazy(() => import('../features/vouchers/VoucherSetup.jsx'))
+const AiSettings = lazy(() => import('../features/ai/AiSettings.jsx'))
 const Insights = lazy(() => import('../features/insights/Insights.jsx'))
 const AccountPage = lazy(() => import('../features/insights/AccountPage.jsx'))
 const SalaryPage = lazy(() => import('../features/salary/SalaryPage.jsx'))
@@ -182,6 +183,7 @@ function AuthedRoutes() {
           <Route path="plan" element={<Plan />} />
           <Route path="vouchers" element={<Vouchers />} />
           <Route path="settings/vouchers" element={<VoucherSetup />} />
+          <Route path="settings/ai" element={<AiSettings />} />
           <Route path="insights" element={<Insights />} />
           <Route path="insights/accounts/new" element={<AccountPage />} />
           <Route path="insights/accounts/:id" element={<AccountPage />} />

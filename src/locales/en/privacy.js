@@ -58,13 +58,13 @@ export default {
       title: 'What we collect',
       intro: 'We collect what you give us when you use Budgeer, and a little technical data:',
       account: '<lead>Account:</lead> your email address; your password, which Supabase Auth stores only as a salted hash; how you sign in (password, Google, passkeys — for a passkey, its name, public key and when it was last used); when the account was created and last signed in.',
-      profile: '<lead>Profile:</lead> your name, profile picture, main currency and app settings (language, notification switches, yearly-subscription display, whether you finished the setup and tour, which “What’s new” update you’ve seen — kept with your account so it’s shown once on all your devices — and, if you turn it on, which income category is your salary and from which day of the month it counts toward the next month).',
-      money: '<lead>Your money records:</lead> expenses and income (amount, currency, exchange rate, description, notes, date, category, account, and — for savings — whether the money came out of your income, or an expense was paid from savings or with meal vouchers), categories (the defaults every account gets, such as Salary, Bonus, Friends & family and Savings, and your own; and which income categories count as savings), auto-categorising rules (“description contains … → category”, including the ones you save while importing), accounts and balances, budgets, savings goals and recurring payments (with the same savings choices), your meal voucher setup (the amount per working day, whose working days, the top-up day and what was on the card when you last saved it), your salary notes (which salary payments you marked as holiday pay, a 13th month, a bonus or regular pay, your bonus category and the country whose prices you compare against), and your Plan mode plan (the changes you’re trying to your recurring payments, any new ones you add to it, and the ideas you dismissed; after you apply it, for 24 hours, what your payments were before, so you can undo).',
+      profile: '<lead>Profile:</lead> your name, profile picture, main currency and app settings (language, notification switches, which AI helpers you turned on, yearly-subscription display, whether you finished the setup and tour, which “What’s new” update you’ve seen — kept with your account so it’s shown once on all your devices — and, if you turn it on, which income category is your salary and from which day of the month it counts toward the next month).',
+      money: '<lead>Your money records:</lead> expenses and income (amount, currency, exchange rate, description, notes, date, category, account, and — for savings — whether the money came out of your income, or an expense was paid from savings or with meal vouchers), categories (the defaults every account gets, such as Salary, Bonus, Friends & family and Savings, and your own; and which income categories count as savings), auto-categorising rules (“description contains … → category”, including the ones you save while importing), accounts and balances, budgets, savings goals and recurring payments (with the same savings choices), your meal voucher setup (the amount per working day, whose working days, the top-up day and what was on the card when you last saved it), your salary notes (which salary payments you marked as holiday pay, a 13th month, a bonus or regular pay, your bonus category and the country whose prices you compare against), your Plan mode plan (the changes you’re trying to your recurring payments, any new ones you add to it, and the ideas you dismissed; after you apply it, for 24 hours, what your payments were before, so you can undo), and — if you turn on “Month in plain words” — the short summaries of your months written for you, each with a fingerprint of the totals it was written from.',
       payment: '<lead>Payment details you add for settling up</lead> (optional): IBAN, Revolut tag, PayPal.me name.',
       groups: '<lead>Groups:</lead> group name and picture; members’ names and roles; shared expenses, who paid and how they’re split; settlements; comments; a change log of who did what.',
       others: '<lead>Other people’s data you give us:</lead> names of friends you add to a group, and email addresses you invite. Please add only people who expect it. When you import a bank statement, the names of the people and businesses on it (who you paid, or who paid you) become part of the imported descriptions, and of any rule you save from them.',
       notifications: '<lead>Notifications:</lead> the notifications sent to you and, if you turn on push, a delivery address and keys for each device.',
-      consents: '<lead>Consent and preference history:</lead> which Privacy Notice and Terms versions you accepted and when, and when you switched optional messages on or off.',
+      consents: '<lead>Consent and preference history:</lead> which Privacy Notice and Terms versions you accepted and when, and when you switched optional messages or AI helpers on or off.',
       technical: '<lead>Technical data:</lead> Supabase Auth keeps each signed-in session’s IP address and browser description; our hosting providers keep short-lived request logs (IP address, time, page requested) to run and protect the service. We use no analytics or tracking tools.',
       onDevice: 'Some work happens only on your device: receipt scans are read in your browser (the photo isn’t uploaded or kept), and bank statements you import (CSV or Excel files) are read in your browser, in a background task — the file itself is never uploaded. Only the transactions you import are saved: lines that aren’t transactions, and transfers between your own accounts (such as Revolut top-ups), are left out. We don’t ask for special categories of data (such as health or religion); please don’t put them in descriptions or notes.',
     },
@@ -94,6 +94,11 @@ export default {
         name: 'Weekly summary',
         what: 'A weekly notification with how many expenses you logged and your top category.',
         basis: 'Consent (Art. 6(1)(a)). Off for new accounts; turn it on or off at any time in Settings → Notifications. Accounts created before 23 September 2026 keep their earlier setting and can switch it off the same way.',
+      },
+      ai: {
+        name: 'AI helpers (optional)',
+        what: 'Only for the helpers you turn on in Settings → AI helpers: filling in a new entry from a line you type (the line and your category names are sent), suggesting categories for new merchants when you import a statement (the merchant names, whether money went in or out, and your category names), and a short summary of your month (your total per category for the month and the six before, and your budgets). Anthropic works out the answer; it only fills in or suggests things for you to check, and nothing is saved until you do. Your name, email, bank details, the amounts of single entries, descriptions and notes are never sent.',
+        basis: 'Consent (Art. 6(1)(a)). Every helper is off until you turn it on, and you can turn it off at any time; each change is kept in your consent history.',
       },
       security: {
         name: 'Security and abuse prevention',
@@ -152,6 +157,12 @@ export default {
         name: 'Frankfurter (frankfurter.dev)',
         role: 'A free, independent service that republishes the European Central Bank’s daily exchange rates. When you enter an amount in another currency, import a statement with rows in another currency, or open totals that include entries or recurring payments in another currency (converted at the latest rate), your browser asks it for the rates it needs: it receives only the currency codes and the dates — never an amount, a description or who you are — and, like any website, your IP address. Our server also fetches the daily rates from it, without any personal data, and uses that copy for the recurring totals in your statement.',
       },
+      anthropic: {
+        name: 'Anthropic (Anthropic, PBC)',
+        role: 'Only if you turn on an AI helper: Anthropic’s Claude reads what that helper sends (described under “Why we use it”) and answers. Our server makes the request, so Anthropic doesn’t see your IP address or who you are. Anthropic doesn’t use it to train its models and deletes it after a short time, at most 30 days (longer only if its safety checks flag a request).',
+        where: 'The United States; Anthropic is a US company.',
+        safeguard: 'Anthropic’s commercial terms and data processing addendum with the EU Standard Contractual Clauses. Budgeer is a hobby project and uses these standard terms, with no special agreement.',
+      },
       payments: {
         name: 'Revolut and PayPal',
         role: 'Only if you tap a Revolut or PayPal button when settling up: the link opens their site or app with your friend’s Revolut tag or PayPal.me name and the amount. Nothing is sent until you tap.',
@@ -163,7 +174,7 @@ export default {
     },
     transfers: {
       title: 'Transfers outside the EU',
-      body: 'Our database is stored in the EU. Where a provider above can access data from outside the European Economic Area (Supabase, Vercel, Resend, Cloudflare and Google are US companies), the transfer is covered by the European Commission’s Standard Contractual Clauses in that provider’s data processing agreement, and — for providers certified under it — by the EU–US Data Privacy Framework adequacy decision. Email us for a copy of the relevant safeguards.',
+      body: 'Our database is stored in the EU. Where a provider above can access data from outside the European Economic Area (Supabase, Vercel, Resend, Cloudflare, Google and — if you turn on an AI helper — Anthropic are US companies), the transfer is covered by the European Commission’s Standard Contractual Clauses in that provider’s data processing agreement, and — for providers certified under it — by the EU–US Data Privacy Framework adequacy decision. Email us for a copy of the relevant safeguards.',
     },
     retention: {
       title: 'How long we keep it',
@@ -175,6 +186,7 @@ export default {
       mailbox: '<lead>Emails to privacy@ and support@:</lead> kept in our mailbox only as long as needed to answer and follow up, and deleted at the latest two years after your request is closed.',
       inactive: '<lead>Inactive accounts:</lead> if nobody has signed in to or used an account for {{warnMonths}} months, we email a warning; at {{deleteMonths}} months — and never sooner than {{noticeDays}} days after the warning — the account is deleted exactly as described under “Erasure”. Signing in stops it.',
       consents: '<lead>Consent history:</lead> kept while your account exists, to show what you agreed to.',
+      aiSummaries: '<lead>Month summaries (AI helpers):</lead> one per month; writing a new one deletes those more than a year old, and all are deleted when you turn “Month in plain words” off. What an AI helper sends is deleted by Anthropic after at most 30 days.',
       backups: '<lead>Backups:</lead> our database host keeps encrypted backups for a limited period, so deleted data disappears from them when they roll over.',
     },
     rights: {
@@ -210,11 +222,11 @@ export default {
       },
       withdraw: {
         name: 'Withdrawing consent (Art. 7(3))',
-        inApp: 'Switch the weekly summary (and push or email notifications) off in Settings → Notifications. Withdrawing doesn’t affect what we did before. Settings → Privacy shows your consent history.',
+        inApp: 'Switch the weekly summary (and push or email notifications) off in Settings → Notifications, and any AI helper in Settings → AI helpers. Withdrawing doesn’t affect what we did before. Settings → Privacy shows your consent history.',
       },
       automated: {
         name: 'Automated decisions (Art. 22)',
-        practice: 'We make no decisions about you based solely on automated processing that have legal or similarly significant effects. Auto-categorising only suggests categories for your own records, and an import only leaves out what looks like a transfer between your own accounts, telling you how many it left out. The one automatic action on accounts is the inactivity clean-up above, which is announced by email first and stopped by signing in.',
+        practice: 'We make no decisions about you based solely on automated processing that have legal or similarly significant effects. Auto-categorising and the AI helpers only fill in or suggest things for your own records, for you to check, and an import only leaves out what looks like a transfer between your own accounts, telling you how many it left out. The one automatic action on accounts is the inactivity clean-up above, which is announced by email first and stopped by signing in.',
       },
       complaint: {
         name: 'Complaint to a supervisory authority (Art. 77)',
@@ -237,7 +249,7 @@ export default {
       session: '<lead>Sign-in session</lead> (Supabase’s <code>sb-…-auth-token</code>): keeps you signed in on this device; removed when you sign out.',
       offline: '<lead>Offline copy</lead> (service worker caches <restCache/> and <rpcCache/>, with their timestamps in <expirationDb/>): recently loaded data so the app opens offline; each item expires after a day, and all of it is cleared when you sign out.',
       appFiles: '<lead>App files</lead> (service worker cache): the app’s own code, styles, fonts and icons, so it starts quickly and works offline. None of your data; replaced when the app updates.',
-      choices: '<lead>Your choices:</lead> light/dark appearance (<appearance/>), the app’s language (<language/>), the dashboard chart/table view (<overviewView/>), that you’ve answered the notification prompt (<notifPrompted/>), and that you tapped “Not now” when Settle up suggested adding your payment details (<paymentAskDismissed/>), so we don’t ask again on this device.',
+      choices: '<lead>Your choices:</lead> light/dark appearance (<appearance/>), the app’s language (<language/>), the dashboard chart/table view (<overviewView/>), that you’ve answered the notification prompt (<notifPrompted/>), that you tapped “Not now” when Settle up suggested adding your payment details (<paymentAskDismissed/>), so we don’t ask again on this device, and the month you hid the AI summary on Home for (<aiSummaryHidden/>).',
       recentGroups: '<lead>Recently used groups</lead> (<recentGroups/>): the groups you last added a shared expense to, so “Who’s it for?” on Add offers them first. Only group IDs — no names or amounts.',
       importChoices: '<lead>Import column choices</lead> (<importMappings/>): how you matched the columns of your last few imported spreadsheet layouts, so the next file from the same bank skips that step. Only column headings and your choices — no transactions. With it, your name as your bank writes it (<importHolder/>), typed in “Your name as banks write it” on the import screen (we suggest your profile name) or taken from a statement that names you, so transfers between your own accounts are left out of the next import too. Your name here never leaves this device.',
       rates: '<lead>Exchange rates</lead> (<fxRatePrefix/>): rates already looked up, so they aren’t fetched again. Only currency codes, dates and rates.',
@@ -368,6 +380,9 @@ export default {
       weekly_digest: 'Weekly summary',
       email_notifications: 'Email notifications',
       push_notifications: 'Push notifications',
+      ai_quick_entry: 'AI helper: Type to add',
+      ai_import_categories: 'AI helper: Category ideas on import',
+      ai_month_summary: 'AI helper: Month in plain words',
     },
     unknown: 'Unknown',
     accepted: 'Accepted the {{document}}{{version}}{{where}}',

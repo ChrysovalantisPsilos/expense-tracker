@@ -1,17 +1,11 @@
 // Currency helpers. Money is stored as integer minor units (cents).
-import { ZERO_DECIMAL, toBaseMinor } from '../../../supabase/functions/_shared/money.ts'
+import { CURRENCIES, ZERO_DECIMAL, toBaseMinor } from '../../../supabase/functions/_shared/money.ts'
 import { STORAGE_KEYS } from './keys.js'
 import { intlLocale } from './i18n/i18n.js'
 
-// Supported currencies: every currency the ECB publishes a daily reference
-// rate for (so each one can be converted to any other), EUR first — it's the
-// app default — then the most common travel currencies, then A–Z.
-export const CURRENCIES = [
-  'EUR', 'USD', 'GBP', 'CHF', 'JPY',
-  'AUD', 'BRL', 'CAD', 'CNY', 'CZK', 'DKK', 'HKD', 'HUF', 'IDR', 'ILS',
-  'INR', 'ISK', 'KRW', 'MXN', 'MYR', 'NOK', 'NZD', 'PHP', 'PLN', 'RON',
-  'SEK', 'SGD', 'THB', 'TRY', 'ZAR',
-]
+// Supported currencies: one list, in _shared/money.ts (the ai-helper edge
+// function checks a typed entry's currency against it too).
+export { CURRENCIES }
 
 // Minor units per ISO 4217: most currencies have 2 decimal places; the
 // zero-decimal set (one copy, in _shared/money.ts, checked against the SQL

@@ -37,6 +37,7 @@ import {
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
 import SalaryCard from '../salary/SalaryCard.jsx'
+import MonthSummary from '../ai/MonthSummary.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
@@ -89,6 +90,7 @@ export default function Insights() {
   return (
     <Stack spacing={5}>
       <PageHeader title={t('title')} />
+      <MonthSummary />
       <SpendingCard loading={loading} failed={failed} shares={shares} trend={trend} money={money}
         picked={picked} onPick={setPicked} monthLabel={monthLabel} monthName={monthHeading(month.key)} monthLink={monthLink} />
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}

@@ -30,7 +30,11 @@ begin
       from public.meal_vouchers m where m.user_id = uid),
     'salary_history', (select jsonb_build_object(
         'notes', public.dec_text(s.payload_enc, k)::jsonb, 'updated_at', s.updated_at)
-      from public.salary_history s where s.user_id = uid));
+      from public.salary_history s where s.user_id = uid),
+    'ai_month_summaries', (select coalesce(jsonb_agg(jsonb_build_object(
+        'month', to_char(a.month, 'YYYY-MM'), 'summary', public.dec_text(a.payload_enc, k)::jsonb,
+        'written_at', a.created_at) order by a.month), '[]'::jsonb)
+      from public.ai_month_summaries a where a.user_id = uid));
 end $$;
 revoke execute on function public.export_my_data() from public, anon;
 grant execute on function public.export_my_data() to authenticated;

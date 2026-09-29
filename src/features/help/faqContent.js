@@ -114,6 +114,7 @@ export const FAQ_SECTIONS = [
   section('privacy-data', [
     { id: 'encryption' },
     { id: 'ads-tracking' },
+    { id: 'ai-helpers' },
     { id: 'download-delete-data', media: clip('download-data') },
     { id: 'privacy-requests' },
   ]),

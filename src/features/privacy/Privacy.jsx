@@ -25,7 +25,7 @@ import { EXPIRATION_DB, REST_CACHE, RPC_CACHE } from '../../shared/lib/userDataC
 const DATA = ['account', 'profile', 'money', 'payment', 'groups', 'others', 'notifications', 'consents', 'technical']
 
 // [id, the labelled lines of its box]
-const PURPOSES = ['account', 'groups', 'messages', 'accountEmails', 'weekly', 'security', 'legal']
+const PURPOSES = ['account', 'groups', 'messages', 'accountEmails', 'weekly', 'ai', 'security', 'legal']
   .map((id) => [id, ['what', 'basis']])
 
 const RECIPIENTS = [
@@ -37,11 +37,12 @@ const RECIPIENTS = [
   ['google', ['role', 'where']],
   ['push', ['role']],
   ['frankfurter', ['role']],
+  ['anthropic', ['role', 'where', 'safeguard']],
   ['payments', ['role']],
   ['users', ['role']],
 ]
 
-const RETENTION_ITEMS = ['account', 'notifications', 'groupLog', 'invites', 'rateLimits', 'mailbox', 'inactive', 'consents', 'backups']
+const RETENTION_ITEMS = ['account', 'notifications', 'groupLog', 'invites', 'rateLimits', 'mailbox', 'inactive', 'consents', 'aiSummaries', 'backups']
 
 const RIGHTS = [
   ['access', ['inApp', 'byEmail']],
@@ -71,6 +72,7 @@ const STORAGE_NAMES = {
   notifPrompted: <code>{STORAGE_KEYS.notifPrompted}</code>,
   paymentAskDismissed: <code>{STORAGE_KEYS.paymentAskDismissed}</code>,
   recentGroups: <code>{STORAGE_KEYS.recentGroups}</code>,
+  aiSummaryHidden: <code>{STORAGE_KEYS.aiSummaryHidden}</code>,
   importMappings: <code>{STORAGE_KEYS.importMappings}</code>,
   importHolder: <code>{STORAGE_KEYS.importHolder}</code>,
   fxRatePrefix: <code>{STORAGE_KEYS.fxRatePrefix}…</code>,
