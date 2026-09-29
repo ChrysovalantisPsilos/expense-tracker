@@ -62,7 +62,7 @@ const INTERVAL_MAX = 365
 // for price rises (this one and the five before); "biggest saver" needs at
 // least this many recurring expenses to mean anything.
 export const MAX_IDEAS = 3
-export const PRICE_UP_MIN_PCT = 2
+const PRICE_UP_MIN_PCT = 2
 export const OVER_BUDGET_MONTHS = 3
 export const PRICE_MONTHS = 6
 const BIGGEST_MIN_EXPENSES = 3
@@ -71,14 +71,14 @@ const BIGGEST_MIN_EXPENSES = 3
 // expense is a subscription.
 const BILL_ICONS = new Set([...ESSENTIAL_ICONS, 'internet', 'phone', 'bank-fees'])
 
-export const UNDO_HOURS = 24
+const UNDO_HOURS = 24
 // How long "Applied … · View in Recurring" stays once undo has run out.
 const APPLIED_NOTE_DAYS = 7
 
 // The derived Salary row's id, the full months its average looks at, and the
 // marker that keeps a salary-only plan on the server (see the header).
 export const SALARY_ID = 'salary'
-export const SALARY_MONTHS = 3
+const SALARY_MONTHS = 3
 const RULE_FIELDS = ['amount_minor', 'currency', 'frequency', 'interval_n']
 const PER_YEAR = { daily: 365, weekly: 52, monthly: 12, yearly: 1 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -203,7 +203,7 @@ export function planRules(rules, savingsIds = new Set()) {
 }
 
 // A rule's name as a row shows it (its description, else its category's).
-export const ruleName = (rule) => entryName(rule, '')
+const ruleName = (rule) => entryName(rule, '')
 
 // The rule as a change's snapshot keeps it.
 export const snapOf = (rule, name = ruleName(rule)) => ({ name: String(name).slice(0, NAME_MAX), ...pickRule(rule) })
@@ -276,7 +276,7 @@ export const resetSalary = (plan) => setSalary(plan, { cancel: false, amount_min
 // The group a row sits in: Income, then Bills (an expense in a home, utility,
 // health, tax or insurance category — by the default category's key, or by
 // the icon for the user's own), then Subscriptions (every other expense).
-export const GROUP_ORDER = ['income', 'bills', 'subscriptions']
+const GROUP_ORDER = ['income', 'bills', 'subscriptions']
 const isBill = (category) => ESSENTIAL_KEYS.has(category?.default_key) || BILL_ICONS.has(category?.icon)
 const groupOf = (kind, category) => (kind === 'income' ? 'income' : isBill(category) ? 'bills' : 'subscriptions')
 

@@ -13,7 +13,7 @@ const LANGUAGE_KEY = STORAGE_KEYS.language
 
 // Storage can be blocked (private mode, a locked-down browser): then the
 // preference just isn't remembered.
-export function readLanguagePref() {
+function readLanguagePref() {
   try { return normalisePref(localStorage.getItem(LANGUAGE_KEY)) } catch { return normalisePref(null) }
 }
 function writeLanguagePref(pref) {

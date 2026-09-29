@@ -120,13 +120,6 @@ Settle-up payment on a sand tile: avatar name → avatar name, `amount` right
 (`amountTone`, default accent). `from` / `to`: `{ name, src?, highlight? }`
 (`highlight` = current user). `action`: optional node (e.g. "Mark paid").
 
-## Unfold
-Chakra `Collapse` for a block with a shadow (a Panel that folds open, e.g.
-Transactions' add form). Collapse clips its content, cutting the Panel's
-shadow; Unfold unclips once fully open and clips again as it starts closing.
-`in` opens it; other Collapse props (`animateOpacity`) pass through. A plain
-Collapse is still right for shadowless content (e.g. a filters row).
-
 ## Also reused (in `shared/ui/`)
 `CardHeader` (Panel's header; use directly outside a Panel, or for a list's
 header lower down in one — Transactions' list under its search; takes

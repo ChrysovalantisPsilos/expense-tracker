@@ -26,7 +26,7 @@ import { applicable, asShown, effectOf, headline, inView, monthOf } from './plan
 // ---- Wording ---------------------------------------------------------------------
 
 // "Monthly", "Quarterly", or "every 2 weeks" for an interval.
-export function freqLabel(fields) {
+function freqLabel(fields) {
   const { choice, n } = ruleToChoice(fields)
   return n > 1 ? frequencyLabel(fields) : tr(`recurring:choices.${choice}`)
 }
@@ -76,7 +76,7 @@ export function monthList(months) {
 
 // ---- Top of the page -------------------------------------------------------------
 
-export function ViewSwitch({ view, onChange }) {
+function ViewSwitch({ view, onChange }) {
   const t = useT('plan')
   return (
     <SegmentedControl label={t('view.label')} size="sm" value={view} onChange={onChange}
@@ -105,7 +105,7 @@ export function SavedNote({ status, onRetry }) {
 
 // The move in the header's figure: "+€15.00" for the net; for the payments,
 // "€385.09 less" (green) or "€20.00 more" (red). `good` > 0 is green.
-export function DeltaChip({ change, good, mode, view, currency }) {
+function DeltaChip({ change, good, mode, view, currency }) {
   const t = useT('plan')
   const amount = mode === 'payments'
     ? t(change < 0 ? 'impact.less' : 'impact.more', { amount: formatMoney(Math.abs(change), currency) })
@@ -408,7 +408,7 @@ export function IdeasStrip({ ideas, view, currency, picking, onTry, onDismiss })
 // ---- Your changes -----------------------------------------------
 
 // "Before → after" for one change, in words.
-export function changeLine(item, t) {
+function changeLine(item, t) {
   if (item.added) return t(item.kind === 'income' ? 'changes.newIncome' : 'changes.newCost', { amount: perUnit(item.after) })
   if (item.cancelled) return t(item.kind === 'income' ? 'changes.stopLine' : 'changes.cancelLine', { was: perUnit(item.before) })
   return t('changes.editLine', { was: perUnit(item.before), now: perUnit(item.after) })

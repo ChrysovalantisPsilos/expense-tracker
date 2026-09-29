@@ -10,7 +10,7 @@ import { t } from '../../shared/lib/i18n/i18n.js'
 import { byDisplayName, categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // The server's bounds on a pattern (category_rules' CHECK, 0040).
-export const PATTERN_MIN = 2
+const PATTERN_MIN = 2
 export const PATTERN_MAX = 80
 
 // The list's filter: every rule, or those for money out / money in (each

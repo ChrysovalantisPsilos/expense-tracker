@@ -37,7 +37,6 @@ export default {
     start: 'On your card',
     startMeta: '{{date}} · when you set it up',
     noCategory: 'Uncategorized',
-    empty: 'Top-ups and what you pay with the card show here.',
   },
   settingsLink: 'Settings',
   // Settings → Meal vouchers.

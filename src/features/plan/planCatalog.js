@@ -20,7 +20,7 @@ import { foldText } from '../../shared/lib/localeParse.js'
 
 // Words only: accents and case folded, "+" read as "plus", everything else
 // that isn't a letter or digit a space. "Disney+" → "disney plus".
-export function matchText(text) {
+function matchText(text) {
   return foldText(text).replace(/\+/g, ' plus ').replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
 }
 
@@ -138,7 +138,7 @@ const ESSENTIAL_WORDS = [
 ].map(matchText)
 
 // Whether a text names something essential.
-export function essentialText(text) {
+function essentialText(text) {
   const words = matchText(text)
   if (!words) return false
   return ESSENTIAL_STEMS.some((s) => words.includes(s)) || ESSENTIAL_WORDS.some((w) => hasPhrase(words, w))

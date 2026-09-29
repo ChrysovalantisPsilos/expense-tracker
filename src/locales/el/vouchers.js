@@ -34,7 +34,6 @@ export default {
     start: 'Στην κάρτα σου',
     startMeta: '{{date}} · όταν το ρύθμισες',
     noCategory: 'Χωρίς κατηγορία',
-    empty: 'Εδώ φαίνονται οι φορτώσεις και ό,τι πληρώνεις με την κάρτα.',
   },
   settingsLink: 'Ρυθμίσεις',
   setup: {

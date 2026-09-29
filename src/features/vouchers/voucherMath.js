@@ -18,7 +18,7 @@
 import { toBaseMinor } from '../../shared/lib/currency.js'
 
 export const COUNTRIES = ['BE', 'GR']
-export const MAX_TOPUP_DAY = 31
+const MAX_TOPUP_DAY = 31
 
 const pad = (n) => String(n).padStart(2, '0')
 const iso = (d) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
