@@ -350,7 +350,7 @@ export default function Dashboard() {
   return (
     <Stack spacing={sideways ? 3 : 5}>
       <PageHeader title={t('title')} action={
-        <Select data-tour="period" w={{ base: '140px', sm: '200px' }} size="sm" borderRadius="lg" value={periodValue}
+        <Select data-tour="period" w={{ base: 'auto', sm: '200px' }} minW="140px" size="sm" borderRadius="lg" value={periodValue}
           aria-label={t('period')} onChange={(e) => setPeriodValue(e.target.value)}>
           {periods.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </Select>
