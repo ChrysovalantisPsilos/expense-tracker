@@ -9,13 +9,15 @@ import { choiceToRule } from '../recurring/recurringMath.js'
 import { NAME_MAX, removeAdd, resetChange, setChange, upsertAdd } from './planMath.js'
 
 // The server's proposals → preview rows, in the order it gave them:
-//   { id, type: 'cancel' | 'change' | 'add', kind, name, ruleId (null for an
-//     add), before (the row's fields today, null for an add), after (the
-//     fields it would have: null once cancelled), edited: false }
+//   { id, type: 'cancel' | 'change' | 'add', kind ('expense' | 'income' |
+//     'savings'), name, ruleId (null for an add), before (the row's fields
+//     today, null for an add), after (the fields it would have: null once
+//     cancelled), edited: false }
 // A change whose payment isn't in the plan's rows any more (paused or deleted
 // meanwhile) is left out; a change to a row the plan already edits starts
-// from the plan's version.
-export function whatIfRows(whatif, items) {
+// from the plan's version. A new savings item needs a savings category
+// (`savingsCategoryId`, where it would go): with none it's left out.
+export function whatIfRows(whatif, items, savingsCategoryId = null) {
   const byRule = new Map(items.filter((i) => i.ruleId && !i.added).map((i) => [i.ruleId, i]))
   const rows = []
   for (const c of whatif?.changes ?? []) {
@@ -34,6 +36,7 @@ export function whatIfRows(whatif, items) {
     })
   }
   ;(whatif?.adds ?? []).forEach((a, n) => {
+    if (a.kind === 'savings' && !savingsCategoryId) return
     rows.push({
       id: `a:${n}`, type: 'add', kind: a.kind, name: a.name, ruleId: null, item: null, before: null,
       after: { amount_minor: a.amount_minor, currency: a.currency, ...choiceToRule(a.repeat) },
@@ -64,9 +67,10 @@ export const rowReady = (row) =>
 
 // "Add to plan": the ticked rows (`pickedIds`) as plan edits. `rules` are the
 // real rules (by id), `todayISO` the date an added item starts, `newId` makes
-// an added item's id. Returns { plan, added: { ruleIds, addIds, before } } —
-// `added` is what Undo needs (undoWhatIf).
-export function applyWhatIf(plan, rows, pickedIds, { rules, todayISO, newId }) {
+// an added item's id, `savingsCategoryId` is a new savings item's category.
+// Returns { plan, added: { ruleIds, addIds, before } } — `added` is what Undo
+// needs (undoWhatIf).
+export function applyWhatIf(plan, rows, pickedIds, { rules, todayISO, newId, savingsCategoryId = null }) {
   const byId = new Map(rules.map((r) => [r.id, r]))
   const ruleIds = []
   const addIds = []
@@ -76,7 +80,8 @@ export function applyWhatIf(plan, rows, pickedIds, { rules, todayISO, newId }) {
     if (row.type === 'add') {
       const id = newId()
       next = upsertAdd(next, {
-        id, kind: row.kind, name: String(row.name).trim(), ...row.after, start: todayISO, category_id: null,
+        id, kind: row.kind, name: String(row.name).trim(), ...row.after, start: todayISO,
+        category_id: row.kind === 'savings' ? savingsCategoryId : null,
       })
       if (next.adds.some((a) => a.id === id)) addIds.push(id)
       continue

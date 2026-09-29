@@ -7046,11 +7046,132 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 115. 0107: Plan applies savings from income. A change to a recurring
+--      savings rule (income in a savings category, savings_from_income)
+--      changes its amount and keeps its category and flag; undo puts it back;
+--      a savings add creates an income rule in its category with
+--      savings_from_income; the flag is refused when it isn't a boolean, on
+--      an expense, or without a category, and nothing is applied then.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; pot uuid; r1 uuid; rec record; n int; b text;
+begin
+  begin
+    u1 := pg_temp.zz_user('plansav1');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    insert into public.categories (name, kind, is_savings) values ('ZZT pot', 'income', true) returning id into pot;
+    r1 := public.save_recurring_rule(null, jsonb_build_object('kind', 'income', 'amount_minor', 30000,
+      'currency', 'EUR', 'description', 'ZZ Monthly savings', 'frequency', 'monthly', 'next_run', current_date + 3,
+      'category_id', pot, 'savings_from_income', true));
+    perform public.apply_recurring_plan(jsonb_build_object(
+      'changes', jsonb_build_array(jsonb_build_object('rule_id', r1, 'amount_minor', 40000, 'currency', 'EUR',
+                                                      'frequency', 'monthly', 'interval_n', 1)),
+      'adds', jsonb_build_array(jsonb_build_object('kind', 'income', 'description', 'ZZ Holiday fund',
+        'amount_minor', 5000, 'currency', 'EUR', 'frequency', 'monthly', 'interval_n', 1,
+        'next_run', current_date::text, 'category_id', pot, 'savings_from_income', true))), null);
+    execute 'reset role';
+    select public.dec_minor(amount_enc) as amt, category_id, savings_from_income, kind::text as k, is_active
+      into rec from public.recurring_rules where id = r1;
+    if rec.amt <> 40000 or rec.category_id <> pot or not rec.savings_from_income or rec.k <> 'income' or not rec.is_active then
+      raise exception 'savings rule edit wrong (%)', rec;
+    end if;
+    select count(*) into n from public.recurring_rules
+     where user_id = u1 and kind = 'income' and category_id = pot and savings_from_income
+       and public.dec_text(description_enc) = 'ZZ Holiday fund' and public.dec_minor(amount_enc) = 5000;
+    if n <> 1 then raise exception 'savings add not created as savings from income (%)', n; end if;
+
+    execute 'set local role authenticated';
+    perform public.undo_recurring_plan();
+    execute 'reset role';
+    select public.dec_minor(amount_enc) as amt, savings_from_income into rec from public.recurring_rules where id = r1;
+    if rec.amt <> 30000 or not rec.savings_from_income then raise exception 'undo did not restore the savings rule (%)', rec; end if;
+    if exists (select 1 from public.recurring_rules where user_id = u1 and id <> r1) then
+      raise exception 'undo left the added savings rule';
+    end if;
+
+    execute 'set local role authenticated';
+    foreach b in array array[
+      '{"kind": "income", "savings_from_income": "yes"}',
+      '{"kind": "expense", "savings_from_income": true}',
+      '{"kind": "income", "savings_from_income": true, "category_id": null}'] loop
+      begin
+        perform public.apply_recurring_plan(jsonb_build_object(
+          'changes', jsonb_build_array(jsonb_build_object('rule_id', r1, 'cancel', true)),
+          'adds', jsonb_build_array(jsonb_build_object('description', 'ZZ bad', 'amount_minor', 100,
+            'currency', 'EUR', 'frequency', 'monthly', 'interval_n', 1, 'next_run', current_date::text,
+            'category_id', pot) || b::jsonb)), null);
+        execute 'reset role';
+        raise exception 'GUARD_MISSED: savings add % applied', b;
+      exception when others then if sqlerrm <> 'bad plan' then raise; end if; end;
+    end loop;
+    execute 'reset role';
+    if not (select is_active from public.recurring_rules where id = r1) then
+      raise exception 'a refused apply cancelled the savings rule';
+    end if;
+    if exists (select 1 from public.recurring_rules where user_id = u1 and id <> r1) then
+      raise exception 'a refused apply added a rule';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: apply edits a savings rule keeping its category and flag, adds savings from income, undo restores; a bad savings flag is refused';
+    else update _t set fails = fails + 1; raise notice 'FAIL: plan savings apply — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 116. 0107: a plan's savings edit (the Savings row worked out from savings
+--      entries). A plan holding only a savings edit is kept and read back,
+--      beside a salary edit too; a malformed one (negative amount, extra key,
+--      cancel not true, a string amount, not an object, empty) is refused;
+--      with no edits and empty lists the plan is still removed.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; doc jsonb; bad jsonb;
+        plan jsonb := jsonb_build_object('v', 1, 'changes', '[]'::jsonb, 'adds', '[]'::jsonb,
+          'dismissed', '[]'::jsonb, 'savings', jsonb_build_object('amount_minor', 40000));
+begin
+  begin
+    u1 := pg_temp.zz_user('plansav2');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_recurring_plan(plan);
+    doc := public.my_recurring_plan();
+    if doc->'plan' is distinct from plan then execute 'reset role'; raise exception 'savings-only plan not kept: %', doc; end if;
+    perform public.save_recurring_plan(jsonb_build_object('v', 1, 'savings', jsonb_build_object('cancel', true),
+      'salary', jsonb_build_object('amount_minor', 350000)));
+    doc := public.my_recurring_plan()->'plan';
+    if doc->'savings' is distinct from '{"cancel": true}'::jsonb or doc->'salary' is distinct from '{"amount_minor": 350000}'::jsonb then
+      execute 'reset role'; raise exception 'savings and salary edits not kept together: %', doc;
+    end if;
+    foreach bad in array array[
+      '{"amount_minor": -5}'::jsonb, '{"amount_minor": 100, "x": 1}'::jsonb, '{"cancel": false}'::jsonb,
+      '{"amount_minor": "100"}'::jsonb, '[1]'::jsonb, '{}'::jsonb] loop
+      begin
+        perform public.save_recurring_plan(jsonb_build_object('v', 1, 'savings', bad));
+        execute 'reset role';
+        raise exception 'GUARD_MISSED: malformed savings % saved', bad;
+      exception when others then if sqlerrm <> 'bad plan' then raise; end if; end;
+    end loop;
+    perform public.save_recurring_plan(jsonb_build_object('v', 1, 'changes', '[]'::jsonb, 'adds', '[]'::jsonb,
+      'dismissed', '[]'::jsonb));
+    execute 'reset role';
+    if exists (select 1 from public.recurring_plans where user_id = u1) then
+      raise exception 'an empty plan without edits was kept';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: plan savings edit kept on its own and beside the salary one, malformed savings refused, empty plan still removed';
+    else update _t set fails = fails + 1; raise notice 'FAIL: plan savings edit — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 115; f int; p int;  -- tests 1–114 + B-0059
+declare expected_tests constant int := 117; f int; p int;  -- tests 1–116 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

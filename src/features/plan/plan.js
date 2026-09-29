@@ -16,7 +16,7 @@ import { useAllCategories, useSavingsIds } from '../../shared/lib/categories.js'
 import { listTransactions, useTransactions } from '../../shared/lib/transactions.js'
 import { useBudgetSets } from '../budgets/budgets.js'
 import {
-  OVER_BUDGET_MONTHS, PRICE_MONTHS, derivedSalary, isEmptyPlan, normalisePlan, rateNeeds, recentMonths,
+  OVER_BUDGET_MONTHS, PRICE_MONTHS, derivedSalary, derivedSavings, isEmptyPlan, normalisePlan, rateNeeds, recentMonths,
   salaryCategoryId, salaryWindow,
 } from './planMath.js'
 
@@ -127,28 +127,28 @@ function useSavedPlan() {
   }
 }
 
-// The salary entries behind the derived Salary row (planMath.derivedSalary):
-// the income in the salary category over the last full months, from the
-// same decrypting read as every list (my_transactions), live. With the
+// The entries behind the derived Salary and Savings rows
+// (planMath.derivedSalary, derivedSavings): the income over the last full
+// months (the salary and savings taken from income are income entries), from
+// the same decrypting read as every list (my_transactions), live. With the
 // salary shift on it reaches back for the salary that counts in the first
-// month. No category: nothing to read.
-function useSalaryEntries(categoryId, todayISO) {
+// month.
+function useIncomeEntries(todayISO) {
   const { baseCurrency, salaryShift } = useProfile()
   const win = salaryWindow(todayISO)
   const from = shiftFetchFrom(win.from, salaryShift)
   return useOwnedQuery('transactions', {
-    fetch: () => (categoryId
-      ? listTransactions({ kind: 'income', categoryId, from, to: win.to, baseCurrency })
-      : []),
-    deps: [categoryId, from, win.to, baseCurrency],
+    fetch: () => listTransactions({ kind: 'income', from, to: win.to, baseCurrency }),
+    deps: [from, win.to, baseCurrency],
   })
 }
 
 // Everything Plan mode reads. The recurring rules are live (realtime), so
 // "before" always follows the real rules; the charges and budgets behind the
 // suggestions are optional — if they can't be read the page works without
-// ideas. `salary` is derivedSalary's answer (null when the entries couldn't
-// be read: the page works without the Salary row).
+// ideas. `salary` and `savings` are derivedSalary's and derivedSavings'
+// answers (null when the entries couldn't be read: the page works without
+// the derived rows).
 export function usePlanData() {
   const { baseCurrency = 'EUR', separateYearly, profile, salaryShift } = useProfile()
   const saved = useSavedPlan()
@@ -158,10 +158,13 @@ export function usePlanData() {
 
   const todayISO = today()
   const salaryCat = salaryCategoryId(profile, categories)
-  const entries = useSalaryEntries(salaryCat, todayISO)
+  const entries = useIncomeEntries(todayISO)
   const salary = useMemo(() => (entries.error ? null : derivedSalary({
     rules, savingsIds, categoryId: salaryCat, entries: entries.rows, todayISO, baseCurrency, salaryShift,
   })), [entries.error, entries.rows, rules, savingsIds, salaryCat, todayISO, baseCurrency, salaryShift])
+  const savings = useMemo(() => (entries.error ? null : derivedSavings({
+    rules, savingsIds, entries: entries.rows, todayISO, baseCurrency, salaryShift,
+  })), [entries.error, entries.rows, rules, savingsIds, todayISO, baseCurrency, salaryShift])
   const months = useMemo(() => recentMonths(todayISO, PRICE_MONTHS), [todayISO])
   const charges = useTransactions({ kind: 'expense', from: months[0], to: monthRange().to, spread: true })
   const budgetMonths = months.slice(-OVER_BUDGET_MONTHS)
@@ -176,7 +179,7 @@ export function usePlanData() {
 
   return {
     ...saved,
-    baseCurrency, separateYearly, rules, savingsIds, categories, todayISO, salary,
+    baseCurrency, separateYearly, rules, savingsIds, categories, todayISO, salary, savings,
     rates: fx.rates,
     charges: charges.error ? [] : charges.rows,
     budgetSets: budgets.error ? [] : budgets.sets,

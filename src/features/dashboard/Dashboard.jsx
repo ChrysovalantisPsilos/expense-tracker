@@ -34,7 +34,8 @@ import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
-import { signedAmount, textColor } from '../../shared/ui/kit/kitMath.js'
+import SumSteps from '../../shared/ui/SumSteps.jsx'
+import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import {
   periodTotals, periodProjection, projectedTotals, overviewNotes, netSteps, savingsLine, groupSharesByCategory, categoryLine, visibleBars, TOP_CATEGORIES,
@@ -395,21 +396,10 @@ function BucketIcon({ row }) {
 // "How Net adds up" in the overview's ⓘ: each step signed, then the Net.
 function NetSum({ steps, net, currency }) {
   const t = useT('dashboard')
-  const row = (label, value, props) => (
-    <HStack justify="space-between" spacing={3} {...props}>
-      <Text>{label}</Text>
-      <Text whiteSpace="nowrap" fontWeight="600" color="text.primary">{value}</Text>
-    </HStack>
-  )
   return (
-    <Stack spacing={1} fontSize="sm">
-      <Text fontWeight="700" color="text.primary">{t('info.sumTitle')}</Text>
-      {steps.map((s) => row(t(`info.steps.${s.key}`), formatSigned(s.minor, currency, { plus: true }), { key: s.key }))}
-      <HStack justify="space-between" pt={1} mt={1} borderTopWidth="1px" borderColor="border.default">
-        <Text fontWeight="700" color="text.primary">{t('info.net')}</Text>
-        <Text fontWeight="700" color={textColor(net.tone)}>{net.text}</Text>
-      </HStack>
-    </Stack>
+    <SumSteps title={t('info.sumTitle')}
+      steps={steps.map((s) => ({ key: s.key, label: t(`info.steps.${s.key}`), value: formatSigned(s.minor, currency, { plus: true }) }))}
+      total={{ label: t('info.net'), value: net.text, tone: net.tone }} />
   )
 }
 

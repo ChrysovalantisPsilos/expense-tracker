@@ -78,3 +78,17 @@ test('changeLine: added, cancelled or stopped, and edited changes in words', () 
   assert.equal(changeLine({ cancelled: true, kind: 'income', before: was }, t), `${perUnit(was)} → stopped`)
   assert.equal(changeLine({ kind: 'expense', before: was, after: now }, t), `${perUnit(was)} → ${perUnit(now)}`)
 })
+
+test('savings: the Savings row and a savings item read in words', () => {
+  assert.equal(itemName({ derived: true, name: '', kind: 'savings' }), 'Savings')
+  assert.equal(itemName({ name: '', kind: 'savings' }), 'Savings')
+  assert.equal(itemName({ name: 'Monthly savings', kind: 'savings' }), 'Monthly savings')
+  assert.equal(rowMeta({ derived: true, kind: 'savings', months: 3, before: rule() }, 'month', t),
+    'Average of the last 3 months · from your entries')
+  assert.equal(rowMeta({ derived: true, kind: 'savings', months: 1, before: rule() }, 'month', t),
+    'Average of the last 1 month · from your entries')
+  const was = rule({ amount_minor: 30000 }); const now = rule({ amount_minor: 40000 })
+  assert.equal(changeLine({ added: true, kind: 'savings', after: now }, t), `New savings · ${perUnit(now)}`)
+  assert.equal(changeLine({ cancelled: true, kind: 'savings', before: was }, t), `${perUnit(was)} → stopped`)
+  assert.equal(changeLine({ kind: 'savings', before: was, after: now }, t), `${perUnit(was)} → ${perUnit(now)}`)
+})

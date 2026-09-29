@@ -5,8 +5,8 @@ import {
   planSummary, effectOf, setChange, resetChange, cancelRules, upsertAdd, removeAdd, dismissIdea, reconcile,
   acknowledge, priceRises, recentMonths, overBudgetMonths, signalsFor, rowTag, planIdeas, overlapPick,
   applySelection, undoState, snapOf, rateNeeds, startOver, tryIdea, MAX_IDEAS,
-  SALARY_ID, salaryCategoryId, salaryWindow, derivedSalary, setSalary, resetSalary, applicable, headline,
-  asShown,
+  SALARY_ID, salaryCategoryId, salaryWindow, derivedSalary, setDerived, resetDerived, applicable, headline,
+  asShown, SAVINGS_ID, derivedSavings, planSteps, effectTone, savingsCategories, derivedEdits,
 } from '../src/features/plan/planMath.js'
 import { SERVICE_TYPES, isEssential, serviceTypes } from '../src/features/plan/planCatalog.js'
 
@@ -45,6 +45,9 @@ const RULES = [SALARY, RENT, NETFLIX, SPOTIFY, DISNEY, GYM, CAR, SAVE, PAID_FROM
 const SAVINGS_IDS = new Set([SAV])
 const items = (plan = emptyPlan(), extra = {}) =>
   buildItems({ rules: RULES, plan, savingsIds: SAVINGS_IDS, baseCurrency: 'EUR', ...extra })
+// The derived Salary row's plan-only edit.
+const setSalary = (plan, patch, amount) => setDerived(plan, SALARY_ID, patch, amount)
+const resetSalary = (plan) => resetDerived(plan, SALARY_ID)
 
 test('money: a year of each frequency; a month is the year ÷ 12', () => {
   assert.equal(yearMinor({ amount_minor: 1000, frequency: 'monthly', interval_n: 1 }), 12000)
@@ -58,23 +61,26 @@ test('money: a year of each frequency; a month is the year ÷ 12', () => {
   assert.equal(inView(48000, 'year'), 48000)
 })
 
-test('net: income minus expenses; yearly counts at 1/12; savings and stopped rules left out', () => {
+test('net: income minus expenses minus savings from income; yearly counts at 1/12; stopped rules left out', () => {
   const list = items()
-  assert.deepEqual(list.map((i) => i.name), ['Salary', 'Rent', 'Netflix', 'Spotify', 'Disney+', 'Gym', 'Car insurance'])
+  assert.deepEqual(list.map((i) => i.name),
+    ['Salary', 'Rent', 'Netflix', 'Spotify', 'Disney+', 'Gym', 'Car insurance', 'Monthly savings'])
+  assert.deepEqual(list.map((i) => i.kind), ['income', 'expense', 'expense', 'expense', 'expense', 'expense', 'expense', 'savings'])
   const sum = planSummary(list)
-  const year = 12 * (325000 - 115000 - 1399 - 1099 - 899 - 3990) - 48000
+  const year = 12 * (325000 - 115000 - 1399 - 1099 - 899 - 3990 - 20000) - 48000
   assert.equal(sum.before, year)
   assert.equal(sum.after, year)
   assert.equal(sum.delta, 0)
-  assert.equal(monthOf(sum.before), 325000 - 115000 - 1399 - 1099 - 899 - 3990 - 4000)
+  assert.equal(monthOf(sum.before), 325000 - 115000 - 1399 - 1099 - 899 - 3990 - 4000 - 20000)
   assert.equal(sum.changes.length, 0)
+  assert.equal(sum.saved, 20000 * 12)
 })
 
-test('planRules: savings transfers, received savings, paid from savings, paused and ended rules never count', () => {
+test('planRules: savings from income count; received savings, paid from savings, paused and ended rules never do', () => {
   const received = rule(11, 'Interest', 500, { kind: 'income', category_id: SAV })
   const ended = rule(12, 'Ended', 500, { end_date: '2026-09-01' })
   const kept = planRules([...RULES, received, ended], SAVINGS_IDS).map((r) => r.description)
-  assert.ok(!kept.includes('Monthly savings'))
+  assert.ok(kept.includes('Monthly savings'))
   assert.ok(!kept.includes('Interest'))
   assert.ok(!kept.includes('Holiday fund'))
   assert.ok(!kept.includes('Old gym'))
@@ -95,15 +101,16 @@ test('currency: foreign rules count at today’s rate; one with no rate is left 
   })).map((r) => r.currency), ['USD', 'GBP'])
 })
 
-test('groups: Income, then Bills (home, utilities, health… by key or icon), then Subscriptions; totals follow the plan', () => {
+test('groups: Income, Savings, then Bills (home, utilities, health… by key or icon), then Subscriptions; totals follow the plan', () => {
   const plan = setChange(emptyPlan(), NETFLIX, { cancel: true })
   const groups = planGroups(items(plan))
-  assert.deepEqual(groups.map((g) => g.key), ['income', 'bills', 'subscriptions'])
+  assert.deepEqual(groups.map((g) => g.key), ['income', 'savings', 'bills', 'subscriptions'])
   assert.deepEqual(groups.map((g) => g.items.map((i) => i.name)), [
-    ['Salary'], ['Rent'], ['Netflix', 'Spotify', 'Disney+', 'Gym', 'Car insurance'],
+    ['Salary'], ['Monthly savings'], ['Rent'], ['Netflix', 'Spotify', 'Disney+', 'Gym', 'Car insurance'],
   ])
-  assert.equal(groups[1].total, 12 * 115000)
-  assert.equal(groups[2].total, 12 * (1099 + 899 + 3990) + 48000)
+  assert.equal(groups[1].total, 12 * 20000)
+  assert.equal(groups[2].total, 12 * 115000)
+  assert.equal(groups[3].total, 12 * (1099 + 899 + 3990) + 48000)
   // The user's own category counts by its icon; an add by its category.
   const phone = { ...rule(30, 'Phone', 2000, { category_id: id(930) }), categories: { name: 'Mobile', icon: 'phone' } }
   const ELEC = id(931)
@@ -534,6 +541,8 @@ const salaryItems = (plan = emptyPlan(), salary = SAL) => buildItems({
   categoriesById: new Map([[PAY, cats[PAY]]]),
 })
 const EXPENSES_YEAR = (115000 + 1399 + 1099 + 899 + 3990) * 12 + 48000
+const SAVED_YEAR = 20000 * 12 // the Monthly savings rule
+const OUT_YEAR = EXPENSES_YEAR + SAVED_YEAR
 
 test('salary category: the profile’s choice, else the default Salary income category', () => {
   const cat = (cid, extra) => ({ id: cid, kind: 'income', default_key: null, is_archived: false, ...extra })
@@ -599,7 +608,7 @@ test('the Salary row: first in Income, monthly in the base currency, counts in t
   assert.equal(s.category, cats[PAY])
   const sum = planSummary(list)
   assert.equal(sum.mode, 'net')
-  assert.equal(sum.before, 310000 * 12 - EXPENSES_YEAR)
+  assert.equal(sum.before, 310000 * 12 - OUT_YEAR)
   assert.deepEqual(planGroups(list)[0].items.map((i) => i.id), [SALARY_ID])
   assert.equal(salaryItems(emptyPlan(), { state: 'none' }).some((i) => i.salary), false)
 })
@@ -676,19 +685,19 @@ test('no recurring income: the payments view — a positive total, a saving is a
   let list = salaryItems(emptyPlan(), { state: 'none' })
   let sum = planSummary(list)
   assert.equal(sum.mode, 'payments')
-  assert.deepEqual(headline(sum), { mode: 'payments', before: EXPENSES_YEAR, after: EXPENSES_YEAR, change: 0, good: 0 })
+  assert.deepEqual(headline(sum), { mode: 'payments', before: OUT_YEAR, after: OUT_YEAR, change: 0, good: 0 })
   const plan = setChange(setChange(emptyPlan(), NETFLIX, { cancel: true }), GYM, { amount_minor: 4990 })
   list = salaryItems(plan, { state: 'none' })
   sum = planSummary(list)
   const h = headline(sum)
-  assert.equal(h.before, EXPENSES_YEAR)
-  assert.equal(h.after, EXPENSES_YEAR - 1399 * 12 + 1000 * 12)
+  assert.equal(h.before, OUT_YEAR)
+  assert.equal(h.after, OUT_YEAR - 1399 * 12 + 1000 * 12)
   assert.equal(h.change, (-1399 + 1000) * 12, 'payments went down: a minus')
   assert.equal(h.good, (1399 - 1000) * 12, 'more left over: green')
   const netflix = list.find((i) => i.id === NETFLIX.id)
   assert.equal(asShown(effectOf(netflix), sum.mode), -1399 * 12)
   // Payments after applying Netflix only.
-  assert.equal(asShown(sum.before + effectOf(netflix), sum.mode), EXPENSES_YEAR - 1399 * 12)
+  assert.equal(asShown(sum.before + effectOf(netflix), sum.mode), OUT_YEAR - 1399 * 12)
   // In net mode nothing flips.
   assert.equal(asShown(effectOf(netflix), 'net'), 1399 * 12)
   assert.deepEqual(headline({ mode: 'net', before: -5, after: 7, delta: 12 }), { mode: 'net', before: -5, after: 7, change: 12, good: 12 })
@@ -703,4 +712,271 @@ test('the card switches back to net once there’s any income: salary entries, a
   // Switched off in the plan, the salary is still there: net (it would be minus the payments).
   const off = salaryItems(setSalary(emptyPlan(), { cancel: true }, 310000))
   assert.equal(planSummary(off).mode, 'net')
+})
+
+// ---- Savings from income ------------------------------------------------------------
+
+const POT = id(905)
+const SAVE300 = rule(40, 'Payday savings', 30000, { kind: 'income', category_id: SAV, savings_from_income: true })
+const BASE_RULES = [SALARY, RENT, NETFLIX]
+const leftOverMonth = (rules, plan = emptyPlan()) =>
+  monthOf(planSummary(buildItems({ rules, plan, savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' })).after)
+
+test('savings: a €300 a month saved-from-income rule lowers what’s left by exactly €300 a month', () => {
+  const without = leftOverMonth(BASE_RULES)
+  const withSaving = leftOverMonth([...BASE_RULES, SAVE300])
+  assert.equal(without - withSaving, 30000)
+  const list = buildItems({ rules: [...BASE_RULES, SAVE300], plan: emptyPlan(), savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' })
+  const row = list.find((i) => i.id === SAVE300.id)
+  assert.equal(row.kind, 'savings')
+  assert.equal(row.group, 'savings')
+  assert.equal(row.category, cats[SAV], 'the savings category’s badge')
+  const sum = planSummary(list)
+  assert.equal(sum.saved, 30000 * 12)
+  assert.equal(sum.mode, 'net')
+})
+
+test('savings: received savings, and expenses paid from savings or with vouchers, stay out', () => {
+  const interest = rule(41, 'Interest', 1500, { kind: 'income', category_id: SAV, savings_from_income: false })
+  const vouchers = rule(42, 'Lunch', 800, { paid_with_vouchers: true })
+  const rules = [...BASE_RULES, interest, vouchers, PAID_FROM_POT]
+  assert.equal(leftOverMonth(rules), leftOverMonth(BASE_RULES))
+  const list = buildItems({ rules, plan: emptyPlan(), savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' })
+  assert.deepEqual(list.map((i) => i.name), ['Salary', 'Rent', 'Netflix'])
+  assert.equal(planSummary(list).saved, 0)
+})
+
+test('savings: change, stop and add like any payment; saving more is never red', () => {
+  let plan = setChange(emptyPlan(), SAVE300, { amount_minor: 40000 })
+  let list = buildItems({ rules: [...BASE_RULES, SAVE300], plan, savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' })
+  let row = list.find((i) => i.id === SAVE300.id)
+  assert.equal(effectOf(row), -10000 * 12, 'saving €100 more leaves €100 less')
+  assert.equal(effectTone(row), 0)
+  let sum = planSummary(list)
+  assert.equal(sum.savedDelta, -10000 * 12)
+  assert.equal(headline(sum).change, -10000 * 12)
+  assert.equal(headline(sum).good, 0, 'only saving more: neutral, not bad news')
+  // Saving more and cancelling Netflix: less left over, still mostly savings.
+  plan = setChange(plan, NETFLIX, { cancel: true })
+  sum = planSummary(buildItems({ rules: [...BASE_RULES, SAVE300], plan, savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' }))
+  assert.equal(sum.delta, (-10000 + 1399) * 12)
+  assert.equal(headline(sum).good, 0)
+  // Saving more and a new gym: the gym is bad news.
+  plan = upsertAdd(setChange(emptyPlan(), SAVE300, { amount_minor: 40000 }), { id: 'gym', kind: 'expense', name: 'Gym',
+    amount_minor: 4000, currency: 'EUR', frequency: 'monthly', interval_n: 1, start: '2026-10-01' })
+  sum = planSummary(buildItems({ rules: [...BASE_RULES, SAVE300], plan, savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' }))
+  assert.ok(headline(sum).good < 0)
+  // Stopping it: more left over, neutral too; its switch reads "stopped".
+  plan = setChange(emptyPlan(), SAVE300, { cancel: true })
+  list = buildItems({ rules: [...BASE_RULES, SAVE300], plan, savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' })
+  row = list.find((i) => i.id === SAVE300.id)
+  assert.equal(row.cancelled, true)
+  assert.equal(effectOf(row), 30000 * 12)
+  assert.equal(headline(planSummary(list)).good, 0)
+  // A new savings amount: it needs its category; it counts after, never before.
+  const add = { id: 'pot', kind: 'savings', name: 'Holiday fund', amount_minor: 5000, currency: 'EUR',
+    frequency: 'monthly', interval_n: 1, start: '2026-10-01', category_id: POT }
+  assert.deepEqual(upsertAdd(emptyPlan(), { ...add, category_id: null }), emptyPlan())
+  plan = upsertAdd(emptyPlan(), add)
+  list = buildItems({ rules: BASE_RULES, plan, savingsIds: SAVINGS_IDS, baseCurrency: 'EUR',
+    categoriesById: new Map([[POT, { name: 'Holiday pot' }]]) })
+  row = list.find((i) => i.id === 'pot')
+  assert.equal(row.group, 'savings')
+  assert.equal(row.beforeYear, 0)
+  assert.equal(planSummary(list).delta, -5000 * 12)
+  assert.deepEqual(normalisePlan(plan).adds, [add])
+})
+
+test('savings: apply sends a savings change as usual, and a new one as income in its category, from income', () => {
+  let plan = setChange(emptyPlan(), SAVE300, { amount_minor: 40000 })
+  plan = upsertAdd(plan, { id: 'pot', kind: 'savings', name: 'Holiday fund', amount_minor: 5000, currency: 'EUR',
+    frequency: 'monthly', interval_n: 1, start: '2026-10-01', category_id: POT })
+  const list = buildItems({ rules: [...BASE_RULES, SAVE300], plan, savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' })
+  const sel = applySelection(list, plan, new Set([SAVE300.id, 'pot']))
+  assert.deepEqual(sel.apply, {
+    changes: [{ rule_id: SAVE300.id, amount_minor: 40000, currency: 'EUR', frequency: 'monthly', interval_n: 1 }],
+    adds: [{ kind: 'income', description: 'Holiday fund', amount_minor: 5000, currency: 'EUR', frequency: 'monthly',
+      interval_n: 1, next_run: '2026-10-01', category_id: POT, savings_from_income: true }],
+  })
+  assert.equal(sel.effect, (-10000 - 5000) * 12)
+  // Costs and income go as before, without the flag.
+  const cost = upsertAdd(emptyPlan(), { id: 'c', kind: 'expense', name: 'Gym', amount_minor: 4000, currency: 'EUR',
+    frequency: 'monthly', interval_n: 1, start: '2026-10-01' })
+  const costSel = applySelection(buildItems({ rules: BASE_RULES, plan: cost, baseCurrency: 'EUR' }), cost, new Set(['c']))
+  assert.equal('savings_from_income' in costSel.apply.adds[0], false)
+})
+
+test('savings: never an idea, an overlap, a price rise or over budget — even as the biggest outgoing', () => {
+  const BIG = rule(43, 'Netflix savings', 200000, { kind: 'income', category_id: SAV, savings_from_income: true })
+  const rules = [...RULES, BIG]
+  const list = buildItems({ rules, plan: emptyPlan(), savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' })
+  const signals = signalsFor(list, {
+    rises: new Map([[BIG.id, { pct: 10, from: 180000, to: 200000, currency: 'EUR', since: '2026-08-01' }]]),
+    overCats: new Map([[SAV, ['2026-08-01']]]),
+  })
+  assert.equal(signals.has(BIG.id), false)
+  assert.equal(signals.has(SAVE.id), false)
+  const ideas = planIdeas(list, signals)
+  assert.ok(ideas.length > 0)
+  assert.equal(ideas.some((i) => i.ruleIds.includes(BIG.id) || i.ruleIds.includes(SAVE.id)), false)
+  assert.equal(rowTag(list.find((i) => i.id === BIG.id), signals), null)
+  assert.equal(priceRises([
+    { kind: 'income', recurring_rule_id: BIG.id, amount_minor: 180000, currency: 'EUR', spent_at: '2026-07-01' },
+    { kind: 'income', recurring_rule_id: BIG.id, amount_minor: 200000, currency: 'EUR', spent_at: '2026-08-01' },
+  ], [BIG]).size, 0)
+})
+
+// ---- Savings from entries --------------------------------------------------------------
+
+const saving = (spent_at, amount_minor, extra = {}) => ({
+  id: `s-${spent_at}-${amount_minor}`, kind: 'income', category_id: SAV, amount_minor, currency: 'EUR',
+  exchange_rate: 1, spent_at, savings_from_income: true, ...extra,
+})
+const NO_SAVE_RULES = RULES.filter((r) => r !== SAVE)
+const deriveSavings = (entries, extra = {}) => derivedSavings({
+  rules: NO_SAVE_RULES, savingsIds: SAVINGS_IDS, entries, todayISO: TODAY, baseCurrency: 'EUR', ...extra,
+})
+const SAVED = deriveSavings([saving('2026-06-02', 30000), saving('2026-07-02', 30000), saving('2026-07-20', 6000),
+  saving('2026-08-02', 30000)])
+const savingsItems = (plan = emptyPlan(), savings = SAVED) => buildItems({
+  rules: NO_SAVE_RULES, plan, savingsIds: SAVINGS_IDS, baseCurrency: 'EUR', savings,
+  categoriesById: new Map([[SAV, cats[SAV]]]),
+})
+
+test('derived savings: the monthly average of savings taken from income, since saving started', () => {
+  assert.deepEqual(SAVED, { state: 'derived', amount_minor: 32000, months: 3, categoryId: SAV })
+  // Started in July: August without any is a month of nothing saved.
+  assert.deepEqual(deriveSavings([saving('2026-07-02', 30000)]),
+    { state: 'derived', amount_minor: 15000, months: 2, categoryId: SAV })
+  // Received savings, other income, this month and before June don't count; foreign ones at their rate.
+  const noise = [saving('2026-08-28', 1500, { savings_from_income: false }), saving('2026-08-02', 9000, { category_id: PAY }),
+    saving('2026-09-02', 99999), saving('2026-05-02', 99999)]
+  assert.deepEqual(deriveSavings(noise), { state: 'none' })
+  assert.equal(deriveSavings([...noise, saving('2026-08-02', 10000, { currency: 'USD', exchange_rate: 0.9 })]).amount_minor, 9000)
+  // A recurring savings rule: the rules are the savings; a paused one isn't.
+  assert.deepEqual(deriveSavings([saving('2026-08-02', 30000)], { rules: RULES }), { state: 'rule' })
+  assert.equal(deriveSavings([saving('2026-08-02', 30000)], { rules: [...NO_SAVE_RULES, { ...SAVE, is_active: false }] }).state,
+    'derived')
+})
+
+test('the Savings row: first in Savings, monthly in the base currency, lowers what’s left', () => {
+  const list = savingsItems()
+  const s = list.find((i) => i.id === SAVINGS_ID)
+  assert.equal(s.derived, true)
+  assert.equal(s.kind, 'savings')
+  assert.equal(s.group, 'savings')
+  assert.equal(s.months, 3)
+  assert.equal(s.category, cats[SAV])
+  assert.deepEqual(s.before, { amount_minor: 32000, currency: 'EUR', frequency: 'monthly', interval_n: 1 })
+  const sum = planSummary(list)
+  assert.equal(sum.before, 325000 * 12 - EXPENSES_YEAR - 32000 * 12)
+  assert.equal(sum.saved, 32000 * 12)
+  assert.deepEqual(planGroups(list).find((g) => g.key === 'savings').items.map((i) => i.id), [SAVINGS_ID])
+  assert.equal(savingsItems(emptyPlan(), { state: 'none' }).some((i) => i.id === SAVINGS_ID), false)
+})
+
+test('the Savings row: a plan-only edit in plan.savings — kept, round-tripped, never applied', () => {
+  let plan = setDerived(emptyPlan(), SAVINGS_ID, { amount_minor: 42000 }, 32000)
+  assert.deepEqual(plan.savings, { amount_minor: 42000 })
+  assert.equal(isEmptyPlan(plan), false, 'a savings-only plan is a plan (0107 keeps it)')
+  assert.deepEqual(normalisePlan(plan), plan)
+  const s = savingsItems(plan).find((i) => i.id === SAVINGS_ID)
+  assert.equal(effectOf(s), -10000 * 12)
+  plan = setChange(plan, NETFLIX, { cancel: true })
+  const list = savingsItems(plan)
+  assert.deepEqual(applicable(list).map((i) => i.id), [NETFLIX.id])
+  const sel = applySelection(list, plan, new Set([SAVINGS_ID, NETFLIX.id]))
+  assert.deepEqual(sel.apply.changes, [{ rule_id: NETFLIX.id, cancel: true }])
+  assert.deepEqual(sel.remaining.savings, { amount_minor: 42000 })
+  // Back to the average, or reset: gone. A malformed one is dropped; both edits live side by side.
+  assert.equal('savings' in setDerived(plan, SAVINGS_ID, { amount_minor: 32000 }, 32000), false)
+  assert.equal('savings' in resetDerived(plan, SAVINGS_ID), false)
+  assert.equal('savings' in normalisePlan({ v: 1, savings: { amount_minor: -1, x: 2 } }), false)
+  assert.deepEqual(derivedEdits({ salary: { cancel: true }, savings: { amount_minor: 5 }, other: { cancel: true } }),
+    { salary: { cancel: true }, savings: { amount_minor: 5 } })
+  assert.equal('savings' in startOver(plan), false)
+})
+
+test('plans follow reality: a new recurring savings rule or no savings entries drops the savings change', () => {
+  const plan = setDerived(emptyPlan(), SAVINGS_ID, { amount_minor: 42000 }, 32000)
+  assert.deepEqual(reconcile(plan, NO_SAVE_RULES, SAVINGS_IDS, null, SAVED).dropped, [])
+  assert.deepEqual(reconcile(plan, NO_SAVE_RULES, SAVINGS_IDS, null, null).dropped, [], 'entries not read: leave it be')
+  assert.deepEqual(reconcile(plan, RULES, SAVINGS_IDS, null, { state: 'rule' }).dropped,
+    [{ ruleId: SAVINGS_ID, name: '', reason: 'savingsRule' }])
+  assert.deepEqual(reconcile(plan, NO_SAVE_RULES, SAVINGS_IDS, null, { state: 'none' }).dropped,
+    [{ ruleId: SAVINGS_ID, name: '', reason: 'savingsGone' }])
+  assert.equal('savings' in acknowledge(plan, RULES, SAVINGS_IDS, null, { state: 'rule' }), false)
+  assert.deepEqual(acknowledge(plan, NO_SAVE_RULES, SAVINGS_IDS, null, SAVED).savings, { amount_minor: 42000 })
+})
+
+test('savings categories: the unarchived income ones marked as savings', () => {
+  const list = [{ id: 'a', kind: 'income', is_savings: true }, { id: 'b', kind: 'income', is_savings: true, is_archived: true },
+    { id: 'c', kind: 'income', is_savings: false }, { id: 'd', kind: 'expense' }]
+  assert.deepEqual(savingsCategories(list).map((c) => c.id), ['a'])
+})
+
+// ---- How it adds up (the header's ⓘ) ---------------------------------------------------
+
+const stepsTotal = (s, col) => s.steps.reduce((t, x) => t + x[col], 0)
+
+test('how it adds up: income − payments − savings = the header’s left-over, to the cent, month and year', () => {
+  const list = items()
+  const sum = planSummary(list)
+  for (const view of ['month', 'year']) {
+    const s = planSteps(list, view, sum.mode)
+    assert.deepEqual(s.steps.map((x) => x.key), ['income', 'payments', 'savings'])
+    assert.equal(s.planned, inView(headline(sum).after, view))
+    assert.equal(s.now, inView(headline(sum).before, view))
+    assert.equal(stepsTotal(s, 'planned'), s.planned)
+    assert.equal(stepsTotal(s, 'now'), s.now)
+  }
+  const month = planSteps(list, 'month', sum.mode)
+  assert.deepEqual(month.steps.map((x) => x.planned), [325000, -(115000 + 1399 + 1099 + 899 + 3990 + 4000), -20000])
+})
+
+test('how it adds up: a month’s rounding goes to the biggest step, so the rows always add up', () => {
+  // Three yearly amounts that don't divide by 12: each rounds on its own.
+  // €1,000.06 ÷ 12 = 83.338… → 83.34; −€60.06 ÷ 12 = −5.005 → −5.00 (twice);
+  // but the left-over, €879.94 ÷ 12 = 73.328… → 73.33, one cent less.
+  const odd = [
+    rule(50, 'Pay', 100006, { kind: 'income', frequency: 'yearly' }),
+    rule(51, 'Box', 6006, { frequency: 'yearly' }),
+    rule(52, 'Pot', 6006, { kind: 'income', category_id: SAV, savings_from_income: true, frequency: 'yearly' }),
+  ]
+  const list = buildItems({ rules: odd, plan: emptyPlan(), savingsIds: SAVINGS_IDS, baseCurrency: 'EUR' })
+  const sum = planSummary(list)
+  const s = planSteps(list, 'month', sum.mode)
+  assert.equal(s.planned, monthOf(100006 - 6006 - 6006))
+  assert.equal(s.planned, 7333)
+  assert.equal(monthOf(100006) + monthOf(-6006) + monthOf(-6006), 7334, 'rounded one by one they would be a cent off')
+  assert.deepEqual(s.steps.map((x) => x.planned), [8333, -500, -500])
+  assert.equal(stepsTotal(s, 'planned'), s.planned)
+})
+
+test('how it adds up: with changes each step has now and planned; payments mode shows positives', () => {
+  let plan = setChange(emptyPlan(), NETFLIX, { cancel: true })
+  plan = setChange(plan, SAVE, { amount_minor: 30000 })
+  const list = items(plan)
+  const sum = planSummary(list)
+  const s = planSteps(list, 'month', sum.mode)
+  const by = Object.fromEntries(s.steps.map((x) => [x.key, x]))
+  assert.equal(by.income.now, by.income.planned)
+  assert.equal(by.payments.planned - by.payments.now, 1399)
+  assert.deepEqual([by.savings.now, by.savings.planned], [-20000, -30000])
+  assert.equal(s.planned - s.now, monthOf(sum.delta))
+  assert.equal(stepsTotal(s, 'planned'), s.planned)
+  // Added items only count as planned.
+  const added = upsertAdd(emptyPlan(), { id: 'p', kind: 'savings', name: 'Pot', amount_minor: 1000, currency: 'EUR',
+    frequency: 'monthly', interval_n: 1, start: '2026-10-01', category_id: POT })
+  const s2 = planSteps(items(added), 'month', 'net')
+  assert.deepEqual(s2.steps.find((x) => x.key === 'savings'), { key: 'savings', kind: 'savings', now: -20000, planned: -21000 })
+  // No income: payments and savings as positives adding up to the header's payments.
+  const noIncome = savingsItems(emptyPlan(), SAVED).filter((i) => i.kind !== 'income')
+  const psum = planSummary(noIncome)
+  assert.equal(psum.mode, 'payments')
+  const ps = planSteps(noIncome, 'month', psum.mode)
+  assert.deepEqual(ps.steps.map((x) => x.key), ['payments', 'savings'])
+  assert.ok(ps.steps.every((x) => x.planned > 0))
+  assert.equal(ps.planned, inView(headline(psum).after, 'month'))
+  assert.equal(stepsTotal(ps, 'planned'), ps.planned)
 })

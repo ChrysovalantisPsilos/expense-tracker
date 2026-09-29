@@ -12,7 +12,7 @@
 
 import { CURRENCIES, formatMinor, formatRoundedMinor, minorFactor } from './money.ts'
 import { type PaidFrom, savingsIdsOf } from './savings.ts'
-import { isPlanRule } from './planRules.ts'
+import { type PlanKind, isPlanRule, planKindOf } from './planRules.ts'
 
 // One constant: the model every helper uses. Claude Haiku 4.5 — structured
 // JSON outputs (output_config.format), no effort or adaptive-thinking
@@ -28,7 +28,7 @@ const LABEL_MAX = 60         // a category's display name
 const DESCRIPTION_MAX = 80   // the description a filled entry gets
 const SUMMARY_LINE_MAX = 300 // one line of a month summary (SQL checks it too)
 export const PLAN_NAME_MAX = 80     // a plan item's name (planMath.NAME_MAX)
-const PAYMENTS_MAX = 200     // payments and income offered to the what-if
+const PAYMENTS_MAX = 200     // payments, income and savings offered to the what-if
 const WHATIF_ADDS_MAX = 10   // new items one what-if can propose
 const NOT_FOUND_MAX = 5      // names it couldn't match, reported back
 
@@ -116,17 +116,20 @@ export function readWhatIfRequest(body: any): Parsed<{ text: string }> {
 }
 
 // ---------------------------------------------------------------------------
-// What-if in your own words: the plan's payments and income
+// What-if in your own words: the plan's payments, income and savings
 // ---------------------------------------------------------------------------
 // How often an item repeats, as Plan's "How often" offers it
 // (recurringMath.REPEAT_CHOICES: "quarterly" is monthly every 3 months). The
 // app turns a choice into the stored frequency (recurringMath.choiceToRule).
 export const PLAN_REPEATS = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'] as const
 export type Repeat = typeof PLAN_REPEATS[number]
+// What an item is in the plan (planRules.planKindOf); a new one can be any.
+const PLAN_KINDS: readonly PlanKind[] = ['expense', 'income', 'savings']
 
-// One recurring payment or income as the what-if sees it.
+// One recurring payment, income or savings (money set aside from income) as
+// the what-if sees it: its kind as Plan shows it (planRules.planKindOf).
 export interface PlanPayment {
-  id: string; name: string; kind: Kind
+  id: string; name: string; kind: PlanKind
   amount_minor: number; currency: string; frequency: string; interval_n: number
 }
 
@@ -138,7 +141,7 @@ export function repeatOf(r: { frequency: string; interval_n: number }): Repeat |
 }
 
 // The caller's recurring rules (my_recurring_rules, read as the caller) → the
-// payments and income Plan mode lists (_shared/planRules), named as a plan row
+// payments, income and savings Plan mode lists (_shared/planRules), named as a plan row
 // is: the description, else the category's name as the app shows it
 // (`labels`, used only for the caller's own categories: `categoryRows`).
 export function planPayments(rules: any[], categoryRows: CategoryRow[], labels: unknown): PlanPayment[] {
@@ -155,7 +158,7 @@ export function planPayments(rules: any[], categoryRows: CategoryRow[], labels: 
     .map((r) => ({
       id: r.id,
       name: cleanText(r.description, PLAN_NAME_MAX) || categoryName(r),
-      kind: r.kind === 'income' ? 'income' : 'expense',
+      kind: planKindOf(r, savings) as PlanKind,
       amount_minor: Number(r.amount_minor),
       currency: r.currency,
       frequency: r.frequency,
@@ -385,29 +388,33 @@ export function summaryAsk(o: {
   return { ...ask, check: { currency: cur, locale, figures: [...figures] } }
 }
 
-// What-if in your own words: the typed line and the plan's payments and
-// income (planPayments), each with its id, so the model points at the
+// What-if in your own words: the typed line and the plan's payments, income
+// and savings (planPayments), each with its id, so the model points at the
 // caller's own items instead of naming them. Amounts go out and come back as
 // plain decimal strings in the item's own currency.
 export function whatIfAsk(o: { text: string; baseCurrency: string; payments: PlanPayment[] }): Ask {
   return {
     system: [
-      'You turn a what-if someone typed about their recurring payments and income (in any language, often English',
-      'or Greek) into proposed changes to a budget plan, like "cancel Netflix and Disney, add a gym at €40 a month"',
-      'or "Spotify goes up to 12.99". One line can add new items and change or cancel existing ones at once: answer',
-      'every part, each in its own list.',
-      'adds: one for each new payment or income the line adds ("add", "new", "start", "take up", "πρόσθεσε", "βάλε"),',
-      'even when an existing item has a similar name: kind "expense" for a cost, "income" for money received; name',
+      'You turn a what-if someone typed about their recurring payments, income and savings (in any language, often',
+      'English or Greek) into proposed changes to a budget plan, like "cancel Netflix and Disney, add a gym at €40 a',
+      'month", "Spotify goes up to 12.99" or "save 50 more a month". One line can add new items and change or cancel',
+      'existing ones at once: answer every part, each in its own list.',
+      'Items of kind "savings" are money the person sets aside from their income each period: "save 50 more" gives',
+      'the savings item 50 more per period, "stop saving" cancels it. Saving is never a cost to cut.',
+      'adds: one for each new payment, income or savings the line adds ("add", "new", "start", "take up", "save",',
+      '"πρόσθεσε", "βάλε", "αποταμίευσε"), even when an existing item has a similar name: kind "expense" for a cost,',
+      '"income" for money received, "savings" for money set aside from income (only when there is no savings item to',
+      'change); name',
       'short, as the user would write it; amount per period as a plain decimal string; currency the ISO code the line',
       'names or clearly implies (€ is EUR, $ is USD, £ is GBP), else null; frequency one of the choices ("monthly"',
       'when the line doesn\'t say).',
       'changes: one for each existing item the line cancels or gives a new amount or how often, by its id from items.',
       'Match names loosely ("Disney" is "Disney+", "netflix" is "Netflix Premium") but never guess between two items.',
-      'action "cancel" cancels a payment or stops an income; "change" gives it a new amount and/or how often: amount',
-      'is the new amount per period in that item\'s own currency, as a plain decimal string with a dot and no symbols',
+      'action "cancel" cancels a payment or stops an income or savings; "change" gives it a new amount and/or how often:',
+      'amount is the new amount per period in that item\'s own currency, as a plain decimal string with a dot and no symbols',
       'or thousands separators ("12.99", "1200"), or null to keep it; frequency one of the choices, or null to keep it.',
       'not_found: each name the line wants to change or cancel that matches no item, as the user wrote it.',
-      'Set understood to false when the line is not a what-if about payments or income.',
+      'Set understood to false when the line is not a what-if about payments, income or savings.',
       DATA_ONLY,
     ].join(' '),
     user: JSON.stringify({
@@ -430,7 +437,7 @@ export function whatIfAsk(o: { text: string; baseCurrency: string; payments: Pla
           items: {
             type: 'object',
             properties: {
-              kind: { type: 'string', enum: ['expense', 'income'] },
+              kind: { type: 'string', enum: [...PLAN_KINDS] },
               name: { type: 'string' },
               amount: { type: 'string' },
               currency: nullable({ type: 'string', enum: [...CURRENCIES] }),
@@ -607,10 +614,11 @@ export function normaliseSummary(json: any, check: FigureCheck): string[] | null
 //             WHATIF_ADDS_MAX, each name at most PLAN_NAME_MAX characters
 //   notFound  the names it couldn't match, cleaned, at most NOT_FOUND_MAX
 export interface WhatIfChange { rule_id: string; cancel?: true; amount_minor?: number; repeat?: Repeat }
-export interface WhatIfAdd { kind: Kind; name: string; amount_minor: number; currency: string; repeat: Repeat }
+export interface WhatIfAdd { kind: PlanKind; name: string; amount_minor: number; currency: string; repeat: Repeat }
 export interface WhatIf { changes: WhatIfChange[]; adds: WhatIfAdd[]; notFound: string[] }
 
 const isRepeat = (v: unknown): v is Repeat => (PLAN_REPEATS as readonly unknown[]).includes(v)
+const isPlanKind = (v: unknown): v is PlanKind => (PLAN_KINDS as readonly unknown[]).includes(v)
 
 export function normaliseWhatIf(json: any, o: { baseCurrency: string; payments: PlanPayment[] }): WhatIf | null {
   if (!json || json.understood !== true) return null
@@ -640,7 +648,7 @@ export function normaliseWhatIf(json: any, o: { baseCurrency: string; payments: 
   const adds: WhatIfAdd[] = []
   for (const a of Array.isArray(json.adds) ? json.adds : []) {
     if (adds.length >= WHATIF_ADDS_MAX) break
-    const kind: Kind | null = a?.kind === 'income' ? 'income' : a?.kind === 'expense' ? 'expense' : null
+    const kind: PlanKind | null = isPlanKind(a?.kind) ? a.kind : null
     const name = cleanText(a?.name, PLAN_NAME_MAX)
     const currency = typeof a?.currency === 'string' && CURRENCIES.includes(a.currency) ? a.currency : o.baseCurrency
     const amount_minor = amountToMinor(a?.amount, currency)

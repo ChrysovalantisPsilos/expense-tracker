@@ -123,3 +123,25 @@ test('rows that aren\'t ready, or whose payment is gone, are skipped', () => {
   assert.deepEqual(plan.adds, [])
   assert.deepEqual(added.addIds, [])
 })
+
+test('savings: a proposal to save more changes the savings rule; a new savings item goes to the savings category', () => {
+  const POT = '00000000-0000-4000-8000-0000000000c1'
+  const SAVE = '00000000-0000-4000-8000-0000000000b5'
+  const withSaving = [...rules, rule({ id: SAVE, kind: 'income', description: 'Savings', amount_minor: 30000,
+    category_id: POT, savings_from_income: true })]
+  const items = buildItems({ rules: withSaving, plan: emptyPlan(), savingsIds: new Set([POT]), baseCurrency: 'EUR' })
+  const proposal = {
+    changes: [{ rule_id: SAVE, amount_minor: 35000 }],
+    adds: [{ kind: 'savings', name: 'Holiday fund', amount_minor: 5000, currency: 'EUR', repeat: 'monthly' }],
+  }
+  const rows = whatIfRows(proposal, items, POT)
+  assert.deepEqual(rows.map((r) => [r.type, r.kind]), [['change', 'savings'], ['add', 'savings']])
+  assert.equal(whatIfLine(rows[1], t), `Save ${eur(5000)} a month`)
+  assert.equal(whatIfLine({ ...rows[0], type: 'cancel', after: null }, t), `Stop (−${eur(30000)} a month)`)
+  const { plan } = applyWhatIf(emptyPlan(), rows, new Set(rows.map((r) => r.id)),
+    { rules: withSaving, todayISO: '2026-09-29', newId, savingsCategoryId: POT })
+  assert.deepEqual(plan.changes.map((c) => [c.rule_id, c.amount_minor]), [[SAVE, 35000]])
+  assert.deepEqual(plan.adds.map((a) => [a.kind, a.category_id]), [['savings', POT]])
+  // No savings category: a new savings item can't go anywhere, so it isn't offered.
+  assert.deepEqual(whatIfRows(proposal, items).map((r) => r.type), ['change'])
+})

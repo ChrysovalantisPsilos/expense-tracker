@@ -42,7 +42,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Multi-currency: the ECB rate for the expense's date is shown before saving and captured with the entry, so history never shifts. A failed lookup asks for a rate and never saves 1:1
 - Budgets per category/month, with 80% / 100% push alerts
 - Recurring rules (subscriptions, salary) auto-logged nightly, with per-rule payment reminders
-- Plan mode (/plan): try changes to your recurring payments and income (cancel, change the amount or how often, add a new one) and see the monthly net before → after (a salary logged as entries counts as a derived Salary row; with no recurring income the card shows the payments total instead); ideas to save computed on the device; the plan is saved to the account (encrypted); optional Apply changes the real rules in one step, with Undo for 24 hours
+- Plan mode (/plan): try changes to your recurring payments, income and savings from income (cancel, change the amount or how often, add a new one) and see what's left over a month before → after, with "How it adds up" (Income − Recurring payments − Put into savings = Left over) behind the ⓘ (a salary or savings logged as entries count as derived Salary / Savings rows; with no recurring income the card shows the payments total instead); ideas to save computed on the device; the plan is saved to the account (encrypted); optional Apply changes the real rules in one step, with Undo for 24 hours
 - Meal vouchers (/vouchers, Settings → Meal vouchers): a card topped up on a chosen day for last month's working days (Mon–Fri minus Belgian or Greek public holidays) × the amount per day; what's on the card, this month's top-ups and spending, the next top-up with Fix days (leave, sick days), the history; a Home card; expenses "Paid from: Meal vouchers" are spending but not against the Net; the setup is encrypted, in backups and the data export
 - Your salary (Insights card → /insights/salary): regular pay over time from the Salary entries (the salary shift respected), raises (Belgian January indexation labelled), extras (holiday pay, 13th month, bonus; guessed ones correctable in place; the Bonus category by its default key or picked on the page), "If things go on" (1/3/5/10 years: my trend, indexation only, what if; monthly pay and total earned, bonuses left out), pay against Belgian or Greek inflation (Eurostat HICP, shipped with the app), year-by-year totals; the corrections are encrypted, in backups and the data export
 - Optional AI helpers (Settings → AI helpers, all off by default; Claude by Anthropic): Type to add on Add fills the form from a typed line, with Undo; category ideas for new merchants on Import; Month in plain words in Home's overview (Numbers | In words), written once and stored encrypted, with Update when the totals change; What-if in your own words in Plan (a typed what-if becomes suggested plan changes to tick, edit and add, with Undo)
@@ -538,12 +538,25 @@ and puts focus back on what opened it.
 1. Entry: the sidebar has Plan right after Recurring; on a phone it's in
    More (More stays lit on `/plan`); sideways, through the rail's More.
    Nothing new on Home or Recurring.
-2. The impact card: "Net a month" = recurring income − recurring payments,
-   yearly ones at ÷ 12 and the USD rule at today's rate (with the rates
-   note); the savings transfer isn't anywhere on the page. Month/Year
-   changes every figure on the page (card, groups, rows, ideas).
-3. Rows sit under Income, Bills (rent, insurance, utilities…) and
-   Subscriptions, each with its total. Turn a switch off → the row's amount
+2. The impact card: "Left over a month" = recurring income − recurring
+   payments − the savings transfer (exactly Home's net), yearly ones at ÷ 12
+   and the USD rule at today's rate (with the rates note), with "After
+   €300.00 a month into savings" under it. Its ⓘ opens "How it adds up":
+   Income, Recurring payments, Put into savings, a rule, then Left over —
+   the same figure as the card, to the cent. With changes in the plan each
+   step shows the planned figure with today's struck through beside it.
+   Received savings (interest, a gift) and expenses paid from savings or
+   with meal vouchers are nowhere on the page. Month/Year changes every
+   figure on the page (card, groups, rows, ideas, the ⓘ).
+3. Rows sit under Income, Savings, Bills (rent, insurance, utilities…) and
+   Subscriptions, each with its total. The savings transfer has its own
+   Savings group with the savings category's badge; tap it → "You'd set
+   aside more €100.00 a month" (never red) when raised from €300 to €400,
+   Keep/Stop instead of Keep/Cancel; the card's chip stays neutral when only
+   savings moved. No idea, overlap or tag ever points at a savings row.
+   "What if I add…" offers Cost / Income / Savings (Savings only once there
+   is a savings category, which it then asks for); Apply creates it as a
+   recurring savings "Taken from my income" in that category. Turn a switch off → the row's amount
    is struck through, "Cancelled" (income: "Stopped"), the chip shows the
    gain, and "Your changes" appears with 1 change and its saving.
 4. Tap a row → it opens in place under the row: type a new amount → the
@@ -598,7 +611,8 @@ and puts focus back on what opened it.
 11. Backup: a backup made with a saved plan restores it into an account
     that has none (changes follow the matching recurring entries); Settings
     → Privacy → Download my data includes `recurring_plan`. A plan with a
-    salary change (step 12) keeps it through backup and restore.
+    salary change (step 12) or a savings change (step 14) keeps it
+    through backup and restore.
 12. Salary from entries: a second account with no recurring salary rule
     but salary entries (the Salary category, or the one chosen in Settings
     → Monthly spending) in the last three full months. Income shows a
@@ -622,6 +636,16 @@ and puts focus back on what opened it.
     green) and the Apply sheet says "Payments after applying". Adding a
     recurring income (or salary entries, or an income in "What if I add…")
     switches the card back to the net.
+14. Savings from entries: an account with no recurring savings rule but
+    savings entries "Taken from my income" in the last three full months.
+    Savings shows a "Savings" row, "Average of the last N months · from
+    your entries" (from the first of those months that had one; received
+    savings never count), lowering what's left. Its editor has the amount
+    (no "How often") and a note that the change stays in the plan; "Your
+    changes" says "Only in your plan"; the Apply sheet leaves it out with a
+    note. A savings-only plan survives a reload. Add a recurring savings
+    rule → the derived row goes and the banner says its change left the
+    plan.
 
 ### L. Privacy & legal (GDPR)
 
