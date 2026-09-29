@@ -48,6 +48,14 @@ export function formatMoney(minor, currency = 'EUR', locale = intlLocale()) {
   }).format(fromMinor(minor, currency))
 }
 
+// An amount rounded to whole units ("€2,793" for 2792.60), for estimates
+// and big totals where cents would be noise (salary projections).
+export function formatRoundedMoney(minor, currency = 'EUR', locale = intlLocale()) {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(Math.round(minor / minorFactor(currency)))
+}
+
 // toBaseMinor: a minor amount in the base currency at the row's captured rate
 // — exact integer maths that matches SQL to_base_minor. One copy, shared with
 // the edge functions (the statement's totals must agree with the app's).

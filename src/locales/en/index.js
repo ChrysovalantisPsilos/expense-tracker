@@ -18,6 +18,7 @@ import onboarding from './onboarding.js'
 import plan from './plan.js'
 import privacy from './privacy.js'
 import recurring from './recurring.js'
+import salary from './salary.js'
 import savings from './savings.js'
 import settings from './settings.js'
 import shell from './shell.js'
@@ -42,6 +43,7 @@ export default {
   plan,
   privacy,
   recurring,
+  salary,
   savings,
   settings,
   shell,

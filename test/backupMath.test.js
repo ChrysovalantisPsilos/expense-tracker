@@ -5,7 +5,7 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION, BackupError, backupFileName, normText, txnKey, groupShareNote,
   buildBackup, serializeBackup, readBackup, unlockBackup, backupContents, mapCategories,
   matchByName, planRules, planTransactions, planBudgets, planRecurring, planProfile, planSalaryShift, planPayment,
-  currencyChange, restorePlan,
+  currencyChange, restorePlan, restoreSalary,
   restoreSummary, splitDateRange, rebaseRateSpans, rebaseBackupData,
 } from '../src/features/backup/backupMath.js'
 import { UserError } from '../src/shared/lib/errors.js'
@@ -753,6 +753,49 @@ test('backup: meal vouchers (the flag and the setup) round-trip; older files rea
   const old = readBackup(JSON.stringify(older)).backup
   assert.ok(old.data.transactions.every((t) => !('with_vouchers' in t)))
   assert.equal(old.data.vouchers, undefined)
+})
+
+test('backup: salary corrections round-trip onto the matching entries; older files read without them', () => {
+  const A = '7d9f3a52-2c1e-4b8a-9f00-1a2b3c4d5e6f'
+  const B = '0e1f2a3b-4c5d-4e6f-8a7b-9c0d1e2f3a4b'
+  const BONUS = '11111111-2222-4333-8444-555555555555'
+  const pay = (o) => ({ kind: 'income', category_id: 'sal', account_id: null, amount_minor: 200000,
+    currency: 'EUR', exchange_rate: 1, description: 'Salary', notes: null, spent_at: '2026-06-25', ...o })
+  const categories = [{ id: 'sal', name: 'Salary', kind: 'income' }, { id: BONUS, name: 'Extras', kind: 'income' }]
+  const doc = buildBackup({
+    exportedAt: '2026-09-28T12:00:00.000Z', userId: 'u-source', profile: { base_currency: 'EUR' }, payment: {},
+    categories,
+    transactions: [pay({ id: A, amount_minor: 180000, spent_at: '2026-06-12' }), pay({ id: B }), pay({ id: 'c', spent_at: '2026-07-25' })],
+    salary: { v: 1, fixes: { [A]: 'holiday', [B]: 'regular', 'not-an-entry': 'bonus' }, bonus_category_id: BONUS, country: 'GR' },
+  })
+  assert.deepEqual(doc.data.transactions.map((t) => t.salary_extra), ['holiday', 'regular', undefined])
+  assert.deepEqual(doc.data.salary, { bonus_category: 'c2', country: 'GR' })
+  // Only on income, only a known kind.
+  doc.data.transactions.push({ ...doc.data.transactions[0], kind: 'expense' })
+  doc.data.transactions.push({ ...doc.data.transactions[0], spent_at: '2026-05-02', salary_extra: 'lottery' })
+  const { backup } = readBackup(JSON.stringify(doc))
+  assert.deepEqual(backup.data.transactions.map((t) => t.salary_extra), ['holiday', 'regular', undefined, undefined, undefined])
+  assert.deepEqual(backup.data.salary, { bonus_category: 'c2', country: 'GR' })
+  // Onto the target's entries (new ids), matched like duplicates are.
+  const T1 = '99999999-0000-4000-8000-000000000001'
+  const T2 = '99999999-0000-4000-8000-000000000002'
+  const TB = '99999999-0000-4000-8000-00000000000b'
+  const now = [
+    { id: T1, kind: 'income', amount_minor: '180000', currency: 'EUR', description: 'Salary', spent_at: '2026-06-12' },
+    { id: T2, kind: 'income', amount_minor: 200000, currency: 'EUR', description: 'Salary', spent_at: '2026-06-25' },
+  ]
+  assert.deepEqual(restoreSalary(backup.data, now, new Map([['c2', TB]])),
+    { v: 1, fixes: { [T1]: 'holiday', [T2]: 'regular' }, bonus_category_id: TB, country: 'GR' })
+  assert.equal(restoreSalary({ transactions: [] }, now, new Map()), null)
+  // Unknown settings are dropped; a file from before 0102 reads without them.
+  const odd = readBackup(JSON.stringify({ ...doc, data: { ...doc.data, salary: { bonus_category: 'c9', country: 'FR' } } })).backup
+  assert.equal(odd.data.salary, undefined)
+  const older = JSON.parse(JSON.stringify(doc))
+  for (const t of older.data.transactions) delete t.salary_extra
+  delete older.data.salary
+  const old = readBackup(JSON.stringify(older)).backup
+  assert.ok(old.data.transactions.every((t) => !('salary_extra' in t)))
+  assert.equal(old.data.salary, undefined)
 })
 
 // ---- Version 3: the salary shift; older files follow today's defaults ------------

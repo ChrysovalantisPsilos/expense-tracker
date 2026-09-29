@@ -44,6 +44,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Recurring rules (subscriptions, salary) auto-logged nightly, with per-rule payment reminders
 - Plan mode (/plan): try changes to your recurring payments and income (cancel, change the amount or how often, add a new one) and see the monthly net before → after (a salary logged as entries counts as a derived Salary row; with no recurring income the card shows the payments total instead); ideas to save computed on the device; the plan is saved to the account (encrypted); optional Apply changes the real rules in one step, with Undo for 24 hours
 - Meal vouchers (/vouchers, Settings → Meal vouchers): a card topped up on a chosen day for last month's working days (Mon–Fri minus Belgian or Greek public holidays) × the amount per day; what's on the card, this month's top-ups and spending, the next top-up with Fix days (leave, sick days), the history; a Home card; expenses "Paid from: Meal vouchers" are spending but not against the Net; the setup is encrypted, in backups and the data export
+- Your salary (Insights card → /insights/salary): regular pay over time from the Salary entries (the salary shift respected), raises (Belgian January indexation labelled), extras (holiday pay, 13th month, bonus; guessed ones correctable in place; the Bonus category by its default key or picked on the page), "If things go on" (1/3/5/10 years: my trend, indexation only, what if; monthly pay and total earned, bonuses left out), pay against Belgian or Greek inflation (Eurostat HICP, shipped with the app), year-by-year totals; the corrections are encrypted, in backups and the data export
 - Savings page: the pot (all time, month by month), this month's flow, repeating savings, goals and a savings-only history
 - Net worth (accounts), insights & 6-month trends
 - One Transactions page (Expenses / Income / All switch) with search & filters across all history
@@ -674,3 +675,45 @@ on the card) and a few lunches and groceries paid with vouchers. Check at
    money went" shows that month (its name as the subtitle) with "All <month>
    expenses ›" opening Transactions filtered to it.
 
+### K7. Your salary
+
+Fake data: a few years of net salary on the 28th (a January indexation each
+year, a raise in September 2024), holiday pay as a second payment in May (in
+2024 inside June's pay), a 13th month in December, overtime in October and
+two bonuses in the Bonus category. Check at 390px (light and dark, English
+and Greek), desktop 1280 and sideways 844×390.
+
+1. Insights: "Your salary" sits under Income vs expenses: the regular pay a
+   month, "+x% in <month>" (or "No raise yet"), a small step line; the › and
+   "History and projections" open /insights/salary. With no salary entries
+   the card says how to start and links to the page.
+2. The page's pay card: the pay, the last raise, the step chart with the
+   extras as small bars under it (colours as in the legend). One month only:
+   no chart, a note to add earlier payslips.
+3. Raises: months since the last raise, the average a year (compound; "—"
+   under a year of pay), the changes newest first: Indexation (a Belgian
+   January rise up to last year's inflation + 1 point), Raise, Pay down.
+   A one-month blip is not a raise. With the salary shift on (Settings →
+   Monthly spending) a salary paid from that day counts for the next month.
+4. Extras: by year, newest first, two years then "Show older". A guessed one
+   says "Guessed". Fix opens in place: pick Holiday pay / 13th month / Bonus
+   / Not an extra, Save → "You set this", the chart and totals follow;
+   Cancel changes nothing. "Not an extra" stays listed (muted) so it can be
+   changed back. Reload → the corrections are still there (saved to the
+   account). Without a category whose default is Bonus the card asks which
+   income category holds bonuses (saved at once).
+5. If things go on: 1/3/5/10 years; three lines (My trend only after a year
+   of pay; Indexation only = the average inflation of the last three full
+   years; What if with the 0–10% slider in 0.5% steps); each with the pay a
+   month at the end and the total earned (regular pay, holiday pay and 13th
+   month; no bonuses). The ⓘ explains it.
+6. Against prices: Belgium / Greece (default: the meal-voucher country, else
+   Greek → Greece, otherwise Belgium; a switch is saved), "Since" years; pay
+   change, prices, real change and "€X a month more than / short of keeping
+   up". The ⓘ names the source.
+7. Year by year: each year's regular pay, extras and total ("so far" this
+   year).
+8. Empty states: no Salary category → add one; a Salary category with no
+   entries → Add income (opens a new income in Salary).
+9. Back up and restore into an empty account → the corrections come back on
+   the restored entries. The data export has "salary_history".

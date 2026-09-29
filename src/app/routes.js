@@ -14,6 +14,7 @@ export const SIGNED_IN_ROUTES = [
   '/insights',
   '/insights/accounts/new',
   '/insights/accounts/:id',
+  '/insights/salary',
   '/savings',
   '/savings/goals/new',
   '/savings/goals/:id',
