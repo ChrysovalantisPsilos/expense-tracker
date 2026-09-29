@@ -16,6 +16,22 @@ import { supabase } from './supabase.js'
 
 let seq = 0
 
+// Local change signal. Realtime never delivers a DELETE to a subscription
+// with a filter (Postgres can't filter a deleted row), and every owned query
+// filters by user_id — so a deletion wouldn't reach the pages already showing
+// that data. A write therefore also announces its table here: every live
+// refetch in this tab watching the table refetches, and other tabs of the app
+// on this device hear it through a BroadcastChannel. (Another device catches
+// up when its tab becomes visible, as for any missed event.)
+const local = new EventTarget()
+const tabs = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('table-changes') // a message bus, nothing stored
+if (tabs) tabs.onmessage = (e) => local.dispatchEvent(new CustomEvent('change', { detail: e.data }))
+
+export function announceChange(table) {
+  local.dispatchEvent(new CustomEvent('change', { detail: table }))
+  try { tabs?.postMessage(table) } catch { /* another tab missing it is harmless */ }
+}
+
 export function useLiveRefetch(channelKey, specs, refetch, { debounceMs = 300 } = {}) {
   const cb = useRef(refetch)
   cb.current = refetch
@@ -59,10 +75,14 @@ export function useLiveRefetch(channelKey, specs, refetch, { debounceMs = 300 } 
       if (document.visibilityState === 'visible') bump()
     }
     document.addEventListener('visibilitychange', onVisible)
+    const tables = new Set(JSON.parse(specsJson).map((s) => s.table))
+    const onLocal = (e) => { if (tables.has(e.detail)) bump() }
+    local.addEventListener('change', onLocal)
 
     return () => {
       clearTimeout(timer)
       document.removeEventListener('visibilitychange', onVisible)
+      local.removeEventListener('change', onLocal)
       if (ch) supabase.removeChannel(ch)
     }
   }, [channelKey, specsJson, debounceMs])

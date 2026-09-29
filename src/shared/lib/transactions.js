@@ -9,6 +9,7 @@ import { fillPendingRates } from './fx.js'
 import { countedDate, shiftFetchFrom } from './salaryShift.js'
 import { nextMonthStart } from './periods.js'
 import { dbError } from './errors.js'
+import { announceChange } from './realtime.js'
 
 // Transactions in a date range (defaults to current month). Optional
 // `categoryId` and `limit` narrow the query server-side (used by search);
@@ -159,15 +160,18 @@ export async function insertTransaction(row) {
   const client_uuid = row.client_uuid ?? crypto.randomUUID()
   const { error } = await supabase.rpc('save_transactions', { p_rows: [{ ...row, client_uuid }] })
   if (error) throw dbError(error)
+  announceChange('transactions')
 }
 
 // Patch a transaction: only the keys present in `fields` change.
 export async function updateTransaction(id, fields) {
   const { error } = await supabase.rpc('update_transaction', { p_id: id, p_patch: fields })
   if (error) throw dbError(error)
+  announceChange('transactions')
 }
 
 export async function deleteTransaction(id) {
   const { error } = await supabase.from('transactions').delete().eq('id', id)
   if (error) throw dbError(error)
+  announceChange('transactions')
 }
