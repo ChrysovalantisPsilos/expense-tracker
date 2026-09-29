@@ -9,6 +9,11 @@ begin
   delete from public.groups where owner_id = any(p_ids);
   delete from public.group_invites where created_by = any(p_ids) or invited_user_id = any(p_ids);
   update public.profiles set salary_category_id = null where id = any(p_ids);
+  -- The AI helpers off (their consent rows go below); demo_seed turns them
+  -- back on for the main login (0106).
+  update public.profiles
+     set ai_quick_entry = false, ai_import_categories = false, ai_month_summary = false, ai_plan_whatif = false
+   where id = any(p_ids);
   delete from public.recurring_plans where user_id = any(p_ids);
   delete from public.recurring_plan_undo where user_id = any(p_ids);
   delete from public.meal_vouchers where user_id = any(p_ids);

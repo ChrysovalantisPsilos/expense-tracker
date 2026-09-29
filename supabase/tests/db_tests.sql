@@ -6577,8 +6577,9 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- 108. 0103: the AI helper switches. Off for a new account; the owner turns
 --      them on and off (another user can't), every change is a consents row
---      (source 'settings'); the demo login can't turn one on; the functions
---      are closed to anon, and the internal ones to signed-in users too.
+--      (source 'settings'); the demo login switches them like anyone (0106
+--      dropped its guard); the functions are closed to anon, and the internal
+--      ones to signed-in users too.
 -- ---------------------------------------------------------------------------
 do $$
 declare u1 uuid; u2 uuid; n int; r text; f text;
@@ -6596,7 +6597,7 @@ begin
       end if;
     end loop;
     foreach f in array array['public.ai_save_month_summary(uuid,date,jsonb,text)', 'public.ai_month_totals(uuid,date)',
-                             'public.log_ai_consent()', 'public.profiles_ai_demo_guard()'] loop
+                             'public.log_ai_consent()'] loop
       foreach r in array array['public', 'anon', 'authenticated'] loop
         if has_function_privilege(r, f, 'execute') then raise exception '% executable by %', f, r; end if;
       end loop;
@@ -6604,6 +6605,7 @@ begin
     if not has_function_privilege('service_role', 'public.ai_save_month_summary(uuid,date,jsonb,text)', 'execute') then
       raise exception 'the edge function (service role) can''t save a summary';
     end if;
+    if to_regprocedure('public.profiles_ai_demo_guard()') is not null then raise exception 'the demo guard is still there'; end if;
 
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
@@ -6622,22 +6624,21 @@ begin
     if n <> 3 then raise exception 'expected 3 consent rows, got %', n; end if;
     if exists (select 1 from public.consents where user_id = u2) then raise exception 'consent logged for the wrong user'; end if;
 
-    -- The demo login: turning a helper on is refused, off is fine.
+    -- The demo login turns them on and off like anyone, each change logged.
     update public.profiles set is_demo = true where id = u2;
     perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
-    begin
-      update public.profiles set ai_month_summary = true where id = u2;
-      execute 'reset role';
-      raise exception 'GUARD_MISSED: the demo turned a helper on';
-    exception when others then
-      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
-    end;
-    update public.profiles set ai_quick_entry = false where id = u2;
+    update public.profiles set ai_month_summary = true, ai_import_categories = true where id = u2;
+    update public.profiles set ai_import_categories = false where id = u2;
     execute 'reset role';
+    if not (select ai_month_summary and not ai_import_categories from public.profiles where id = u2) then
+      raise exception 'the demo''s switches weren''t saved';
+    end if;
+    select count(*) into n from public.consents where user_id = u2 and source = 'settings' and purpose like 'ai_%';
+    if n <> 3 then raise exception 'expected 3 demo consent rows, got %', n; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: AI helper switches off by default, owner-only, consent-logged, closed to the demo';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: AI helper switches off by default, owner-only, consent-logged, the demo too';
     else update _t set fails = fails + 1; raise notice 'FAIL: AI helper switches — %', sqlerrm; end if;
   end;
 end $$;
@@ -6868,9 +6869,9 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- 112. 0105: the "What-if in your own words" switch (Plan). Off for a new
 --      account; the owner turns it on and off (another user can't), each
---      change is a consents row 'ai_plan_whatif'; the demo login can't turn it
---      on; ai_helper_start refuses 'plan_whatif' while it's off, and once on
---      allows 30 calls an hour per user.
+--      change is a consents row 'ai_plan_whatif'; the demo login can turn it on
+--      and start it (0106); ai_helper_start refuses 'plan_whatif' while it's
+--      off, and once on allows 30 calls an hour per user.
 -- ---------------------------------------------------------------------------
 do $$
 declare u1 uuid; u2 uuid; i int; n int; res jsonb; ok boolean;
@@ -6923,32 +6924,124 @@ begin
       raise exception 'turning it off wasn''t logged';
     end if;
 
-    -- The demo login: turning it on is refused.
+    -- The demo login turns it on and starts it.
     update public.profiles set is_demo = true where id = u2;
     perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
     execute 'set local role authenticated';
-    begin
-      update public.profiles set ai_plan_whatif = true where id = u2;
-      execute 'reset role';
-      raise exception 'GUARD_MISSED: the demo turned the what-if on';
-    exception when others then
-      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
-    end;
-    execute 'reset role';
-    -- Even switched on behind its back, the demo's gate stays shut.
     update public.profiles set ai_plan_whatif = true where id = u2;
-    execute 'set local role authenticated';
-    begin
-      perform public.ai_helper_start('plan_whatif');
-      execute 'reset role'; raise exception 'GUARD_MISSED: the demo started the what-if';
-    exception when others then
-      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
-    end;
+    res := public.ai_helper_start('plan_whatif');
     execute 'reset role';
+    if res->>'base_currency' is null then raise exception 'the demo''s gate stayed shut: %', res; end if;
+    if not (select ai_plan_whatif from public.profiles where id = u2) then raise exception 'the demo''s switch wasn''t saved'; end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: what-if switch off by default, owner-only, consent-logged, closed to the demo; gate checks it and allows 30 an hour';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: what-if switch off by default, owner-only, consent-logged, the demo too; gate checks it and allows 30 an hour';
     else update _t set fails = fails + 1; raise notice 'FAIL: what-if switch — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 113. 0106: the demo's AI helpers share one cap of 100 calls a day ('ai:demo')
+--      across all helpers and demo accounts, on top of the per-user limits:
+--      the demo's gate is open, call 101 in a day is refused with the usual
+--      "Too many requests" (even for a helper still under its own limit), and
+--      a regular account neither counts toward the cap nor is stopped by it.
+-- ---------------------------------------------------------------------------
+do $$
+declare d uuid; u uuid; i int; res jsonb; ok boolean; before_ int;
+begin
+  begin
+    d := pg_temp.zz_user('aidemo1');
+    u := pg_temp.zz_user('aidemo2');
+    delete from public.rate_limits where key = 'ai:demo';   -- today's real demo use (rolled back)
+    update public.profiles set is_demo = true where id = d;
+    update public.profiles set ai_quick_entry = true, ai_import_categories = true, ai_plan_whatif = true where id in (d, u);
+
+    perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    res := public.ai_helper_start('parse_entry');
+    if res->>'base_currency' is null then execute 'reset role'; raise exception 'the demo''s gate is shut: %', res; end if;
+    for i in 2..60 loop perform public.ai_helper_start('parse_entry'); end loop;
+    for i in 1..20 loop perform public.ai_helper_start('suggest_categories'); end loop;
+    for i in 1..20 loop perform public.ai_helper_start('plan_whatif'); end loop;   -- 100 in all
+    begin
+      perform public.ai_helper_start('plan_whatif');   -- the 21st what-if: under its own 30, over the cap
+      ok := true;
+    exception when others then
+      ok := false;
+      if sqlerrm <> 'Too many requests — please try again later.' then
+        execute 'reset role'; raise exception 'wrong refusal: %', sqlerrm;
+      end if;
+    end;
+    execute 'reset role';
+    if ok then raise exception 'the demo''s 101st call in a day went through'; end if;
+
+    select count into before_ from public.rate_limits where key = 'ai:demo';
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    res := public.ai_helper_start('parse_entry');
+    perform public.ai_helper_start('plan_whatif');
+    execute 'reset role';
+    if (select count from public.rate_limits where key = 'ai:demo') <> before_ then
+      raise exception 'a regular account counted toward the demo cap';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: the demo gate is open, capped at 100 calls a day across helpers; regular accounts unaffected';
+    else update _t set fails = fails + 1; raise notice 'FAIL: demo AI cap — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 114. 0106: the nightly reset turns the demo's four AI helpers on. After the
+--      first reset they are on, each with one "on" consent row; a visitor
+--      turns two off and has a month summary stored; the next reset turns
+--      them all on again, the consent history is back to those four rows and
+--      the summary is gone. A friend login stays off.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; f uuid; tag text := md5(random()::text); n int; m0 date := date_trunc('month', current_date)::date;
+begin
+  begin
+    u := public.register_demo_account('zzt-aidemo-' || tag || '@example.com', 'Alex (demo)', 'main',
+                                      extensions.crypt('zz-not-a-real-password', extensions.gen_salt('bf')));
+    f := public.register_demo_account('zzt-aidemo-f-' || tag || '@example.com', 'Friend', 'friend');
+    perform public.reset_demo_accounts();
+    if not exists (select 1 from public.profiles where id = u and ai_quick_entry and ai_import_categories
+                   and ai_month_summary and ai_plan_whatif) then
+      raise exception 'the reset left a helper off';
+    end if;
+    if exists (select 1 from public.profiles where id = f and (ai_quick_entry or ai_import_categories
+               or ai_month_summary or ai_plan_whatif)) then
+      raise exception 'a friend login has a helper on';
+    end if;
+    select count(*) into n from public.consents where user_id = u and purpose like 'ai_%' and granted and source = 'settings';
+    if n <> 4 then raise exception 'expected 4 "on" consent rows, got %', n; end if;
+
+    -- A visitor switches two off and keeps a summary.
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set ai_quick_entry = false, ai_plan_whatif = false where id = u;
+    execute 'reset role';
+    perform set_config('request.jwt.claims', '', true);
+    execute 'set local role service_role';
+    perform public.ai_save_month_summary(u, m0, '{"lines": ["Rent came to €1,150."], "lang": "en"}', md5('zz'));
+    execute 'reset role';
+
+    perform public.reset_demo_accounts();
+    if not exists (select 1 from public.profiles where id = u and ai_quick_entry and ai_import_categories
+                   and ai_month_summary and ai_plan_whatif) then
+      raise exception 'the second reset left a helper off';
+    end if;
+    select count(*) into n from public.consents where user_id = u and purpose like 'ai_%';
+    if n <> 4 or exists (select 1 from public.consents where user_id = u and purpose like 'ai_%' and not granted) then
+      raise exception 'consent history not back to the four "on" rows (% rows)', n;
+    end if;
+    if exists (select 1 from public.ai_month_summaries where user_id = u) then raise exception 'the summary survived the reset'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: the demo reset turns the four AI helpers back on, with a clean consent history and no summaries';
+    else update _t set fails = fails + 1; raise notice 'FAIL: demo reset AI helpers — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6957,7 +7050,7 @@ end $$;
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 113; f int; p int;  -- tests 1–112 + B-0059
+declare expected_tests constant int := 115; f int; p int;  -- tests 1–114 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

@@ -8,12 +8,12 @@ import {
 import { MERCHANTS_MAX } from '../supabase/functions/_shared/aiHelper.ts'
 import en from '../src/locales/en/ai.js'
 
-test('helpers: each one on only by its own switch; none for the demo or before the profile loads', () => {
+test('helpers: each one on only by its own switch (the demo too); none before the profile loads', () => {
   const profile = { ai_quick_entry: true, ai_import_categories: false, ai_month_summary: true, ai_plan_whatif: true }
-  assert.deepEqual(helpersOn(profile, false), { quickEntry: true, importCategories: false, monthSummary: true, planWhatIf: true })
-  assert.deepEqual(helpersOn(profile, true), { quickEntry: false, importCategories: false, monthSummary: false, planWhatIf: false })
-  assert.deepEqual(helpersOn(null, false), { quickEntry: false, importCategories: false, monthSummary: false, planWhatIf: false })
-  assert.equal(helpersOn({ ai_plan_whatif: 'yes' }, false).planWhatIf, false)
+  assert.deepEqual(helpersOn(profile), { quickEntry: true, importCategories: false, monthSummary: true, planWhatIf: true })
+  assert.deepEqual(helpersOn({ ...profile, is_demo: true }), helpersOn(profile))
+  assert.deepEqual(helpersOn(null), { quickEntry: false, importCategories: false, monthSummary: false, planWhatIf: false })
+  assert.equal(helpersOn({ ai_plan_whatif: 'yes' }).planWhatIf, false)
   // Every switch has its words in Settings.
   for (const id of Object.keys(AI_SWITCHES)) assert.ok(en.settings[id]?.label && en.settings[id]?.more, id)
 })

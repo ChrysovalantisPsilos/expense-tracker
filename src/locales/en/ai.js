@@ -32,8 +32,9 @@ export default {
       hint: 'In Plan, “cancel Netflix, add a gym at €40 a month” fills in the changes for you to check.',
       more: 'Sent: the line you type, and your recurring payments and income (name, amount, currency, how often). No entries, notes or other account data.',
     },
-    demoOff: 'AI helpers aren’t available on the demo account.',
   },
+  // On the shared demo login: Settings → AI helpers and the typing boxes.
+  demoNote: 'AI helpers are on in this demo. What you type is sent to Anthropic, so don’t type real personal details.',
   add: {
     label: 'Type it',
     placeholder: 'coffee 3.60 yesterday',

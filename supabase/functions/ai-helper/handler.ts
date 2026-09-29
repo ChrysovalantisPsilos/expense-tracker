@@ -4,8 +4,9 @@
 //
 // Every action: a signed-in caller (the JWT is also verified at the gateway),
 // a well-formed request, and — before Claude is called — ai_helper_start
-// (0103) as the caller: that helper's switch is on, the account isn't the
-// demo, and the per-user and overall rate limits allow it. What's sent is
+// (0103) as the caller: that helper's switch is on, and the per-user and
+// overall rate limits allow it (the shared demo login also under its own
+// daily cap, 0106). What's sent is
 // built here from the caller's own rows (RLS) and the request's few fields;
 // the answer is validated (_shared/aiHelper.ts) before it's returned.
 

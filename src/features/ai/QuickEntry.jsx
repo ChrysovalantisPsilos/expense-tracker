@@ -10,6 +10,7 @@ import { useCategories } from '../../shared/lib/categories.js'
 import { LINE_MAX } from '../../../supabase/functions/_shared/aiHelper.ts'
 import { aiErrorKey } from './aiMath.js'
 import { fillFromText } from './ai.js'
+import DemoAiNote from './DemoAiNote.jsx'
 
 // "Type it" at the top of Add (when the helper is on): a line like "coffee
 // 3.60 yesterday" → Fill → the form below is filled in for the user to check
@@ -55,6 +56,7 @@ export default function QuickEntry({ onFill, onUndo }) {
         </InputRightElement>
       </InputGroup>
       <InfoBox info={info}>{t('add.more')}</InfoBox>
+      <DemoAiNote mt={2} />
       {state === 'working' && <BusyNote mt={2}>{t('add.working')}</BusyNote>}
       {state === 'done' && (
         <Text fontSize="sm" color="text.muted" mt={2}>

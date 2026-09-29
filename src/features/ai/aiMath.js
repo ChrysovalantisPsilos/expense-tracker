@@ -13,11 +13,11 @@ export const AI_SWITCHES = {
   planWhatIf: 'ai_plan_whatif',
 }
 
-// Which helpers are on: all off for the shared demo login (the server refuses
-// them too) and until the profile is known.
-export function helpersOn(profile, isDemo) {
+// Which helpers are on: each by its own switch (the shared demo login too,
+// 0106), all off until the profile is known.
+export function helpersOn(profile) {
   return Object.fromEntries(Object.entries(AI_SWITCHES)
-    .map(([id, column]) => [id, !isDemo && profile?.[column] === true]))
+    .map(([id, column]) => [id, profile?.[column] === true]))
 }
 
 // The first of the month of a local date 'YYYY-MM-DD'.

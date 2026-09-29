@@ -19,8 +19,8 @@ import {
 
 // { quickEntry, importCategories, monthSummary, planWhatIf }: which helpers are on.
 export function useAiHelpers() {
-  const { profile, isDemo } = useProfile()
-  return helpersOn(profile, isDemo)
+  const { profile } = useProfile()
+  return helpersOn(profile)
 }
 
 // Switch one helper on or off. The server records the change in the consent
