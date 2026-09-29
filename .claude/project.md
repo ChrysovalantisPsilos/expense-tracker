@@ -79,7 +79,10 @@ npm run dev       # Vite
 - **No AI mentions:** no mention of AI, Claude, agent or assistant in commits,
   branch names, code or docs, and no Co-Authored-By or session trailers.
   Branches get plain names (`plan-header`, `meal-vouchers`), never a tool's
-  default like `claude/…`, even when a session suggests one. The check:
+  default like `claude/…`, even when a session suggests one.
+- **Merges too:** `git merge` makes a commit, so run it with the same
+  identity env vars (a plain `git merge` signs it with the tool's default
+  name). Check `git log --format='%an|%cn'` before every push. The check:
   `git log origin/develop..HEAD --format=%B | grep -iE "claude|co-authored|assistant"`.
   The only allowed hit is the file name `CLAUDE.md` in a merge's conflict
   list.
