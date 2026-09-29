@@ -248,8 +248,18 @@ test('releaseText: fills in the words and keeps the ids and the shape', () => {
   assert.equal(releaseText(null, (k) => k), null)
 })
 
-test('this release (2026-09-27): five pages, language and Savings open their pages', () => {
+test('this release (2026-09-29): five pages, the four features open their pages', () => {
   const r = inEnglish(RELEASES[0])
+  assert.equal(r.id, '2026-09-29')
+  assert.equal(r.pages.length, 5)
+  assert.deepEqual(r.pages.map((p) => p.action?.to),
+    ['/plan', '/settings/vouchers', '/insights/salary', '/settings/ai', undefined])
+  // The AI helpers are optional: the page says where to switch them on.
+  assert.match(r.pages[3].body, /off until you switch it on in Settings › AI helpers/)
+})
+
+test('the 2026-09-27 release: five pages, language and Savings open their pages', () => {
+  const r = inEnglish(RELEASES.find((x) => x.id === '2026-09-27'))
   assert.equal(r.id, '2026-09-27')
   assert.equal(r.pages.length, 5)
   assert.deepEqual(r.pages[0].action, { label: 'Choose language', to: '/settings/language' })
