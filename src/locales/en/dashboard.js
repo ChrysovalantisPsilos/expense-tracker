@@ -14,14 +14,17 @@ export default {
   // What the overview's ⓘ opens (dashboardMath.overviewInfo).
   info: {
     spentUpcoming: 'Spent includes {{amount}} of recurring payments still to come.',
-    spentFromSavings: 'Spent includes {{amount}} paid from savings.',
     incomeUpcoming: 'Income includes {{amount}} of recurring income still to come.',
-    net: 'Net is income minus expenses.',
-    netSavings: 'Net is income minus expenses and what you set aside from income.',
-    netExclSavings: 'Spending paid from savings isn’t in the Net.',
-    netExclVouchers: 'Spending paid with meal vouchers isn’t in the Net.',
-    netExclSavingsVouchers: 'Spending paid from savings or with meal vouchers isn’t in the Net.',
-    spentWithVouchers: 'Spent includes {{amount}} paid with meal vouchers.',
+    // "How Net adds up" (dashboardMath.netSteps).
+    sumTitle: 'How Net adds up',
+    steps: {
+      income: 'Income',
+      spent: 'Spent',
+      fromSavings: 'Paid from savings (not from income)',
+      vouchers: 'Paid with meal vouchers',
+      toSavings: 'Put into savings',
+    },
+    net: 'Net',
   },
   // What was put aside in the period (dashboardMath.savedNote).
   saved: {
@@ -29,9 +32,14 @@ export default {
     thisYear: 'Saved {{amount}} this year',
     total: 'Saved {{amount}} in total',
     in: 'Saved {{amount}} in {{period}}',
+    // Savings in and out in the period (dashboardMath.savingsLine).
+    inOut: '+{{in}} in · −{{out}} out',
   },
   categories: {
     title: 'Spending by category',
+    // A category that groups also carry (dashboardMath.categoryLine).
+    withGroup: '{{amount}} · +{{shared}} in {{group}} = {{total}}',
+    withGroups: '{{amount}} · +{{shared}} in {{count}} groups = {{total}}',
     chart: 'Chart',
     chartView: 'Chart view',
     table: 'Table',

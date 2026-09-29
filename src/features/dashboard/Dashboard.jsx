@@ -16,7 +16,7 @@ import { usePrefetchMyGroups } from '../groups/myGroups.js'
 import { today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring, useRuleRates } from '../recurring/recurring.js'
-import { formatMoney } from '../../shared/lib/currency.js'
+import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
 import { spendRows, paidInWindow } from '../../shared/lib/spread.js'
 import { rulesInBase } from '../../shared/lib/ruleFx.js'
 import { countedInWindow } from '../../shared/lib/salaryShift.js'
@@ -34,10 +34,10 @@ import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
-import { signedAmount } from '../../shared/ui/kit/kitMath.js'
+import { signedAmount, textColor } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import {
-  periodTotals, periodProjection, projectedTotals, overviewInfo, savedNote, visibleBars, TOP_CATEGORIES,
+  periodTotals, periodProjection, projectedTotals, overviewNotes, netSteps, savingsLine, groupSharesByCategory, categoryLine, visibleBars, TOP_CATEGORIES,
   homeCards, homeStacks,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
@@ -111,6 +111,7 @@ export default function Dashboard() {
     return linkBuckets(categoryBars(byCategory, Infinity), spend, period)
       .map((c) => ({ ...c, label: bucketLabel(c, labels) }))
   }, [byCategory, bucketRow, spend, period])
+  const groupShares = useMemo(() => groupSharesByCategory(spend, baseCurrency), [spend, baseCurrency])
   const [showAllBars, setShowAllBars] = useState(false)
   const shownBars = visibleBars(bars, showAllBars)
 
@@ -125,7 +126,7 @@ export default function Dashboard() {
   const figures = projectedTotals(totals, proj)
   const { spentTotal, earnedTotal, netTotal } = figures
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
-  const saved = savedNote(totals.saved, period, baseCurrency)
+  const saved = savingsLine(totals.saved, figures.fromSavingsTotal, period, baseCurrency)
 
   // Paginate the expenses (10/page), back to page 1 when the period changes.
   const expPage = usePaged(expenses, 10, periodValue)
@@ -155,7 +156,7 @@ export default function Dashboard() {
         {loading ? <OverviewSkeleton grid={overviewGrid} /> : (
         <SimpleGrid {...overviewGrid} spacing={4} alignItems="center">
           {/* What Spent, Income and the Net fold in sits behind the ⓘ
-              (overviewInfo). */}
+              (overviewNotes, netSteps). */}
           <Figure size="hero" value={formatMoney(spentTotal, baseCurrency)} label={
             <HStack as="span" spacing={0.5}>
               <span>{t('overview.spent')}</span>
@@ -179,7 +180,8 @@ export default function Dashboard() {
         )}
         {!loading && (
           <InfoBox info={info}>
-            {overviewInfo({ proj, ...figures }, baseCurrency).map((line) => <Text key={line}>{line}</Text>)}
+            <NetSum steps={netSteps(figures)} net={net} currency={baseCurrency} />
+            {overviewNotes({ proj }, baseCurrency).map((line) => <Text key={line} mt={2}>{line}</Text>)}
           </InfoBox>
         )}
       </Panel>
@@ -243,7 +245,7 @@ export default function Dashboard() {
           <Stack spacing={4} role="list" aria-label={t('categories.title')} id="spending-bars">
             {shownBars.rows.map((c) => (
               <ProgressRow key={c.name} role="listitem"
-                title={c.label} meta={formatMoney(c.value, baseCurrency)}
+                title={c.label} meta={categoryLine(c.name, c.value, groupShares, baseCurrency)}
                 tooltip={t('categories.tooltip', { name: c.label, amount: formatMoney(c.value, baseCurrency), share: c.share })}
                 media={<BucketIcon row={bucketRow.get(c.name)} />}
                 percent={Math.max(c.ratio * 100, 2)} valueLabel={`${c.share}%`}
@@ -349,3 +351,25 @@ function BucketIcon({ row }) {
   if (row?.group_expense_id) return <IconTile icon={Users} />
   return <CategoryBadge category={row?.categories} size={32} />
 }
+
+// "How Net adds up" in the overview's ⓘ: each step signed, then the Net.
+function NetSum({ steps, net, currency }) {
+  const t = useT('dashboard')
+  const row = (label, value, props) => (
+    <HStack justify="space-between" spacing={3} {...props}>
+      <Text>{label}</Text>
+      <Text whiteSpace="nowrap" fontWeight="600" color="text.primary">{value}</Text>
+    </HStack>
+  )
+  return (
+    <Stack spacing={1} fontSize="sm">
+      <Text fontWeight="700" color="text.primary">{t('info.sumTitle')}</Text>
+      {steps.map((s) => row(t(`info.steps.${s.key}`), formatSigned(s.minor, currency, { plus: true }), { key: s.key }))}
+      <HStack justify="space-between" pt={1} mt={1} borderTopWidth="1px" borderColor="border.default">
+        <Text fontWeight="700" color="text.primary">{t('info.net')}</Text>
+        <Text fontWeight="700" color={textColor(net.tone)}>{net.text}</Text>
+      </HStack>
+    </Stack>
+  )
+}
+

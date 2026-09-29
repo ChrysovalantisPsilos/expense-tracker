@@ -15,7 +15,7 @@ import { potSign, savingsSource } from '../supabase/functions/_shared/savings.ts
 import { formatMoney } from '../src/shared/lib/currency.js'
 import { spendRows } from '../src/shared/lib/spread.js'
 import {
-  periodTotals, periodProjection, projectedTotals, overviewInfo, savedNote,
+  periodTotals, periodProjection, projectedTotals, overviewNotes, netSteps, savingsLine, groupSharesByCategory, categoryLine, savedNote,
 } from '../src/features/dashboard/dashboardMath.js'
 import { accountSections, buildTrend, netWorth } from '../src/features/insights/insightsMath.js'
 import { netBaseMinor } from '../src/features/transactions/txnFilter.js'
@@ -105,27 +105,45 @@ test('Home: savings aren\'t income; the net takes away only those taken from inc
   assert.equal(periodTotals(spend, 'EUR').saved, 0)
 })
 
-test('Home: the overview ⓘ says what Spent, Income and the Net fold in', () => {
+test('Home: the overview ⓘ notes what is still to come', () => {
   const none = periodProjection([], null, '2026-09-25')
-  assert.deepEqual(overviewInfo({ proj: none }, 'EUR'), ['Net is income minus expenses.'])
-  assert.deepEqual(overviewInfo({ proj: none, fromIncomeTotal: 30000 }, 'EUR'), ['Net is income minus expenses and what you set aside from income.'])
-  assert.deepEqual(overviewInfo({ proj: none, fromSavingsTotal: 89900 }, 'EUR'), [
-    'Spent includes €899.00 paid from savings.',
-    'Net is income minus expenses.',
-    'Spending paid from savings isn’t in the Net.',
-  ])
-  assert.deepEqual(overviewInfo({ proj: { ...none, expense: 1500, income: 250000 } }, 'EUR'), [
+  assert.deepEqual(overviewNotes({ proj: none }, 'EUR'), [])
+  assert.deepEqual(overviewNotes({ proj: { ...none, expense: 1500, income: 250000 } }, 'EUR'), [
     'Spent includes €15.00 of recurring payments still to come.',
     'Income includes €2,500.00 of recurring income still to come.',
-    'Net is income minus expenses.',
   ])
-  assert.deepEqual(overviewInfo({ proj: none, withVouchersTotal: 13675 }, 'EUR'), [
-    'Spent includes €136.75 paid with meal vouchers.',
-    'Net is income minus expenses.',
-    'Spending paid with meal vouchers isn’t in the Net.',
-  ])
-  assert.equal(overviewInfo({ proj: none, fromSavingsTotal: 1, withVouchersTotal: 1 }, 'EUR').at(-1),
-    'Spending paid from savings or with meal vouchers isn’t in the Net.')
+})
+
+test('Home: "How Net adds up" — the steps add up to the Net', () => {
+  const figures = { earnedTotal: 343000, spentTotal: 320751, fromSavingsTotal: 89900, withVouchersTotal: 13675, fromIncomeTotal: 80000 }
+  const steps = netSteps(figures)
+  assert.deepEqual(steps.map((s) => s.key), ['income', 'spent', 'fromSavings', 'vouchers', 'toSavings'])
+  assert.equal(steps.reduce((s, x) => s + x.minor, 0), 343000 - 320751 + 89900 + 13675 - 80000)
+  // Only Income and Spent when nothing else happened.
+  assert.deepEqual(netSteps({ earnedTotal: 1000, spentTotal: 400 }), [{ key: 'income', minor: 1000 }, { key: 'spent', minor: -400 }])
+  // Against the real totals: the steps give projectedTotals' Net.
+  const spend = spendRows(withLaptop, 'EUR', '2026-09-01', '2026-09-30')
+  const totals = projectedTotals(periodTotals(spend, 'EUR', IDS), periodProjection([], null, '2026-09-25'))
+  assert.equal(netSteps(totals).reduce((s, x) => s + x.minor, 0), totals.netTotal)
+})
+
+test('Home: savings in and out, or just what was saved', () => {
+  const month = periodFromValue('this-month')
+  assert.equal(savingsLine(80940, 89900, month, 'EUR'), '+€809.40 in · −€899.00 out')
+  assert.equal(savingsLine(0, 89900, month, 'EUR'), '+€0.00 in · −€899.00 out')
+  assert.equal(savingsLine(80940, 0, month, 'EUR'), savedNote(80940, month, 'EUR'))
+  assert.equal(savingsLine(0, 0, month, 'EUR'), null)
+})
+
+test('Home: a category row says what its groups add', () => {
+  const share = (amount_minor, group, category) => ({ kind: 'expense', amount_minor, currency: 'EUR', exchange_rate: 1,
+    group_expense_id: `g-${group}`, group_expenses: { groups: { name: group } }, categories: { name: category } })
+  const rows = [share(3140, 'Lisbon trip', 'Food & Dining'), share(1000, 'Flat', 'Groceries'), share(500, 'Trip 2', 'Groceries'),
+    { kind: 'expense', amount_minor: 10800, currency: 'EUR', exchange_rate: 1, categories: { name: 'Food & Dining' } }]
+  const shares = groupSharesByCategory(rows, 'EUR')
+  assert.equal(categoryLine('Food & Dining', 10800, shares, 'EUR'), '€108.00 · +€31.40 in Lisbon trip = €139.40')
+  assert.equal(categoryLine('Groceries', 2000, shares, 'EUR'), '€20.00 · +€15.00 in 2 groups = €35.00')
+  assert.equal(categoryLine('Rent', 115000, shares, 'EUR'), '€1,150.00')
 })
 
 test('meal vouchers: spending that leaves the net and the pot alone', () => {

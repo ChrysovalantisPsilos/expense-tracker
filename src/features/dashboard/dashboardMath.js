@@ -1,7 +1,7 @@
 // Pure maths behind the Overview page's headline figures. Money is integer
 // minor units in the user's base currency.
 import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
-import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
+import { bucketOf, groupLabel, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { EFFECTS, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { expectedInWindow } from '../recurring/recurringMath.js'
 import { isMonthPeriod } from '../../shared/lib/periods.js'
@@ -97,22 +97,70 @@ export function projectedTotals(totals, proj) {
   }
 }
 
-// What the overview's ⓘ opens: what Spent and Income fold in (recurring
-// entries still to come, spending paid from savings or with meal vouchers),
-// then what the Net is — "− savings" once some savings were taken from
-// income — and that spending paid from savings or vouchers isn't in it.
-// `figures` is projectedTotals' result with the projection (`proj`).
-export function overviewInfo({ proj, fromIncomeTotal, fromSavingsTotal, withVouchersTotal }, currency) {
+// What the overview's ⓘ opens, part one: what Spent and Income fold in that
+// isn't logged yet (recurring entries still to come), as sentences.
+export function overviewNotes({ proj }, currency) {
   const money = (minor) => ({ amount: formatMoney(minor, currency) })
   const lines = []
   if (proj.expense > 0) lines.push(t('dashboard:info.spentUpcoming', money(proj.expense)))
-  if (fromSavingsTotal > 0) lines.push(t('dashboard:info.spentFromSavings', money(fromSavingsTotal)))
-  if (withVouchersTotal > 0) lines.push(t('dashboard:info.spentWithVouchers', money(withVouchersTotal)))
   if (proj.income > 0) lines.push(t('dashboard:info.incomeUpcoming', money(proj.income)))
-  lines.push(t(fromIncomeTotal > 0 ? 'dashboard:info.netSavings' : 'dashboard:info.net'))
-  const off = [fromSavingsTotal > 0 && 'Savings', withVouchersTotal > 0 && 'Vouchers'].filter(Boolean).join('')
-  if (off) lines.push(t(`dashboard:info.netExcl${off}`))
   return lines
+}
+
+// Part two, "How Net adds up": the steps from Income to Net, signed minor
+// units — Income, − Spent, + what was paid from savings or with meal
+// vouchers (spending, but not from income), − savings taken from income.
+// Income and Spent always show; the others only when they happened. They add
+// up to `netTotal` exactly (projectedTotals' figures).
+export function netSteps({ earnedTotal, spentTotal, fromSavingsTotal = 0, withVouchersTotal = 0, fromIncomeTotal = 0 }) {
+  return [
+    { key: 'income', minor: earnedTotal },
+    { key: 'spent', minor: -spentTotal },
+    ...(fromSavingsTotal ? [{ key: 'fromSavings', minor: fromSavingsTotal }] : []),
+    ...(withVouchersTotal ? [{ key: 'vouchers', minor: withVouchersTotal }] : []),
+    ...(fromIncomeTotal ? [{ key: 'toSavings', minor: -fromIncomeTotal }] : []),
+  ]
+}
+
+// Home's savings row: "+€809.40 in · −€899.00 out" when money also came out
+// of savings in the period (the two numbers the Savings page shows), else
+// savedNote's "Saved €809.40 this month"; null when neither happened.
+export function savingsLine(saved, out, period, baseCurrency) {
+  if (out > 0) {
+    return t('dashboard:saved.inOut', {
+      in: formatMoney(Math.max(saved, 0), baseCurrency), out: formatMoney(out, baseCurrency),
+    })
+  }
+  return savedNote(saved, period, baseCurrency)
+}
+
+// Group spending per category: "Spending by category" gives each group its
+// own row (bucketOf), while budgets count a share under its category. For
+// each category name, the groups whose shares carry it and how much (base
+// currency) — so a category row can say what its groups add.
+export function groupSharesByCategory(rows, baseCurrency) {
+  const out = new Map()
+  for (const r of rows) {
+    if (!r.group_expense_id || r.kind === 'income' || !r.categories?.name) continue
+    const byGroup = out.get(r.categories.name) ?? new Map()
+    const group = groupLabel(r)
+    byGroup.set(group, (byGroup.get(group) ?? 0) + toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency))
+    out.set(r.categories.name, byGroup)
+  }
+  return out
+}
+
+// A category row's line: its amount, and when groups carry more of it,
+// "· +€31.40 in Lisbon trip = €139.40" (or "in 2 groups").
+export function categoryLine(name, value, shares, baseCurrency) {
+  const amount = formatMoney(value, baseCurrency)
+  const byGroup = shares.get(name)
+  if (!byGroup) return amount
+  const shared = [...byGroup.values()].reduce((s, v) => s + v, 0)
+  const vars = { amount, shared: formatMoney(shared, baseCurrency), total: formatMoney(value + shared, baseCurrency) }
+  return byGroup.size === 1
+    ? t('dashboard:categories.withGroup', { ...vars, group: [...byGroup.keys()][0] })
+    : t('dashboard:categories.withGroups', { ...vars, count: byGroup.size })
 }
 
 // The Overview's note on a period's savings (both kinds) — "Saved €300.00
