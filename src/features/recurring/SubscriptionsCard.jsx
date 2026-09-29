@@ -90,6 +90,12 @@ function Upcoming({ rules, rates, loading, error, onRetry, baseCurrency }) {
                 amount={formatMoney(r.amount_minor, r.currency)} amountMeta={baseHint(r, baseCurrency, rates)} />
             ))}
           </Box>
+          {g.count > g.next.length && (
+            <Text as={RouterLink} to="/recurring" display="inline-block" mt={2} fontSize="sm"
+              color="accent.fg" fontWeight="600">
+              {t('card.seeAll', { n: g.count })}
+            </Text>
+          )}
         </>
       )}
     </GroupTabs>

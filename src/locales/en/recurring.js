@@ -170,6 +170,7 @@ export default {
     upcomingByFrequency: 'Recurring payments by frequency',
     chargedByFrequency: 'Recurring charges by frequency',
     nextCharges: 'Next charges',
+    seeAll: 'See all {{n}} ›',
     charges_one: '{{count}} charge',
     charges_other: '{{count}} charges',
   },

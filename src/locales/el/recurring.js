@@ -163,6 +163,7 @@ export default {
     upcomingByFrequency: 'Επαναλαμβανόμενες πληρωμές ανά συχνότητα',
     chargedByFrequency: 'Επαναλαμβανόμενες χρεώσεις ανά συχνότητα',
     nextCharges: 'Επόμενες χρεώσεις',
+    seeAll: 'Δες και τις {{n}} ›',
     charges_one: '{{count}} χρέωση',
     charges_other: '{{count}} χρεώσεις',
   },
