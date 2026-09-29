@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   merchantKey, merchantName, groupMerchants, rowMerchantName, isOwnTransfer, rowToDraft, previewDrafts, parseAmount,
   parseDate, deterministicUuid, normalizeCurrency, cleanHolderName, suggestedHolder, fileHolder,
-  merchantGroups, groupIdOf, ruleCategory, descriptionParts, dropKnownRows,
+  merchantGroups, groupIdOf, ruleCategory, descriptionParts, dropKnownRows, categoryMatcher,
 } from '../src/features/import/importMath.js'
 import { displayDescription, kbcLabel, titleCase } from '../src/features/import/kbcLabels.js'
 
@@ -409,6 +409,38 @@ test('ruleCategory: a rule only files rows of its category\'s kind', () => {
   assert.equal(ruleCategory(rules, kindOf, 'lidl leuven', 'expense'), 'food')
   assert.equal(ruleCategory(rules, kindOf, 'LIDL RETURN', 'income'), null)
   assert.equal(ruleCategory(rules, kindOf, '', 'expense'), null)
+})
+
+test('categoryMatcher: the file\'s category column first, else the longest matching rule of the row\'s kind', () => {
+  const categories = [
+    { id: 'food', name: 'Food', kind: 'expense' }, { id: 'shop', name: 'Shopping', kind: 'expense' },
+    { id: 'salary', name: 'Salary', kind: 'income' },
+  ]
+  const rules = [{ pattern: 'LIDL', category_id: 'food' }, { pattern: 'ACME', category_id: 'salary' }]
+  const of = categoryMatcher(categories, rules)
+  const withColumn = { date: 'Date', amount: 'Amount', description: 'Text', category: 'Cat' }
+  const noColumn = { date: 'Date', amount: 'Amount', description: 'Text' }
+  const draft = (description, kind = 'expense') => ({ description, kind })
+  assert.equal(of(draft('LIDL LEUVEN'), { Cat: 'shopping' }, withColumn), 'shop') // the file names it
+  assert.equal(of(draft('LIDL LEUVEN'), { Cat: 'Unknown' }, withColumn), 'food') // not one of yours → rule
+  assert.equal(of(draft('LIDL LEUVEN'), {}, noColumn), 'food')
+  assert.equal(of(draft('ACME PAYROLL', 'income'), {}, noColumn), 'salary')
+  assert.equal(of(draft('ACME REFUND'), {}, noColumn), null) // an income rule never files an expense
+  assert.equal(of(draft('BAKERY'), {}, noColumn), null)
+  assert.equal(categoryMatcher(null, null)(draft('LIDL'), {}, noColumn), null)
+})
+
+test('previewDrafts: with a matcher, each shown row carries the category the import will give it', () => {
+  const mapping = { date: 'Date', amount: 'Amount', description: 'Text' }
+  const rows = [
+    { Date: '2026-09-01', Amount: '-12.50', Text: 'LIDL LEUVEN' },
+    { Date: '2026-09-02', Amount: '-4.00', Text: 'BAKERY' },
+  ]
+  const categoryOf = categoryMatcher([{ id: 'food', name: 'Food', kind: 'expense' }], [{ pattern: 'lidl', category_id: 'food' }])
+  const preview = previewDrafts(rows, mapping, 'EUR', { categoryOf })
+  assert.deepEqual(preview.rows.map((d) => d.category_id), ['food', null])
+  // Without one the rows are left as rowToDraft made them.
+  assert.equal('category_id' in previewDrafts(rows, mapping, 'EUR').rows[0], false)
 })
 
 // ── KBC's shorter saved descriptions (kbcLabels.js) ─────────────────────────

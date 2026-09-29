@@ -169,7 +169,7 @@ test('headerSignature and savedMappingFor: a remembered mapping must still fit',
 
 test('previewDrafts: first rows plus ready / skipped / error counts', () => {
   const r = csv('Date;Description;Amount;State\n01/09/2026;A;-1,00;COMPLETED\nxx;B;-2,00;COMPLETED\n02/09/2026;C;-3,00;PENDING\n03/09/2026;D;4,00;COMPLETED\n')
-  const p = previewDrafts(r.objs, r.detection.mapping, 'EUR', 1)
+  const p = previewDrafts(r.objs, r.detection.mapping, 'EUR', { limit: 1 })
   assert.equal(p.rows.length, 1)
   assert.equal(p.ready, 2)
   assert.equal(p.skipped, 1)

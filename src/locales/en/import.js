@@ -6,7 +6,8 @@ export default {
   title: 'Import a bank statement',
   upload: {
     title: 'Upload a statement or spreadsheet',
-    text: 'The CSV or Excel export from your bank (up to 5 MB), or any sheet with a header row. The layout is recognised automatically — including {{banks}} — and you see a preview before anything is saved. Pending and declined payments are left out; foreign-currency rows convert at the ECB rate for their date.',
+    text: 'The CSV or Excel export from your bank, up to 5\u00a0MB.',
+    more: 'Or any sheet with a header row. The layout is recognised automatically — including {{banks}} — and you see a preview before anything is saved. Pending and declined payments are left out; foreign-currency rows convert at the ECB rate for their date.',
     reading: 'Reading your file…',
     choose: 'Choose file',
   },

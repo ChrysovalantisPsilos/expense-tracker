@@ -17,6 +17,7 @@ export default {
   },
   loading: 'Φόρτωση…',
   info: 'Πώς υπολογίζεται',
+  moreInfo: 'Περισσότερα γι’ αυτό',
   paginator: {
     previous: 'Προηγούμενη σελίδα',
     next: 'Επόμενη σελίδα',

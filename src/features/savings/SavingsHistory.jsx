@@ -4,6 +4,7 @@ import { Box, Button, HStack, Stack, Text, useToast } from '@chakra-ui/react'
 import { Pencil, PiggyBank, Repeat, Trash2 } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import MetaLine from '../../shared/ui/MetaLine.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
@@ -23,7 +24,7 @@ import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 // One entry: its date and where the money came from or went ("from income",
 // "received", "from savings"), a repeat mark when a rule adds it, and the
 // amount signed by what it did to the pot. No category tag: everything here
-// is savings. Title and meta each keep to one line.
+// is savings. The title keeps to one line; the meta wraps (Greek runs long).
 function SavingsRow({ row: r, savingsIds, open, remove }) {
   const t = useT('savings')
   const out = moveDirection(r, savingsIds) === 'out'
@@ -32,19 +33,19 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
       title={<Box as="span" display="block" sx={ONE_LINE}>{r.description || categoryDisplayName(r.categories) || t('fallbackName')}</Box>}
       meta={
-        <HStack spacing={1.5} fontSize="xs" color="text.muted" minW={0}>
-          <Text sx={ONE_LINE} minW={0}>
-            {shortDate(r.spent_at)} ·{' '}
+        <MetaLine>
+          <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
+          <Text>
             <Text as="span" color={out ? 'text.primary' : undefined} fontWeight={out ? 600 : undefined}>
               {savingsNoteLabel(r, savingsIds)}
             </Text>
+            {r.recurring_rule_id && (
+              <Box as="span" display="inline-flex" ml={1.5} verticalAlign="-1px" aria-label={t('history.repeats')} role="img">
+                <Repeat size={11} aria-hidden />
+              </Box>
+            )}
           </Text>
-          {r.recurring_rule_id && (
-            <Box as="span" flexShrink={0} display="inline-flex" aria-label={t('history.repeats')} role="img">
-              <Repeat size={11} aria-hidden />
-            </Box>
-          )}
-        </HStack>
+        </MetaLine>
       }
       amount={`${out ? '−' : '+'}${formatMoney(r.amount_minor, r.currency)}`}
       amountTone={out ? 'default' : 'positive'}

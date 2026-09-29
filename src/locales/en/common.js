@@ -19,6 +19,7 @@ export default {
   loading: 'Loading…',
   // The ⓘ that opens an explanation in place (shared/ui/InfoToggle).
   info: 'How this is worked out',
+  moreInfo: 'More about this',
   paginator: {
     previous: 'Previous page',
     next: 'Next page',
