@@ -13,6 +13,7 @@ import { minorToInput, toMinor } from '../../shared/lib/currency.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { LINE_MAX } from '../../../supabase/functions/_shared/aiHelper.ts'
 import SuggestedMark from '../ai/SuggestedMark.jsx'
+import DemoAiNote from '../ai/DemoAiNote.jsx'
 import { aiErrorKey } from '../ai/aiMath.js'
 import { planWhatIf } from '../ai/ai.js'
 import { NAME_MAX } from './planMath.js'
@@ -120,6 +121,7 @@ export default function PlanWhatIf({ open, onOpen, onClose, plan, setPlan, items
           </InputRightElement>
         </InputGroup>
         <InfoBox info={info}>{t('typeIt.more')}</InfoBox>
+        <DemoAiNote mt={2} />
       </FormControl>
       {state === 'working' && <BusyNote mt={2}>{t('typeIt.working')}</BusyNote>}
       {state === 'error' && (

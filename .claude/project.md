@@ -58,7 +58,9 @@ this file current, so add project facts here, not in the skills.
 - **Demo account:** dev only (`demo@budgeer.com`, migration 0090), reset
   nightly by `demo_seed`/`demo_wipe`. A feature storing user data must extend
   `demo_wipe`, via a migration. The credentials live in the session
-  scratchpad only, never in the repo.
+  scratchpad only, never in the repo. The four AI helpers are on for it
+  (0106: `demo_wipe` turns them off, `demo_seed` back on), under a shared
+  cap of 100 calls a day (`ai:demo`).
 
 ## Commands
 

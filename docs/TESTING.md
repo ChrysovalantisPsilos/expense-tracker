@@ -782,7 +782,12 @@ entries. Check at 390px (light and dark, English and Greek) and desktop 1280.
    says what is sent; the note says it goes to Anthropic, isn't used for
    training and is deleted within 30 days. Turning one on or off shows at
    once and survives a reload; Settings → Privacy → consent history lists
-   each change. The demo account can't turn one on.
+   each change. On the demo account all four are on (the nightly reset
+   turns them back on), they switch off and on like anywhere else, and the
+   demo notice at the top says what is typed goes to Anthropic; the same
+   note sits under "Type it" on Add and "Type a what-if" in Plan (and on no
+   other account). Past 100 calls a day across the demo, a helper says it
+   has been used a lot and to try later.
 2. All off: no "Type it" on Add, no Suggested chips on Import, no summary on
    Insights or Home, no "Type a what-if" in Plan.
 3. Type to add (Add, new entries only): "coffee 3.60 yesterday" fills
@@ -823,7 +828,7 @@ entries. Check at 390px (light and dark, English and Greek) and desktop 1280.
    line works the same; a payment you don't have says it couldn't find it; a
    line that isn't a what-if says it couldn't tell. Opening a row or "What if
    I add…" closes the preview (one editor at a time). Nothing real changes
-   until Apply. Hidden with the switch off and on the demo.
+   until Apply. Hidden with the switch off.
 7. Failures: with the key removed every helper says AI helpers aren't available, and
    Add, Import, Insights and Plan still work normally. The data export has
    "ai_month_summaries".
