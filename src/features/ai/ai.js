@@ -1,5 +1,5 @@
-// The AI helpers' data layer: the three switches (profile columns, 0103),
-// the ai-helper edge function's three actions, and the month summary as the
+// The AI helpers' data layer: the four switches (profile columns, 0103,
+// 0105), the ai-helper edge function's four actions, and the month summary as the
 // server keeps it. The rules are in aiMath.js.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../shared/lib/supabase.js'
@@ -17,7 +17,7 @@ import {
   AI_SWITCHES, applySuggestions, categoryLabels, helpersOn, monthStartOf, shouldAutoWrite, suggestionRequest, summaryState,
 } from './aiMath.js'
 
-// { quickEntry, importCategories, monthSummary }: which helpers are on.
+// { quickEntry, importCategories, monthSummary, planWhatIf }: which helpers are on.
 export function useAiHelpers() {
   const { profile, isDemo } = useProfile()
   return helpersOn(profile, isDemo)
@@ -46,6 +46,16 @@ export async function fillFromText(text, categories) {
     action: 'parse_entry', text, today: today(), labels: categoryLabels(categories, categoryDisplayName),
   })
   return data.entry
+}
+
+// Plan → "Type a what-if": the typed line → { changes, adds, notFound }
+// (_shared/aiHelper.normaliseWhatIf). The server reads the payments and income
+// itself; only the line and the category names as the app shows them go up.
+export async function planWhatIf(text, categories) {
+  const data = await callAiHelper({
+    action: 'plan_whatif', text, labels: categoryLabels(categories, categoryDisplayName),
+  })
+  return data.whatif
 }
 
 // Import: category ideas for the new merchants → [{ index, category_id }]

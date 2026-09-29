@@ -1,8 +1,9 @@
 // Edge Function: ai-helper
-// The three optional AI helpers (Settings → AI helpers, 0103), one action each:
+// The four optional AI helpers (Settings → AI helpers, 0103/0105), one action each:
 //   parse_entry         { text, today, labels }  → { entry }        (Add → Type it)
 //   suggest_categories  { merchants, labels }    → { suggestions }  (Import)
 //   month_summary       { month, lang, labels }  → { summary } | { empty }
+//   plan_whatif         { text, labels }         → { whatif }       (Plan → Type a what-if)
 // Claude (Anthropic) does the reading and writing; handler.ts checks the
 // caller, the helper's switch and the rate limits first, and validates the
 // answer after. Nothing is stored except a month summary (encrypted, 0103).

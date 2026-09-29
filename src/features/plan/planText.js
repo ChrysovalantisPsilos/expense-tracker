@@ -92,3 +92,12 @@ export function changeLine(item, t) {
   if (item.cancelled) return t(item.kind === 'income' ? 'changes.stopLine' : 'changes.cancelLine', { was: perUnit(item.before) })
   return t('changes.editLine', { was: perUnit(item.before), now: perUnit(item.after) })
 }
+
+// A "Type a what-if" proposal (whatIfMath.whatIfRows) in words: "Cancel ·
+// €15.99 a month", "Change to €12.99 a month · now €10.99 a month", "Add ·
+// €40.00 a month".
+export function whatIfLine(row, t) {
+  if (row.type === 'add') return t(row.kind === 'income' ? 'typeIt.addIncome' : 'typeIt.add', { amount: perUnit(row.after) })
+  if (row.type === 'cancel') return t(row.kind === 'income' ? 'typeIt.stop' : 'typeIt.cancel', { was: perUnit(row.before) })
+  return t('typeIt.change', { now: perUnit(row.after), was: perUnit(row.before) })
+}

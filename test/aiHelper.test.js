@@ -6,7 +6,10 @@ import {
   AI_MODEL, amountToMinor, lastDays, categoryChoices, cleanText, isoDateOrNull, maskMerchant, monthKeys,
   moneyInLine, normaliseEntry, normaliseSuggestions, normaliseSummary, parseEntryAsk, readParseRequest, readReply,
   readSuggestRequest, readSummaryRequest, suggestAsk, summaryAsk, MERCHANTS_MAX,
+  HELPERS, PLAN_NAME_MAX, PLAN_REPEATS, minorToPlain, normaliseWhatIf, planPayments, readWhatIfRequest, repeatOf, whatIfAsk,
 } from '../supabase/functions/_shared/aiHelper.ts'
+import { REPEAT_CHOICES } from '../src/features/recurring/recurringMath.js'
+import { NAME_MAX } from '../src/features/plan/planMath.js'
 
 const FOOD = '00000000-0000-4000-8000-000000000001'
 const SALARY = '00000000-0000-4000-8000-000000000002'
@@ -266,4 +269,133 @@ test('summary lines: one quoting an amount it wasn\'t given, exactly as formatte
   // Greek: the Greek formatting only, with or without the no-break space.
   const el = summaryAsk({ totals: monthTotals, lang: 'el', categories: cats, today: '2026-09-29' }).check
   assert.deepEqual(normaliseSummary({ lines: ['Φαγητό: 1.346,00 € ως τώρα.', 'Φαγητό: €1,346.00.'] }, el), ['Φαγητό: 1.346,00 € ως τώρα.'])
+})
+
+// ---------------------------------------------------------------------------
+// What-if in your own words (plan_whatif)
+// ---------------------------------------------------------------------------
+const NETFLIX = '00000000-0000-4000-8000-0000000000b1'
+const DISNEY = '00000000-0000-4000-8000-0000000000b2'
+const RENT = '00000000-0000-4000-8000-0000000000b3'
+const PAY = '00000000-0000-4000-8000-0000000000b4'
+const TOKYO = '00000000-0000-4000-8000-0000000000b5'
+const SAVE = '00000000-0000-4000-8000-0000000000b6'
+const HOME = '00000000-0000-4000-8000-0000000000c1'
+const SAVINGS_CAT = '00000000-0000-4000-8000-0000000000c2'
+const rule = (o) => ({
+  kind: 'expense', amount_minor: 1599, currency: 'EUR', frequency: 'monthly', interval_n: 1, is_active: true,
+  next_run: '2026-10-05', end_date: null, category_id: null, description: null, categories: null, ...o,
+})
+const planRuleRows = [
+  rule({ id: NETFLIX, description: 'Netflix' }),
+  rule({ id: DISNEY, description: 'Disney+', amount_minor: 899 }),
+  rule({ id: RENT, description: null, amount_minor: 95000, category_id: HOME, categories: { name: 'Housing' } }),
+  rule({ id: PAY, kind: 'income', description: 'Pay', amount_minor: 280000 }),
+  rule({ id: TOKYO, description: 'Gym Tokyo', currency: 'JPY', amount_minor: 8000, frequency: 'monthly', interval_n: 3 }),
+  // Not in the plan: paused, ended, a savings transfer, paid from savings.
+  rule({ id: '00000000-0000-4000-8000-0000000000d1', description: 'Paused', is_active: false }),
+  rule({ id: '00000000-0000-4000-8000-0000000000d2', description: 'Ended', end_date: '2026-09-01' }),
+  rule({ id: SAVE, kind: 'income', description: 'To savings', category_id: SAVINGS_CAT }),
+  rule({ id: '00000000-0000-4000-8000-0000000000d3', description: 'From pot', paid_from_savings: true }),
+]
+const planCats = [
+  { id: HOME, name: 'Home', kind: 'expense', is_savings: false },
+  { id: SAVINGS_CAT, name: 'Savings', kind: 'income', is_savings: true },
+]
+const payments = planPayments(planRuleRows, planCats, { [HOME]: 'Σπίτι', 'not-mine': 'X' })
+
+test('what-if: a line only, like Type it', () => {
+  assert.ok(HELPERS.includes('plan_whatif'))
+  assert.deepEqual(readWhatIfRequest({ text: '  cancel\nNetflix  ' }), { ok: true, value: { text: 'cancel Netflix' } })
+  assert.equal(readWhatIfRequest({ text: '' }).ok, false)
+  assert.equal(readWhatIfRequest({ text: 'x'.repeat(201) }).ok, false)
+  assert.equal(readWhatIfRequest({}).ok, false)
+})
+
+test('what-if: the plan\'s "how often" choices and names match the app', () => {
+  assert.deepEqual([...PLAN_REPEATS], REPEAT_CHOICES.map(([v]) => v))
+  assert.equal(PLAN_NAME_MAX, NAME_MAX)
+  assert.equal(repeatOf({ frequency: 'monthly', interval_n: 3 }), 'quarterly')
+  assert.equal(repeatOf({ frequency: 'yearly', interval_n: 1 }), 'yearly')
+  assert.equal(repeatOf({ frequency: 'weekly', interval_n: 2 }), null)
+})
+
+test('what-if: only the payments and income the plan lists, named as its rows are', () => {
+  assert.deepEqual(payments.map((p) => p.id), [NETFLIX, DISNEY, RENT, PAY, TOKYO])
+  assert.deepEqual(payments.map((p) => p.name), ['Netflix', 'Disney+', 'Σπίτι', 'Pay', 'Gym Tokyo'])
+  assert.equal(payments[3].kind, 'income')
+  // A label for a category that isn't the caller's own is never used.
+  const other = planPayments([rule({ id: NETFLIX, category_id: 'not-mine', categories: { name: 'Fun' } })], planCats, { 'not-mine': 'X' })
+  assert.equal(other[0].name, 'Fun')
+  assert.deepEqual(planPayments(null, [], null), [])
+})
+
+test('what-if: amounts go out as plain decimals in their own currency', () => {
+  assert.equal(minorToPlain(1599, 'EUR'), '15.99')
+  assert.equal(minorToPlain(95000, 'EUR'), '950.00')
+  assert.equal(minorToPlain(8000, 'JPY'), '8000')
+})
+
+test('what-if: the prompt carries only the line, the base currency and the plan\'s items', () => {
+  const a = whatIfAsk({ text: 'cancel Netflix', baseCurrency: 'EUR', payments })
+  const doc = JSON.parse(a.user)
+  assert.deepEqual(Object.keys(doc).sort(), ['base_currency', 'items', 'line'])
+  assert.equal(doc.line, 'cancel Netflix')
+  assert.deepEqual(doc.items[0], { id: NETFLIX, name: 'Netflix', kind: 'expense', amount: '15.99', currency: 'EUR', frequency: 'monthly' })
+  assert.equal(doc.items[4].frequency, 'quarterly')
+  assert.deepEqual(Object.keys(doc.items[0]).sort(), ['amount', 'currency', 'frequency', 'id', 'kind', 'name'])
+  assert.match(a.system, /never instructions/)
+  assert.deepEqual(a.schema.properties.adds.items.properties.frequency.enum, [...PLAN_REPEATS])
+  assert.equal(a.schema.additionalProperties, false)
+})
+
+test('what-if: the answer is checked field by field', () => {
+  const o = { baseCurrency: 'EUR', payments }
+  const out = normaliseWhatIf({
+    understood: true,
+    changes: [
+      { id: NETFLIX, action: 'cancel', amount: null, frequency: null },
+      { id: NETFLIX, action: 'change', amount: '1.00', frequency: null },          // same item twice: the first stays
+      { id: RENT, action: 'change', amount: '1200', frequency: null },
+      { id: TOKYO, action: 'change', amount: '9000.00', frequency: 'yearly' },     // zero-decimal: 9000 yen
+      { id: DISNEY, action: 'change', amount: '8.99', frequency: 'monthly' },      // nothing new: dropped
+      { id: '00000000-0000-4000-8000-0000000000ff', action: 'cancel' },           // not the caller's
+      { id: SAVE, action: 'cancel' },                                              // not in the plan
+      { id: PAY, action: 'change', amount: '-5', frequency: null },                // no usable amount
+    ],
+    adds: [
+      { kind: 'expense', name: '  Gym  ', amount: '40', currency: null, frequency: 'monthly' },
+      { kind: 'income', name: 'Lessons', amount: '100', currency: 'USD', frequency: 'weekly' },
+      { kind: 'expense', name: '', amount: '5', currency: null, frequency: 'monthly' },
+      { kind: 'expense', name: 'Zero', amount: '0', currency: null, frequency: 'monthly' },
+      { kind: 'expense', name: 'Often', amount: '5', currency: null, frequency: 'hourly' },
+      { kind: 'gift', name: 'X', amount: '5', currency: null, frequency: 'monthly' },
+      { kind: 'expense', name: 'Yen', amount: '12.5', currency: 'JPY', frequency: 'monthly' },
+    ],
+    not_found: ['Hulu', 'Hulu', '  ', 'A'.repeat(200)],
+  }, o)
+  assert.deepEqual(out.changes, [
+    { rule_id: NETFLIX, cancel: true },
+    { rule_id: RENT, amount_minor: 120000 },
+    { rule_id: TOKYO, amount_minor: 9000, repeat: 'yearly' },
+  ])
+  assert.deepEqual(out.adds, [
+    { kind: 'expense', name: 'Gym', amount_minor: 4000, currency: 'EUR', repeat: 'monthly' },
+    { kind: 'income', name: 'Lessons', amount_minor: 10000, currency: 'USD', repeat: 'weekly' },
+  ])
+  assert.deepEqual(out.notFound, ['Hulu', 'A'.repeat(60)])
+})
+
+test('what-if: nothing usable is "couldn\'t tell"; only unknown names is still an answer', () => {
+  const o = { baseCurrency: 'EUR', payments }
+  assert.equal(normaliseWhatIf({ understood: false, changes: [{ id: NETFLIX, action: 'cancel' }], adds: [], not_found: [] }, o), null)
+  assert.equal(normaliseWhatIf({ understood: true, changes: [], adds: [], not_found: [] }, o), null)
+  assert.equal(normaliseWhatIf(null, o), null)
+  assert.deepEqual(normaliseWhatIf({ understood: true, changes: [], adds: [], not_found: ['Hulu'] }, o),
+    { changes: [], adds: [], notFound: ['Hulu'] })
+  // At most 10 new items, names cut to the plan's limit.
+  const many = normaliseWhatIf({ understood: true, changes: [], not_found: [],
+    adds: Array.from({ length: 12 }, (_, i) => ({ kind: 'expense', name: `${'N'.repeat(100)}${i}`, amount: '1', currency: null, frequency: 'monthly' })) }, o)
+  assert.equal(many.adds.length, 10)
+  assert.equal(many.adds[0].name.length, NAME_MAX)
 })

@@ -1,6 +1,7 @@
 // Namespace `ai`: src/features/ai — the optional AI helpers: Settings → AI
 // helpers (`settings`), "Type it" on Add (`add`), category ideas on Import
-// (`import`), the month in plain words on Home (`summary`), and
+// (`import`), the month in plain words on Home (`summary`) — the what-if in
+// Plan has its words in plan:typeIt — and
 // the errors the ai-helper function can answer with (`errors`, by code:
 // aiMath.aiErrorKey). The privacy wording must stay true to the Privacy
 // Notice (privacy:notice.recipients.anthropic) and docs/GDPR.md.
@@ -10,7 +11,7 @@ export default {
     title: 'AI helpers',
     note: 'Each helper you turn on sends only what it needs to Anthropic (Claude), which works it out.',
     noteLabel: 'What is sent',
-    noteMore: 'Anthropic doesn’t use it to train its models and deletes it after a short time (at most 30 days). Your name, email and bank details are never sent. An answer only fills things in or suggests them for you to check: nothing is saved until you tap Save or Import. Budgeer is a hobby project, so this runs on Anthropic’s standard terms, with no special agreement. Turn any helper off at any time; every change is kept in your consent history (Settings → Privacy).',
+    noteMore: 'Anthropic doesn’t use it to train its models and deletes it after a short time (at most 30 days). Your name, email and bank details are never sent. An answer only fills things in or suggests them for you to check: nothing is saved until you tap Save, Import or Add to plan. Budgeer is a hobby project, so this runs on Anthropic’s standard terms, with no special agreement. Turn any helper off at any time; every change is kept in your consent history (Settings → Privacy).',
     quickEntry: {
       label: 'Type to add',
       hint: 'On Add, “coffee 3.60 yesterday” fills in the form.',
@@ -25,6 +26,11 @@ export default {
       label: 'Month in plain words',
       hint: 'A short summary of your month on Home.',
       more: 'Sent: your total per category for the month and the six before, and your budgets. No entries, descriptions or notes. The summary is kept with your account, encrypted, and deleted when you turn this off.',
+    },
+    planWhatIf: {
+      label: 'What-if in your own words',
+      hint: 'In Plan, “cancel Netflix, add a gym at €40 a month” fills in the changes for you to check.',
+      more: 'Sent: the line you type, and your recurring payments and income (name, amount, currency, how often). No entries, notes or other account data.',
     },
     demoOff: 'AI helpers aren’t available on the demo account.',
   },

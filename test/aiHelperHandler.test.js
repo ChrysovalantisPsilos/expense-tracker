@@ -16,7 +16,7 @@ const SAVINGS_ROW = { id: SAVED, name: 'Savings', kind: 'income', is_archived: t
 
 function stubs({
   user = { id: UID }, start = { data: { base_currency: 'EUR' } }, summary = null, reply, save = {},
-  categories = [FOOD_ROW], vouchers = null,
+  categories = [FOOD_ROW], vouchers = null, rules = [],
 } = {}) {
   const calls = { rpc: [], asks: [], service: [] }
   const asUser = {
@@ -26,6 +26,7 @@ function stubs({
       if (fn === 'ai_helper_start') return { data: start.data ?? null, error: start.error ?? null }
       if (fn === 'my_month_summary') return { data: summary, error: null }
       if (fn === 'my_meal_vouchers') return { data: vouchers, error: null }
+      if (fn === 'my_recurring_rules') return { data: rules, error: null }
       return { data: null, error: { message: 'unknown rpc' } }
     },
     from: () => ({ select: async () => ({ data: categories, error: null }) }),
@@ -173,4 +174,51 @@ test('month_summary: switched off while writing — nothing kept, 403', async ()
   const s = stubs({ summary: state(), reply: { ok: true, json: { lines: ['x'] } }, save: { error: { message: 'AI helper is off' } } })
   const r = await handle(post({ action: 'month_summary', month, lang: 'en' }), s.deps)
   assert.equal(r.status, 403)
+})
+
+const NETFLIX = '00000000-0000-4000-8000-0000000000b1'
+const NETFLIX_RULE = {
+  id: NETFLIX, kind: 'expense', description: 'Netflix', amount_minor: 1599, currency: 'EUR', frequency: 'monthly',
+  interval_n: 1, is_active: true, next_run: '2026-10-05', end_date: null, category_id: null, categories: null,
+}
+const whatIfReply = { ok: true, json: {
+  understood: true,
+  changes: [{ id: NETFLIX, action: 'cancel', amount: null, frequency: null },
+    { id: '00000000-0000-4000-8000-0000000000ff', action: 'cancel', amount: null, frequency: null }],
+  adds: [{ kind: 'expense', name: 'Gym', amount: '40', currency: null, frequency: 'monthly' }],
+  not_found: [],
+} }
+
+test('plan_whatif: gated, sent the caller\'s own plan items from the database, answer validated', async () => {
+  const { deps, calls } = stubs({ reply: whatIfReply, rules: [NETFLIX_RULE] })
+  // Whatever the request says about payments is ignored: only the line counts.
+  const r = await handle(post({ action: 'plan_whatif', text: 'cancel Netflix, add a gym at 40 a month',
+    payments: [{ id: 'x', name: 'Injected' }] }), deps)
+  assert.equal(r.status, 200)
+  assert.deepEqual(calls.rpc.map(([fn]) => fn), ['ai_helper_start', 'my_recurring_rules'])
+  assert.deepEqual(calls.rpc[0][1], { p_helper: 'plan_whatif' })
+  const sent = JSON.parse(calls.asks[0].user)
+  assert.deepEqual(sent.items.map((i) => i.id), [NETFLIX])
+  assert.ok(!calls.asks[0].user.includes('Injected'))
+  assert.deepEqual(r.body.whatif, {
+    changes: [{ rule_id: NETFLIX, cancel: true }],
+    adds: [{ kind: 'expense', name: 'Gym', amount_minor: 4000, currency: 'EUR', repeat: 'monthly' }],
+    notFound: [],
+  })
+})
+
+test('plan_whatif: off → 403 before anything is read; nothing usable → unreadable', async () => {
+  const off = stubs({ start: { error: { message: 'AI helper is off' } }, reply: whatIfReply, rules: [NETFLIX_RULE] })
+  const r1 = await handle(post({ action: 'plan_whatif', text: 'cancel Netflix' }), off.deps)
+  assert.deepEqual([r1.status, r1.body.code], [403, 'off'])
+  assert.deepEqual(off.calls.rpc.map(([fn]) => fn), ['ai_helper_start'])
+  assert.equal(off.calls.asks.length, 0)
+
+  const none = stubs({ reply: { ok: true, json: { understood: false, changes: [], adds: [], not_found: [] } }, rules: [NETFLIX_RULE] })
+  const r2 = await handle(post({ action: 'plan_whatif', text: 'hello there' }), none.deps)
+  assert.deepEqual([r2.status, r2.body.code], [422, 'unreadable'])
+
+  const bad = stubs({ reply: whatIfReply })
+  assert.equal((await handle(post({ action: 'plan_whatif', text: '' }), bad.deps)).status, 400)
+  assert.equal(bad.calls.rpc.length, 0)
 })

@@ -5,11 +5,12 @@
 import { MERCHANTS_MAX } from '../../../supabase/functions/_shared/aiHelper.ts'
 import { minorToInput } from '../../shared/lib/currency.js'
 
-// The three helpers: the profile switch (0103) behind each.
+// The four helpers: the profile switch (0103, 0105) behind each.
 export const AI_SWITCHES = {
   quickEntry: 'ai_quick_entry',
   importCategories: 'ai_import_categories',
   monthSummary: 'ai_month_summary',
+  planWhatIf: 'ai_plan_whatif',
 }
 
 // Which helpers are on: all off for the shared demo login (the server refuses
@@ -134,5 +135,7 @@ export const shouldAutoWrite = ({ data, attempted }) =>
 const ERROR_KEYS = {
   not_configured: 'notConfigured', busy: 'busy', rate_limited: 'rateLimited', off: 'off', unreadable: 'unreadable',
 }
-// The ai-helper error code → its message key (ai:errors.*).
-export const aiErrorKey = (code) => `ai:errors.${ERROR_KEYS[code] ?? 'failed'}`
+// The ai-helper error code → its message key (ai:errors.*). A helper with its
+// own "couldn't tell" words passes their key as `unreadable`.
+export const aiErrorKey = (code, unreadable = null) =>
+  (code === 'unreadable' && unreadable ? unreadable : `ai:errors.${ERROR_KEYS[code] ?? 'failed'}`)

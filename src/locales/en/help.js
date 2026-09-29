@@ -378,8 +378,8 @@ export default {
       aiHelpers: {
         q: 'Does Budgeer use AI?',
         a: {
-          p1: 'Only if you want it to. Settings → AI helpers has three optional helpers, each off until you turn it on: “Type to add” fills in a new entry from a line like “coffee 3.60 yesterday”, “Category ideas on import” suggests categories for merchants Budgeer hasn’t seen yet, and “Month in plain words” writes a short summary of your month in Home’s overview (switch it to In words).',
-          p2: 'They use Claude, by Anthropic. Each one sends only what it needs (never your name, email or bank details); Anthropic doesn’t train on it and deletes it within 30 days. Nothing is saved until you check it and tap Save or Import.',
+          p1: 'Only if you want it to. Settings → AI helpers has four optional helpers, each off until you turn it on: “Type to add” fills in a new entry from a line like “coffee 3.60 yesterday”, “Category ideas on import” suggests categories for merchants Budgeer hasn’t seen yet, “Month in plain words” writes a short summary of your month in Home’s overview (switch it to In words), and “What-if in your own words” turns a line like “cancel Netflix, add a gym at €40 a month” into changes to your plan.',
+          p2: 'They use Claude, by Anthropic. Each one sends only what it needs (never your name, email or bank details); Anthropic doesn’t train on it and deletes it within 30 days. Nothing is saved until you check it and tap Save, Import or Add to plan (and a plan changes nothing real until you apply it).',
         },
       },
       downloadDeleteData: {

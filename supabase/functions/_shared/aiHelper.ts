@@ -11,14 +11,15 @@
 // fill the caller's own form with values they then check before saving.
 
 import { CURRENCIES, formatMinor, formatRoundedMinor, minorFactor } from './money.ts'
-import type { PaidFrom } from './savings.ts'
+import { type PaidFrom, savingsIdsOf } from './savings.ts'
+import { isPlanRule } from './planRules.ts'
 
 // One constant: the model every helper uses. Claude Haiku 4.5 — structured
 // JSON outputs (output_config.format), no effort or adaptive-thinking
 // parameters (not sent: see ai-helper/claude.ts).
 export const AI_MODEL = 'claude-haiku-4-5'
 
-export const HELPERS = ['parse_entry', 'suggest_categories', 'month_summary']
+export const HELPERS = ['parse_entry', 'suggest_categories', 'month_summary', 'plan_whatif']
 
 export const LINE_MAX = 200         // the typed line
 export const MERCHANTS_MAX = 60     // merchants per import suggestion call
@@ -26,6 +27,10 @@ const MERCHANT_MAX = 80      // characters per merchant name
 const LABEL_MAX = 60         // a category's display name
 const DESCRIPTION_MAX = 80   // the description a filled entry gets
 const SUMMARY_LINE_MAX = 300 // one line of a month summary (SQL checks it too)
+export const PLAN_NAME_MAX = 80     // a plan item's name (planMath.NAME_MAX)
+const PAYMENTS_MAX = 200     // payments and income offered to the what-if
+const WHATIF_ADDS_MAX = 10   // new items one what-if can propose
+const NOT_FOUND_MAX = 5      // names it couldn't match, reported back
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -103,6 +108,72 @@ export function readSummaryRequest(body: any): Parsed<{ month: string; lang: 'en
   if (!month || !month.endsWith('-01') || !lang) return { ok: false }
   return { ok: true, value: { month, lang } }
 }
+
+export function readWhatIfRequest(body: any): Parsed<{ text: string }> {
+  const text = cleanText(body?.text, LINE_MAX + 1)
+  if (!text || text.length > LINE_MAX) return { ok: false }
+  return { ok: true, value: { text } }
+}
+
+// ---------------------------------------------------------------------------
+// What-if in your own words: the plan's payments and income
+// ---------------------------------------------------------------------------
+// How often an item repeats, as Plan's "How often" offers it
+// (recurringMath.REPEAT_CHOICES: "quarterly" is monthly every 3 months). The
+// app turns a choice into the stored frequency (recurringMath.choiceToRule).
+export const PLAN_REPEATS = ['daily', 'weekly', 'monthly', 'quarterly', 'yearly'] as const
+export type Repeat = typeof PLAN_REPEATS[number]
+
+// One recurring payment or income as the what-if sees it.
+export interface PlanPayment {
+  id: string; name: string; kind: Kind
+  amount_minor: number; currency: string; frequency: string; interval_n: number
+}
+
+// A rule's "how often" as one of PLAN_REPEATS, or null when it repeats in a
+// way the choices can't say ("every 2 weeks").
+export function repeatOf(r: { frequency: string; interval_n: number }): Repeat | null {
+  if (r.frequency === 'monthly' && r.interval_n === 3) return 'quarterly'
+  return r.interval_n === 1 && (PLAN_REPEATS as readonly string[]).includes(r.frequency) ? r.frequency as Repeat : null
+}
+
+// The caller's recurring rules (my_recurring_rules, read as the caller) → the
+// payments and income Plan mode lists (_shared/planRules), named as a plan row
+// is: the description, else the category's name as the app shows it
+// (`labels`, used only for the caller's own categories: `categoryRows`).
+export function planPayments(rules: any[], categoryRows: CategoryRow[], labels: unknown): PlanPayment[] {
+  const savings = savingsIdsOf(categoryRows)
+  const given = labels && typeof labels === 'object' ? labels as Record<string, unknown> : {}
+  const own = new Set((categoryRows ?? []).map((c) => c?.id))
+  const categoryName = (r: any) =>
+    (own.has(r.category_id) && Object.hasOwn(given, r.category_id) ? cleanText(given[r.category_id], LABEL_MAX) : '')
+    || cleanText(r.categories?.name, LABEL_MAX)
+  return (rules ?? [])
+    .filter((r) => r && typeof r.id === 'string' && UUID.test(r.id) && isPlanRule(r, savings)
+      && Number.isSafeInteger(Number(r.amount_minor)) && Number(r.amount_minor) > 0 && CURRENCIES.includes(r.currency))
+    .slice(0, PAYMENTS_MAX)
+    .map((r) => ({
+      id: r.id,
+      name: cleanText(r.description, PLAN_NAME_MAX) || categoryName(r),
+      kind: r.kind === 'income' ? 'income' : 'expense',
+      amount_minor: Number(r.amount_minor),
+      currency: r.currency,
+      frequency: r.frequency,
+      interval_n: Math.max(1, Number(r.interval_n) || 1),
+    }))
+}
+
+// Minor units → a plain decimal string in the currency's own decimals
+// ("15.99", "1500" for yen): how amounts go to the model and come back.
+export function minorToPlain(minor: number, currency: string): string {
+  const f = minorFactor(currency)
+  const decimals = Math.round(Math.log10(f))
+  return decimals ? (minor / f).toFixed(decimals) : String(minor)
+}
+
+// "monthly", "quarterly", "every 2 weeks": a payment's rhythm for the prompt.
+const UNITS: Record<string, string> = { daily: 'days', weekly: 'weeks', monthly: 'months', yearly: 'years' }
+const rhythm = (p: PlanPayment) => repeatOf(p) ?? `every ${p.interval_n} ${UNITS[p.frequency] ?? 'months'}`
 
 // ---------------------------------------------------------------------------
 // Prompts and output schemas
@@ -314,6 +385,79 @@ export function summaryAsk(o: {
   return { ...ask, check: { currency: cur, locale, figures: [...figures] } }
 }
 
+// What-if in your own words: the typed line and the plan's payments and
+// income (planPayments), each with its id, so the model points at the
+// caller's own items instead of naming them. Amounts go out and come back as
+// plain decimal strings in the item's own currency.
+export function whatIfAsk(o: { text: string; baseCurrency: string; payments: PlanPayment[] }): Ask {
+  return {
+    system: [
+      'You turn a what-if someone typed about their recurring payments and income (in any language, often English',
+      'or Greek) into proposed changes to a budget plan, like "cancel Netflix and Disney, add a gym at €40 a month"',
+      'or "Spotify goes up to 12.99".',
+      'changes: one for each existing item the line changes, by its id from items. Match names loosely ("Disney" is',
+      '"Disney+", "netflix" is "Netflix Premium") but never guess between two items. action "cancel" cancels a',
+      'payment or stops an income; "change" gives it a new amount and/or how often: amount is the new amount per',
+      'period in that item\'s own currency, as a plain decimal string with a dot and no symbols or thousands',
+      'separators ("12.99", "1200"), or null to keep it; frequency one of the choices, or null to keep it.',
+      'adds: one for each new payment or income the line adds: kind "expense" for a cost, "income" for money',
+      'received; name short, as the user would write it; amount per period as a plain decimal string; currency the',
+      'ISO code the line names or clearly implies (€ is EUR, $ is USD, £ is GBP), else null; frequency one of the',
+      'choices ("monthly" when the line doesn\'t say).',
+      'not_found: each name the line wants to change or cancel that matches no item, as the user wrote it.',
+      'Set understood to false when the line is not a what-if about payments or income.',
+      DATA_ONLY,
+    ].join(' '),
+    user: JSON.stringify({
+      base_currency: o.baseCurrency,
+      items: o.payments.map((p) => ({
+        id: p.id, name: p.name, kind: p.kind, amount: minorToPlain(p.amount_minor, p.currency), currency: p.currency,
+        frequency: rhythm(p),
+      })),
+      line: o.text,
+    }),
+    schema: {
+      type: 'object',
+      properties: {
+        understood: { type: 'boolean' },
+        changes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              action: { type: 'string', enum: ['cancel', 'change'] },
+              amount: nullable({ type: 'string' }),
+              frequency: nullable({ type: 'string', enum: [...PLAN_REPEATS] }),
+            },
+            required: ['id', 'action', 'amount', 'frequency'],
+            additionalProperties: false,
+          },
+        },
+        adds: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              kind: { type: 'string', enum: ['expense', 'income'] },
+              name: { type: 'string' },
+              amount: { type: 'string' },
+              currency: nullable({ type: 'string', enum: [...CURRENCIES] }),
+              frequency: { type: 'string', enum: [...PLAN_REPEATS] },
+            },
+            required: ['kind', 'name', 'amount', 'currency', 'frequency'],
+            additionalProperties: false,
+          },
+        },
+        not_found: { type: 'array', items: { type: 'string' } },
+      },
+      required: ['understood', 'changes', 'adds', 'not_found'],
+      additionalProperties: false,
+    },
+    maxTokens: 1500,
+  }
+}
+
 // Spotting an amount in a written line: a number (digits, maybe grouped, maybe
 // with decimals) right beside the currency's symbol or ISO code, on either
 // side. Only the number is compared, so "€1.030,00" and "1.030,00 €" are the
@@ -443,4 +587,62 @@ export function normaliseSummary(json: any, check: FigureCheck): string[] | null
       return `${cut.slice(0, Math.max(cut.lastIndexOf(' '), 1))}…`
     })
   return lines.length ? lines : null
+}
+
+// plan_whatif's answer → the proposals the app previews, or null when there's
+// nothing to show (not understood; nothing usable and no name it couldn't
+// find). Checked field by field:
+//   changes   only ids among the caller's own `payments`, each once: "cancel",
+//             or a positive amount (in the item's own currency, integer minor
+//             units, zero-decimal aware) and/or a "how often" from
+//             PLAN_REPEATS; values the item already has are dropped, and a
+//             change with nothing left goes
+//   adds      a kind, a name, a positive amount, a currency the app knows
+//             (else the base currency) and a "how often"; at most
+//             WHATIF_ADDS_MAX, each name at most PLAN_NAME_MAX characters
+//   notFound  the names it couldn't match, cleaned, at most NOT_FOUND_MAX
+export interface WhatIfChange { rule_id: string; cancel?: true; amount_minor?: number; repeat?: Repeat }
+export interface WhatIfAdd { kind: Kind; name: string; amount_minor: number; currency: string; repeat: Repeat }
+export interface WhatIf { changes: WhatIfChange[]; adds: WhatIfAdd[]; notFound: string[] }
+
+const isRepeat = (v: unknown): v is Repeat => (PLAN_REPEATS as readonly unknown[]).includes(v)
+
+export function normaliseWhatIf(json: any, o: { baseCurrency: string; payments: PlanPayment[] }): WhatIf | null {
+  if (!json || json.understood !== true) return null
+  const byId = new Map(o.payments.map((p) => [p.id, p]))
+  const seen = new Set<string>()
+  const changes: WhatIfChange[] = []
+  for (const c of Array.isArray(json.changes) ? json.changes : []) {
+    const p = typeof c?.id === 'string' ? byId.get(c.id) : undefined
+    if (!p || seen.has(p.id)) continue
+    if (c.action === 'cancel') {
+      seen.add(p.id)
+      changes.push({ rule_id: p.id, cancel: true })
+      continue
+    }
+    if (c.action !== 'change') continue
+    const minor = c.amount == null ? null : amountToMinor(c.amount, p.currency)
+    const repeat = isRepeat(c.frequency) && c.frequency !== repeatOf(p) ? c.frequency : null
+    const edit: WhatIfChange = {
+      rule_id: p.id,
+      ...(minor != null && minor !== p.amount_minor ? { amount_minor: minor } : {}),
+      ...(repeat ? { repeat } : {}),
+    }
+    if (edit.amount_minor == null && !edit.repeat) continue
+    seen.add(p.id)
+    changes.push(edit)
+  }
+  const adds: WhatIfAdd[] = []
+  for (const a of Array.isArray(json.adds) ? json.adds : []) {
+    if (adds.length >= WHATIF_ADDS_MAX) break
+    const kind: Kind | null = a?.kind === 'income' ? 'income' : a?.kind === 'expense' ? 'expense' : null
+    const name = cleanText(a?.name, PLAN_NAME_MAX)
+    const currency = typeof a?.currency === 'string' && CURRENCIES.includes(a.currency) ? a.currency : o.baseCurrency
+    const amount_minor = amountToMinor(a?.amount, currency)
+    if (!kind || !name || amount_minor == null || !isRepeat(a?.frequency)) continue
+    adds.push({ kind, name, amount_minor, currency, repeat: a.frequency })
+  }
+  const notFound = [...new Set((Array.isArray(json.not_found) ? json.not_found : [])
+    .map((n: unknown) => cleanText(n, LABEL_MAX)).filter(Boolean))].slice(0, NOT_FOUND_MAX) as string[]
+  return changes.length || adds.length || notFound.length ? { changes, adds, notFound } : null
 }
