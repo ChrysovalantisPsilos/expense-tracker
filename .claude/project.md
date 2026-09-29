@@ -50,6 +50,10 @@ this file current, so add project facts here, not in the skills.
 
 - **Deploys:** a push to `develop` deploys dev; a fast-forward of `main`
   deploys PROD.
+- **Live check:** `budgeer.com` answers with a 308 to `www.budgeer.com`, so
+  check the bundle there (`curl -sL`). The entry chunk carries the newest
+  What's new id; a release also redeploys every function whose import closure
+  changed since `main` (work it out by script, not by memory).
 - **Auto-update:** open apps reload within a minute of any deploy
   (`src/app/AutoUpdate.jsx`), so batch small pushes while the owner is
   testing.
