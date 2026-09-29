@@ -31,6 +31,8 @@ export default {
     splitEqual: 'ισόποσα σε {{ways}}',
     owesYou: 'Σου χρωστάει: {{name}}',
     youOwe: 'Χρωστάς: {{name}}',
+    peopleOweYou: 'Σου χρωστάνε {{people}}',
+    youOwePeople: 'Χρωστάς σε {{people}}',
     balance: {
       owed: 'Σου χρωστάνε',
       owe: 'Χρωστάς',

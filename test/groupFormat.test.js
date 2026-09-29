@@ -137,16 +137,23 @@ test('memberBalances: every member, you first as "You", missing rows settled', (
   assert.deepEqual(memberBalances(null, null, 'u1'), [])
 })
 
-test('balanceHighlight: the biggest payment you receive or make', () => {
+test('balanceHighlight: your payments in one line, with their total', () => {
   const ms = [
     { id: 'y', display_name: 'Alex' }, { id: 'a', display_name: 'Anna' },
     { id: 'm', display_name: 'Marco' }, { id: 's', display_name: 'Sofia' },
   ]
   const bal = new Map([['y', 16275], ['a', -285], ['m', -7065], ['s', -8925]])
+  // Three people owe you: the line counts them and adds up what they owe.
   assert.deepEqual(balanceHighlight(settlePlan(bal, ms, 'y')),
-    { text: 'Sofia owes you', amount: 8925, tone: 'positive' })
+    { text: '3 people owe you', amount: 16275, tone: 'positive' })
   assert.deepEqual(balanceHighlight(settlePlan(bal, ms, 's')),
     { text: 'You owe Alex', amount: 8925, tone: 'negative' })
+  // One person owes you: their name.
+  assert.deepEqual(balanceHighlight(settlePlan(new Map([['y', 4905], ['a', -4905]]), ms, 'y')),
+    { text: 'Anna owes you', amount: 4905, tone: 'positive' })
+  // You owe two people.
+  assert.deepEqual(balanceHighlight(settlePlan(new Map([['y', -500], ['a', 200], ['m', 300]]), ms, 'y')),
+    { text: 'You owe 2 people', amount: 500, tone: 'negative' })
   // Someone else's debts only → nothing for you.
   assert.equal(balanceHighlight(settlePlan(new Map([['y', 0], ['a', 300], ['m', -300]]), ms, 'y')), null)
   assert.equal(balanceHighlight([]), null)

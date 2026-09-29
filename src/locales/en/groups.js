@@ -34,6 +34,8 @@ export default {
     splitEqual: 'split {{ways}}',
     owesYou: '{{name}} owes you',
     youOwe: 'You owe {{name}}',
+    peopleOweYou: '{{people}} owe you',
+    youOwePeople: 'You owe {{people}}',
     balance: {
       owed: 'You’re owed',
       owe: 'You owe',

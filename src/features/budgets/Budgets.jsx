@@ -23,6 +23,7 @@ import { categoryPath } from '../categories/categoryLinks.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
+import { InfoNote } from '../../shared/ui/InfoToggle.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
@@ -165,14 +166,7 @@ export default function Budgets() {
             ) : (
               <Stack spacing={5}>
                 {!wide && copyButton && <HStack>{copyButton}</HStack>}
-                <Text color="text.muted" fontSize="sm">
-                  {t('hint')}
-                </Text>
-                {carriedFrom && (
-                  <Text color="text.muted" fontSize="sm">
-                    {t('rollover')}
-                  </Text>
-                )}
+                <InfoNote more={carriedFrom && t('rollover')}>{t('hint')}</InfoNote>
                 <Stack spacing={5} role="list" aria-label={t('title')}>
                   {items.map((b) => (
                     <BudgetRow key={b.id} item={b} currency={baseCurrency} actions={[

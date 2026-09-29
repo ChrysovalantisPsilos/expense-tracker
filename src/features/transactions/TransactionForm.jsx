@@ -26,6 +26,7 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { PageForm } from '../../shared/ui/FormPage.jsx'
 import { useShellHeader } from '../../shared/ui/ShellHeader.jsx'
+import { InfoNote } from '../../shared/ui/InfoToggle.jsx'
 import CategoryGrid from './CategoryGrid.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
@@ -232,8 +233,10 @@ export default function TransactionForm({
   const kindField = isEdit ? (
     <FormControl>
       <FormLabel>{t('form.type')}</FormLabel>
-      <Text fontWeight="600">{t(`kinds.${kind}`)}</Text>
-      <FormHelperText>{t(`form.kindFixed.${kind}`)}</FormHelperText>
+      <InfoNote textProps={{ fontSize: 'md', fontWeight: 600, color: 'text.primary' }}
+        more={t(`form.kindFixed.${kind}`)} label={t('form.kindFixed.label')}>
+        {t(`kinds.${kind}`)}
+      </InfoNote>
     </FormControl>
   ) : (
     <SegmentedControl label={t('form.kind')} options={kindOptions(t)} value={kind} onChange={pickKind}

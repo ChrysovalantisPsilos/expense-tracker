@@ -58,7 +58,7 @@ export default function SpendingSettings() {
         ) : (
           <Stack spacing={4}>
             <PrefRow id="pref-yearly" label={t('spending.yearly.label')}
-              hint={t('spending.yearly.hint')}
+              hint={t('spending.yearly.hint')} more={t('spending.yearly.more')}
               isChecked={!separate} onChange={onChange} />
             <Divider />
             <SalaryShiftPref profile={profile} save={save} />
@@ -94,6 +94,7 @@ function SalaryShiftPref({ profile, save }) {
     <Stack spacing={3}>
       <PrefRow id="pref-salary-shift" label={t('spending.salary.label')}
         hint={noIncome && !on ? t('spending.salary.needsIncome') : t('spending.salary.hint')}
+        more={noIncome && !on ? undefined : t('spending.salary.more')}
         isChecked={on} isDisabled={noIncome && !on}
         onChange={(e) => change(salaryShiftPatch(e.target.checked, {
           fromDay: shown.salary_shift_from_day, categoryId: shown.salary_category_id, categories,

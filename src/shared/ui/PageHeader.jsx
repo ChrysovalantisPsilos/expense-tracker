@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { Box, Button, Flex, Heading, HStack, Text } from '@chakra-ui/react'
+import { Box, Button, Flex, Grid, Heading, HStack, Text } from '@chakra-ui/react'
 import Eyebrow from './Eyebrow.jsx'
 import { ShellSlot, useShellHeader } from './ShellHeader.jsx'
 import { ONE_LINE, SHORT_LANDSCAPE } from '../lib/shortLandscape.js'
@@ -35,7 +35,7 @@ export default function PageHeader({ title, eyebrow, description, action, leadin
             </Box>
             {/* The controls take the rest, right-aligned; one that can grow
                 (a search field) fills it. */}
-            {action && <HStack spacing={2} flex="1" minW={0} justify="flex-end">{action}</HStack>}
+            {action && <HStack spacing="14px" flex="1" minW={0} justify="flex-end">{action}</HStack>}
           </Flex>
         </ShellSlot>
         {(description || meta) && (
@@ -47,20 +47,25 @@ export default function PageHeader({ title, eyebrow, description, action, leadin
       </>
     )
   }
+  // A grid, so `leading` (a back arrow) lines up with the title itself, not
+  // with the eyebrow or description around it: the eyebrow has a row of its
+  // own above, and the description and `meta` rows below.
+  const titleRow = eyebrow ? 2 : 1
+  const rows = titleRow + (description ? 1 : 0) + (meta ? 1 : 0)
+  const col = leading ? 2 : 1
   return (
-    <Flex align="center" gap={3} minW={0}>
-      {leading}
-      <Box flex="1" minW={0}>
-        {eyebrow && <Eyebrow overflowWrap="anywhere" mb={0.5}>{eyebrow}</Eyebrow>}
-        <Heading as="h1" fontSize={{ base: '2xl', md: '3xl' }} letterSpacing="-0.02em"
-          lineHeight="1.2" overflowWrap="anywhere" sx={SHORT_TITLE}>
-          {title}
-        </Heading>
-        {description && <Text color="text.muted" fontSize="sm" mt={1}>{description}</Text>}
-        {meta && <Box mt={1.5}>{meta}</Box>}
-      </Box>
-      {action && <HStack spacing={2} flexShrink={0}>{action}</HStack>}
-    </Flex>
+    <Grid templateColumns={[leading && 'auto', 'minmax(0, 1fr)', action && 'auto'].filter(Boolean).join(' ')}
+      columnGap={3} alignItems="center" minW={0}>
+      {eyebrow && <Eyebrow gridColumn={col} gridRow={1} overflowWrap="anywhere" mb={0.5}>{eyebrow}</Eyebrow>}
+      {leading && <Flex gridColumn={1} gridRow={titleRow} align="center">{leading}</Flex>}
+      <Heading as="h1" gridColumn={col} gridRow={titleRow} fontSize={{ base: '2xl', md: '3xl' }} letterSpacing="-0.02em"
+        lineHeight="1.2" overflowWrap="anywhere" sx={SHORT_TITLE}>
+        {title}
+      </Heading>
+      {description && <Text gridColumn={col} gridRow={titleRow + 1} color="text.muted" fontSize="sm" mt={1}>{description}</Text>}
+      {meta && <Box gridColumn={col} gridRow={rows} mt={1.5}>{meta}</Box>}
+      {action && <HStack gridColumn={col + 1} gridRow={`1 / span ${rows}`} spacing="14px">{action}</HStack>}
+    </Grid>
   )
 }
 
