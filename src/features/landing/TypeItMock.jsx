@@ -76,8 +76,9 @@ function TypeItStatus({ stage }) {
 }
 
 // One field of the Add form: its label, and once filled its value with the
-// Suggested mark. An empty field shows a faint bar.
-function FieldRow({ label, filled, reduce, children }) {
+// Suggested mark (none where the app shows none: Paid from staying on Bank).
+// An empty field shows a faint bar.
+function FieldRow({ label, filled, mark = true, reduce, children }) {
   return (
     <Flex h="48px" align="center" gap={3} borderTopWidth="1px" borderColor="border.default" _first={{ borderTopWidth: 0 }}>
       <Box flex="1" minW={0}>
@@ -88,7 +89,7 @@ function FieldRow({ label, filled, reduce, children }) {
             : <Box w="40%" h="8px" borderRadius="full" bg="bg.subtle" />}
         </Flex>
       </Box>
-      {filled && <SuggestedMark {...landing(reduce)} />}
+      {filled && mark && <SuggestedMark {...landing(reduce)} />}
     </Flex>
   )
 }
@@ -145,7 +146,8 @@ export default function TypeItMock() {
       </Panel>
       <Panel {...SCREEN_CARD} p={0} px={3.5} py={1} h={`${FORM_FIELDS.length * 48 + 8}px`}>
         {FORM_FIELDS.filter((f) => f !== 'paidFrom' || ex.kind === 'expense').map((f) => (
-          <FieldRow key={`${ex.id}-${f}`} label={labels[f]} filled={filled.has(f)} reduce={playback.reduce}>
+          <FieldRow key={`${ex.id}-${f}`} label={labels[f]} filled={filled.has(f)}
+            mark={!(f === 'paidFrom' && ex.paidFrom === 'bank')} reduce={playback.reduce}>
             {value[f]}
           </FieldRow>
         ))}
