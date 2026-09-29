@@ -9,12 +9,21 @@
 // users are asked to accept the new version (LegalGate), and everyone who
 // signed up before it is emailed once about it (privacy-emails, legal sweep).
 
-export const LEGAL_VERSIONS = { privacy: '2026-09-23', terms: '2026-09-23' }
+export const LEGAL_VERSIONS = { privacy: '2026-09-29', terms: '2026-09-23' }
 
 // What changed in each version, newest first. `items` are listed in the
 // in-app update prompt (every entry newer than what the user last accepted);
 // `summary` is the one-paragraph version the update email quotes.
 export const LEGAL_CHANGES = [
+  {
+    version: '2026-09-29',
+    summary: 'Optional AI helpers, off until you turn them on: if you do, only what each helper needs is sent to Anthropic (Claude) to work out the answer. Anthropic doesn’t use it to train its models and deletes it within 30 days. Your name, email and bank details are never sent.',
+    items: [
+      'Optional AI helpers, each off until you turn it on in Settings → AI helpers: filling in an entry from a line you type, category ideas for new merchants on import, and a short summary of your month.',
+      'If you turn one on, only what it needs is sent to Anthropic (Claude), a US company, under its standard data processing terms. Anthropic doesn’t use it to train its models and deletes it within 30 days. Your name, email and bank details are never sent.',
+      'Month summaries are kept for a year and deleted when you turn the helper off.',
+    ],
+  },
   {
     version: '2026-09-23',
     summary: 'A full Privacy Notice that explains who is responsible for your data, why we use it, who processes it, how long we keep it and how to use your rights; new Terms of Use that make clear Budgeer is a free hobby project, not a financial service; the weekly summary is now optional; and accounts unused for two years are deleted after an email warning.',

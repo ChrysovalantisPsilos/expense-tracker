@@ -54,9 +54,15 @@ test('changesSince lists only versions newer than the oldest accepted document',
   assert.equal(changesSince({}).length, LEGAL_CHANGES.length)
   assert.equal(changesSince(null).length, LEGAL_CHANGES.length)
   assert.deepEqual(changesSince({ privacy_accepted: LEGAL_VERSIONS.privacy, terms_accepted: LEGAL_VERSIONS.terms }), [])
-  // One document behind → still shown.
-  assert.equal(changesSince({ privacy_accepted: LEGAL_VERSIONS.privacy, terms_accepted: '2000-01-01' }).length,
-    LEGAL_CHANGES.length)
+  // One document behind → the changes up to its version are still shown.
+  assert.deepEqual(changesSince({ privacy_accepted: LEGAL_VERSIONS.privacy, terms_accepted: '2000-01-01' })
+    .map((c) => c.version), LEGAL_CHANGES.filter((c) => c.version <= LEGAL_VERSIONS.terms).map((c) => c.version))
+  // Documents on different versions: accepting both current ones leaves nothing,
+  // and a newer Privacy Notice alone shows only its own change.
+  const versions = { privacy: '2026-09-29', terms: '2026-09-23' }
+  assert.deepEqual(changesSince({ privacy_accepted: '2026-09-29', terms_accepted: '2026-09-23' }, versions), [])
+  assert.deepEqual(changesSince({ privacy_accepted: '2026-09-23', terms_accepted: '2026-09-23' }, versions)
+    .map((c) => c.version), ['2026-09-29'])
 })
 
 test('describeConsent phrases each history row', () => {

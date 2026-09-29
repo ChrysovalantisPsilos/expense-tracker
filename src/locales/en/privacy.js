@@ -362,6 +362,11 @@ export default {
     // which the update emails quote): keep these items identical to its
     // `items`. A version missing here is listed from legal.ts, in English.
     changes: {
+      '2026-09-29': {
+        helpers: 'Optional AI helpers, each off until you turn it on in Settings → AI helpers: filling in an entry from a line you type, category ideas for new merchants on import, and a short summary of your month.',
+        anthropic: 'If you turn one on, only what it needs is sent to Anthropic (Claude), a US company, under its standard data processing terms. Anthropic doesn’t use it to train its models and deletes it within 30 days. Your name, email and bank details are never sent.',
+        summaries: 'Month summaries are kept for a year and deleted when you turn the helper off.',
+      },
       '2026-09-23': {
         notice: 'A full Privacy Notice: who is responsible for your data, why we use it and on what legal basis, who processes it and where, and how long we keep it.',
         terms: 'New Terms of Use for the app: Budgeer is a free hobby project provided as is, not a bank or financial service, and does not give financial advice.',

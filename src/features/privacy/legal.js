@@ -40,11 +40,13 @@ export function formatVersion(iso, locale = intlLocale('en-GB')) {
     { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
 
-// The change summaries newer than the user's last accepted versions (both
-// documents share one timeline). Nothing accepted yet → every entry.
-export function changesSince(status) {
-  const seen = [status?.privacy_accepted, status?.terms_accepted].filter(Boolean).sort()[0] ?? null
-  return LEGAL_CHANGES.filter((c) => !seen || c.version > seen)
+// The change summaries the user hasn't accepted yet (both documents share one
+// timeline): an entry counts when a document in force at or after it was
+// last accepted before it. Nothing accepted yet → every entry.
+export function changesSince(status, versions = LEGAL_VERSIONS) {
+  const accepted = { privacy: status?.privacy_accepted ?? '', terms: status?.terms_accepted ?? '' }
+  return LEGAL_CHANGES.filter((c) => Object.keys(accepted)
+    .some((doc) => versions[doc] >= c.version && accepted[doc] < c.version))
 }
 
 // What the sign-up form sends as user metadata; the database records the
