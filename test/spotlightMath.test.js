@@ -53,37 +53,28 @@ test('fullyVisible', () => {
   assert.equal(fullyVisible({ top: 10, left: 300, width: 100, height: 100 }, vp), false)
 })
 
-test('placePopover: centred with no target', () => {
-  assert.deepEqual(placePopover({ target: null, size, viewport: vp }), { placement: 'center', top: 347, left: 45 })
-})
-
-test('placePopover: below when there is room, centred on the target and clamped', () => {
-  const p = placePopover({ target: { top: 80, left: 20, width: 100, height: 40 }, size, viewport: vp })
-  assert.equal(p.placement, 'bottom')
-  assert.equal(p.top, 132) // 80 + 40 + 12
-  assert.equal(p.left, 12) // centre would be -80: clamped to the margin
-})
-
-test('placePopover: above a bottom-bar tab (no room below)', () => {
-  const p = placePopover({ target: { top: 784, left: 150, width: 70, height: 56 }, size, viewport: vp })
-  assert.equal(p.placement, 'top')
-  assert.equal(p.top, 784 - 12 - 150)
-  assert.equal(p.left, 35) // centred on the tab: 185 - 150
-})
-
-test('placePopover: right of a tall sidebar item when top/bottom are full', () => {
+test('placePopover: centred with no target, else below, above or beside the target, centred on it and clamped', () => {
   const desk = { width: 1280, height: 800 }
-  const p = placePopover({ target: { top: 20, left: 10, width: 220, height: 760 }, size, viewport: desk })
-  assert.equal(p.placement, 'right')
-  assert.equal(p.left, 242)
-  assert.equal(p.top, 325) // 20 + 380 - 75
-})
-
-test('placePopover: a side-first preference still lands above a phone tab bar', () => {
-  const p = placePopover({ target: { top: 784, left: 300, width: 90, height: 56 }, size, viewport: vp,
-    prefer: ['right', 'bottom', 'top'] })
-  assert.equal(p.placement, 'top')
-  assert.equal(p.left, 78) // centred would overflow the right edge: clamped to 390 - 300 - 12
+  const cases = [
+    ['no target: centred', { target: null, size, viewport: vp }, { placement: 'center', top: 347, left: 45 }],
+    // Below when there is room: 80 + 40 + 12; the centre would be -80, so clamped to the margin.
+    ['below when there is room', { target: { top: 80, left: 20, width: 100, height: 40 }, size, viewport: vp },
+      { placement: 'bottom', top: 132, left: 12 }],
+    // Above a bottom-bar tab (no room below), centred on the tab: 185 - 150.
+    ['above a bottom-bar tab', { target: { top: 784, left: 150, width: 70, height: 56 }, size, viewport: vp },
+      { placement: 'top', top: 784 - 12 - 150, left: 35 }],
+    // Right of a tall sidebar item when top/bottom are full: 20 + 380 - 75.
+    ['right of a tall sidebar item', { target: { top: 20, left: 10, width: 220, height: 760 }, size, viewport: desk },
+      { placement: 'right', top: 325, left: 242 }],
+    // A side-first preference still lands above a phone tab bar; centred would overflow the right
+    // edge, so clamped to 390 - 300 - 12.
+    ['side-first preference above a phone tab bar', { target: { top: 784, left: 300, width: 90, height: 56 }, size, viewport: vp,
+      prefer: ['right', 'bottom', 'top'] }, { placement: 'top', left: 78 }],
+  ]
+  for (const [name, args, want] of cases) {
+    const p = placePopover(args)
+    assert.deepEqual(Object.fromEntries(Object.keys(want).map((k) => [k, p[k]])), want, name)
+  }
 })
 
 test('placePopover: honours `prefer`, and falls back to the roomiest side', () => {

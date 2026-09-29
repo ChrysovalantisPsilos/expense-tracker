@@ -14,7 +14,7 @@ test('pluralises the sign-ups: 1 new sign-up, 3 new sign-ups', () => {
   assert.equal(signupsLabel(1204), '1,204 new sign-ups')
 })
 
-test('subject, heading and body carry the day, the count and the total', () => {
+test('subject, heading and body carry the day, the count and the total (singular for one)', () => {
   const m = signupDigestEmail(ORIGIN, { day: '2026-09-23', newCount: 3, total: 1204 })
   assert.equal(m.subject, 'Budgeer: 3 new sign-ups yesterday')
   for (const body of [m.html, m.text]) {
@@ -24,13 +24,11 @@ test('subject, heading and body carry the day, the count and the total', () => {
   }
   assert.match(m.html, /^<!doctype html>/)
   assert.ok(m.html.includes(`${ORIGIN}/email-mark.png`))
-})
-
-test('singular forms for one sign-up and one account', () => {
-  const m = signupDigestEmail(ORIGIN, { day: '2026-01-01', newCount: 1, total: 1 })
-  assert.equal(m.subject, 'Budgeer: 1 new sign-up yesterday')
-  assert.ok(m.text.includes('1 January 2026 (UTC): 1 new sign-up · 1 account in total.'))
-  assert.ok(!/sign-ups|accounts/.test(m.text.split('\n\n').slice(0, 2).join(' ')))
+  // Singular forms for one sign-up and one account.
+  const one = signupDigestEmail(ORIGIN, { day: '2026-01-01', newCount: 1, total: 1 })
+  assert.equal(one.subject, 'Budgeer: 1 new sign-up yesterday')
+  assert.ok(one.text.includes('1 January 2026 (UTC): 1 new sign-up · 1 account in total.'))
+  assert.ok(!/sign-ups|accounts/.test(one.text.split('\n\n').slice(0, 2).join(' ')))
 })
 
 test('no personal data: the template only takes a day and two numbers', () => {

@@ -60,25 +60,21 @@ test('savingsMoves: only what moves the pot, newest first, same-day rows by when
   assert.deepEqual(savingsMoves([], IDS), [])
 })
 
-test('savingsFlow: from income, received and from savings in the base currency, and the net', () => {
+test('savingsFlow: from income, received and from savings in the base currency (zero-decimal too), and the net, which is the pot total', () => {
   const sep = rows.filter((r) => r.spent_at.startsWith('2026-09'))
   assert.deepEqual(savingsFlow(sep, IDS, 'EUR'), { fromIncome: 20000, received: 0, fromSavings: 89900, net: -69900 })
   const aug = rows.filter((r) => r.spent_at.startsWith('2026-08'))
   // £100 at the captured 1.2 is €120.
   assert.deepEqual(savingsFlow(aug, IDS, 'EUR'), { fromIncome: 20000, received: 12000, fromSavings: 0, net: 32000 })
   assert.deepEqual(savingsFlow([], IDS, 'EUR'), { fromIncome: 0, received: 0, fromSavings: 0, net: 0 })
-})
-
-test('savingsFlow: the net over all rows is exactly the shared pot total', () => {
+  // The net over all rows is exactly the shared pot total.
   assert.equal(savingsFlow(rows, IDS, 'EUR').net, savingsPotMinor(rows, IDS, 'EUR'))
-})
-
-test('savingsFlow: a zero-decimal base currency gets whole minor units at the captured rate', () => {
+  // A zero-decimal base currency gets whole minor units at the captured rate.
   const r = saved({ amount_minor: 1000, currency: 'EUR', exchange_rate: 160.5 }) // €10.00 → ¥1,605
   assert.equal(savingsFlow([r], IDS, 'JPY').fromIncome, 1605)
 })
 
-test('potSeries: month-end totals, counting everything before the first month in', () => {
+test('potSeries: month-end totals, counting everything before the first month in and nothing after the last', () => {
   const now = new Date(2026, 8, 20)
   const months = lastMonths(2, now) // Aug, Sep: July's €200 is already in the pot
   const series = potSeries(rows, IDS, 'EUR', months)
@@ -87,12 +83,9 @@ test('potSeries: month-end totals, counting everything before the first month in
   assert.equal(series[1].label, 'Sep')
   // The last point is the all-time pot.
   assert.equal(series.at(-1).pot, savingsPotMinor(rows, IDS, 'EUR'))
-})
-
-test('potSeries: rows after the last month are left out', () => {
-  const series = potSeries([...rows, saved({ amount_minor: 5, spent_at: '2026-10-01' })], IDS, 'EUR',
-    lastMonths(2, new Date(2026, 8, 20)))
-  assert.equal(series.at(-1).pot, -17900)
+  // Rows after the last month are left out.
+  const later = potSeries([...rows, saved({ amount_minor: 5, spent_at: '2026-10-01' })], IDS, 'EUR', months)
+  assert.equal(later.at(-1).pot, -17900)
 })
 
 test('seriesLength: from the oldest move to now, between 2 and max months', () => {
@@ -145,15 +138,13 @@ test('changeChip: green only when the pot grew; otherwise what was spent from it
   assert.deepEqual(changeChip({ fromSavings: 0, net: 0 }), { kind: 'none', minor: 0 })
 })
 
-test('goalProgress: percent, reached flag and a tenth-of-target step', () => {
+test('goalProgress / goalSavedAfter: percent, reached flag and a tenth-of-target step; never below zero', () => {
   assert.deepEqual(goalProgress({ saved_minor: 2500, target_minor: 10000 }), { pct: 25, done: false, step: 1000 })
   assert.deepEqual(goalProgress({ saved_minor: 12000, target_minor: 10000 }), { pct: 100, done: true, step: 1000 })
   assert.deepEqual(goalProgress({ saved_minor: 1, target_minor: 3 }), { pct: 33, done: false, step: 1 })
   // No target: nothing reached, no divide-by-zero.
   assert.deepEqual(goalProgress({ saved_minor: 500, target_minor: 0 }), { pct: 0, done: false, step: 1 })
-})
-
-test('goalSavedAfter never goes below zero', () => {
+  // A quick add: goalSavedAfter never goes below zero.
   assert.equal(goalSavedAfter({ saved_minor: 500 }, 1000), 1500)
   assert.equal(goalSavedAfter({ saved_minor: 500 }, -1000), 0)
 })

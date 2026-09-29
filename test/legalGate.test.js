@@ -36,53 +36,39 @@ function fakeStorage() {
 const deny = () => { throw new Error('denied') }
 const throwing = { getItem: deny, setItem: deny, removeItem: deny }
 
-test('no answer yet blocks the app (the loader)', () => {
-  assert.equal(view({}), GATE_VIEW.loading)
-  // Even with a remembered acceptance: it counts only once the server has failed.
-  assert.equal(view({ local: { uid: UID, ...V } }), GATE_VIEW.loading)
-})
-
-test('not accepted → only the prompt', () => {
-  assert.equal(view({ status: status(true) }), GATE_VIEW.gate)
-  assert.equal(view({ status: status(true, null) }), GATE_VIEW.gate)
-})
-
-test('accepted → the app', () => {
-  assert.equal(view({ status: status(false) }), GATE_VIEW.app)
-})
-
-test('the server answer wins over the device memory', () => {
-  assert.equal(view({ status: status(true), local: { uid: UID, ...V } }), GATE_VIEW.gate)
-})
-
-test('server unreachable, nothing remembered → the error screen', () => {
-  assert.equal(view({ failed: true }), GATE_VIEW.error)
-})
-
-test('server unreachable, this account accepted the current versions here → the app', () => {
-  assert.equal(view({ failed: true, local: { uid: UID, ...V } }), GATE_VIEW.app)
-})
-
-test('server unreachable, a stale or someone else’s acceptance → the error screen', () => {
-  assert.equal(view({ failed: true, local: { uid: UID, ...OLD } }), GATE_VIEW.error)
-  assert.equal(view({ failed: true, local: { uid: UID, privacy: V.privacy, terms: OLD.terms } }), GATE_VIEW.error)
-  assert.equal(view({ failed: true, local: { uid: 'u-2', ...V } }), GATE_VIEW.error)
-  assert.equal(view({ failed: true, local: { uid: UID, ...V }, uid: null }), GATE_VIEW.error)
-  assert.equal(view({ failed: true, local: 'garbage' }), GATE_VIEW.error)
-})
-
-test('a matching Google sign-up marker → accept automatically', () => {
+test('gateView: loader until answered, the server wins, offline only a matching memory, a Google marker only for current versions', () => {
   const marker = consentMarker(NOW - 60_000)
-  assert.equal(view({ status: status(true, null), marker }), GATE_VIEW.autoAccept)
-  // Nothing to do once accepted.
-  assert.equal(view({ status: status(false), marker }), GATE_VIEW.app)
-})
-
-test('a marker for older versions, an expired or future one → the prompt', () => {
-  assert.equal(view({ status: status(true, null), marker: { ...OLD, at: NOW } }), GATE_VIEW.gate)
-  assert.equal(view({ status: status(true, null), marker: consentMarker(NOW - CONSENT_MARKER_TTL_MS - 1) }), GATE_VIEW.gate)
-  assert.equal(view({ status: status(true, null), marker: consentMarker(NOW + 60_000) }), GATE_VIEW.gate)
-  assert.equal(view({ status: status(true, null), marker: { ...V } }), GATE_VIEW.gate)
+  const cases = [
+    // No answer yet blocks the app (the loader)…
+    ['no answer yet', {}, GATE_VIEW.loading],
+    // …even with a remembered acceptance: it counts only once the server has failed.
+    ['no answer yet, remembered', { local: { uid: UID, ...V } }, GATE_VIEW.loading],
+    // Not accepted → only the prompt; accepted → the app.
+    ['not accepted', { status: status(true) }, GATE_VIEW.gate],
+    ['never accepted', { status: status(true, null) }, GATE_VIEW.gate],
+    ['accepted', { status: status(false) }, GATE_VIEW.app],
+    // The server answer wins over the device memory.
+    ['server says no, device remembers yes', { status: status(true), local: { uid: UID, ...V } }, GATE_VIEW.gate],
+    // Server unreachable: nothing remembered → the error screen.
+    ['offline, nothing remembered', { failed: true }, GATE_VIEW.error],
+    // Server unreachable, this account accepted the current versions here → the app.
+    ['offline, accepted here', { failed: true, local: { uid: UID, ...V } }, GATE_VIEW.app],
+    // Server unreachable, a stale or someone else’s acceptance → the error screen.
+    ['offline, stale acceptance', { failed: true, local: { uid: UID, ...OLD } }, GATE_VIEW.error],
+    ['offline, half-stale acceptance', { failed: true, local: { uid: UID, privacy: V.privacy, terms: OLD.terms } }, GATE_VIEW.error],
+    ['offline, someone else’s acceptance', { failed: true, local: { uid: 'u-2', ...V } }, GATE_VIEW.error],
+    ['offline, no user', { failed: true, local: { uid: UID, ...V }, uid: null }, GATE_VIEW.error],
+    ['offline, garbage remembered', { failed: true, local: 'garbage' }, GATE_VIEW.error],
+    // A matching Google sign-up marker → accept automatically; nothing to do once accepted.
+    ['matching marker', { status: status(true, null), marker }, GATE_VIEW.autoAccept],
+    ['matching marker, already accepted', { status: status(false), marker }, GATE_VIEW.app],
+    // A marker for older versions, an expired or future one → the prompt.
+    ['marker for older versions', { status: status(true, null), marker: { ...OLD, at: NOW } }, GATE_VIEW.gate],
+    ['expired marker', { status: status(true, null), marker: consentMarker(NOW - CONSENT_MARKER_TTL_MS - 1) }, GATE_VIEW.gate],
+    ['future marker', { status: status(true, null), marker: consentMarker(NOW + 60_000) }, GATE_VIEW.gate],
+    ['marker without a time', { status: status(true, null), marker: { ...V } }, GATE_VIEW.gate],
+  ]
+  for (const [name, over, want] of cases) assert.equal(view(over), want, name)
 })
 
 test('the marker must also name the versions the server has in force', () => {

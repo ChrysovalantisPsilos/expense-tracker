@@ -13,7 +13,7 @@ const rows = [
     group_expenses: { groups: { name: 'Italy' } } },
 ]
 
-test('periodTotals: base-currency spent/earned and a largest-first category breakdown', () => {
+test('periodTotals: base-currency spent/earned and a largest-first category breakdown; all zero without rows', () => {
   const t = periodTotals(rows, 'EUR')
   assert.equal(t.spent, 1000 + 2300 + 500 + 1200)
   assert.equal(t.earned, 50000)
@@ -22,11 +22,9 @@ test('periodTotals: base-currency spent/earned and a largest-first category brea
   ])
   assert.equal(t.bucketRow.get('Food').id, 1) // the first row seen in a bucket
   assert.equal(t.bucketRow.get('Italy').id, 5) // group expenses bucket by group
-})
-
-test('periodTotals: no rows, all zero', () => {
-  const t = periodTotals([], 'EUR')
-  assert.deepEqual([t.spent, t.earned, t.byCategory], [0, 0, []])
+  // No rows: all zero.
+  const none = periodTotals([], 'EUR')
+  assert.deepEqual([none.spent, none.earned, none.byCategory], [0, 0, []])
 })
 
 const rules = [

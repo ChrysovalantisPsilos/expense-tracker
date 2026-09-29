@@ -57,14 +57,12 @@ test('userMessage: Postgres and PostgREST errors become the fallback', () => {
   assert.equal(userMessage(pg('x'.repeat(300), 'P0001'), FALLBACK), FALLBACK)
 })
 
-test('userMessage: JavaScript exceptions and plain Errors become the fallback', () => {
+test('userMessage: JavaScript exceptions, plain Errors, no error or a non-object become the fallback', () => {
   assert.equal(userMessage(new TypeError('Cannot read properties of undefined (reading \'amount\')'), FALLBACK), FALLBACK)
   assert.equal(userMessage(new Error('Edge Function returned a non-2xx status code'), FALLBACK), FALLBACK)
   assert.equal(userMessage(new Error('The split must add up to the total'), FALLBACK), FALLBACK)
   assert.equal(userMessage(new Error('boom')), GENERIC_ERROR)
-})
-
-test('userMessage: no error or a non-object gives the fallback', () => {
+  // No error or a non-object gives the fallback too.
   assert.equal(userMessage(null, FALLBACK), FALLBACK)
   assert.equal(userMessage(undefined), GENERIC_ERROR)
   assert.equal(userMessage('duplicate key value', FALLBACK), FALLBACK)

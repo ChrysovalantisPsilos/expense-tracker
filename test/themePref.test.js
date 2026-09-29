@@ -9,12 +9,9 @@ test('system follows the device; light and dark are pinned', () => {
   assert.equal(resolveMode('dark', false), 'dark')
 })
 
-test('the quick toggle pins the opposite of the device', () => {
+test('the quick toggle pins the opposite of the device; toggling back to what it shows follows the device again', () => {
   assert.equal(toggledPref(false, false), 'dark') // light device, showing light
   assert.equal(toggledPref(true, true), 'light') // dark device, showing dark
-})
-
-test('toggling back to what the device shows follows the device again', () => {
   assert.equal(toggledPref(true, false), 'system') // pinned dark on a light device
   assert.equal(toggledPref(false, true), 'system') // pinned light on a dark device
 })

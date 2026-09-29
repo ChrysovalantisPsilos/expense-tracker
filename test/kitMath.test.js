@@ -5,7 +5,7 @@ import {
   nextPhase,
 } from '../src/shared/ui/kit/kitMath.js'
 
-test('textColor / fillColor: known tones map to theme tokens, unknown fall back', () => {
+test('textColor / fillColor / tileColor: known tones map to theme tokens, unknown fall back; only a danger tile is pale red', () => {
   assert.equal(textColor('positive'), 'status.positive')
   assert.equal(textColor('accent'), 'accent.fg')
   assert.equal(textColor(undefined), 'text.primary')
@@ -13,9 +13,7 @@ test('textColor / fillColor: known tones map to theme tokens, unknown fall back'
   assert.equal(fillColor('negative'), 'red.400')
   assert.equal(fillColor('warning'), 'status.warning')
   assert.equal(fillColor(undefined), 'brand.500')
-})
-
-test('tileColor: sand for every tone except a pale red danger tile', () => {
+  // tileColor: sand for every tone except a pale red danger tile.
   assert.equal(tileColor('negative'), 'status.negativeSubtle')
   assert.equal(tileColor('accent'), 'bg.subtle')
   assert.equal(tileColor('positive'), 'bg.subtle')
@@ -45,14 +43,12 @@ test('trendHeights: relative to the peak with headroom; zeros and empty series',
   assert.deepEqual(trendHeights([]), [])
 })
 
-test('signedAmount: +/− (true minus) with tone; zero is muted and unsigned', () => {
+test('signedAmount / signTone: +/− (true minus) with tone; zero is muted and unsigned', () => {
   const fmt = (m) => `€${(m / 100).toFixed(2)}`
   assert.deepEqual(signedAmount(16275, fmt), { text: '+€162.75', tone: 'positive' })
   assert.deepEqual(signedAmount(-285, fmt), { text: '−€2.85', tone: 'negative' })
   assert.deepEqual(signedAmount(0, fmt), { text: '€0.00', tone: 'muted' })
-})
-
-test('signTone: positive above zero, negative below, muted at zero', () => {
+  // signTone: positive above zero, negative below, muted at zero.
   assert.equal(signTone(1), 'positive')
   assert.equal(signTone(-1), 'negative')
   assert.equal(signTone(0), 'muted')

@@ -27,13 +27,7 @@ test('data spanning years includes each year', () => {
   assert.deepEqual(years, ['This year', '2025', '2024'])
 })
 
-test('oldest in current month: no All time, still non-empty', () => {
-  const p = buildPeriods('2026-07-01', NOW)
-  assert.ok(p.length >= 1)
-  assert.ok(!p.some((x) => x.value === 'all'))
-})
-
-test('the oldest date is a local calendar date in every timezone (no UTC shift)', () => {
+test('oldest in current month: no All time; the oldest date is a local calendar date in every timezone (no UTC shift)', () => {
   const saved = process.env.TZ
   try {
     for (const tz of ['UTC', 'America/Los_Angeles', 'Pacific/Kiritimati']) {
@@ -109,14 +103,11 @@ test('next month: offered first once an entry counts in it, labelled like any mo
   assert.deepEqual(p.filter((x) => x.value.startsWith('y:')).map((x) => x.label), ['This year'])
 })
 
-test('next month: not offered without a counted date past this month', () => {
+test('next month: not offered without a counted date past this month; a later one is clamped to next month', () => {
   for (const newestISO of [undefined, null, '2026-09-30', '2026-01-01']) {
     assert.deepEqual(buildPeriods('2026-05-10', SEP29, { newestISO }), buildPeriods('2026-05-10', SEP29),
       String(newestISO))
   }
-})
-
-test('next month: a later counted date is clamped to next month', () => {
   const p = buildPeriods('2026-05-10', SEP29, { newestISO: '2027-03-01' })
   assert.equal(p[0].value, 'm:2026-10')
   assert.equal(p.filter((x) => x.value === 'm:2026-11' || x.value.startsWith('m:2027')).length, 0)

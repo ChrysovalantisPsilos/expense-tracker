@@ -4,16 +4,6 @@ import {
   isoDate, today, monthRange, monthTitle, lastMonths, shortDate, shortDateTime,
 } from '../src/shared/lib/dates.js'
 
-test('isoDate: YYYY-MM-DD', () => {
-  assert.match(isoDate(new Date(2026, 6, 21)), /^2026-07-21$/)
-})
-
-test('monthRange spans first to last day', () => {
-  const { from, to } = monthRange(new Date(2026, 1, 10)) // February 2026
-  assert.equal(from, '2026-02-01')
-  assert.equal(to, '2026-02-28')
-})
-
 // The suite also runs under TZ=Europe/Brussels (npm test), but this pins the
 // behaviour in any single run: switch the process zone and check that local
 // dates never shift. Node re-reads process.env.TZ on assignment.
@@ -28,8 +18,10 @@ function inZones(fn) {
   }
 }
 
-test('monthRange/isoDate/today use the local calendar in every timezone', () => {
+test('monthRange/isoDate/today: YYYY-MM-DD, first to last day, on the local calendar in every timezone', () => {
   inZones((tz) => {
+    assert.match(isoDate(new Date(2026, 6, 21)), /^2026-07-21$/, tz)
+    assert.deepEqual(monthRange(new Date(2026, 1, 10)), { from: '2026-02-01', to: '2026-02-28' }, tz) // February 2026
     assert.deepEqual(monthRange(new Date(2026, 8, 15)), { from: '2026-09-01', to: '2026-09-30' }, tz)
     assert.deepEqual(monthRange(new Date(2026, 8, 1, 0, 5)), { from: '2026-09-01', to: '2026-09-30' }, tz)
     assert.equal(isoDate(new Date(2026, 8, 1, 0, 30)), '2026-09-01', tz)
@@ -60,24 +52,19 @@ test('monthTitle: full month name and year', () => {
   assert.equal(monthTitle(new Date(2026, 8, 22)), 'September 2026')
 })
 
-test('shortDate: day + short month, year only outside the current year', () => {
+test('shortDate: day + short month, year only outside the current year (the real one by default); bad input passes through', () => {
   const now = new Date(2026, 8, 22)
   assert.equal(shortDate('2026-09-21', now), '21 Sep')
   assert.equal(shortDate('2026-10-01', now), '1 Oct')
   assert.equal(shortDate('2025-12-31', now), '31 Dec 2025')
   assert.equal(shortDate('2027-01-05', now), '5 Jan 2027')
-})
-
-test('shortDate: timestamps use their date part; bad input passes through', () => {
-  const now = new Date(2026, 8, 22)
+  // Timestamps use their date part; bad input passes through.
   assert.equal(shortDate('2026-09-08T23:30:00+00:00', now), '8 Sep')
   assert.equal(shortDate('', now), '')
   assert.equal(shortDate(null, now), '')
   assert.equal(shortDate('soon', now), 'soon')
   assert.equal(shortDate('2026-13-01', now), '2026-13-01')
-})
-
-test('shortDate: defaults to the real current year', () => {
+  // Without a date to compare with, it uses the real current year.
   const y = new Date().getFullYear()
   assert.equal(shortDate(`${y}-03-04`), '4 Mar')
   assert.equal(shortDate(`${y - 1}-03-04`), `4 Mar ${y - 1}`)

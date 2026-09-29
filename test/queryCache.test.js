@@ -2,28 +2,22 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { createQueryCache, queryCacheKey } from '../src/shared/lib/queryCache.js'
 
-test('get: undefined for an unknown key, { data } for a known one', () => {
+test('get / set: undefined for an unknown key, { data } for a known one (null or empty too); set replaces', () => {
   const c = createQueryCache()
   assert.equal(c.get('a'), undefined)
   const rows = [{ id: 1 }]
   c.set('a', rows)
   assert.equal(c.get('a').data, rows) // the same object: nothing is copied
-})
-
-test('a null or empty answer is still a hit', () => {
-  const c = createQueryCache()
+  // A null or empty answer is still a hit.
   c.set('none', null)
   c.set('empty', [])
   assert.deepEqual(c.get('none'), { data: null })
   assert.deepEqual(c.get('empty'), { data: [] })
-})
-
-test('set replaces the answer for a key', () => {
-  const c = createQueryCache()
+  // set replaces the answer for a key.
   c.set('a', [1])
   c.set('a', [1, 2])
   assert.deepEqual(c.get('a').data, [1, 2])
-  assert.equal(c.size, 1)
+  assert.equal(c.size, 3)
 })
 
 test('past max, the least recently used key goes', () => {

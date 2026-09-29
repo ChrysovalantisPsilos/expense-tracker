@@ -4,35 +4,18 @@ import {
   parseLocaleAmount, monthNumber, foldText, ymd, parseDateText, findDates,
 } from '../src/shared/lib/localeParse.js'
 
-test('parseLocaleAmount: European and English separators', () => {
-  assert.equal(parseLocaleAmount('1.234,56'), 1234.56)
-  assert.equal(parseLocaleAmount('1,234.56'), 1234.56)
-  assert.equal(parseLocaleAmount('12,50'), 12.5)
-  assert.equal(parseLocaleAmount('12.50'), 12.5)
-  assert.equal(parseLocaleAmount('1 234,56'), 1234.56)
-  assert.equal(parseLocaleAmount('1 234,56'), 1234.56)
-  assert.equal(parseLocaleAmount("1'234.56"), 1234.56)
-  assert.equal(parseLocaleAmount('1.234.567'), 1234567)
-})
-
-test('parseLocaleAmount: signs — leading, trailing, parentheses, DR/CR, Χ/Π', () => {
-  assert.equal(parseLocaleAmount('-12,50'), -12.5)
-  assert.equal(parseLocaleAmount('12,50-'), -12.5)
-  assert.equal(parseLocaleAmount('(12.50)'), -12.5)
-  assert.equal(parseLocaleAmount('+3.00'), 3)
-  assert.equal(parseLocaleAmount('−7,10'), -7.1) // U+2212 minus
-  assert.equal(parseLocaleAmount('12.50 DR'), -12.5)
-  assert.equal(parseLocaleAmount('12.50 CR'), 12.5)
-  assert.equal(parseLocaleAmount('1.240,69 Π'), 1240.69)
-  assert.equal(parseLocaleAmount('42,30 Χ'), -42.3)
-})
-
-test('parseLocaleAmount: currency symbols and codes around the number', () => {
-  assert.equal(parseLocaleAmount('€ 1.234,56'), 1234.56)
-  assert.equal(parseLocaleAmount('-€12.00'), -12)
-  assert.equal(parseLocaleAmount('12,00 EUR'), 12)
-  assert.equal(parseLocaleAmount('GBP 7.5'), 7.5)
-  assert.equal(parseLocaleAmount('3 euros'), 3)
+test('parseLocaleAmount: European and English separators; signs; currency symbols and codes around the number', () => {
+  const cases = [
+    // European and English separators.
+    ['1.234,56', 1234.56], ['1,234.56', 1234.56], ['12,50', 12.5], ['12.50', 12.5], ['1 234,56', 1234.56],
+    ['1 234,56', 1234.56], ["1'234.56", 1234.56], ['1.234.567', 1234567],
+    // Signs — leading, trailing, parentheses, U+2212 minus, DR/CR, Χ/Π.
+    ['-12,50', -12.5], ['12,50-', -12.5], ['(12.50)', -12.5], ['+3.00', 3], ['−7,10', -7.1],
+    ['12.50 DR', -12.5], ['12.50 CR', 12.5], ['1.240,69 Π', 1240.69], ['42,30 Χ', -42.3],
+    // Currency symbols and codes around the number.
+    ['€ 1.234,56', 1234.56], ['-€12.00', -12], ['12,00 EUR', 12], ['GBP 7.5', 7.5], ['3 euros', 3],
+  ]
+  for (const [text, want] of cases) assert.equal(parseLocaleAmount(text), want, text)
 })
 
 test('parseLocaleAmount: the column decimal wins; a lone 1–2 digit tail stays decimal', () => {

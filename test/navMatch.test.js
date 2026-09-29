@@ -2,42 +2,26 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { isAccountPage, isNavActive, navPath, showsAddExpense } from '../src/app/navMatch.js'
 
-test('Home is active only on the root', () => {
-  assert.equal(isNavActive('/', '/'), true)
-  assert.equal(isNavActive('/', '/transactions'), false)
-  assert.equal(isNavActive('/', '/groups/1'), false)
-})
-
-test('Transactions owns /transactions and /import', () => {
-  assert.equal(isNavActive('/transactions', '/transactions'), true)
-  assert.equal(isNavActive('/transactions', '/import'), true)
-  assert.equal(isNavActive('/transactions', '/budgets'), false)
-  assert.equal(isNavActive('/transactions', '/importer'), false)
-})
-
-test('More owns /more, /insights, /savings, /recurring, /plan, /vouchers, /help, the legal pages and every /settings page', () => {
-  for (const p of ['/more', '/insights', '/savings', '/recurring', '/plan', '/settings', '/settings/account', '/settings/data', '/help', '/privacy', '/terms']) {
-    assert.equal(isNavActive('/more', p), true, p)
-  }
-  assert.equal(isNavActive('/more', '/transactions'), false)
-  assert.equal(isNavActive('/more', '/'), false)
-})
-
-test('Groups owns the group list and every group page', () => {
-  assert.equal(isNavActive('/groups', '/groups'), true)
-  assert.equal(isNavActive('/groups', '/groups/abc-123'), true)
-  assert.equal(isNavActive('/groups', '/groupsx'), false)
-  assert.equal(isNavActive('/groups', '/budgets'), false)
-})
-
-test('Any other entry matches its own path and the pages below it', () => {
-  assert.equal(isNavActive('/budgets', '/budgets'), true)
-  assert.equal(isNavActive('/insights', '/insights'), true)
-  assert.equal(isNavActive('/recurring', '/insights'), false)
-  assert.equal(isNavActive('/savings', '/savings/goals/g1'), true)
-  assert.equal(isNavActive('/insights', '/savings'), false)
-  assert.equal(isNavActive('/savings', '/savingsx'), false)
-  assert.equal(isNavActive('/settings', '/settings/security'), true)
+test('isNavActive: Home only on the root; Transactions, More and Groups own their pages; any other entry its path and below', () => {
+  const cases = [
+    // Home is active only on the root.
+    ['/', '/', true], ['/', '/transactions', false], ['/', '/groups/1', false],
+    // Transactions owns /transactions and /import.
+    ['/transactions', '/transactions', true], ['/transactions', '/import', true],
+    ['/transactions', '/budgets', false], ['/transactions', '/importer', false],
+    // More owns /more, /insights, /savings, /recurring, /plan, /help, the legal pages and every /settings page.
+    ...['/more', '/insights', '/savings', '/recurring', '/plan', '/settings', '/settings/account', '/settings/data', '/help',
+      '/privacy', '/terms'].map((p) => ['/more', p, true]),
+    ['/more', '/transactions', false], ['/more', '/', false],
+    // Groups owns the group list and every group page.
+    ['/groups', '/groups', true], ['/groups', '/groups/abc-123', true],
+    ['/groups', '/groupsx', false], ['/groups', '/budgets', false],
+    // Any other entry matches its own path and the pages below it.
+    ['/budgets', '/budgets', true], ['/insights', '/insights', true], ['/recurring', '/insights', false],
+    ['/savings', '/savings/goals/g1', true], ['/insights', '/savings', false], ['/savings', '/savingsx', false],
+    ['/settings', '/settings/security', true],
+  ]
+  for (const [tab, path, active] of cases) assert.equal(isNavActive(tab, path), active, `${tab} on ${path}`)
 })
 
 test('exactly one bottom-bar tab is active on every routed page', () => {

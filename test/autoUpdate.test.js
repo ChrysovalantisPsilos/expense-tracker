@@ -29,33 +29,28 @@ const doc = ({ hidden = false, active = null, dialog = false, closedPopover = fa
   },
 })
 
-test('isSafeToReload: idle visible page is safe', () => {
-  assert.equal(isSafeToReload(doc({ active: { tagName: 'BODY' } })), true)
-})
-
-test('isSafeToReload: typing in a field or an open dialog is not safe', () => {
-  assert.equal(isSafeToReload(doc({ active: { tagName: 'INPUT' } })), false)
-  assert.equal(isSafeToReload(doc({ active: { tagName: 'TEXTAREA' } })), false)
-  assert.equal(isSafeToReload(doc({ active: { tagName: 'DIV', isContentEditable: true } })), false)
-  assert.equal(isSafeToReload(doc({ dialog: true })), false)
-  assert.equal(isSafeToReload(doc({ dialog: true, legacy: true })), false)
-})
-
-test('isSafeToReload: a closed popover\'s hidden dialog panel does not block', () => {
-  assert.equal(isSafeToReload(doc({ closedPopover: true })), true)
-  assert.equal(isSafeToReload(doc({ closedPopover: true, legacy: true })), true)
-  assert.equal(isSafeToReload(doc({ closedPopover: true, dialog: true })), false)
-})
-
-test('isSafeToReload: a form page with unsaved input is not safe, even with focus elsewhere', () => {
-  assert.equal(isSafeToReload(doc({ unsaved: true, active: { tagName: 'BODY' } })), false)
-  assert.equal(isSafeToReload(doc({ unsaved: true, active: { tagName: 'BUTTON' } })), false)
-  assert.equal(isSafeToReload(doc({ unsaved: true, legacy: true })), false)
-})
-
-test('isSafeToReload: a hidden tab is always safe', () => {
-  assert.equal(isSafeToReload(doc({ hidden: true, active: { tagName: 'INPUT' }, dialog: true })), true)
-  assert.equal(isSafeToReload(doc({ hidden: true, unsaved: true })), true)
+test('isSafeToReload: idle is safe; typing, an open dialog or unsaved input is not; a hidden tab always is', () => {
+  const cases = [
+    ['idle visible page', { active: { tagName: 'BODY' } }, true],
+    // Typing in a field or an open dialog is not safe.
+    ['typing in an input', { active: { tagName: 'INPUT' } }, false],
+    ['typing in a textarea', { active: { tagName: 'TEXTAREA' } }, false],
+    ['typing in a contenteditable', { active: { tagName: 'DIV', isContentEditable: true } }, false],
+    ['an open dialog', { dialog: true }, false],
+    ['an open dialog (legacy)', { dialog: true, legacy: true }, false],
+    // A closed popover's hidden dialog panel does not block.
+    ['a closed popover', { closedPopover: true }, true],
+    ['a closed popover (legacy)', { closedPopover: true, legacy: true }, true],
+    ['a closed popover and an open dialog', { closedPopover: true, dialog: true }, false],
+    // A form page with unsaved input is not safe, even with focus elsewhere.
+    ['unsaved form, focus on the body', { unsaved: true, active: { tagName: 'BODY' } }, false],
+    ['unsaved form, focus on a button', { unsaved: true, active: { tagName: 'BUTTON' } }, false],
+    ['unsaved form (legacy)', { unsaved: true, legacy: true }, false],
+    // A hidden tab is always safe.
+    ['hidden tab while typing in a dialog', { hidden: true, active: { tagName: 'INPUT' }, dialog: true }, true],
+    ['hidden tab with an unsaved form', { hidden: true, unsaved: true }, true],
+  ]
+  for (const [name, opts, safe] of cases) assert.equal(isSafeToReload(doc(opts)), safe, name)
 })
 
 test('unsavedFormAttr: the marker only while dirty', () => {
