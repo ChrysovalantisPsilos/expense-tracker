@@ -13,6 +13,7 @@ import {
   type Ask, type AskResult, HELPERS, categoryChoices, normaliseEntry, normaliseSuggestions, normaliseSummary,
   parseEntryAsk, readParseRequest, readSuggestRequest, readSummaryRequest, suggestAsk, summaryAsk,
 } from '../_shared/aiHelper.ts'
+import { paidFromSources, savingsIdsOf } from '../_shared/savings.ts'
 
 // The few Supabase client calls used here (supabase-js, typed loosely).
 interface Db {
@@ -61,10 +62,20 @@ async function start(asUser: Db, helper: string): Promise<{ base: string } | Rep
   return { base: typeof data?.base_currency === 'string' ? data.base_currency : 'EUR' }
 }
 
-async function myCategories(asUser: Db, labels: unknown) {
-  const { data, error } = await asUser.from('categories').select('id, name, kind, is_archived')
+async function myCategoryRows(asUser: Db) {
+  const { data, error } = await asUser.from('categories').select('id, name, kind, is_archived, is_savings')
   if (error) throw error
-  return categoryChoices(data ?? [], labels)
+  return data ?? []
+}
+const myCategories = async (asUser: Db, labels: unknown) => categoryChoices(await myCategoryRows(asUser), labels)
+
+// The caller's "Paid from" choices, worked out here as the Add form does
+// (savings.paidFromSources), never taken from the request: savings once they
+// have a savings category, vouchers once they have a meal-voucher setup
+// (my_meal_vouchers as the caller; unreadable counts as none).
+async function myPaidFrom(asUser: Db, rows: any[]) {
+  const { data, error } = await asUser.rpc('my_meal_vouchers', {})
+  return paidFromSources({ savings: savingsIdsOf(rows).size > 0, vouchers: !error && data != null })
 }
 
 export async function handle(req: Request, deps: Deps): Promise<Reply> {
@@ -82,10 +93,12 @@ export async function handle(req: Request, deps: Deps): Promise<Reply> {
     if (!deps.ask) return NOT_CONFIGURED
     const s = await start(asUser, action)
     if ('status' in s) return s
-    const categories = await myCategories(asUser, body.labels)
-    const res = await deps.ask(parseEntryAsk({ ...r.value, baseCurrency: s.base, categories }))
+    const rows = await myCategoryRows(asUser)
+    const categories = categoryChoices(rows, body.labels)
+    const paidFrom = await myPaidFrom(asUser, rows)
+    const res = await deps.ask(parseEntryAsk({ ...r.value, baseCurrency: s.base, categories, paidFrom }))
     if (!res.ok) return askReply(res.problem, true)
-    const entry = normaliseEntry(res.json, { today: r.value.today, baseCurrency: s.base, categories })
+    const entry = normaliseEntry(res.json, { today: r.value.today, baseCurrency: s.base, categories, paidFrom })
     return entry ? { status: 200, body: { entry } } : fail(422, 'unreadable', 'Couldn’t read that.')
   }
 
@@ -120,9 +133,10 @@ export async function handle(req: Request, deps: Deps): Promise<Reply> {
   const s = await start(asUser, action)
   if ('status' in s) return s
   const categories = await myCategories(asUser, body.labels)
-  const res = await deps.ask(summaryAsk({ totals: state.totals, lang: r.value.lang, categories, today: deps.today() }))
+  const ask = summaryAsk({ totals: state.totals, lang: r.value.lang, categories, today: deps.today() })
+  const res = await deps.ask(ask)
   if (!res.ok) return askReply(res.problem, false)
-  const lines = normaliseSummary(res.json)
+  const lines = normaliseSummary(res.json, ask.check)
   if (!lines) return askReply('unreadable', false)
   const summary = { lines, lang: r.value.lang }
   const { error: saveError } = await deps.service().rpc('ai_save_month_summary', {

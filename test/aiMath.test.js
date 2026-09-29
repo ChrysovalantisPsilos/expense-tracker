@@ -23,13 +23,13 @@ test('month start and category labels', () => {
   assert.deepEqual(categoryLabels(null, String), {})
 })
 
-const current = { kind: 'expense', amount: '', currency: 'EUR', categoryId: 'old', description: 'mine', spentAt: '2026-09-29' }
+const current = { kind: 'expense', amount: '', currency: 'EUR', categoryId: 'old', description: 'mine', spentAt: '2026-09-29', paidFrom: 'bank' }
 
 test('Type it: the entry fills the form, amounts as the field shows them', () => {
   const { next, marked } = fillPlan({
     kind: 'expense', amount_minor: 360, currency: 'EUR', date: '2026-09-28', category_id: 'food', description: 'Coffee',
   }, current)
-  assert.deepEqual(next, { kind: 'expense', currency: 'EUR', amount: '3.60', spentAt: '2026-09-28', categoryId: 'food', description: 'Coffee' })
+  assert.deepEqual(next, { kind: 'expense', currency: 'EUR', amount: '3.60', spentAt: '2026-09-28', categoryId: 'food', description: 'Coffee', paidFrom: 'bank' })
   assert.deepEqual(marked, ['amount', 'date', 'category', 'description'])
   // Yen stay whole.
   assert.equal(fillPlan({ kind: 'expense', amount_minor: 1800, currency: 'JPY' }, current).next.amount, '1800')
@@ -37,11 +37,27 @@ test('Type it: the entry fills the form, amounts as the field shows them', () =>
 
 test('Type it: what the server left empty keeps the form\'s value (the category only for the same kind)', () => {
   const same = fillPlan({ kind: 'expense', amount_minor: 1250, currency: 'EUR', date: null, category_id: null, description: null }, current)
-  assert.deepEqual(same.next, { kind: 'expense', currency: 'EUR', amount: '12.50', spentAt: '2026-09-29', categoryId: 'old', description: 'mine' })
+  assert.deepEqual(same.next, { kind: 'expense', currency: 'EUR', amount: '12.50', spentAt: '2026-09-29', categoryId: 'old', description: 'mine', paidFrom: 'bank' })
   assert.deepEqual(same.marked, ['amount'])
-  const other = fillPlan({ kind: 'income', amount_minor: 279200, currency: 'EUR', date: null, category_id: null, description: null }, current)
+  const other = fillPlan({ kind: 'income', amount_minor: 279200, currency: 'EUR', date: null, category_id: null, description: null, paid_from: null }, current)
   assert.equal(other.next.categoryId, '')
   assert.equal(other.next.kind, 'income')
+  assert.equal(other.next.paidFrom, 'bank')
+})
+
+test('Type it: "Paid from" is filled, and marked unless it is the bank the form already had', () => {
+  const entry = { kind: 'expense', amount_minor: 900, currency: 'EUR', date: null, category_id: null, description: null }
+  const vouchers = fillPlan({ ...entry, paid_from: 'vouchers' }, current)
+  assert.equal(vouchers.next.paidFrom, 'vouchers')
+  assert.deepEqual(vouchers.marked, ['amount', 'paidFrom'])
+  assert.deepEqual(fillPlan({ ...entry, paid_from: 'savings' }, current).marked, ['amount', 'paidFrom'])
+  // The bank, where it already was: filled but not pointed at.
+  const bank = fillPlan({ ...entry, paid_from: 'bank' }, current)
+  assert.deepEqual([bank.next.paidFrom, bank.marked], ['bank', ['amount']])
+  // The bank, where the form had vouchers: a change, so it's marked.
+  assert.deepEqual(fillPlan({ ...entry, paid_from: 'bank' }, { ...current, paidFrom: 'vouchers' }).marked, ['amount', 'paidFrom'])
+  // Nothing (only the bank, or dropped as not one of the choices): the form keeps its own.
+  assert.equal(fillPlan({ ...entry, paid_from: null }, { ...current, paidFrom: 'savings' }).next.paidFrom, 'savings')
 })
 
 test('a category waits for its kind\'s list, then is picked or given up', () => {

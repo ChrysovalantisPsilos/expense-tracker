@@ -776,7 +776,12 @@ entries. Check at 390px (light and dark, English and Greek) and desktop 1280.
    Expense, 3.60, the main currency, yesterday, a matching category and
    "coffee", each marked Suggested; "μισθός 2792 στις 28" fills Income,
    Salary, the 28th; "sushi ¥1800 last friday" fills JPY 1800 and last
-   Friday's date. Undo puts the form back. A line with no amount says it
+   Friday's date. With meal vouchers set up, "lunch 9 with meal vouchers" or
+   "sandwich 6 ticket restaurant" sets Paid from to Meal vouchers, marked
+   Suggested; with a savings category, "from savings 200 flight" sets
+   Savings; a line with no hint leaves Bank, unmarked. Without vouchers or a
+   savings category the line isn't asked about them (Paid from stays hidden).
+   Undo puts the form back, Paid from included. A line with no amount says it
    couldn't tell. Nothing is saved until Save.
 4. Import a statement with new merchants: under the review text, "Finding
    categories…", then "Suggested for n of m" and Suggested chips on the rows
@@ -785,7 +790,9 @@ entries. Check at 390px (light and dark, English and Greek) and desktop 1280.
    private person's name stays blank. Keeping a suggestion and importing
    saves the rule like a hand-picked one.
 5. Month in plain words: Insights (top) and Home show 2–3 lines about this
-   month, written once; reload → the same text, no new call. Add an entry →
+   month, written once, every amount formatted as the app shows money
+   ("€1,030.00"; Greek "1.030,00 €"; the usual in whole units); reload → the
+   same text, no new call. Add an entry →
    "Your totals changed since this was written." with Update; Update writes a new one. Switch the
    language → it's rewritten in that language. Home's card can be hidden for
    until next month. Turn the helper off → the stored summaries are gone.

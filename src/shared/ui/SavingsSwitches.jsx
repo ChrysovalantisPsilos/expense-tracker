@@ -33,7 +33,8 @@ export function SavingsSourceSwitch({ value, onChange }) {
 // Savings and vouchers are still spending, but they come out of the savings
 // pot or the voucher card, so they don't lower Home's Net. `sources` lists
 // the choices the user has (bank always first); `value` is one of them.
-export function PaidFromChoice({ sources, value, onChange }) {
+// `mark` sits at the end of the label row (Type it's "Suggested").
+export function PaidFromChoice({ sources, value, onChange, mark = null }) {
   const t = useT()
   const info = useInfoToggle()
   return (
@@ -41,6 +42,7 @@ export function PaidFromChoice({ sources, value, onChange }) {
       <HStack spacing={0.5} mb={2}>
         <FormLabel as="legend" mb={0} mr={0}>{t('paidFrom.label')}</FormLabel>
         <InfoButton info={info} label={t('info')} />
+        {mark && <HStack flex={1} justify="end">{mark}</HStack>}
       </HStack>
       <SegmentedControl size="sm" isFitted label={t('paidFrom.label')} value={value} onChange={onChange}
         options={sources.map((s) => [s, t(`paidFrom.${s}`)])} />

@@ -10,7 +10,7 @@ import { t } from './i18n/i18n.js'
 
 export {
   EFFECTS, savingsIdsOf, isSavingsRow, rowEffect, isSpending, netSign, potSign, savingsPotMinor,
-  isSavingsAccount, savingsTotal,
+  isSavingsAccount, savingsTotal, paidFromSources,
 } from '../../../supabase/functions/_shared/savings.ts'
 
 const NOTE_KEYS = {
@@ -23,14 +23,6 @@ const NOTE_KEYS = {
 export function savingsNoteLabel(row, savingsIds) {
   const note = savingsNoteOf(row, savingsIds)
   return note ? t(`common:savingsNote.${NOTE_KEYS[note]}`) : null
-}
-
-// Which "Paid from" choices an expense offers: savings once the user has a
-// savings category, vouchers once they get meal vouchers — or when the entry
-// being edited already uses one. [] when there's nothing but the bank.
-export function paidFromSources({ savings, vouchers }) {
-  const sources = ['bank', ...(savings ? ['savings'] : []), ...(vouchers ? ['vouchers'] : [])]
-  return sources.length > 1 ? sources : []
 }
 
 // The choice an entry was saved with.
