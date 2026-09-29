@@ -6,7 +6,8 @@ import { supabase } from '../../shared/lib/supabase.js'
 import { useLiveQuery } from '../../shared/lib/db.js'
 import { dbError, edgeFunctionError } from '../../shared/lib/errors.js'
 import { updateProfile } from '../../shared/lib/profile.js'
-import { EVENTS, STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { EVENTS, RETIRED_STORAGE_KEYS } from '../../shared/lib/keys.js'
+import { useCategories } from '../../shared/lib/categories.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useLanguage } from '../../shared/lib/i18n/I18nProvider.jsx'
@@ -63,14 +64,16 @@ async function readMonthSummary(month) {
   return data
 }
 
-// This month's summary for the Insights and Home cards: kept fresh over
+// This month's summary for Home's overview ("In words"): kept fresh over
 // realtime (a new entry or budget can make it stale), written once without
 // asking when there is none yet, and rewritten on Update.
 //   state   aiMath.summaryState ('hidden' | 'writing' | 'failed' | 'ready' | 'stale')
 //   summary { lines, lang, written_at } or null
 //   month   'YYYY-MM-01'
 //   write() write it (again)
-export function useMonthSummary(categories) {
+export function useMonthSummary() {
+  const { categories } = useCategories()
+  useEffect(dropRetiredHiddenKey, [])
   const { user } = useAuth()
   const uid = user?.id ?? null
   const { monthSummary: on } = useAiHelpers()
@@ -116,12 +119,11 @@ export function useMonthSummary(categories) {
   return { state, summary: shown?.summary ?? null, month, write, writeFailed }
 }
 
-// Home's summary card hidden until next month (this device only).
-export function summaryHidden(month) {
-  try { return localStorage.getItem(STORAGE_KEYS.aiSummaryHidden) === month } catch { return false }
-}
-export function hideSummary(month) {
-  try { localStorage.setItem(STORAGE_KEYS.aiSummaryHidden, month) } catch { /* private mode: hidden until reload */ }
+// Home once had a separate summary card that could be hidden until next
+// month (RETIRED_STORAGE_KEYS.aiSummaryHidden); the summary now lives in the
+// overview, so the old value is just deleted.
+function dropRetiredHiddenKey() {
+  try { localStorage.removeItem(RETIRED_STORAGE_KEYS.aiSummaryHidden) } catch { /* storage unavailable */ }
 }
 
 // Import: category ideas for the review step's new merchants, asked for once

@@ -7,6 +7,10 @@ export default {
   // QueryError's "Couldn't load …".
   what: 'your transactions',
   overview: {
+    // The Numbers | In words switch (shown while Month in plain words is on).
+    showAs: 'Show the overview as',
+    numbers: 'Numbers',
+    words: 'In words',
     spent: 'Spent',
     income: 'Income',
     net: 'Net',

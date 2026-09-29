@@ -14,7 +14,7 @@ export const STORAGE_KEYS = {
   paymentAskDismissed: 'budge:paymentAsk', // localStorage — "Not now" to Settle up's payment-details ask
   notifPrompted: 'budge:notifPrompted', // localStorage — notification prompt answered ("Not now" included)
   recentGroups: 'budge:recentGroups',  // localStorage — group ids last added to from Add, newest first
-  aiSummaryHidden: 'budge:aiSummaryHidden', // localStorage — month ('YYYY-MM-01') Home's AI summary was hidden for
+  overviewTab: 'budge:overviewTab',    // localStorage — Home overview's Numbers | In words switch
   linkingGoogle: 'budge:linkingGoogle', // sessionStorage — a Google link attempt is in flight
   legalConsentPending: 'budge:legalConsentPending', // sessionStorage — Terms/Privacy versions ticked before a Google sign-up
   legalAccepted: 'budge:legalAccepted', // localStorage — account + Terms/Privacy versions it accepted (offline check)
@@ -29,6 +29,9 @@ export const RETIRED_STORAGE_KEYS = {
   // The newest "What's new" release seen on this device, before it moved to
   // the account (profiles.whats_new_seen, 0087). Read once, then deleted.
   whatsNewSeen: 'budge:whatsNewSeen',
+  // The month Home's separate AI summary card was hidden for, before the
+  // summary moved into the overview. Deleted on sight (features/ai/ai.js).
+  aiSummaryHidden: 'budge:aiSummaryHidden',
 }
 
 export const EVENTS = {

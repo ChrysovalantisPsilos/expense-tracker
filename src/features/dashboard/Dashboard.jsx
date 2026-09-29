@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
-  SimpleGrid, Box, Flex, Text, Stack, HStack, IconButton, Button,
+  SimpleGrid, Grid, Box, Flex, Text, Stack, HStack, IconButton, Button,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, ChevronDown, ChevronUp, PiggyBank, Table as TableIcon, ReceiptText, Users, Wallet } from 'lucide-react'
@@ -13,7 +13,7 @@ import { buildPeriods } from '../../shared/lib/periods.js'
 import { linkBuckets } from '../../shared/lib/categoryLinks.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
 import { usePrefetchMyGroups } from '../groups/myGroups.js'
-import { today } from '../../shared/lib/dates.js'
+import { monthName, today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring, useRuleRates } from '../recurring/recurring.js'
 import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
@@ -49,9 +49,14 @@ import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { NARROW_STACKS } from '../../shared/ui/narrowStacks.js'
 import { SkeletonBlock, SkeletonFigure, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import MonthSummary from '../ai/MonthSummary.jsx'
+import MonthSummary, { SummaryTitle } from '../ai/MonthSummary.jsx'
+import { useMonthSummary } from '../ai/ai.js'
+import { overviewWords } from '../ai/aiMath.js'
+import CardHeader from '../../shared/ui/CardHeader.jsx'
+import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 
 const VIEW_KEY = STORAGE_KEYS.overviewView
+const TAB_KEY = STORAGE_KEYS.overviewTab
 
 export default function Dashboard() {
   const t = useT('dashboard')
@@ -146,6 +151,16 @@ export default function Dashboard() {
 
   const info = useInfoToggle()
 
+  // "Month in plain words" (Settings → AI helpers): This month's overview can
+  // show it instead of the numbers. The choice is kept per viewer (TAB_KEY).
+  const summary = useMonthSummary()
+  const [tab, setTab] = useState(() => { try { return localStorage.getItem(TAB_KEY) } catch { return null } })
+  function chooseTab(v) {
+    setTab(v)
+    try { localStorage.setItem(TAB_KEY, v) } catch { /* private mode: kept until reload */ }
+  }
+  const words = overviewWords({ state: summary.state, thisMonth: period.value === periods[0].value, tab })
+
   // Every card by id; homeCards / homeStacks decide which show, and where.
   const card = {
     overview: error ? (
@@ -154,45 +169,60 @@ export default function Dashboard() {
         <Panel data-tour="overview"><QueryError error={error} onRetry={reload} what={t('what')} /></Panel>
       ) : (
       <Panel data-tour="overview">
-        {loading ? <OverviewSkeleton grid={overviewGrid} /> : (
-        <SimpleGrid {...overviewGrid} spacing={4} alignItems="center">
-          {/* What Spent, Income and the Net fold in sits behind the ⓘ
-              (overviewNotes, netSteps). */}
-          <Figure size="hero" value={formatMoney(spentTotal, baseCurrency)} label={
-            <HStack as="span" spacing={0.5}>
-              <span>{t('overview.spent')}</span>
-              <InfoButton info={info} label={tc('info')} />
-            </HStack>
+        {/* With "Month in plain words" on, This month offers Numbers | In
+            words (aiMath.overviewWords); on words the header's month becomes
+            "✦ September in short". The words share the numbers' grid
+            cell, where the numbers stay laid out but hidden, so the card is
+            never shorter than Numbers (nothing below jumps) and grows only
+            when the words need more room. */}
+        {words.offered && (
+          <CardHeader title={words.words ? <SummaryTitle month={summary.month} /> : monthName()} action={
+            <SegmentedControl label={t('overview.showAs')} value={words.words ? 'words' : 'numbers'} onChange={chooseTab}
+              options={[['numbers', t('overview.numbers')], ['words', t('overview.words')]]} />
           } />
-          <SimpleGrid columns={2} spacing={2}>
-            <BalanceTile size="md" label={t('overview.income')} value={formatMoney(earnedTotal, baseCurrency)} tone="positive" />
-            <BalanceTile size="md" label={t('overview.net')} value={net.text} tone={net.tone} />
-            {/* Savings aren't income (those taken from it lower the net): a row
-                says what was put aside, both kinds, and opens Savings — the
-                same row as Insights' Savings account line. */}
-            {saved && (
-              <Box gridColumn="span 2">
-                <ItemRow icon={PiggyBank} title={saved} onClick={() => navigate('/savings')} py={1}
-                  meta={<Text as="span" color="accent.fg" fontWeight="600">{t('insights:netWorth.seeSavings')}</Text>} />
-              </Box>
+        )}
+        <Grid>
+          <Box gridArea="1 / 1" minW={0} visibility={words.words ? 'hidden' : undefined}>
+            {loading ? <OverviewSkeleton grid={overviewGrid} /> : (
+            <SimpleGrid {...overviewGrid} spacing={4} alignItems="center">
+              {/* What Spent, Income and the Net fold in sits behind the ⓘ
+                  (overviewNotes, netSteps). */}
+              <Figure size="hero" value={formatMoney(spentTotal, baseCurrency)} label={
+                <HStack as="span" spacing={0.5}>
+                  <span>{t('overview.spent')}</span>
+                  <InfoButton info={info} label={tc('info')} />
+                </HStack>
+              } />
+              <SimpleGrid columns={2} spacing={2}>
+                <BalanceTile size="md" label={t('overview.income')} value={formatMoney(earnedTotal, baseCurrency)} tone="positive" />
+                <BalanceTile size="md" label={t('overview.net')} value={net.text} tone={net.tone} />
+                {/* Savings aren't income (those taken from it lower the net): a row
+                    says what was put aside, both kinds, and opens Savings — the
+                    same row as Insights' Savings account line. */}
+                {saved && (
+                  <Box gridColumn="span 2">
+                    <ItemRow icon={PiggyBank} title={saved} onClick={() => navigate('/savings')} py={1}
+                      meta={<Text as="span" color="accent.fg" fontWeight="600">{t('insights:netWorth.seeSavings')}</Text>} />
+                  </Box>
+                )}
+              </SimpleGrid>
+            </SimpleGrid>
             )}
-          </SimpleGrid>
-        </SimpleGrid>
-        )}
-        {!loading && (
-          <InfoBox info={info}>
-            <NetSum steps={netSteps(figures)} net={net} currency={baseCurrency} />
-            {overviewNotes({ proj }, baseCurrency).map((line) => <Text key={line} mt={2}>{line}</Text>)}
-          </InfoBox>
-        )}
+            {!loading && (
+              <InfoBox info={info}>
+                <NetSum steps={netSteps(figures)} net={net} currency={baseCurrency} />
+                {overviewNotes({ proj }, baseCurrency).map((line) => <Text key={line} mt={2}>{line}</Text>)}
+              </InfoBox>
+            )}
+          </Box>
+          {words.words && <Box gridArea="1 / 1" minW={0}><MonthSummary summary={summary} /></Box>}
+        </Grid>
       </Panel>
       ),
 
     // Nothing logged at all yet: the way to start sits right under the
     // totals, in place of the (empty) Expenses card further down.
     firstEntry: <Panel><FirstEntry /></Panel>,
-    // "Month in plain words" (Settings → AI helpers); nothing while it's off.
-    aiSummary: <MonthSummary hideable />,
 
     categories: (
       <Panel data-tour="categories" icon={ChartBarDecreasing} title={t('categories.title')} action={

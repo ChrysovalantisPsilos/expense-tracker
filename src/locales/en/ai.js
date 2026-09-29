@@ -1,6 +1,6 @@
 // Namespace `ai`: src/features/ai — the optional AI helpers: Settings → AI
 // helpers (`settings`), "Type it" on Add (`add`), category ideas on Import
-// (`import`), the month in plain words on Insights and Home (`summary`), and
+// (`import`), the month in plain words on Home (`summary`), and
 // the errors the ai-helper function can answer with (`errors`, by code:
 // aiMath.aiErrorKey). The privacy wording must stay true to the Privacy
 // Notice (privacy:notice.recipients.anthropic) and docs/GDPR.md.
@@ -23,7 +23,7 @@ export default {
     },
     monthSummary: {
       label: 'Month in plain words',
-      hint: 'A short summary of your month on Insights and Home.',
+      hint: 'A short summary of your month on Home.',
       more: 'Sent: your total per category for the month and the six before, and your budgets. No entries, descriptions or notes. The summary is kept with your account, encrypted, and deleted when you turn this off.',
     },
     demoOff: 'AI helpers aren’t available on the demo account.',
@@ -52,7 +52,6 @@ export default {
     updateFailed: 'Couldn’t update it right now.',
     failed: 'Couldn’t write a summary right now.',
     retry: 'Try again',
-    hide: 'Hide until next month',
   },
   errors: {
     unreadable: 'Couldn’t tell what that was. Try an amount and what it was, like “lunch 12.50”.',

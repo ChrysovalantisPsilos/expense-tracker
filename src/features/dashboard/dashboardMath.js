@@ -187,26 +187,24 @@ export function visibleBars(bars, showAll) {
 
 // Home's cards, by id, in reading order. On a first run (nothing logged
 // yet) the way to start sits right under the totals, and the Expenses and
-// Income lists (empty) are left out. The month in plain words, then meal
-// vouchers, follow the totals (each card shows only for users who turned it
-// on or set it up).
+// Income lists (empty) are left out. Meal vouchers follow the totals (the
+// card shows only for users who set them up).
 export function homeCards({ firstRun }) {
   return firstRun
     ? ['overview', 'firstEntry', 'vouchers', 'categories', 'budgets', 'recurring']
-    : ['overview', 'aiSummary', 'vouchers', 'categories', 'budgets', 'expenses', 'income', 'recurring']
+    : ['overview', 'vouchers', 'categories', 'budgets', 'expenses', 'income', 'recurring']
 }
 
 // A phone held sideways: the overview is a strip across the top, and the
 // other cards fall into two stacks that each flow on their own (no shared
 // row heights, so a short card never leaves a hole beside a long one). The
-// left holds the summaries (the month in plain words, meal vouchers, by
-// category, budgets); the right
+// left holds the summaries (meal vouchers, by category, budgets); the right
 // the lists (expenses, income, recurring) — or, on a first run, the way to
 // start and Recurring. Together they hold every card homeCards lists, once.
 export function homeStacks({ firstRun }) {
   return {
     strip: ['overview'],
-    left: firstRun ? ['vouchers', 'categories', 'budgets'] : ['aiSummary', 'vouchers', 'categories', 'budgets'],
+    left: ['vouchers', 'categories', 'budgets'],
     right: firstRun ? ['firstEntry', 'recurring'] : ['expenses', 'income', 'recurring'],
   }
 }
