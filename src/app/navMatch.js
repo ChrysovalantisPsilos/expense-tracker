@@ -1,12 +1,13 @@
 // Which navigation entry is "current" for a pathname. A tab lights up for its
 // own section and for the pages you reach from it (Import lives under
 // Transactions; a category's page, with its budget, under Budgets; Insights,
-// Savings, Recurring, Plan, Settings, Help and the legal pages are gathered under
-// More).
+// Savings, Recurring, Plan, Meal vouchers, Settings, Help and the legal pages
+// are gathered under More).
 const SECTIONS = {
   '/transactions': ['/transactions', '/import'],
   '/budgets': ['/budgets', '/categories'],
-  '/more': ['/more', '/insights', '/savings', '/recurring', '/plan', '/settings', '/help', '/privacy', '/terms'],
+  '/more': ['/more', '/insights', '/savings', '/recurring', '/plan', '/vouchers', '/settings', '/help', '/privacy',
+    '/terms'],
 }
 
 // `pathname` is `prefix` itself or a page below it (`/groups/42`), but not a
@@ -30,12 +31,26 @@ export function isNavActive(to, pathname, { accountApart = false } = {}) {
   return (SECTIONS[to] ?? [to]).some((p) => under(pathname, p))
 }
 
-// The phone's floating "Add expense" button: only on the four main tabs'
-// own pages — never over a form, a detail page or Settings. It also steps
+// A category's page is reached from several places (Home's spending by
+// category, Budgets, Insights, Settings › Categories). It lights the tab it
+// was opened from — `from`, the last page outside it — and Budgets (its
+// budget's home) when opened directly.
+const SHARED = ['/categories']
+const isShared = (pathname) => SHARED.some((p) => under(pathname, p))
+
+// The pathname the navigation lights up for: `pathname` itself, or on a
+// shared page the page it was opened from.
+export function navPath(pathname, from) {
+  return isShared(pathname) && from && !isShared(from) ? from : pathname
+}
+
+// The phone's floating "Add expense" button: only on the main tabs that have
+// no Add button of their own in the page header (Transactions and Groups
+// have one) — never over a form, a detail page or Settings. It also steps
 // aside while the page shows an empty state (`emptyState`, shared/ui/
 // EmptyState): that card's own buttons are the next step there, and on a
 // short screen the floating button would sit over them.
-const ADD_EXPENSE_PAGES = new Set(['/', '/transactions', '/groups', '/budgets'])
+const ADD_EXPENSE_PAGES = new Set(['/', '/budgets'])
 
 export function showsAddExpense(pathname, { emptyState = false } = {}) {
   if (emptyState) return false
