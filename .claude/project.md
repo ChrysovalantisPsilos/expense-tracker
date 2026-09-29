@@ -108,6 +108,9 @@ npm run dev       # Vite
 - **Migrations:** `supabase/migrations/NNNN_*.sql`, append-only, next free
   number. Apply with Supabase MCP `apply_migration` using the file's exact
   contents: TEST during development, PROD at release.
+- **Functions:** change a function by editing
+  `supabase/sql/functions/<name>.sql` and pasting it into the new migration;
+  the test (`test/sqlFunctions.test.js`) keeps them equal.
 - **Security bar:** CLAUDE.md #5–#6.
   - RLS on every table, with per-verb policies.
   - BEFORE triggers force ownership and server-owned columns.

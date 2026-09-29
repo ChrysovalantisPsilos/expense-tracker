@@ -55,7 +55,7 @@ aspirations — if a change would break one, fix the cause, don't paper over it.
 | Translations (i18n) | engine + `useT`/`t`/`<Trans>` in `src/shared/lib/i18n/`, dictionaries per namespace in `src/locales/{en,el}/`, conventions in `docs/I18N.md`, Greek terms in `docs/i18n-glossary-el.md`, parity test `test/i18n.test.js` |
 | Auth context | `src/shared/auth/` |
 | Features | `src/features/{auth,backup,budgets,categories,dashboard,groups,help,import,insights,landing,notifications,onboarding,plan,privacy,recurring,savings,settings,transactions,whatsnew}/` |
-| DB schema & policies | `supabase/migrations/NNNN_*.sql` (append-only, ordered) |
+| DB schema & policies | `supabase/migrations/NNNN_*.sql` (append-only, ordered); the current definition of the most-changed functions in `supabase/sql/functions/<name>.sql` (edit there, paste into the migration; `test/sqlFunctions.test.js` keeps them equal) |
 | Server logic | `supabase/functions/*` (+ shared code in `functions/_shared/`) |
 | DB config (JWT verify per function) | `supabase/config.toml` |
 | Service worker (precache, offline reads, push) | `src/sw.js` |
