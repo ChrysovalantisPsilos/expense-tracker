@@ -18,11 +18,10 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import TransactionList from './TransactionList.jsx'
 import FirstEntry from './FirstEntry.jsx'
 import { isFirstRun, listHeading } from './listHeading.js'
-import { useTransactions, useCategories, oldestTransactionDate } from './useData.js'
-import { useSavingsIds } from '../categories/categories.js'
-import {
-  isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS, NO_CATEGORY,
-} from './txnFilter.js'
+import { useTransactions, oldestTransactionDate } from '../../shared/lib/transactions.js'
+import { useCategories, useSavingsIds } from '../../shared/lib/categories.js'
+import { isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS } from './txnFilter.js'
+import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { parseLedgerParams, withLedgerParams } from './ledgerLinks.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { formatMoney } from '../../shared/lib/currency.js'
@@ -32,7 +31,6 @@ import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useShellHeader } from '../../shared/ui/ShellHeader.jsx'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 const OWN_EDIT = { ownEdit: true }
 // The type switch's values; each one's label, Add button and empty line are

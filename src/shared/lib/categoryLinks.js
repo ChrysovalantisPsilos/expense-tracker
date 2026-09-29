@@ -1,7 +1,7 @@
-import { NO_CATEGORY } from '../transactions/txnFilter.js'
-import { periodFromValue } from '../transactions/periods.js'
-import { bucketLabels, bucketOf } from '../../shared/lib/txnRollup.js'
-import { t } from '../../shared/lib/i18n/i18n.js'
+import { NO_CATEGORY } from './categoryName.js'
+import { periodFromValue } from './periods.js'
+import { bucketLabels, bucketOf } from './txnRollup.js'
+import { t } from './i18n/i18n.js'
 
 // The category page's URL contract, and the drill-down links other pages
 // build against it. Pure (no React/supabase) so it's unit-testable.

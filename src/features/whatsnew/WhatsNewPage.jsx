@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { NavList, NavRow } from '../../shared/ui/NavList.jsx'
-import SettingsPage from '../settings/SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import { RELEASES } from './releases.js'
 import { releaseDate, releaseText } from './whatsNewMath.js'
 import WhatsNewStory from './WhatsNewStory.jsx'
@@ -14,7 +14,7 @@ export default function WhatsNewPage() {
   const [replay, setReplay] = useState(null)
   const releases = RELEASES.filter((r) => r.pages.length > 0)
   return (
-    <SettingsPage title={t('settings:rows.whatsNew.label')} description={t('description')}>
+    <SettingsSubPage title={t('settings:rows.whatsNew.label')} description={t('description')}>
       <NavList>
         {releases.map((r) => (
           <NavRow key={r.id} icon={Sparkles} label={releaseDate(r.date)}
@@ -23,6 +23,6 @@ export default function WhatsNewPage() {
         ))}
       </NavList>
       <WhatsNewStory release={replay} onClose={() => setReplay(null)} />
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }

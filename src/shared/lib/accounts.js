@@ -1,14 +1,16 @@
-import { useOwnedQuery, removeRow, rpcRows } from '../../shared/lib/db.js'
-import { supabase } from '../../shared/lib/supabase.js'
-import { dbError } from '../../shared/lib/errors.js'
+import { useOwnedQuery, removeRow, rpcRows } from './db.js'
+import { supabase } from './supabase.js'
+import { dbError } from './errors.js'
 
+// Net-worth accounts (manually maintained balances), shared by Insights (net
+// worth), Savings and Backup.
+//
 // Balances are encrypted at rest (pgcrypto + Vault key), so there are no
 // plaintext columns to select — reads go through a decrypting RPC and writes
 // through an encrypting one. Realtime still subscribes to the base table (via
 // useOwnedQuery), so edits from another device refresh live. (Savings goals
 // live with the Savings page: features/savings/savings.js.)
 
-// ── Net-worth accounts (manually maintained balances) ───────────────────────
 export function useAccounts() {
   const { rows: accounts, loading, error, reload } = useOwnedQuery('accounts', { fetch: listAccounts })
   return { accounts, loading, error, reload }

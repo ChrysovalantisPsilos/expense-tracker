@@ -1,26 +1,12 @@
-import { useEffect, useMemo } from 'react'
-import { supabase } from '../../shared/lib/supabase.js'
-import { useLiveQuery, useOwnedQuery } from '../../shared/lib/db.js'
-import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { fillPendingRates } from '../../shared/lib/fx.js'
-import { shiftFetchFrom } from '../../shared/lib/salaryShift.js'
-import { dbError } from '../../shared/lib/errors.js'
-import { byDisplayName } from '../../shared/lib/categoryName.js'
-
-// Categories for the current user (optionally filtered by kind).
-export function useCategories(kind) {
-  const { rows: categories, loading, reload } = useOwnedQuery('categories', {
-    build: (q) => {
-      q = q.eq('is_archived', false).order('name')
-      return kind ? q.eq('kind', kind) : q
-    },
-    deps: [kind],
-  })
-  // A–Z by the name shown (a default category in the app's language).
-  const sorted = useMemo(() => [...categories].sort(byDisplayName), [categories])
-  return { categories: sorted, loading, reload }
-}
+// Transaction data access, shared by every feature that reads or writes the
+// user's entries (Home, Transactions, Categories, Budgets, Insights, Savings,
+// Meal vouchers, Plan, Import, Backup).
+import { supabase } from './supabase.js'
+import { useLiveQuery, useOwnedQuery } from './db.js'
+import { useProfile } from './ProfileProvider.jsx'
+import { fillPendingRates } from './fx.js'
+import { shiftFetchFrom } from './salaryShift.js'
+import { dbError } from './errors.js'
 
 // Transactions in a date range (defaults to current month). Optional
 // `categoryId` and `limit` narrow the query server-side (used by search);
@@ -108,42 +94,30 @@ export async function oldestTransactionDate() {
   return data?.spent_at ?? null
 }
 
-// Every category the user has, archived ones included (backup/restore).
-export async function listAllCategories() {
-  const { data, error } = await supabase
-    .from('categories').select('id, name, kind, icon, color, is_archived, is_savings, default_key').order('name')
+// Direct writes to the transactions table. Login is required (and reads are
+// served from the service-worker cache when offline), so there's no offline
+// write queue — a write that can't reach the server just fails and the caller
+// shows an offline-aware toast.
+//
+// Amounts, descriptions and notes are encrypted at rest, so writes go through
+// encrypting RPCs (the server forces user_id and ignores unknown fields).
+// Inserts still carry a client_uuid and upsert on (user_id, client_uuid): if a
+// submit's response is lost but the row actually landed, retrying the same
+// submit updates that row instead of creating a duplicate. Callers keep the
+// client_uuid stable across retries of one submit and rotate it after success.
+export async function insertTransaction(row) {
+  const client_uuid = row.client_uuid ?? crypto.randomUUID()
+  const { error } = await supabase.rpc('save_transactions', { p_rows: [{ ...row, client_uuid }] })
   if (error) throw dbError(error)
-  return data ?? []
 }
 
-// Create categories (name, kind, icon, color, is_archived, is_savings). Plain columns, so
-// a direct insert; RLS checks user_id is the caller's own.
-export async function createCategories(userId, rows) {
-  if (!rows.length) return
-  const { error } = await supabase.from('categories')
-    .insert(rows.map((r) => ({ ...r, user_id: userId })))
+// Patch a transaction: only the keys present in `fields` change.
+export async function updateTransaction(id, fields) {
+  const { error } = await supabase.rpc('update_transaction', { p_id: id, p_patch: fields })
   if (error) throw dbError(error)
 }
 
-// One-time default-category seed after first login.
-async function ensureSeeded() {
-  const { count, error } = await supabase
-    .from('categories')
-    .select('id', { count: 'exact', head: true })
+export async function deleteTransaction(id) {
+  const { error } = await supabase.from('transactions').delete().eq('id', id)
   if (error) throw dbError(error)
-  if ((count ?? 0) === 0) {
-    const { error: seedErr } = await supabase.rpc('seed_default_categories')
-    if (seedErr) throw dbError(seedErr)
-  }
-}
-
-// App-bootstrap hook: make sure the signed-in user has the default categories
-// (once per user id). Best effort — a failure just means no defaults yet, and
-// the next app load tries again.
-export function useEnsureDefaultCategories() {
-  const { user } = useAuth()
-  const uid = user?.id
-  useEffect(() => {
-    if (uid) ensureSeeded().catch((e) => console.warn('[categories] seeding failed', e))
-  }, [uid])
 }

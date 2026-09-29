@@ -3,15 +3,14 @@
 // restores through the same encrypting write RPCs the app uses. The document
 // format, validation, matching and dedupe are pure — see backupMath.js.
 import { saveBlob } from '../../shared/lib/download.js'
-import {
-  listTransactions, countTransactions, oldestTransactionDate, listAllCategories, createCategories,
-} from '../transactions/useData.js'
+import { listTransactions, countTransactions, oldestTransactionDate } from '../../shared/lib/transactions.js'
+import { listAllCategories, createCategories } from '../../shared/lib/categories.js'
 import { listRecurring, saveRecurring } from '../recurring/recurring.js'
 import { readPlan, savePlan } from '../plan/plan.js'
 import { readMealVouchers, saveMealVouchers } from '../vouchers/vouchers.js'
 import { isEmptyPlan } from '../plan/planMath.js'
 import { listBudgets, budgetPeriods, saveBudget } from '../budgets/budgets.js'
-import { listAccounts, saveAccount } from '../insights/insights.js'
+import { listAccounts, saveAccount } from '../../shared/lib/accounts.js'
 import { listGoals, saveGoal } from '../savings/savings.js'
 import {
   baseCurrencyLocked, fetchProfile, updateProfile, getMyPaymentInfo, savePaymentInfo,

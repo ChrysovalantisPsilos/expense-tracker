@@ -10,7 +10,7 @@ import useGoBack from '../../shared/ui/useGoBack.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { minorToInput, toMinor } from '../../shared/lib/currency.js'
-import { useAccounts, saveAccount } from './insights.js'
+import { useAccounts, saveAccount } from '../../shared/lib/accounts.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // A net-worth account's page (a balance you keep up to date by hand):

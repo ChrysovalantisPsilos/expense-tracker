@@ -1,6 +1,6 @@
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import SettingsPage from './SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import SignInMethodsCard from './SignInMethodsCard.jsx'
 import PasswordCard from './PasswordCard.jsx'
 import PasskeysCard from './PasskeysCard.jsx'
@@ -25,9 +25,9 @@ export default function SecuritySettings() {
   const { isDemo } = useProfile()
   if (isDemo) {
     return (
-      <SettingsPage title={t('security.title')}>
+      <SettingsSubPage title={t('security.title')}>
         <DemoNotice>{t('security.demo')}</DemoNotice>
-      </SettingsPage>
+      </SettingsSubPage>
     )
   }
   return <AccountSecurity />
@@ -42,12 +42,12 @@ function AccountSecurity() {
   const recent = useRecentSignIn()
   const reason = hasPasswordIdentity(user) ? 'passkeyGoogle' : 'passkeyGoogleDelete'
   return (
-    <SettingsPage title={t('security.title')}>
+    <SettingsSubPage title={t('security.title')}>
       {!recent && <Panel><ReauthNotice reason={reason} /></Panel>}
       <SignInMethodsCard user={user} identities={identities} passkeys={passkeyList} />
       <PasswordCard user={user} />
       <PasskeysCard passkeys={passkeys} />
       <DeleteAccount user={user} />
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }

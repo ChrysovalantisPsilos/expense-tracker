@@ -4,7 +4,7 @@ import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
 import { bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { EFFECTS, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { expectedInWindow } from '../recurring/recurringMath.js'
-import { isMonthPeriod } from '../transactions/periods.js'
+import { isMonthPeriod } from '../../shared/lib/periods.js'
 import { isRelativeLabel } from '../budgets/budgetMath.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 

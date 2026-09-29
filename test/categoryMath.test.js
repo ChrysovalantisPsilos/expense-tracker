@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   CATEGORY_NAME_MAX, categoryNameError, sortCategories, moveTargets, sameKindOthers,
-  categoryPatch, categoryPeriod, NEW_DEFAULT_CATEGORIES, NEW_TAG_MS, isNewCategory, presetCategoryId,
+  categoryPatch, categoryPeriod, NEW_DEFAULT_CATEGORIES, NEW_TAG_MS, isNewCategory,
 } from '../src/features/categories/categoryMath.js'
-import { NO_CATEGORY } from '../src/features/transactions/txnFilter.js'
+import { NO_CATEGORY, presetCategoryId } from '../src/shared/lib/categoryName.js'
 import { latestSql } from './migrations.js'
 import {
   CATEGORY_ICON_KEYS, CATEGORY_ICON_LABELS, CATEGORY_ICON_GROUPS, CATEGORY_COLOR_KEYS,

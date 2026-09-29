@@ -12,8 +12,8 @@ import { foreignCurrencies } from '../../shared/lib/ruleFx.js'
 import { shiftFetchFrom } from '../../shared/lib/salaryShift.js'
 import { monthRange, today } from '../../shared/lib/dates.js'
 import { useRecurring } from '../recurring/recurring.js'
-import { useAllCategories, useSavingsIds } from '../categories/categories.js'
-import { listTransactions, useTransactions } from '../transactions/useData.js'
+import { useAllCategories, useSavingsIds } from '../../shared/lib/categories.js'
+import { listTransactions, useTransactions } from '../../shared/lib/transactions.js'
 import { useBudgetSets } from '../budgets/budgets.js'
 import {
   OVER_BUDGET_MONTHS, PRICE_MONTHS, derivedSalary, isEmptyPlan, normalisePlan, rateNeeds, recentMonths,

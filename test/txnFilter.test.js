@@ -1,8 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  parseTxnType, isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS, NO_CATEGORY,
+  parseTxnType, isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS,
 } from '../src/features/transactions/txnFilter.js'
+import { NO_CATEGORY } from '../src/shared/lib/categoryName.js'
 
 const row = (o) => ({ kind: 'expense', amount_minor: 1000, exchange_rate: 1, currency: 'EUR', ...o })
 

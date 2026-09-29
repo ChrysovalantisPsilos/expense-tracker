@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildPeriods, periodFromValue, isMonthPeriod, withPeriod } from '../src/features/transactions/periods.js'
+import { buildPeriods, periodFromValue, isMonthPeriod, withPeriod } from '../src/shared/lib/periods.js'
 
 const NOW = new Date(2026, 6, 15) // 2026-07-15
 
@@ -82,7 +82,7 @@ test('isMonthPeriod: only single months', () => {
   assert.equal(isMonthPeriod(null), false)
 })
 
-import { isCurrentPeriod } from '../src/features/transactions/periods.js'
+import { isCurrentPeriod } from '../src/shared/lib/periods.js'
 
 test('isCurrentPeriod: this month, this year and all time include today; past periods do not', () => {
   const d = new Date(2026, 8, 25)

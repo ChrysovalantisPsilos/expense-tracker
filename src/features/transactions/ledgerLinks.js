@@ -1,8 +1,9 @@
-import { parseTxnType, EMPTY_FILTERS, NO_CATEGORY } from './txnFilter.js'
+import { parseTxnType, EMPTY_FILTERS } from './txnFilter.js'
+import { NO_CATEGORY } from '../../shared/lib/categoryName.js'
 
 // The Transactions page's URL contract. Pure (no React/supabase) so it's
 // unit-testable. (Breakdown drill-downs open a category's own page instead —
-// see categories/categoryLinks.js.)
+// see shared/lib/categoryLinks.js.)
 //
 //   /transactions?type=expense&category=<id|none>&from=YYYY-MM-DD&to=YYYY-MM-DD
 //

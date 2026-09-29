@@ -1,5 +1,5 @@
-import { isoDate, monthTitle } from '../../shared/lib/dates.js'
-import { t } from '../../shared/lib/i18n/i18n.js'
+import { isoDate, monthTitle } from './dates.js'
+import { t } from './i18n/i18n.js'
 
 // Period options (a month, a year, all time) as { value, label, from, to }.
 // `value` is a stable token — 'm:2026-9', 'y:2026', 'all' — that pages keep

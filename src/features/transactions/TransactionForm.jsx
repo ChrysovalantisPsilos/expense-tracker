@@ -5,16 +5,15 @@ import {
   SimpleGrid, Switch, Text, Textarea, useToast,
 } from '@chakra-ui/react'
 import { Repeat, Trash2 } from 'lucide-react'
-import { useCategories } from './useData.js'
-import { useSavingsIds } from '../categories/categories.js'
-import { presetCategoryId } from '../categories/categoryMath.js'
+import { useCategories, useSavingsIds } from '../../shared/lib/categories.js'
+import { presetCategoryId, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { PaidFromChoice, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
 import { paidFromOf, paidFromSources } from '../../shared/lib/savings.js'
 import { useMealVouchers } from '../vouchers/vouchers.js'
 import { toMinor, minorToInput, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
-import { insertTransaction, updateTransaction } from './writes.js'
+import { insertTransaction, updateTransaction } from '../../shared/lib/transactions.js'
 import { saveRecurring, deleteRecurring } from '../recurring/recurring.js'
 import { editRepeat, planRepeat, repeatDraft } from '../recurring/recurringMath.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
@@ -31,7 +30,6 @@ import CategoryGrid from './CategoryGrid.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // The Expense / Income switch's options; `t` is useT('transactions').
 export const kindOptions = (t) => ['expense', 'income'].map((k) => [k, t(`kinds.${k}`)])

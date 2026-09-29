@@ -25,3 +25,18 @@ export function categoryDisplayName(category) {
 export function byDisplayName(a, b) {
   return categoryDisplayName(a).localeCompare(categoryDisplayName(b), undefined, { sensitivity: 'base' })
 }
+
+// `categoryId` value for personal expenses with no category — the breakdowns'
+// "Uncategorized" bucket (a group share buckets under its group instead). The
+// server can't filter on "no category", so the client refines it.
+export const NO_CATEGORY = 'none'
+
+// A new entry's category from a link (`/transactions/new?kind=…&category=…`,
+// e.g. Savings' "Add to savings"): the id when it's one of the user's active
+// categories of that kind, else '' (none picked) — a stale, foreign or
+// mistyped id is ignored rather than trusted.
+export function presetCategoryId(id, categories, kind) {
+  if (!id) return ''
+  const match = (categories ?? []).find((c) => c.id === id)
+  return match && match.kind === kind && !match.is_archived ? match.id : ''
+}

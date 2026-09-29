@@ -17,7 +17,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { useRecurring, useRuleRates, setRecurringActive, deleteRecurring } from './recurring.js'
-import { useSavingsIds } from '../categories/categories.js'
+import { useSavingsIds } from '../../shared/lib/categories.js'
 import {
   frequencyLabel, incomePerMonth, monthlyBudgetShare, subscriptionGroups,
 } from './recurringMath.js'

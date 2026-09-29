@@ -20,7 +20,7 @@ import {
 import { accountSections, buildTrend, netWorth } from '../src/features/insights/insightsMath.js'
 import { netBaseMinor } from '../src/features/transactions/txnFilter.js'
 import { incomePerMonth, planRepeat, repeatDraft, ruleFromTransaction } from '../src/features/recurring/recurringMath.js'
-import { periodFromValue } from '../src/features/transactions/periods.js'
+import { periodFromValue } from '../src/shared/lib/periods.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 import {
   buildStatement, fromSavingsNote, savingsNote, statementSheets, withVouchersNote,

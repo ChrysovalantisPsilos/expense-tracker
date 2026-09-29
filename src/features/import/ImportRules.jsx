@@ -5,7 +5,7 @@ import {
   InputLeftElement, Select, Stack, Text, useToast,
 } from '@chakra-ui/react'
 import { Pencil, Search, Trash2, UploadCloud, Wand2 } from 'lucide-react'
-import SettingsPage from '../settings/SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
@@ -18,7 +18,7 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { useAllCategories } from '../categories/categories.js'
+import { useAllCategories } from '../../shared/lib/categories.js'
 import { useImportRules, updateRule, deleteRule } from './importRules.js'
 import {
   PATTERN_MAX, RULE_FILTERS, cleanPattern, directionLabel, filterRules, patternProblem, ruleRows, ruleTargets,
@@ -97,14 +97,14 @@ export default function ImportRules() {
   }
 
   return (
-    <SettingsPage title={t('rules.title')} description={t('rules.lead')}>
+    <SettingsSubPage title={t('rules.title')} description={t('rules.lead')}>
       <Panel icon={Wand2} title={t('rules.yours')} subtitle={rows.length ? t('rules.count', { count: rows.length }) : undefined}>
         {body}
       </Panel>
       <EditRuleModal key={editing?.id ?? 'none'} rule={editing} rules={rows} categories={categories.rows}
         onClose={() => setEditing(null)} onSaved={rules.reload} />
       <DeleteRuleModal rule={deleting} onClose={() => setDeleting(null)} onDone={rules.reload} />
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }
 

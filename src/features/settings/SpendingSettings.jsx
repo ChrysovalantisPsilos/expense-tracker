@@ -5,11 +5,11 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { updateProfile } from '../../shared/lib/profile.js'
 import { EVENTS } from '../../shared/lib/keys.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import SettingsPage from './SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import PrefRow from './PrefRow.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
-import { useCategories } from '../transactions/useData.js'
+import { useCategories } from '../../shared/lib/categories.js'
 import { SALARY_SHIFT_DAYS, salaryShiftPatch } from './spendingPrefs.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
@@ -51,7 +51,7 @@ export default function SpendingSettings() {
   }
 
   return (
-    <SettingsPage title={t('spending.title')}>
+    <SettingsSubPage title={t('spending.title')}>
       <Panel>
         {!profile ? (
           <RingLoader compact />
@@ -65,7 +65,7 @@ export default function SpendingSettings() {
           </Stack>
         )}
       </Panel>
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }
 

@@ -8,7 +8,7 @@ import { dbError } from '../../shared/lib/errors.js'
 import { liveQueryCache } from '../../shared/lib/queryCache.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { today } from '../../shared/lib/dates.js'
-import { useTransactions } from '../transactions/useData.js'
+import { useTransactions } from '../../shared/lib/transactions.js'
 import { nextTopUp, voucherHistory, voucherSummary } from './voucherMath.js'
 
 // The signed-in user's setup, or null when they don't get meal vouchers.

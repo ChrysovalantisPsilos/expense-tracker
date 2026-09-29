@@ -4,11 +4,10 @@
 // UNIQUE is case-sensitive, the form is stricter so "food" and "Food" can't
 // both exist.
 
-import { NO_CATEGORY } from '../transactions/txnFilter.js'
 import { paidInWindow, spendRows } from '../../shared/lib/spread.js'
 import { toBaseMinor } from '../../shared/lib/currency.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
-import { byDisplayName, categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { NO_CATEGORY, byDisplayName, categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 export const CATEGORY_NAME_MAX = 60
 
@@ -38,16 +37,6 @@ export function sortCategories(categories, kind) {
     .filter((c) => c.kind === kind)
     .sort((a, b) => Number(!!a.is_archived) - Number(!!b.is_archived)
       || byDisplayName(a, b))
-}
-
-// A new entry's category from a link (`/transactions/new?kind=…&category=…`,
-// e.g. Savings' "Add to savings"): the id when it's one of the user's active
-// categories of that kind, else '' (none picked) — a stale, foreign or
-// mistyped id is ignored rather than trusted.
-export function presetCategoryId(id, categories, kind) {
-  if (!id) return ''
-  const match = (categories ?? []).find((c) => c.id === id)
-  return match && match.kind === kind && !match.is_archived ? match.id : ''
 }
 
 // Where a deleted category's entries can go: the other active categories of

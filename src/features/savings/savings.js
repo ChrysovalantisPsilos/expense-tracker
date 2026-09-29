@@ -4,9 +4,9 @@ import { supabase } from '../../shared/lib/supabase.js'
 import { dbError } from '../../shared/lib/errors.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { savingsPotMinor, savingsTotal } from '../../shared/lib/savings.js'
-import { useTransactions } from '../transactions/useData.js'
-import { useAccounts } from '../insights/insights.js'
-import { useSavingsIds } from '../categories/categories.js'
+import { useTransactions } from '../../shared/lib/transactions.js'
+import { useAccounts } from '../../shared/lib/accounts.js'
+import { useSavingsIds } from '../../shared/lib/categories.js'
 import { savingsMoves } from './savingsMath.js'
 
 // ── The savings pot's entries ───────────────────────────────────────────────

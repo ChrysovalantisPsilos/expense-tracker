@@ -1,6 +1,6 @@
 import { toBaseMinor, toMinor } from '../../shared/lib/currency.js'
 import { netSign, rowEffect } from '../../shared/lib/savings.js'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // Pure search/filter logic behind the Transactions page. The server does the
 // coarse, indexed filtering (kind, dates, category); free text and the amount
@@ -13,11 +13,6 @@ const TXN_TYPES = ['expense', 'income', 'all']
 export function parseTxnType(value) {
   return TXN_TYPES.includes(value) ? value : 'expense'
 }
-
-// `categoryId` value for personal expenses with no category — the breakdowns'
-// "Uncategorized" bucket (a group share buckets under its group instead). The
-// server can't filter on "no category", so it's refined here.
-export const NO_CATEGORY = 'none'
 
 // The advanced filters (everything besides the `?q=` text).
 export const EMPTY_FILTERS = { categoryId: '', from: '', to: '', min: '', max: '' }

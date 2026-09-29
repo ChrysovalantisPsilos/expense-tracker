@@ -2,7 +2,7 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryLink } from '../categories/categoryLinks.js'
+import { categoryLink } from '../../shared/lib/categoryLinks.js'
 import { budgetPercent } from './budgetMath.js'
 
 // One budget from useBudgetProgress as a kit ProgressRow: category icon,

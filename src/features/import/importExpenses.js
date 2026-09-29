@@ -14,7 +14,7 @@ import {
   categoryMatcher, cleanHolderName, deterministicUuid, dropKnownRows, groupMerchants, rowToDraft, signedConvention,
 } from './importMath.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
-import { listTransactions } from '../transactions/useData.js'
+import { listTransactions } from '../../shared/lib/transactions.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 

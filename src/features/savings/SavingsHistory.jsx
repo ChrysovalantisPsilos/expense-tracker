@@ -14,7 +14,7 @@ import { savingsNoteLabel } from '../../shared/lib/savings.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
 import DeleteTransactionDialog from '../transactions/DeleteTransactionDialog.jsx'
-import { deleteTransaction } from '../transactions/writes.js'
+import { deleteTransaction } from '../../shared/lib/transactions.js'
 import {
   HISTORY_FILTERS, HISTORY_MONTHS, HISTORY_MORE, monthGroups, moveDirection,
 } from './savingsMath.js'

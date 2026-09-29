@@ -1,9 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import {
-  categoryPath, parseCategoryRoute, categoryLink, linkBuckets,
-} from '../src/features/categories/categoryLinks.js'
-import { NO_CATEGORY } from '../src/features/transactions/txnFilter.js'
+import { categoryPath, parseCategoryRoute, categoryLink, linkBuckets } from '../src/shared/lib/categoryLinks.js'
+import { NO_CATEGORY } from '../src/shared/lib/categoryName.js'
 import { categoryBars } from '../src/features/dashboard/categoryBars.js'
 
 const NOW = new Date(2026, 8, 15) // 15 Sep 2026

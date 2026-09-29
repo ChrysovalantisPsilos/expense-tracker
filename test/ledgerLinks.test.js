@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import {
   parseLedgerParams, withLedgerParams,
 } from '../src/features/transactions/ledgerLinks.js'
-import { EMPTY_FILTERS, NO_CATEGORY } from '../src/features/transactions/txnFilter.js'
+import { EMPTY_FILTERS } from '../src/features/transactions/txnFilter.js'
+import { NO_CATEGORY } from '../src/shared/lib/categoryName.js'
 
 const CAT = '0b6c2f3e-8d1a-4c55-9f00-1234567890ab'
 const CAT2 = '5d7e9a10-2b3c-4d5e-8f60-abcdefabcdef'

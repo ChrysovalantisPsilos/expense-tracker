@@ -343,7 +343,7 @@ test('planRepeat: a linked rule gets only what changed, is paused, or removed', 
 
 // ---- What subscriptions charged in a period ----------------------------------
 import { chargedGroups, chargedWording } from '../src/features/recurring/recurringMath.js'
-import { periodFromValue } from '../src/features/transactions/periods.js'
+import { periodFromValue } from '../src/shared/lib/periods.js'
 
 const charge = (id, spent_at, amount_minor, recurring, extra = {}) => ({
   id, kind: 'expense', spent_at, amount_minor, currency: 'EUR', exchange_rate: 1,

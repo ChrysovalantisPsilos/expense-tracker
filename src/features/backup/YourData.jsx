@@ -1,7 +1,7 @@
 import { Link as RouterLink } from 'react-router-dom'
 import { Button, Text } from '@chakra-ui/react'
 import { Download, Upload } from 'lucide-react'
-import SettingsPage from '../settings/SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
@@ -10,7 +10,7 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 export default function YourData() {
   const t = useT('backup')
   return (
-    <SettingsPage title={t('settings:rows.data.label')} description={t('settings:rows.data.desc')}>
+    <SettingsSubPage title={t('settings:rows.data.label')} description={t('settings:rows.data.desc')}>
       <Panel title={t('export.title')} icon={Download}>
         <Text fontSize="sm" color="text.muted" mb={4}>{t('export.lead')}</Text>
         <Button as={RouterLink} to="/settings/data/export" leftIcon={<Download size={16} />}>
@@ -23,6 +23,6 @@ export default function YourData() {
           {t('restore.title')}
         </Button>
       </Panel>
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }

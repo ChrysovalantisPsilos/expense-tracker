@@ -12,7 +12,7 @@ import { EVENTS } from '../../shared/lib/keys.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import SettingsPage from './SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import PaymentCard from './PaymentCard.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
@@ -23,10 +23,10 @@ export default function AccountSettings() {
   const t = useT('settings')
   const { user } = useAuth()
   return (
-    <SettingsPage title={t('account.title')}>
+    <SettingsSubPage title={t('account.title')}>
       <IdentityCard user={user} />
       <PaymentCard user={user} />
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }
 

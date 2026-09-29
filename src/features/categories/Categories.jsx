@@ -6,16 +6,18 @@ import {
   Select, Stack, Tag, Text, useToast,
 } from '@chakra-ui/react'
 import { Archive, ArchiveRestore, Pencil, Plus, Tags, Trash2 } from 'lucide-react'
-import SettingsPage from '../settings/SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { useAllCategories, updateCategory, countCategoryUse, deleteCategory } from './categories.js'
+import {
+  useAllCategories, updateCategory, countCategoryUse, deleteCategory,
+} from '../../shared/lib/categories.js'
 import { isNewCategory, moveTargets, sortCategories } from './categoryMath.js'
-import { categoryPath } from './categoryLinks.js'
+import { categoryPath } from '../../shared/lib/categoryLinks.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader, { BusyNote } from '../../shared/ui/RingLoader.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
@@ -53,7 +55,7 @@ export default function Categories() {
   }
 
   return (
-    <SettingsPage title={t('list.title')} description={t('list.description')}>
+    <SettingsSubPage title={t('list.title')} description={t('list.description')}>
       <Panel icon={Tags} title={t('list.yours')} action={
         <Button size="sm" leftIcon={<Plus size={16} />}
           onClick={() => navigate(`/settings/categories/new?kind=${kind}`)}>{t('actions.add')}</Button>
@@ -90,7 +92,7 @@ export default function Categories() {
 
       <DeleteCategoryModal key={deleting?.id ?? 'none'} category={deleting} all={rows}
         onClose={() => setDeleting(null)} onSaved={reload} />
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }
 

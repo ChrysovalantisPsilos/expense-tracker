@@ -9,7 +9,7 @@ import {
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { shortDateTime } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import SettingsPage from '../settings/SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { NotificationPrefs } from '../settings/NotificationSettings.jsx'
 import { describeConsent } from './legal.js'
@@ -31,7 +31,7 @@ export default function PrivacySettings() {
   useEffect(loadConsents, [loadConsents])
 
   return (
-    <SettingsPage title={t('settings.title')} description={t('settings.description')}>
+    <SettingsSubPage title={t('settings.title')} description={t('settings.description')}>
       <Text fontSize="sm" color="text.muted">
         <Trans t={t} k="settings.intro" components={{
           email: <Link href={`mailto:${PRIVACY_EMAIL}`} variant="inline">{PRIVACY_EMAIL}</Link>,
@@ -66,7 +66,7 @@ export default function PrivacySettings() {
       <Right icon={Scale} id="complain" />
 
       <ConsentHistory consents={consents} />
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }
 

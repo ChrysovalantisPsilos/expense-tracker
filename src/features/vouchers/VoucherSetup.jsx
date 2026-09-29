@@ -18,7 +18,7 @@ import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import SettingsPage from '../settings/SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import useGoBack from '../../shared/ui/useGoBack.js'
 import { COUNTRIES, firstTopUpDate, newSettings } from './voucherMath.js'
 import { saveMealVouchers, useMealVouchers, useVoucherCard } from './vouchers.js'
@@ -32,9 +32,9 @@ export default function VoucherSetup() {
   else if (loading || (settings && card.loading)) body = <RingLoader compact />
   else body = <SetupForm settings={settings} balance={card.card?.summary.balance ?? 0} />
   return (
-    <SettingsPage title={t('setup.title')} description={t('setup.lead')}>
+    <SettingsSubPage title={t('setup.title')} description={t('setup.lead')}>
       <Panel>{body}</Panel>
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }
 

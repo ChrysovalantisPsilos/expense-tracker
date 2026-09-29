@@ -13,7 +13,7 @@ import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import Tile from '../../shared/ui/kit/Tile.jsx'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { useCategories } from '../transactions/useData.js'
+import { useCategories } from '../../shared/lib/categories.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, parseManualRate } from '../../shared/lib/currency.js'
 import {

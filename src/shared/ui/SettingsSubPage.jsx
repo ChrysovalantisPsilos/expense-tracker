@@ -7,7 +7,7 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 // to wherever the user came from (e.g. the Meal vouchers page's settings
 // button), or to the Settings list when the page was opened directly — then
 // the page's cards.
-export default function SettingsPage({ title, description, children }) {
+export default function SettingsSubPage({ title, description, children }) {
   const t = useT('settings')
   return (
     <Stack spacing={5}>

@@ -70,7 +70,7 @@ test('budgetChange: set, change, remove or nothing to do', () => {
 import {
   budgetWindow, capsInMonth, periodBudgets, budgetSubtitle, budgetsEmpty, isRelativeLabel,
 } from '../src/features/budgets/budgetMath.js'
-import { periodFromValue } from '../src/features/transactions/periods.js'
+import { periodFromValue } from '../src/shared/lib/periods.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 
 const NOW = new Date(2026, 8, 25) // 25 Sep 2026

@@ -5,7 +5,7 @@ import { enablePush } from '../../shared/lib/push.js'
 import { getProfile, updateProfile } from '../../shared/lib/profile.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import SettingsPage from './SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import PrefRow from './PrefRow.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
@@ -14,9 +14,9 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 export default function NotificationSettings() {
   const t = useT('settings')
   return (
-    <SettingsPage title={t('notifications.title')}>
+    <SettingsSubPage title={t('notifications.title')}>
       <NotificationPrefs />
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }
 

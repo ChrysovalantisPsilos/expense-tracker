@@ -3,7 +3,7 @@ import { toMinor } from '../../shared/lib/currency.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 import { monthTitle } from '../../shared/lib/dates.js'
-import { isMonthPeriod } from '../transactions/periods.js'
+import { isMonthPeriod } from '../../shared/lib/periods.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // How close spend is to its cap, as the tone its progress bar takes (the

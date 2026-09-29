@@ -2,7 +2,7 @@ import { SimpleGrid, Button, Text } from '@chakra-ui/react'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { useAppearance } from '../../shared/lib/appearance.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import SettingsPage from './SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // `value` is also the option's key under appearance.* in the settings namespace.
@@ -16,7 +16,7 @@ export default function AppearanceSettings() {
   const t = useT('settings')
   const { pref, setPref } = useAppearance()
   return (
-    <SettingsPage title={t('appearance.title')} description={t('appearance.description')}>
+    <SettingsSubPage title={t('appearance.title')} description={t('appearance.description')}>
       <Panel>
         <SimpleGrid columns={3} spacing={{ base: 2, md: 3 }}>
           {APPEARANCE_OPTIONS.map(({ value, icon: Icon }) => {
@@ -37,6 +37,6 @@ export default function AppearanceSettings() {
           })}
         </SimpleGrid>
       </Panel>
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }

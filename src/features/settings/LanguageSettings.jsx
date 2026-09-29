@@ -8,7 +8,7 @@ import { userMessage } from '../../shared/lib/errors.js'
 import { useLanguage, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { DEFAULT_LANGUAGE, LANGUAGE_PREFS, NATIVE_NAMES, SYSTEM, deviceLanguage, profileValue } from '../../shared/lib/i18n/language.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import SettingsPage from './SettingsPage.jsx'
+import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 
 // Settings › Language: Follow my device (the default), English or Ελληνικά.
 // The two languages are always written in themselves, so they can be found
@@ -38,7 +38,7 @@ export default function LanguageSettings() {
   }
 
   return (
-    <SettingsPage title={t('language.title')} description={t('language.description')}>
+    <SettingsSubPage title={t('language.title')} description={t('language.description')}>
       <Panel p={2}>
         <Stack spacing={1}>
           {LANGUAGE_PREFS.map((value) => {
@@ -77,6 +77,6 @@ export default function LanguageSettings() {
       {lang !== DEFAULT_LANGUAGE && (
         <Text fontSize="sm" color="text.muted" px={1}>{t('language.partial')}</Text>
       )}
-    </SettingsPage>
+    </SettingsSubPage>
   )
 }
