@@ -14,7 +14,7 @@ import { listBudgets, budgetPeriods, saveBudget } from '../budgets/budgets.js'
 import { listAccounts, saveAccount } from '../insights/insights.js'
 import { listGoals, saveGoal } from '../savings/savings.js'
 import {
-  baseCurrencyLocked, fetchProfile, getProfile, updateProfile, getMyPaymentInfo, savePaymentInfo,
+  baseCurrencyLocked, fetchProfile, updateProfile, getMyPaymentInfo, savePaymentInfo,
 } from '../../shared/lib/profile.js'
 import { getRateSeriesMap } from '../../shared/lib/fx.js'
 import { today } from '../../shared/lib/dates.js'
@@ -87,7 +87,9 @@ async function groupLedgers(groups) {
 // `onStep(label)` narrates progress for the export page, in the app's language.
 async function gatherBackup(userId, onStep = () => {}) {
   onStep(t('backup:export.steps.settings'))
-  const [profile, payment] = await Promise.all([getProfile(userId, PROFILE_FIELDS), getMyPaymentInfo()])
+  // fetchProfile throws on a failed read: a backup without its settings (and
+  // its main currency) must stop with an error, not download incomplete.
+  const [profile, payment] = await Promise.all([fetchProfile(userId, PROFILE_FIELDS), getMyPaymentInfo()])
   onStep(t('backup:export.steps.lists'))
   const [categories, categoryRules, accounts, goals] = await Promise.all([
     listAllCategories(), listRules(), listAccounts(), listGoals(),
@@ -135,7 +137,8 @@ const currencyLocked = () => baseCurrencyLocked().catch(() => true)
 // { change: 'convert' | 'adopt' | null, from, to } (see currencyChange), `from`
 // the backup's currency and `to` the account's, as restoreBackup decides it.
 export async function restoreCurrencyPlan(userId, backup) {
-  const [profile, locked] = await Promise.all([getProfile(userId, 'base_currency'), currencyLocked()])
+  // A failed read throws (never guess EUR: the plan would convert wrongly).
+  const [profile, locked] = await Promise.all([fetchProfile(userId, 'base_currency'), currencyLocked()])
   const from = backup.data.profile.base_currency
   const to = profile?.base_currency || 'EUR'
   return { change: currencyChange(from, to, locked), from, to }

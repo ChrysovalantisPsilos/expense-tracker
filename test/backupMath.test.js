@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import {
   BACKUP_FORMAT, BACKUP_VERSION, BackupError, backupFileName, normText, txnKey, groupShareNote,
   buildBackup, serializeBackup, readBackup, unlockBackup, backupContents, mapCategories,
@@ -1023,4 +1024,14 @@ test('plan: a damaged plan in the file is refused; one naming an unknown entry l
   assert.throws(() => readBackup(JSON.stringify(doc)), BackupError)
   doc.data.plan = { changes: [{ rule: 'r9', cancel: true }], adds: [], dismissed: ['x'] }
   assert.deepEqual(readBackup(JSON.stringify(doc)).backup.data.plan, { changes: [], adds: [], dismissed: ['x'] })
+})
+
+// backup.js can't be loaded here (it talks to Supabase), so its profile reads
+// are checked in the source: a failed read must stop the backup or restore
+// (fetchProfile throws), never go on without the settings or assume EUR
+// (getProfile swallows the error and returns null).
+test('backup and restore read the profile with the throwing fetchProfile', () => {
+  const src = readFileSync(new URL('../src/features/backup/backup.js', import.meta.url), 'utf8')
+  assert.ok(!/\bgetProfile\b/.test(src), 'backup.js uses the best-effort getProfile')
+  assert.equal(src.match(/\bfetchProfile\(/g)?.length, 3, 'the export, the currency plan and the restore each read it')
 })
