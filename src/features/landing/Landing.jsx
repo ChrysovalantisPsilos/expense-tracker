@@ -4,7 +4,7 @@ import {
 } from '@chakra-ui/react'
 import {
   ArchiveRestore, ArrowRight, Download, FileSpreadsheet, Heart, Landmark, LockKeyhole,
-  MapPin, PiggyBank, Percent, Repeat, ScanLine, Wrench,
+  MapPin, PiggyBank, Percent, Repeat, ScanLine, Sparkle, Wrench,
 } from 'lucide-react'
 import BrandGlow from '../../shared/ui/BrandGlow.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
@@ -17,14 +17,41 @@ import { STATUS_URL, SUPPORT_EMAIL } from '../../shared/lib/contact.js'
 import CurrencyMock from './CurrencyMock.jsx'
 import SectionHeading from './SectionHeading.jsx'
 import HowItWorks from './HowItWorks.jsx'
+import TypeItMock from './TypeItMock.jsx'
+import { AI_SWITCHES } from '../ai/aiMath.js'
 import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
-// The words of each are showcase.<id>.eyebrow / .title / .body (landing namespace).
+// Under the AI helpers' words: the three helpers by the names Settings gives
+// them, and one line on what they are, linking to the FAQ answer.
+function AiHelpersNote() {
+  const t = useT('landing')
+  return (
+    <Stack spacing={4} mt={5} maxW="xl">
+      <HStack as="ul" listStyleType="none" spacing={2} rowGap={2} flexWrap="wrap">
+        {Object.keys(AI_SWITCHES).map((id) => (
+          <HStack as="li" key={id} spacing={1.5} px={3} py={1.5} borderRadius="full" bg="bg.surface"
+            borderWidth="1px" borderColor="border.default" fontSize="sm" fontWeight="600">
+            <Box as="span" color="accent.fg" display="inline-flex"><Sparkle size={13} fill="currentColor" aria-hidden /></Box>
+            <Text as="span">{t(`ai:settings.${id}.label`)}</Text>
+          </HStack>
+        ))}
+      </HStack>
+      <Text fontSize="sm" color="text.muted">
+        {t('showcase.ai.note')}{' '}
+        <Link as={RouterLink} to="/help#ai-helpers" color="accent.fg" fontWeight="600">{t('showcase.ai.how')}</Link>
+      </Text>
+    </Stack>
+  )
+}
+
+// The words of each are showcase.<id>.eyebrow / .title / .body (landing
+// namespace); `Extra` goes under them.
 const SHOWCASE = [
   { id: 'budgets', Mock: BudgetsMock },
   { id: 'insights', Mock: InsightsMock },
   { id: 'currency', Mock: CurrencyMock },
+  { id: 'ai', Mock: TypeItMock, Extra: AiHelpersNote },
 ]
 
 // Real features the showcase doesn't have room for (also.<id>).
@@ -102,13 +129,14 @@ function Showcase() {
     <Box as="section">
       <Container maxW="6xl" px={{ base: 4, md: 6 }} py={{ base: 14, md: 24 }}>
         <Stack spacing={{ base: 16, md: 24 }}>
-          {SHOWCASE.map(({ id, Mock }, i) => (
+          {SHOWCASE.map(({ id, Mock, Extra }, i) => (
             <Flex key={id} align="center" gap={{ base: 8, md: 12, lg: 16 }}
               direction={{ base: 'column', md: i % 2 ? 'row-reverse' : 'row' }}>
               <Box flex="1" w="full">
                 <SectionHeading eyebrow={t(`showcase.${id}.eyebrow`)} title={t(`showcase.${id}.title`)}>
                   {t(`showcase.${id}.body`)}
                 </SectionHeading>
+                {Extra && <Extra />}
               </Box>
               <Box flex="1" w="full">
                 <Box maxW="420px" mx="auto">

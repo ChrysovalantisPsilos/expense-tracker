@@ -1,4 +1,4 @@
-import { AvatarGroup, Box, Flex, HStack, Stack, Text } from '@chakra-ui/react'
+import { AvatarGroup, Box, HStack, Stack, Text } from '@chakra-ui/react'
 import { AnimatePresence } from 'framer-motion'
 import { Plane, Receipt } from 'lucide-react'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
@@ -16,6 +16,7 @@ import { formatMoney } from '../../shared/lib/currency.js'
 import { buildTripDemo } from './landingDemo.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import useDemoPerson from './useDemoPerson.js'
+import PhoneFrame, { SCREEN_CARD } from './PhoneFrame.jsx'
 
 const TRIP = buildTripDemo()
 const LAST = TRIP.steps.length // phase index of the settle-up plan
@@ -63,9 +64,6 @@ function SettlePlan({ step }) {
   )
 }
 
-// Inner cards of the phone screen: white, hairline-bordered, no shadow.
-const SCREEN_CARD = { elevation: 'none', borderRadius: 'xl', mx: 2.5, mb: 2.5 }
-
 // Hero mockup: a phone-style group card where the trip's expenses land one by
 // one, balances update, and it ends on the settle-up plan — then loops.
 export default function TripSplitMock() {
@@ -81,53 +79,41 @@ export default function TripSplitMock() {
   const anim = popIn(playback)
 
   return (
-    <Box ref={playback.ref} position="relative" w="full" maxW="360px" mx="auto"
-      role="img" aria-label={t('demo.trip.label', { name: groupName })}>
-      <Box
-        bg="bg.surface" borderWidth="1px" borderColor="border.default"
-        borderRadius="2.25rem" boxShadow="lifted" p={2.5}
-      >
-        <Box bg="bg.canvas" borderRadius="1.75rem" overflow="hidden" aria-hidden>
-          <Flex justify="center" pt={2.5}>
-            <Box w="72px" h="5px" borderRadius="full" bg="border.default" />
-          </Flex>
-
-          <HStack px={4} pt={3} pb={3} spacing={3}>
-            <IconTile icon={Plane} size={40} variant="solid" radius="xl" />
-            <Box flex="1" minW={0}>
-              <Text fontFamily="heading" fontWeight="700">{groupName}</Text>
-              <AvatarGroup size="xs" max={4} spacing={-2} mt={1}>
-                {TRIP.members.map((m) => (
-                  <UserAvatar key={m.id} name={person(m.id)} highlight={m.id === 'you'} />
-                ))}
-              </AvatarGroup>
-            </Box>
-            <Figure label={t('demo.total')} value={money(step.totalMinor)} align="right" />
-          </HStack>
-
-          <Panel {...SCREEN_CARD} p={0} px={3.5} py={1}>
-            <Box minH="208px">
-              <AnimatePresence initial={false}>
-                {step.expenses.map((e) => (
-                  <MotionBox key={e.id} {...anim}>
-                    <ItemRow icon={Receipt} title={t(`demo.trip.${e.id}`)}
-                      meta={t('demo.paidBy', { name: person(e.paidBy) })}
-                      amount={money(e.amountMinor)} />
-                  </MotionBox>
-                ))}
-              </AnimatePresence>
-            </Box>
-          </Panel>
-
-          <Panel {...SCREEN_CARD} p={3.5} minH="196px">
-            <AnimatePresence mode="wait" initial={false}>
-              <MotionBox key={settling ? 'settle' : 'balances'} {...anim}>
-                {settling ? <SettlePlan step={step} /> : <Balances step={step} />}
-              </MotionBox>
-            </AnimatePresence>
-          </Panel>
+    <PhoneFrame ref={playback.ref} label={t('demo.trip.label', { name: groupName })}>
+      <HStack px={4} pt={3} pb={3} spacing={3}>
+        <IconTile icon={Plane} size={40} variant="solid" radius="xl" />
+        <Box flex="1" minW={0}>
+          <Text fontFamily="heading" fontWeight="700">{groupName}</Text>
+          <AvatarGroup size="xs" max={4} spacing={-2} mt={1}>
+            {TRIP.members.map((m) => (
+              <UserAvatar key={m.id} name={person(m.id)} highlight={m.id === 'you'} />
+            ))}
+          </AvatarGroup>
         </Box>
-      </Box>
-    </Box>
+        <Figure label={t('demo.total')} value={money(step.totalMinor)} align="right" />
+      </HStack>
+
+      <Panel {...SCREEN_CARD} p={0} px={3.5} py={1}>
+        <Box minH="208px">
+          <AnimatePresence initial={false}>
+            {step.expenses.map((e) => (
+              <MotionBox key={e.id} {...anim}>
+                <ItemRow icon={Receipt} title={t(`demo.trip.${e.id}`)}
+                  meta={t('demo.paidBy', { name: person(e.paidBy) })}
+                  amount={money(e.amountMinor)} />
+              </MotionBox>
+            ))}
+          </AnimatePresence>
+        </Box>
+      </Panel>
+
+      <Panel {...SCREEN_CARD} p={3.5} minH="196px">
+        <AnimatePresence mode="wait" initial={false}>
+          <MotionBox key={settling ? 'settle' : 'balances'} {...anim}>
+            {settling ? <SettlePlan step={step} /> : <Balances step={step} />}
+          </MotionBox>
+        </AnimatePresence>
+      </Panel>
+    </PhoneFrame>
   )
 }
