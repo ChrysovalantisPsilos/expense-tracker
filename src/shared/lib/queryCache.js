@@ -4,11 +4,14 @@
 // once and refreshes it in place, instead of blanking every card to a
 // skeleton and filling them back in one by one. Bounded: past `max` keys, the
 // least recently used goes. Pure (no I/O); AuthProvider empties it on any
-// sign-out.
+// sign-out. subscribe(key, fn) hears every new answer stored under `key`, so
+// a save that stores its result (vouchers.js) updates every mounted query of
+// that key at once — for data realtime can't announce (encrypted documents).
 
 export function createQueryCache(max = 50) {
   const entries = new Map()
   const pending = new Map() // key -> a prefetch in flight
+  const listeners = new Map() // key -> Set of fn(data)
   let generation = 0 // bumped by clear(): a prefetch started before it never lands
   return {
     // Warm `key` with one call of `read` (async), unless it's answered or
@@ -35,10 +38,23 @@ export function createQueryCache(max = 50) {
       entries.set(key, hit) // most recently used goes last
       return hit
     },
-    set(key, data) {
+    // Store `data` under `key`; tells the key's listeners unless `quiet`.
+    set(key, data, { quiet = false } = {}) {
       entries.delete(key)
       entries.set(key, { data })
       while (entries.size > max) entries.delete(entries.keys().next().value)
+      if (!quiet) for (const fn of [...(listeners.get(key) ?? [])]) fn(data)
+    },
+    // Call fn(data) whenever an answer is stored under `key`; returns the
+    // unsubscribe.
+    subscribe(key, fn) {
+      if (!listeners.has(key)) listeners.set(key, new Set())
+      listeners.get(key).add(fn)
+      return () => {
+        const set = listeners.get(key)
+        set?.delete(fn)
+        if (set && !set.size) listeners.delete(key)
+      }
     },
     clear() {
       entries.clear()

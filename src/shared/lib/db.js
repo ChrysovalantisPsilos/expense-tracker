@@ -97,10 +97,21 @@ export function useLiveQuery(fetcher, {
 
   useLiveRefetch(enabled ? key : null, specs, () => run(false))
 
+  // A newer answer stored under this cacheKey elsewhere (another mount's
+  // fetch, or a save that stores its result) shows here at once.
+  useEffect(() => {
+    const k = enabled ? cacheKey : null
+    if (!k) return undefined
+    return liveQueryCache.subscribe(k, (data) => setState((s) => (s.data === data && !s.loading && !s.error ? s
+      : { data, loading: false, error: null })))
+  }, [cacheKey, enabled])
+
   const reload = useCallback(() => run(true), [run])
   const mutate = useCallback((next) => setState((s) => {
     const data = typeof next === 'function' ? next(s.data) : next
-    if (cacheRef.current) liveQueryCache.set(cacheRef.current, data)
+    // Quiet: this runs inside a state update, where other components mustn't
+    // be set; mutate is this mount's own optimistic edit.
+    if (cacheRef.current) liveQueryCache.set(cacheRef.current, data, { quiet: true })
     return { ...s, data }
   }), [])
 

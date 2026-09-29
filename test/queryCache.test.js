@@ -97,3 +97,17 @@ test('prefetch: a fresher answer, a failure or a sign-out wins over it', async (
   await late
   assert.equal(c.get('old'), undefined)
 })
+
+test('subscribe hears each answer stored under its key, until unsubscribed', () => {
+  const c = createQueryCache()
+  const heard = []
+  const off = c.subscribe('a', (d) => heard.push(d))
+  c.subscribe('b', () => heard.push('wrong key'))
+  c.set('a', 1)
+  c.set('a', 2, { quiet: true }) // an own optimistic edit tells no one
+  c.set('a', 3)
+  off()
+  c.set('a', 4)
+  assert.deepEqual(heard, [1, 3])
+  assert.equal(c.get('a').data, 4)
+})
