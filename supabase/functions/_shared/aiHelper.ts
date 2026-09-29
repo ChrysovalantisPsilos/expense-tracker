@@ -394,16 +394,18 @@ export function whatIfAsk(o: { text: string; baseCurrency: string; payments: Pla
     system: [
       'You turn a what-if someone typed about their recurring payments and income (in any language, often English',
       'or Greek) into proposed changes to a budget plan, like "cancel Netflix and Disney, add a gym at €40 a month"',
-      'or "Spotify goes up to 12.99".',
-      'changes: one for each existing item the line changes, by its id from items. Match names loosely ("Disney" is',
-      '"Disney+", "netflix" is "Netflix Premium") but never guess between two items. action "cancel" cancels a',
-      'payment or stops an income; "change" gives it a new amount and/or how often: amount is the new amount per',
-      'period in that item\'s own currency, as a plain decimal string with a dot and no symbols or thousands',
-      'separators ("12.99", "1200"), or null to keep it; frequency one of the choices, or null to keep it.',
-      'adds: one for each new payment or income the line adds: kind "expense" for a cost, "income" for money',
-      'received; name short, as the user would write it; amount per period as a plain decimal string; currency the',
-      'ISO code the line names or clearly implies (€ is EUR, $ is USD, £ is GBP), else null; frequency one of the',
-      'choices ("monthly" when the line doesn\'t say).',
+      'or "Spotify goes up to 12.99". One line can add new items and change or cancel existing ones at once: answer',
+      'every part, each in its own list.',
+      'adds: one for each new payment or income the line adds ("add", "new", "start", "take up", "πρόσθεσε", "βάλε"),',
+      'even when an existing item has a similar name: kind "expense" for a cost, "income" for money received; name',
+      'short, as the user would write it; amount per period as a plain decimal string; currency the ISO code the line',
+      'names or clearly implies (€ is EUR, $ is USD, £ is GBP), else null; frequency one of the choices ("monthly"',
+      'when the line doesn\'t say).',
+      'changes: one for each existing item the line cancels or gives a new amount or how often, by its id from items.',
+      'Match names loosely ("Disney" is "Disney+", "netflix" is "Netflix Premium") but never guess between two items.',
+      'action "cancel" cancels a payment or stops an income; "change" gives it a new amount and/or how often: amount',
+      'is the new amount per period in that item\'s own currency, as a plain decimal string with a dot and no symbols',
+      'or thousands separators ("12.99", "1200"), or null to keep it; frequency one of the choices, or null to keep it.',
       'not_found: each name the line wants to change or cancel that matches no item, as the user wrote it.',
       'Set understood to false when the line is not a what-if about payments or income.',
       DATA_ONLY,
@@ -418,22 +420,11 @@ export function whatIfAsk(o: { text: string; baseCurrency: string; payments: Pla
     }),
     schema: {
       type: 'object',
+      // adds before changes: answering changes first, the model tended to stop
+      // there and drop the adds of a line that does both ("cancel Netflix, add
+      // a gym at 40"), seen on TEST.
       properties: {
         understood: { type: 'boolean' },
-        changes: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              action: { type: 'string', enum: ['cancel', 'change'] },
-              amount: nullable({ type: 'string' }),
-              frequency: nullable({ type: 'string', enum: [...PLAN_REPEATS] }),
-            },
-            required: ['id', 'action', 'amount', 'frequency'],
-            additionalProperties: false,
-          },
-        },
         adds: {
           type: 'array',
           items: {
@@ -449,9 +440,23 @@ export function whatIfAsk(o: { text: string; baseCurrency: string; payments: Pla
             additionalProperties: false,
           },
         },
+        changes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              action: { type: 'string', enum: ['cancel', 'change'] },
+              amount: nullable({ type: 'string' }),
+              frequency: nullable({ type: 'string', enum: [...PLAN_REPEATS] }),
+            },
+            required: ['id', 'action', 'amount', 'frequency'],
+            additionalProperties: false,
+          },
+        },
         not_found: { type: 'array', items: { type: 'string' } },
       },
-      required: ['understood', 'changes', 'adds', 'not_found'],
+      required: ['understood', 'adds', 'changes', 'not_found'],
       additionalProperties: false,
     },
     maxTokens: 1500,

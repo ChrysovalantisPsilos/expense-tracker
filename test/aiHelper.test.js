@@ -349,6 +349,14 @@ test('what-if: the prompt carries only the line, the base currency and the plan\
   assert.equal(a.schema.additionalProperties, false)
 })
 
+test('what-if: a line that adds and changes asks for both, adds first', () => {
+  const a = whatIfAsk({ text: 'cancel Netflix, add a gym at 40', baseCurrency: 'EUR', payments })
+  assert.deepEqual(Object.keys(a.schema.properties), ['understood', 'adds', 'changes', 'not_found'])
+  assert.deepEqual(a.schema.required, ['understood', 'adds', 'changes', 'not_found'])
+  assert.match(a.system, /answer every part, each in its own list/)
+  assert.ok(a.system.indexOf('adds:') < a.system.indexOf('changes:'))
+})
+
 test('what-if: the answer is checked field by field', () => {
   const o = { baseCurrency: 'EUR', payments }
   const out = normaliseWhatIf({
