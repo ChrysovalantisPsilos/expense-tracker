@@ -174,6 +174,7 @@ const INTERNAL_RAISES = [
   'unknown privacy email kind %', 'encrypted value is not an amount',
   'receipts bucket is not empty: empty it via the Storage API, then re-run this migration',
   'unknown demo role', 'a demo login needs a password hash', 'that address belongs to an existing account',
+  'transfer_owned_groups: p_user is required',
   // Raised with a Postgres errcode (42501, 23514), not P0001: never trusted.
   'Group members can only be changed through the app.', 'Images must be uploaded to Budgeer.',
 ]

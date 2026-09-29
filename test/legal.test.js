@@ -107,24 +107,16 @@ test('deletionDate: 24 months after last use, but never under 28 days after the 
 })
 
 // A minimal stand-in for the service-role client: records every call.
-function fakeAdmin({ owned = [], others = {}, files = {} } = {}) {
+// `doomed` is what transfer_owned_groups returns (the sole-owner groups);
+// `rpcError` makes that call fail.
+function fakeAdmin({ doomed = [], rpcError = null, files = {} } = {}) {
   const log = []
-  const query = (table) => {
-    const q = { table, filters: [], upd: null }
-    const chain = {
-      select: () => chain,
-      update: (v) => { q.upd = v; return chain },
-      eq: (c, v) => { q.filters.push([c, v]); return q.upd ? done() : chain },
-      not: () => chain, neq: () => chain, order: () => chain,
-      limit: () => Promise.resolve({ data: others[q.filters.find(([c]) => c === 'group_id')?.[1]] ?? [] }),
-      then: (res) => res({ data: table === 'groups' ? owned.map((id) => ({ id })) : [], error: null }),
-    }
-    const done = () => { log.push(['update', table, q.upd, q.filters]); return Promise.resolve({ error: null }) }
-    return chain
-  }
   return {
     log,
-    from: query,
+    rpc: (fn, args) => {
+      log.push(['rpc', fn, args])
+      return Promise.resolve(rpcError ? { data: null, error: rpcError } : { data: doomed, error: null })
+    },
     storage: {
       from: (bucket) => ({
         list: (folder) => {
@@ -140,20 +132,25 @@ function fakeAdmin({ owned = [], others = {}, files = {} } = {}) {
   }
 }
 
-test('deleteAccount hands over shared groups, removes files, then deletes the user', async () => {
+test('deleteAccount hands over shared groups in one call, removes files, then deletes the user', async () => {
   const admin = fakeAdmin({
-    owned: ['g-shared', 'g-solo'],
-    others: { 'g-shared': [{ id: 'm2', user_id: 'u2' }] },
+    doomed: ['g-solo'],
     files: { 'avatars/u1': ['avatar.jpg'], 'group-images/g-solo': ['cover.png'], 'group-images/g-shared': ['keep.png'] },
   })
   await deleteAccount(admin, 'u1')
   assert.deepEqual(admin.log, [
-    ['update', 'groups', { owner_id: 'u2' }, [['id', 'g-shared']]],
-    ['update', 'group_members', { role: 'owner' }, [['id', 'm2']]],
+    ['rpc', 'transfer_owned_groups', { p_user: 'u1' }],
     ['remove', 'avatars', ['u1/avatar.jpg']],
     ['remove', 'group-images', ['g-solo/cover.png']],
     ['deleteUser', 'u1'],
   ])
+})
+
+test('deleteAccount stops before deleting anything when the hand-over fails', async () => {
+  const failure = new Error('hand-over failed')
+  const admin = fakeAdmin({ rpcError: failure, files: { 'avatars/u1': ['avatar.jpg'] } })
+  await assert.rejects(deleteAccount(admin, 'u1'), failure)
+  assert.deepEqual(admin.log, [['rpc', 'transfer_owned_groups', { p_user: 'u1' }]])
 })
 
 test('legalLanguage: the English original only when the address asks for it', () => {

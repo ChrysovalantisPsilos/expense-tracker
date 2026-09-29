@@ -98,7 +98,7 @@ creation/refresh (an installed PWA refreshes its session when opened).
 | --- | --- | --- |
 | Access / portability (15/20) | Settings → Privacy → Download my data | `export_my_data()` (0074/0076/0095; caller only, decrypted, rate-limited 10/h; each download emails a security notice) |
 | Rectification (16) | Settings → Account; edit any record | normal RLS writes |
-| Erasure (17) | Settings → Security → Delete account | edge `delete-account` → `_shared/accountDeletion.ts` + `anonymise_departing_user` trigger |
+| Erasure (17) | Settings → Security → Delete account | edge `delete-account` → `_shared/accountDeletion.ts` (shared groups handed over in one transaction by `transfer_owned_groups`, 0099) + `anonymise_departing_user` trigger |
 | Restriction / objection (18/21), other | Settings → Privacy → Send a request, or email | edge `privacy-request` → privacy@ via Resend (3/day) |
 | Withdraw consent (7(3)) | Settings → Notifications or Privacy (switches) | `log_preference_consent` trigger records history |
 | Consent history | Settings → Privacy | `consents` (RLS select own) |

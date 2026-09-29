@@ -475,9 +475,12 @@ end $$;
 -- ---------------------------------------------------------------------------
 -- 12. Every function in public pins search_path (extension-owned ones aside),
 --     so none can be hijacked by objects created earlier on the search path.
+--     A SECURITY DEFINER one must also name pg_temp explicitly (0101): left
+--     out, pg_temp is searched FIRST for tables, so a caller's temp table
+--     could stand in for a real one inside the definer's rights.
 -- ---------------------------------------------------------------------------
 do $$
-declare unpinned text;
+declare unpinned text; no_temp text;
 begin
   select string_agg(p.proname, ', ' order by p.proname) into unpinned
   from pg_proc p
@@ -485,8 +488,17 @@ begin
   where n.nspname = 'public' and p.prokind = 'f'
     and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
     and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c like 'search_path=%');
-  if unpinned is null then update _t set passes = passes + 1; raise notice 'PASS: every public function pins search_path';
-  else update _t set fails = fails + 1; raise notice 'FAIL: search_path not pinned on: %', unpinned; end if;
+  select string_agg(p.oid::regprocedure::text, ', ' order by p.proname) into no_temp
+  from pg_proc p
+  where p.pronamespace = 'public'::regnamespace and p.prosecdef
+    and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+    and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c where c ~ '^search_path=.*\mpg_temp\M');
+  if unpinned is null and no_temp is null then
+    update _t set passes = passes + 1; raise notice 'PASS: every public function pins search_path (definers with pg_temp)';
+  else
+    update _t set fails = fails + 1;
+    raise notice 'FAIL: search_path not pinned on: % / definers without pg_temp: %', unpinned, no_temp;
+  end if;
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -886,25 +898,28 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 19. Grants: the crypto helpers are never callable by an API role, and the
---     new decrypting/encrypting RPCs are closed to anon.
+-- 19. Grants: the crypto helpers are never callable by an API role, and no
+--     SECURITY DEFINER function in public is callable signed out (anon)
+--     unless it is on this allow-list of the deliberately public ones. A new
+--     definer function fails here until it is revoked from anon (or listed).
 -- ---------------------------------------------------------------------------
 do $$
 declare bad text;
+  anon_ok constant text[] := array[
+    'group_preview(text)',    -- 0011/0051: the minimal invite preview before sign-in
+    'status_snapshot()'       -- 0089: the public status page's health snapshot
+  ];
 begin
   select string_agg(p.oid::regprocedure::text || ' -> ' || r.rolname, ', ') into bad
   from pg_proc p
   cross join (values ('anon'), ('authenticated')) as r(rolname)
   where p.pronamespace = 'public'::regnamespace
     and (p.proname in ('enc_text', 'dec_text', 'enc_minor', 'dec_minor', 'app_enc_key', 'group_invite_guard')
-         or (r.rolname = 'anon' and p.proname in (
-               'my_transactions', 'save_transactions', 'update_transaction', 'my_recurring_rules',
-               'save_recurring_rule', 'group_ledger', 'group_audit_entries', 'group_comments_for',
-               'add_settlement', 'add_group_comment', 'create_group_expense', 'create_group_expense_v2',
-               'update_group_expense', 'update_group_expense_v2', 'preview_link_invite',
-               'consume_quota')))
+         or (r.rolname = 'anon' and p.prosecdef
+             and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+             and format('%s(%s)', p.proname, oidvectortypes(p.proargtypes)) <> all (anon_ok)))
     and has_function_privilege(r.rolname, p.oid, 'execute');
-  if bad is null then update _t set passes = passes + 1; raise notice 'PASS: crypto helpers + new RPCs not executable by anon';
+  if bad is null then update _t set passes = passes + 1; raise notice 'PASS: crypto helpers closed; no definer function open to anon beyond the allow-list';
   else update _t set fails = fails + 1; raise notice 'FAIL: over-granted functions: %', bad; end if;
 end $$;
 
@@ -6218,11 +6233,243 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 101. 0099: transfer_owned_groups hands every group the departing user owns
+--      to its earliest other linked member (placeholders without an account
+--      don't count), in one call, and returns the groups nobody else is in
+--      (they cascade with the account). Service role only.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; u3 uuid; u4 uuid; g1 uuid; g2 uuid; g3 uuid; m1 uuid; m2 uuid; m3 uuid;
+        doomed uuid[]; r text; ok boolean;
+begin
+  begin
+    u1 := pg_temp.zz_user('to1');
+    u2 := pg_temp.zz_user('to2');
+    u3 := pg_temp.zz_user('to3');
+    u4 := pg_temp.zz_user('to4');
+    -- g1: shared. u3 joined before u2; a placeholder (no account) before both.
+    insert into public.groups (name, owner_id, currency) values ('ZZT handover', u1, 'EUR') returning id into g1;
+    insert into public.group_members (group_id, user_id, display_name, role, created_at)
+      values (g1, u1, 'ZZ Owner', 'owner', now() - interval '3 days') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name, created_at)
+      values (g1, null, 'ZZ Placeholder', now() - interval '2 days');
+    insert into public.group_members (group_id, user_id, display_name, created_at)
+      values (g1, u2, 'ZZ Later', now() - interval '1 hour') returning id into m2;
+    insert into public.group_members (group_id, user_id, display_name, created_at)
+      values (g1, u3, 'ZZ Earlier', now() - interval '1 day') returning id into m3;
+    -- g2: nobody else has an account in it.
+    insert into public.groups (name, owner_id, currency) values ('ZZT solo', u1, 'EUR') returning id into g2;
+    insert into public.group_members (group_id, user_id, display_name, role) values (g2, u1, 'ZZ Owner', 'owner');
+    insert into public.group_members (group_id, user_id, display_name) values (g2, null, 'ZZ Placeholder');
+    -- g3: someone else's group the user is only a member of.
+    insert into public.groups (name, owner_id, currency) values ('ZZT theirs', u4, 'EUR') returning id into g3;
+    insert into public.group_members (group_id, user_id, display_name, role) values (g3, u4, 'ZZ Them', 'owner');
+    insert into public.group_members (group_id, user_id, display_name) values (g3, u1, 'ZZ Owner');
+
+    foreach r in array array['public', 'anon', 'authenticated'] loop
+      if has_function_privilege(r, 'public.transfer_owned_groups(uuid)', 'execute') then
+        raise exception 'transfer_owned_groups executable by %', r;
+      end if;
+    end loop;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.transfer_owned_groups(u1);
+      ok := true;
+    exception when insufficient_privilege then ok := false;
+    end;
+    execute 'reset role';
+    if ok then raise exception 'a signed-in user moved groups'; end if;
+
+    perform set_config('request.jwt.claims', '', true);
+    execute 'set local role service_role';
+    doomed := public.transfer_owned_groups(u1);
+    execute 'reset role';
+
+    if doomed is distinct from array[g2] then raise exception 'returned % (expected only the solo group)', doomed; end if;
+    if (select owner_id from public.groups where id = g1) is distinct from u3 then
+      raise exception 'shared group not handed to the earliest other member';
+    end if;
+    if (select role from public.group_members where id = m3) <> 'owner' then raise exception 'new owner''s role not updated'; end if;
+    if (select role from public.group_members where id = m2) <> 'member' then raise exception 'a later member became owner'; end if;
+    if (select owner_id from public.groups where id = g2) is distinct from u1 then raise exception 'solo group changed hands'; end if;
+    if (select owner_id from public.groups where id = g3) is distinct from u4 then raise exception 'someone else''s group touched'; end if;
+
+    -- The account goes: the shared group stays with its members, the solo one cascades.
+    delete from auth.users where id = u1;
+    if not exists (select 1 from public.groups where id = g1) then raise exception 'shared group deleted with the account'; end if;
+    if exists (select 1 from public.groups where id = g2) then raise exception 'solo group left behind'; end if;
+    if not exists (select 1 from public.group_members where id = m2) or not exists (select 1 from public.group_members where id = m3) then
+      raise exception 'shared group lost its members';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: transfer_owned_groups hands groups to the earliest member in one call, service role only';
+    else update _t set fails = fails + 1; raise notice 'FAIL: transfer_owned_groups — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 102. 0100: several accounts deleted in ONE statement, in either order. Each
+--      departing user's trigger rewrites the change log of their groups,
+--      including rows whose actor is another user deleted earlier in the same
+--      statement (their ON DELETE SET NULL only runs at statement end). The
+--      actor_id check is deferred, so this no longer fails on a row written
+--      in the same transaction. Fixed ids and a forced plan make the delete
+--      order known: the unnest order drives a nested loop over the pkey.
+-- ---------------------------------------------------------------------------
+do $$
+declare lo constant uuid := '00000000-0000-4000-8000-0000000000a1';
+        hi constant uuid := 'ffffffff-ffff-4fff-bfff-ffffffffffa1';
+        ord uuid[]; u0 uuid; gid uuid; m0 uuid; mlo uuid; mhi uuid; n int;
+begin
+  begin
+    foreach ord slice 1 in array array[[lo, hi], [hi, lo]] loop
+      begin
+        insert into auth.users (instance_id, id, aud, role, email, created_at, updated_at)
+        select '00000000-0000-0000-0000-000000000000', x, 'authenticated', 'authenticated',
+               'zzt-fk-' || md5(random()::text) || '@example.com', now(), now()
+          from unnest(array[lo, hi]) x;
+        u0 := pg_temp.zz_user('fk0');
+        update public.profiles set display_name = 'ZZ Lowname' where id = lo;
+        update public.profiles set display_name = 'ZZ Highname' where id = hi;
+        insert into public.groups (name, owner_id, currency) values ('ZZT two leave', u0, 'EUR') returning id into gid;
+        insert into public.group_members (group_id, user_id, display_name, role) values (gid, u0, 'ZZ Keeper', 'owner') returning id into m0;
+        insert into public.group_members (group_id, user_id, display_name) values (gid, lo, 'ZZ Lowname') returning id into mlo;
+        insert into public.group_members (group_id, user_id, display_name) values (gid, hi, 'ZZ Highname') returning id into mhi;
+        -- Each records a payment naming the other, so each one's change-log
+        -- row is rewritten by the other's trigger.
+        perform set_config('request.jwt.claims', json_build_object('sub', lo, 'role', 'authenticated')::text, true);
+        execute 'set local role authenticated';
+        perform public.add_settlement(gid, mhi, mlo, 100, 'EUR');
+        execute 'reset role';
+        perform set_config('request.jwt.claims', json_build_object('sub', hi, 'role', 'authenticated')::text, true);
+        execute 'set local role authenticated';
+        perform public.add_settlement(gid, mlo, mhi, 200, 'EUR');
+        execute 'reset role';
+        select count(*) into n from public.group_audit_log where group_id = gid and actor_id in (lo, hi);
+        if n < 2 then raise exception 'setup: % change-log rows by the two', n; end if;
+
+        perform set_config('request.jwt.claims', '', true);
+        execute 'set local enable_seqscan = off';
+        execute 'set local enable_hashjoin = off';
+        execute 'set local enable_mergejoin = off';
+        delete from auth.users u using unnest(ord) with ordinality as x(id, k) where u.id = x.id;
+        execute 'set constraints all immediate';   -- the deferred checks run now, as at commit
+
+        if exists (select 1 from auth.users where id in (lo, hi)) then raise exception 'users not deleted'; end if;
+        select count(*) into n from public.group_audit_log where group_id = gid and actor_id in (lo, hi);
+        if n <> 0 then raise exception 'change log still linked to them (%)', n; end if;
+        select count(*) into n from public.group_audit_log
+         where group_id = gid and (actor_name in ('ZZ Lowname', 'ZZ Highname')
+                                   or public.dec_text(summary_enc) similar to '%(ZZ Lowname|ZZ Highname)%');
+        if n <> 0 then raise exception 'change log still names them (%)', n; end if;
+        select count(*) into n from public.group_audit_log where group_id = gid and actor_name = 'Former member' and actor_id is null;
+        if n < 2 then raise exception 'change-log rows lost instead of anonymised (%)', n; end if;
+        if (select display_name from public.group_members where id = m0) <> 'ZZ Keeper' then raise exception 'the remaining member renamed'; end if;
+        raise exception 'ZZ_NEXT_ORDER';
+      exception when others then
+        if sqlerrm <> 'ZZ_NEXT_ORDER' then
+          raise exception 'deleting % first: %', case when ord[1] = lo then 'the lower id' else 'the higher id' end, sqlerrm;
+        end if;
+      end;
+    end loop;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: two accounts deleted in one statement (either order) leave an anonymised history';
+    else update _t set fails = fails + 1; raise notice 'FAIL: two accounts in one statement — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 103. 0101: a function created in public later starts closed. The default
+--      privileges give EXECUTE to no API role (nor PUBLIC), so a new RPC is
+--      callable only once its migration grants it. Functions created in the
+--      extensions schema keep the stock defaults.
+-- ---------------------------------------------------------------------------
+do $$
+declare r text;
+begin
+  begin
+    execute 'create function public.zz_default_priv_probe() returns int language sql as ''select 1''';
+    foreach r in array array['public', 'anon', 'authenticated'] loop
+      if has_function_privilege(r, 'public.zz_default_priv_probe()', 'execute') then
+        raise exception 'a new public function is executable by %', r;
+      end if;
+    end loop;
+    if not has_function_privilege('service_role', 'public.zz_default_priv_probe()', 'execute') then
+      raise exception 'service_role lost its default EXECUTE';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: new public functions start closed to public/anon/authenticated';
+    else update _t set fails = fails + 1; raise notice 'FAIL: default function privileges — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 104. RLS is on for every table in public (catalogue check, so a new table
+--      can't ship without it).
+-- ---------------------------------------------------------------------------
+do $$
+declare bad text;
+begin
+  select string_agg(c.relname, ', ' order by c.relname) into bad
+  from pg_class c
+  where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p')
+    and not c.relrowsecurity
+    and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'e');
+  if bad is null then update _t set passes = passes + 1; raise notice 'PASS: RLS enabled on every public table';
+  else update _t set fails = fails + 1; raise notice 'FAIL: RLS off on: %', bad; end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 105. Every table in public that belongs to a user (a foreign key to
+--      auth.users) is covered by the demo reset (demo_wipe) and the data
+--      export (export_my_data + build_my_data_export): their definitions
+--      name the table, or it is on an exemption list below with its reason.
+--      A new per-user table fails here until both are extended (or it is
+--      listed). Account deletion is covered by the foreign keys themselves.
+-- ---------------------------------------------------------------------------
+do $$
+declare wipe text; export text; bad text;
+  wipe_exempt constant text[] := array[
+    'demo_accounts',     -- the demo registry: the reset reads it to put the logins back
+    -- Group rows. A demo account never shares a group with anyone real
+    -- (0090), so all of these are in its own groups, and demo_wipe's delete
+    -- of public.groups cascades to them.
+    'group_members', 'group_expenses', 'settlements', 'group_comments', 'group_audit_log'
+  ];
+  export_exempt constant text[] := array[
+    'demo_accounts'      -- server-only marker of the shared demo logins, not a person's data
+  ];
+begin
+  wipe := pg_get_functiondef('public.demo_wipe(uuid[])'::regprocedure);
+  export := pg_get_functiondef('public.export_my_data()'::regprocedure)
+         || pg_get_functiondef('public.build_my_data_export()'::regprocedure);
+  select string_agg(t.relname || case when not in_wipe then ' (demo_wipe)' else '' end
+                              || case when not in_export then ' (export)' else '' end, ', ' order by t.relname)
+    into bad
+  from (
+    select c.relname,
+           c.relname = any (wipe_exempt) or wipe ~ ('public\.' || c.relname || '\M') as in_wipe,
+           c.relname = any (export_exempt) or export ~ ('public\.' || c.relname || '\M') as in_export
+    from pg_class c
+    where c.relnamespace = 'public'::regnamespace and c.relkind in ('r', 'p')
+      and exists (select 1 from pg_constraint k
+                   where k.conrelid = c.oid and k.contype = 'f' and k.confrelid = 'auth.users'::regclass)
+  ) t
+  where not (t.in_wipe and t.in_export);
+  if bad is null then update _t set passes = passes + 1; raise notice 'PASS: every per-user table is in demo_wipe and the data export (or exempt)';
+  else update _t set fails = fails + 1; raise notice 'FAIL: per-user tables not covered: %', bad; end if;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 101; f int; p int;  -- tests 1–100 + B-0059
+declare expected_tests constant int := 106; f int; p int;  -- tests 1–105 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

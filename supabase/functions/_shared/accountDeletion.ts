@@ -3,10 +3,11 @@
 // service-role client. No imports: the unit tests can load this file.
 //
 // Owned groups are transferred to the earliest other linked member first (so
-// they survive for everyone else); groups where the user is the only linked
-// member cascade-delete. The database does the rest when the auth user goes:
-// personal rows cascade, and the anonymise_departing_user trigger (0072,
-// 0078, 0080) turns the member rows, change-log names and the user's names in
+// they survive for everyone else), in one transaction by the
+// transfer_owned_groups function (0099); groups where the user is the only
+// linked member cascade-delete. The database does the rest when the auth
+// user goes: personal rows cascade, and the anonymise_departing_user trigger
+// (0072, 0078, 0080) turns the member rows, change-log names and the user's names in
 // change-log texts into "Former member" before their user link is set to
 // null, and deletes the notifications other people got about the user's
 // actions (the only notifications that name a person).
@@ -37,26 +38,12 @@ export const DELETION_SCOPE = {
 
 // deno-lint-ignore no-explicit-any
 export async function deleteAccount(admin: any, uid: string): Promise<void> {
-  const doomedGroups: string[] = []
-  const { data: owned, error: ownErr } = await admin.from('groups').select('id').eq('owner_id', uid)
-  if (ownErr) throw ownErr
-  for (const g of owned ?? []) {
-    const { data: others } = await admin
-      .from('group_members')
-      .select('id, user_id')
-      .eq('group_id', g.id)
-      .not('user_id', 'is', null)
-      .neq('user_id', uid)
-      .order('created_at', { ascending: true })
-      .limit(1)
-    const next = others?.[0]
-    if (next) {
-      await admin.from('groups').update({ owner_id: next.user_id }).eq('id', g.id)
-      await admin.from('group_members').update({ role: 'owner' }).eq('id', next.id)
-    } else {
-      doomedGroups.push(g.id)
-    }
-  }
+  // One transaction (0099): all shared groups handed over, or an error and
+  // nothing deleted. A failed hand-over must never reach deleteUser, since
+  // groups.owner_id cascades and would take a shared group with it.
+  const { data: doomed, error: moveErr } = await admin.rpc('transfer_owned_groups', { p_user: uid })
+  if (moveErr) throw moveErr
+  const doomedGroups: string[] = doomed ?? []
 
   await removeFolder(admin, 'avatars', uid)
   for (const gid of doomedGroups) await removeFolder(admin, 'group-images', gid)
