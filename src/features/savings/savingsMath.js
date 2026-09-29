@@ -1,6 +1,6 @@
-import { toBaseMinor, minorFactor, formatMoney } from '../../shared/lib/currency.js'
+import { toBaseMinor, minorFactor, formatMoney, formatRoundedMoney } from '../../shared/lib/currency.js'
 import { isoDate, monthTitle } from '../../shared/lib/dates.js'
-import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 import { rowEffect, potSign } from '../../shared/lib/savings.js'
 import { MARK_ARCS } from '../../shared/ui/markGeometry.js'
 
@@ -117,10 +117,7 @@ export const HISTORY_MORE = 3
 // An amount without a zero fraction ("€899", but "€709.40"), for the short
 // phrases (the month's chip, a goal's pace).
 export function wholeMoney(minor, currency = 'EUR') {
-  if (minor % minorFactor(currency) !== 0) return formatMoney(minor, currency)
-  return new Intl.NumberFormat(intlLocale(), {
-    style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(minor / minorFactor(currency))
+  return minor % minorFactor(currency) !== 0 ? formatMoney(minor, currency) : formatRoundedMoney(minor, currency)
 }
 
 // The chip under the pot's total, from this month's flow: 'up' (green,

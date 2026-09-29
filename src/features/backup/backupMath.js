@@ -38,6 +38,12 @@
 // as false when absent, and data.vouchers holds the voucher setup as the app
 // keeps it (voucherMath.normaliseSettings); a restore only brings it back
 // into an account that doesn't have one.
+// Salary history (0102, optional, still version 4): an income entry's
+// optional `salary_extra` ('holiday' | 'thirteenth' | 'bonus' | 'regular')
+// is the user's correction of what that payment was, and data.salary holds
+// the rest of the corrections document: { bonus_category?: 'c3', country?:
+// 'BE' | 'GR' }. A restore only brings them back into an account that has
+// none, each correction onto the account's matching entry (restoreSalary).
 // Names the server caps at 60 characters (display
 // name, category names, group names) are trimmed to fit instead of failing.
 // Deliberately NOT in a backup: UI state (whats_new_seen, tour_done,
@@ -50,6 +56,7 @@ import { deterministicUuid } from '../import/importMath.js'
 import { FREQUENCIES } from '../recurring/recurringMath.js'
 import { PLAN_VERSION, cleanSalary, isEmptyPlan, normalisePlan } from '../plan/planMath.js'
 import { normaliseSettings } from '../vouchers/voucherMath.js'
+import { FIX_KINDS, normaliseNotes } from '../salary/salaryMath.js'
 import { sealText, openText } from './backupCrypto.js'
 import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import { CATEGORY_ICON_KEYS, CATEGORY_COLOR_KEYS } from '../../shared/lib/categoryStyle.js'
@@ -126,7 +133,9 @@ export function buildBackup({
   exportedAt = new Date().toISOString(), userId, profile = {}, payment = {},
   categories = [], categoryRules = [], accounts = [], goals = [], budgets = [],
   recurring = [], transactions = [], groupNames = new Map(), groups = [], plan = null, vouchers = null,
+  salary = null,
 }) {
+  const notes = normaliseNotes(salary)
   const catKey = new Map(categories.map((c, i) => [c.id, `c${i + 1}`]))
   const acctKey = new Map(accounts.map((a, i) => [a.id, `a${i + 1}`]))
   const ruleKey = new Map(recurring.map((r, i) => [r.id, `r${i + 1}`]))
@@ -193,6 +202,7 @@ export function buildBackup({
           ...(t.savings_from_income ? { from_income: true } : {}),
           ...(t.paid_from_savings ? { from_savings: true } : {}),
           ...(t.paid_with_vouchers ? { with_vouchers: true } : {}),
+          ...(t.kind === 'income' && notes.fixes[t.id] ? { salary_extra: notes.fixes[t.id] } : {}),
           ...(shared ? {
             group: t.group_expenses?.groups?.name ?? groupNames.get(t.group_id) ?? null,
           } : {}),
@@ -200,6 +210,12 @@ export function buildBackup({
       }),
       ...(plan && !isEmptyPlan(plan) ? { plan: planForBackup(plan, ruleKey, catKey) } : {}),
       ...(vouchers ? { vouchers } : {}),
+      ...(notes.bonus_category_id || notes.country ? {
+        salary: {
+          ...(catKey.has(notes.bonus_category_id) ? { bonus_category: catKey.get(notes.bonus_category_id) } : {}),
+          ...(notes.country ? { country: notes.country } : {}),
+        },
+      } : {}),
     },
     groupHistory: groups.map((g) => groupRecord(g, userId)),
   }
@@ -503,6 +519,7 @@ function validateBackup(doc) {
       notes: v.text(t.notes, 'notes', { max: 10000 }),
       spent_at: v.date(t.spent_at, 'date'),
       ...savingsFlags(v, t),
+      ...(t.kind === 'income' && FIX_KINDS.includes(t.salary_extra) ? { salary_extra: t.salary_extra } : {}),
       ...('group' in t ? { group: clipName(v.text(t.group, 'group', { max: 10000 })) } : {}),
     }
   })
@@ -511,6 +528,7 @@ function validateBackup(doc) {
   if (recKeys.size !== recurring.filter((r) => r.key).length) damaged('recurring', 'duplicate key')
   const plan = data.plan == null ? null : readBackupPlan(data.plan, recKeys, catKeys)
   const vouchers = data.vouchers == null ? null : normaliseSettings(data.vouchers)
+  const salary = readBackupSalary(data.salary, catKeys)
 
   const groupHistory = top.list(doc.groupHistory, 'groupHistory', 1000)
 
@@ -521,6 +539,7 @@ function validateBackup(doc) {
       profile, payment, categories, categoryRules, accounts, goals, budgets, recurring, transactions,
       ...(plan ? { plan } : {}),
       ...(vouchers ? { vouchers } : {}),
+      ...(salary ? { salary } : {}),
     },
     groupCount: groupHistory.length,
   }
@@ -538,6 +557,47 @@ function readBackupPlan(raw, recKeys, catKeys) {
   const dismissed = v.list(raw.dismissed, 'dismissed ideas', 100).filter((d) => typeof d === 'string')
   const salary = cleanSalary(raw.salary)
   return { changes, adds, dismissed, ...(salary ? { salary } : {}) }
+}
+
+// A backup's salary settings: an unknown category or country is dropped;
+// null when nothing is left.
+function readBackupSalary(raw, catKeys) {
+  if (!isObj(raw)) return null
+  const out = {
+    ...(catKeys.has(raw.bonus_category) ? { bonus_category: raw.bonus_category } : {}),
+    ...(normaliseNotes({ country: raw.country }).country ? { country: raw.country } : {}),
+  }
+  return Object.keys(out).length ? out : null
+}
+
+// The backup's salary corrections for the account being restored into, as a
+// corrections document (salaryMath's shape), or null when there are none.
+// Each entry's correction moves onto the account's matching entry — the same
+// match planTransactions uses (kind, date, amount, currency, description,
+// counted as a multiset), so a restored or already-there entry is found.
+// `txnsNow` is the account's entries after the restore added the missing ones.
+export function restoreSalary(data, txnsNow, categoryIdByKey) {
+  const ids = new Map()
+  for (const t of txnsNow) {
+    const k = txnKey({ ...t, amount_minor: Number(t.amount_minor) })
+    if (!ids.has(k)) ids.set(k, [])
+    ids.get(k).push(t.id)
+  }
+  const seen = new Map()
+  const fixes = {}
+  for (const t of data.transactions) {
+    const k = txnKey(t)
+    const occurrence = seen.get(k) ?? 0
+    seen.set(k, occurrence + 1)
+    const id = ids.get(k)?.[occurrence]
+    if (t.salary_extra && id) fixes[id] = t.salary_extra
+  }
+  const notes = normaliseNotes({
+    fixes,
+    bonus_category_id: data.salary?.bonus_category ? categoryIdByKey.get(data.salary.bonus_category) : undefined,
+    country: data.salary?.country,
+  })
+  return Object.keys(notes.fixes).length || notes.bonus_category_id || notes.country ? notes : null
 }
 
 // The backup's plan for the account being restored into, as a plan document

@@ -1,8 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  buildTrend, hasTrendData, spendDelta, netWorth, axisTick, spendingShares, foreignSpending,
+  buildTrend, hasTrendData, spendDelta, netWorth, spendingShares, foreignSpending,
 } from '../src/features/insights/insightsMath.js'
+import { axisTick } from '../src/shared/ui/chartAxis.js'
 
 const months = [
   { key: '2026-01', label: 'Jan' },

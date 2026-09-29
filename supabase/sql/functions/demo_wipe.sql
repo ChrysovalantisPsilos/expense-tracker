@@ -12,6 +12,7 @@ begin
   delete from public.recurring_plans where user_id = any(p_ids);
   delete from public.recurring_plan_undo where user_id = any(p_ids);
   delete from public.meal_vouchers where user_id = any(p_ids);
+  delete from public.salary_history where user_id = any(p_ids);
   delete from public.transactions where user_id = any(p_ids);
   delete from public.recurring_rules where user_id = any(p_ids);
   delete from public.budgets where user_id = any(p_ids);

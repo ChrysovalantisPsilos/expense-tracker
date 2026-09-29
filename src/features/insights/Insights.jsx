@@ -21,6 +21,7 @@ import { StackedBar, ShareLegend } from '../../shared/ui/kit/ShareBar.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
+import { axisTick } from '../../shared/ui/chartAxis.js'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
 import { linkBuckets } from '../../shared/lib/categoryLinks.js'
@@ -32,9 +33,10 @@ import { spendRows } from '../../shared/lib/spread.js'
 import { useAccounts, deleteAccount } from '../../shared/lib/accounts.js'
 import { useSavingsMoves } from '../savings/savings.js'
 import {
-  buildTrend, hasTrendData, spendDelta, netWorth, accountSections, axisTick, spendingShares, foreignSpending,
+  buildTrend, hasTrendData, spendDelta, netWorth, accountSections, spendingShares, foreignSpending,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
+import SalaryCard from '../salary/SalaryCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
@@ -91,6 +93,7 @@ export default function Insights() {
         picked={picked} onPick={setPicked} monthLabel={monthLabel} monthName={monthHeading(month.key)} monthLink={monthLink} />
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}
       <IncomeCard loading={loading} failed={failed} trend={trend} money={money} />
+      <SalaryCard />
       <NetWorthCard baseCurrency={baseCurrency} />
       <ReportsCard noEntries={oldest === null} />
     </Stack>

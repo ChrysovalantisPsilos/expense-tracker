@@ -154,6 +154,10 @@ npm run dev       # Vite
   `profiles_whats_new_seen_check`). If today's id is taken, use the next day.
 - **Test:** `test/whatsNew.test.js` pins the newest release, so update it.
 - **Dev pushes** get no entry.
+- **Inflation table:** each release refreshes the HICP figures in
+  `src/features/salary/salaryMath.js` (`INFLATION`, `INFLATION_LATEST`) from
+  Eurostat's API (`prc_hicp_ainr` RCH_A_AVG and `prc_hicp_minr` RCH_A,
+  coicop18 TOTAL, geo BE and EL) and updates the retrieval date there.
 
 ## Screenshots and design renders
 

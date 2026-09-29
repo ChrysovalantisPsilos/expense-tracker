@@ -27,7 +27,10 @@ begin
       from public.recurring_plan_undo u where u.user_id = uid),
     'meal_vouchers', (select jsonb_build_object(
         'setup', public.dec_text(m.payload_enc, k)::jsonb, 'updated_at', m.updated_at)
-      from public.meal_vouchers m where m.user_id = uid));
+      from public.meal_vouchers m where m.user_id = uid),
+    'salary_history', (select jsonb_build_object(
+        'notes', public.dec_text(s.payload_enc, k)::jsonb, 'updated_at', s.updated_at)
+      from public.salary_history s where s.user_id = uid));
 end $$;
 revoke execute on function public.export_my_data() from public, anon;
 grant execute on function public.export_my_data() to authenticated;

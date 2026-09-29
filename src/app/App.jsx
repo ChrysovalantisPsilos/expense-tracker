@@ -41,6 +41,7 @@ const Vouchers = lazy(() => import('../features/vouchers/Vouchers.jsx'))
 const VoucherSetup = lazy(() => import('../features/vouchers/VoucherSetup.jsx'))
 const Insights = lazy(() => import('../features/insights/Insights.jsx'))
 const AccountPage = lazy(() => import('../features/insights/AccountPage.jsx'))
+const SalaryPage = lazy(() => import('../features/salary/SalaryPage.jsx'))
 const Savings = lazy(() => import('../features/savings/Savings.jsx'))
 const GoalPage = lazy(() => import('../features/savings/GoalPage.jsx'))
 const More = lazy(() => import('./More.jsx'))
@@ -184,6 +185,7 @@ function AuthedRoutes() {
           <Route path="insights" element={<Insights />} />
           <Route path="insights/accounts/new" element={<AccountPage />} />
           <Route path="insights/accounts/:id" element={<AccountPage />} />
+          <Route path="insights/salary" element={<SalaryPage />} />
           <Route path="savings" element={<Savings />} />
           <Route path="savings/goals/new" element={<GoalPage />} />
           <Route path="savings/goals/:id" element={<GoalPage />} />
