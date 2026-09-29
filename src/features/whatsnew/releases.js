@@ -17,6 +17,15 @@
 // Greek wording follows docs/i18n-glossary-el.md).
 export const RELEASES = [
   {
+    id: '2026-10-01',
+    date: '2026-10-01',
+    pages: [
+      { id: 'planSavings', chips: ['left', 'savings'], variant: 'update', action: { to: '/plan' } },
+      { id: 'salaryDots', chips: ['month', 'regular'], variant: 'update', action: { to: '/insights/salary' } },
+      { id: 'oneForm', chips: ['repeat', 'edit'], variant: 'split' },
+    ],
+  },
+  {
     id: '2026-09-30',
     date: '2026-09-30',
     pages: [

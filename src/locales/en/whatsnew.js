@@ -8,6 +8,25 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-10-01': {
+      planSavings: {
+        title: 'Plan counts what you save',
+        body: 'Money you put into savings from your salary now shows in Plan and comes off what’s left each month. Tap ⓘ to see how Left over adds up, and what your changes do to each line.',
+        chips: { left: 'Left over', savings: 'Put into savings' },
+        action: 'Open Plan',
+      },
+      salaryDots: {
+        title: 'Every month’s pay on the chart',
+        body: 'Your salary chart now shows each month’s pay as a dot, with your regular pay as a line behind it. A month that was lower or higher stands out as a ring.',
+        chips: { month: 'Pay each month', regular: 'Regular pay' },
+        action: 'See your salary',
+      },
+      oneForm: {
+        title: 'One way to add',
+        body: 'Recurring payments and income are now added from Add: switch on Repeat. The Recurring page is for seeing and editing them, with the same form as Add.',
+        chips: { repeat: 'Repeat', edit: 'Edit' },
+      },
+    },
     '2026-09-30': {
       nextMonth: {
         title: 'Next month, as soon as your salary is in',
