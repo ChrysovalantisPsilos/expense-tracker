@@ -92,7 +92,7 @@ test('Home: savings aren\'t income; the net takes away only those taken from inc
   assert.equal(t.saved, 42000) // both kinds
   assert.equal(t.savedFromIncome, 30000)
   assert.deepEqual(t.byCategory, [{ name: 'Food', value: 45000 }]) // savings aren't spending either
-  const none = periodProjection([], '2026-08-31', '2026-09-25') // a past period: nothing ahead
+  const none = periodProjection([], { to: '2026-08-31' }, '2026-09-25') // a past period: nothing ahead
   const totals = projectedTotals(t, none)
   assert.equal(totals.earnedTotal, 200000)
   assert.equal(totals.fromIncomeTotal, 30000)
@@ -106,7 +106,7 @@ test('Home: savings aren\'t income; the net takes away only those taken from inc
 })
 
 test('Home: the overview ⓘ notes what is still to come', () => {
-  const none = periodProjection([], null, '2026-09-25')
+  const none = periodProjection([], { to: null }, '2026-09-25')
   assert.deepEqual(overviewNotes({ proj: none }, 'EUR'), [])
   assert.deepEqual(overviewNotes({ proj: { ...none, expense: 1500, income: 250000 } }, 'EUR'), [
     'Spent includes €15.00 of recurring payments still to come.',
@@ -123,7 +123,7 @@ test('Home: "How Net adds up" — the steps add up to the Net', () => {
   assert.deepEqual(netSteps({ earnedTotal: 1000, spentTotal: 400 }), [{ key: 'income', minor: 1000 }, { key: 'spent', minor: -400 }])
   // Against the real totals: the steps give projectedTotals' Net.
   const spend = spendRows(withLaptop, 'EUR', '2026-09-01', '2026-09-30')
-  const totals = projectedTotals(periodTotals(spend, 'EUR', IDS), periodProjection([], null, '2026-09-25'))
+  const totals = projectedTotals(periodTotals(spend, 'EUR', IDS), periodProjection([], { to: null }, '2026-09-25'))
   assert.equal(netSteps(totals).reduce((s, x) => s + x.minor, 0), totals.netTotal)
 })
 
@@ -177,12 +177,12 @@ test('Home: upcoming recurring savings aren\'t income; those from income lower t
     rule({ kind: 'income', category_id: SAV, amount_minor: 5000, savings_from_income: false }),
     rule({ kind: 'expense', category_id: 'cat-rent', amount_minor: 90000, next_run: '2026-09-29' }),
   ]
-  const proj = periodProjection(rules, '2026-09-30', '2026-09-25', false, null, IDS)
+  const proj = periodProjection(rules, { to: '2026-09-30' }, '2026-09-25', false, null, IDS)
   assert.deepEqual(proj,
     { expense: 90000, income: 200000, expenseFromSavings: 0, savedFromIncome: 30000, net: 200000 - 90000 - 30000 })
   assert.equal(projectedTotals(periodTotals([], 'EUR', IDS), proj).netTotal, 200000 - 90000 - 30000)
   // Without savings categories they're income, as before.
-  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-25'),
+  assert.deepEqual(periodProjection(rules, { to: '2026-09-30' }, '2026-09-25'),
     { expense: 90000, income: 235000, expenseFromSavings: 0, savedFromIncome: 0, net: 235000 - 90000 })
   // The Recurring page's income per month leaves both kinds out.
   assert.equal(incomePerMonth(rules, IDS).perMonth, 200000)
@@ -321,7 +321,7 @@ test('Home: an expense paid from savings is spent, but the net leaves it out', (
   assert.equal(t.earned, 200000)
   assert.equal(t.saved, 42000) // the Saved note is what went in, unchanged
   assert.equal(t.net, 200000 - 45000 - 30000) // as without the laptop
-  const totals = projectedTotals(t, periodProjection([], '2026-08-31', '2026-09-25'))
+  const totals = projectedTotals(t, periodProjection([], { to: '2026-08-31' }, '2026-09-25'))
   assert.equal(totals.spentTotal, 135000)
   assert.equal(totals.fromSavingsTotal, 90000)
   assert.equal(totals.netTotal, 200000 - 45000 - 30000)
@@ -338,7 +338,7 @@ test('Home: an upcoming expense paid from savings is projected spending, not aga
     rule({ kind: 'expense', category_id: 'cat-rent', amount_minor: 90000, next_run: '2026-09-29' }),
     rule({ kind: 'expense', category_id: 'cat-gym', amount_minor: 5000, paid_from_savings: true }),
   ]
-  const proj = periodProjection(rules, '2026-09-30', '2026-09-25', false, null, IDS)
+  const proj = periodProjection(rules, { to: '2026-09-30' }, '2026-09-25', false, null, IDS)
   assert.deepEqual(proj,
     { expense: 95000, income: 200000, expenseFromSavings: 5000, savedFromIncome: 0, net: 200000 - 90000 })
   const t = periodTotals(spendRows(withLaptop, 'EUR', '2026-09-01', '2026-09-30'), 'EUR', IDS)

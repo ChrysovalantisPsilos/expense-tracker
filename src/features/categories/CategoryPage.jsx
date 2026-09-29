@@ -25,7 +25,7 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useUnsavedForm } from '../../shared/lib/useUnsavedForm.js'
 import TransactionList from '../transactions/TransactionList.jsx'
 import { listHeading } from '../transactions/listHeading.js'
-import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
+import { useTransactions, useOldestTransactionDate, useNewestCountedDate } from '../../shared/lib/transactions.js'
 import { buildPeriods, isMonthPeriod, withPeriod } from '../../shared/lib/periods.js'
 import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { useMonthBudgets, editBudget, deleteBudget } from '../budgets/budgets.js'
@@ -62,7 +62,9 @@ export default function CategoryPage() {
 
   const [oldest, recheckOldest] = useOldestTransactionDate()
   useEffect(recheckOldest, [recheckOldest])
-  const periods = useMemo(() => withPeriod(buildPeriods(oldest), period), [oldest, period])
+  const newest = useNewestCountedDate()
+  const periods = useMemo(
+    () => withPeriod(buildPeriods(oldest, new Date(), { newestISO: newest }), period), [oldest, newest, period])
 
   // A real category is filtered server-side (and has one kind); the
   // uncategorised bucket is refined by categoryPeriod.

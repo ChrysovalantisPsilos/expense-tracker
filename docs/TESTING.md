@@ -98,6 +98,17 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
    "Taken from my income" switch explains itself behind its ⓘ too.
 7. Period selector only offers months since your oldest transaction;
    "All time" appears once data spans months.
+7a. Next month (salary shift on in Settings → Monthly spending, from day 25,
+   Salary category): add a salary dated the 28th. The period picker gains
+   next month at the top ("October 2026") at once, without a reload; "This
+   month" stays selected. Pick October: Income shows the salary (the list
+   has it with its real date and "Counts for October"), Spent and the
+   projection hold only recurring charges due in October (not the rest of
+   September's), Budgets shows this month's caps carried over, Recurring
+   shows the upcoming view, and there's no Numbers | In words switch.
+   Delete the salary → October leaves the picker and Home returns to This
+   month. In December the next month is January (no extra year option).
+   The category page's period picker offers it too.
 8. Pie/table toggle persists across reloads. Group-mirrored expenses bucket
    under the group's name.
 

@@ -54,23 +54,36 @@ export function periodTotals(rows, baseCurrency, savingsIds = NO_SAVINGS) {
 
 const NOTHING_AHEAD = { expense: 0, income: 0, expenseFromSavings: 0, savedFromIncome: 0, net: 0 }
 
-// Recurring charges still to come in a period, folded into its projection —
-// only while the period is ongoing (it ends today or later). Past periods and
-// "all time" (no end) stay purely actual. `separateYearly`: the user keeps
-// yearly subscriptions out of monthly spending (0068); `salaryShift`: salary
-// due late in the month counts toward the next (0081). Each rule counts by
-// its effect (rowEffect), as its entries will: recurring savings (0084) are
-// never upcoming income, and those taken from income come back as
-// `savedFromIncome`; recurring expenses paid from savings (0085) are upcoming
-// spending (`expense`, of which `expenseFromSavings`). `net` is what they all
-// do to the net (netSign).
-export function periodProjection(rules, periodTo, todayISO, separateYearly = false, salaryShift = null,
-  savingsIds = NO_SAVINGS) {
-  if (!periodTo || periodTo < todayISO) return NOTHING_AHEAD
+// Recurring charges still to come in a period ({ from, to }, periods.js),
+// folded into its projection — only while the period is ongoing or ahead (it
+// ends today or later). Past periods and "all time" (no end) stay purely
+// actual. `separateYearly`: the user keeps yearly subscriptions out of monthly
+// spending (0068); `salaryShift`: salary due late in the month counts toward
+// the next (0081). Each rule counts by its effect (rowEffect), as its entries
+// will: recurring savings (0084) are never upcoming income, and those taken
+// from income come back as `savedFromIncome`; recurring expenses paid from
+// savings (0085) are upcoming spending (`expense`, of which
+// `expenseFromSavings`). `net` is what they all do to the net (netSign).
+//
+// Next month (offered once its salary is in, buildPeriods) starts after
+// today: it gets only what counts in it — what's due from today counted up
+// to its end, less what's counted before it starts. So a charge still due
+// this month stays out, and a salary due on the 30th that counts from the
+// 1st comes in.
+export function periodProjection(rules, { from = null, to = null } = {}, todayISO, separateYearly = false,
+  salaryShift = null, savingsIds = NO_SAVINGS) {
+  if (!to || to < todayISO) return NOTHING_AHEAD
+  const upTo = (list, end) => expectedInWindow(list, todayISO, end, separateYearly, salaryShift)
+  const ahead = (list) => {
+    const all = upTo(list, to)
+    if (!from || from <= todayISO) return all
+    const before = upTo(list, dayBefore(from))
+    return { income: all.income - before.income, expense: all.expense - before.expense }
+  }
   const by = Object.fromEntries(EFFECTS.map((effect) => {
     const list = rules.filter((r) => rowEffect(r, savingsIds) === effect)
-    const ahead = list.length ? expectedInWindow(list, todayISO, periodTo, separateYearly, salaryShift) : null
-    return [effect, ahead ? ahead.income + ahead.expense : 0]
+    const sum = list.length ? ahead(list) : null
+    return [effect, sum ? sum.income + sum.expense : 0]
   }))
   return {
     expense: EFFECTS.filter(isSpending).reduce((sum, effect) => sum + by[effect], 0),
@@ -79,6 +92,12 @@ export function periodProjection(rules, periodTo, todayISO, separateYearly = fal
     savedFromIncome: by['saved-from-income'],
     net: EFFECTS.reduce((sum, effect) => sum + netSign(effect) * by[effect], 0),
   }
+}
+
+// The day before a 'YYYY-MM-DD' date.
+function dayBefore(iso) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10)
 }
 
 // Headline figures: actual totals (periodTotals) plus the projection

@@ -8,8 +8,8 @@ import { ChartBarDecreasing, ChevronDown, ChevronUp, PiggyBank, Table as TableIc
 import TransactionList from '../transactions/TransactionList.jsx'
 import FirstEntry from '../transactions/FirstEntry.jsx'
 import { isFirstRun, listHeading } from '../transactions/listHeading.js'
-import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
-import { buildPeriods } from '../../shared/lib/periods.js'
+import { useTransactions, useOldestTransactionDate, useNewestCountedDate } from '../../shared/lib/transactions.js'
+import { buildPeriods, isThisMonth, thisMonthPeriod } from '../../shared/lib/periods.js'
 import { linkBuckets } from '../../shared/lib/categoryLinks.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
 import { usePrefetchMyGroups } from '../groups/myGroups.js'
@@ -70,10 +70,16 @@ export default function Dashboard() {
   const ruleFx = useRuleRates(rules, baseCurrency)
   // undefined until known (null: no transactions at all)
   const [oldest, recheckOldest] = useOldestTransactionDate()
-  const periods = useMemo(() => buildPeriods(oldest), [oldest])
-  // Default to this month; its token is stable and always present in the list.
-  const [periodValue, setPeriodValue] = useState(() => buildPeriods(null)[0].value)
-  const period = periods.find((p) => p.value === periodValue) ?? periods[0]
+  // A salary already in that counts for next month (the salary setting)
+  // brings next month into the picker, at the top.
+  const newest = useNewestCountedDate()
+  const periods = useMemo(() => buildPeriods(oldest, new Date(), { newestISO: newest }), [oldest, newest])
+  // Default to this month; its token is stable and always present in the
+  // list (next month, when offered, sits above it but is never the default,
+  // and a picked next month that goes away — its salary deleted — falls back
+  // to this month).
+  const [periodValue, setPeriodValue] = useState(() => thisMonthPeriod().value)
+  const period = periods.find((p) => p.value === periodValue) ?? thisMonthPeriod()
 
   // `spread`: yearly subscriptions paid before the period still count their
   // share of it (totals only — the list shows what was paid in the period).
@@ -122,13 +128,14 @@ export default function Dashboard() {
   const shownBars = visibleBars(bars, showAllBars)
 
   // Fold not-yet-charged recurring into the period's spend/income projection,
-  // but only for periods that are still ongoing (end today or later). Past
-  // periods and "all time" stay purely actual.
+  // but only for periods that are still ongoing or ahead (end today or later;
+  // next month counts only what falls in it). Past periods and "all time"
+  // stay purely actual.
   const todayISO = useMemo(() => today(), [])
   const proj = useMemo(
-    () => periodProjection(rulesInBase(rules, baseCurrency, ruleFx.rates).rules, period.to, todayISO,
-      separateYearly, salaryShift, savingsIds),
-    [rules, baseCurrency, ruleFx.rates, period.to, todayISO, separateYearly, salaryShift, savingsIds])
+    () => periodProjection(rulesInBase(rules, baseCurrency, ruleFx.rates).rules, { from: period.from, to: period.to },
+      todayISO, separateYearly, salaryShift, savingsIds),
+    [rules, baseCurrency, ruleFx.rates, period.from, period.to, todayISO, separateYearly, salaryShift, savingsIds])
   const figures = projectedTotals(totals, proj)
   const { spentTotal, earnedTotal, netTotal } = figures
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
@@ -159,7 +166,7 @@ export default function Dashboard() {
     setTab(v)
     try { localStorage.setItem(TAB_KEY, v) } catch { /* private mode: kept until reload */ }
   }
-  const words = overviewWords({ state: summary.state, thisMonth: period.value === periods[0].value, tab })
+  const words = overviewWords({ state: summary.state, thisMonth: isThisMonth(period), tab })
 
   // Every card by id; homeCards / homeStacks decide which show, and where.
   const card = {

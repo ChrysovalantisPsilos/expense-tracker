@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useBudgetSets } from './budgets.js'
 import { useTransactions } from '../../shared/lib/transactions.js'
-import { buildPeriods, isMonthPeriod } from '../../shared/lib/periods.js'
+import { isMonthPeriod, thisMonthPeriod } from '../../shared/lib/periods.js'
 import { today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { spendRows } from '../../shared/lib/spread.js'
@@ -17,7 +17,7 @@ import { budgetWindow, capsInMonth, carriedFrom, periodBudgets } from './budgetM
 // subscriptions separate (countsMonthly ≡ the alerts' counts_in_month).
 // `carriedFrom` is the month a single month's caps rolled over from (null:
 // its own, or a longer period); `months` how many months had any cap.
-export function useBudgetProgress(period = buildPeriods(null)[0]) {
+export function useBudgetProgress(period = thisMonthPeriod()) {
   const { baseCurrency, separateYearly } = useProfile()
   const todayISO = today()
   const { value, from: pFrom, to: pTo } = period

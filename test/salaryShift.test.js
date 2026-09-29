@@ -166,16 +166,44 @@ test('Home projection: an upcoming salary due from day D counts in the next mont
   const rules = [{ is_active: true, kind: 'income', category_id: SAL, amount_minor: 300000, frequency: 'monthly',
     interval_n: 1, next_run: '2026-09-30', end_date: null }]
   // Today 25 Sep: September's projection leaves it out, the year keeps it.
-  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-25', false, shift),
+  assert.deepEqual(periodProjection(rules, { to: '2026-09-30' }, '2026-09-25', false, shift),
     { expense: 0, income: 0, expenseFromSavings: 0, savedFromIncome: 0, net: 0 })
-  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-25'),
+  assert.deepEqual(periodProjection(rules, { to: '2026-09-30' }, '2026-09-25'),
     { expense: 0, income: 300000, expenseFromSavings: 0, savedFromIncome: 0, net: 300000 })
   // This year: 30 Sep and 30 Oct count (Oct, Nov); 30 Nov → Dec; 30 Dec → next year.
-  assert.equal(periodProjection(rules, '2026-12-31', '2026-09-25', false, shift).income, 3 * 300000)
+  assert.equal(periodProjection(rules, { to: '2026-12-31' }, '2026-09-25', false, shift).income, 3 * 300000)
   assert.equal(expectedInWindow(rules, '2026-09-25', '2026-12-31').income, 4 * 300000)
   // Another category never shifts.
   const other = [{ ...rules[0], category_id: 'cat-bonus' }]
-  assert.equal(periodProjection(other, '2026-09-30', '2026-09-25', false, shift).income, 300000)
+  assert.equal(periodProjection(other, { to: '2026-09-30' }, '2026-09-25', false, shift).income, 300000)
+})
+
+test('Home projection for next month: only what counts in it, not what is still due this month', () => {
+  const salary = { is_active: true, kind: 'income', category_id: SAL, amount_minor: 300000, frequency: 'monthly',
+    interval_n: 1, next_run: '2026-09-30', end_date: null }
+  const rent = { is_active: true, kind: 'expense', category_id: 'cat-rent', amount_minor: 90000, frequency: 'monthly',
+    interval_n: 1, next_run: '2026-09-27', end_date: null }
+  const october = { from: '2026-10-01', to: '2026-10-31' }
+  // Today 26 Sep: rent on 27 Sep stays in September; 27 Oct's is October's.
+  // The salary due 30 Sep counts from 1 Oct; 30 Oct's counts for November.
+  assert.deepEqual(periodProjection([salary, rent], october, '2026-09-26', false, shift),
+    { expense: 90000, income: 300000, expenseFromSavings: 0, savedFromIncome: 0, net: 210000 })
+  // Setting off: 30 Sep's salary is September's, 30 Oct's is October's.
+  assert.deepEqual(periodProjection([salary, rent], october, '2026-09-26'),
+    { expense: 90000, income: 300000, expenseFromSavings: 0, savedFromIncome: 0, net: 210000 })
+  assert.equal(periodProjection([{ ...salary, next_run: '2026-10-05' }], october, '2026-09-26', false, shift).income,
+    300000)
+  // This month is unchanged by the lower bound.
+  assert.equal(periodProjection([rent], { from: '2026-09-01', to: '2026-09-30' }, '2026-09-26').expense, 90000)
+})
+
+test('next month on Home: the salary already in counts as its income, the list shows it', () => {
+  // Paid 28 Sep, day 25 setting: October's fetch reaches back to it.
+  const rows = [pay('2026-09-28'), pay('2026-09-10', { id: 'sep-early', category_id: 'cat-bonus' })]
+  const fetched = rows.filter((r) => r.spent_at >= shiftFetchFrom('2026-10-01', shift))
+  const totals = periodTotals(spendRows(fetched, 'EUR', '2026-10-01', '2026-10-31', { salaryShift: shift }), 'EUR')
+  assert.equal(totals.earned, 300000)
+  assert.deepEqual(countedInWindow(fetched, '2026-10-01', '2026-10-31', shift).map((r) => r.id), ['2026-09-28'])
 })
 
 test('statement: totals follow the shift, the list keeps the period, a note explains it', () => {

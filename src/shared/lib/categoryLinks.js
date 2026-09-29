@@ -1,5 +1,5 @@
 import { NO_CATEGORY } from './categoryName.js'
-import { periodFromValue } from './periods.js'
+import { periodFromValue, thisMonthPeriod } from './periods.js'
 import { bucketLabels, bucketOf } from './txnRollup.js'
 import { t } from './i18n/i18n.js'
 
@@ -24,11 +24,9 @@ export function categoryPath(categoryId, periodValue) {
 // can't be found); an unknown or missing period falls back to this month.
 export function parseCategoryRoute(id, params, d = new Date()) {
   const categoryId = id === NO_CATEGORY || UUID.test(id ?? '') ? id : null
-  const period = periodFromValue(params.get('period'), d) ?? periodFromValue(thisMonthValue(d), d)
+  const period = periodFromValue(params.get('period'), d) ?? thisMonthPeriod(d)
   return { categoryId, period }
 }
-
-const thisMonthValue = (d) => `m:${d.getFullYear()}-${d.getMonth() + 1}`
 
 // "This month" → "this month", "All time" → "all time"; a named month or
 // year ("September 2026", "2025") stays as is. (English only: the Greek
