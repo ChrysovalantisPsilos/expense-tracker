@@ -248,8 +248,15 @@ test('releaseText: fills in the words and keeps the ids and the shape', () => {
   assert.equal(releaseText(null, (k) => k), null)
 })
 
-test('this release (2026-09-29): five pages, the four features open their pages', () => {
+test('this release (2026-09-30): one page, next month once the salary is in', () => {
   const r = inEnglish(RELEASES[0])
+  assert.equal(r.id, '2026-09-30')
+  assert.equal(r.pages.length, 1)
+  assert.match(r.pages[0].title, /Next month/)
+})
+
+test('the 2026-09-29 release: five pages, the four features open their pages', () => {
+  const r = inEnglish(RELEASES.find((x) => x.id === '2026-09-29'))
   assert.equal(r.id, '2026-09-29')
   assert.equal(r.pages.length, 5)
   assert.deepEqual(r.pages.map((p) => p.action?.to),

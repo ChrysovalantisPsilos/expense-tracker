@@ -8,6 +8,13 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-09-30': {
+      nextMonth: {
+        title: 'Next month, as soon as your salary is in',
+        body: 'Salary counting toward next month? Once it’s in, Home lets you open next month to see it start with that income, its budgets and what’s coming up. This month stays the default.',
+        chips: { october: 'October', counts: 'Counts for October' },
+      },
+    },
     '2026-09-29': {
       plan: {
         title: 'Plan: try it before you change it',
