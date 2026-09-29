@@ -69,10 +69,10 @@ const STORAGE_NAMES = {
   appearance: <code>{STORAGE_KEYS.appearance}</code>,
   language: <code>{STORAGE_KEYS.language}</code>,
   overviewView: <code>{STORAGE_KEYS.overviewView}</code>,
+  overviewTab: <code>{STORAGE_KEYS.overviewTab}</code>,
   notifPrompted: <code>{STORAGE_KEYS.notifPrompted}</code>,
   paymentAskDismissed: <code>{STORAGE_KEYS.paymentAskDismissed}</code>,
   recentGroups: <code>{STORAGE_KEYS.recentGroups}</code>,
-  aiSummaryHidden: <code>{STORAGE_KEYS.aiSummaryHidden}</code>,
   importMappings: <code>{STORAGE_KEYS.importMappings}</code>,
   importHolder: <code>{STORAGE_KEYS.importHolder}</code>,
   fxRatePrefix: <code>{STORAGE_KEYS.fxRatePrefix}…</code>,
@@ -84,6 +84,7 @@ const STORAGE_NAMES = {
   linkingGoogle: <code>{STORAGE_KEYS.linkingGoogle}</code>,
   legalConsentPending: <code>{STORAGE_KEYS.legalConsentPending}</code>,
   whatsNewSeen: <code>{RETIRED_STORAGE_KEYS.whatsNewSeen}</code>,
+  aiSummaryHidden: <code>{RETIRED_STORAGE_KEYS.aiSummaryHidden}</code>,
 }
 
 // ===========================================================================

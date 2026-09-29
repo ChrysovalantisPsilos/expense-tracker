@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { STORAGE_KEYS } from '../src/shared/lib/keys.js'
+import { RETIRED_STORAGE_KEYS, STORAGE_KEYS } from '../src/shared/lib/keys.js'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const read = (p) => readFileSync(join(root, p), 'utf8')
@@ -19,6 +19,10 @@ const notice = read('src/features/privacy/Privacy.jsx')
 test('the Privacy Notice names every storage key and service-worker cache', () => {
   for (const name of Object.keys(STORAGE_KEYS)) {
     assert.ok(notice.includes(`{STORAGE_KEYS.${name}}`), `Privacy.jsx doesn't list STORAGE_KEYS.${name}`)
+  }
+  // A retired key can still sit on a device until the app deletes it.
+  for (const name of Object.keys(RETIRED_STORAGE_KEYS)) {
+    assert.ok(notice.includes(`{RETIRED_STORAGE_KEYS.${name}}`), `Privacy.jsx doesn't list RETIRED_STORAGE_KEYS.${name}`)
   }
   for (const name of ['REST_CACHE', 'RPC_CACHE', 'EXPIRATION_DB']) {
     assert.ok(notice.includes(`{${name}}`), `Privacy.jsx doesn't list ${name}`)

@@ -3,7 +3,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   AI_SWITCHES, aiErrorKey, applySuggestions, categoryLabels, fillPlan, helpersOn, isSuggested, monthStartOf,
-  settlePendingCategory, shouldAutoWrite, suggestionRequest, summaryState,
+  overviewWords, settlePendingCategory, shouldAutoWrite, suggestionRequest, summaryState,
 } from '../src/features/ai/aiMath.js'
 import { MERCHANTS_MAX } from '../supabase/functions/_shared/aiHelper.ts'
 import en from '../src/locales/en/ai.js'
@@ -92,6 +92,21 @@ test('the month summary card\'s state', () => {
   assert.equal(shouldAutoWrite({ data: { empty: true, summary: null }, attempted: false }), false)
   assert.equal(shouldAutoWrite({ data: { summary, stale: true }, attempted: false }), false)
   assert.equal(shouldAutoWrite({ data: null, attempted: false }), false)
+})
+
+test('Home offers the month in words on This month, while there is something to show', () => {
+  const w = (state, thisMonth, tab) => overviewWords({ state, thisMonth, tab })
+  for (const state of ['ready', 'stale', 'writing', 'failed']) {
+    assert.deepEqual(w(state, true, 'words'), { offered: true, words: true }, state)
+    assert.deepEqual(w(state, true, 'numbers'), { offered: true, words: false }, state)
+  }
+  // Helper off or nothing to say yet: the plain overview, whatever was saved.
+  assert.deepEqual(w('hidden', true, 'words'), { offered: false, words: false })
+  // Last month, a year, all time: numbers only; the saved choice waits.
+  assert.deepEqual(w('ready', false, 'words'), { offered: false, words: false })
+  // Nothing saved (or an unknown value): numbers.
+  assert.deepEqual(w('ready', true, null), { offered: true, words: false })
+  assert.deepEqual(w('ready', true, 'chart'), { offered: true, words: false })
 })
 
 test('every ai-helper error code has words', () => {

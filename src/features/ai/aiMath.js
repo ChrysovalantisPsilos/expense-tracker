@@ -109,6 +109,16 @@ export function summaryState({ data, error, writing, writeFailed, lang }) {
   return data.stale || data.summary.lang !== lang ? 'stale' : 'ready'
 }
 
+// Home's overview: whether it offers the Numbers | In words switch, and
+// whether it shows the words. Only on This month (the summary is this
+// month's), and only while there is something to show: a summary, one being
+// written, or one to retry. 'hidden' (helper off, nothing spent yet) leaves
+// the plain overview. `tab` is the viewer's saved choice.
+export function overviewWords({ state, thisMonth, tab }) {
+  const offered = thisMonth && state !== 'hidden'
+  return { offered, words: offered && tab === 'words' }
+}
+
 // Write the month's first summary without being asked: once per month and
 // page visit, when there is spending and nothing written yet.
 export const shouldAutoWrite = ({ data, attempted }) =>

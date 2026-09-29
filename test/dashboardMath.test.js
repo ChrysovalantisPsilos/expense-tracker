@@ -87,7 +87,7 @@ test('Home sideways: a strip, then two stacks that hold every card once, in the 
     }
   }
   assert.deepEqual(homeStacks({ firstRun: false }), {
-    strip: ['overview'], left: ['aiSummary', 'vouchers', 'categories', 'budgets'], right: ['expenses', 'income', 'recurring'],
+    strip: ['overview'], left: ['vouchers', 'categories', 'budgets'], right: ['expenses', 'income', 'recurring'],
   })
   // Nothing logged: the way to start leads the right stack; no empty lists.
   assert.deepEqual(homeStacks({ firstRun: true }).right, ['firstEntry', 'recurring'])

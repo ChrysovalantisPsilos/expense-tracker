@@ -1,34 +1,36 @@
-import { useState } from 'react'
-import { Box, Button, HStack, IconButton, Link, Stack, Text } from '@chakra-ui/react'
-import { Sparkle, X } from 'lucide-react'
-import Panel from '../../shared/ui/kit/Panel.jsx'
+import { Box, Button, HStack, Link, Stack, Text } from '@chakra-ui/react'
+import { Sparkle } from 'lucide-react'
 import { InfoBox, InfoButton, useInfoToggle } from '../../shared/ui/InfoToggle.jsx'
 import { BusyNote } from '../../shared/ui/RingLoader.jsx'
 import { SkeletonBlock, SkeletonRegion } from '../../shared/ui/Skeleton.jsx'
-import { useCategories } from '../../shared/lib/categories.js'
 import { monthName } from '../../shared/lib/dates.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { hideSummary, summaryHidden, useMonthSummary } from './ai.js'
 
-// "Month in plain words" (Insights, and Home when `hideable`): a few lines
-// about this month, written from the category totals once the helper is on,
-// with Update once the totals have changed. Nothing at all while the helper
-// is off or there's nothing to say yet. Home's copy can be hidden until next
-// month.
-export default function MonthSummary({ hideable = false }) {
+// "Month in plain words": the "In words" side of Home's overview (shown only
+// when useMonthSummary's state isn't 'hidden', aiMath.overviewWords).
+
+// The overview header's title on that side: "✦ September in short", in the
+// small bold style, so it shares the row with the Numbers | In words switch.
+// `month` is 'YYYY-MM-01'.
+export function SummaryTitle({ month }) {
+  const t = useT('ai')
+  const [y, m] = month.split('-').map(Number)
+  return (
+    <HStack as="span" spacing={2} fontFamily="body" fontSize="sm" fontWeight="700" lineHeight="1.4">
+      <Box as="span" color="accent.fg" flexShrink={0} display="flex"><Sparkle size={16} aria-hidden /></Box>
+      <span>{t('summary.title', { month: monthName(new Date(y, m - 1, 1)) })}</span>
+    </HStack>
+  )
+}
+
+// The body: a few lines about this month written from the category totals
+// (the skeleton while it's being written, or Try again), Update once the
+// totals have changed, and who wrote it. `summary` is useMonthSummary's result.
+export default function MonthSummary({ summary: { state, summary, write, writeFailed } }) {
   const t = useT('ai')
   const info = useInfoToggle()
-  const { categories } = useCategories()
-  const { state, summary, month, write, writeFailed } = useMonthSummary(categories)
-  const [hidden, setHidden] = useState(() => hideable && summaryHidden(month))
-  if (state === 'hidden' || hidden) return null
-  const [y, m] = month.split('-').map(Number)
-
   return (
-    <Panel icon={Sparkle} title={t('summary.title', { month: monthName(new Date(y, m - 1, 1)) })} action={hideable && (
-      <IconButton size="sm" variant="ghost" color="text.muted" aria-label={t('summary.hide')} icon={<X size={16} />}
-        onClick={() => { hideSummary(month); setHidden(true) }} />
-    )}>
+    <Stack spacing={3}>
       {state === 'writing' ? (
         <Stack spacing={3}>
           <SkeletonRegion label={t('summary.working')}>
@@ -44,7 +46,7 @@ export default function MonthSummary({ hideable = false }) {
           <Button size="sm" variant="outline" flexShrink={0} onClick={write}>{t('summary.retry')}</Button>
         </HStack>
       ) : (
-        <Stack spacing={3}>
+        <>
           <Stack as="ul" spacing={2} listStyleType="none" m={0}>
             {summary.lines.map((line) => (
               <HStack as="li" key={line} align="start" spacing={2.5}>
@@ -68,8 +70,8 @@ export default function MonthSummary({ hideable = false }) {
             </Text>
             <InfoBox info={info}>{t('summary.byMore')}</InfoBox>
           </Box>
-        </Stack>
+        </>
       )}
-    </Panel>
+    </Stack>
   )
 }
