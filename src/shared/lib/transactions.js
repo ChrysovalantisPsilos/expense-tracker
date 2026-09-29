@@ -6,7 +6,8 @@ import { supabase } from './supabase.js'
 import { useLiveQuery, useOwnedQuery } from './db.js'
 import { useProfile } from './ProfileProvider.jsx'
 import { fillPendingRates } from './fx.js'
-import { shiftFetchFrom } from './salaryShift.js'
+import { countedDate, shiftFetchFrom } from './salaryShift.js'
+import { nextMonthStart } from './periods.js'
 import { dbError } from './errors.js'
 
 // Transactions in a date range (defaults to current month). Optional
@@ -106,6 +107,41 @@ export function useOldestTransactionDate() {
     oldestTransactionDate().then((date) => { if (ask === asked.current) setOldest(date) })
   }, [])
   return [oldest, recheck]
+}
+
+// The latest date the user's salary COUNTS on (salaryShift.countedDate) when
+// that's next month or later, else null: with the salary setting on (0081), a
+// salary paid from day D counts toward the next month, so the period pickers
+// offer next month once it's in (periods.buildPeriods' `newestISO`). Only the
+// newest income row in the salary category paid from day D of this month
+// (shiftFetchFrom of next month's 1st) is read — nothing else can count next
+// month — so it's a 1-row query, and none at all while the setting is off.
+// Live like every owned query: saving the salary brings next month in at once.
+export function useNewestCountedDate() {
+  const { salaryShift } = useProfile()
+  const since = salaryShift ? shiftFetchFrom(nextMonthStart(), salaryShift) : null
+  const categoryId = salaryShift?.categoryId ?? null
+  const { rows } = useOwnedQuery('transactions', {
+    fetch: () => (categoryId ? newestIncome(categoryId, since) : []),
+    deps: [categoryId, since],
+  })
+  const newest = rows[0] ? countedDate(rows[0], salaryShift) : null
+  return newest && newest >= nextMonthStart() ? newest : null
+}
+
+// The newest income row in `categoryId` paid on or after `since` ([] or one
+// row, with the columns countedDate reads).
+async function newestIncome(categoryId, since) {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('kind, category_id, spent_at')
+    .eq('kind', 'income')
+    .eq('category_id', categoryId)
+    .gte('spent_at', since)
+    .order('spent_at', { ascending: false })
+    .limit(1)
+  if (error) throw dbError(error)
+  return data ?? []
 }
 
 // Direct writes to the transactions table. Login is required (and reads are

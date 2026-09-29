@@ -69,7 +69,7 @@ test('rulesInBase: converted, missing and the notes', () => {
 test('the Overview projection counts foreign rules at the latest rate, not face value', () => {
   const income = rule({ id: 'pay', kind: 'income', amount_minor: 100000, currency: 'GBP', next_run: '2026-09-28' })
   const rules = [{ ...pln, next_run: '2026-09-27' }, income]
-  const at = (rates) => periodProjection(rulesInBase(rules, 'EUR', rates).rules, '2026-09-30', '2026-09-25')
+  const at = (rates) => periodProjection(rulesInBase(rules, 'EUR', rates).rules, { to: '2026-09-30' }, '2026-09-25')
   const pick = ({ expense, income, net }) => ({ expense, income, net })
   assert.deepEqual(pick(at({ PLN: 0.2327, GBP: 1.15 })), { expense: 698, income: 115000, net: 115000 - 698 })
   // Offline: nothing foreign counts rather than PLN 29.99 as €29.99.

@@ -1,6 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { buildPeriods, periodFromValue, isMonthPeriod, withPeriod } from '../src/shared/lib/periods.js'
+import {
+  buildPeriods, periodFromValue, isMonthPeriod, withPeriod, thisMonthPeriod, isThisMonth, nextMonthStart,
+} from '../src/shared/lib/periods.js'
 
 const NOW = new Date(2026, 6, 15) // 2026-07-15
 
@@ -82,14 +84,81 @@ test('isMonthPeriod: only single months', () => {
   assert.equal(isMonthPeriod(null), false)
 })
 
-import { isCurrentPeriod } from '../src/shared/lib/periods.js'
+import { isPastPeriod } from '../src/shared/lib/periods.js'
 
-test('isCurrentPeriod: this month, this year and all time include today; past periods do not', () => {
+test('isPastPeriod: only periods that ended before today; next month is not past', () => {
   const d = new Date(2026, 8, 25)
   const today = '2026-09-25'
-  assert.equal(isCurrentPeriod(periodFromValue('m:2026-9', d), today), true)
-  assert.equal(isCurrentPeriod(periodFromValue('y:2026', d), today), true)
-  assert.equal(isCurrentPeriod(periodFromValue('all', d), today), true)
-  assert.equal(isCurrentPeriod(periodFromValue('m:2026-8', d), today), false)
-  assert.equal(isCurrentPeriod(periodFromValue('y:2025', d), today), false)
+  assert.equal(isPastPeriod(periodFromValue('m:2026-9', d), today), false)
+  assert.equal(isPastPeriod(periodFromValue('m:2026-10', d), today), false)
+  assert.equal(isPastPeriod(periodFromValue('y:2026', d), today), false)
+  assert.equal(isPastPeriod(periodFromValue('all', d), today), false)
+  assert.equal(isPastPeriod(periodFromValue('m:2026-8', d), today), true)
+  assert.equal(isPastPeriod(periodFromValue('y:2025', d), today), true)
+})
+
+// Next month (the salary setting: a salary paid on the 28th counts for it).
+const SEP29 = new Date(2026, 8, 29)
+
+test('next month: offered first once an entry counts in it, labelled like any month', () => {
+  const p = buildPeriods('2026-05-10', SEP29, { newestISO: '2026-10-01' })
+  assert.deepEqual(p.slice(0, 3).map((x) => x.label), ['October 2026', 'This month', 'August 2026'])
+  assert.deepEqual(p[0], periodFromValue('m:2026-10', SEP29))
+  assert.deepEqual(p[0], { value: 'm:2026-10', label: 'October 2026', from: '2026-10-01', to: '2026-10-31' })
+  // It's still this year: no extra year option.
+  assert.deepEqual(p.filter((x) => x.value.startsWith('y:')).map((x) => x.label), ['This year'])
+})
+
+test('next month: not offered without a counted date past this month', () => {
+  for (const newestISO of [undefined, null, '2026-09-30', '2026-01-01']) {
+    assert.deepEqual(buildPeriods('2026-05-10', SEP29, { newestISO }), buildPeriods('2026-05-10', SEP29),
+      String(newestISO))
+  }
+})
+
+test('next month: a later counted date is clamped to next month', () => {
+  const p = buildPeriods('2026-05-10', SEP29, { newestISO: '2027-03-01' })
+  assert.equal(p[0].value, 'm:2026-10')
+  assert.equal(p.filter((x) => x.value === 'm:2026-11' || x.value.startsWith('m:2027')).length, 0)
+})
+
+test('next month: December offers January, and no year option for next year', () => {
+  const dec = new Date(2026, 11, 29)
+  const p = buildPeriods('2026-05-10', dec, { newestISO: '2027-01-01' })
+  assert.deepEqual(p.slice(0, 2).map((x) => x.value), ['m:2027-1', 'm:2026-12'])
+  assert.equal(p[0].label, 'January 2027')
+  assert.deepEqual(p.filter((x) => x.value.startsWith('y:')).map((x) => x.value), ['y:2026'])
+})
+
+test('next month: offered with this month only, when all data is this month or unknown', () => {
+  assert.deepEqual(buildPeriods('2026-09-28', SEP29, { newestISO: '2026-10-01' }).map((x) => x.value),
+    ['m:2026-10', 'm:2026-9', 'y:2026'])
+  assert.deepEqual(buildPeriods(undefined, SEP29, { newestISO: '2026-10-01' }).map((x) => x.value),
+    ['m:2026-10', 'm:2026-9'])
+})
+
+test('next month: the local calendar in every timezone', () => {
+  const saved = process.env.TZ
+  try {
+    for (const tz of ['UTC', 'America/Los_Angeles', 'Pacific/Kiritimati']) {
+      process.env.TZ = tz
+      const d = new Date(2026, 8, 29)
+      assert.equal(buildPeriods('2026-09-01', d, { newestISO: '2026-10-01' })[0].value, 'm:2026-10', tz)
+      assert.equal(nextMonthStart(d), '2026-10-01', tz)
+      assert.equal(nextMonthStart(new Date(2026, 11, 31)), '2027-01-01', tz)
+    }
+  } finally {
+    if (saved === undefined) delete process.env.TZ
+    else process.env.TZ = saved
+  }
+})
+
+test('thisMonthPeriod / isThisMonth: the default, even with next month listed first', () => {
+  const p = buildPeriods('2026-05-10', SEP29, { newestISO: '2026-10-01' })
+  assert.deepEqual(thisMonthPeriod(SEP29), p[1])
+  assert.equal(thisMonthPeriod(SEP29).label, 'This month')
+  assert.equal(isThisMonth(p[0], SEP29), false)
+  assert.equal(isThisMonth(p[1], SEP29), true)
+  assert.equal(isThisMonth(periodFromValue('y:2026', SEP29), SEP29), false)
+  assert.equal(isThisMonth(null, SEP29), false)
 })

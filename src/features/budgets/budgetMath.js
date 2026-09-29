@@ -189,8 +189,9 @@ export function budgetSubtitle(period, { months = 0, carried = null, periodStart
 }
 
 // The card's empty state, { text, canSet }: setting a budget is offered only
-// for a period that includes this month (`current`), the month budgets are
-// set for.
+// for a period that hasn't ended (`current`): one that includes this month,
+// the month budgets are set for, or next month, which this month's caps
+// carry over into.
 export function budgetsEmpty(period, current) {
   if (!current) return { text: t('budgets:card.emptyPast', { period: period.label }), canSet: false }
   const thisYear = !isMonthPeriod(period) && isRelativeLabel(period)

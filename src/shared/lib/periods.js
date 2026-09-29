@@ -24,31 +24,56 @@ const yearPeriod = (yr, d) => ({
 
 const allTime = () => ({ value: 'all', label: t('transactions:periods.allTime'), from: null, to: null })
 
+// "This month": every picker's default, always among buildPeriods' options.
+export const thisMonthPeriod = (d = new Date()) => monthPeriod(d.getFullYear(), d.getMonth(), d)
+
+// Whether a period is this month (not just labelled like it).
+export const isThisMonth = (period, d = new Date()) => period?.value === thisMonthPeriod(d).value
+
+// The 1st of next month ('YYYY-MM-DD'): where a month still ahead starts.
+export const nextMonthStart = (d = new Date()) => isoDate(new Date(d.getFullYear(), d.getMonth() + 1, 1))
+
 // Dashboard period options, clamped so the user never sees months/years from
 // before they have any data. The range spans from `oldestISO` (their oldest
 // transaction, YYYY-MM-DD) up to now — importing older data extends it for
 // free. With no transactions, only "This month" is offered.
-export function buildPeriods(oldestISO, d = new Date()) {
+//
+// `newestISO` (YYYY-MM-DD) is the latest date an entry COUNTS on (the salary
+// setting re-dates a late-month salary to the 1st of the next month,
+// salaryShift.countedDate). When it's past this month, next month is offered
+// too, first in the list and labelled like any other month: the salary paid
+// on the 28th already opens next month's budget month. Only next month —
+// a later date is clamped to it — and no year option for it: in December,
+// January stands on its own (a whole year holding one salary would add
+// nothing), and in any other month "This year" already covers it. "This
+// month" stays the default; callers pick it with thisMonthPeriod.
+export function buildPeriods(oldestISO, d = new Date(), { newestISO } = {}) {
   const y = d.getFullYear()
   const m = d.getMonth()
-
-  const thisMonth = monthPeriod(y, m, d)
-  if (!oldestISO) return [thisMonth]
-
-  // Read the calendar date straight from the string: new Date('YYYY-MM-DD')
-  // is UTC midnight, which is the previous day (and month) west of UTC.
-  const [oldestY, oldestM] = String(oldestISO).split('-').map(Number)
-  const oldestMonthIdx = oldestY * 12 + oldestM - 1
   const nowMonthIdx = y * 12 + m
+  const thisMonth = monthPeriod(y, m, d)
+  // Read calendar dates straight from the strings: new Date('YYYY-MM-DD')
+  // is UTC midnight, which is the previous day (and month) west of UTC.
+  const monthIdx = (iso) => {
+    const [yy, mm] = String(iso).split('-').map(Number)
+    return yy * 12 + mm - 1
+  }
+  const ahead = newestISO && monthIdx(newestISO) > nowMonthIdx
+    ? [monthPeriod(Math.floor((nowMonthIdx + 1) / 12), (nowMonthIdx + 1) % 12, d)]
+    : []
+  if (!oldestISO) return [...ahead, thisMonth]
 
-  const out = []
+  const oldestY = Number(String(oldestISO).split('-')[0])
+  const oldestMonthIdx = monthIdx(oldestISO)
+
+  const out = [...ahead]
   for (let idx = nowMonthIdx; idx >= oldestMonthIdx; idx--) {
     out.push(monthPeriod(Math.floor(idx / 12), idx % 12, d))
   }
   // Future-dated data can leave the months loop empty (oldest is after now):
   // "This month" must always exist — it's the default selection and callers
   // index into the list.
-  if (!out.some((p) => p.value === thisMonth.value)) out.unshift(thisMonth)
+  if (!out.some((p) => p.value === thisMonth.value)) out.push(thisMonth)
   for (let yr = y; yr >= oldestY; yr--) out.push(yearPeriod(yr, d))
   // "All time" only adds value once there's data spanning more than this month.
   if (oldestMonthIdx < nowMonthIdx) out.push(allTime())
@@ -76,7 +101,7 @@ export function withPeriod(periods, period) {
 // Whether a period is a single month (budgets are monthly).
 export const isMonthPeriod = (period) => String(period?.value).startsWith('m:')
 
-// Whether a period includes today ('YYYY-MM-DD'): this month, this year, or
-// all time — the periods where what's coming still matters.
-export const isCurrentPeriod = (period, todayISO) =>
-  (!period.from || period.from <= todayISO) && (!period.to || todayISO <= period.to)
+// Whether a period ended before today ('YYYY-MM-DD'): a past month or year.
+// This month, this year, all time and next month (buildPeriods' newestISO)
+// are not — they're the periods where what's coming still matters.
+export const isPastPeriod = (period, todayISO) => !!period?.to && period.to < todayISO

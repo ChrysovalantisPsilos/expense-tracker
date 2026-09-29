@@ -16,28 +16,29 @@ import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
-import { isCurrentPeriod, isMonthPeriod } from '../../shared/lib/periods.js'
+import { isPastPeriod, isMonthPeriod } from '../../shared/lib/periods.js'
 import { chargedGroups, chargedWording, frequencyLabel, subscriptionGroups } from './recurringMath.js'
 import { GroupTabs, GroupTotal, baseHint } from './SubscriptionGroups.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { entryName } from '../../shared/lib/categoryName.js'
 
 // Home's "Recurring" card, following Home's `period` (periods.js):
-//  * this month: today's view — the active recurring expenses by how often
-//    they charge (Weekly · Monthly · Quarterly · Yearly, only the groups the
-//    user has), each with its total per period, about how much a month, and
-//    the next few charges. `rules` are the useRecurring() rows; `loading`
-//    while they're on their way; `error` (with `onRetry`) when they couldn't
-//    be read — never shown as "No subscriptions yet". Foreign rules count in
-//    the totals at `fx` = useRuleRates() ({ rates, loading }).
-//  * any other period: what was actually charged in it
+//  * this month (and next month, once its salary is in): today's view — the
+//    active recurring expenses by how often they charge (Weekly · Monthly ·
+//    Quarterly · Yearly, only the groups the user has), each with its total
+//    per period, about how much a month, and the next few charges. `rules`
+//    are the useRecurring() rows; `loading` while they're on their way;
+//    `error` (with `onRetry`) when they couldn't be read — never shown as
+//    "No subscriptions yet". Foreign rules count in the totals at `fx` =
+//    useRuleRates() ({ rates, loading }).
+//  * any other (past) period: what was actually charged in it
 //    (recurringMath.chargedGroups), from Home's own rows for the period —
 //    `charges` = { rows, loading, error, onRetry } — so it costs no query.
 // Informational either way: it never feeds Home's totals, whichever way the
 // yearly-subscription setting is set (the Yearly tab just says how those count).
 export default function SubscriptionsCard({ rules, fx, loading, error, onRetry, baseCurrency, period, charges }) {
   const t = useT('recurring')
-  const upcoming = !period || (isMonthPeriod(period) && isCurrentPeriod(period, today()))
+  const upcoming = !period || (isMonthPeriod(period) && !isPastPeriod(period, today()))
   return (
     <Panel data-tour="subscriptions" icon={Repeat} title={t('list.title')}
       subtitle={upcoming ? undefined : chargedWording(period).subtitle}

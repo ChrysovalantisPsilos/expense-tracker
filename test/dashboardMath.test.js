@@ -36,11 +36,11 @@ const rules = [
 ]
 
 test('periodProjection: only ongoing periods fold in upcoming recurring', () => {
-  assert.deepEqual(periodProjection(rules, '2026-09-30', '2026-09-23'),
+  assert.deepEqual(periodProjection(rules, { to: '2026-09-30' }, '2026-09-23'),
     { expense: 999, income: 10000, expenseFromSavings: 0, savedFromIncome: 0, net: 10000 - 999 })
   const none = { expense: 0, income: 0, expenseFromSavings: 0, savedFromIncome: 0, net: 0 }
-  assert.deepEqual(periodProjection(rules, '2026-08-31', '2026-09-23'), none) // past
-  assert.deepEqual(periodProjection(rules, null, '2026-09-23'), none) // all time
+  assert.deepEqual(periodProjection(rules, { to: '2026-08-31' }, '2026-09-23'), none) // past
+  assert.deepEqual(periodProjection(rules, { to: null }, '2026-09-23'), none) // all time
 })
 
 test('projectedTotals adds the projection and nets income − spend', () => {
@@ -57,9 +57,9 @@ const withYearly = [
 ]
 
 test('periodProjection: separateYearly leaves yearly rules out', () => {
-  assert.deepEqual(periodProjection(withYearly, '2026-09-30', '2026-09-23'),
+  assert.deepEqual(periodProjection(withYearly, { to: '2026-09-30' }, '2026-09-23'),
     { expense: 999 + 1000, income: 10000, expenseFromSavings: 0, savedFromIncome: 0, net: 10000 - 999 - 1000 })
-  assert.deepEqual(periodProjection(withYearly, '2026-09-30', '2026-09-23', true),
+  assert.deepEqual(periodProjection(withYearly, { to: '2026-09-30' }, '2026-09-23', true),
     { expense: 999, income: 10000, expenseFromSavings: 0, savedFromIncome: 0, net: 10000 - 999 })
 })
 

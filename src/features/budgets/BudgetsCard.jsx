@@ -7,7 +7,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { today } from '../../shared/lib/dates.js'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
-import { isCurrentPeriod } from '../../shared/lib/periods.js'
+import { isPastPeriod } from '../../shared/lib/periods.js'
 import { useBudgetProgress } from './useBudgetProgress.js'
 import BudgetRow from './BudgetRow.jsx'
 import { budgetSubtitle, budgetsEmpty } from './budgetMath.js'
@@ -25,7 +25,7 @@ export default function BudgetsCard({ period }) {
   const { baseCurrency } = useProfile()
   const { items, months, carriedFrom, periodStart, loading, error, reload } = useBudgetProgress(period)
   const { page, setPage, count, pageItems } = usePaged(items, 10, period.value)
-  const empty = budgetsEmpty(period, isCurrentPeriod(period, today()))
+  const empty = budgetsEmpty(period, !isPastPeriod(period, today()))
 
   return (
     <Panel icon={Target} title={t('title')}
