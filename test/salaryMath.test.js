@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   INFLATION, INFLATION_LATEST, inflationRate, defaultCountry, splitPay, payLevels, raiseKind, averageRaise,
   yearTotals, priceRise, sinceChoices, vsInflation, indexationRate, extraRatios, project, projections,
-  salaryReport, normaliseNotes, withFix, bonusCategoryId, monthsBetween,
+  salaryReport, normaliseNotes, withFix, bonusCategoryId, monthsBetween, payChartRows, payChartAxis, offMonths,
 } from '../src/features/salary/salaryMath.js'
 
 const SAL = 'cat-salary'
@@ -292,4 +292,61 @@ test('the Bonus category: picked, else the default one', () => {
   assert.equal(bonusCategoryId(cats, { bonus_category_id: 'e' }), 'y')
   assert.equal(bonusCategoryId([{ id: 'z', kind: 'income' }], {}), null)
   assert.equal(monthsBetween('2025-11', '2026-02'), 3)
+})
+
+test('the pay chart: a dot for each month with pay, a hollow one off the level', () => {
+  // A year at 2,428.79, August a one-month dip, April without pay, a June
+  // holiday allowance on top.
+  const rows = monthly('2025-10', 12, (i) => (i === 10 ? 2316.4 : 2428.79)).filter((_, i) => i !== 6)
+  rows.push(pay('2026-06-05', 2200, { description: 'Holiday allowance' }))
+  const r = salaryReport(rows, { ...opts(), nowKey: '2026-09' })
+  assert.equal(r.lastRaise, null) // the dip is no raise (and no cut)
+  assert.deepEqual(r.raises, [])
+  const chart = payChartRows(r)
+  assert.equal(chart.length, 12)
+  assert.ok(chart.every((m) => m.level === 242879))
+  const aug = chart.find((m) => m.key === '2026-08')
+  assert.deepEqual([aug.pay, aug.off], [231640, true])
+  const apr = chart.find((m) => m.key === '2026-04')
+  assert.deepEqual([apr.pay, apr.off], [null, false])
+  assert.equal(chart.filter((m) => m.off).length, 1)
+  const jun = chart.find((m) => m.key === '2026-06')
+  assert.deepEqual([jun.pay, jun.holiday, jun.off], [242879, 220000, false])
+  // The axis reaches the lowest dot, not only the level.
+  assert.deepEqual(payChartAxis(chart), { domain: [2200, 2500], ticks: [2200, 2300, 2400, 2500] })
+  assert.deepEqual(offMonths(chart), { months: [{ key: '2026-08', pay: 231640, level: 242879 }], more: 0 })
+})
+
+test('the pay chart: off by 1% or more only; the latest few off months, and how many more', () => {
+  // Under 1% above in April; a dip in Jun, Aug, Oct and Dec (Jan after is back).
+  const pays = (i) => (i === 3 ? 2019 : i % 2 && i > 4 ? 1900 : 2000)
+  const chart = payChartRows(salaryReport(monthly('2025-01', 13, pays), { ...opts(), nowKey: '2026-01' }))
+  assert.equal(chart.find((m) => m.key === '2025-04').off, false)
+  assert.deepEqual(chart.filter((m) => m.off).map((m) => m.key), ['2025-06', '2025-08', '2025-10', '2025-12'])
+  assert.deepEqual(offMonths(chart, 2), {
+    months: [{ key: '2025-10', pay: 190000, level: 200000 }, { key: '2025-12', pay: 190000, level: 200000 }], more: 2,
+  })
+  // No pay off the level: nothing to list, and the low is the level's.
+  const flat = payChartRows(salaryReport(monthly('2025-01', 3, 2000), { ...opts(), nowKey: '2025-03' }))
+  assert.deepEqual(offMonths(flat), { months: [], more: 0 })
+  assert.deepEqual(payChartAxis(flat), { domain: [1900, 2100], ticks: [1900, 2000, 2100] })
+})
+
+test('the pay chart axis: round steps around every dot, labels that never repeat', () => {
+  const row = (level, pay = level) => ({ level, pay })
+  // Years of raises: 2,180 → 2,792.40, on steps of 200.
+  assert.deepEqual(payChartAxis([row(218000), row(279240)]), { domain: [2000, 3000], ticks: [2000, 2200, 2400, 2600, 2800, 3000] })
+  // A dot below the level widens it; a month without pay has no dot.
+  const dip = payChartAxis([row(300000), row(300000, 240000), row(300000, null)])
+  assert.ok(dip.domain[0] <= 2400 && dip.domain[1] >= 3000)
+  // A zero-decimal currency (factor 1): yen, in thousands.
+  const yen = payChartAxis([row(300000), row(300000, 280000)], 1)
+  assert.ok(yen.domain[0] <= 280000 && yen.domain[1] >= 300000)
+  // Never closer than a tenth of the top's power of ten ("2.3k", "2.4k"), and
+  // at most a handful of ticks.
+  for (const a of [payChartAxis([row(242879, 242000)]), yen, dip]) {
+    const labels = a.ticks.map((v) => new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(v))
+    assert.equal(new Set(labels).size, labels.length, labels.join(' '))
+    assert.ok(a.ticks.length >= 3 && a.ticks.length <= 7, labels.join(' '))
+  }
 })

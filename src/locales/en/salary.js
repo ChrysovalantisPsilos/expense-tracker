@@ -14,8 +14,19 @@ export default {
   open: 'Open your salary',
   oneMonth: 'One month so far. Add earlier payslips as Salary income to see your raises.',
   chart: {
+    // The legend: a dot a month, the level as a line, a hollow dot for a
+    // month off the level.
+    pay: 'Pay each month',
+    // The tooltip: a month's pay above its regular pay.
+    thisMonth: 'This month',
     regular: 'Regular pay',
-    aria: 'Regular pay from {{from}} to {{to}}, each raise a step up, with the extras under it.',
+    off: 'Unusual month',
+    aria: 'Your pay each month from {{from}} to {{to}}, a dot a month, with your regular pay as a line (each raise a step up) and the extras under it.',
+    // Read out after the chart's description when a month's pay is off the level.
+    offAria: 'Months off your regular pay: {{list}}.',
+    offItem: '{{month}} {{pay}} (regular {{level}})',
+    offMore_one: 'And {{count}} more month off it.',
+    offMore_other: 'And {{count}} more months off it.',
   },
   raises: {
     title: 'Raises',
