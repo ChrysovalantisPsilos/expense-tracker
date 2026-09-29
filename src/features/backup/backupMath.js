@@ -29,8 +29,9 @@
 // each recurring entry has a `key` ("r1") and data.plan holds the one saved
 // plan with its references as keys: { changes: [{ rule: 'r1', snap, cancel? |
 // amount_minor?, … }], adds: [{ …, category: 'c1' | null }], dismissed,
-// salary?: { amount_minor?, cancel? } } (the what-if on the Salary row worked
-// out from salary entries; it references nothing). A restore only brings it
+// salary?: { amount_minor?, cancel? }, savings?: { amount_minor?, cancel? } }
+// (the what-ifs on the Salary and Savings rows worked out from entries; they
+// reference nothing). An add can be a 'savings' one, with its category. A restore only brings it
 // back into an account that has no plan, and drops the changes whose
 // recurring entry isn't there (restorePlan).
 // Meal vouchers (0097, optional, still version 4): an expense's optional
@@ -55,7 +56,7 @@
 // account's).
 import { deterministicUuid } from '../import/importMath.js'
 import { FREQUENCIES } from '../recurring/recurringMath.js'
-import { PLAN_VERSION, cleanSalary, isEmptyPlan, normalisePlan } from '../plan/planMath.js'
+import { PLAN_VERSION, derivedEdits, isEmptyPlan, normalisePlan } from '../plan/planMath.js'
 import { normaliseSettings } from '../vouchers/voucherMath.js'
 import { FIX_KINDS, normaliseNotes } from '../salary/salaryMath.js'
 import { sealText, openText } from './backupCrypto.js'
@@ -229,7 +230,7 @@ function planForBackup(plan, ruleKey, catKey) {
       .map(({ rule_id: id, ...c }) => ({ rule: ruleKey.get(id), ...c })),
     adds: plan.adds.map(({ category_id: id, ...a }) => ({ ...a, category: id ? catKey.get(id) ?? null : null })),
     dismissed: plan.dismissed,
-    ...(plan.salary ? { salary: plan.salary } : {}),
+    ...derivedEdits(plan),
   }
 }
 
@@ -556,8 +557,7 @@ function readBackupPlan(raw, recKeys, catKeys) {
   const adds = v.list(raw.adds, 'additions', 50).filter(isObj)
     .map((a) => ({ ...a, category: catKeys.has(a.category) ? a.category : null }))
   const dismissed = v.list(raw.dismissed, 'dismissed ideas', 100).filter((d) => typeof d === 'string')
-  const salary = cleanSalary(raw.salary)
-  return { changes, adds, dismissed, ...(salary ? { salary } : {}) }
+  return { changes, adds, dismissed, ...derivedEdits(raw) }
 }
 
 // A backup's salary settings: an unknown category or country is dropped;
@@ -618,7 +618,7 @@ export function restorePlan(backupPlan, backupRules, rulesNow, categoryIdByKey) 
       .map(({ rule, ...c }) => ({ ...c, rule_id: idByKey.get(rule) })),
     adds: backupPlan.adds.map(({ category, ...a }) => ({ ...a, category_id: category ? categoryIdByKey.get(category) ?? null : null })),
     dismissed: backupPlan.dismissed,
-    salary: backupPlan.salary,
+    ...derivedEdits(backupPlan),
   })
 }
 

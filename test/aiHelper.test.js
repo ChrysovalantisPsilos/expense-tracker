@@ -407,3 +407,26 @@ test('what-if: nothing usable is "couldn\'t tell"; only unknown names is still a
   assert.equal(many.adds.length, 10)
   assert.equal(many.adds[0].name.length, NAME_MAX)
 })
+
+test('what-if: savings set aside from income are offered as kind "savings"; received savings still aren\'t', () => {
+  const FROM_PAY = '00000000-0000-4000-8000-0000000000b7'
+  const rows = [...planRuleRows, rule({ id: FROM_PAY, kind: 'income', description: 'Payday savings', amount_minor: 30000,
+    category_id: SAVINGS_CAT, categories: { name: 'Savings' }, savings_from_income: true })]
+  const list = planPayments(rows, planCats, {})
+  assert.deepEqual(list.map((p) => p.id), [NETFLIX, DISNEY, RENT, PAY, TOKYO, FROM_PAY])
+  assert.equal(list[5].kind, 'savings')
+  assert.equal(list.some((p) => p.id === SAVE), false, 'money received into savings (no savings_from_income)')
+  const a = whatIfAsk({ text: 'save 50 more a month', baseCurrency: 'EUR', payments: list })
+  assert.equal(JSON.parse(a.user).items[5].kind, 'savings')
+  assert.deepEqual(a.schema.properties.adds.items.properties.kind.enum, ['expense', 'income', 'savings'])
+  assert.match(a.system, /"save 50 more" gives the savings item 50 more per period/)
+  assert.match(a.system, /Saving is never a cost to cut/)
+  const out = normaliseWhatIf({
+    understood: true,
+    changes: [{ id: FROM_PAY, action: 'change', amount: '350', frequency: null }],
+    adds: [{ kind: 'savings', name: 'Holiday fund', amount: '50', currency: null, frequency: 'monthly' }],
+    not_found: [],
+  }, { baseCurrency: 'EUR', payments: list })
+  assert.deepEqual(out.changes, [{ rule_id: FROM_PAY, amount_minor: 35000 }])
+  assert.deepEqual(out.adds, [{ kind: 'savings', name: 'Holiday fund', amount_minor: 5000, currency: 'EUR', repeat: 'monthly' }])
+})

@@ -25,9 +25,12 @@ export function perUnit(fields) {
 export const serviceCount = (type, count, t) => t(`services.${type}`, { count })
 
 // A row's display name: its own, else its category's, else its kind ("Salary"
-// for the derived salary row).
-export const itemName = (item) => (item.salary ? tr('plan:salary.name')
-  : item.name || tr(`recurring:kinds.${item.kind === 'income' ? 'income' : 'expense'}`))
+// and "Savings" for the derived rows).
+export function itemName(item) {
+  if (item.salary) return tr('plan:salary.name')
+  if (item.derived || (!item.name && item.kind === 'savings')) return tr('plan:savings.name')
+  return item.name || tr(`recurring:kinds.${item.kind === 'income' ? 'income' : 'expense'}`)
+}
 
 // "Jul, Aug and Sep" from 'YYYY-MM-01' keys.
 export function monthList(months) {
@@ -39,6 +42,7 @@ export function monthList(months) {
 export function rowMeta(item, view, t) {
   const f = item.after ?? item.before
   if (item.salary) return t('row.salary')
+  if (item.derived) return t('row.savings', { count: item.months })
   if (item.added) return t('row.from', { frequency: freqLabel(f), date: shortDate(item.next) })
   const b = item.before
   if (view === 'month' && b.frequency === 'yearly' && Number(b.interval_n) === 1 && !item.changed) {
@@ -86,10 +90,15 @@ export function ideaText(idea, currency, t) {
   }
 }
 
+// The word for a new item of each kind: 'Income', 'Cost', 'Savings' (keys
+// under changes., apply., typeIt.).
+const NEW = { income: 'Income', expense: 'Cost', savings: 'Savings' }
+export const newKey = (kind) => NEW[kind] ?? NEW.expense
+
 // "Before → after" for one change, in words.
 export function changeLine(item, t) {
-  if (item.added) return t(item.kind === 'income' ? 'changes.newIncome' : 'changes.newCost', { amount: perUnit(item.after) })
-  if (item.cancelled) return t(item.kind === 'income' ? 'changes.stopLine' : 'changes.cancelLine', { was: perUnit(item.before) })
+  if (item.added) return t(`changes.new${newKey(item.kind)}`, { amount: perUnit(item.after) })
+  if (item.cancelled) return t(item.kind === 'expense' ? 'changes.cancelLine' : 'changes.stopLine', { was: perUnit(item.before) })
   return t('changes.editLine', { was: perUnit(item.before), now: perUnit(item.after) })
 }
 
@@ -97,7 +106,7 @@ export function changeLine(item, t) {
 // €15.99 a month", "Change to €12.99 a month · now €10.99 a month", "Add ·
 // €40.00 a month".
 export function whatIfLine(row, t) {
-  if (row.type === 'add') return t(row.kind === 'income' ? 'typeIt.addIncome' : 'typeIt.add', { amount: perUnit(row.after) })
-  if (row.type === 'cancel') return t(row.kind === 'income' ? 'typeIt.stop' : 'typeIt.cancel', { was: perUnit(row.before) })
+  if (row.type === 'add') return t(`typeIt.add${newKey(row.kind)}`, { amount: perUnit(row.after) })
+  if (row.type === 'cancel') return t(row.kind === 'expense' ? 'typeIt.cancel' : 'typeIt.stop', { was: perUnit(row.before) })
   return t('typeIt.change', { now: perUnit(row.after), was: perUnit(row.before) })
 }

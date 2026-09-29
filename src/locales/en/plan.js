@@ -1,5 +1,5 @@
 // Namespace `plan`: src/features/plan (Plan mode, /plan — a sandbox for the
-// recurring payments and income). Conventions: docs/I18N.md.
+// recurring payments, income and savings). Conventions: docs/I18N.md.
 export default {
   title: 'Plan',
   what: 'your plan',
@@ -15,9 +15,10 @@ export default {
     year: 'Year',
   },
   impact: {
+    // What's left over: income − payments − savings taken from income.
     net: {
-      month: 'Net a month',
-      year: 'Net a year',
+      month: 'Left over a month',
+      year: 'Left over a year',
     },
     // No recurring income: the card shows the recurring payments.
     payments: {
@@ -26,7 +27,7 @@ export default {
     },
     less: '{{amount}} less',
     more: '{{amount}} more',
-    addIncome: 'Add your salary as recurring income to see your net.',
+    addIncome: 'Add your salary as recurring income to see what’s left over.',
     addIncomeButton: 'Add recurring income',
     noChanges: 'No changes yet',
     // The change chip, in the unit the Month/Year switch shows.
@@ -35,14 +36,44 @@ export default {
       year: '{{amount}} a year',
     },
     was: 'was <s>{{amount}}</s>',
-    rule: 'Your recurring income minus recurring payments.',
+    // Under the figure: the savings rows, already taken off it.
+    saved: {
+      net: {
+        month: 'After {{amount}} a month into savings',
+        year: 'After {{amount}} a year into savings',
+      },
+      payments: {
+        month: 'Includes {{amount}} a month into savings',
+        year: 'Includes {{amount}} a year into savings',
+      },
+    },
+    // "How it adds up" behind the ⓘ (planMath.planSteps).
+    sum: {
+      title: {
+        net: 'How it adds up',
+        payments: 'What goes out',
+      },
+      income: 'Income',
+      payments: 'Recurring payments',
+      savings: 'Put into savings',
+      total: {
+        net: 'Left over',
+        payments: 'In all',
+      },
+    },
   },
   // The Salary row worked out from salary entries (no recurring salary).
   salary: {
     name: 'Salary',
   },
+  // Money set aside from income, and the Savings row worked out from savings
+  // entries (no recurring savings).
+  savings: {
+    name: 'Savings',
+  },
   groups: {
     income: 'Income',
+    savings: 'Savings',
     bills: 'Bills',
     subscriptions: 'Subscriptions',
   },
@@ -78,15 +109,18 @@ export default {
     from: '{{frequency}} · from {{date}}',
     yearShare: '{{amount}} a year ÷ 12',
     salary: 'Average of the last 3 months · from your entries',
+    savings_one: 'Average of the last {{count}} month · from your entries',
+    savings_other: 'Average of the last {{count}} months · from your entries',
     open: 'Change {{name}} in the plan',
     cancel: 'Cancel {{name}} in the plan',
+    stop: 'Stop {{name}} in the plan',
     keep: 'Keep {{name}}',
     updatedEdit: '<strong>Updated since your plan.</strong> Now {{now}} (was {{was}} when you planned). Your plan still sets {{plan}}.',
     updatedCancel: '<strong>Updated since your plan.</strong> Now {{now}} (was {{was}} when you planned). Your plan still cancels it.',
   },
   whatIf: {
     title: 'What if I add…',
-    text: 'A new payment or income, just in this plan',
+    text: 'A new payment, income or savings, just in this plan',
   },
   // "Type a what-if" (the optional AI helper, PlanWhatIf.jsx; its words about
   // what is sent must stay true to ai:settings.planWhatIf and the Privacy Notice).
@@ -94,15 +128,16 @@ export default {
     label: 'Type a what-if',
     placeholder: 'cancel Netflix, add a gym at 40 a month',
     go: 'Show the changes',
-    more: 'Write it the way you’d say it. Claude (by Anthropic) turns it into changes to your plan for you to check: nothing goes into the plan until you tap Add to plan, and nothing real changes until you apply it. Only this line and your recurring payments and income (name, amount, currency, how often) are sent.',
+    more: 'Write it the way you’d say it. Claude (by Anthropic) turns it into changes to your plan for you to check: nothing goes into the plan until you tap Add to plan, and nothing real changes until you apply it. Only this line and your recurring payments, income and savings (name, amount, currency, how often) are sent.',
     working: 'Working out the changes…',
     previewLabel: 'Suggested changes',
     check: 'Check them, untick any you don’t want, then add them to your plan.',
     cancel: 'Cancel (−{{was}})',
     stop: 'Stop (−{{was}})',
     change: 'Change to {{now}} (now {{was}})',
-    add: 'Add {{amount}}',
+    addCost: 'Add {{amount}}',
     addIncome: 'Add income of {{amount}}',
+    addSavings: 'Save {{amount}}',
     pick: 'Add “{{name}}” to the plan',
     noName: 'No name',
     edit: 'Edit',
@@ -115,8 +150,8 @@ export default {
     added_other: 'Added {{count}} changes to your plan.',
     undo: 'Undo',
     unreadable: 'Couldn’t tell what to change. Try something like “cancel Netflix, add a gym at 40 a month”.',
-    notFound: 'Couldn’t find {{names}} among your recurring payments and income.',
-    notFoundToo: 'Not found among your recurring payments and income: {{names}}.',
+    notFound: 'Couldn’t find {{names}} among your recurring payments, income and savings.',
+    notFoundToo: 'Not found among your recurring payments, income and savings: {{names}}.',
   },
   ideas: {
     title: 'Ideas to save',
@@ -162,6 +197,7 @@ export default {
     clear: 'Clear plan',
     newIncome: 'New income · {{amount}}',
     newCost: 'New payment · {{amount}}',
+    newSavings: 'New savings · {{amount}}',
     cancelLine: '{{was}} → cancelled',
     stopLine: '{{was}} → stopped',
     editLine: '{{was}} → {{now}}',
@@ -176,15 +212,16 @@ export default {
     perMonth: '{{amount}}/mo',
     perYear: '{{amount}}/yr',
     total: {
-      net: 'Net change',
+      net: 'Change in what’s left',
       payments: 'Change in payments',
     },
   },
   hint: 'Tap a payment to try a change.',
   edit: {
     now: 'Now {{amount}}',
-    salaryNow: 'Your average: {{amount}}',
+    average: 'Your average: {{amount}}',
     salaryNote: 'Your salary isn’t a recurring payment, so this change stays in your plan.',
+    savingsNote: 'These savings come from your entries, not a recurring payment, so this change stays in your plan.',
     reset: 'Reset',
     amount: 'Amount',
     howOften: 'How often',
@@ -204,23 +241,28 @@ export default {
     spend: 'You’d spend more',
     get: 'You’d get',
     getLess: 'You’d get less',
+    setAsideMore: 'You’d set aside more',
+    setAsideLess: 'You’d set aside less',
     none: 'No change yet',
     perMonth: '{{amount}} a month',
     perYear: '{{amount}} a year',
   },
   add: {
-    kind: 'Cost or income',
+    kind: 'What it is',
     cost: 'A cost',
     income: 'Income',
+    savings: 'Savings',
     name: 'Name',
     placeholder: {
       expense: 'Gym, streaming, insurance…',
       income: 'Tutoring, a raise…',
+      savings: 'Emergency fund, holiday…',
     },
     amount: 'Amount',
     currency: 'Currency',
     starts: 'Starts',
     category: 'Category (optional)',
+    savingsCategory: 'Savings category',
     noCategory: 'No category',
     submit: 'Add to plan',
     update: 'Save',
@@ -241,13 +283,15 @@ export default {
     sub: 'Untick anything you want to keep in the plan for now.',
     newIncome: 'New income · from {{date}}',
     newCost: 'New payment · from {{date}}',
+    newSavings: 'New savings from income · from {{date}}',
     stops: 'Stops it · its history is kept',
     editLine: '{{amount}} from {{date}}',
     after: {
-      net: 'Net after applying',
+      net: 'Left over after applying',
       payments: 'Payments after applying',
     },
     salaryNote: 'Your salary isn’t a recurring payment, so its change stays in your plan.',
+    savingsNote: 'Your savings from entries aren’t a recurring payment, so their change stays in your plan.',
     netValue: '{{amount}} a month',
     warnTitle: 'This changes your real recurring payments.',
     warnBody: 'Stopped ones won’t be added any more, new ones start on their date, new amounts apply from the next charge. It doesn’t cancel anything with your providers: do that with them too. You can undo this for 24 hours.',
@@ -262,7 +306,7 @@ export default {
     title_one: 'Applied {{count}} change',
     title_other: 'Applied {{count}} changes',
     body: {
-      net: 'Your recurring now nets {{amount}} a month. Applied changes have left your plan; stopped payments keep their history.',
+      net: 'Your recurring now leaves {{amount}} a month. Applied changes have left your plan; stopped payments keep their history.',
       payments: 'Your recurring payments are now {{amount}} a month. Applied changes have left your plan; stopped payments keep their history.',
     },
     undo: 'Undo',
@@ -299,6 +343,8 @@ export default {
     stopped: '{{name}} was stopped, so its change left your plan.',
     salaryRule: 'Your salary is now a recurring payment, so its change left your plan.',
     salaryGone: 'No salary entries in the last 3 months, so the salary change left your plan.',
+    savingsRule: 'Your savings are now recurring, so the change to your savings from entries left your plan.',
+    savingsGone: 'No savings from your income in the last 3 months, so the savings change left your plan.',
     unnamed: 'A payment',
     ok: 'OK',
   },

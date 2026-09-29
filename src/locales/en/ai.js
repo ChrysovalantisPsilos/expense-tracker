@@ -30,7 +30,7 @@ export default {
     planWhatIf: {
       label: 'What-if in your own words',
       hint: 'In Plan, “cancel Netflix, add a gym at €40 a month” fills in the changes for you to check.',
-      more: 'Sent: the line you type, and your recurring payments and income (name, amount, currency, how often). No entries, notes or other account data.',
+      more: 'Sent: the line you type, and your recurring payments, income and savings (name, amount, currency, how often). No entries, notes or other account data.',
     },
   },
   // On the shared demo login: Settings → AI helpers and the typing boxes.

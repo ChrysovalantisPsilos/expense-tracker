@@ -15,8 +15,8 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { applyPlan, undoLastApply, usePlanData } from './plan.js'
 import {
   acknowledge, applySelection, buildItems, dismissIdea, emptyPlan, headline, inView, monthOf, overBudgetMonths,
-  planGroups, planIdeas, planRules, planSummary, priceRises, reconcile, removeAdd, resetChange, resetSalary, rowTag,
-  setChange, setSalary, signalsFor, startOver, tryIdea, undoState, upsertAdd,
+  planGroups, planIdeas, planRules, planSummary, priceRises, reconcile, removeAdd, resetChange, resetDerived, rowTag,
+  setChange, setDerived, signalsFor, startOver, tryIdea, undoState, upsertAdd,
 } from './planMath.js'
 import {
   ChangesPanel, IdeasStrip, ImpactHeader, PlanHint, PlanRow, SavedNote, WhatIfRow, changeKey,
@@ -31,9 +31,11 @@ import { useAiHelpers } from '../ai/ai.js'
 // Plan mode (/plan): a sandbox over the user's recurring payments and income.
 // Every edit shows at once how the monthly net moves, before → after; the plan
 // is saved to the account by itself, and nothing real changes until the user
-// applies it (then Undo for 24 hours). Savings transfers are left out. A
-// salary logged as entries shows as a derived Salary row (plan-only edits);
-// with no recurring income at all the card shows the payments instead.
+// applies it (then Undo for 24 hours). Money set aside as savings from income
+// has its own Savings group and lowers what's left, like Home's net. A salary
+// (or savings) logged as entries shows as a derived Salary (Savings) row,
+// with plan-only edits; with no recurring income at all the card shows the
+// payments instead.
 export default function Plan() {
   const t = useT('plan')
   const toast = useToast()
@@ -55,10 +57,11 @@ export default function Plan() {
   const categoriesById = useMemo(() => new Map(d.categories.map((c) => [c.id, c])), [d.categories])
   const items = useMemo(() => buildItems({
     rules: d.rules, plan, savingsIds: d.savingsIds, baseCurrency: currency, rates: d.rates, categoriesById,
-    salary: d.salary,
-  }), [d.rules, plan, d.savingsIds, currency, d.rates, categoriesById, d.salary])
+    salary: d.salary, savings: d.savings,
+  }), [d.rules, plan, d.savingsIds, currency, d.rates, categoriesById, d.salary, d.savings])
   const sum = useMemo(() => planSummary(items), [items])
-  const reality = useMemo(() => reconcile(plan, d.rules, d.savingsIds, d.salary), [plan, d.rules, d.savingsIds, d.salary])
+  const reality = useMemo(() => reconcile(plan, d.rules, d.savingsIds, d.salary, d.savings),
+    [plan, d.rules, d.savingsIds, d.salary, d.savings])
   const signals = useMemo(() => {
     const live = planRules(d.rules, d.savingsIds)
     return signalsFor(items, {
@@ -102,8 +105,8 @@ export default function Plan() {
   }
 
   const ruleOf = (id) => d.rules.find((r) => r.id === id)
-  const edit = (item, patch) => d.setPlan((p) => (item.salary
-    ? setSalary(p, patch, item.before.amount_minor)
+  const edit = (item, patch) => d.setPlan((p) => (item.derived
+    ? setDerived(p, item.id, patch, item.before.amount_minor)
     : setChange(p, ruleOf(item.id), patch, itemName(item))))
   const toggle = (item) => {
     if (item.added) d.setPlan((p) => removeAdd(p, item.id))
@@ -122,7 +125,7 @@ export default function Plan() {
   const close = () => setDialog(null)
   // Drop one change from the plan: an edit or cancel goes back to the real
   // payment, an added one leaves.
-  const drop = (it) => d.setPlan((p) => (it.added ? removeAdd(p, it.id) : it.salary ? resetSalary(p) : resetChange(p, it.id)))
+  const drop = (it) => d.setPlan((p) => (it.added ? removeAdd(p, it.id) : it.derived ? resetDerived(p, it.id) : resetChange(p, it.id)))
   const addForm = (add, key) => (
     <AddForm key={`${key}-${open.at}`} add={add} opener={key} categories={d.categories} todayISO={d.todayISO}
       currency={currency} rates={d.rates} onSave={(a) => d.setPlan((p) => upsertAdd(p, a))} onClose={closeEditor} />
@@ -183,9 +186,9 @@ export default function Plan() {
       {applied && !applied.canUndo && <AppliedNote state={applied} todayISO={d.todayISO} />}
       {(reality.dropped.length > 0 || reality.stale.length > 0) && (
         <RealityBanner dropped={reality.dropped} stale={reality.stale}
-          onOk={() => d.setPlan((p) => acknowledge(p, d.rules, d.savingsIds, d.salary))} />
+          onOk={() => d.setPlan((p) => acknowledge(p, d.rules, d.savingsIds, d.salary, d.savings))} />
       )}
-      <ImpactHeader sum={sum} view={view} onView={setView} currency={currency} rates={rates} />
+      <ImpactHeader sum={sum} items={items} view={view} onView={setView} currency={currency} rates={rates} />
       <IdeasStrip ideas={ideas} view={view} currency={currency} picking={pickIdea?.id} onTry={onTry}
         onDismiss={(idea) => d.setPlan((p) => dismissIdea(p, idea.id))} />
       {pickIdea && (

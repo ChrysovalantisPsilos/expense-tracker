@@ -38,6 +38,7 @@ Conventions for keys and code are in [`I18N.md`](I18N.md).
 | category | κατηγορία | |
 | savings | αποταμίευση (the area), αποταμιεύσεις (amounts) | nav item «Αποταμίευση» |
 | savings pot | κουμπαράς | «ο κουμπαράς σου» |
+| left over (Plan) | σου μένουν | card «Σου μένουν τον μήνα», total «Σου μένουν»; "into savings" = «στην άκρη» / «Στην αποταμίευση» |
 | goal | στόχος | «στόχος αποταμίευσης» |
 | recurring | επαναλαμβανόμενο/-α | nav «Επαναλαμβανόμενα»; «επαναλαμβανόμενη πληρωμή» |
 | subscription | συνδρομή | |

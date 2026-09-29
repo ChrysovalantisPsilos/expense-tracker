@@ -1078,3 +1078,20 @@ test('backup and restore read the profile with the throwing fetchProfile', () =>
   assert.ok(!/\bgetProfile\b/.test(src), 'backup.js uses the best-effort getProfile')
   assert.equal(src.match(/\bfetchProfile\(/g)?.length, 3, 'the export, the currency plan and the restore each read it')
 })
+
+test('plan: the savings what-if (Savings row from entries) and a new savings item survive backup and restore', async () => {
+  const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+  const add = { id: 'a1', kind: 'savings', name: 'Holiday fund', amount_minor: 5000, currency: 'EUR', frequency: 'monthly',
+    interval_n: 1, start: '2026-10-01', category_id: 'cat-pay' }
+  const plan = { v: 1, changes: [], adds: [add], dismissed: [], savings: { amount_minor: 42000 } }
+  const doc = buildBackup({ userId: 'u-source', categories: CATS, plan })
+  assert.deepEqual(doc.data.plan.savings, { amount_minor: 42000 })
+  const back = readBackup(await serializeBackup(doc, null)).backup
+  assert.deepEqual(back.data.plan, doc.data.plan)
+  assert.deepEqual(restorePlan(back.data.plan, [], [], new Map([['c3', uuid(9)]])),
+    { ...plan, adds: [{ ...add, category_id: uuid(9) }] })
+  // A savings-only plan is written; a savings item whose category is gone can't be savings, so it's dropped.
+  const only = { v: 1, changes: [], adds: [], dismissed: [], savings: { cancel: true } }
+  assert.deepEqual(buildBackup({ userId: 'u', categories: CATS, plan: only }).data.plan.savings, { cancel: true })
+  assert.deepEqual(restorePlan(back.data.plan, [], [], new Map()).adds, [])
+})

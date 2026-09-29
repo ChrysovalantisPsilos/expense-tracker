@@ -16,11 +16,11 @@ import SuggestedMark from '../ai/SuggestedMark.jsx'
 import DemoAiNote from '../ai/DemoAiNote.jsx'
 import { aiErrorKey } from '../ai/aiMath.js'
 import { planWhatIf } from '../ai/ai.js'
-import { NAME_MAX } from './planMath.js'
+import { NAME_MAX, savingsCategories } from './planMath.js'
 import { applyWhatIf, editRow, rowReady, undoWhatIf, whatIfRows } from './whatIfMath.js'
 import { itemName, whatIfLine } from './planText.js'
 import { AmountField, FrequencySelect, newId } from './PlanEditors.jsx'
-import { SCROLL_CLEAR, editorId, openerId } from './PlanParts.jsx'
+import { SCROLL_CLEAR, badgeKind, editorId, openerId } from './PlanParts.jsx'
 
 // The key Plan.jsx's one open editor uses for this preview.
 export const WHAT_IF_KEY = 'whatif'
@@ -45,6 +45,8 @@ export default function PlanWhatIf({ open, onOpen, onClose, plan, setPlan, items
   const [editing, setEditing] = useState(null)
   const [added, setAdded] = useState(null)   // { count, undo: whatIfMath's `added` }
   const shown = state === 'preview' && open
+  // Where a proposed new savings item goes (none: savings can't be added).
+  const savingsCategoryId = savingsCategories(categories)[0]?.id ?? null
 
   async function ask() {
     if (!text.trim() || state === 'working') return
@@ -52,7 +54,7 @@ export default function PlanWhatIf({ open, onOpen, onClose, plan, setPlan, items
     setAdded(null)
     try {
       const whatif = await planWhatIf(text.trim(), categories)
-      const next = whatIfRows(whatif, items)
+      const next = whatIfRows(whatif, items, savingsCategoryId)
       const missing = whatif?.notFound ?? []
       if (!next.length) {
         setError(missing.length
@@ -75,7 +77,7 @@ export default function PlanWhatIf({ open, onOpen, onClose, plan, setPlan, items
 
   const ready = rows.filter((r) => picked.has(r.id) && rowReady(r))
   function addToPlan() {
-    const res = applyWhatIf(plan, rows, picked, { rules, todayISO, newId })
+    const res = applyWhatIf(plan, rows, picked, { rules, todayISO, newId, savingsCategoryId })
     setPlan(res.plan)
     setAdded({ count: ready.length, undo: res.added })
     setState('added')
@@ -172,7 +174,7 @@ function PreviewRow({ row, picked, onToggle, editing, onEdit, onChange }) {
       <HStack spacing={3} align="start">
         <Checkbox size="lg" mt={1.5} isChecked={picked} onChange={onToggle} aria-label={t('typeIt.pick', { name })} />
         <Box pt={0.5} flexShrink={0} opacity={picked ? 1 : 0.5}>
-          <CategoryBadge category={row.item?.category ?? null} kind={row.kind} size={32} />
+          <CategoryBadge category={row.item?.category ?? null} kind={badgeKind(row.kind)} size={32} />
         </Box>
         <Box flex="1" minW={0} opacity={picked ? 1 : 0.6}>
           <HStack spacing={2} flexWrap="wrap" rowGap={0}>
@@ -215,7 +217,7 @@ function RowEditor({ row, onChange }) {
       ) : (
         <SegmentedControl label={t('edit.inPlan')} size="sm" isFitted value={cancelled ? 'cancel' : 'change'}
           onChange={(v) => onChange({ cancel: v === 'cancel' })}
-          options={[['change', t('typeIt.changeIt')], ['cancel', t(row.kind === 'income' ? 'edit.stop' : 'edit.cancel')]]} />
+          options={[['change', t('typeIt.changeIt')], ['cancel', t(row.kind === 'expense' ? 'edit.cancel' : 'edit.stop')]]} />
       )}
       <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3} alignItems="start">
         <AmountField id={`plan-type-it-amount-${row.id}`} label={t('edit.amount')} text={text} onText={onText}
