@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Stack, HStack, Text, Button, FormControl, FormLabel, Select, useToast, useBreakpointValue,
-  Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
+  Stack, HStack, Button, FormControl, FormLabel, Select, useToast, useBreakpointValue,
 } from '@chakra-ui/react'
 import { Target, CalendarDays, Copy, Pencil, Trash2 } from 'lucide-react'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
@@ -26,6 +25,7 @@ import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { InfoNote } from '../../shared/ui/InfoToggle.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
 
 export default function Budgets() {
   const t = useT('budgets')
@@ -181,21 +181,9 @@ export default function Budgets() {
         </>
       )}
 
-      <Modal isOpen={confirmCopy} onClose={() => setConfirmCopy(false)} isCentered>
-        <ModalOverlay />
-        <ModalContent mx={4}>
-          <ModalHeader>{t('copy.title')}</ModalHeader>
-          <ModalBody>
-            <Text color="text.muted">
-              {t('copy.body', { count: items.length, previous: prev.rows.length })}
-            </Text>
-          </ModalBody>
-          <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={() => setConfirmCopy(false)}>{t('common:actions.cancel')}</Button>
-            <Button isLoading={copying} onClick={copy}>{t('copy.confirm')}</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <ConfirmDialog isOpen={confirmCopy} onClose={() => setConfirmCopy(false)} onConfirm={copy} busy={copying}
+        title={t('copy.title')} confirmLabel={t('copy.confirm')}
+        body={t('copy.body', { count: items.length, previous: prev.rows.length })} />
     </Stack>
   )
 }

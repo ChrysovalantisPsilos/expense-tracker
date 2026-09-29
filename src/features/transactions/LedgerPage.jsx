@@ -18,13 +18,13 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import TransactionList from './TransactionList.jsx'
 import FirstEntry from './FirstEntry.jsx'
 import { isFirstRun, listHeading } from './listHeading.js'
-import { useTransactions, oldestTransactionDate } from '../../shared/lib/transactions.js'
+import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
 import { useCategories, useSavingsIds } from '../../shared/lib/categories.js'
 import { isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS } from './txnFilter.js'
 import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { parseLedgerParams, withLedgerParams } from './ledgerLinks.js'
 import { monthRange } from '../../shared/lib/dates.js'
-import { formatMoney } from '../../shared/lib/currency.js'
+import { formatSigned } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
@@ -88,8 +88,8 @@ export default function LedgerPage() {
   const { categories, loading: categoriesLoading } = useCategories(kind)
   // Whether anything was ever logged (null: nothing; undefined: not known),
   // rechecked as the live rows change.
-  const [oldest, setOldest] = useState(undefined)
-  useEffect(() => { oldestTransactionDate().then(setOldest) }, [rows])
+  const [oldest, recheckOldest] = useOldestTransactionDate()
+  useEffect(recheckOldest, [rows, recheckOldest])
   const shown = searching ? filterTransactions(rows, { text, ...filters }, baseCurrency) : rows
   // A linked category that isn't in the picker (archived, or another kind's)
   // still shows as selected rather than a misleading "Any".
@@ -114,7 +114,7 @@ export default function LedgerPage() {
   // The list's heading line: "This month · 13 entries", with the net of a
   // search.
   const summary = searching && !loading && !savingsLoading && shown.length > 0
-    ? `${head.subtitle} · ${t('ledger.net', { amount: `${net < 0 ? '−' : ''}${formatMoney(Math.abs(net), baseCurrency)}` })}`
+    ? `${head.subtitle} · ${t('ledger.net', { amount: formatSigned(net, baseCurrency) })}`
     : head.subtitle
   const clear = searching && (
     <Button size="xs" variant="ghost" leftIcon={<X size={14} />} onClick={clearAll}>

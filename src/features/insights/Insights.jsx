@@ -22,12 +22,12 @@ import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
-import { useTransactions, oldestTransactionDate } from '../../shared/lib/transactions.js'
+import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
 import { linkBuckets } from '../../shared/lib/categoryLinks.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
 import { lastMonths, monthHeading } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { formatMoney, minorFactor } from '../../shared/lib/currency.js'
+import { formatMoney, minorFactor, formatSigned } from '../../shared/lib/currency.js'
 import { spendRows } from '../../shared/lib/spread.js'
 import { useAccounts, deleteAccount } from '../../shared/lib/accounts.js'
 import { useSavingsMoves } from '../savings/savings.js'
@@ -81,8 +81,8 @@ export default function Insights() {
   const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
   // Nothing ever logged (null; undefined while unknown): the statement export
   // has nothing to put in it.
-  const [oldest, setOldest] = useState(undefined)
-  useEffect(() => { oldestTransactionDate().then(setOldest) }, [rows])
+  const [oldest, recheckOldest] = useOldestTransactionDate()
+  useEffect(recheckOldest, [rows, recheckOldest])
 
   return (
     <Stack spacing={5}>
@@ -357,7 +357,7 @@ function NetWorthCard({ baseCurrency }) {
                           {seeSavings}
                         </Text>
                       }
-                      amount={`${savings < 0 ? '−' : ''}${formatMoney(Math.abs(savings), baseCurrency)}`}
+                      amount={formatSigned(savings, baseCurrency)}
                       amountTone={savings < 0 ? 'negative' : 'default'}
                       // No actions of its own; the empty slot lines its amount up with the accounts'.
                       actions={[]} actionSlots={2} />

@@ -6,11 +6,12 @@ import {
 } from '@chakra-ui/react'
 import { AlertTriangle } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
-import { formatMoney } from '../../shared/lib/currency.js'
+import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
+import { signTone, textColor } from '../../shared/ui/kit/kitMath.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { applicable, asShown, effectOf, monthOf } from './planMath.js'
-import { PlanOnlyNote, itemName, perUnit, signed, toneOf } from './PlanParts.jsx'
+import { PlanOnlyNote, itemName, perUnit } from './PlanParts.jsx'
 
 function Sheet({ children, onClose, label }) {
   return (
@@ -74,8 +75,8 @@ export function ApplySheet({ sum, currency, busy, onApply, onClose }) {
                   <Text fontSize="sm" fontWeight="600" noOfLines={1}>{itemName(it)}</Text>
                   <Text fontSize="xs" color="text.muted">{applyLine(it, t)}</Text>
                 </Box>
-                <Text fontSize="sm" fontWeight="700" color={toneOf(eff)} whiteSpace="nowrap">
-                  {t('changes.perMonth', { amount: signed(monthOf(asShown(eff, sum.mode)), currency) })}
+                <Text fontSize="sm" fontWeight="700" color={textColor(signTone(eff))} whiteSpace="nowrap">
+                  {t('changes.perMonth', { amount: formatSigned(monthOf(asShown(eff, sum.mode)), currency, { plus: true }) })}
                 </Text>
               </HStack>
             </Checkbox>

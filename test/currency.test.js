@@ -1,6 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { toMinor, fromMinor, formatMoney, toBaseMinor, minorFactor, baseEquivalent, minorToInput } from '../src/shared/lib/currency.js'
+import {
+  toMinor, fromMinor, formatMoney, formatSigned, toBaseMinor, minorFactor, baseEquivalent, minorToInput,
+  keptRate, effectiveRate,
+} from '../src/shared/lib/currency.js'
 
 test('toMinor/fromMinor round-trip (2-decimal currency)', () => {
   assert.equal(toMinor('12.34', 'EUR'), 1234)
@@ -21,6 +24,16 @@ test('toMinor rounds instead of truncating float artefacts', () => {
 test('formatMoney renders the currency', () => {
   const s = formatMoney(1234, 'EUR')
   assert.ok(s.includes('12.34') || s.includes('12,34'), s)
+})
+
+test('formatSigned: true minus below zero, a plus only when asked, none at zero', () => {
+  const eur = (m) => formatMoney(m, 'EUR')
+  assert.equal(formatSigned(-1550, 'EUR'), `−${eur(1550)}`)
+  assert.equal(formatSigned(1550, 'EUR'), eur(1550))
+  assert.equal(formatSigned(1550, 'EUR', { plus: true }), `+${eur(1550)}`)
+  assert.equal(formatSigned(0, 'EUR', { plus: true }), eur(0))
+  assert.equal(formatSigned(-0, 'EUR'), eur(0))
+  assert.equal(formatSigned(-500, 'JPY', { plus: true }), `−${formatMoney(500, 'JPY')}`)
 })
 
 test('toBaseMinor applies the captured exchange rate', () => {
@@ -230,4 +243,29 @@ test('minorToInput: an edit field shows the currency\'s decimals', () => {
   assert.equal(minorToInput(125000, 'KRW'), '125000')
   assert.equal(minorToInput(-4250, 'EUR'), '-42.50')
   assert.equal(toMinor(minorToInput(1999, 'EUR'), 'EUR'), 1999) // round-trips
+})
+
+test('keptRate: an edit keeps the saved rate while the currency and date stay, never a stored 1', () => {
+  const saved = { currency: 'USD', spent_at: '2026-09-01', exchange_rate: '0.91' }
+  const same = { currency: 'USD', date: '2026-09-01', base: 'EUR' }
+  assert.equal(keptRate(saved, same), 0.91)
+  assert.equal(keptRate(null, same), null) // adding: nothing saved
+  assert.equal(keptRate(saved, { ...same, currency: 'GBP' }), null) // new currency
+  assert.equal(keptRate(saved, { ...same, date: '2026-09-02' }), null) // new date
+  assert.equal(keptRate(saved, { ...same, base: 'USD' }), null) // no conversion
+  assert.equal(keptRate({ ...saved, exchange_rate: 1 }, same), null) // the old lookup fallback
+  assert.equal(keptRate({ ...saved, exchange_rate: null }, same), null)
+  assert.equal(keptRate({ ...saved, exchange_rate: 0 }, same), null)
+})
+
+test('effectiveRate: base currency 1, then the kept rate, the ECB rate, the typed rate', () => {
+  const ok = { status: 'ok', rate: 0.9 }
+  const missing = { status: 'missing' }
+  const loading = { status: 'loading' }
+  assert.equal(effectiveRate({ needsFx: false, kept: 0.8, fx: ok, manual: '2' }), 1)
+  assert.equal(effectiveRate({ needsFx: true, kept: 0.8, fx: ok, manual: '' }), 0.8)
+  assert.equal(effectiveRate({ needsFx: true, kept: null, fx: ok, manual: '2' }), 0.9)
+  assert.equal(effectiveRate({ needsFx: true, kept: null, fx: missing, manual: '1,25' }), 1.25)
+  assert.equal(effectiveRate({ needsFx: true, kept: null, fx: missing, manual: '' }), null)
+  assert.equal(effectiveRate({ needsFx: true, kept: null, fx: loading, manual: '2' }), null)
 })

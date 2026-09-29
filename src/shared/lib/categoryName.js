@@ -40,3 +40,9 @@ export function presetCategoryId(id, categories, kind) {
   const match = (categories ?? []).find((c) => c.id === id)
   return match && match.kind === kind && !match.is_archived ? match.id : ''
 }
+
+// What an entry (a transaction or a recurring rule) is called in a list or a
+// dialog: its description, else its category's name, else `fallback`.
+export function entryName(row, fallback) {
+  return row?.description || categoryDisplayName(row?.categories) || fallback
+}

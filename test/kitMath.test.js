@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  textColor, fillColor, tileColor, shareSwatch, barWidth, trendHeights, signedAmount, playProps,
+  textColor, fillColor, tileColor, shareSwatch, barWidth, trendHeights, signedAmount, signTone, playProps,
   nextPhase,
 } from '../src/shared/ui/kit/kitMath.js'
 
@@ -50,6 +50,13 @@ test('signedAmount: +/− (true minus) with tone; zero is muted and unsigned', (
   assert.deepEqual(signedAmount(16275, fmt), { text: '+€162.75', tone: 'positive' })
   assert.deepEqual(signedAmount(-285, fmt), { text: '−€2.85', tone: 'negative' })
   assert.deepEqual(signedAmount(0, fmt), { text: '€0.00', tone: 'muted' })
+})
+
+test('signTone: positive above zero, negative below, muted at zero', () => {
+  assert.equal(signTone(1), 'positive')
+  assert.equal(signTone(-1), 'negative')
+  assert.equal(signTone(0), 'muted')
+  assert.equal(textColor(signTone(0)), 'text.muted')
 })
 
 test('playProps: static without playback or under reduced motion; gated by inView', () => {

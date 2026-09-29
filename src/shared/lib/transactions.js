@@ -1,6 +1,7 @@
 // Transaction data access, shared by every feature that reads or writes the
 // user's entries (Home, Transactions, Categories, Budgets, Insights, Savings,
 // Meal vouchers, Plan, Import, Backup).
+import { useCallback, useRef, useState } from 'react'
 import { supabase } from './supabase.js'
 import { useLiveQuery, useOwnedQuery } from './db.js'
 import { useProfile } from './ProfileProvider.jsx'
@@ -79,10 +80,9 @@ export async function countTransactions() {
   return count ?? 0
 }
 
-// The user's oldest transaction date (YYYY-MM-DD), or null if none.
-// The date of the user's first transaction: null when there are none, and
-// undefined when it couldn't be read (so a failed read never looks like an
-// empty account).
+// The date (YYYY-MM-DD) of the user's first transaction: null when there are
+// none, and undefined when it couldn't be read (so a failed read never looks
+// like an empty account).
 export async function oldestTransactionDate() {
   const { data, error } = await supabase
     .from('transactions')
@@ -92,6 +92,20 @@ export async function oldestTransactionDate() {
     .maybeSingle()
   if (error) return undefined
   return data?.spent_at ?? null
+}
+
+// oldestTransactionDate as state (undefined until known) plus `recheck`, which
+// asks again — pages call it as their live rows change, so importing older
+// data extends their periods without a reload (a cheap 1-row query). An
+// answer that arrives after a newer ask is dropped.
+export function useOldestTransactionDate() {
+  const [oldest, setOldest] = useState(undefined)
+  const asked = useRef(0)
+  const recheck = useCallback(() => {
+    const ask = ++asked.current
+    oldestTransactionDate().then((date) => { if (ask === asked.current) setOldest(date) })
+  }, [])
+  return [oldest, recheck]
 }
 
 // Direct writes to the transactions table. Login is required (and reads are

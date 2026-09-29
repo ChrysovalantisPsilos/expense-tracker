@@ -5,7 +5,7 @@ import { Flex, IconButton } from '@chakra-ui/react'
 import { ChevronRight, Ticket } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
-import { formatMoney } from '../../shared/lib/currency.js'
+import { formatSigned } from '../../shared/lib/currency.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { useMealVouchers, useVoucherCard } from './vouchers.js'
 import { NextTopUp } from './VoucherParts.jsx'
@@ -26,7 +26,7 @@ function CardBody({ settings }) {
     }>
       <Flex align="end" justify="space-between" gap={3} flexWrap="wrap" mt={1}>
         <Figure label={t('balance')} size="lg" tone={balance < 0 ? 'negative' : 'default'}
-          value={`${balance < 0 ? '−' : ''}${formatMoney(Math.abs(balance), settings.currency)}`} />
+          value={formatSigned(balance, settings.currency)} />
         <NextTopUp settings={settings} next={card.next} align="right" />
       </Flex>
     </Panel>

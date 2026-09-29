@@ -8,7 +8,7 @@ import { ChartBarDecreasing, ChevronDown, ChevronUp, PiggyBank, Table as TableIc
 import TransactionList from '../transactions/TransactionList.jsx'
 import FirstEntry from '../transactions/FirstEntry.jsx'
 import { isFirstRun, listHeading } from '../transactions/listHeading.js'
-import { useTransactions, oldestTransactionDate } from '../../shared/lib/transactions.js'
+import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
 import { buildPeriods } from '../../shared/lib/periods.js'
 import { linkBuckets } from '../../shared/lib/categoryLinks.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
@@ -63,7 +63,7 @@ export default function Dashboard() {
   // Foreign rules count at today's ECB rate (the projection, the Recurring card).
   const ruleFx = useRuleRates(rules, baseCurrency)
   // undefined until known (null: no transactions at all)
-  const [oldest, setOldest] = useState(undefined)
+  const [oldest, recheckOldest] = useOldestTransactionDate()
   const periods = useMemo(() => buildPeriods(oldest), [oldest])
   // Default to this month; its token is stable and always present in the list.
   const [periodValue, setPeriodValue] = useState(() => buildPeriods(null)[0].value)
@@ -82,7 +82,7 @@ export default function Dashboard() {
   usePrefetchMyGroups(!loading)
   // Recheck whenever the (live) transaction rows change, so importing older
   // data extends the period dropdown without a reload. Cheap: 1-row query.
-  useEffect(() => { oldestTransactionDate().then(setOldest) }, [rows])
+  useEffect(recheckOldest, [rows, recheckOldest])
   const [view, setView] = useState(() => localStorage.getItem(VIEW_KEY) || 'chart')
   function chooseView(v) { setView(v); localStorage.setItem(VIEW_KEY, v) }
 

@@ -20,7 +20,7 @@ import { SkeletonBlock, SkeletonFigure, SkeletonRegion, SkeletonRows } from '../
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { NARROW_STACKS } from '../../shared/ui/narrowStacks.js'
-import { formatMoney, minorFactor } from '../../shared/lib/currency.js'
+import { formatMoney, minorFactor, formatSigned } from '../../shared/lib/currency.js'
 import { lastMonths, monthName as nameOfMonth, shortDate } from '../../shared/lib/dates.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
 import { useCategories } from '../../shared/lib/categories.js'
@@ -33,9 +33,7 @@ import {
 import GoalsCard from './GoalsCard.jsx'
 import SavingsHistory from './SavingsHistory.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
-
-const money = (minor, currency) => formatMoney(minor, currency)
+import { entryName } from '../../shared/lib/categoryName.js'
 
 // The Savings page: the pot (its all-time total and month-end line), this
 // month's flow and the savings that repeat, the goals, and the history of
@@ -114,7 +112,7 @@ function PotCard({ total, month, series, currency, add, strip }) {
   const figures = (
     <Box minW={0}>
       <Figure label={t('pot.label')} size="hero"
-        value={`${pot < 0 ? '−' : ''}${money(Math.abs(pot), currency)}`} tone={pot < 0 ? 'negative' : 'default'} />
+        value={formatSigned(pot, currency)} tone={pot < 0 ? 'negative' : 'default'} />
       <Text fontSize="xs" color="text.muted" mt={1}>{totalSourceNote(total.source)}</Text>
       <HStack justify="space-between" mt={2} spacing={2} flexWrap="wrap" rowGap={1}>
         <MonthChip flow={month} currency={currency} small={strip} />
@@ -180,7 +178,7 @@ function PotArea({ series, currency, h }) {
   const data = series.map((s) => ({ label: s.label, pot: s.pot / factor }))
   return (
     <Box h={h} mx={-1} minW={0} role="img"
-      aria-label={t('pot.chart', { points: series.map((s) => `${s.label}: ${money(s.pot, currency)}`).join(', ') })}>
+      aria-label={t('pot.chart', { points: series.map((s) => `${s.label}: ${formatMoney(s.pot, currency)}`).join(', ') })}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
           <defs>
@@ -192,7 +190,7 @@ function PotArea({ series, currency, h }) {
           <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} tick={chart.tick}
             interval="preserveStartEnd" padding={{ left: 14, right: 14 }} />
           <YAxis hide domain={[(min) => Math.min(0, min), 'dataMax']} />
-          <Tooltip formatter={(v) => money(Math.round(v * factor), currency)} {...chart.tooltip} />
+          <Tooltip formatter={(v) => formatMoney(Math.round(v * factor), currency)} {...chart.tooltip} />
           <Area type="monotone" dataKey="pot" name={t('pot.series')} stroke={coral} strokeWidth={2.5} fill="url(#potFill)"
             dot={false} activeDot={{ r: 4 }} isAnimationActive={false} />
         </AreaChart>
@@ -207,7 +205,7 @@ function PotArea({ series, currency, h }) {
 function MonthCard({ month, rules, currency }) {
   const navigate = useNavigate()
   const t = useT('savings')
-  const signed = (m) => signedAmount(m, (x) => money(x, currency))
+  const signed = (m) => signedAmount(m, (x) => formatMoney(x, currency))
   const net = signed(month.net)
   const monthName = nameOfMonth()
   return (
@@ -226,8 +224,8 @@ function MonthCard({ month, rules, currency }) {
           <SectionLabel mb={1}>{t('month.repeating')}</SectionLabel>
           {rules.map((r) => (
             <ItemRow key={r.id} icon={Repeat} chevron onClick={() => navigate(`/recurring/${r.id}`)}
-              title={`${money(r.amount_minor, r.currency)} ${frequencyLabel(r)}`}
-              meta={t('month.next', { name: r.description || categoryDisplayName(r.categories) || t('fallbackName'), date: shortDate(r.next_run) })} />
+              title={`${formatMoney(r.amount_minor, r.currency)} ${frequencyLabel(r)}`}
+              meta={t('month.next', { name: entryName(r, t('fallbackName')), date: shortDate(r.next_run) })} />
           ))}
         </>
       )}

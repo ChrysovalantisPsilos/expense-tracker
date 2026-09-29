@@ -20,7 +20,7 @@ import { isCurrentPeriod, isMonthPeriod } from '../../shared/lib/periods.js'
 import { chargedGroups, chargedWording, frequencyLabel, subscriptionGroups } from './recurringMath.js'
 import { GroupTabs, GroupTotal, baseHint } from './SubscriptionGroups.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { entryName } from '../../shared/lib/categoryName.js'
 
 // Home's "Recurring" card, following Home's `period` (periods.js):
 //  * this month: today's view — the active recurring expenses by how often
@@ -84,7 +84,7 @@ function Upcoming({ rules, rates, loading, error, onRetry, baseCurrency }) {
             {g.next.map((r) => (
               <ItemRow as="li" key={r.id} py={2.5}
                 media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-                title={r.description || categoryDisplayName(r.categories) || t('kinds.expense')}
+                title={entryName(r, t('kinds.expense'))}
                 meta={`${shortDate(r.next_run)} · ${frequencyLabel(r)}`}
                 amount={formatMoney(r.amount_minor, r.currency)} amountMeta={baseHint(r, baseCurrency, rates)} />
             ))}
@@ -127,7 +127,7 @@ function ChargeList({ charges, resetKey }) {
         {pageItems.map((r) => (
           <ItemRow as="li" key={r.id} py={2.5}
             media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-            title={r.description || categoryDisplayName(r.categories) || t('kinds.expense')}
+            title={entryName(r, t('kinds.expense'))}
             meta={`${shortDate(r.spent_at)} · ${frequencyLabel(r.recurring ?? { frequency: 'monthly' })}`}
             amount={formatMoney(r.amount_minor, r.currency)} />
         ))}

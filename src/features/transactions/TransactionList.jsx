@@ -4,8 +4,8 @@ import { Box, List, ListItem, Text, Tag, useToast } from '@chakra-ui/react'
 import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
-import DeleteTransactionDialog from './DeleteTransactionDialog.jsx'
-import { formatMoney, rateText, baseEquivalent } from '../../shared/lib/currency.js'
+import DeleteTransactionDialog from '../../shared/ui/DeleteTransactionDialog.jsx'
+import { formatMoney, rateText, baseEquivalent, formatSigned } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { monthlyShare } from '../../shared/lib/spread.js'
@@ -18,7 +18,7 @@ import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { frequencyLabel } from '../recurring/recurringMath.js'
 import MetaLine from '../../shared/ui/MetaLine.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { categoryDisplayName, entryName } from '../../shared/lib/categoryName.js'
 
 // Shared list of personal transactions with edit + delete.
 // Group-mirrored rows (group_expense_id set) are read-only here — they're
@@ -74,9 +74,9 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
             <ListItem key={r.id}>
               <ItemRow py={2.5} onClick={shared ? undefined : () => open(r)}
                 media={<CategoryBadge category={r.categories} kind={rk} size={32} />}
-                title={r.description || categoryDisplayName(r.categories) || t(`kinds.${rk === 'income' ? 'income' : 'expense'}`)}
+                title={entryName(r, t(`kinds.${rk === 'income' ? 'income' : 'expense'}`))}
                 meta={<RowMeta row={r} shared={shared} saved={savingsNoteLabel(r, savingsIds)} />}
-                amount={`${rk === 'income' ? '+' : ''}${formatMoney(r.amount_minor, r.currency)}`}
+                amount={formatSigned(r.amount_minor, r.currency, { plus: rk === 'income' })}
                 amountTone={rk === 'income' ? 'positive' : 'default'}
                 amountMeta={conv && (
                   <>

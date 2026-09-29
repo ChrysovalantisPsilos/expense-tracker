@@ -1,11 +1,10 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
-  Button, Stack, HStack, FormControl, FormErrorMessage, FormLabel, Input, Select, Checkbox,
-  Text, Divider, useToast, ButtonGroup,
-  InputGroup, InputRightAddon, Box, SimpleGrid, Switch,
+  Button, Stack, HStack, FormControl, FormErrorMessage, FormLabel, Input, Checkbox, Text,
+  Divider, useToast, ButtonGroup, InputGroup, InputRightAddon, Box, SimpleGrid, Switch,
 } from '@chakra-ui/react'
 import { Trash2 } from 'lucide-react'
-import { toMinor, formatMoney, parseManualRate, CURRENCIES, minorToInput } from '../../shared/lib/currency.js'
+import { toMinor, formatMoney, keptRate, effectiveRate, minorToInput } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today } from '../../shared/lib/dates.js'
 import {
@@ -27,6 +26,7 @@ import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
 
 const FIELDS = ['description', 'amount', 'paidBy']
 const checkFields = ({ description, amount, paidBy }, t) => fieldErrors({
@@ -95,16 +95,11 @@ export default function GroupExpenseForm({
   }, [onDraft, amount, paidCurrency, currencyPicked, description, spentAt])
 
   // Rate paid currency → group currency. Editing keeps the saved rate unless
-  // the currency or date changes.
+  // the currency or date changes (keptRate).
   const needsFx = paidCurrency !== cur
-  const captured = Number(expense?.exchange_rate)
-  const keepCaptured = isEdit && needsFx && paidCurrency === expense.currency &&
-    spentAt === expense.spent_at && captured > 0
-  const fx = useFxRate(paidCurrency, cur, spentAt, { skip: keepCaptured })
-  const rate = !needsFx ? 1
-    : keepCaptured ? captured
-      : fx.status === 'ok' ? fx.rate
-        : fx.status === 'missing' ? parseManualRate(manualRate) : null
+  const kept = keptRate(expense, { currency: paidCurrency, date: spentAt, base: cur })
+  const fx = useFxRate(paidCurrency, cur, spentAt, { skip: kept != null })
+  const rate = effectiveRate({ needsFx, kept, fx, manual: manualRate })
 
   const includedIds = members.filter((m) => splitWith.includes(m.id)).map((m) => m.id)
   const paidMinor = amount && Number(amount) > 0 ? toMinor(amount, paidCurrency) : 0
@@ -240,17 +235,13 @@ export default function GroupExpenseForm({
         </FormControl>
         <FormControl maxW="110px">
           <FormLabel>{t('form.currency')}</FormLabel>
-          <Select value={paidCurrency} aria-label={t('form.currencyPaid')}
-            onChange={(e) => { setPaidCurrency(e.target.value); setCurrencyPicked(true) }}>
-            {(CURRENCIES.includes(cur) ? CURRENCIES : [cur, ...CURRENCIES]).map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </Select>
+          <CurrencySelect value={paidCurrency} include={cur} aria-label={t('form.currencyPaid')}
+            onChange={(c) => { setPaidCurrency(c); setCurrencyPicked(true) }} />
         </FormControl>
       </HStack>
       {needsFx && (
         <FxPreview from={paidCurrency} to={cur} amountMinor={paidMinor}
-          fx={fx} captured={keepCaptured ? captured : null} rate={rate}
+          fx={fx} captured={kept} rate={rate}
           manual={manualRate} onManual={setManualRate} />
       )}
     </>

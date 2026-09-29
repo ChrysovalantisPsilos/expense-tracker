@@ -6,6 +6,7 @@ import {
 import { Users } from 'lucide-react'
 import { copyText } from '../../shared/lib/clipboard.js'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
 
 // The group's confirmation dialogs (its forms are full pages).
 
@@ -18,53 +19,34 @@ export function DeleteGroupModal({ group, check, isOpen, onClose, busy, onConfir
   const match = text.trim() === group.name
   if (!check.canDelete) {
     return (
-      <Modal isOpen={isOpen} onClose={onClose} isCentered>
-        <ModalOverlay />
-        <ModalContent mx={4}>
-          <ModalHeader>{t('modals.deleteBlocked.title', { name: group.name })}</ModalHeader>
-          <ModalBody>
-            <Stack spacing={3}>
-              <Text color="text.muted">{t('modals.deleteBlocked.body')}</Text>
-              {check.others.length > 0 && (
-                <Text fontSize="sm">
-                  <Trans t={t} k="modals.deleteBlocked.stillIn" components={{ b: <b /> }}
-                    values={{ names: check.others.map((m) => m.display_name).join(', ') }} />
-                </Text>
-              )}
-            </Stack>
-          </ModalBody>
-          <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={onClose}>{t('common:actions.close')}</Button>
-            <Button leftIcon={<Users size={16} />} onClick={onMembers}>{t('modals.deleteBlocked.manage')}</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <ConfirmDialog isOpen={isOpen} onClose={onClose} onConfirm={onMembers}
+        title={t('modals.deleteBlocked.title', { name: group.name })} cancelLabel={t('common:actions.close')}
+        confirmLabel={t('modals.deleteBlocked.manage')} confirmIcon={<Users size={16} />}>
+        <Stack spacing={3}>
+          <Text color="text.muted">{t('modals.deleteBlocked.body')}</Text>
+          {check.others.length > 0 && (
+            <Text fontSize="sm">
+              <Trans t={t} k="modals.deleteBlocked.stillIn" components={{ b: <b /> }}
+                values={{ names: check.others.map((m) => m.display_name).join(', ') }} />
+            </Text>
+          )}
+        </Stack>
+      </ConfirmDialog>
     )
   }
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent mx={4}>
-        <ModalHeader>{t('modals.delete.title', { name: group.name })}</ModalHeader>
-        <ModalBody>
-          <Stack spacing={3}>
-            <Text color="text.muted">
-              <Trans t={t} k="modals.delete.body" components={{ b: <b /> }} />
-            </Text>
-            <FormControl>
-              <FormLabel fontSize="sm">{t('modals.delete.confirm')}</FormLabel>
-              <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={group.name} />
-            </FormControl>
-          </Stack>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
-          <Button colorScheme="red" isDisabled={!match} isLoading={busy} onClick={onConfirm}>
-            {t('header.delete')}
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <ConfirmDialog isOpen={isOpen} onClose={onClose} onConfirm={onConfirm} busy={busy} disabled={!match} danger
+      title={t('modals.delete.title', { name: group.name })} confirmLabel={t('header.delete')}>
+      <Stack spacing={3}>
+        <Text color="text.muted">
+          <Trans t={t} k="modals.delete.body" components={{ b: <b /> }} />
+        </Text>
+        <FormControl>
+          <FormLabel fontSize="sm">{t('modals.delete.confirm')}</FormLabel>
+          <Input value={text} onChange={(e) => setText(e.target.value)} placeholder={group.name} />
+        </FormControl>
+      </Stack>
+    </ConfirmDialog>
   )
 }
 
@@ -73,24 +55,15 @@ export function LeaveGroupModal({ group, isOwner, isOpen, onClose, busy, onConfi
   const t = useT('groups')
   const [silent, setSilent] = useState(false)
   return (
-    <Modal isOpen={isOpen} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent mx={4}>
-        <ModalHeader>{t('modals.leave.title', { name: group.name })}</ModalHeader>
-        <ModalBody>
-          <Stack spacing={4}>
-            <Text color="text.muted">{t(isOwner ? 'modals.leave.bodyOwner' : 'modals.leave.body')}</Text>
-            <Checkbox isChecked={silent} onChange={(e) => setSilent(e.target.checked)}>
-              <Text fontSize="sm">{t('modals.leave.silent')}</Text>
-            </Checkbox>
-          </Stack>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
-          <Button colorScheme="red" isLoading={busy} onClick={() => onConfirm(silent)}>{t('modals.leave.confirm')}</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <ConfirmDialog isOpen={isOpen} onClose={onClose} onConfirm={() => onConfirm(silent)} busy={busy} danger
+      title={t('modals.leave.title', { name: group.name })} confirmLabel={t('modals.leave.confirm')}>
+      <Stack spacing={4}>
+        <Text color="text.muted">{t(isOwner ? 'modals.leave.bodyOwner' : 'modals.leave.body')}</Text>
+        <Checkbox isChecked={silent} onChange={(e) => setSilent(e.target.checked)}>
+          <Text fontSize="sm">{t('modals.leave.silent')}</Text>
+        </Checkbox>
+      </Stack>
+    </ConfirmDialog>
   )
 }
 
@@ -98,19 +71,9 @@ export function LeaveGroupModal({ group, isOwner, isOpen, onClose, busy, onConfi
 export function RemoveMemberModal({ member, onClose, busy, onConfirm }) {
   const t = useT('groups')
   return (
-    <Modal isOpen={!!member} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent mx={4}>
-        <ModalHeader>{t('modals.remove.title', { name: member?.display_name })}</ModalHeader>
-        <ModalBody>
-          <Text color="text.muted">{t('modals.remove.body')}</Text>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
-          <Button colorScheme="red" isLoading={busy} onClick={onConfirm}>{t('modals.remove.confirm')}</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <ConfirmDialog isOpen={!!member} onClose={onClose} onConfirm={onConfirm} busy={busy} danger
+      title={t('modals.remove.title', { name: member?.display_name })} confirmLabel={t('modals.remove.confirm')}
+      body={t('modals.remove.body')} />
   )
 }
 

@@ -1,9 +1,7 @@
 // Plan mode's notices: the last apply (with Undo for 24 hours, then a quiet
 // note), the undo and clear-plan confirmations, and "Your recurring changed since you planned".
 import { Link as RouterLink } from 'react-router-dom'
-import {
-  Box, Button, HStack, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalOverlay, Text,
-} from '@chakra-ui/react'
+import { Box, Button, HStack, Text } from '@chakra-ui/react'
 import { Check, RotateCcw } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
@@ -11,6 +9,7 @@ import { formatMoney } from '../../shared/lib/currency.js'
 import { isoDate, shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { perUnit } from './PlanParts.jsx'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
 
 // Just applied: what happened, Undo, and until when. `amount` is the net a
 // month now, or the payments a month when there's no recurring income
@@ -58,20 +57,11 @@ export function AppliedNote({ state, todayISO }) {
 export function UndoDialog({ count, busy, onUndo, onClose }) {
   const t = useT('plan')
   return (
-    <Modal isOpen onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent mx={4}>
-        <ModalHeader>{t('undo.title', { count })}</ModalHeader>
-        <ModalBody>
-          <Text color="text.muted" fontSize="sm">{t('undo.body')}</Text>
-          <Text fontSize="sm" mt={3}>{t('undo.entries')}</Text>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('undo.keep')}</Button>
-          <Button onClick={onUndo} isLoading={busy}>{t('undo.confirm')}</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <ConfirmDialog isOpen onClose={onClose} onConfirm={onUndo} busy={busy}
+      title={t('undo.title', { count })} cancelLabel={t('undo.keep')} confirmLabel={t('undo.confirm')}>
+      <Text color="text.muted" fontSize="sm">{t('undo.body')}</Text>
+      <Text fontSize="sm" mt={3}>{t('undo.entries')}</Text>
+    </ConfirmDialog>
   )
 }
 
@@ -80,19 +70,10 @@ export function UndoDialog({ count, busy, onUndo, onClose }) {
 export function ClearDialog({ onClear, onClose }) {
   const t = useT('plan')
   return (
-    <Modal isOpen onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent mx={4}>
-        <ModalHeader>{t('clear.title')}</ModalHeader>
-        <ModalBody>
-          <Text color="text.muted" fontSize="sm">{t('clear.body')}</Text>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('clear.keep')}</Button>
-          <Button colorScheme="red" onClick={onClear}>{t('clear.confirm')}</Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <ConfirmDialog isOpen onClose={onClose} onConfirm={onClear} danger
+      title={t('clear.title')} cancelLabel={t('clear.keep')} confirmLabel={t('clear.confirm')}>
+      <Text color="text.muted" fontSize="sm">{t('clear.body')}</Text>
+    </ConfirmDialog>
   )
 }
 

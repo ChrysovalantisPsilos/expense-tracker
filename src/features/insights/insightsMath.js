@@ -2,7 +2,7 @@ import { toBaseMinor, minorFactor, baseEquivalent } from '../../shared/lib/curre
 import { bucketLabel, bucketLabels, bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { isSavingsAccount, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { categoryBars } from '../dashboard/categoryBars.js'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { entryName } from '../../shared/lib/categoryName.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 
 // Income/expense trend in MAJOR base-currency units, one entry per month bucket
@@ -112,7 +112,7 @@ export function foreignSpending(rows, monthKey, baseCurrency) {
     const conv = baseEquivalent(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
     if (!conv) continue
     items.push({
-      id: r.id, label: r.description || categoryDisplayName(r.categories) || t('insights:expense'),
+      id: r.id, label: entryName(r, t('insights:expense')),
       currency: r.currency, minor: r.amount_minor, rate: conv.rate, baseMinor: conv.baseMinor,
     })
   }

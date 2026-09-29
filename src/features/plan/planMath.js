@@ -44,7 +44,7 @@ import { budgetWindow, periodBudgets } from '../budgets/budgetMath.js'
 import { ruleInBase } from '../../shared/lib/ruleFx.js'
 import { rowEffect } from '../../shared/lib/savings.js'
 import { spendRows } from '../../shared/lib/spread.js'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { entryName } from '../../shared/lib/categoryName.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { countedDate } from '../../shared/lib/salaryShift.js'
 import { ESSENTIAL_ICONS, ESSENTIAL_KEYS, SERVICE_TYPES, isEssential, serviceTypes } from './planCatalog.js'
@@ -203,7 +203,7 @@ export function planRules(rules, savingsIds = new Set()) {
 }
 
 // A rule's name as a row shows it (its description, else its category's).
-export const ruleName = (rule) => rule.description || categoryDisplayName(rule.categories) || ''
+export const ruleName = (rule) => entryName(rule, '')
 
 // The rule as a change's snapshot keeps it.
 export const snapOf = (rule, name = ruleName(rule)) => ({ name: String(name).slice(0, NAME_MAX), ...pickRule(rule) })

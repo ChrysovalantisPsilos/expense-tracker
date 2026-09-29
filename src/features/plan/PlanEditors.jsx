@@ -14,7 +14,8 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import Tile from '../../shared/ui/kit/Tile.jsx'
-import { CURRENCIES, formatMoney, minorToInput, toMinor } from '../../shared/lib/currency.js'
+import { formatMoney, formatSigned, minorToInput, toMinor } from '../../shared/lib/currency.js'
+import { signTone, textColor } from '../../shared/ui/kit/kitMath.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { ruleInBase } from '../../shared/lib/ruleFx.js'
@@ -22,8 +23,9 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { REPEAT_CHOICES, choiceToRule, frequencyLabel, ruleToChoice } from '../recurring/recurringMath.js'
 import { NAME_MAX, effectOf, monthOf, overlapPick, yearMinor } from './planMath.js'
 import {
-  PlanOnlyNote, SCROLL_CLEAR, SignalTag, editorId, ideaText, itemName, monthList, openerId, perUnit, serviceCount, signed, toneOf,
+  PlanOnlyNote, SCROLL_CLEAR, SignalTag, editorId, ideaText, itemName, monthList, openerId, perUnit, serviceCount,
 } from './PlanParts.jsx'
+import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
 
 // Scroll the editor's item (the row or change with its editor, marked
 // data-plan-item) or else the editor into view, and focus its first field,
@@ -71,11 +73,11 @@ function DeltaTile({ effect, kind, currency }) {
     <Tile py={3} aria-live="polite">
       <HStack justify="space-between" align="baseline" flexWrap="wrap" columnGap={3}>
         <Text fontSize="sm" fontWeight="600">{t(`delta.${word}`)}</Text>
-        <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={toneOf(effect)}>
-          {t('delta.perMonth', { amount: signed(monthOf(effect), currency) })}
+        <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={textColor(signTone(effect))}>
+          {t('delta.perMonth', { amount: formatSigned(monthOf(effect), currency, { plus: true }) })}
         </Text>
       </HStack>
-      <Text fontSize="xs" color="text.muted" textAlign="right">{t('delta.perYear', { amount: signed(effect, currency) })}</Text>
+      <Text fontSize="xs" color="text.muted" textAlign="right">{t('delta.perYear', { amount: formatSigned(effect, currency, { plus: true }) })}</Text>
     </Tile>
   )
 }
@@ -239,9 +241,7 @@ export function AddForm({ add, opener, categories, todayISO, currency, rates, on
           </Box>
           <FormControl w="112px" flexShrink={0}>
             <FormLabel htmlFor={`plan-currency-${opener}`}>{t('add.currency')}</FormLabel>
-            <Select id={`plan-currency-${opener}`} value={cur} onChange={(e) => setCur(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </Select>
+            <CurrencySelect id={`plan-currency-${opener}`} value={cur} onChange={setCur} />
           </FormControl>
         </HStack>
         <HStack align="end" spacing={3}>
@@ -312,12 +312,12 @@ export function PickPanel({ idea, items, currency, onAdd, onClose }) {
           <Text fontSize="sm" fontWeight="600">
             {picked.size ? t('pick.cancelOf', { picked: picked.size, count: rows.length }) : t('pick.none')}
           </Text>
-          <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={toneOf(saves)}>
-            {t('delta.perMonth', { amount: signed(monthOf(saves), currency) })}
+          <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={textColor(signTone(saves))}>
+            {t('delta.perMonth', { amount: formatSigned(monthOf(saves), currency, { plus: true }) })}
           </Text>
         </HStack>
         <Text fontSize="xs" color="text.muted" textAlign="right">
-          {saves ? t('pick.saveYear', { amount: signed(saves, currency) }) : t('pick.hint')}
+          {saves ? t('pick.saveYear', { amount: formatSigned(saves, currency, { plus: true }) }) : t('pick.hint')}
         </Text>
       </Tile>
       <HStack spacing={2} justify="flex-end" mt={4}>

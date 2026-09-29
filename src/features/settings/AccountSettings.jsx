@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Stack, HStack, Button, FormControl, SimpleGrid, FormLabel,
-  Input, Select, useToast, Text, IconButton, Box,
+  Stack, HStack, Button, FormControl, SimpleGrid, FormLabel, Input, useToast, Text, IconButton,
+  Box,
 } from '@chakra-ui/react'
 import { Camera, UserRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { baseCurrencyLocked, getProfile, updateProfile, uploadAvatar } from '../../shared/lib/profile.js'
-import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS } from '../../shared/lib/keys.js'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
@@ -18,6 +17,7 @@ import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { InfoNote } from '../../shared/ui/InfoToggle.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
 
 export default function AccountSettings() {
   const t = useT('settings')
@@ -129,9 +129,7 @@ function IdentityCard({ user }) {
                 <InfoNote mt={2} more={t('account.currencyLockedMore')}>{t('account.currencyLocked')}</InfoNote>
               </>
             ) : (
-              <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </Select>
+              <CurrencySelect value={currency} onChange={setCurrency} />
             )}
           </FormControl>
         </SimpleGrid>

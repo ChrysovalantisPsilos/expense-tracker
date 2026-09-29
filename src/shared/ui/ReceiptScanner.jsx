@@ -1,18 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Button, HStack, Image, Text, Progress, Box, IconButton, useToast, VStack, Stack,
-  Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Spacer,
-  FormControl, FormLabel, Input, Select,
+  Button, HStack, Image, Text, Progress, Box, IconButton, useToast, VStack, Stack, Modal,
+  ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Spacer, FormControl,
+  FormLabel, Input,
 } from '@chakra-ui/react'
 import { Camera, X, RotateCw, ScanText } from 'lucide-react'
 import { scanReceipt } from '../lib/receiptScan.js'
 import { decodeImage, orientedCanvas, prepareForOcr } from '../lib/receiptImage.js'
-import { CURRENCIES } from '../lib/currency.js'
 import { useAsyncSubmit } from '../lib/useAsyncSubmit.js'
 import FormModal from './FormModal.jsx'
 import MoneyInput from './MoneyInput.jsx'
 import { RingMark, RingSpinner } from './RingLoader.jsx'
 import { useT } from '../lib/i18n/I18nProvider.jsx'
+import CurrencySelect from './CurrencySelect.jsx'
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v))
 
@@ -213,9 +213,7 @@ export default function ReceiptScanner({ onScan }) {
             </FormControl>
             <FormControl maxW="120px">
               <FormLabel fontSize="sm">{t('receipt.currency')}</FormLabel>
-              <Select value={fields.currency} placeholder="—" onChange={(e) => set('currency')(e.target.value)}>
-                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </Select>
+              <CurrencySelect value={fields.currency} placeholder="—" onChange={set('currency')} />
             </FormControl>
           </HStack>
           <FormControl>

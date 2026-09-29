@@ -8,7 +8,7 @@ import { deleteSharedExpense } from './groups.js'
 import GroupFormPage from './GroupFormPage.jsx'
 import GroupExpenseForm from './GroupExpenseForm.jsx'
 import { rememberGroup } from './myGroups.js'
-import DeleteTransactionDialog from '../transactions/DeleteTransactionDialog.jsx'
+import DeleteTransactionDialog from '../../shared/ui/DeleteTransactionDialog.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // A group expense's page:

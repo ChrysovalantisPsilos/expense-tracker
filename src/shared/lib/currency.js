@@ -48,6 +48,14 @@ export function formatMoney(minor, currency = 'EUR', locale = intlLocale()) {
   }).format(fromMinor(minor, currency))
 }
 
+// A signed amount for display, with a true minus sign: −€1.00 below zero,
+// €0.00 at zero, and €1.00 above — or +€1.00 with `plus` (a change, a net or
+// an income). Tones for these live in the UI kit (kitMath.signTone).
+export function formatSigned(minor, currency = 'EUR', { plus = false } = {}) {
+  const sign = minor < 0 ? '−' : plus && minor > 0 ? '+' : ''
+  return `${sign}${formatMoney(Math.abs(minor), currency)}`
+}
+
 // toBaseMinor: a minor amount in the base currency at the row's captured rate
 // — exact integer maths that matches SQL to_base_minor. One copy, shared with
 // the edge functions (the statement's totals must agree with the app's).
@@ -190,6 +198,26 @@ export function isFinalFx(askedDate, answer, todayIso) {
 export function parseManualRate(raw) {
   const n = Number(String(raw ?? '').trim().replace(',', '.'))
   return Number.isFinite(n) && n > 0 ? round8(n) : null
+}
+
+// The rate an edit keeps: the saved row's `exchange_rate` while the entry is
+// still in that foreign `currency` on that `date` (a new currency or date
+// needs a new rate) — except a rate of exactly 1, the old broken lookup's
+// fallback, which is looked up again. null when there's nothing to keep.
+export function keptRate(saved, { currency, date, base }) {
+  if (!saved || currency === base || currency !== saved.currency || date !== saved.spent_at) return null
+  const rate = Number(saved.exchange_rate)
+  return rate > 0 && rate !== 1 ? rate : null
+}
+
+// The rate a form converts with: 1 in the base currency, else the kept rate
+// (keptRate), else the ECB's (`fx` from useFxRate), else the one typed when
+// the ECB has none (`manual`); null while it isn't known yet.
+export function effectiveRate({ needsFx, kept, fx, manual }) {
+  if (!needsFx) return 1
+  if (kept != null) return kept
+  if (fx.status === 'ok') return fx.rate
+  return fx.status === 'missing' ? parseManualRate(manual) : null
 }
 
 // A rate for display: 5 significant digits, no trailing zeros (1.1699,

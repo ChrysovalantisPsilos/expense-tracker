@@ -52,14 +52,17 @@ export function trendHeights(values, headroom = 85) {
   return values.map((v) => (peak > 0 && v > 0 ? `${(v / peak) * headroom}%` : '0%'))
 }
 
+// The tone of a signed amount: positive above zero, negative below, muted
+// (settled) at zero.
+export const signTone = (minor) => (minor > 0 ? 'positive' : minor < 0 ? 'negative' : 'muted')
+
 // A signed balance for display: `format` turns a non-negative minor amount
 // into a string (e.g. m => formatMoney(m, 'EUR')). Positive → "+€1.00"
 // (positive tone), negative → "−€1.00" (true minus sign, negative tone), zero
-// → "€0.00" (muted: settled).
+// → "€0.00" (muted: settled). With a currency, see currency.formatSigned.
 export function signedAmount(minor, format) {
-  if (minor > 0) return { text: `+${format(minor)}`, tone: 'positive' }
-  if (minor < 0) return { text: `−${format(-minor)}`, tone: 'negative' }
-  return { text: format(0), tone: 'muted' }
+  const sign = minor > 0 ? '+' : minor < 0 ? '−' : ''
+  return { text: `${sign}${format(Math.abs(minor))}`, tone: signTone(minor) }
 }
 
 // framer-motion props that take a value from `from` to `to`. Without a

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { byDisplayName, categoryDisplayName } from '../src/shared/lib/categoryName.js'
+import { byDisplayName, categoryDisplayName, entryName } from '../src/shared/lib/categoryName.js'
 import { bucketLabel, bucketLabels } from '../src/shared/lib/txnRollup.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 import en from '../src/locales/en/common.js'
@@ -70,4 +70,13 @@ test('bucketLabels / bucketLabel: breakdown buckets keep their stored name and s
     await loadLanguage('en')
   }
   assert.equal(bucketLabel({ name: 'Other', folded: true }, new Map()), 'Other')
+})
+
+test('entryName: the description, else the category shown, else the fallback', () => {
+  const cat = { name: 'Groceries', default_key: 'groceries' }
+  assert.equal(entryName({ description: 'Lidl', categories: cat }, 'Expense'), 'Lidl')
+  assert.equal(entryName({ description: '', categories: cat }, 'Expense'), 'Groceries')
+  assert.equal(entryName({ description: null, categories: null }, 'Expense'), 'Expense')
+  assert.equal(entryName(null, 'This entry'), 'This entry')
+  assert.equal(entryName({ categories: { name: '' } }, ''), '')
 })

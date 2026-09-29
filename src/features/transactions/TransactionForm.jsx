@@ -10,7 +10,7 @@ import { presetCategoryId, categoryDisplayName } from '../../shared/lib/category
 import { PaidFromChoice, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
 import { paidFromOf, paidFromSources } from '../../shared/lib/savings.js'
 import { useMealVouchers } from '../vouchers/vouchers.js'
-import { toMinor, minorToInput, parseManualRate, CURRENCIES } from '../../shared/lib/currency.js'
+import { toMinor, minorToInput, keptRate, effectiveRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today, shortDate } from '../../shared/lib/dates.js'
 import { insertTransaction, updateTransaction } from '../../shared/lib/transactions.js'
@@ -30,6 +30,7 @@ import CategoryGrid from './CategoryGrid.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
 
 // The Expense / Income switch's options; `t` is useT('transactions').
 export const kindOptions = (t) => ['expense', 'income'].map((k) => [k, t(`kinds.${k}`)])
@@ -106,17 +107,11 @@ export default function TransactionForm({
   const [draft, setDraft] = useState(() => repeatDraft(rule, { fromDate: spentAt }))
 
   // Exchange rate: the ECB rate for the expense's date. Editing keeps the rate
-  // the row was saved with unless its currency or date changes — except a
-  // foreign row stored at exactly 1, which is the old broken lookup's fallback.
+  // the row was saved with unless its currency or date changes (keptRate).
   const needsFx = currency !== baseCurrency
-  const captured = Number(transaction?.exchange_rate)
-  const keepCaptured = isEdit && needsFx && currency === transaction.currency &&
-    spentAt === transaction.spent_at && captured > 0 && captured !== 1
-  const fx = useFxRate(currency, baseCurrency, spentAt, { skip: keepCaptured })
-  const rate = !needsFx ? 1
-    : keepCaptured ? captured
-      : fx.status === 'ok' ? fx.rate
-        : fx.status === 'missing' ? parseManualRate(manualRate) : null
+  const kept = keptRate(transaction, { currency, date: spentAt, base: baseCurrency })
+  const fx = useFxRate(currency, baseCurrency, spentAt, { skip: kept != null })
+  const rate = effectiveRate({ needsFx, kept, fx, manual: manualRate })
   // Stable across retries of one submit so a lost-response retry can't
   // duplicate.
   const clientUuid = useRef(crypto.randomUUID())
@@ -252,14 +247,12 @@ export default function TransactionForm({
         </FormControl>
         <FormControl maxW="110px">
           <FormLabel>{t('form.currency')}</FormLabel>
-          <Select value={currency} onChange={(e) => pickCurrency(e.target.value)}>
-            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </Select>
+          <CurrencySelect value={currency} onChange={pickCurrency} />
         </FormControl>
       </HStack>
       {needsFx && (
         <FxPreview from={currency} to={baseCurrency} amountMinor={amountMinor}
-          fx={fx} captured={keepCaptured ? captured : null} rate={rate}
+          fx={fx} captured={kept} rate={rate}
           manual={manualRate} onManual={setManualRate} />
       )}
     </>

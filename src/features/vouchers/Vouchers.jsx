@@ -16,12 +16,12 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import EmptyState from '../../shared/ui/EmptyState.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
-import { formatMoney } from '../../shared/lib/currency.js'
+import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
 import { monthHeading, shortDate } from '../../shared/lib/dates.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { categoryDisplayName, entryName } from '../../shared/lib/categoryName.js'
 import { HISTORY_MONTHS, HISTORY_MORE } from '../savings/savingsMath.js'
 import { daysFor, withDays } from './voucherMath.js'
 import { saveMealVouchers, useMealVouchers, useVoucherCard } from './vouchers.js'
@@ -48,10 +48,6 @@ export default function Vouchers() {
   return <Stack spacing={5}>{header}{body}</Stack>
 }
 
-function money(minor, currency) {
-  return `${minor < 0 ? '−' : ''}${formatMoney(Math.abs(minor), currency)}`
-}
-
 function Card({ settings }) {
   const t = useT('vouchers')
   const { card, error, reload } = useVoucherCard(settings)
@@ -60,12 +56,12 @@ function Card({ settings }) {
   return (
     <>
       <Panel>
-        <Figure label={t('balance')} size="hero" value={money(summary.balance, cur)}
+        <Figure label={t('balance')} size="hero" value={formatSigned(summary.balance, cur)}
           tone={summary.balance < 0 ? 'negative' : 'default'} />
         <BalanceGrid mt={3}>
           <BalanceTile label={t('month.topUps')} value={`+${formatMoney(summary.monthTopUps, cur)}`}
             tone={summary.monthTopUps ? 'positive' : 'muted'} />
-          <BalanceTile label={t('month.spent')} value={money(-summary.monthSpent, cur)}
+          <BalanceTile label={t('month.spent')} value={formatSigned(-summary.monthSpent, cur)}
             tone={summary.monthSpent ? 'default' : 'muted'} />
         </BalanceGrid>
       </Panel>
@@ -159,7 +155,7 @@ function History({ settings, groups }) {
             <HStack justify="space-between" mb={1}>
               <Text as="h3" fontFamily="heading" fontWeight="700" fontSize="sm">{monthHeading(g.month)}</Text>
               <Text fontSize="sm" fontWeight="700" color={g.net > 0 ? 'status.positive' : 'text.muted'}>
-                {g.net > 0 ? `+${formatMoney(g.net, cur)}` : money(g.net, cur)}
+                {formatSigned(g.net, cur, { plus: true })}
               </Text>
             </HStack>
             <Stack spacing={0}>
@@ -185,9 +181,9 @@ function HistoryRow({ item, currency, open }) {
     return (
       <ItemRow py={1.5} onClick={() => open(r)}
         media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-        title={r.description || categoryDisplayName(r.categories) || t('history.noCategory')}
+        title={entryName(r, t('history.noCategory'))}
         meta={`${shortDate(r.spent_at)} · ${categoryDisplayName(r.categories) || t('history.noCategory')}`}
-        amount={money(item.minor, currency)} />
+        amount={formatSigned(item.minor, currency)} />
     )
   }
   if (item.type === 'topup') {

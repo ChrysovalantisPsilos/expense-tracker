@@ -8,18 +8,18 @@ import MetaLine from '../../shared/ui/MetaLine.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
-import { formatMoney } from '../../shared/lib/currency.js'
+import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
 import { monthHeading, shortDate } from '../../shared/lib/dates.js'
 import { savingsNoteLabel } from '../../shared/lib/savings.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { ONE_LINE } from '../../shared/lib/shortLandscape.js'
-import DeleteTransactionDialog from '../transactions/DeleteTransactionDialog.jsx'
+import DeleteTransactionDialog from '../../shared/ui/DeleteTransactionDialog.jsx'
 import { deleteTransaction } from '../../shared/lib/transactions.js'
 import {
   HISTORY_FILTERS, HISTORY_MONTHS, HISTORY_MORE, monthGroups, moveDirection,
 } from './savingsMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { entryName } from '../../shared/lib/categoryName.js'
 
 // One entry: its date and where the money came from or went ("from income",
 // "received", "from savings"), a repeat mark when a rule adds it, and the
@@ -31,7 +31,7 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
   return (
     <ItemRow py={1.5} onClick={() => open(r)}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-      title={<Box as="span" display="block" sx={ONE_LINE}>{r.description || categoryDisplayName(r.categories) || t('fallbackName')}</Box>}
+      title={<Box as="span" display="block" sx={ONE_LINE}>{entryName(r, t('fallbackName'))}</Box>}
       meta={
         <MetaLine>
           <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
@@ -47,7 +47,7 @@ function SavingsRow({ row: r, savingsIds, open, remove }) {
           </Text>
         </MetaLine>
       }
-      amount={`${out ? '−' : '+'}${formatMoney(r.amount_minor, r.currency)}`}
+      amount={formatSigned(out ? -r.amount_minor : r.amount_minor, r.currency, { plus: true })}
       amountTone={out ? 'default' : 'positive'}
       actionSlots={2} actions={[
         { label: t('common:actions.edit'), icon: Pencil, onClick: () => open(r) },

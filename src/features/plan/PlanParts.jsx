@@ -13,7 +13,8 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import { InfoBox, InfoButton, useInfoToggle } from '../../shared/ui/InfoToggle.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
-import { formatMoney } from '../../shared/lib/currency.js'
+import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
+import { signTone, textColor } from '../../shared/ui/kit/kitMath.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { shortDate, shortMonth } from '../../shared/lib/dates.js'
 import { intlLocale, t as tr } from '../../shared/lib/i18n/i18n.js'
@@ -23,12 +24,6 @@ import { RatesNote } from '../recurring/SubscriptionGroups.jsx'
 import { applicable, asShown, effectOf, headline, inView, monthOf } from './planMath.js'
 
 // ---- Wording ---------------------------------------------------------------------
-
-// +€15.00 / −€15.00 / €0.00
-export const signed = (minor, currency) =>
-  (minor > 0 ? `+${formatMoney(minor, currency)}` : minor < 0 ? `−${formatMoney(-minor, currency)}` : formatMoney(0, currency))
-
-export const toneOf = (minor) => (minor > 0 ? 'status.positive' : minor < 0 ? 'status.negative' : 'text.muted')
 
 // "Monthly", "Quarterly", or "every 2 weeks" for an interval.
 export function freqLabel(fields) {
@@ -114,12 +109,12 @@ export function DeltaChip({ change, good, mode, view, currency }) {
   const t = useT('plan')
   const amount = mode === 'payments'
     ? t(change < 0 ? 'impact.less' : 'impact.more', { amount: formatMoney(Math.abs(change), currency) })
-    : signed(change, currency)
+    : formatSigned(change, currency, { plus: true })
   const text = change === 0 ? t('impact.noChanges') : t(`impact.per.${view}`, { amount })
   return (
     <Tag size="md" borderRadius="full" px={3} py={1} fontWeight="800" flexShrink={0} whiteSpace="nowrap"
       bg={good > 0 ? 'status.positiveSubtle' : good < 0 ? 'status.negativeSubtle' : 'bg.subtle'}
-      color={toneOf(good)} fontSize="sm">
+      color={textColor(signTone(good))} fontSize="sm">
       {text}
     </Tag>
   )
@@ -454,8 +449,8 @@ export function ChangesPanel({ sum, currency, isOpen, editor, onOpen, onDrop, on
                   )}
                 </Box>
                 <Box textAlign="right" flexShrink={0}>
-                  <Text fontSize="sm" fontWeight="700" color={toneOf(eff)}>{t('changes.perMonth', { amount: signed(monthOf(shown), currency) })}</Text>
-                  <Text fontSize="xs" color="text.muted">{t('changes.perYear', { amount: signed(shown, currency) })}</Text>
+                  <Text fontSize="sm" fontWeight="700" color={textColor(signTone(eff))}>{t('changes.perMonth', { amount: formatSigned(monthOf(shown), currency, { plus: true }) })}</Text>
+                  <Text fontSize="xs" color="text.muted">{t('changes.perYear', { amount: formatSigned(shown, currency, { plus: true }) })}</Text>
                 </Box>
               </HStack>
               <Flex columnGap={4} rowGap={0} pl="44px" pb={1} flexWrap="wrap" align="center">
@@ -476,10 +471,10 @@ export function ChangesPanel({ sum, currency, isOpen, editor, onOpen, onDrop, on
       <HStack pt={3} justify="space-between" align="baseline">
         <Text fontSize="sm" fontWeight="700">{t(`changes.total.${h.mode}`)}</Text>
         <Box textAlign="right">
-          <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={toneOf(h.good)}>
-            {t('changes.perMonth', { amount: signed(monthOf(h.change), currency) })}
+          <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={textColor(signTone(h.good))}>
+            {t('changes.perMonth', { amount: formatSigned(monthOf(h.change), currency, { plus: true }) })}
           </Text>
-          <Text fontSize="xs" color="text.muted" fontWeight="600">{t('changes.perYear', { amount: signed(h.change, currency) })}</Text>
+          <Text fontSize="xs" color="text.muted" fontWeight="600">{t('changes.perYear', { amount: formatSigned(h.change, currency, { plus: true }) })}</Text>
         </Box>
       </HStack>
       <Stack direction={{ base: 'column', sm: 'row' }} spacing={2} pt={4}>

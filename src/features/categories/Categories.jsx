@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Box, Button, FormControl, FormHelperText, FormLabel,
-  Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, ModalOverlay,
-  Select, Stack, Tag, Text, useToast,
+  Box, Button, FormControl, FormHelperText, FormLabel, Select, Stack, Tag, Text, useToast,
 } from '@chakra-ui/react'
 import { Archive, ArchiveRestore, Pencil, Plus, Tags, Trash2 } from 'lucide-react'
 import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
@@ -22,6 +20,7 @@ import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader, { BusyNote } from '../../shared/ui/RingLoader.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
 
 // The Expenses / Income switch (labels: kinds.<kind>).
 const KINDS = ['expense', 'income']
@@ -127,38 +126,27 @@ function DeleteCategoryModal({ category, all, onClose, onSaved }) {
   }
 
   return (
-    <Modal isOpen={!!category} onClose={onClose} isCentered>
-      <ModalOverlay />
-      <ModalContent mx={4}>
-        <ModalHeader>{t('deleteDialog.title', { name: categoryDisplayName(category) })}</ModalHeader>
-        <ModalBody>
-          <Stack spacing={4}>
-            {count == null ? (
-              <BusyNote>{t('deleteDialog.checking')}</BusyNote>
-            ) : count === 0 ? (
-              <Text color="text.muted">{t('deleteDialog.unused')}</Text>
-            ) : (
-              <FormControl>
-                <FormLabel>
-                  {Number.isNaN(count) ? t('deleteDialog.moveTo') : t('deleteDialog.moveCount', { count })}
-                </FormLabel>
-                <Select value={moveTo} onChange={(e) => setMoveTo(e.target.value)}>
-                  <option value="">{t('deleteDialog.leave')}</option>
-                  {targets.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
-                </Select>
-                <FormHelperText>{t('deleteDialog.movesToo')}</FormHelperText>
-              </FormControl>
-            )}
-            <Text color="text.muted" fontSize="sm">{t('deleteDialog.budgetsGo')}</Text>
-          </Stack>
-        </ModalBody>
-        <ModalFooter gap={2}>
-          <Button variant="ghost" onClick={onClose}>{t('common:actions.cancel')}</Button>
-          <Button colorScheme="red" isLoading={busy} isDisabled={count == null} onClick={confirm}>
-            {t('common:actions.delete')}
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+    <ConfirmDialog isOpen={!!category} onClose={onClose} onConfirm={confirm} busy={busy} disabled={count == null} danger
+      title={t('deleteDialog.title', { name: categoryDisplayName(category) })} confirmLabel={t('common:actions.delete')}>
+      <Stack spacing={4}>
+        {count == null ? (
+          <BusyNote>{t('deleteDialog.checking')}</BusyNote>
+        ) : count === 0 ? (
+          <Text color="text.muted">{t('deleteDialog.unused')}</Text>
+        ) : (
+          <FormControl>
+            <FormLabel>
+              {Number.isNaN(count) ? t('deleteDialog.moveTo') : t('deleteDialog.moveCount', { count })}
+            </FormLabel>
+            <Select value={moveTo} onChange={(e) => setMoveTo(e.target.value)}>
+              <option value="">{t('deleteDialog.leave')}</option>
+              {targets.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
+            </Select>
+            <FormHelperText>{t('deleteDialog.movesToo')}</FormHelperText>
+          </FormControl>
+        )}
+        <Text color="text.muted" fontSize="sm">{t('deleteDialog.budgetsGo')}</Text>
+      </Stack>
+    </ConfirmDialog>
   )
 }

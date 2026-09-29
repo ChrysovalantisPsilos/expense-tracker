@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Stack, Text, Button, List, ListItem, Switch, Tag, Box, Modal, ModalOverlay,
-  ModalContent, ModalHeader, ModalBody, ModalFooter, Tabs, TabList, Tab, TabPanels, TabPanel, useToast,
-  SimpleGrid,
+  Stack, Text, Button, List, ListItem, Switch, Tag, Box, Tabs, TabList, Tab, TabPanels, TabPanel,
+  useToast, SimpleGrid,
 } from '@chakra-ui/react'
 import { Plus, Pencil, Trash2, Bell, Pause, Play } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
@@ -26,7 +25,8 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { entryName } from '../../shared/lib/categoryName.js'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
 
 const TABS = ['expense', 'income']
 
@@ -144,23 +144,9 @@ export default function Recurring() {
         )}
       </Panel>
 
-      <Modal isOpen={!!removing} onClose={() => setRemoving(null)} isCentered>
-        <ModalOverlay />
-        <ModalContent mx={4}>
-          <ModalHeader>{t('list.remove.title')}</ModalHeader>
-          <ModalBody>
-            <Text color="text.muted">
-              {t('list.remove.body', {
-                name: removing?.description || categoryDisplayName(removing?.categories) || t('list.remove.thisEntry'),
-              })}
-            </Text>
-          </ModalBody>
-          <ModalFooter gap={2}>
-            <Button variant="ghost" onClick={() => setRemoving(null)}>{t('common:actions.cancel')}</Button>
-            <Button colorScheme="red" onClick={confirmRemove}>{t('list.remove.confirm')}</Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <ConfirmDialog isOpen={!!removing} onClose={() => setRemoving(null)} onConfirm={confirmRemove} danger
+        title={t('list.remove.title')} confirmLabel={t('list.remove.confirm')}
+        body={t('list.remove.body', { name: entryName(removing, t('list.remove.thisEntry')) })} />
     </Stack>
   )
 }
@@ -172,7 +158,7 @@ function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
   return (
     <ItemRow py={2.5} dimmed={!r.is_active} onClick={onEdit}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-      title={r.description || categoryDisplayName(r.categories) || t(`kinds.${r.kind === 'income' ? 'income' : 'expense'}`)}
+      title={entryName(r, t(`kinds.${r.kind === 'income' ? 'income' : 'expense'}`))}
       meta={<RuleMeta rule={r} />}
       amount={formatMoney(r.amount_minor, r.currency)} amountMeta={hint}
       amountTone={r.kind === 'income' ? 'positive' : 'default'}

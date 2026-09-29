@@ -15,7 +15,7 @@ import Tile from '../../shared/ui/kit/Tile.jsx'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useCategories } from '../../shared/lib/categories.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { formatMoney, parseManualRate } from '../../shared/lib/currency.js'
+import { parseManualRate, formatSigned } from '../../shared/lib/currency.js'
 import {
   parseWorkbook, buildTransactions, importNewTransactions, listRules, saveRule, rememberMapping,
   rememberedHolder, rememberHolder,
@@ -250,7 +250,7 @@ export default function ImportExpenses() {
                   <ItemRow key={i} title={displayDescription(d) || '—'}
                     media={<CategoryBadge category={category} kind={d.kind} size={32} />}
                     meta={category ? `${shortDate(d.spent_at)} · ${categoryDisplayName(category)}` : shortDate(d.spent_at)}
-                    amount={`${d.kind === 'income' ? '+' : ''}${formatMoney(d.amount_minor, d.currency)}`}
+                    amount={formatSigned(d.amount_minor, d.currency, { plus: d.kind === 'income' })}
                     amountTone={d.kind === 'income' ? 'positive' : 'default'} />
                 )
               })

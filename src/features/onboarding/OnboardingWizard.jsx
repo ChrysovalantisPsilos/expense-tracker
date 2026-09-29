@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter,
-  Stack, HStack, Text, Heading, FormControl, FormHelperText, FormLabel, Input, Select, Button,
-  IconButton, Progress, Box, useToast,
+  Modal, ModalOverlay, ModalContent, ModalHeader, ModalBody, ModalFooter, Stack, HStack, Text,
+  Heading, FormControl, FormHelperText, FormLabel, Input, Button, IconButton, Progress, Box,
+  useToast,
 } from '@chakra-ui/react'
 import { X, ArrowRight, ArrowLeft, Sparkles, Users, BellRing, KeyRound, Compass } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { passkeysSupported } from '../../shared/lib/supabase.js'
-import { CURRENCIES } from '../../shared/lib/currency.js'
 import { EVENTS, STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { enablePush, pushSupported } from '../../shared/lib/push.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
@@ -19,6 +18,7 @@ import Logo from '../../shared/ui/Logo.jsx'
 import { startTour } from './tour.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
 
 // The wizard's steps: welcome, first group, stay in the loop, look around.
 const STEP_COUNT = 4
@@ -146,9 +146,7 @@ export default function OnboardingWizard({ profile, onDone }) {
               </FormControl>
               <FormControl>
                 <FormLabel>{t('settings:account.currency')}</FormLabel>
-                <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                  {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </Select>
+                <CurrencySelect value={currency} onChange={setCurrency} />
                 <FormHelperText>{t('wizard.welcome.currencyHelp')}</FormHelperText>
               </FormControl>
             </Stack>

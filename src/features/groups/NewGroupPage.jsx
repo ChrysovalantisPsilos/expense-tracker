@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FormControl, FormLabel, Input, Select, Stack } from '@chakra-ui/react'
-import { CURRENCIES } from '../../shared/lib/currency.js'
+import { FormControl, FormLabel, Input, Stack } from '@chakra-ui/react'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import FormPage, { PageForm } from '../../shared/ui/FormPage.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { createGroup } from './groups.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
 
 // /groups/new — name a group and pick its currency, then land in it (the
 // new group replaces this page in history, so Back from it goes to Groups).
@@ -47,9 +47,7 @@ function NewGroupForm({ baseCurrency }) {
         </FormControl>
         <FormControl>
           <FormLabel>{t('create.currency')}</FormLabel>
-          <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </Select>
+          <CurrencySelect value={currency} onChange={setCurrency} />
         </FormControl>
       </Stack>
     </PageForm>
