@@ -6465,11 +6465,121 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 106. 0102: the salary notes (the user's corrections on Insights › Your
+--      salary). Saved encrypted and read back by their owner only; the table
+--      is closed to clients and the RPCs to anon; a malformed document, or a
+--      Bonus category that isn't the caller's own income one, is refused;
+--      null deletes them; the owner guard files a row under the caller.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; bad jsonb; n int; mine uuid; theirs uuid; spend uuid;
+        doc jsonb := jsonb_build_object('v', 1, 'country', 'BE',
+          'fixes', jsonb_build_object('7d9f3a52-2c1e-4b8a-9f00-1a2b3c4d5e6f', 'holiday',
+                                      '0e1f2a3b-4c5d-4e6f-8a7b-9c0d1e2f3a4b', 'regular'));
+begin
+  begin
+    u1 := pg_temp.zz_user('salary1');
+    u2 := pg_temp.zz_user('salary2');
+    if has_function_privilege('anon', 'public.my_salary_history()', 'execute')
+       or has_function_privilege('anon', 'public.save_salary_history(jsonb)', 'execute')
+       or has_function_privilege('authenticated', 'public.salary_history_check(jsonb)', 'execute')
+       or not has_function_privilege('authenticated', 'public.my_salary_history()', 'execute')
+       or not has_function_privilege('authenticated', 'public.save_salary_history(jsonb)', 'execute') then
+      raise exception 'salary functions reachable by the wrong role';
+    end if;
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZ Bonus', 'income') returning id into mine;
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZ Shop', 'expense') returning id into spend;
+    insert into public.categories (user_id, name, kind) values (u2, 'ZZ Bonus', 'income') returning id into theirs;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_salary_history(doc);
+    if public.my_salary_history() is distinct from doc then execute 'reset role'; raise exception 'notes not read back'; end if;
+    perform public.save_salary_history(doc || jsonb_build_object('bonus_category_id', mine));
+    if public.my_salary_history()->>'bonus_category_id' is distinct from mine::text then
+      execute 'reset role'; raise exception 'own Bonus category refused';
+    end if;
+    begin
+      select count(*) into n from public.salary_history;
+      execute 'reset role'; raise exception 'GUARD_MISSED: clients can read salary_history';
+    exception when insufficient_privilege then null; end;
+    foreach bad in array array[
+      doc || '{"v": 2}', doc || '{"x": 1}', doc || '{"country": "FR"}', doc - 'fixes',
+      doc || '{"fixes": []}', doc || '{"fixes": {"not-an-id": "bonus"}}',
+      doc || '{"fixes": {"7d9f3a52-2c1e-4b8a-9f00-1a2b3c4d5e6f": "salary"}}',
+      doc || '{"fixes": {"7d9f3a52-2c1e-4b8a-9f00-1a2b3c4d5e6f": 1}}',
+      doc || '{"bonus_category_id": "nope"}',
+      doc || jsonb_build_object('bonus_category_id', theirs),
+      doc || jsonb_build_object('bonus_category_id', spend),
+      '[1]'::jsonb] loop
+      begin
+        perform public.save_salary_history(bad);
+        execute 'reset role';
+        raise exception 'GUARD_MISSED: bad notes % saved', bad;
+      exception when others then
+        if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+      end;
+    end loop;
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    if public.my_salary_history() is not null then execute 'reset role'; raise exception 'another user read the notes'; end if;
+    perform public.save_salary_history(null);   -- u2 has none: a no-op
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'reset role';
+    if (select count(*) from public.salary_history where user_id = u1) <> 1 then raise exception 'u1 notes missing'; end if;
+    if (select payload_enc::text like '%holiday%' from public.salary_history where user_id = u1) then
+      raise exception 'notes stored in the clear';
+    end if;
+    update public.salary_history set user_id = u2 where user_id = u1;
+    if not exists (select 1 from public.salary_history where user_id = u1) then raise exception 'owner guard let the row move'; end if;
+    execute 'set local role authenticated';
+    perform public.save_salary_history(null);
+    execute 'reset role';
+    if exists (select 1 from public.salary_history where user_id = u1) then raise exception 'null did not delete the notes'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: salary notes encrypted, owner-only, validated, removable; table closed to clients';
+    else update _t set fails = fails + 1; raise notice 'FAIL: salary notes — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 107. 0102: the salary notes are in the owner's data export, and leave with
+--      their user: demo_wipe clears the demo accounts' notes only; deleting
+--      an account cascades them away.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; n int; exported jsonb;
+        doc jsonb := jsonb_build_object('v', 1, 'fixes', jsonb_build_object('7d9f3a52-2c1e-4b8a-9f00-1a2b3c4d5e6f', 'bonus'));
+begin
+  begin
+    u1 := pg_temp.zz_user('swipe1');
+    u2 := pg_temp.zz_user('swipe2');
+    foreach n in array array[1, 2] loop
+      perform set_config('request.jwt.claims', json_build_object('sub', case n when 1 then u1 else u2 end,
+        'role', 'authenticated')::text, true);
+      execute 'set local role authenticated';
+      perform public.save_salary_history(doc);
+      if n = 1 then exported := public.export_my_data(); end if;
+      execute 'reset role';
+    end loop;
+    if exported->'salary_history'->'notes' is distinct from doc then raise exception 'export left out the notes'; end if;
+    perform public.demo_wipe(array[u1]);
+    if exists (select 1 from public.salary_history where user_id = u1) then raise exception 'demo_wipe left the notes'; end if;
+    if not exists (select 1 from public.salary_history where user_id = u2) then raise exception 'demo_wipe touched another account'; end if;
+    delete from auth.users where id = u2;
+    if exists (select 1 from public.salary_history where user_id = u2) then raise exception 'account deletion left the notes'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: salary notes exported, cleared by demo_wipe and account deletion, only for those users';
+    else update _t set fails = fails + 1; raise notice 'FAIL: salary notes cleanup — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 106; f int; p int;  -- tests 1–105 + B-0059
+declare expected_tests constant int := 108; f int; p int;  -- tests 1–107 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

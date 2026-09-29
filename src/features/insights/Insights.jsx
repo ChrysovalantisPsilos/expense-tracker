@@ -35,6 +35,7 @@ import {
   buildTrend, hasTrendData, spendDelta, netWorth, accountSections, axisTick, spendingShares, foreignSpending,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
+import SalaryCard from '../salary/SalaryCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
@@ -91,6 +92,7 @@ export default function Insights() {
         picked={picked} onPick={setPicked} monthLabel={monthLabel} monthName={monthHeading(month.key)} monthLink={monthLink} />
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}
       <IncomeCard loading={loading} failed={failed} trend={trend} money={money} />
+      <SalaryCard />
       <NetWorthCard baseCurrency={baseCurrency} />
       <ReportsCard noEntries={oldest === null} />
     </Stack>
