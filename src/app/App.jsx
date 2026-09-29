@@ -18,6 +18,7 @@ import SkipLink from '../shared/ui/SkipLink.jsx'
 import { loginPathFor, NEXT_PARAM, safeReturnPath, takeReturnPath } from '../shared/lib/returnPath.js'
 import NotFound from './NotFound.jsx'
 import { isSignedInRoute } from './routes.js'
+import { recurringNewLink } from '../shared/lib/addLinks.js'
 
 // Every page is its own chunk, fetched on first visit (the service worker
 // precaches them all, so this costs nothing offline). The shell and the
@@ -109,6 +110,13 @@ function OldGoalLink() {
   return <Navigate to={`/savings/goals/${id}`} replace />
 }
 
+// Recurring entries are added from Add with Repeat on: an old "new recurring
+// entry" link opens that, keeping its kind.
+function OldRecurringNewLink() {
+  const [params] = useSearchParams()
+  return <Navigate to={recurringNewLink(params)} replace />
+}
+
 // Logged-out invite link -> read-only group preview. Its CTAs stash the token
 // (localStorage survives the email-confirmation round-trip in the same browser)
 // and send the visitor to sign up; AuthedRoutes then redeems it.
@@ -178,7 +186,6 @@ function AuthedRoutes() {
         <Route element={<AppShell hideAddExpense={!!tour} />}>
           <Route index element={<Dashboard />} />
           <Route path="recurring" element={<Recurring />} />
-          <Route path="recurring/new" element={<RecurringPage />} />
           <Route path="recurring/:id" element={<RecurringPage />} />
           <Route path="plan" element={<Plan />} />
           <Route path="vouchers" element={<Vouchers />} />
@@ -231,6 +238,8 @@ function AuthedRoutes() {
           {/* Goals moved from Insights to Savings. */}
           <Route path="insights/goals/new" element={<Navigate to="/savings/goals/new" replace />} />
           <Route path="insights/goals/:id" element={<OldGoalLink />} />
+          {/* Recurring entries are added from Add, with Repeat on. */}
+          <Route path="recurring/new" element={<OldRecurringNewLink />} />
           {/* Expenses, Income and Search became one Transactions page. */}
           <Route path="expenses" element={<Navigate to="/transactions?type=expense" replace />} />
           <Route path="income" element={<Navigate to="/transactions?type=income" replace />} />

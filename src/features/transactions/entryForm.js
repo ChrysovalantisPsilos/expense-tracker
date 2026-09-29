@@ -1,0 +1,74 @@
+// The fields every entry form shares (EntryFields.jsx: Add's expense or
+// income, and a recurring rule's page), as pure state ↔ row mappings, so both
+// forms start, check and save the same way. No React/supabase: unit-tested in
+// test/entryForm.test.js.
+//
+// The form state: { kind, amount, currency, currencyPicked, categoryId,
+// description, date, fromIncome, paidFrom } — text fields stay strings so the
+// inputs can be empty mid-edit; `date` is the entry's date on Add and the next
+// charge on a rule's page; `paidFrom` is 'bank' | 'savings' | 'vouchers'.
+import { minorToInput, toMinor } from '../../shared/lib/currency.js'
+import { paidFromOf } from '../../shared/lib/savings.js'
+import { amountError, fieldErrors, requiredError } from '../../shared/lib/formChecks.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
+
+// A saved row (a transaction or a rule) → the form, its date given by the
+// caller (a transaction's spent_at, a rule's next_run). Income in a savings
+// category is "Taken from my income" unless the row says otherwise.
+export function formFromRow(row, date) {
+  return {
+    kind: row.kind === 'income' ? 'income' : 'expense',
+    amount: minorToInput(row.amount_minor, row.currency),
+    currency: row.currency,
+    currencyPicked: false,
+    categoryId: row.category_id ?? '',
+    description: row.description ?? '',
+    date,
+    fromIncome: !!row.savings_from_income,
+    paidFrom: paidFromOf(row),
+  }
+}
+
+// A new entry: `kind`, in the base currency, dated `date` — or what the user
+// already typed elsewhere (`initial`: { amount, currency, currencyPicked,
+// description, spentAt }, the Add page's group form). A new savings income is
+// "Taken from my income" until switched off.
+export function newForm({ kind = 'expense', baseCurrency = 'EUR', date, initial = null }) {
+  return {
+    kind,
+    amount: initial?.amount ?? '',
+    currency: initial?.currency ?? baseCurrency,
+    currencyPicked: !!initial?.currencyPicked,
+    categoryId: '',
+    description: initial?.description ?? '',
+    date: initial?.spentAt ?? date,
+    fromIncome: true,
+    paidFrom: 'bank',
+  }
+}
+
+// The fields a form requires, with their messages: { amount?, date? }.
+export const ENTRY_FIELDS = ['amount', 'date']
+export function entryErrors({ amount, date }) {
+  return fieldErrors({
+    amount: amountError(amount),
+    date: requiredError(date, t('transactions:form.pickDate')),
+  })
+}
+
+// The form → the columns a transaction and a rule share. An empty description
+// stays empty: lists name the entry after its category (entryName).
+// `isSavings`: the category is a savings one (only then is income "taken from
+// my income"); "Paid from" applies to expenses only.
+export function entryColumns(form, { isSavings = false } = {}) {
+  const expense = form.kind === 'expense'
+  return {
+    category_id: form.categoryId || null,
+    amount_minor: toMinor(form.amount, form.currency),
+    currency: form.currency,
+    description: form.description.trim() || null,
+    savings_from_income: form.kind === 'income' && isSavings && !!form.fromIncome,
+    paid_from_savings: expense && form.paidFrom === 'savings',
+    paid_with_vouchers: expense && form.paidFrom === 'vouchers',
+  }
+}

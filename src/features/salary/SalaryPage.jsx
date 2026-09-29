@@ -4,6 +4,7 @@
 // year by year. Two stacks side by side from lg up and on a phone held
 // sideways, one column on phones.
 import { Link as RouterLink } from 'react-router-dom'
+import { addEntryLink } from '../../shared/lib/addLinks.js'
 import { Button, Flex, Stack, useToast } from '@chakra-ui/react'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import BackButton from '../../shared/ui/BackButton.jsx'
@@ -42,7 +43,7 @@ export default function SalaryPage() {
     body = (
       <Panel>
         <EmptyState title={t('empty.noEntriesTitle')} text={t('empty.noEntries')}
-          actions={<Button as={RouterLink} to={`/transactions/new?kind=income&category=${d.salaryId}`}>{t('empty.addIncome')}</Button>} />
+          actions={<Button as={RouterLink} to={addEntryLink({ kind: 'income', category: d.salaryId })}>{t('empty.addIncome')}</Button>} />
       </Panel>
     )
   } else body = <Report d={d} sideways={sideways} />

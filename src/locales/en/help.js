@@ -215,16 +215,16 @@ export default {
         },
       },
       makeRecurring: {
-        q: 'How do I make an expense repeat?',
+        q: 'How do I add a subscription, a bill or my salary?',
         a: {
-          p1: 'When you add or edit an expense, use its Repeat section: choose weekly, monthly, quarterly or yearly, and how often (every 1, 2, 3… of those). Then set the next date, an optional end date, and an optional reminder a few days before it’s due.',
+          p1: 'Add it as an expense or income as usual and switch on its Repeat section: choose weekly, monthly, quarterly or yearly, and how often (every 1, 2, 3… of those). Then set the next date, an optional end date, and an optional reminder a few days before it’s due. You can do the same when you edit an entry you already added.',
         },
         clip: 'Screen recording: on the new expense page, entering 12.99 for a gym membership, switching on Repeat — monthly by default, with the next charge date filled in — then saving it.',
       },
       recurringPage: {
         q: 'Where do I see my subscriptions and regular income?',
         a: {
-          p1: 'On the Recurring page (under More on a phone). The Subscriptions tab lists what you pay regularly; the Income tab lists money that comes in regularly, such as a salary.',
+          p1: 'On the Recurring page (under More on a phone). The Subscriptions tab lists what you pay regularly; the Income tab lists money that comes in regularly, such as a salary. Tap one to edit or pause it; to add one, switch on Repeat when you add an expense or income.',
           p2: 'Home also has a Recurring card with tabs for each frequency, so you can see what your weekly, monthly or yearly payments add up to.',
         },
       },

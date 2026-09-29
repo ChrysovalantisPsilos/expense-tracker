@@ -143,20 +143,19 @@ export function expectedInWindow(rules, fromISO, toISO, separateYearly = false, 
 }
 
 // ---- The Repeat section's draft ----------------------------------------------
-// The form state behind the Repeat fields (RepeatFields.jsx), shared by the
-// transaction page and the recurring-entry form. Text fields stay strings so
-// the inputs can be empty mid-edit.
+// The form state behind the Repeat fields (RepeatFields.jsx), on the
+// transaction page and a rule's page (ruleForm.js). Text fields stay strings
+// so the inputs can be empty mid-edit.
 //   rule      an existing rule to edit, or null for a new one
-//   fromDate  a new rule made from a transaction: the entry's date. The next
-//             charge then follows the chosen frequency from it (the entry is
-//             the first occurrence) until the user picks a date themselves.
-//   todayISO  a new rule's next charge otherwise
-export function repeatDraft(rule, { fromDate, todayISO } = {}) {
+//   fromDate  a new rule (always made from a transaction): the entry's date.
+//             The next charge then follows the chosen frequency from it (the
+//             entry is the first occurrence) until the user picks a date.
+export function repeatDraft(rule, { fromDate } = {}) {
   const { choice, n } = rule ? ruleToChoice(rule) : { choice: 'monthly', n: 1 }
   return {
     choice,
     n: String(n),
-    nextRun: rule?.next_run ?? (fromDate ? nextRunAfter(fromDate, 'monthly', 1) : todayISO),
+    nextRun: rule?.next_run ?? (fromDate ? nextRunAfter(fromDate, 'monthly', 1) : ''),
     follows: !rule && !!fromDate,
     endDate: rule?.end_date ?? '',
     remind: rule?.remind_days_before != null,

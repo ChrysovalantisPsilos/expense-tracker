@@ -7,7 +7,6 @@
 export const SIGNED_IN_ROUTES = [
   '/',
   '/recurring',
-  '/recurring/new',
   '/recurring/:id',
   '/plan',
   '/vouchers',
@@ -56,13 +55,15 @@ export const SIGNED_IN_ROUTES = [
   '/privacy',
   '/terms',
   // Legacy addresses that redirect (Settings' old name; the pages that
-  // became Transactions; goals, which moved from Insights to Savings).
+  // became Transactions; goals, which moved from Insights to Savings; a new
+  // recurring entry, now added from Add with Repeat on).
   '/profile',
   '/expenses',
   '/income',
   '/search',
   '/insights/goals/new',
   '/insights/goals/:id',
+  '/recurring/new',
 ]
 
 const segments = (path) => path.split('/').filter(Boolean)

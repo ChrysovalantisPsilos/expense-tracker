@@ -278,7 +278,6 @@ test('repeatDraft: a new rule from an entry follows its date; an existing rule r
   const d = repeatDraft(null, { fromDate: '2026-01-31' })
   assert.equal(d.nextRun, '2026-02-28')
   assert.equal(d.follows, true)
-  assert.equal(repeatDraft(null, { todayISO: '2026-09-23' }).nextRun, '2026-09-23')
   // Changing frequency or the entry's date moves the next charge…
   assert.equal(editRepeat(d, { choice: 'quarterly' }, '2026-01-31').nextRun, '2026-04-30')
   assert.equal(editRepeat(d, { choice: 'weekly', n: '2' }, '2026-01-31').nextRun, '2026-02-14')
@@ -295,7 +294,7 @@ test('repeatDraft: a new rule from an entry follows its date; an existing rule r
 })
 
 test('repeatRuleFields: reminders are clamped to 1–60 days, off is null', () => {
-  const d = repeatDraft(null, { todayISO: '2026-09-23' })
+  const d = repeatDraft(null, { fromDate: '2026-09-23' })
   assert.equal(repeatRuleFields({ ...d, remind: true, remindDays: '90' }).remind_days_before, 60)
   assert.equal(repeatRuleFields({ ...d, remind: true, remindDays: '' }).remind_days_before, 3)
   assert.equal(repeatRuleFields({ ...d, remind: false, remindDays: '5' }).remind_days_before, null)
