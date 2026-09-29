@@ -54,6 +54,17 @@ export function savingsIdsOf(categories: Row[] | null | undefined): Set<string> 
   return new Set((categories ?? []).filter((c) => c?.is_savings === true && c.kind === 'income').map((c) => c.id))
 }
 
+// "Paid from" on an expense: which choices it offers — savings once the user
+// has a savings category, vouchers once they get meal vouchers (or when the
+// entry being edited already uses one). [] when there's nothing but the bank.
+// One copy: the Add form shows these, and ai-helper offers the same ones to
+// "Type it" (worked out on the server from the caller's own data).
+export type PaidFrom = 'bank' | 'savings' | 'vouchers'
+export function paidFromSources({ savings, vouchers }: { savings: boolean; vouchers: boolean }): PaidFrom[] {
+  const sources: PaidFrom[] = ['bank', ...(savings ? ['savings' as const] : []), ...(vouchers ? ['vouchers' as const] : [])]
+  return sources.length > 1 ? sources : []
+}
+
 // Is this transaction (or recurring rule) a savings entry?
 export const isSavingsRow = (row: Row, savingsIds: Set<string>): boolean =>
   row?.kind === 'income' && !!row.category_id && savingsIds.has(row.category_id)

@@ -1,5 +1,7 @@
 // Currency helpers. Money is stored as integer minor units (cents).
-import { CURRENCIES, ZERO_DECIMAL, toBaseMinor } from '../../../supabase/functions/_shared/money.ts'
+import {
+  CURRENCIES, ZERO_DECIMAL, formatMinor, formatRoundedMinor, toBaseMinor,
+} from '../../../supabase/functions/_shared/money.ts'
 import { STORAGE_KEYS } from './keys.js'
 import { intlLocale } from './i18n/i18n.js'
 
@@ -31,16 +33,10 @@ export function minorToInput(minor, currency = 'EUR') {
   return (Number(minor) / factor).toFixed(factor === 1 ? 0 : 2)
 }
 
-// Decimals come from our minor units, not ICU's defaults: ICU shows HUF and
-// IDR with 0 decimals although ISO 4217 (and our storage) has 2, which would
-// round 12.50 to "13" on screen. The locale is the app language's (Greek:
-// "1.234,56 €"); in English, the device's own, as always.
-export function formatMoney(minor, currency = 'EUR', locale = intlLocale()) {
-  const digits = Math.log10(minorFactor(currency))
-  return new Intl.NumberFormat(locale, {
-    style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits,
-  }).format(fromMinor(minor, currency))
-}
+// An amount as the app shows it, in the app language's locale (Greek:
+// "1.234,56 €"; in English, the device's own, as always). One copy of the
+// rule (decimals from our minor units, not ICU's): _shared/money.ts.
+export const formatMoney = (minor, currency = 'EUR', locale = intlLocale()) => formatMinor(minor, currency, locale)
 
 // A signed amount for display, with a true minus sign: −€1.00 below zero,
 // €0.00 at zero, and €1.00 above — or +€1.00 with `plus` (a change, a net or
@@ -52,11 +48,8 @@ export function formatSigned(minor, currency = 'EUR', { plus = false } = {}) {
 
 // An amount rounded to whole units ("€2,793" for 2792.60), for estimates
 // and big totals where cents would be noise (salary projections).
-export function formatRoundedMoney(minor, currency = 'EUR', locale = intlLocale()) {
-  return new Intl.NumberFormat(locale, {
-    style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(Math.round(minor / minorFactor(currency)))
-}
+export const formatRoundedMoney = (minor, currency = 'EUR', locale = intlLocale()) =>
+  formatRoundedMinor(minor, currency, locale)
 
 // toBaseMinor: a minor amount in the base currency at the row's captured rate
 // — exact integer maths that matches SQL to_base_minor. One copy, shared with

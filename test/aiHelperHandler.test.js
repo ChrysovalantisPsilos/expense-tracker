@@ -10,7 +10,14 @@ const FOOD = '00000000-0000-4000-8000-000000000001'
 const today = new Date().toISOString().slice(0, 10)
 const month = `${today.slice(0, 8)}01`
 
-function stubs({ user = { id: UID }, start = { data: { base_currency: 'EUR' } }, summary = null, reply, save = {} } = {}) {
+const SAVED = '00000000-0000-4000-8000-000000000002'
+const FOOD_ROW = { id: FOOD, name: 'Food', kind: 'expense', is_archived: false, is_savings: false }
+const SAVINGS_ROW = { id: SAVED, name: 'Savings', kind: 'income', is_archived: true, is_savings: true }
+
+function stubs({
+  user = { id: UID }, start = { data: { base_currency: 'EUR' } }, summary = null, reply, save = {},
+  categories = [FOOD_ROW], vouchers = null,
+} = {}) {
   const calls = { rpc: [], asks: [], service: [] }
   const asUser = {
     auth: { getUser: async () => ({ data: { user } }) },
@@ -18,9 +25,10 @@ function stubs({ user = { id: UID }, start = { data: { base_currency: 'EUR' } },
       calls.rpc.push([fn, args])
       if (fn === 'ai_helper_start') return { data: start.data ?? null, error: start.error ?? null }
       if (fn === 'my_month_summary') return { data: summary, error: null }
+      if (fn === 'my_meal_vouchers') return { data: vouchers, error: null }
       return { data: null, error: { message: 'unknown rpc' } }
     },
-    from: () => ({ select: async () => ({ data: [{ id: FOOD, name: 'Food', kind: 'expense', is_archived: false }], error: null }) }),
+    from: () => ({ select: async () => ({ data: categories, error: null }) }),
   }
   const deps = {
     asUser,
@@ -74,8 +82,28 @@ test('parse_entry: the validated entry comes back', async () => {
   const { deps, calls } = stubs({ reply: entryReply })
   const r = await handle(post({ action: 'parse_entry', text: 'coffee 3.60', today, labels: { [FOOD]: 'Φαγητό' } }), deps)
   assert.equal(r.status, 200)
-  assert.deepEqual(r.body.entry, { kind: 'expense', amount_minor: 360, currency: 'EUR', date: today, category_id: FOOD, description: 'Coffee' })
+  assert.deepEqual(r.body.entry, { kind: 'expense', amount_minor: 360, currency: 'EUR', date: today, category_id: FOOD, description: 'Coffee', paid_from: null })
   assert.match(calls.asks[0].user, /Φαγητό/)
+  // Only the bank: "Paid from" isn't asked about.
+  assert.doesNotMatch(calls.asks[0].user, /paid_from/)
+})
+
+test('parse_entry: "Paid from" is offered from what the server finds, never from the request', async () => {
+  const lunch = { ...entryReply.json, description: 'Lunch', paid_from: 'vouchers' }
+  // Meal vouchers set up (my_meal_vouchers as the caller) and a savings category (even archived).
+  let s = stubs({ reply: { ok: true, json: lunch }, vouchers: { per_day_minor: 800 }, categories: [FOOD_ROW, SAVINGS_ROW] })
+  let r = await handle(post({ action: 'parse_entry', text: 'lunch 9 with meal vouchers', today, paid_from_options: ['bank'] }), s.deps)
+  assert.equal(r.body.entry.paid_from, 'vouchers')
+  assert.deepEqual(JSON.parse(s.calls.asks[0].user).paid_from_options, ['bank', 'savings', 'vouchers'])
+  assert.deepEqual(s.calls.rpc.find(([fn]) => fn === 'my_meal_vouchers'), ['my_meal_vouchers', {}])
+  // No vouchers: a "vouchers" answer isn't one of the choices, so it's dropped.
+  s = stubs({ reply: { ok: true, json: lunch }, categories: [FOOD_ROW, SAVINGS_ROW] })
+  r = await handle(post({ action: 'parse_entry', text: 'lunch 9 with meal vouchers', today, paid_from_options: ['bank', 'vouchers'] }), s.deps)
+  assert.deepEqual(JSON.parse(s.calls.asks[0].user).paid_from_options, ['bank', 'savings'])
+  assert.equal(r.body.entry.paid_from, null)
+  s = stubs({ reply: { ok: true, json: { ...lunch, paid_from: 'savings' } }, categories: [FOOD_ROW, SAVINGS_ROW] })
+  r = await handle(post({ action: 'parse_entry', text: 'from savings 200 flight', today }), s.deps)
+  assert.equal(r.body.entry.paid_from, 'savings')
 })
 
 test('parse_entry: an unusable answer, a refusal or a cut-off is "unreadable"; the API busy is "busy"', async () => {
@@ -126,16 +154,18 @@ test('month_summary: an up-to-date summary in this language is returned as is', 
 test('month_summary: stale, or another language, writes a new one from the server\'s totals and stores it', async () => {
   const summary = { lines: ['old'], lang: 'en', written_at: '2026-09-01T10:00:00Z' }
   for (const [over, lang] of [[{ summary, stale: true }, 'en'], [{ summary }, 'el']]) {
-    const s = stubs({ summary: state(over), reply: { ok: true, json: { lines: ['- Food came to €10.'] } } })
+    const line = lang === 'en' ? 'Food came to €10.00.' : 'Φαγητό: 10,00 € ως τώρα.'
+    const s = stubs({ summary: state(over), reply: { ok: true, json: { lines: [`- ${line}`, 'That is €9 over.'] } } })
     // Totals in the request are ignored: only the database's are sent.
     const r = await handle(post({ action: 'month_summary', month, lang, totals: { forged: true } }), s.deps)
     assert.equal(r.status, 200)
-    assert.deepEqual(r.body.summary.lines, ['Food came to €10.'])
+    // The line with an amount it wasn't given is left out.
+    assert.deepEqual(r.body.summary.lines, [line])
     assert.equal(r.body.summary.lang, lang)
     assert.doesNotMatch(s.calls.asks[0].user, /forged/)
-    assert.match(s.calls.asks[0].user, /"10.00"/)
+    assert.match(s.calls.asks[0].user, lang === 'en' ? /"€10\.00"/ : /"10,00\u00a0€"/)
     assert.deepEqual(s.calls.service[0], ['ai_save_month_summary',
-      { p_user: UID, p_month: month, p_summary: { lines: ['Food came to €10.'], lang }, p_fingerprint: 'f'.repeat(32) }])
+      { p_user: UID, p_month: month, p_summary: { lines: [line], lang }, p_fingerprint: 'f'.repeat(32) }])
   }
 })
 

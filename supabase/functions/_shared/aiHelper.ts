@@ -10,7 +10,8 @@
 // in a sane range). Whatever the text says, the worst a crafted line can do is
 // fill the caller's own form with values they then check before saving.
 
-import { CURRENCIES, minorFactor } from './money.ts'
+import { CURRENCIES, formatMinor, formatRoundedMinor, minorFactor } from './money.ts'
+import type { PaidFrom } from './savings.ts'
 
 // One constant: the model every helper uses. Claude Haiku 4.5 — structured
 // JSON outputs (output_config.format), no effort or adaptive-thinking
@@ -123,7 +124,13 @@ export function lastDays(today: string): { date: string; weekday: string }[] {
   })
 }
 
-export function parseEntryAsk(o: { text: string; today: string; baseCurrency: string; categories: Category[] }): Ask {
+// `paidFrom`: the caller's "Paid from" choices (savings.paidFromSources, []
+// when there is only the bank): only then is the model asked, and only among
+// those names.
+export function parseEntryAsk(o: {
+  text: string; today: string; baseCurrency: string; categories: Category[]; paidFrom: PaidFrom[]
+}): Ask {
+  const paid = o.paidFrom.length > 0
   return {
     system: [
       'You fill in one expense or income entry for a personal finance app from a short line the user typed',
@@ -137,14 +144,18 @@ export function parseEntryAsk(o: { text: string; today: string; baseCurrency: st
       'most recent such day not after today unless the line says otherwise; null when no day is named.',
       'category_id: the id of the best matching category of that kind from the list, or null when none fits.',
       'description: a short name for what it was (the shop or item, as the user would write it), or null.',
+      paid ? 'paid_from: what paid for an expense, one of paid_from_options: "vouchers" when the line names meal'
+        + ' vouchers or a voucher card (ticket restaurant, maaltijdcheques, chèques-repas, Pluxee, Edenred, Monizze,'
+        + ' Sodexo), "savings" when it says the money came from savings, otherwise "bank" (also for income).' : '',
       DATA_ONLY,
-    ].join(' '),
+    ].filter(Boolean).join(' '),
     user: JSON.stringify({
       today: o.today,
       weekday: WEEKDAYS[new Date(`${o.today}T00:00:00Z`).getUTCDay()],
       last_7_days: lastDays(o.today),
       base_currency: o.baseCurrency,
       categories: o.categories.map(({ id, name, kind }) => ({ id, name, kind })),
+      ...(paid ? { paid_from_options: o.paidFrom } : {}),
       line: o.text,
     }),
     schema: {
@@ -157,8 +168,10 @@ export function parseEntryAsk(o: { text: string; today: string; baseCurrency: st
         date: nullable({ type: 'string' }),
         category_id: nullable({ type: 'string' }),
         description: nullable({ type: 'string' }),
+        ...(paid ? { paid_from: { type: 'string', enum: [...o.paidFrom] } } : {}),
       },
-      required: ['understood', 'kind', 'amount', 'currency', 'date', 'category_id', 'description'],
+      required: ['understood', 'kind', 'amount', 'currency', 'date', 'category_id', 'description',
+        ...(paid ? ['paid_from'] : [])],
       additionalProperties: false,
     },
     maxTokens: 400,
@@ -210,11 +223,6 @@ export interface MonthTotals {
   categories: { id: string | null; name: string | null; kind: string; totals: number[]; budget: number | null }[]
 }
 
-const major = (minor: number, currency: string) => {
-  const f = minorFactor(currency)
-  return (minor / f).toFixed(f === 1 ? 0 : 2)
-}
-
 // "2026-09" → the six months before it and itself, newest first.
 export function monthKeys(month: string): string[] {
   const [y, m] = month.split('-').map(Number)
@@ -224,44 +232,73 @@ export function monthKeys(month: string): string[] {
   })
 }
 
+// The locale a summary's amounts are written in: its language's, the way the
+// app shows money in that language (English "€1,030.00", Greek "1.030,00 €").
+export const SUMMARY_LOCALES = { en: 'en', el: 'el-GR' } as const
+
+// What a summary's lines are checked against (normaliseSummary): the amounts
+// it was given, already formatted, and how to spot one in a line.
+export interface FigureCheck { currency: string; locale: string; figures: string[] }
+
+const daysInMonth = (month: string) => {
+  const [y, m] = month.split('-').map(Number)
+  return new Date(Date.UTC(y, m, 0)).getUTCDate()
+}
+
 export function summaryAsk(o: {
   totals: MonthTotals; lang: 'en' | 'el'; categories: Category[]; today: string
-}): Ask {
+}): Ask & { check: FigureCheck } {
   const names = new Map(o.categories.map((c) => [c.id, c.name]))
   const cur = o.totals.currency
+  const locale = SUMMARY_LOCALES[o.lang]
+  const unit = minorFactor(cur)
+  // Every amount goes out formatted the way the app shows it, and is noted
+  // for the check. The usual (a six-month average) is rounded to whole units,
+  // where cents would be noise; the rest are exact.
+  const figures = new Set<string>()
+  const money = (minor: number, rounded = false) => {
+    const f = (rounded ? formatRoundedMinor : formatMinor)(minor, cur, locale)
+    figures.add(f)
+    return f
+  }
   const months = monthKeys(o.totals.month)
   const current = o.today.slice(0, 7) === o.totals.month
-  return {
+  const day = Number(o.today.slice(8, 10))
+  const left = daysInMonth(o.totals.month) - day
+  const ask = {
     system: [
       'You write a short plain-language summary of one month of someone\'s spending for a personal finance app.',
       `Write in ${o.lang === 'el' ? 'Greek (informal "εσύ" form)' : 'English'}.`,
-      'Write 2 or 3 lines, each one short sentence (at most 25 words), with no bullets, markdown or emoji.',
-      'Say what stands out: the categories whose this_month is furthest from their usual (the average of',
-      'the six months before), and budgets that are over (over_budget_by) or nearly used (left_in_budget).',
-      'Quote only the figures given (this_month, usual, difference_from_usual, budget, over_budget_by,',
-      'left_in_budget), never other sums, and keep each figure with its own meaning; round money to whole',
-      'units with the currency symbol. Never judge, and give no financial advice.',
-      current ? 'The month is not over yet: days_so_far says how far it is, so don\'t call its totals final.' : '',
+      'Write 2 or 3 lines, each one short sentence (at most 20 words), with no bullets, markdown or emoji.',
+      'Say what stands out: the categories whose this_month is furthest from their usual (the average of the',
+      'six months before; vs_usual says whether it is above or below, by difference_from_usual), and budgets',
+      'that are over (over_budget_by) or nearly used (left_in_budget).',
+      'Every amount in the document is already formatted: copy the ones you use exactly as written, with their',
+      'symbol, separators and decimals. Never write any other amount (no sums of your own, no rounding, no',
+      'reformatting), and keep each amount with its own meaning. Never judge, and give no financial advice.',
+      current ? `The month is not over: today is day ${day} of ${day + left}, with ${left} ${left === 1 ? 'day' : 'days'} to go,`
+        + ' so don\'t call its totals final. If you mention it, keep it plain and short, like "so far this month"'
+        + ' or "with a week to go".' : '',
       DATA_ONLY,
     ].filter(Boolean).join(' '),
     user: JSON.stringify({
-      currency: cur,
       month: months[0],
-      ...(current ? { days_so_far: Number(o.today.slice(8, 10)) } : {}),
+      ...(current ? { day_of_month: day, days_to_go: left } : {}),
       months_before: months.slice(1),
       categories: o.totals.categories.map((c) => {
         const now = c.totals[0] ?? 0
-        const usual = Math.round(c.totals.slice(1).reduce((a, v) => a + v, 0) / 6)
+        const usual = Math.round(c.totals.slice(1).reduce((a, v) => a + v, 0) / 6 / unit) * unit
         return {
           name: (c.id && names.get(c.id)) || cleanText(c.name, LABEL_MAX) || (o.lang === 'el' ? 'Χωρίς κατηγορία' : 'Uncategorized'),
           kind: c.kind,
-          this_month: major(now, cur),
-          usual: major(usual, cur),
-          difference_from_usual: major(now - usual, cur),
-          months_before: c.totals.slice(1).map((v) => major(v, cur)),
+          this_month: money(now),
+          usual: money(usual, true),
+          vs_usual: now > usual ? 'above' : now < usual ? 'below' : 'same',
+          ...(now !== usual ? { difference_from_usual: money(Math.abs(now - usual)) } : {}),
+          months_before: c.totals.slice(1).map((v) => money(v)),
           ...(c.budget != null ? {
-            budget: major(c.budget, cur),
-            ...(now > c.budget ? { over_budget_by: major(now - c.budget, cur) } : { left_in_budget: major(c.budget - now, cur) }),
+            budget: money(c.budget),
+            ...(now > c.budget ? { over_budget_by: money(now - c.budget) } : { left_in_budget: money(c.budget - now) }),
           } : {}),
         }
       }),
@@ -274,6 +311,28 @@ export function summaryAsk(o: {
     },
     maxTokens: 700,
   }
+  return { ...ask, check: { currency: cur, locale, figures: [...figures] } }
+}
+
+// Spotting an amount in a written line: a number (digits, maybe grouped, maybe
+// with decimals) right beside the currency's symbol or ISO code, on either
+// side. Only the number is compared, so "€1.030,00" and "1.030,00 €" are the
+// same figure, while "€1030" or "€1,030" for "€1,030.00" are not.
+const NUMBER = String.raw`\d(?:[\d.,]*\d)?`
+const escapeRe = (v: string) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function currencyMarks(currency: string, locale: string): string[] {
+  const marks = new Set([currency])
+  for (const currencyDisplay of ['symbol', 'narrowSymbol'] as const) {
+    const part = new Intl.NumberFormat(locale, { style: 'currency', currency, currencyDisplay })
+      .formatToParts(1).find((p) => p.type === 'currency')
+    if (part) marks.add(part.value)
+  }
+  return [...marks]
+}
+export function moneyInLine(line: string, currency: string, locale: string): string[] {
+  const marks = currencyMarks(currency, locale).map(escapeRe).join('|')
+  const re = new RegExp(String.raw`(?:${marks})\s?(${NUMBER})|(?<![\d.,])(${NUMBER})\s?(?:${marks})`, 'gu')
+  return [...line.matchAll(re)].map((m) => m[1] ?? m[2])
 }
 
 // ---------------------------------------------------------------------------
@@ -320,13 +379,18 @@ export function amountToMinor(amount: unknown, currency: string): number | null 
 export interface Entry {
   kind: Kind; amount_minor: number; currency: string
   date: string | null; category_id: string | null; description: string | null
+  paid_from: PaidFrom | null
 }
 
 // parse_entry's answer → the fields the form gets, or null when it can't be
 // used (not understood, no usable amount). A date more than two years back or
 // one year ahead of `today`, or a category that isn't one of the caller's own
-// of that kind, is dropped (the form keeps its own) rather than trusted.
-export function normaliseEntry(json: any, o: { today: string; baseCurrency: string; categories: Category[] }): Entry | null {
+// of that kind, is dropped (the form keeps its own) rather than trusted; so is
+// a "Paid from" that isn't one of the choices offered (`paidFrom`), and any on
+// income (only expenses have it).
+export function normaliseEntry(json: any, o: {
+  today: string; baseCurrency: string; categories: Category[]; paidFrom: PaidFrom[]
+}): Entry | null {
   if (!json || json.understood !== true) return null
   const kind: Kind | null = json.kind === 'income' ? 'income' : json.kind === 'expense' ? 'expense' : null
   if (!kind) return null
@@ -344,6 +408,7 @@ export function normaliseEntry(json: any, o: { today: string; baseCurrency: stri
     date: date && offset >= -731 && offset <= 366 ? date : null,
     category_id: category?.id ?? null,
     description: cleanText(json.description, DESCRIPTION_MAX) || null,
+    paid_from: kind === 'expense' && o.paidFrom.includes(json.paid_from) ? json.paid_from : null,
   }
 }
 
@@ -363,10 +428,14 @@ export function normaliseSuggestions(json: any, merchants: Merchant[], categorie
 
 // month_summary's answer → 1–4 plain lines (bullets and markdown stripped,
 // each cut to SUMMARY_LINE_MAX at a word), or null when nothing usable is left.
-export function normaliseSummary(json: any): string[] | null {
+// A line quoting an amount that isn't one it was given, exactly as formatted
+// (`check`), is left out: "€1030" for "€1,030.00", or a sum of its own, never
+// reaches the card.
+export function normaliseSummary(json: any, check: FigureCheck): string[] | null {
+  const given = new Set(check.figures.flatMap((f) => moneyInLine(f, check.currency, check.locale)))
   const lines = (Array.isArray(json?.lines) ? json.lines : [])
     .map((l: unknown) => cleanText(l, 2000).replace(/^(?:[-*•·]\s*|\d{1,2}[.)]\s+)/, '').replace(/[*_`#]+/g, '').trim())
-    .filter(Boolean)
+    .filter((l: string) => l && moneyInLine(l, check.currency, check.locale).every((n) => given.has(n)))
     .slice(0, 4)
     .map((l: string) => {
       if (l.length <= SUMMARY_LINE_MAX) return l

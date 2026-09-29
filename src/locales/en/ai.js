@@ -14,7 +14,7 @@ export default {
     quickEntry: {
       label: 'Type to add',
       hint: 'On Add, “coffee 3.60 yesterday” fills in the form.',
-      more: 'Sent: the line you type and your category names.',
+      more: 'Sent: the line you type, your category names and, if you have more than the bank, which “Paid from” choices you have (savings, meal vouchers).',
     },
     importCategories: {
       label: 'Category ideas on import',
@@ -32,7 +32,7 @@ export default {
     label: 'Type it',
     placeholder: 'coffee 3.60 yesterday',
     fill: 'Fill',
-    more: 'Write it the way you’d say it. Claude (by Anthropic) fills in the form below; you check it and tap Save. Only this line and your category names are sent. To speak it, use the mic on your keyboard.',
+    more: 'Write it the way you’d say it. Claude (by Anthropic) fills in the form below; you check it and tap Save. Only this line, your category names and your “Paid from” choices are sent. To speak it, use the mic on your keyboard.',
     working: 'Filling in the form…',
     done: 'Filled in. Check it and tap Save.',
     undo: 'Undo',

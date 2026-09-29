@@ -170,7 +170,8 @@ export default function TransactionForm({
   }
 
   // Put a form state ({ kind, amount, currency, currencyPicked, categoryId,
-  // description, spentAt }) in place: Type it's fill, or Undo's way back.
+  // description, spentAt, paidFrom }) in place: Type it's fill, or Undo's way
+  // back.
   function putFields(f) {
     if (f.kind !== kind) pickKind(f.kind)
     setAmount(f.amount)
@@ -178,10 +179,11 @@ export default function TransactionForm({
     setCurrencyPicked(f.currencyPicked)
     changeDate(f.spentAt)
     setDescription(f.description)
+    setPaidFrom(f.paidFrom)
     setPendingCat({ id: f.categoryId, kind: f.kind })
   }
   function applyFill(entry) {
-    const current = { kind, amount, currency, currencyPicked, categoryId, description, spentAt }
+    const current = { kind, amount, currency, currencyPicked, categoryId, description, spentAt, paidFrom: from }
     const { next, marked } = fillPlan(entry, current)
     beforeFill.current ??= current
     putFields({ ...next, currencyPicked: currencyPicked || next.currency !== currency })
@@ -315,7 +317,10 @@ export default function TransactionForm({
   const savingsSwitches = (
     <>
       {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
-      {sources.length > 0 && <PaidFromChoice sources={sources} value={from} onChange={setPaidFrom} />}
+      {sources.length > 0 && (
+        <PaidFromChoice sources={sources} value={from} mark={marks.has('paidFrom') && <SuggestedMark />}
+          onChange={(v) => { setPaidFrom(v); unmark('paidFrom') }} />
+      )}
     </>
   )
   const otherFields = (

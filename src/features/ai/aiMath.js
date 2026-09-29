@@ -35,7 +35,9 @@ export function categoryLabels(categories, displayName) {
 // The server's entry → what the form sets, and which fields get the
 // "Suggested" mark. The amount is shown the way the form's own field shows it
 // (minor units → "3.60", "1800" for yen); a field the server left empty keeps
-// what the form had.
+// what the form had. "Paid from" (expenses only) is marked when it's anything
+// but the bank, or changed what the form had: the bank the line didn't
+// mention is no suggestion worth pointing at.
 export function fillPlan(entry, current) {
   const next = {
     kind: entry.kind,
@@ -44,11 +46,13 @@ export function fillPlan(entry, current) {
     spentAt: entry.date ?? current.spentAt,
     categoryId: entry.category_id ?? (entry.kind === current.kind ? current.categoryId : ''),
     description: entry.description ?? current.description,
+    paidFrom: entry.paid_from ?? current.paidFrom,
   }
   const marked = ['amount']
   if (entry.date) marked.push('date')
   if (entry.category_id) marked.push('category')
   if (entry.description) marked.push('description')
+  if (entry.paid_from && (entry.paid_from !== 'bank' || entry.paid_from !== current.paidFrom)) marked.push('paidFrom')
   return { next, marked }
 }
 

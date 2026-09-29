@@ -27,6 +27,28 @@ export function fmtMinor(minor: number, currency: string): string {
   return `${v} ${currency}`
 }
 
+// Money as the app shows it: the currency's symbol, a thousands separator
+// and exactly the currency's decimals, in `locale` ("€1,030.00", Greek
+// "1.030,00 €", "¥1,800"). The decimals come from our minor units, not ICU's
+// defaults: ICU shows HUF and IDR with 0 decimals although ISO 4217 (and our
+// storage) has 2, which would round 12.50 to "13". One copy: the client's
+// formatMoney (src/shared/lib/currency.js) is this with the app's locale, and
+// ai-helper hands the month summary its amounts formatted by it.
+export function formatMinor(minor: number, currency: string, locale?: string): string {
+  const digits = Math.log10(minorFactor(currency))
+  return new Intl.NumberFormat(locale, {
+    style: 'currency', currency, minimumFractionDigits: digits, maximumFractionDigits: digits,
+  }).format(Number(minor) / minorFactor(currency))
+}
+
+// The same rounded to whole units ("€2,793" for 2792.60), for estimates and
+// averages where cents would be noise.
+export function formatRoundedMinor(minor: number, currency: string, locale?: string): string {
+  return new Intl.NumberFormat(locale, {
+    style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(Math.round(Number(minor) / minorFactor(currency)))
+}
+
 // Convert a minor amount to the user's base currency using the rate captured
 // at entry time (never today's rate — that would rewrite history). The rate is
 // major-per-major, so we scale by the decimal-factor ratio to stay correct when

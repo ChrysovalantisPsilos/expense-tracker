@@ -776,7 +776,12 @@ entries. Check at 390px (light and dark, English and Greek) and desktop 1280.
    Expense, 3.60, the main currency, yesterday, a matching category and
    "coffee", each marked Suggested; "μισθός 2792 στις 28" fills Income,
    Salary, the 28th; "sushi ¥1800 last friday" fills JPY 1800 and last
-   Friday's date. Undo puts the form back. A line with no amount says it
+   Friday's date. With meal vouchers set up, "lunch 9 with meal vouchers" or
+   "sandwich 6 ticket restaurant" sets Paid from to Meal vouchers, marked
+   Suggested; with a savings category, "from savings 200 flight" sets
+   Savings; a line with no hint leaves Bank, unmarked. Without vouchers or a
+   savings category the line isn't asked about them (Paid from stays hidden).
+   Undo puts the form back, Paid from included. A line with no amount says it
    couldn't tell. Nothing is saved until Save.
 4. Import a statement with new merchants: under the review text, "Finding
    categories…", then "Suggested for n of m" and Suggested chips on the rows
@@ -787,12 +792,13 @@ entries. Check at 390px (light and dark, English and Greek) and desktop 1280.
 5. Month in plain words: Home's overview gets a Numbers | In words switch
    (This month only; none for last month, a year or all time, and none with
    the helper off). In words shows "✦ September in short" and 2–3 lines about
-   this month, written once, and the card is at least as tall as Numbers
-   (nothing below jumps); reload → the same text and the same side, no new
-   call. Add an entry → "Your totals changed since this was written." with
-   Update; Update writes a new one. Switch the language → it's rewritten in
-   that language. Insights has no summary. Turn the helper off → the switch
-   is gone and the stored summaries are gone.
+   this month, written once, every amount formatted as the app shows money
+   ("€1,030.00"; Greek "1.030,00 €"; the usual in whole units), and the card
+   is at least as tall as Numbers (nothing below jumps); reload → the same
+   text and the same side, no new call. Add an entry → "Your totals changed
+   since this was written." with Update; Update writes a new one. Switch the
+   language → it's rewritten in that language. Insights has no summary. Turn
+   the helper off → the switch is gone and the stored summaries are gone.
 6. Failures: with the key removed every helper says AI helpers aren't available, and
    Add, Import and Insights still work normally. The data export has
    "ai_month_summaries".

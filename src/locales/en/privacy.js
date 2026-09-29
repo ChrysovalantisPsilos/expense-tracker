@@ -97,7 +97,7 @@ export default {
       },
       ai: {
         name: 'AI helpers (optional)',
-        what: 'Only for the helpers you turn on in Settings → AI helpers: filling in a new entry from a line you type (the line and your category names are sent), suggesting categories for new merchants when you import a statement (the merchant names, whether money went in or out, and your category names), and a short summary of your month (your total per category for the month and the six before, and your budgets). Anthropic works out the answer; it only fills in or suggests things for you to check, and nothing is saved until you do. Your name, email, bank details, the amounts of single entries, descriptions and notes are never sent.',
+        what: 'Only for the helpers you turn on in Settings → AI helpers: filling in a new entry from a line you type (the line, your category names and which “Paid from” choices you have are sent), suggesting categories for new merchants when you import a statement (the merchant names, whether money went in or out, and your category names), and a short summary of your month (your total per category for the month and the six before, and your budgets). Anthropic works out the answer; it only fills in or suggests things for you to check, and nothing is saved until you do. Your name, email, bank details, the amounts of single entries, descriptions and notes are never sent.',
         basis: 'Consent (Art. 6(1)(a)). Every helper is off until you turn it on, and you can turn it off at any time; each change is kept in your consent history.',
       },
       security: {
