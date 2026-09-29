@@ -8,6 +8,37 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-09-29': {
+      plan: {
+        title: 'Plan: try it before you change it',
+        body: 'Plan is a sandbox for your recurring payments and income. Cancel, change or add one and see what it does to your month or year, with ideas to save, like two music services. Nothing real changes until you tap Apply, and you can undo it.',
+        chips: { cancel: 'Cancel Netflix', ideas: 'Ideas to save' },
+        action: 'Open Plan',
+      },
+      vouchers: {
+        title: 'Meal vouchers',
+        body: 'Get meal vouchers with your pay? Set an amount per working day, and public holidays in Belgium or Greece are left out. Home shows what’s on the card and the next top-up. An expense paid from vouchers counts as spending but doesn’t lower your Net.',
+        chips: { perDay: 'Per working day', topUp: 'Next top-up' },
+        action: 'Set up vouchers',
+      },
+      salary: {
+        title: 'Your salary, over the years',
+        body: 'A Your salary card on Insights shows your pay over time, your raises and extras like holiday pay and bonuses. See where it goes in 1 to 10 years if things go on, and how it keeps up with prices in Belgium or Greece.',
+        chips: { raises: 'Raises', prices: 'Against prices' },
+        action: 'See your salary',
+      },
+      ai: {
+        title: 'Optional AI helpers',
+        body: 'Four helpers, each off until you switch it on in Settings › AI helpers. Type it on Add fills in the form from a line like “coffee 3.60 yesterday”, Paid from too. Import suggests categories for new shops, Home’s overview can tell your month in words, and Plan takes a what-if in your own words. You check it all before it’s saved.',
+        chips: { typeIt: 'coffee 3.60 yesterday', suggested: 'Suggested' },
+        action: 'Open AI helpers',
+      },
+      more: {
+        title: 'And a few more',
+        body: 'Import skips entries already in your ledger. Tap a month in Insights’ Last 6 months to see it. Home’s overview shows how your Net adds up, and group spending counts in its category. Plus small polish across the app, an updated Privacy Notice for the AI helpers, and a fix so the app always updates itself.',
+        chips: { imports: 'Already added', months: 'Last 6 months' },
+      },
+    },
     '2026-09-27': {
       greek: {
         title: 'Budgeer in Greek',
