@@ -8,7 +8,7 @@ import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { isoDate, shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { perUnit } from './PlanParts.jsx'
+import { perUnit } from './planText.js'
 import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
 
 // Just applied: what happened, Undo, and until when. `amount` is the net a

@@ -11,7 +11,8 @@ import { signTone, textColor } from '../../shared/ui/kit/kitMath.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { applicable, asShown, effectOf, monthOf } from './planMath.js'
-import { PlanOnlyNote, itemName, perUnit } from './PlanParts.jsx'
+import { PlanOnlyNote } from './PlanParts.jsx'
+import { itemName, perUnit } from './planText.js'
 
 function Sheet({ children, onClose, label }) {
   return (

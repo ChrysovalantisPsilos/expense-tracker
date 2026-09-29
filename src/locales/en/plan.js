@@ -64,7 +64,7 @@ export default {
     overBudget: 'Over budget',
     biggest: 'Biggest saver',
   },
-  // A charge per the period it repeats (PlanParts.perUnit).
+  // A charge per the period it repeats (planText.perUnit).
   units: {
     daily: '{{amount}} a day',
     weekly: '{{amount}} a week',

@@ -23,8 +23,9 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { REPEAT_CHOICES, choiceToRule, frequencyLabel, ruleToChoice } from '../recurring/recurringMath.js'
 import { NAME_MAX, effectOf, monthOf, overlapPick, yearMinor } from './planMath.js'
 import {
-  PlanOnlyNote, SCROLL_CLEAR, SignalTag, editorId, ideaText, itemName, monthList, openerId, perUnit, serviceCount,
+  PlanOnlyNote, SCROLL_CLEAR, SignalTag, editorId, openerId,
 } from './PlanParts.jsx'
+import { ideaText, itemName, monthList, perUnit, serviceCount } from './planText.js'
 import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
 
 // Scroll the editor's item (the row or change with its editor, marked

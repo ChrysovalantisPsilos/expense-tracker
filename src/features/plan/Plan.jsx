@@ -19,8 +19,9 @@ import {
   setChange, setSalary, signalsFor, startOver, tryIdea, undoState, upsertAdd,
 } from './planMath.js'
 import {
-  ChangesPanel, IdeasStrip, ImpactHeader, PlanHint, PlanRow, SavedNote, WhatIfRow, changeKey, itemName,
+  ChangesPanel, IdeasStrip, ImpactHeader, PlanHint, PlanRow, SavedNote, WhatIfRow, changeKey,
 } from './PlanParts.jsx'
+import { itemName } from './planText.js'
 import { ApplySheet } from './PlanSheets.jsx'
 import { AddForm, EditForm, PickPanel } from './PlanEditors.jsx'
 import { AppliedBanner, AppliedNote, ClearDialog, RealityBanner, UndoDialog } from './PlanBanners.jsx'
