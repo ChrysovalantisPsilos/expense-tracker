@@ -1,7 +1,6 @@
 // Namespace `settings` (Greek).
 export default {
   title: 'Ρυθμίσεις',
-  backToSettings: 'Πίσω στις ρυθμίσεις',
   yourName: 'Το όνομά σου',
   sections: {
     profile: 'Προφίλ',

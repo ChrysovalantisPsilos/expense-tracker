@@ -9,7 +9,9 @@ export default {
   total: 'Total',
   spending: {
     title: 'Where your money went',
-    empty: 'No spending yet this month.',
+    empty: 'No spending in this month.',
+    allExpenses: 'All {{month}} expenses ›',
+    pickMonth: '{{month}}: {{amount}}. Show this month',
   },
   abroad: {
     title: 'Spending abroad',

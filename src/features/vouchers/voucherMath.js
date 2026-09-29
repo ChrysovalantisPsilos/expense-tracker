@@ -2,22 +2,23 @@
 // the top-ups since setup, what's on the card, and the next top-up.
 //
 // The settings are one document per account (0097, my_meal_vouchers):
-//   { v: 1, country: 'BE' | 'GR', per_day_minor, currency, topup_day (1–28),
+//   { v: 1, country: 'BE' | 'GR', per_day_minor, currency, topup_day (1–31),
 //     start_on: 'YYYY-MM-DD', start_balance_minor, days: { 'YYYY-MM': n } }
 // start_on / start_balance_minor are what was on the card when the user last
 // saved the setup ("On your card today"); every save starts again from there,
 // so a new amount per day never rewrites past top-ups. `days` holds the
 // months the user fixed ("Fix days": leave, sick days).
 //
-// A top-up lands on topup_day each month and pays for the working days of
-// the month before (Mon–Fri minus the country's public holidays). Top-ups
+// A top-up lands on topup_day each month (the month's last day when it's
+// shorter: 31 → 30 Sep, 28 Feb) and pays for the working days of the month
+// before (Mon–Fri minus the country's public holidays). Top-ups
 // after start_on count; so do expenses paid with vouchers dated start_on or
 // later. Dates are local calendar strings ('YYYY-MM-DD'); the maths runs in
 // UTC so the time zone never moves a day.
 import { toBaseMinor } from '../../shared/lib/currency.js'
 
 export const COUNTRIES = ['BE', 'GR']
-export const MAX_TOPUP_DAY = 28
+export const MAX_TOPUP_DAY = 31
 
 const pad = (n) => String(n).padStart(2, '0')
 const iso = (d) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
@@ -88,11 +89,14 @@ export function daysFor(settings, month) {
   return Number.isInteger(fixed) ? { days: fixed, auto, fixed: true } : { days: auto, auto, fixed: false }
 }
 
-// The top-up landing in `month` ('YYYY-MM'): on topup_day, for the month before.
+// The top-up landing in `month` ('YYYY-MM'): on topup_day (or the month's
+// last day), for the month before.
 function topUpIn(settings, month) {
   const worked = addMonths(month, -1)
   const { days, auto, fixed } = daysFor(settings, worked)
-  return { on: `${month}-${pad(settings.topup_day)}`, month: worked, days, auto, fixed, amount_minor: days * settings.per_day_minor }
+  const [y, m] = month.split('-').map(Number)
+  const day = Math.min(settings.topup_day, new Date(Date.UTC(y, m, 0)).getUTCDate())
+  return { on: `${month}-${pad(day)}`, month: worked, days, auto, fixed, amount_minor: days * settings.per_day_minor }
 }
 
 // Every top-up after start_on up to and including `today`, newest first.
@@ -104,6 +108,13 @@ export function topUpsSince(settings, today) {
     if (t.on > settings.start_on) out.push(t)
   }
   return out.reverse()
+}
+
+// The date the setup form shows for the top-up day (a calendar picks a
+// date; its day repeats every month): the next top-up, or with no setup yet
+// the 1st of next month.
+export function firstTopUpDate(settings, today) {
+  return settings ? nextTopUp(settings, today).on : `${addMonths(today.slice(0, 7), 1)}-01`
 }
 
 // The next top-up after `today`.

@@ -13,6 +13,7 @@ import PageHeader from '../../shared/ui/PageHeader.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 import TrendBars from '../../shared/ui/kit/TrendBars.jsx'
+import { withLedgerParams } from '../transactions/ledgerLinks.js'
 import ConversionRow from '../../shared/ui/kit/ConversionRow.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
@@ -24,7 +25,7 @@ import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Ske
 import { useTransactions, oldestTransactionDate } from '../transactions/useData.js'
 import { linkBuckets } from '../categories/categoryLinks.js'
 import { useSavingsIds } from '../categories/categories.js'
-import { lastMonths } from '../../shared/lib/dates.js'
+import { lastMonths, monthHeading } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, minorFactor } from '../../shared/lib/currency.js'
 import { spendRows } from '../../shared/lib/spread.js'
@@ -60,18 +61,22 @@ export default function Insights() {
     [rows, baseCurrency, from, to, separateYearly, salaryShift])
   const failed = error ? <QueryError error={error} onRetry={reload} what={t('what')} /> : null
   const thisMonth = months[months.length - 1].key
+  // The month "Where your money went" splits: this one, or the bar tapped.
+  const [picked, setPicked] = useState(months.length - 1)
+  const month = months[picked]
+  const monthLabel = picked === months.length - 1 ? t('thisMonth') : monthHeading(month.key)
 
   // Trend values are major units (chart axis); `money` converts back to minor.
   const factor = minorFactor(baseCurrency)
   const money = (major) => formatMoney(Math.round(major * factor), baseCurrency)
   const trend = useMemo(
     () => buildTrend(spend, months, baseCurrency, savingsIds), [spend, months, baseCurrency, savingsIds])
-  // Each legend entry drills down to this month's expenses in it (a group share
+  // Each legend entry drills down to the month's expenses in it (a group share
   // to its group); the folded "Other" merges several buckets, so it has no link.
   const shares = useMemo(() => linkBuckets(
-    spendingShares(spend, thisMonth, baseCurrency), spend,
-    { ...months[months.length - 1], label: t('thisMonth') },
-  ), [spend, months, thisMonth, baseCurrency, t])
+    spendingShares(spend, month.key, baseCurrency), spend, { ...month, label: monthLabel },
+  ), [spend, month, monthLabel, baseCurrency])
+  const monthLink = `/transactions?${withLedgerParams(new URLSearchParams(), { type: 'expense', from: month.from, to: month.to })}`
   // Spending abroad lists actual payments (each at its own rate), not shares.
   const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
   // Nothing ever logged (null; undefined while unknown): the statement export
@@ -82,7 +87,8 @@ export default function Insights() {
   return (
     <Stack spacing={5}>
       <PageHeader title={t('title')} />
-      <SpendingCard loading={loading} failed={failed} shares={shares} trend={trend} money={money} />
+      <SpendingCard loading={loading} failed={failed} shares={shares} trend={trend} money={money}
+        picked={picked} onPick={setPicked} monthLabel={monthLabel} monthName={monthHeading(month.key)} monthLink={monthLink} />
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}
       <IncomeCard loading={loading} failed={failed} trend={trend} money={money} />
       <NetWorthCard baseCurrency={baseCurrency} />
@@ -154,12 +160,13 @@ function NetWorthSkeleton() {
 }
 
 // ── Where your money went ───────────────────────────────────────────────────
-// This month's spending split by category, then six months of spending.
-function SpendingCard({ loading, failed, shares, trend, money }) {
+// A month's spending split by category — this month, or the one tapped in
+// the six-month bars below — with a link to that month's expenses.
+function SpendingCard({ loading, failed, shares, trend, money, picked, onPick, monthLabel, monthName, monthLink }) {
   const t = useT('insights')
-  const latest = trend[trend.length - 1]
+  const shown = trend[picked]
   return (
-    <Panel title={t('spending.title')} subtitle={t('thisMonth')}>
+    <Panel title={t('spending.title')} subtitle={monthLabel}>
       {failed ? failed : loading ? <SpendingSkeleton /> : (
         <Stack spacing={5}>
           {shares.length === 0 ? (
@@ -168,14 +175,20 @@ function SpendingCard({ loading, failed, shares, trend, money }) {
             <Box>
               <StackedBar items={shares} />
               <ShareLegend items={shares} mt={3} />
+              <Text as={RouterLink} to={monthLink} display="inline-block" mt={3} fontSize="sm"
+                color="accent.fg" fontWeight="600">
+                {t('spending.allExpenses', { month: monthName })}
+              </Text>
             </Box>
           )}
           {hasTrendData(trend) && (
             <Box>
-              <SectionLabel mb={3} aside={`${latest.label}: ${money(latest.expense)}`}>
+              <SectionLabel mb={3} aside={`${shown.label}: ${money(shown.expense)}`}>
                 {t('lastMonths')}
               </SectionLabel>
-              <TrendBars bars={trend.map((m) => ({ label: m.label, value: m.expense }))} />
+              <TrendBars current={picked} onPick={onPick} bars={trend.map((m) => ({
+                label: m.label, value: m.expense, ariaLabel: t('spending.pickMonth', { month: m.label, amount: money(m.expense) }),
+              }))} />
             </Box>
           )}
         </Stack>

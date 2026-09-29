@@ -8,7 +8,9 @@ export default {
   total: 'Σύνολο',
   spending: {
     title: 'Πού πήγαν τα χρήματά σου',
-    empty: 'Κανένα έξοδο ακόμα αυτόν τον μήνα.',
+    empty: 'Κανένα έξοδο σε αυτόν τον μήνα.',
+    allExpenses: 'Όλα τα έξοδα: {{month}} ›',
+    pickMonth: '{{month}}: {{amount}}. Δείξε αυτόν τον μήνα',
   },
   abroad: {
     title: 'Έξοδα στο εξωτερικό',

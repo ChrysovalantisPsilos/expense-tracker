@@ -6114,7 +6114,7 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 99. 0097: the meal voucher setup. Saved encrypted and read back by its
+-- 99. 0097/0098: the meal voucher setup (top-up day 1–31). Saved encrypted and read back by its
 --     owner only; the table is closed to clients (no grants) and the RPCs to
 --     anon; a malformed setup is refused; null turns vouchers off; the owner
 --     guard files a row under the caller whatever user_id is written.
@@ -6137,13 +6137,19 @@ begin
     execute 'set local role authenticated';
     perform public.save_meal_vouchers(doc);
     if public.my_meal_vouchers() is distinct from doc then execute 'reset role'; raise exception 'setup not read back'; end if;
+    -- 0098: any day of the month (a shorter month uses its last day).
+    perform public.save_meal_vouchers(doc || '{"topup_day": 31}');
+    if public.my_meal_vouchers()->'topup_day' is distinct from '31'::jsonb then
+      execute 'reset role'; raise exception 'top-up day 31 refused';
+    end if;
+    perform public.save_meal_vouchers(doc);
     begin
       select count(*) into n from public.meal_vouchers;
       execute 'reset role'; raise exception 'GUARD_MISSED: clients can read meal_vouchers';
     exception when insufficient_privilege then null; end;
     foreach bad in array array[
       doc || '{"country": "FR"}', doc || '{"per_day_minor": 0}', doc || '{"per_day_minor": "800"}',
-      doc || '{"topup_day": 29}', doc || '{"start_on": "2026-02-30"}', doc || '{"start_balance_minor": -1}',
+      doc || '{"topup_day": 32}', doc || '{"topup_day": 0}', doc || '{"start_on": "2026-02-30"}', doc || '{"start_balance_minor": -1}',
       doc || '{"days": {"2026-13": 3}}', doc || '{"days": {"2026-09": 40}}', doc || '{"x": 1}',
       doc || '{"v": 2}', doc - 'currency', '[1]'::jsonb] loop
       begin

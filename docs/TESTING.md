@@ -640,9 +640,11 @@ on the card) and a few lunches and groceries paid with vouchers. Check at
 390px (light and dark, English and Greek), desktop 1280 and sideways.
 
 1. Settings → Meal vouchers: the switch, amount per working day (required),
-   working days (Belgian or Greek holidays), top-up day (1–28, "for last
-   month's working days"), what's on the card today. Save → the Meal vouchers
-   page; Settings shows the row between Monthly spending and Notifications.
+   working days (Belgian or Greek holidays), the next top-up picked on a
+   calendar (its day repeats monthly; 31 lands on a shorter month's last
+   day), what's on the card today. Save → the Meal vouchers page (opened from
+   its ⚙ button: back to it). Back returns to where the page was opened
+   from. Settings shows the row between Monthly spending and Notifications.
 2. Home: the Meal vouchers card sits under the totals (only with a setup):
    what's on the card and "+€X on <day>" with "<month> · N working days ×
    €8.00"; the › opens the page. Without a setup there's no card.
@@ -665,4 +667,10 @@ on the card) and a few lunches and groceries paid with vouchers. Check at
 6. Switch meal vouchers off in Settings → the Home card goes; the expenses
    keep their flag. Back up and restore into an empty account → the setup
    and the flag come back. The data export includes the setup.
+7. Import the same bank statement twice → the second import adds nothing
+   ("already there"), even when the rows' descriptions were saved in an
+   older format; a row with a new date, amount or currency still imports.
+8. Insights: tap a month in "Last 6 months" → that bar lights up, "Where your
+   money went" shows that month (its name as the subtitle) with "All <month>
+   expenses ›" opening Transactions filtered to it.
 

@@ -11,9 +11,10 @@ import { displayDescription } from './kbcLabels.js'
 // Pure helpers (parsing, drafts, deterministic identity) live in
 // importMath.js so they're unit-testable.
 import {
-  cleanHolderName, deterministicUuid, groupMerchants, ruleCategory, rowToDraft, signedConvention,
+  cleanHolderName, deterministicUuid, dropKnownRows, groupMerchants, ruleCategory, rowToDraft, signedConvention,
 } from './importMath.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
+import { listTransactions } from '../transactions/useData.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 
@@ -229,4 +230,16 @@ export async function importTransactions(rows, onProgress) {
     onProgress?.(Math.min(i + 500, rows.length), rows.length)
   }
   return { inserted, duplicates: rows.length - inserted }
+}
+
+// Save a statement's rows, leaving out the ones the account already holds
+// (dropKnownRows, against the entries in the file's date range) and then any
+// the server finds by id. Returns { inserted, duplicates }.
+export async function importNewTransactions(rows, onProgress) {
+  if (!rows.length) return { inserted: 0, duplicates: 0 }
+  const dates = rows.map((r) => r.spent_at).sort()
+  const existing = await listTransactions({ from: dates[0], to: dates[dates.length - 1] })
+  const { rows: fresh, known } = dropKnownRows(rows, existing)
+  const res = await importTransactions(fresh, onProgress)
+  return { inserted: res.inserted, duplicates: res.duplicates + known }
 }

@@ -1,7 +1,6 @@
 // Namespace `settings`: Settings and its sub-pages (src/features/settings).
 export default {
   title: 'Settings',
-  backToSettings: 'Back to settings',
   yourName: 'Your name',
   sections: {
     profile: 'Profile',

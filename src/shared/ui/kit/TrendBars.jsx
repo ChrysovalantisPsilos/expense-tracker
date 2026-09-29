@@ -8,15 +8,21 @@ import { playProps, trendHeights } from './kitMath.js'
 //   bars    [{ label: 'Sep', value: number }] — value in any unit (minor ok)
 //   current index of the highlighted column
 //   h       chart height; playback grows the columns in
+//   onPick  makes each column a button: onPick(index) picks that period
+//           (its `aria-label` from bars[i].ariaLabel, `current` pressed)
 // Put the headline ("Sep: €1,635.00") in a SectionLabel's `aside` above it.
-export default function TrendBars({ bars, current = bars.length - 1, h = '110px', playback, ...props }) {
+export default function TrendBars({ bars, current = bars.length - 1, h = '110px', playback, onPick, ...props }) {
   const heights = trendHeights(bars.map((b) => b.value))
   return (
     <HStack align="end" spacing={{ base: 2, md: 3 }} h={h} {...props}>
       {bars.map((b, i) => {
         const now = i === current
         return (
-          <Flex key={b.label} direction="column" align="center" justify="end" flex="1" h="full" gap={1.5}>
+          <Flex key={b.label} direction="column" align="center" justify="end" flex="1" h="full" gap={1.5}
+            {...(onPick ? {
+              as: 'button', type: 'button', onClick: () => onPick(i), 'aria-pressed': now, 'aria-label': b.ariaLabel,
+              borderRadius: 'md', _focusVisible: { boxShadow: 'outline' }, cursor: 'pointer',
+            } : {})}>
             <MotionBox w="full" maxW="36px" borderTopRadius="md" borderBottomRadius="sm"
               bg={now ? 'brand.500' : 'brand.100'}
               _dark={{ bg: now ? 'brand.400' : 'sand.600' }}

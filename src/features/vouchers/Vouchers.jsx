@@ -31,7 +31,7 @@ export default function Vouchers() {
   const t = useT('vouchers')
   const { settings, loading, error, reload } = useMealVouchers()
   const header = <PageHeader title={t('title')} action={
-    <IconButton as={RouterLink} to="/settings/vouchers" size="sm" variant="ghost" aria-label={t('settingsLink')}
+    <IconButton as={RouterLink} to="/settings/vouchers" state={{ from: 'vouchers' }} size="sm" variant="ghost" aria-label={t('settingsLink')}
       icon={<Settings2 size={18} />} />
   } />
   let body
@@ -41,7 +41,7 @@ export default function Vouchers() {
     body = (
       <Panel>
         <EmptyState title={t('title')} text={t('setup.lead')}
-          actions={<Button as={RouterLink} to="/settings/vouchers">{t('setup.start')}</Button>} />
+          actions={<Button as={RouterLink} to="/settings/vouchers" state={{ from: 'vouchers' }}>{t('setup.start')}</Button>} />
       </Panel>
     )
   } else body = <Card settings={settings} />

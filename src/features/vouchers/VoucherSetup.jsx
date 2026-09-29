@@ -4,9 +4,9 @@
 // card today. Saving starts the card's count again from today
 // (voucherMath.newSettings); switching off removes the setup.
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  Button, FormControl, FormErrorMessage, FormHelperText, FormLabel, HStack, Select, Stack, Switch, useToast,
+  Button, FormControl, FormErrorMessage, FormHelperText, FormLabel, HStack, Input, Select, Stack, Switch, useToast,
 } from '@chakra-ui/react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
@@ -19,10 +19,9 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import SettingsPage from '../settings/SettingsPage.jsx'
-import { COUNTRIES, MAX_TOPUP_DAY, newSettings } from './voucherMath.js'
+import useGoBack from '../../shared/ui/useGoBack.js'
+import { COUNTRIES, firstTopUpDate, newSettings } from './voucherMath.js'
 import { saveMealVouchers, useMealVouchers, useVoucherCard } from './vouchers.js'
-
-const DAYS = Array.from({ length: MAX_TOPUP_DAY }, (_, i) => i + 1)
 
 export default function VoucherSetup() {
   const t = useT('vouchers')
@@ -43,13 +42,16 @@ function SetupForm({ settings, balance }) {
   const t = useT('vouchers')
   const toast = useToast()
   const navigate = useNavigate()
+  const fromCard = useLocation().state?.from === 'vouchers'
+  const back = useGoBack('/settings')
   const { user } = useAuth()
   const { baseCurrency } = useProfile()
   const currency = settings?.currency ?? baseCurrency
   const [on, setOn] = useState(!!settings)
   const [perDay, setPerDay] = useState(settings ? minorToInput(settings.per_day_minor, currency) : '')
   const [country, setCountry] = useState(settings?.country ?? 'BE')
-  const [topUpDay, setTopUpDay] = useState(settings?.topup_day ?? 1)
+  // Picked on a calendar as the next top-up's date; its day repeats monthly.
+  const [topUpOn, setTopUpOn] = useState(firstTopUpDate(settings, today()))
   const [onCard, setOnCard] = useState(minorToInput(Math.max(balance, 0), currency))
   const [tried, setTried] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -63,16 +65,19 @@ function SetupForm({ settings, balance }) {
     try {
       if (on) {
         const next = newSettings({
-          country, per_day_minor: perDayMinor, currency, topup_day: topUpDay,
+          country, per_day_minor: perDayMinor, currency, topup_day: Number(topUpOn.slice(8, 10)),
           balance_minor: Number(onCard) > 0 ? toMinor(onCard, currency) : 0,
         }, settings, today())
         await saveMealVouchers(user.id, next)
         toast({ title: t('setup.saved'), status: 'success' })
-        navigate('/vouchers')
+        // Back to the card when it opened this page; from Settings, on to the
+        // card in this page's place (so its back leads to Settings).
+        if (fromCard) navigate(-1)
+        else navigate('/vouchers', { replace: true })
       } else {
         await saveMealVouchers(user.id, null)
         toast({ title: t('setup.off'), description: settings ? t('setup.offHint') : undefined, status: 'success' })
-        navigate('/settings')
+        back()
       }
     } catch (err) {
       toast(saveErrorToast(err))
@@ -104,11 +109,10 @@ function SetupForm({ settings, balance }) {
             </Select>
           </FormControl>
           <FormControl>
-            <FormLabel>{t('setup.topUpDay')}</FormLabel>
-            <Select value={topUpDay} maxW="260px" onChange={(e) => setTopUpDay(Number(e.target.value))}>
-              {DAYS.map((d) => <option key={d} value={d}>{t('setup.topUpDayOption', { day: d })}</option>)}
-            </Select>
-            <FormHelperText>{t('setup.topUpDayHint')}</FormHelperText>
+            <FormLabel htmlFor="vouchers-topup">{t('setup.topUpDate')}</FormLabel>
+            <Input id="vouchers-topup" type="date" value={topUpOn} maxW="220px"
+              onChange={(e) => { if (e.target.value) setTopUpOn(e.target.value) }} />
+            <FormHelperText>{t('setup.topUpDateHint')}</FormHelperText>
           </FormControl>
           <FormControl>
             <FormLabel>{t('setup.balance')}</FormLabel>

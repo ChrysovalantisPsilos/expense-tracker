@@ -6,7 +6,7 @@ import {
   FormControl, FormLabel, SimpleGrid, Button, Menu, MenuButton, MenuList, MenuItem,
 } from '@chakra-ui/react'
 import {
-  FileSpreadsheet, MoreHorizontal, Plus, ReceiptText, Search, SlidersHorizontal, X,
+  FileSpreadsheet, MoreHorizontal, Plus, ReceiptText, Search, SlidersHorizontal, Wallet, X,
 } from 'lucide-react'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import BackButton from '../../shared/ui/BackButton.jsx'
@@ -229,7 +229,9 @@ export default function LedgerPage() {
               {search}
               {filterFields}
             </Box>
-            <CardHeader icon={ReceiptText} title={head.title} divider subtitle={summary} action={clear} />
+            {/* Income wears Home's green wallet; expenses and all, the receipt. */}
+            <CardHeader icon={type === 'income' ? Wallet : ReceiptText} iconTone={type === 'income' ? 'positive' : undefined}
+              title={head.title} divider subtitle={summary} action={clear} />
           </>
         )}
         {error ? <QueryError error={error} onRetry={reload} what={t('ledger.what')} /> : loading ? (

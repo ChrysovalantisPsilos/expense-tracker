@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   merchantKey, merchantName, groupMerchants, rowMerchantName, isOwnTransfer, rowToDraft, previewDrafts, parseAmount,
   parseDate, deterministicUuid, normalizeCurrency, cleanHolderName, suggestedHolder, fileHolder,
-  merchantGroups, groupIdOf, ruleCategory, descriptionParts,
+  merchantGroups, groupIdOf, ruleCategory, descriptionParts, dropKnownRows,
 } from '../src/features/import/importMath.js'
 import { displayDescription, kbcLabel, titleCase } from '../src/features/import/kbcLabels.js'
 
@@ -504,4 +504,27 @@ test('importedRange: the first and last day of the imported entries, or null', a
   ]), { from: '2026-01-02', to: '2026-07-25' })
   assert.equal(importedRange([]), null)
   assert.equal(importedRange(undefined), null)
+})
+
+test('dropKnownRows: a row the ledger already holds is left out, whatever its text', () => {
+  const row = (spent_at, amount_minor, extra = {}) =>
+    ({ kind: 'expense', spent_at, amount_minor, currency: 'EUR', description: 'x', ...extra })
+  // Saved on an earlier import with the full bank text; the file now reads shorter.
+  const existing = [
+    row('2026-05-14', 3100, { description: 'PAYMENT VIA BANCONTACT … LIDL 1153 LEUVEN …' }),
+    row('2026-05-14', 3200, { kind: 'income' }), row('2026-05-14', 3200, { kind: 'income' }),
+    row('2026-05-20', 900, { group_expense_id: 'g1' }), // a group share isn't a bank line
+  ]
+  const file = [
+    row('2026-05-14', 3100, { description: 'Lidl · Leuven' }),
+    row('2026-05-14', 3200, { kind: 'income' }), row('2026-05-14', 3200, { kind: 'income' }),
+    row('2026-05-14', 3200, { kind: 'income' }), // a third one is new
+    row('2026-05-20', 900),
+    row('2026-05-14', 3100, { currency: 'USD' }),
+  ]
+  const { rows, known } = dropKnownRows(file, existing)
+  assert.equal(known, 3)
+  assert.deepEqual(rows.map((r) => `${r.kind} ${r.amount_minor} ${r.currency}`),
+    ['income 3200 EUR', 'expense 900 EUR', 'expense 3100 USD'])
+  assert.deepEqual(dropKnownRows(file, []).rows, file)
 })

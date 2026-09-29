@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import {
-  SimpleGrid, Flex, Text, Stack, HStack, IconButton, Button,
+  SimpleGrid, Box, Flex, Text, Stack, HStack, IconButton, Button,
   Table, Thead, Tbody, Tr, Th, Td, Tooltip as CkTooltip, Select, Link,
 } from '@chakra-ui/react'
 import { ChartBarDecreasing, ChevronDown, ChevronUp, PiggyBank, Table as TableIcon, ReceiptText, Users, Wallet } from 'lucide-react'
@@ -30,6 +30,7 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { CardEmptyState } from '../../shared/ui/EmptyState.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
+import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
@@ -54,6 +55,7 @@ const VIEW_KEY = STORAGE_KEYS.overviewView
 export default function Dashboard() {
   const t = useT('dashboard')
   const tc = useT()
+  const navigate = useNavigate()
   // What a card that needs the transactions shows when they couldn't load.
   const unavailable = <Text color="text.muted" fontSize="sm">{t('unavailable')}</Text>
   const { baseCurrency, separateYearly, salaryShift } = useProfile()
@@ -163,15 +165,14 @@ export default function Dashboard() {
           <SimpleGrid columns={2} spacing={2}>
             <BalanceTile size="md" label={t('overview.income')} value={formatMoney(earnedTotal, baseCurrency)} tone="positive" />
             <BalanceTile size="md" label={t('overview.net')} value={net.text} tone={net.tone} />
-            {/* Savings aren't income (those taken from it lower the net): a quiet
-                line says what was put aside, both kinds, and opens Savings. */}
+            {/* Savings aren't income (those taken from it lower the net): a row
+                says what was put aside, both kinds, and opens Savings — the
+                same row as Insights' Savings account line. */}
             {saved && (
-              <HStack as={RouterLink} to="/savings" gridColumn="span 2" justifySelf="start" spacing={1.5} px={1}
-                color="text.muted" borderRadius="md" _hover={{ color: 'accent.fg' }}
-                _focusVisible={{ boxShadow: 'outline' }}>
-                <PiggyBank size={14} aria-hidden />
-                <Text fontSize="xs">{saved} ›</Text>
-              </HStack>
+              <Box gridColumn="span 2">
+                <ItemRow icon={PiggyBank} title={saved} onClick={() => navigate('/savings')} py={1}
+                  meta={<Text as="span" color="accent.fg" fontWeight="600">{t('insights:netWorth.seeSavings')}</Text>} />
+              </Box>
             )}
           </SimpleGrid>
         </SimpleGrid>

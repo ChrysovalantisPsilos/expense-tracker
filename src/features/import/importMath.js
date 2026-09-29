@@ -627,6 +627,32 @@ export function previewDrafts(rows, mapping, baseCurrency, limit = 6) {
   return out
 }
 
+// Statement rows the ledger already holds, whatever text they were saved
+// with: a row is known when the account has an entry of the same kind, date,
+// amount and currency, counted as a multiset (two identical coffees in the
+// file against one in the account import exactly one). The deterministic id
+// below catches a plain re-import; this also catches one made after the app
+// reads a bank's text differently (a new description format gives the same
+// line a new id). Group shares are left out: they aren't bank lines.
+// Returns { rows (to save), known (how many were dropped) }.
+const statementKey = (t) => `${t.kind}|${t.spent_at}|${Number(t.amount_minor)}|${t.currency}`
+export function dropKnownRows(rows, existing) {
+  const have = new Map()
+  for (const t of existing) {
+    if (t.group_expense_id) continue
+    const k = statementKey(t)
+    have.set(k, (have.get(k) ?? 0) + 1)
+  }
+  const kept = []
+  let known = 0
+  for (const t of rows) {
+    const k = statementKey(t)
+    const left = have.get(k) ?? 0
+    if (left > 0) { have.set(k, left - 1); known++ } else kept.push(t)
+  }
+  return { rows: kept, known }
+}
+
 // Deterministic row identity: the same statement line always maps to the same
 // client_uuid, so re-importing a file (or an overlapping export) never
 // duplicates — the (user_id, client_uuid) unique constraint absorbs it.

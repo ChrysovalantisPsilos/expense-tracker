@@ -17,7 +17,7 @@ import { useCategories } from '../transactions/useData.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, parseManualRate } from '../../shared/lib/currency.js'
 import {
-  parseWorkbook, buildTransactions, importTransactions, listRules, saveRule, rememberMapping,
+  parseWorkbook, buildTransactions, importNewTransactions, listRules, saveRule, rememberMapping,
   rememberedHolder, rememberHolder,
 } from './importExpenses.js'
 import {
@@ -139,7 +139,8 @@ export default function ImportExpenses() {
   }
 
   // Apply review choices (as both this-import categories and saved rules),
-  // then insert. Duplicate-proof: re-imports are skipped server-side.
+  // then insert. Duplicate-proof: rows the ledger already holds are left out
+  // (importNewTransactions), and a re-import is skipped server-side too.
   async function finishImport(valid, merchants, errors, skipped, assignments, groups) {
     await run(async () => {
       const chosen = new Map(Object.entries(assignments).filter(([, catId]) => catId))
@@ -152,7 +153,7 @@ export default function ImportExpenses() {
         const catId = chosen.get(groupIdOf(t, merchants))
         return catId ? { ...t, category_id: catId } : t
       })
-      const { inserted, duplicates } = await importTransactions(withCats)
+      const { inserted, duplicates } = await importNewTransactions(withCats)
       const own = skipped.filter((s) => s.reason === 'own transfer').length
       setResult({
         inserted, duplicates, failed: errors.length, errors: errors.slice(0, 10),

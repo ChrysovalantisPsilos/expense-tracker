@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   westernEaster, orthodoxEaster, publicHolidays, workingDays, addMonths, daysFor, topUpsSince, nextTopUp,
-  voucherSummary, voucherHistory, newSettings, withDays, normaliseSettings,
+  voucherSummary, voucherHistory, newSettings, withDays, normaliseSettings, firstTopUpDate,
 } from '../src/features/vouchers/voucherMath.js'
 
 const day = (d) => d.toISOString().slice(0, 10)
@@ -105,7 +105,20 @@ test('a setup from a backup: kept when it has the server\'s shape', () => {
   assert.deepEqual(normaliseSettings({ ...S, extra: 1, days: { '2026-09': 20, '2026-13': 3, x: 1, '2026-08': 40 } }),
     { ...S, days: { '2026-09': 20 } })
   for (const bad of [null, [], 'x', { ...S, country: 'FR' }, { ...S, per_day_minor: 0 }, { ...S, per_day_minor: 8.5 },
-    { ...S, currency: 'eur' }, { ...S, topup_day: 29 }, { ...S, start_on: '2026-02-30' }, { ...S, start_balance_minor: -1 }]) {
+    { ...S, currency: 'eur' }, { ...S, topup_day: 32 }, { ...S, topup_day: 0 }, { ...S, start_on: '2026-02-30' }, { ...S, start_balance_minor: -1 }]) {
     assert.equal(normaliseSettings(bad), null, JSON.stringify(bad))
   }
+})
+
+test('a top-up day past a month\'s end lands on its last day', () => {
+  const late = { ...S, topup_day: 31, start_on: '2026-01-15' }
+  assert.deepEqual(topUpsSince(late, '2026-04-30').map((x) => x.on), ['2026-04-30', '2026-03-31', '2026-02-28', '2026-01-31'])
+  assert.equal(nextTopUp(late, '2026-09-29').on, '2026-09-30')
+  assert.equal(nextTopUp(late, '2026-09-30').on, '2026-10-31')
+  assert.equal(normaliseSettings(late).topup_day, 31)
+})
+
+test('the setup form\'s top-up date: the next top-up, or the 1st of next month', () => {
+  assert.equal(firstTopUpDate(S, '2026-09-29'), '2026-10-05')
+  assert.equal(firstTopUpDate(null, '2026-12-10'), '2027-01-01')
 })
