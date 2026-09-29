@@ -193,13 +193,13 @@ export default function Dashboard() {
       <Panel data-tour="categories" icon={ChartBarDecreasing} title={t('categories.title')} action={
           <HStack spacing={1} bg="bg.subtle" p={1} borderRadius="lg">
             <CkTooltip label={t('categories.chart')}>
-              <IconButton aria-label={t('categories.chartView')} size="xs" icon={<ChartBarDecreasing size={15} />}
+              <IconButton aria-label={t('categories.chartView')} size="xs" w="42px" icon={<ChartBarDecreasing size={15} />}
                 variant={view !== 'table' ? 'solid' : 'ghost'}
                 colorScheme={view !== 'table' ? 'brand' : 'gray'}
                 onClick={() => chooseView('chart')} />
             </CkTooltip>
             <CkTooltip label={t('categories.table')}>
-              <IconButton aria-label={t('categories.tableView')} size="xs" icon={<TableIcon size={15} />}
+              <IconButton aria-label={t('categories.tableView')} size="xs" w="42px" icon={<TableIcon size={15} />}
                 variant={view === 'table' ? 'solid' : 'ghost'}
                 colorScheme={view === 'table' ? 'brand' : 'gray'}
                 onClick={() => chooseView('table')} />

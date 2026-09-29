@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Stack, Text, Button, List, ListItem, Switch, Tag, Flex, Box, Modal, ModalOverlay,
+  Stack, Text, Button, List, ListItem, Switch, Tag, Box, Modal, ModalOverlay,
   ModalContent, ModalHeader, ModalBody, ModalFooter, Tabs, TabList, Tab, TabPanels, TabPanel, useToast,
   SimpleGrid,
 } from '@chakra-ui/react'
@@ -10,6 +10,7 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
+import MetaLine from '../../shared/ui/MetaLine.jsx'
 import EmptyState from '../../shared/ui/EmptyState.jsx'
 import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -169,7 +170,7 @@ export default function Recurring() {
 function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
   const t = useT('recurring')
   return (
-    <ItemRow py={2.5} dimmed={!r.is_active}
+    <ItemRow py={2.5} dimmed={!r.is_active} onClick={onEdit}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
       title={r.description || categoryDisplayName(r.categories) || t(`kinds.${r.kind === 'income' ? 'income' : 'expense'}`)}
       meta={<RuleMeta rule={r} />}
@@ -196,20 +197,22 @@ function RuleMeta({ rule: r }) {
   const { separateYearly } = useProfile()
   const share = separateYearly ? null : monthlyBudgetShare(r)
   return (
-    <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted">
+    <MetaLine>
       <Text whiteSpace="nowrap">{frequencyLabel(r)}</Text>
-      <Text whiteSpace="nowrap">· {t('row.next', { date: shortDate(r.next_run) })}</Text>
+      <Text whiteSpace="nowrap">{t('row.next', { date: shortDate(r.next_run) })}</Text>
       {share && (
         <Text whiteSpace="nowrap">
-          · {share.exact ? '' : '≈ '}{t('row.budgetShare', { amount: formatMoney(share.perMonth, r.currency) })}
+          {share.exact ? '' : '≈ '}{t('row.budgetShare', { amount: formatMoney(share.perMonth, r.currency) })}
         </Text>
       )}
       {r.remind_days_before != null && (
-        <Tag size="sm" colorScheme="brand" borderRadius="full" px={2}>
-          <Bell size={10} style={{ marginRight: 3 }} /> {t('row.remindDays', { days: r.remind_days_before })}
-        </Tag>
+        <MetaLine.Bare>
+          <Tag size="sm" colorScheme="brand" borderRadius="full" px={2}>
+            <Bell size={10} style={{ marginRight: 3 }} /> {t('row.remindDays', { days: r.remind_days_before })}
+          </Tag>
+        </MetaLine.Bare>
       )}
-      {!r.is_active && <Tag size="sm" borderRadius="full">{t('row.paused')}</Tag>}
-    </Flex>
+      {!r.is_active && <MetaLine.Bare><Tag size="sm" borderRadius="full">{t('row.paused')}</Tag></MetaLine.Bare>}
+    </MetaLine>
   )
 }

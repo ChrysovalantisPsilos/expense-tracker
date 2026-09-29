@@ -32,7 +32,7 @@ export default {
     text: 'Set a monthly cap per category and Budgeer shows how close you are as you spend.',
     first: 'Set your first budget',
   },
-  hint: 'Tap a budget to see what you spent and change it.',
+  hint: 'Tap a budget to see or change it.',
   rollover: 'Budgets roll over until you change them. Edit or delete one and this month gets its own.',
   edit: 'Edit {{name}} budget',
   delete: 'Delete {{name}} budget',

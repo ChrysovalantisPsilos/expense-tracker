@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { Outlet, Link as RouterLink, useLocation } from 'react-router-dom'
 import {
   Box, Button, Flex, HStack, VStack, IconButton, Text, Spacer, Tooltip,
@@ -6,7 +6,7 @@ import {
 import UserAvatar from '../shared/ui/UserAvatar.jsx'
 import {
   LayoutDashboard, ReceiptText, Target, Users,
-  LogOut, Repeat, TrendingUp, PiggyBank, MoreHorizontal, Settings, Plus, Calculator,
+  LogOut, Repeat, TrendingUp, PiggyBank, MoreHorizontal, Settings, Plus, Calculator, Ticket,
 } from 'lucide-react'
 import { useAuth } from '../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../shared/lib/ProfileProvider.jsx'
@@ -17,7 +17,8 @@ import ThemeToggle from '../shared/ui/ThemeToggle.jsx'
 import SiteSwitch from '../shared/ui/SiteSwitch.jsx'
 import NotificationBell from '../features/notifications/NotificationBell.jsx'
 import { useNotificationFeed } from '../features/notifications/notifications.js'
-import { isAccountPage, isNavActive, showsAddExpense } from './navMatch.js'
+import { isAccountPage, isNavActive, navPath, showsAddExpense } from './navMatch.js'
+import { useMealVouchers } from '../features/vouchers/vouchers.js'
 import ErrorBoundary from './ErrorBoundary.jsx'
 import { MAIN_ID } from '../shared/ui/SkipLink.jsx'
 import { EmptyStateCount } from '../shared/ui/EmptyState.jsx'
@@ -44,15 +45,34 @@ const SECONDARY = [
   { to: '/recurring', label: 'nav.recurring', icon: Repeat },
   { to: '/plan', label: 'nav.plan', icon: Calculator },
 ]
+// Meal vouchers: listed after Plan (here and on More) only for someone who
+// has set them up (Settings › Meal vouchers).
+const VOUCHERS_NAV = { to: '/vouchers', label: 'nav.vouchers', icon: Ticket }
 // Mobile bottom bar (and a landscape phone's rail): the four primary tabs
 // plus a "More" entry.
 // Which tab is lit for a given page is decided by navMatch.js.
 const MOBILE_NAV = [...PRIMARY, { to: '/more', label: 'nav.more', icon: MoreHorizontal, tour: 'nav-more' }]
 
+// The pathname the navigation lights up for (navMatch.navPath): the page's
+// own, or on a category's page the page it was opened from. Each history
+// entry keeps its answer, so going back to a category's page lights the same
+// tab as before.
+const LitPath = createContext('/')
+
+function useLitPath() {
+  const { key, pathname } = useLocation()
+  const [seen, setSeen] = useState({ origins: {}, last: null })
+  const lit = seen.origins[key] ?? navPath(pathname, seen.last)
+  if (seen.origins[key] !== lit || seen.last !== lit) {
+    setSeen((s) => ({ origins: { ...s.origins, [key]: lit }, last: lit }))
+  }
+  return lit
+}
+
 // A nav link that knows whether it's the current section (see navMatch.js).
 // `children` renders from the active flag.
 function NavItem({ to, children, ...rest }) {
-  const { pathname } = useLocation()
+  const pathname = useContext(LitPath)
   const isActive = isNavActive(to, pathname)
   return (
     <RouterLink to={to} aria-current={isActive ? 'page' : undefined} {...rest}>
@@ -99,8 +119,13 @@ function TabItem({ to, label, icon: Icon, tour }) {
 }
 
 // The phone's bottom bar is this tall above the safe-area inset; the
-// floating Add expense button sits just above it.
-const TAB_BAR_H = '60px'
+// floating Add expense button (FAB_SIZE) sits FAB_GAP above it. With the
+// button on screen the page ends that much higher again (plus the gap), so
+// its last row scrolls clear of the button instead of under it.
+const TAB_BAR_H = 60
+const FAB_SIZE = 56
+const FAB_GAP = 16
+const PAGE_END = { plain: TAB_BAR_H + 32, fab: TAB_BAR_H + FAB_GAP + FAB_SIZE + FAB_GAP }
 const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)'
 const NEW_EXPENSE = '/transactions/new'
 
@@ -111,10 +136,10 @@ function AddExpenseFab() {
   const t = useT('shell')
   return (
     <IconButton as={RouterLink} to={NEW_EXPENSE} aria-label={t('addExpense')}
-      icon={<Plus size={26} strokeWidth={2.4} />} w="56px" h="56px" borderRadius="full"
+      icon={<Plus size={26} strokeWidth={2.4} />} w={`${FAB_SIZE}px`} h={`${FAB_SIZE}px`} borderRadius="full"
       position="fixed" zIndex={10} boxShadow="lg"
       right="calc(16px + env(safe-area-inset-right, 0px))"
-      bottom={`calc(${TAB_BAR_H} + 16px + ${SAFE_BOTTOM})`}
+      bottom={`calc(${TAB_BAR_H + FAB_GAP}px + ${SAFE_BOTTOM})`}
       display={{ base: 'inline-flex', md: 'none' }} />
   )
 }
@@ -148,7 +173,7 @@ function NavRail() {
 function RailItem({ to, label: labelKey, icon: Icon, tour }) {
   const t = useT('shell')
   const label = t(labelKey)
-  const { pathname } = useLocation()
+  const pathname = useContext(LitPath)
   const active = isNavActive(to, pathname, { accountApart: true })
   return (
     <Tooltip label={label} placement="right">
@@ -179,7 +204,7 @@ function ShellBar({ feed, profile, onTitle, onActions }) {
       bg="bg.canvas" mx={`-${GUTTER}px`} px={`${GUTTER}px`} mb={1}>
       <Flex ref={onTitle} flex="1" minW={0} align="center" />
       <Flex ref={onActions} align="center" gap={2} flexShrink={0} _empty={{ display: 'none' }} />
-      <Flex align="center" gap={2} flexShrink={0} data-tour="account">
+      <Flex align="center" gap="14px" flexShrink={0} data-tour="account">
         <OfflineIndicator />
         <SiteSwitch compact />
         <NotificationBell feed={feed} />
@@ -211,6 +236,9 @@ export default function AppShell({ hideAddExpense = false }) {
   const [, setTick] = useState(0)
   useEffect(() => { setTick((n) => n + 1) }, [location])
   const rail = useShortLandscape()
+  const litPath = useLitPath()
+  const vouchers = useMealVouchers()
+  const secondary = vouchers.settings ? [...SECONDARY, VOUCHERS_NAV] : SECONDARY
   // The sideways header's slots (ShellHeader.jsx), once they've mounted.
   const [titleSlot, setTitleSlot] = useState(null)
   const [actionsSlot, setActionsSlot] = useState(null)
@@ -218,130 +246,134 @@ export default function AppShell({ hideAddExpense = false }) {
     [rail, titleSlot, actionsSlot])
 
   return (
-    <Flex minH="100dvh" bg="bg.canvas">
-      {rail ? <NavRail /> : (
-      /* Desktop sidebar */
-      <Flex
-        as="nav" direction="column" w="240px" p={4} gap={1}
-        borderRightWidth="1px" borderColor="border.default" bg="bg.surface"
-        position="sticky" top={0} h="100dvh"
-        display={{ base: 'none', md: 'flex' }}
-      >
-        <Box px={2} py={2} mb={2}><Logo size={30} /></Box>
-        <Button as={RouterLink} to={NEW_EXPENSE} leftIcon={<Plus size={18} />} mb={3} mx={1}>
-          {t('addExpense')}
-        </Button>
-        {PRIMARY.map((n) => <SideItem key={n.to} {...n} />)}
-        <Box h="1px" bg="border.default" my={2} mx={2} />
-        <Flex direction="column" gap={1} data-tour="nav-more">
-          {SECONDARY.map((n) => <SideItem key={n.to} {...n} />)}
-        </Flex>
-        <Spacer />
-        <Flex direction="column" gap={1} data-tour="account">
-          <SiteSwitch />
-          <NavItem to="/settings" title={t('nav.settings')} style={{ width: '100%' }}>
-            {(isActive) => (
-              <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
-                bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
-                <UserAvatar size="xs" name={profile?.display_name}
-                  src={profile?.avatar_url} highlight />
-                <Text fontSize="sm" fontWeight="500" flex="1" minW={0} overflowWrap="anywhere">
-                  {profile?.display_name || t('nav.settings')}
-                </Text>
-                <Box as="span" color={isActive ? 'accent.fg' : 'text.muted'} flexShrink={0}>
-                  <Settings size={16} />
-                </Box>
-              </HStack>
-            )}
-          </NavItem>
-          <HStack px={1} justify="space-between">
-            <Tooltip label={t('toggleTheme')}>
-              <ThemeToggle />
-            </Tooltip>
-            <Tooltip label={t('signOut')}>
-              <IconButton aria-label={t('signOut')} variant="ghost" size="sm"
-                icon={<LogOut size={18} />} onClick={signOut} />
-            </Tooltip>
-          </HStack>
-        </Flex>
-      </Flex>
-      )}
-
-      {/* Main column */}
-      <Flex direction="column" flex="1" minW={0}>
-        {/* Mobile top bar */}
-        {!rail && (
+    <LitPath.Provider value={litPath}>
+      <Flex minH="100dvh" bg="bg.canvas">
+        {rail ? <NavRail /> : (
+        /* Desktop sidebar */
         <Flex
-          as="header" align="center" px={4} py={3} gap={3}
-          borderBottomWidth="1px" borderColor="border.default" bg="bg.surface"
-          position="sticky" top={0} zIndex={10}
-          display={{ base: 'flex', md: 'none' }}
+          as="nav" direction="column" w="240px" p={4} gap={1}
+          borderRightWidth="1px" borderColor="border.default" bg="bg.surface"
+          position="sticky" top={0} h="100dvh"
+          display={{ base: 'none', md: 'flex' }}
         >
-          {/* As on the sign-in pages' header on a phone: the mark alone,
-              so the bar's buttons (and the test site's DEV tag) have room. */}
-          <Logo size={26} showWord={false} />
+          <Box px={2} py={2} mb={2}><Logo size={30} /></Box>
+          <Button as={RouterLink} to={NEW_EXPENSE} leftIcon={<Plus size={18} />} mb={3} mx={1}>
+            {t('addExpense')}
+          </Button>
+          {PRIMARY.map((n) => <SideItem key={n.to} {...n} />)}
+          <Box h="1px" bg="border.default" my={2} mx={2} />
+          <Flex direction="column" gap={1} data-tour="nav-more">
+            {secondary.map((n) => <SideItem key={n.to} {...n} />)}
+          </Flex>
           <Spacer />
-          <OfflineIndicator />
-          <Flex align="center" gap={3} data-tour="account">
-            <SiteSwitch compact />
-            <NotificationBell feed={feed} />
-            <ThemeToggle />
-            <Box as={RouterLink} to="/settings" aria-label={t('nav.settings')} layerStyle="hitArea" display="flex">
-              <UserAvatar size="sm" name={profile?.display_name}
-                src={profile?.avatar_url} highlight />
-            </Box>
+          <Flex direction="column" gap={1} data-tour="account">
+            <SiteSwitch />
+            <NavItem to="/settings" title={t('nav.settings')} style={{ width: '100%' }}>
+              {(isActive) => (
+                <HStack spacing={3} px={3} py={2} borderRadius="lg" w="full" mb={1}
+                  bg={isActive ? 'bg.subtle' : 'transparent'} _hover={{ bg: 'bg.subtle' }}>
+                  <UserAvatar size="xs" name={profile?.display_name}
+                    src={profile?.avatar_url} highlight />
+                  <Text fontSize="sm" fontWeight="500" flex="1" minW={0} overflowWrap="anywhere">
+                    {profile?.display_name || t('nav.settings')}
+                  </Text>
+                  <Box as="span" color={isActive ? 'accent.fg' : 'text.muted'} flexShrink={0}>
+                    <Settings size={16} />
+                  </Box>
+                </HStack>
+              )}
+            </NavItem>
+            <HStack px={1} justify="space-between">
+              <Tooltip label={t('toggleTheme')}>
+                <ThemeToggle />
+              </Tooltip>
+              <Tooltip label={t('signOut')}>
+                <IconButton aria-label={t('signOut')} variant="ghost" size="sm"
+                  icon={<LogOut size={18} />} onClick={signOut} />
+              </Tooltip>
+            </HStack>
           </Flex>
         </Flex>
         )}
 
-        {/* Desktop header strip (sync badges + notifications); the sideways
-            header (ShellBar) holds both on a landscape phone. */}
-        {!rail && (
-        <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end" align="center"
-          gap={2} px={6} pt={4}>
-          <OfflineIndicator />
-          <NotificationBell feed={feed} />
+        {/* Main column */}
+        <Flex direction="column" flex="1" minW={0}>
+          {/* Mobile top bar */}
+          {!rail && (
+          <Flex
+            as="header" align="center" px={4} py={3} gap={3}
+            borderBottomWidth="1px" borderColor="border.default" bg="bg.surface"
+            position="sticky" top={0} zIndex={10}
+            display={{ base: 'flex', md: 'none' }}
+          >
+            {/* As on the sign-in pages' header on a phone: the mark alone,
+                so the bar's buttons (and the test site's DEV tag) have room. */}
+            <Logo size={26} showWord={false} />
+            <Spacer />
+            <OfflineIndicator />
+            {/* 16px apart: each icon's 44px touch area (theme.HIT_AREA) stays clear
+                of its neighbour's. */}
+            <Flex align="center" gap={4} data-tour="account">
+              <SiteSwitch compact />
+              <NotificationBell feed={feed} />
+              <ThemeToggle />
+              <Box as={RouterLink} to="/settings" aria-label={t('nav.settings')} layerStyle="hitArea" display="flex">
+                <UserAvatar size="sm" name={profile?.display_name}
+                  src={profile?.avatar_url} highlight />
+              </Box>
+            </Flex>
+          </Flex>
+          )}
+
+          {/* Desktop header strip (sync badges + notifications); the sideways
+              header (ShellBar) holds both on a landscape phone. */}
+          {!rail && (
+          <Flex display={{ base: 'none', md: 'flex' }} justify="flex-end" align="center"
+            gap={2} px={6} pt={4}>
+            <OfflineIndicator />
+            <NotificationBell feed={feed} />
+          </Flex>
+          )}
+
+          <Box as="main" id={MAIN_ID} flex="1" w="full" mx="auto"
+            {...(rail ? COLUMN_BOX : {
+              maxW: '900px', px: { base: 4, md: 6 }, py: { base: 4, md: 4 },
+              pb: { base: `calc(${fab ? PAGE_END.fab : PAGE_END.plain}px + ${SAFE_BOTTOM})`, md: 8 },
+            })}>
+            {rail && <ShellBar feed={feed} profile={profile} onTitle={setTitleSlot} onActions={setActionsSlot} />}
+            {/* Pages are lazy chunks: the shell stays put while one loads, and
+                if one fails (a chunk gone after a deploy, offline, a crash) its
+                error screen shows here, with the navigation still around it.
+                Moving to another page tries again. */}
+            <ErrorBoundary inline resetKey={location.pathname}>
+              <Suspense fallback={<RingLoader />}>
+                <EmptyStateCount.Provider value={countEmptyState}>
+                  <InAppShell.Provider value>
+                    <ShellHeaderSlots.Provider value={slots}>
+                      <Outlet />
+                    </ShellHeaderSlots.Provider>
+                  </InAppShell.Provider>
+                </EmptyStateCount.Provider>
+              </Suspense>
+            </ErrorBoundary>
+          </Box>
         </Flex>
+
+        {/* Mobile bottom nav (it also holds the floating Add expense button,
+            so the button sits in a landmark) */}
+        {!rail && (
+        <HStack
+          as="nav" spacing={0} justify="space-around" px={2} pt={1.5}
+          pb={`calc(6px + ${SAFE_BOTTOM})`}
+          borderTopWidth="1px" borderColor="border.default" bg="bg.surface"
+          position="fixed" bottom={0} left={0} right={0} zIndex={10}
+          display={{ base: 'flex', md: 'none' }}
+        >
+          {MOBILE_NAV.map((n) => <TabItem key={n.to} {...n} />)}
+          {fab && <AddExpenseFab />}
+        </HStack>
         )}
-
-        <Box as="main" id={MAIN_ID} flex="1" w="full" mx="auto"
-          {...(rail ? COLUMN_BOX : {
-            maxW: '900px', px: { base: 4, md: 6 }, py: { base: 4, md: 4 },
-            pb: { base: `calc(${fab ? '164px' : '92px'} + ${SAFE_BOTTOM})`, md: 8 },
-          })}>
-          {rail && <ShellBar feed={feed} profile={profile} onTitle={setTitleSlot} onActions={setActionsSlot} />}
-          {/* Pages are lazy chunks: the shell stays put while one loads, and
-              if one fails (a chunk gone after a deploy, offline, a crash) its
-              error screen shows here, with the navigation still around it.
-              Moving to another page tries again. */}
-          <ErrorBoundary inline resetKey={location.pathname}>
-            <Suspense fallback={<RingLoader />}>
-              <EmptyStateCount.Provider value={countEmptyState}>
-                <InAppShell.Provider value>
-                  <ShellHeaderSlots.Provider value={slots}>
-                    <Outlet />
-                  </ShellHeaderSlots.Provider>
-                </InAppShell.Provider>
-              </EmptyStateCount.Provider>
-            </Suspense>
-          </ErrorBoundary>
-        </Box>
       </Flex>
-
-      {/* Mobile bottom nav (it also holds the floating Add expense button,
-          so the button sits in a landmark) */}
-      {!rail && (
-      <HStack
-        as="nav" spacing={0} justify="space-around" px={2} pt={1.5}
-        pb={`calc(6px + ${SAFE_BOTTOM})`}
-        borderTopWidth="1px" borderColor="border.default" bg="bg.surface"
-        position="fixed" bottom={0} left={0} right={0} zIndex={10}
-        display={{ base: 'flex', md: 'none' }}
-      >
-        {MOBILE_NAV.map((n) => <TabItem key={n.to} {...n} />)}
-        {fab && <AddExpenseFab />}
-      </HStack>
-      )}
-    </Flex>
+    </LitPath.Provider>
   )
 }

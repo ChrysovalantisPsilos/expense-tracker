@@ -146,17 +146,34 @@ export function settlePlan(balances, members, myMemberId) {
   }))
 }
 
-// The one line that matters most for the viewer, from settlePlan's output:
-// the biggest payment they receive or make — "Sofia owes you" / "You owe
-// Alex" plus its amount (minor). null when the viewer has nothing to settle.
-// Ties go to money owed to you. { text, amount, tone }
+// The viewer's side of settlePlan's output in one line, with the total
+// (minor): "Sofia owes you" / "You owe Alex" for one payment, "2 people owe
+// you" / "You owe 2 people" for several. The viewer has one net balance, so
+// their payments all go one way; should both ways appear, the bigger total
+// wins (a tie goes to money owed to you). null when the viewer has nothing
+// to settle. { text, amount, tone }
 export function balanceHighlight(plan) {
-  const best = (plan ?? []).filter((x) => x.mine)
-    .reduce((a, x) => (!a || x.amount > a.amount || (x.amount === a.amount && x.tone === 'positive') ? x : a), null)
-  if (!best) return null
-  return best.tone === 'positive'
-    ? { text: t('groups:format.owesYou', { name: best.fromName }), amount: best.amount, tone: 'positive' }
-    : { text: t('groups:format.youOwe', { name: best.toName }), amount: best.amount, tone: 'negative' }
+  const mine = (plan ?? []).filter((x) => x.mine)
+  const total = (xs) => xs.reduce((n, x) => n + x.amount, 0)
+  const owed = mine.filter((x) => x.tone === 'positive')
+  const owing = mine.filter((x) => x.tone !== 'positive')
+  if (!mine.length) return null
+  if (owed.length && total(owed) >= total(owing)) {
+    return {
+      text: owed.length === 1
+        ? t('groups:format.owesYou', { name: owed[0].fromName })
+        : t('groups:format.peopleOweYou', { people: pluralise(owed.length, 'person') }),
+      amount: total(owed),
+      tone: 'positive',
+    }
+  }
+  return {
+    text: owing.length === 1
+      ? t('groups:format.youOwe', { name: owing[0].toName })
+      : t('groups:format.youOwePeople', { people: pluralise(owing.length, 'person') }),
+    amount: total(owing),
+    tone: 'negative',
+  }
 }
 
 // The settle-up page's suggestions: the fewest-payments plan's transfers

@@ -71,7 +71,10 @@ export default function Plan() {
   }, [d.rules, d.savingsIds, currency, d.rates])
   const applied = undoState(d.undo)
 
-  const header = <PageHeader title={t('title')} meta={<SavedNote status={d.status} onRetry={d.retry} />} />
+  // "Plan saved" only once there is something in it to keep (or a save
+  // failed and needs a retry).
+  const saved = sum.changes.length > 0 || d.status === 'error'
+  const header = <PageHeader title={t('title')} meta={saved ? <SavedNote status={d.status} onRetry={d.retry} /> : undefined} />
   if (d.error) {
     return <Stack spacing={5}>{header}<Panel><QueryError error={d.error} onRetry={d.reload} what={t('what')} /></Panel></Stack>
   }

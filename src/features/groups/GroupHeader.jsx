@@ -61,7 +61,7 @@ export default function GroupHeader({
       {isOwner && (
         <>
           <IconButton aria-label={t('header.changePhoto')} icon={<Camera size={size < 40 ? 10 : 12} />}
-            size="xs" borderRadius="full" position="absolute"
+            size="xs" borderRadius="full" position="absolute" zIndex={5}
             {...(size < 40 ? SMALL_CAMERA : { bottom: '-6px', right: '-6px' })}
             isLoading={uploading} onClick={() => imgRef.current?.click()} />
           <input ref={imgRef} type="file" accept="image/*" hidden onChange={onGroupImage} />
@@ -139,7 +139,7 @@ export default function GroupHeader({
         <Figure label={t('total')} value={total} size="lg" align="right" flexShrink={0} />
       </HStack>
 
-      <HStack gridArea="actions" spacing={2}>
+      <HStack gridArea="actions" spacing="14px">
         <PageAction icon={<Plus size={16} />} label={t('header.addExpense')} onClick={onAdd} />
         {menu}
       </HStack>

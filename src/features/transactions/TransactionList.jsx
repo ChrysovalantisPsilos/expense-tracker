@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Box, List, ListItem, Text, Tag, useToast, Flex } from '@chakra-ui/react'
+import { Box, List, ListItem, Text, Tag, useToast } from '@chakra-ui/react'
 import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
@@ -16,19 +16,9 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { deleteTransaction } from './writes.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { frequencyLabel } from '../recurring/recurringMath.js'
-import { landscapeOnly, ONE_LINE } from '../../shared/lib/shortLandscape.js'
+import MetaLine from '../../shared/ui/MetaLine.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
-
-// Sideways, the meta line keeps to one line like the row's title (ItemRow):
-// its parts run on as one line of text, cut with an ellipsis at the end.
-const SHORT_META = landscapeOnly({
-  display: 'block',
-  lineHeight: 1.35,
-  ...ONE_LINE,
-  '& > *': { display: 'inline', mr: 1.5 },
-  '& svg': { display: 'inline', verticalAlign: '-1px' },
-})
 
 // Shared list of personal transactions with edit + delete.
 // Group-mirrored rows (group_expense_id set) are read-only here — they're
@@ -119,36 +109,37 @@ function RowMeta({ row: r, shared, saved }) {
   const share = monthlyShare(r)
   const countsFor = countsForLabel(r, salaryShift)
   return (
-    <Flex wrap="wrap" align="center" columnGap={1.5} rowGap={1} mt={0.5} fontSize="xs" color="text.muted"
-      sx={SHORT_META}>
+    <MetaLine>
       <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
       {r.description && r.categories?.name && (
-        <Text overflowWrap="anywhere">· {categoryDisplayName(r.categories)}</Text>
+        <Text overflowWrap="anywhere">{categoryDisplayName(r.categories)}</Text>
       )}
-      {saved && <Text whiteSpace="nowrap">· {saved}</Text>}
+      {saved && <Text whiteSpace="nowrap">{saved}</Text>}
       {r.notes && (
-        <Text fontStyle="italic" minW={0} overflowWrap="anywhere">· {r.notes}</Text>
+        <Text fontStyle="italic" minW={0} overflowWrap="anywhere">{r.notes}</Text>
       )}
       {shared && (
-        <Tag size="sm" colorScheme="brand" borderRadius="md" maxW="100%" py={0.5}>
-          {/* not TagLabel: that clamps to one line */}
-          <Text as="span" lineHeight="1.2" overflowWrap="anywhere">{groupLabel(r)}</Text>
-        </Tag>
+        <MetaLine.Bare>
+          <Tag size="sm" colorScheme="brand" borderRadius="md" maxW="100%" py={0.5}>
+            {/* not TagLabel: that clamps to one line */}
+            <Text as="span" lineHeight="1.2" overflowWrap="anywhere">{groupLabel(r)}</Text>
+          </Tag>
+        </MetaLine.Bare>
       )}
       {r.recurring && (
         <Text whiteSpace="nowrap" display="inline-flex" alignItems="center" gap={1}>
-          · <Repeat size={11} aria-hidden /> {t('list.repeats', { frequency: frequencyLabel(r.recurring) })}
+          <Repeat size={11} aria-hidden /> {t('list.repeats', { frequency: frequencyLabel(r.recurring) })}
           {!r.recurring.is_active && ` ${t('list.paused')}`}
         </Text>
       )}
       {share && (
         <Text whiteSpace="nowrap">
-          · {share.exact ? '' : '≈ '}{t('list.spread', {
+          {share.exact ? '' : '≈ '}{t('list.spread', {
             amount: formatMoney(share.perMonth, r.currency), months: share.months,
           })}
         </Text>
       )}
-      {countsFor && <Text whiteSpace="nowrap">· {countsFor}</Text>}
-    </Flex>
+      {countsFor && <Text whiteSpace="nowrap">{countsFor}</Text>}
+    </MetaLine>
   )
 }

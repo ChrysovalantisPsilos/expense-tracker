@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { isAccountPage, isNavActive, showsAddExpense } from '../src/app/navMatch.js'
+import { isAccountPage, isNavActive, navPath, showsAddExpense } from '../src/app/navMatch.js'
 
 test('Home is active only on the root', () => {
   assert.equal(isNavActive('/', '/'), true)
@@ -15,7 +15,7 @@ test('Transactions owns /transactions and /import', () => {
   assert.equal(isNavActive('/transactions', '/importer'), false)
 })
 
-test('More owns /more, /insights, /savings, /recurring, /plan, /help, the legal pages and every /settings page', () => {
+test('More owns /more, /insights, /savings, /recurring, /plan, /vouchers, /help, the legal pages and every /settings page', () => {
   for (const p of ['/more', '/insights', '/savings', '/recurring', '/plan', '/settings', '/settings/account', '/settings/data', '/help', '/privacy', '/terms']) {
     assert.equal(isNavActive('/more', p), true, p)
   }
@@ -50,18 +50,18 @@ test('exactly one bottom-bar tab is active on every routed page', () => {
   assert.equal(isNavActive('/budgets', '/categories/c1'), true) // a category's page, with its budget
 })
 
-test('the floating Add expense button shows on the four main tabs only', () => {
-  for (const p of ['/', '/transactions', '/transactions/', '/groups', '/budgets']) {
+test('the floating Add expense button shows on Home and Budgets only (the other tabs have their own + in the header)', () => {
+  for (const p of ['/', '/budgets', '/budgets/']) {
     assert.equal(showsAddExpense(p), true, p)
   }
-  for (const p of ['/transactions/new', '/transactions/42', '/groups/1', '/settings', '/settings/account',
+  for (const p of ['/transactions', '/transactions/', '/groups', '/transactions/new', '/transactions/42', '/groups/1', '/settings', '/settings/account',
     '/more', '/insights', '/savings', '/recurring', '/import', '/categories/1', '/help']) {
     assert.equal(showsAddExpense(p), false, p)
   }
 })
 
 test('the floating Add expense button steps aside while the page shows an empty state', () => {
-  for (const p of ['/', '/transactions', '/groups', '/budgets']) {
+  for (const p of ['/', '/budgets']) {
     assert.equal(showsAddExpense(p, { emptyState: true }), false, p)
     assert.equal(showsAddExpense(p, { emptyState: false }), true, p)
   }
@@ -99,4 +99,22 @@ test('sideways, the avatar owns Settings: More stays dark there, and nothing els
   }
   assert.equal(isAccountPage('/settingsx'), false)
   assert.equal(isNavActive('/transactions', '/import', apart), true)
+})
+
+test('a category page lights the tab it was opened from, and Budgets when opened directly', () => {
+  const TABS = ['/', '/transactions', '/groups', '/budgets', '/more']
+  const lit = (p, from) => TABS.filter((t) => isNavActive(t, navPath(p, from)))
+  assert.deepEqual(lit('/categories/c1', '/'), ['/'])
+  assert.deepEqual(lit('/categories/c1', '/insights'), ['/more'])
+  assert.deepEqual(lit('/categories/c1', '/settings/categories'), ['/more'])
+  assert.deepEqual(lit('/categories/c1', '/budgets'), ['/budgets'])
+  assert.deepEqual(lit('/categories/c1', null), ['/budgets'])
+  // The shell passes the page before's lit path, so from one category's page
+  // to another the origin carries over; a bare category path never counts.
+  assert.deepEqual(lit('/categories/c2', navPath('/categories/c1', '/')), ['/'])
+  assert.deepEqual(lit('/categories/c2', '/categories/c1'), ['/budgets'])
+  // Every other page lights its own section wherever it was opened from.
+  assert.equal(navPath('/transactions/42', '/'), '/transactions/42')
+  assert.equal(navPath('/vouchers', '/'), '/vouchers')
+  assert.deepEqual(lit('/vouchers', '/'), ['/more'])
 })

@@ -9,6 +9,7 @@ export default {
     savings: 'Savings',
     recurring: 'Recurring',
     plan: 'Plan',
+    vouchers: 'Meal vouchers',
     more: 'More',
     settings: 'Settings',
   },
@@ -22,6 +23,7 @@ export default {
     savings: 'Your pot, goals & history',
     recurring: 'Subscriptions & recurring bills',
     plan: 'Try changes to your recurring, safely',
+    vouchers: 'Your card’s balance & top-ups',
     settings: 'Account, notifications & security',
   },
 }

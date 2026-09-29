@@ -116,7 +116,10 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     once. **Re-import the same file** → "already imported before" — zero
     duplicates.
 13. Import a second file containing the same merchant → it's categorized
-    automatically (the saved rule).
+    automatically (the saved rule). Before importing, the preview already
+    shows it like a ledger row: the category's icon, "20 Sep · Groceries"
+    (just the date when nothing matches), no "expense/income" word, income
+    with a green "+".
 
 ### F. Groups **[2 accounts]**
 14. Create a group, invite via link → second account joins → owner gets a
@@ -253,10 +256,17 @@ the app stays scrollable, and the file downloads within seconds.
 34. Phone width: the bottom bar is exactly Home · Transactions · Groups ·
     Budgets · More; the top bar is bell, theme toggle, avatar (plus the
     offline badge when offline). Transactions stays lit on `/import`; More
-    stays lit on Insights, Savings, Recurring, Plan and every Settings page; Groups stays lit
-    inside a group.
+    stays lit on Insights, Savings, Recurring, Plan, Meal vouchers and every Settings page; Groups stays lit
+    inside a group. A category's page lights the tab it was opened from
+    (Home's "Spending by category" → Home, Insights or Settings › Categories →
+    More, Budgets → Budgets; opened by its address → Budgets), and going back
+    to it from an entry keeps that tab.
+    The floating "+" is only on Home and Budgets (Transactions, Groups and
+    Recurring have their own + in the header); scrolled to the end, the last
+    row sits clear above it.
 35. Desktop: the sidebar is Home, Transactions, Groups, Budgets, a divider,
-    Insights, Savings, Recurring, Plan, then the user row (→ Settings), theme toggle and sign
+    Insights, Savings, Recurring, Plan (then Meal vouchers, with a voucher
+    setup), then the user row (→ Settings), theme toggle and sign
     out. No More or Search entries. Tablets, desktops and portrait phones
     look exactly as before whatever the sideways layout below does.
 35a. A phone held sideways (landscape, ≤ 500px tall: 844×390, 667×375, and
@@ -529,7 +539,8 @@ and puts focus back on what opened it.
    there (an added one: its form); the row above follows. Clear plan asks
    first, then clears the changes and adds; dismissed ideas stay
    dismissed.
-8. Saved: the header says "Plan saved"; reload, or open the page on another
+8. Saved: once the plan has a change the header says "Plan saved" (never
+   with no changes); reload, or open the page on another
    device → the same plan. Edit a planned rule on Recurring (another
    amount) → back on Plan the row says "Updated since your plan" and the
    banner lists it; delete a planned rule → its change leaves the plan with
@@ -645,6 +656,8 @@ on the card) and a few lunches and groceries paid with vouchers. Check at
    day), what's on the card today. Save → the Meal vouchers page (opened from
    its ⚙ button: back to it). Back returns to where the page was opened
    from. Settings shows the row between Monthly spending and Notifications.
+   With a setup, More → Money lists Meal vouchers after Plan (desktop: the
+   sidebar, after Plan), lit on /vouchers; without one it isn't listed.
 2. Home: the Meal vouchers card sits under the totals (only with a setup):
    what's on the card and "+€X on <day>" with "<month> · N working days ×
    €8.00"; the › opens the page. Without a setup there's no card.
@@ -674,3 +687,29 @@ on the card) and a few lunches and groceries paid with vouchers. Check at
    money went" shows that month (its name as the subtitle) with "All <month>
    expenses ›" opening Transactions filtered to it.
 
+
+### K7. Touch targets, rows and help lines
+
+At 390px (English and Greek, light and dark) and sideways at 844×390:
+
+1. Touch targets: every icon button (the row ⋮, the ⓘ buttons, the header's
+   bell, theme and avatar, a page header's + and ⋯, the goal −/+, comment
+   icons, Home's chart/table toggle, segmented tabs, switches) answers a tap
+   anywhere in a 44×44 area around it, without taking its neighbour's tap
+   (the invisible area in `theme.js` HIT_AREA; neighbours sit 12–14px apart).
+2. Recurring: tapping a rule's row opens it (`/recurring/<id>`); ⋮ still
+   opens its menu, and the switch (from `sm` up) still pauses it.
+3. Meta lines that wrap (a transaction's "· meal vouchers", "⟳ Repeats every
+   month", a rule's "next 5 Oct") never start a line with "·"; sideways they
+   stay on one line with an ellipsis. Savings history in Greek shows "από
+   αποταμιεύσεις" in full (the line wraps), the ⟳ beside it.
+4. A group's Balances: the highlighted line sums your side — "Léa owes you
+   €184.17" for one person, "2 people owe you €233.22" for several, "You owe
+   2 people …" the other way — and matches "Who owes whom".
+5. One short line with an ⓘ that opens the rest in place: Import's start
+   card, Budgets' "Tap a budget…" (the ⓘ only when the month was carried
+   over), Edit expense's type ("Expense ⓘ": why it can't change), Settings ›
+   Account's locked currency, Settings › Monthly spending's two switches.
+6. Settings › Account: "Save changes" in both cards, the same size.
+7. Pages with an eyebrow and a ← (Edit expense, Import, a category, Settings
+   pages): the arrow sits level with the title, not the eyebrow.

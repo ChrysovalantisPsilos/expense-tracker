@@ -104,7 +104,9 @@ const TOAST_FILL = { green: 'status.positive', red: 'status.negative', orange: '
 // A 44×44px minimum touch target around a control that looks smaller (a 24px
 // chevron, a 32px icon button, a text link): an invisible pseudo-element
 // centred on it, so the visual size stays compact. Every Button and
-// IconButton has it; `layerStyle="hitArea"` adds it to anything else.
+// IconButton has it, and every Switch; `layerStyle="hitArea"` adds it to
+// anything else. Controls in a row keep their centres 44px apart (a 32px icon
+// button needs a 12–14px gap), or a neighbour's area covers part of theirs.
 const HIT_AREA = {
   content: '""',
   position: 'absolute',
@@ -280,9 +282,11 @@ const theme = extendTheme({
       }),
     },
     Radio: { defaultProps: { colorScheme: 'brand' } },
+    // The 34×20 switch gets the 44px touch target too.
     Switch: {
       defaultProps: { colorScheme: 'brand' },
       baseStyle: ({ colorScheme: c }) => ({
+        container: { _after: HIT_AREA },
         track: {
           '--switch-bg': 'colors.sand.300',
           _dark: { '--switch-bg': 'colors.sand.700' },

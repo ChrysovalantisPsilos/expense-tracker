@@ -11,7 +11,7 @@ import { displayDescription } from './kbcLabels.js'
 // Pure helpers (parsing, drafts, deterministic identity) live in
 // importMath.js so they're unit-testable.
 import {
-  cleanHolderName, deterministicUuid, dropKnownRows, groupMerchants, ruleCategory, rowToDraft, signedConvention,
+  categoryMatcher, cleanHolderName, deterministicUuid, dropKnownRows, groupMerchants, rowToDraft, signedConvention,
 } from './importMath.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
 import { listTransactions } from '../transactions/useData.js'
@@ -140,9 +140,7 @@ export async function saveRule(userId, pattern, categoryId) {
 export async function buildTransactions({
   rows, mapping, userId, baseCurrency, categories, rules = [], manualRates = {}, lines = [],
 }) {
-  const catByName = new Map((categories || []).map((c) => [c.name.toLowerCase(), c.id]))
-  const kindOf = new Map((categories || []).map((c) => [c.id, c.kind]))
-  const sortedRules = [...rules].sort((a, b) => b.pattern.length - a.pattern.length)
+  const categoryOf = categoryMatcher(categories, rules)
 
   const signed = signedConvention(rows, mapping)
   const drafts = rows.map((r) => rowToDraft(r, mapping, baseCurrency, { signed }))
@@ -165,9 +163,7 @@ export async function buildTransactions({
       : draft.rate ?? rateOnOrBefore(seriesByCurrency.get(currency) ?? [], spent_at)?.rate ?? manualRates[currency] ?? null
     if (!exchange_rate) { missing.set(currency, (missing.get(currency) ?? 0) + 1); continue }
 
-    const catName = mapping.category ? String(r[mapping.category] ?? '').toLowerCase().trim() : ''
-    const category_id = (catName ? (catByName.get(catName) ?? null) : null)
-      ?? ruleCategory(sortedRules, kindOf, description, kind)
+    const category_id = categoryOf(draft, r, mapping)
 
     const key = `${spent_at}|${amount_minor}|${currency}|${kind}|${description ?? ''}`
     const occurrence = seen.get(key) ?? 0

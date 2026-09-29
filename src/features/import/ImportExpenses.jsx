@@ -21,8 +21,10 @@ import {
   rememberedHolder, rememberHolder,
 } from './importExpenses.js'
 import {
-  previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder, importedRange,
+  previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder, importedRange, categoryMatcher,
 } from './importMath.js'
+import { useImportRules } from './importRules.js'
+import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import { shortDate } from '../../shared/lib/dates.js'
 import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
 import { displayDescription } from './kbcLabels.js'
@@ -30,6 +32,7 @@ import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { BusyNote, RingSpinner } from '../../shared/ui/RingLoader.jsx'
+import { InfoNote } from '../../shared/ui/InfoToggle.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
@@ -99,7 +102,13 @@ export default function ImportExpenses() {
 
   // Same rowToDraft + sign rule the real import uses, so the preview can't
   // misrepresent it (no FX lookup — shown in each row's own currency).
-  const preview = useMemo(() => previewDrafts(rows, mapping, baseCurrency), [rows, mapping, baseCurrency])
+  // Each row shows the category it will get (the file's column or a saved
+  // rule), from the same matcher the import uses.
+  const rules = useImportRules()
+  const categoryOf = useMemo(() => categoryMatcher(categories, rules.rows), [categories, rules.rows])
+  const categoryById = useMemo(() => new Map((categories || []).map((c) => [c.id, c])), [categories])
+  const preview = useMemo(() => previewDrafts(rows, mapping, baseCurrency, { categoryOf }),
+    [rows, mapping, baseCurrency, categoryOf])
 
   // Build rows (saved rules pre-categorize known merchants), then either go
   // straight to import or stop at the review step for unknown merchants.
@@ -176,9 +185,9 @@ export default function ImportExpenses() {
           <Stack spacing={4} align="center" py={8} textAlign="center">
             <IconTile icon={UploadCloud} size={64} radius="2xl" />
             <Text fontWeight="600">{t('upload.title')}</Text>
-            <Text fontSize="sm" color="text.muted" maxW="sm">
-              {t('upload.text', { banks: PRESET_NAMES.join(', ') })}
-            </Text>
+            <InfoNote maxW="sm" more={t('upload.more', { banks: PRESET_NAMES.join(', ') })}>
+              {t('upload.text')}
+            </InfoNote>
             <input ref={fileInput} type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,text/csv" hidden
               onChange={onFile} />
             {reading ? (
@@ -235,10 +244,16 @@ export default function ImportExpenses() {
                 {t(mappingComplete(mapping) ? 'preview.unreadable' : 'preview.mapToPreview')}
               </Text>
             ) : (
-              preview.rows.map((d, i) => (
-                <ItemRow key={i} title={displayDescription(d) || '—'} meta={`${d.spent_at} · ${t(`preview.kind.${d.kind}`)}`}
-                  amount={`${d.kind === 'income' ? '+' : '−'}${formatMoney(d.amount_minor, d.currency)}`} />
-              ))
+              preview.rows.map((d, i) => {
+                const category = categoryById.get(d.category_id)
+                return (
+                  <ItemRow key={i} title={displayDescription(d) || '—'}
+                    media={<CategoryBadge category={category} kind={d.kind} size={32} />}
+                    meta={category ? `${shortDate(d.spent_at)} · ${categoryDisplayName(category)}` : shortDate(d.spent_at)}
+                    amount={`${d.kind === 'income' ? '+' : ''}${formatMoney(d.amount_minor, d.currency)}`}
+                    amountTone={d.kind === 'income' ? 'positive' : 'default'} />
+                )
+              })
             )}
             {(preview.skipped > 0 || preview.ownTransfers > 0 || preview.errors > 0) && (
               <Text fontSize="xs" color="text.muted" mt={3}>

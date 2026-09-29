@@ -328,6 +328,21 @@ export function ruleCategory(rules, kindOf, description, kind) {
     ?.category_id ?? null
 }
 
+// The category a statement row gets on import: the file's own category
+// column when it names one of the user's categories, else the saved rule
+// that matches its description (ruleCategory). One matcher per import, built
+// from `categories` (all kinds) and `rules`; call it with (draft, row,
+// mapping) → category id or null. The live preview and the import share it.
+export function categoryMatcher(categories, rules) {
+  const byName = new Map((categories || []).map((c) => [c.name.toLowerCase(), c.id]))
+  const kindOf = new Map((categories || []).map((c) => [c.id, c.kind]))
+  const sorted = [...(rules || [])].sort((a, b) => b.pattern.length - a.pattern.length)
+  return (draft, row, mapping) => {
+    const named = mapping.category ? String(row[mapping.category] ?? '').toLowerCase().trim() : ''
+    return (named ? (byName.get(named) ?? null) : null) ?? ruleCategory(sorted, kindOf, draft.description, draft.kind)
+  }
+}
+
 export function groupMerchants(names) {
   const keys = new Map()
   const groups = new Map() // head -> [words of each distinct name]
@@ -607,8 +622,9 @@ function statementRate(row, mapping, amountRaw, currency, baseCurrency) {
 
 // The live preview under the mapping step: the first `limit` rows as they'd
 // be saved, and how many rows are ready / skipped / unreadable — derived by
-// the same rowToDraft + sign rule the import uses.
-export function previewDrafts(rows, mapping, baseCurrency, limit = 6) {
+// the same rowToDraft + sign rule the import uses. With `categoryOf` (a
+// categoryMatcher) each shown row carries the `category_id` it will get.
+export function previewDrafts(rows, mapping, baseCurrency, { limit = 6, categoryOf } = {}) {
   const out = { rows: [], ready: 0, skipped: 0, ownTransfers: 0, errors: 0, firstError: null }
   if (!mapping.date || !(mapping.amount || mapping.debit || mapping.credit)) return out
   const signed = signedConvention(rows, mapping)
@@ -622,7 +638,7 @@ export function previewDrafts(rows, mapping, baseCurrency, limit = 6) {
       return
     }
     out.ready++
-    if (out.rows.length < limit) out.rows.push(d)
+    if (out.rows.length < limit) out.rows.push(categoryOf ? { ...d, category_id: categoryOf(d, r, mapping) } : d)
   })
   return out
 }

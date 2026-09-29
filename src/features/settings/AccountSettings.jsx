@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  Stack, HStack, Button, FormControl, FormHelperText, SimpleGrid, FormLabel,
+  Stack, HStack, Button, FormControl, SimpleGrid, FormLabel,
   Input, Select, useToast, Text, IconButton, Box,
 } from '@chakra-ui/react'
 import { Camera, UserRound } from 'lucide-react'
@@ -16,6 +16,7 @@ import SettingsPage from './SettingsPage.jsx'
 import PaymentCard from './PaymentCard.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
+import { InfoNote } from '../../shared/ui/InfoToggle.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 export default function AccountSettings() {
@@ -125,7 +126,7 @@ function IdentityCard({ user }) {
             {currencyLocked ? (
               <>
                 <Input value={currency} isReadOnly />
-                <FormHelperText>{t('account.currencyLocked')}</FormHelperText>
+                <InfoNote mt={2} more={t('account.currencyLockedMore')}>{t('account.currencyLocked')}</InfoNote>
               </>
             ) : (
               <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>

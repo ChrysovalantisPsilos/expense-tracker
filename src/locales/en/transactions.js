@@ -112,6 +112,7 @@ export default {
     kindFixed: {
       expense: 'A saved entry keeps its type. To record it as income, delete it and add a new one.',
       income: 'A saved entry keeps its type. To record it as an expense, delete it and add a new one.',
+      label: 'Why can’t I change this?',
     },
     kind: 'Kind',
     amount: 'Amount',
