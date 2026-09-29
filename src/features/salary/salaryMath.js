@@ -367,6 +367,60 @@ export function projections(report, { country, years, whatIf, nowKey }) {
   return ways.map((w) => ({ id: w.id, ...project({ ...args, rate: w.rate }) }))
 }
 
+// ── The pay chart ────────────────────────────────────────────────────────────
+// One row a month from the first pay: { key, level, pay, off, holiday,
+// thirteenth, bonus }. `pay` is the month's real regular pay (null in a month
+// without pay: no dot), `level` the regular pay as payLevels keeps it, `off`
+// marks a pay RAISE_MIN or more away from the level (a one-month blip, or
+// a month the level ignores), and the extras are that month's totals.
+export function payChartRows({ months, steps, extras }) {
+  const pay = new Map(months.map((m) => [m.key, m.regular]))
+  const rows = new Map(steps.map((s) => {
+    const p = pay.get(s.key) > 0 ? pay.get(s.key) : null
+    return [s.key, {
+      key: s.key, level: s.level, pay: p, off: p != null && Math.abs(change(s.level, p)) >= RAISE_MIN,
+      holiday: 0, thirteenth: 0, bonus: 0,
+    }]
+  }))
+  for (const e of extras) { const r = rows.get(e.key); if (r) r[e.kind] += e.minor }
+  return [...rows.values()]
+}
+
+// The chart's value axis in major units (`factor`: minor units per major):
+// { domain: [lo, hi], ticks } around every level and dot, padded, on round
+// steps (1, 2 or 5 × a power of ten) of at least a tenth of the top's power
+// of ten, so the compact tick labels (chartAxis: "2.3k", "2.4k") never repeat.
+const AXIS_STEPS = 4
+const AXIS_PAD = 0.15 // of the span, above and below
+const AXIS_MIN_HALF = 0.05 // a flat line still gets ±5% around it
+export function payChartAxis(rows, factor = 100) {
+  const values = rows.flatMap((r) => (r.pay == null ? [r.level] : [r.level, r.pay])).map((v) => v / factor)
+  const low = Math.min(...values)
+  const high = Math.max(...values)
+  const half = Math.max((high - low) * (0.5 + AXIS_PAD), high * AXIS_MIN_HALF)
+  const mid = (high + low) / 2
+  const [from, to] = [Math.max(0, mid - half), mid + half]
+  const floor = 10 ** (Math.floor(Math.log10(Math.max(high, 1))) - 1)
+  const raw = Math.max((to - from) / AXIS_STEPS, floor)
+  const power = 10 ** Math.floor(Math.log10(raw))
+  const step = [1, 2, 5, 10].map((n) => n * power).find((s) => s >= raw - 1e-9)
+  const lo = Math.floor(from / step) * step
+  const hi = Math.ceil(to / step) * step
+  const ticks = []
+  for (let v = lo; v <= hi + step / 2; v += step) ticks.push(Math.round(v / step) * step)
+  return { domain: [lo, hi], ticks }
+}
+
+// The months off the level, the latest `max` of them (oldest first), and how
+// many more there are: { months: [{ key, pay, level }], more }.
+export function offMonths(rows, max = 3) {
+  const off = rows.filter((r) => r.off)
+  return {
+    months: off.slice(-max).map(({ key, pay, level }) => ({ key, pay, level })),
+    more: Math.max(0, off.length - max),
+  }
+}
+
 // ── The page ─────────────────────────────────────────────────────────────────
 // Everything the page shows, or null when there's no salary entry.
 // { months, extras, regularFixed, steps, raises, level (the latest pay),

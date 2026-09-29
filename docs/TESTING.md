@@ -752,9 +752,16 @@ and Greek), desktop 1280 and sideways 844×390.
    month, "+x% in <month>" (or "No raise yet"), a small step line; the › and
    "History and projections" open /insights/salary. With no salary entries
    the card says how to start and links to the page.
-2. The page's pay card: the pay, the last raise, the step chart with the
-   extras as small bars under it (colours as in the legend). One month only:
-   no chart, a note to add earlier payslips.
+2. The page's pay card: the pay, the last raise, the chart: each month's
+   real pay as a coral dot over the regular pay's thin step line, the extras
+   as small bars under it (colours as in the legend). A month off the regular
+   pay by 1% or more (a one-month dip, e.g. a lower August) is a hollow dot
+   below or above the line and the legend adds "Unusual month"; the line and
+   "No raise yet" don't move. A month without pay has no dot. The value axis
+   reaches the lowest dot, its labels never repeat. Hover or tap a month: the
+   tooltip shows "This month" and "Regular pay". A screen reader reads the
+   months off the regular pay (the latest three, then how many more). One
+   month only: no chart, a note to add earlier payslips.
 3. Raises: months since the last raise, the average a year (compound; "—"
    under a year of pay), the changes newest first: Indexation (a Belgian
    January rise up to last year's inflation + 1 point), Raise, Pay down.

@@ -1,10 +1,11 @@
 // Salary history's pieces: the formatting, the headline with the last raise,
-// the pay chart (regular pay as steps, extras as bars under it), the raises
-// and the year-by-year totals. The extras (with their corrections) are in
-// SalaryExtras.jsx, the future and the prices in SalaryOutlook.jsx.
+// the pay chart (each month's pay as a dot over the regular pay's steps,
+// extras as bars under it), the raises and the year-by-year totals. The
+// extras (with their corrections) are in SalaryExtras.jsx, the future and the
+// prices in SalaryOutlook.jsx.
 import { useMemo, useState } from 'react'
 import { Box, Button, HStack, Stack, Text, Wrap, WrapItem } from '@chakra-ui/react'
-import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
+import { ComposedChart, Area, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts'
 import { ArrowUpRight, CalendarDays, TrendingDown, TrendingUp } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
@@ -15,7 +16,7 @@ import { shortMonth } from '../../shared/lib/dates.js'
 import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { axisTick } from '../../shared/ui/chartAxis.js'
-import { EXTRA_KINDS, monthNum, raiseKind, yearOf } from './salaryMath.js'
+import { EXTRA_KINDS, monthNum, offMonths, payChartAxis, payChartRows, raiseKind, yearOf } from './salaryMath.js'
 
 // ── Formatting ──────────────────────────────────────────────────────────────
 // A rate as "+3.2%" (signed: a true minus for a fall) or "3.2%".
@@ -63,43 +64,74 @@ export function PayHeadline({ report, currency, size = 'hero' }) {
 // Series colour per extra kind (useChartTheme's series).
 const EXTRA_COLOR = { holiday: 1, thirteenth: 5, bonus: 6 }
 const MARGIN = { top: 6, right: 6, bottom: 0, left: 0 }
+// Without its year axis (the extras carry it), the pay chart keeps room for
+// its lowest tick label.
+const MARGIN_NO_X = { ...MARGIN, bottom: 6 }
 const AXIS_W = 44
+// A month's pay is a dot over the level's thin line: solid when it's the
+// regular pay, hollow when it's off it (payChartRows' `off`). Smaller dots
+// past three years, where the months sit close together.
+const dotRadius = (months) => (months > 36 ? 2.25 : 3)
+// The tooltip lists the month's pay before the level.
+const payFirst = (item) => (item.dataKey === 'pay' ? 0 : 1)
+
+function PayDot({ cx, cy, payload, r, color, surface }) {
+  if (payload?.pay == null || cx == null || cy == null) return null
+  return payload.off
+    ? <circle cx={cx} cy={cy} r={r} fill={surface} stroke={color} strokeWidth={1.5} />
+    : <circle cx={cx} cy={cy} r={r} fill={color} />
+}
+
+// The chart's text alternative: the span, and the months off the regular pay.
+function chartAria(t, rows, currency) {
+  const base = t('chart.aria', { from: monthLabel(rows[0].key), to: monthLabel(rows[rows.length - 1].key) })
+  const { months, more } = offMonths(rows)
+  if (!months.length) return base
+  const list = months.map((m) => t('chart.offItem', { month: monthLabel(m.key), pay: money(m.pay, currency), level: money(m.level, currency) })).join('; ')
+  return [base, t('chart.offAria', { list }), more ? t('chart.offMore', { count: more }) : ''].filter(Boolean).join(' ')
+}
 
 export function PayChart({ report, currency, h = 170, extrasH = 64 }) {
   const t = useT('salary')
   const chart = useChartTheme()
   const f = minorFactor(currency)
-  const data = useMemo(() => {
-    const byKey = new Map(report.steps.map((s) => [s.key, { key: s.key, level: s.level / f, holiday: 0, thirteenth: 0, bonus: 0 }]))
-    for (const e of report.extras) { const d = byKey.get(e.key); if (d) d[e.kind] += e.minor / f }
-    return [...byKey.values()]
-  }, [report, f])
+  const rows = useMemo(() => payChartRows(report), [report])
+  const data = useMemo(() => rows.map((r) => ({
+    key: r.key, off: r.off, level: r.level / f, pay: r.pay == null ? null : r.pay / f,
+    holiday: r.holiday / f, thirteenth: r.thirteenth / f, bonus: r.bonus / f,
+  })), [rows, f])
   const hasExtras = data.some((d) => d.holiday || d.thirteenth || d.bonus)
+  const hasOff = data.some((d) => d.off)
   // One tick a year (January, or the first month); every other year past eight.
   const januaries = data.filter((d, i) => i === 0 || monthNum(d.key) === 1).map((d) => d.key)
   const every = Math.ceil(januaries.length / 8)
   const ticks = januaries.filter((_, i) => i % every === 0)
   const fmt = (v) => money(Math.round(v * f), currency)
-  const low = Math.min(...data.map((d) => d.level))
+  const yAxis = useMemo(() => payChartAxis(rows, f), [rows, f])
   const axis = { tickLine: false, axisLine: false, fontSize: 11, tick: chart.tick }
+  const color = chart.series[0]
+  const r = dotRadius(data.length)
   return (
-    <Box role="img" aria-label={t('chart.aria', { from: monthLabel(data[0].key), to: monthLabel(data[data.length - 1].key) })}>
+    <Box role="img" aria-label={chartAria(t, rows, currency)}>
       <Box h={`${h}px`} mx={-1} aria-hidden>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={MARGIN}>
+          <ComposedChart data={data} margin={hasExtras ? MARGIN_NO_X : MARGIN}>
             <defs>
               <linearGradient id="salaryFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={chart.series[0]} stopOpacity={0.28} />
-                <stop offset="100%" stopColor={chart.series[0]} stopOpacity={0.02} />
+                <stop offset="0%" stopColor={color} stopOpacity={0.18} />
+                <stop offset="100%" stopColor={color} stopOpacity={0.02} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chart.grid} />
             <XAxis dataKey="key" hide={hasExtras} ticks={ticks} tickFormatter={(k) => String(yearOf(k))} interval={0} {...axis} />
-            <YAxis width={AXIS_W} domain={[Math.floor(low * 0.9), 'auto']} tickFormatter={axisTick} {...axis} />
-            <Tooltip formatter={fmt} labelFormatter={monthLabel} {...chart.tooltip} />
-            <Area type="stepAfter" dataKey="level" name={t('chart.regular')} stroke={chart.series[0]} strokeWidth={2.5}
-              fill="url(#salaryFill)" dot={false} isAnimationActive={false} />
-          </AreaChart>
+            <YAxis width={AXIS_W} domain={yAxis.domain} ticks={yAxis.ticks} interval={0} tickFormatter={axisTick} {...axis} />
+            <Tooltip formatter={fmt} labelFormatter={monthLabel} itemSorter={payFirst} {...chart.tooltip} />
+            <Area type="stepAfter" dataKey="level" name={t('chart.regular')} stroke={color} strokeWidth={1.25}
+              strokeOpacity={0.7} fill="url(#salaryFill)" dot={false} activeDot={false} isAnimationActive={false} />
+            <Line dataKey="pay" name={t('chart.thisMonth')} stroke="none" connectNulls={false}
+              dot={(p) => <PayDot key={p.key} {...p} r={r} color={color} surface={chart.surface} />}
+              activeDot={{ r: r + 1.5, fill: color, stroke: chart.surface, strokeWidth: 1.5 }} isAnimationActive={false} />
+          </ComposedChart>
         </ResponsiveContainer>
       </Box>
       {hasExtras && (
@@ -117,24 +149,38 @@ export function PayChart({ report, currency, h = 170, extrasH = 64 }) {
           </ResponsiveContainer>
         </Box>
       )}
-      <ChartLegend extras={hasExtras} />
+      <ChartLegend extras={hasExtras} off={hasOff} />
     </Box>
   )
 }
 
-function Swatch({ color, square }) {
-  return <Box as="span" display="inline-block" boxSize="10px" borderRadius={square ? '2px' : 'full'} bg={color} flexShrink={0} />
+// A legend mark: 'dot' (a month's pay), 'ring' (a month off the level),
+// 'line' (the level), 'square' (an extra).
+function Swatch({ color, shape }) {
+  const round = shape === 'dot' || shape === 'ring'
+  const line = shape === 'line'
+  return (
+    <Box as="span" display="inline-block" flexShrink={0} w={line ? '14px' : round ? '8px' : '10px'}
+      h={line ? '2px' : round ? '8px' : '10px'} borderRadius={round ? 'full' : '2px'}
+      bg={shape === 'ring' ? 'transparent' : color} border={shape === 'ring' ? `1.5px solid ${color}` : undefined}
+      opacity={line ? 0.7 : 1} />
+  )
 }
 
-function ChartLegend({ extras }) {
+function ChartLegend({ extras, off }) {
   const t = useT('salary')
   const chart = useChartTheme()
-  const items = [[chart.series[0], t('chart.regular'), false],
-    ...(extras ? EXTRA_KINDS.map((k) => [chart.series[EXTRA_COLOR[k]], t(`extras.${k}`), true]) : [])]
+  const coral = chart.series[0]
+  const items = [
+    [coral, t('chart.pay'), 'dot'],
+    ...(off ? [[coral, t('chart.off'), 'ring']] : []),
+    [coral, t('chart.regular'), 'line'],
+    ...(extras ? EXTRA_KINDS.map((k) => [chart.series[EXTRA_COLOR[k]], t(`extras.${k}`), 'square']) : []),
+  ]
   return (
     <Wrap spacingX={3} spacingY={1} mt={2} fontSize="xs" color="text.muted" aria-hidden>
-      {items.map(([c, l, sq]) => (
-        <WrapItem key={l} alignItems="center" gap={1.5}><Swatch color={c} square={sq} /><Text>{l}</Text></WrapItem>
+      {items.map(([c, l, shape]) => (
+        <WrapItem key={l} alignItems="center" gap={1.5}><Swatch color={c} shape={shape} /><Text>{l}</Text></WrapItem>
       ))}
     </Wrap>
   )

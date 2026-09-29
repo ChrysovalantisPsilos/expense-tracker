@@ -13,6 +13,7 @@ export function useChartTheme() {
   return {
     series,
     positive,
+    surface,
     grid: border,
     tick: { fill: muted },
     tooltip: {
