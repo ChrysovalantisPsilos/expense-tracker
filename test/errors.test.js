@@ -170,6 +170,7 @@ const INTERNAL_RAISES = [
   // Input the app never sends.
   'bad type', 'unknown currency', 'cannot nudge yourself', 'rows must be an array', 'too many rows in one request',
   'invalid push keys', 'unsupported push endpoint', 'no_account', 'unknown quota scope', 'bad plan', 'bad setup', 'bad salary notes',
+  'bad month', 'bad summary', 'AI helper is off', // read by the ai-helper function, never shown as is
   // Server-only paths: cron, migrations, decryption.
   'unknown privacy email kind %', 'encrypted value is not an amount',
   'receipts bucket is not empty: empty it via the Storage API, then re-run this migration',

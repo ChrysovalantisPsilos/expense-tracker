@@ -42,4 +42,7 @@ export const CONSENT_LABELS: Record<string, string> = {
   weekly_digest: 'Weekly summary',
   email_notifications: 'Email notifications',
   push_notifications: 'Push notifications',
+  ai_quick_entry: 'AI helper: Type to add',
+  ai_import_categories: 'AI helper: Category ideas on import',
+  ai_month_summary: 'AI helper: Month in plain words',
 }

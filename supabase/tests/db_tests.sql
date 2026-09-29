@@ -6575,11 +6575,302 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 108. 0103: the AI helper switches. Off for a new account; the owner turns
+--      them on and off (another user can't), every change is a consents row
+--      (source 'settings'); the demo login can't turn one on; the functions
+--      are closed to anon, and the internal ones to signed-in users too.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; n int; r text; f text;
+begin
+  begin
+    u1 := pg_temp.zz_user('aisw1');
+    u2 := pg_temp.zz_user('aisw2');
+    if exists (select 1 from public.profiles where id = u1
+                and (ai_quick_entry or ai_import_categories or ai_month_summary)) then
+      raise exception 'a helper is on for a new account';
+    end if;
+    foreach f in array array['public.ai_helper_start(text)', 'public.my_month_summary(date)'] loop
+      if has_function_privilege('anon', f, 'execute') or not has_function_privilege('authenticated', f, 'execute') then
+        raise exception '% reachable by the wrong role', f;
+      end if;
+    end loop;
+    foreach f in array array['public.ai_save_month_summary(uuid,date,jsonb,text)', 'public.ai_month_totals(uuid,date)',
+                             'public.log_ai_consent()', 'public.profiles_ai_demo_guard()'] loop
+      foreach r in array array['public', 'anon', 'authenticated'] loop
+        if has_function_privilege(r, f, 'execute') then raise exception '% executable by %', f, r; end if;
+      end loop;
+    end loop;
+    if not has_function_privilege('service_role', 'public.ai_save_month_summary(uuid,date,jsonb,text)', 'execute') then
+      raise exception 'the edge function (service role) can''t save a summary';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    update public.profiles set ai_quick_entry = true, ai_month_summary = true where id = u1;
+    update public.profiles set ai_quick_entry = false where id = u1;
+    -- Someone else's switches: RLS leaves them alone.
+    update public.profiles set ai_import_categories = true where id = u2;
+    execute 'reset role';
+    if (select ai_import_categories from public.profiles where id = u2) then raise exception 'another user turned a helper on'; end if;
+    if not (select ai_month_summary and not ai_quick_entry from public.profiles where id = u1) then
+      raise exception 'the owner''s switches weren''t saved';
+    end if;
+    select count(*) into n from public.consents
+     where user_id = u1 and source = 'settings'
+       and (purpose, granted) in (('ai_quick_entry', true), ('ai_month_summary', true), ('ai_quick_entry', false));
+    if n <> 3 then raise exception 'expected 3 consent rows, got %', n; end if;
+    if exists (select 1 from public.consents where user_id = u2) then raise exception 'consent logged for the wrong user'; end if;
+
+    -- The demo login: turning a helper on is refused, off is fine.
+    update public.profiles set is_demo = true where id = u2;
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      update public.profiles set ai_month_summary = true where id = u2;
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: the demo turned a helper on';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+    end;
+    update public.profiles set ai_quick_entry = false where id = u2;
+    execute 'reset role';
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: AI helper switches off by default, owner-only, consent-logged, closed to the demo';
+    else update _t set fails = fails + 1; raise notice 'FAIL: AI helper switches — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 109. 0103: ai_helper_start, the edge function's gate before each call to
+--      Claude: refused while that helper is off (and for an unknown helper),
+--      the base currency once it's on, and per-user rate limits (Type it: 60
+--      an hour) that don't touch another user's.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; i int; res jsonb; ok boolean;
+begin
+  begin
+    u1 := pg_temp.zz_user('aigate1');
+    u2 := pg_temp.zz_user('aigate2');
+    update public.profiles set base_currency = 'CHF', ai_quick_entry = true where id = u1;
+    update public.profiles set ai_quick_entry = true where id = u2;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.ai_helper_start('month_summary');
+      execute 'reset role'; raise exception 'GUARD_MISSED: a helper that is off started';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+      if sqlerrm <> 'AI helper is off' then execute 'reset role'; raise exception 'wrong refusal: %', sqlerrm; end if;
+    end;
+    begin
+      perform public.ai_helper_start('chat');
+      execute 'reset role'; raise exception 'GUARD_MISSED: an unknown helper started';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+    end;
+    res := public.ai_helper_start('parse_entry');
+    if res->>'base_currency' is distinct from 'CHF' then execute 'reset role'; raise exception 'base currency not returned: %', res; end if;
+    for i in 2..60 loop perform public.ai_helper_start('parse_entry'); end loop;
+    begin
+      perform public.ai_helper_start('parse_entry');
+      ok := true;
+    exception when others then ok := false;
+    end;
+    if ok then execute 'reset role'; raise exception 'the 61st call in an hour went through'; end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    perform public.ai_helper_start('parse_entry');   -- another user's own limit
+    execute 'reset role';
+    perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+    execute 'set local role anon';
+    begin
+      perform public.ai_helper_start('parse_entry');
+      ok := true;
+    exception when insufficient_privilege then ok := false;
+    end;
+    execute 'reset role';
+    if ok then raise exception 'anon started a helper'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: ai_helper_start checks the switch, returns the base currency, rate-limits per user, refuses anon';
+    else update _t set fails = fails + 1; raise notice 'FAIL: ai_helper_start — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 110. 0103: the month summary. my_month_summary gives the owner the
+--      server's per-category totals (base currency, the month and the six
+--      before, with the month's budgets; no descriptions), and the stored
+--      summary once the edge function saved it (service role only, shape
+--      checked, encrypted), 'stale' after the totals change. Nothing while the
+--      helper is off; clients can't touch the table; another user sees only
+--      their own; turning the helper off deletes the summaries.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; food uuid; st jsonb; fp text; bad jsonb; n int; ok boolean;
+        m0 date := date_trunc('month', current_date)::date;
+        good jsonb := '{"lines": ["Food came to €12."], "lang": "en"}';
+begin
+  begin
+    u1 := pg_temp.zz_user('aisum1');
+    u2 := pg_temp.zz_user('aisum2');
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZ Food', 'expense') returning id into food;
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc, description_enc)
+    values (u1, 'expense', food, 'EUR', 1, m0, public.enc_minor(1200), public.enc_text('zz secret shop')),
+           (u1, 'expense', food, 'USD', 0.5, (m0 - interval '2 months')::date, public.enc_minor(1000), null);
+    insert into public.budgets (user_id, category_id, currency, period_start, amount_enc)
+    values (u1, food, 'EUR', m0, public.enc_minor(5000));
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    if public.my_month_summary(m0) is not null then execute 'reset role'; raise exception 'answered while the helper is off'; end if;
+    execute 'reset role';
+    update public.profiles set ai_month_summary = true where id in (u1, u2);
+    execute 'set local role authenticated';
+    st := public.my_month_summary(m0);
+    execute 'reset role';
+    if (st->>'empty')::boolean or st->'summary' <> 'null'::jsonb or (st->>'stale')::boolean then
+      raise exception 'fresh state wrong: %', st;
+    end if;
+    if st->'totals'->'categories'->0->'totals' is distinct from '[1200, 0, 500, 0, 0, 0, 0]'::jsonb
+       or (st->'totals'->'categories'->0->>'budget')::bigint is distinct from 5000
+       or st->'totals'->>'currency' is distinct from 'EUR' then
+      raise exception 'totals wrong: %', st->'totals';
+    end if;
+    if st::text like '%secret shop%' then raise exception 'a description reached the summary input'; end if;
+    fp := st->>'fingerprint';
+
+    -- Clients can't read or write the table, nor save a summary.
+    execute 'set local role authenticated';
+    begin
+      select count(*) into n from public.ai_month_summaries;
+      ok := true;
+    exception when insufficient_privilege then ok := false;
+    end;
+    if ok then execute 'reset role'; raise exception 'clients can read ai_month_summaries'; end if;
+    begin
+      perform public.ai_save_month_summary(u1, m0, good, fp);
+      ok := true;
+    exception when insufficient_privilege then ok := false;
+    end;
+    execute 'reset role';
+    if ok then raise exception 'a client saved a summary'; end if;
+
+    -- The edge function (service role) saves it; bad shapes are refused.
+    perform set_config('request.jwt.claims', '', true);
+    execute 'set local role service_role';
+    foreach bad in array array['{"lines": [], "lang": "en"}', '{"lines": ["x"], "lang": "fr"}', '{"lines": ["x"]}',
+                               '{"lines": [1], "lang": "en"}', '{"lines": ["x"], "lang": "en", "html": "<b>"}',
+                               jsonb_build_object('lines', jsonb_build_array(repeat('x', 301)), 'lang', 'en')] loop
+      begin
+        perform public.ai_save_month_summary(u1, m0, bad, fp);
+        execute 'reset role'; raise exception 'GUARD_MISSED: bad summary % saved', bad;
+      exception when others then
+        if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+      end;
+    end loop;
+    begin
+      perform public.ai_save_month_summary(u1, m0 + 3, good, fp);
+      execute 'reset role'; raise exception 'GUARD_MISSED: a summary saved for a day that isn''t a month';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+    end;
+    perform public.ai_save_month_summary(u1, m0, good, fp);
+    perform public.ai_save_month_summary(u1, (m0 - interval '13 months')::date, good, fp);
+    perform public.ai_save_month_summary(u1, m0, good, fp);   -- a rewrite drops the year-old one
+    execute 'reset role';
+    if (select count(*) from public.ai_month_summaries where user_id = u1) <> 1 then raise exception 'summaries over a year old kept'; end if;
+    if (select payload_enc::text like '%Food came%' from public.ai_month_summaries where user_id = u1) then
+      raise exception 'summary stored in the clear';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    st := public.my_month_summary(m0);
+    if st->'summary'->'lines' is distinct from good->'lines' or (st->>'stale')::boolean then
+      execute 'reset role'; raise exception 'owner didn''t read it back: %', st;
+    end if;
+    begin
+      perform public.my_month_summary((m0 - interval '6 months')::date);
+      ok := true;
+    exception when others then ok := false;
+    end;
+    if ok then execute 'reset role'; raise exception 'a far month was accepted'; end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    st := public.my_month_summary(m0);
+    execute 'reset role';
+    if st->'summary' <> 'null'::jsonb or not (st->>'empty')::boolean then raise exception 'another user saw it: %', st; end if;
+
+    -- A new entry makes it stale.
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u1, 'expense', food, 'EUR', 1, m0, public.enc_minor(300));
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    st := public.my_month_summary(m0);
+    if not (st->>'stale')::boolean then execute 'reset role'; raise exception 'not stale after a new entry'; end if;
+    -- Off deletes them, and the service role can't write one while it's off.
+    update public.profiles set ai_month_summary = false where id = u1;
+    execute 'reset role';
+    if exists (select 1 from public.ai_month_summaries where user_id = u1) then raise exception 'turning it off kept the summaries'; end if;
+    perform set_config('request.jwt.claims', '', true);
+    execute 'set local role service_role';
+    begin
+      perform public.ai_save_month_summary(u1, m0, good, fp);
+      execute 'reset role'; raise exception 'GUARD_MISSED: saved while off';
+    exception when others then
+      if sqlerrm like 'GUARD_MISSED%' then raise; end if;
+    end;
+    execute 'reset role';
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: month summary: server totals, service-role save, encrypted, owner-only, stale on change, deleted when off';
+    else update _t set fails = fails + 1; raise notice 'FAIL: month summary — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 111. 0103: the month summaries are in the owner's data export, and leave
+--      with their user: demo_wipe clears the demo accounts' only; deleting an
+--      account cascades them away.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; exported jsonb; m0 date := date_trunc('month', current_date)::date;
+begin
+  begin
+    u1 := pg_temp.zz_user('aiwipe1');
+    u2 := pg_temp.zz_user('aiwipe2');
+    update public.profiles set ai_month_summary = true where id in (u1, u2);
+    perform public.ai_save_month_summary(u1, m0, '{"lines": ["One."], "lang": "en"}', md5('a'));
+    perform public.ai_save_month_summary(u2, m0, '{"lines": ["Two."], "lang": "el"}', md5('b'));
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    exported := public.export_my_data();
+    execute 'reset role';
+    if exported->'ai_month_summaries'->0->'summary'->'lines' is distinct from '["One."]'::jsonb
+       or jsonb_array_length(exported->'ai_month_summaries') <> 1 then
+      raise exception 'export wrong: %', exported->'ai_month_summaries';
+    end if;
+    if (exported->'profile'->>'ai_month_summary')::boolean is distinct from true then raise exception 'export left out the switches'; end if;
+    perform public.demo_wipe(array[u1]);
+    if exists (select 1 from public.ai_month_summaries where user_id = u1) then raise exception 'demo_wipe left the summary'; end if;
+    if not exists (select 1 from public.ai_month_summaries where user_id = u2) then raise exception 'demo_wipe touched another account'; end if;
+    delete from auth.users where id = u2;
+    if exists (select 1 from public.ai_month_summaries where user_id = u2) then raise exception 'account deletion left the summary'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: month summaries exported, cleared by demo_wipe and account deletion, only for those users';
+    else update _t set fails = fails + 1; raise notice 'FAIL: month summaries cleanup — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 108; f int; p int;  -- tests 1–107 + B-0059
+declare expected_tests constant int := 112; f int; p int;  -- tests 1–111 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;
