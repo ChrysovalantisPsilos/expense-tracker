@@ -45,6 +45,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Plan mode (/plan): try changes to your recurring payments and income (cancel, change the amount or how often, add a new one) and see the monthly net before → after (a salary logged as entries counts as a derived Salary row; with no recurring income the card shows the payments total instead); ideas to save computed on the device; the plan is saved to the account (encrypted); optional Apply changes the real rules in one step, with Undo for 24 hours
 - Meal vouchers (/vouchers, Settings → Meal vouchers): a card topped up on a chosen day for last month's working days (Mon–Fri minus Belgian or Greek public holidays) × the amount per day; what's on the card, this month's top-ups and spending, the next top-up with Fix days (leave, sick days), the history; a Home card; expenses "Paid from: Meal vouchers" are spending but not against the Net; the setup is encrypted, in backups and the data export
 - Your salary (Insights card → /insights/salary): regular pay over time from the Salary entries (the salary shift respected), raises (Belgian January indexation labelled), extras (holiday pay, 13th month, bonus; guessed ones correctable in place; the Bonus category by its default key or picked on the page), "If things go on" (1/3/5/10 years: my trend, indexation only, what if; monthly pay and total earned, bonuses left out), pay against Belgian or Greek inflation (Eurostat HICP, shipped with the app), year-by-year totals; the corrections are encrypted, in backups and the data export
+- Optional AI helpers (Settings → AI helpers, all off by default; Claude by Anthropic): Type to add on Add fills the form from a typed line, with Undo; category ideas for new merchants on Import; Month in plain words on Insights and Home, written once and stored encrypted, with Update when the totals change
 - Savings page: the pot (all time, month by month), this month's flow, repeating savings, goals and a savings-only history
 - Net worth (accounts), insights & 6-month trends
 - One Transactions page (Expenses / Income / All switch) with search & filters across all history
@@ -757,3 +758,37 @@ and Greek), desktop 1280 and sideways 844×390.
    entries → Add income (opens a new income in Salary).
 9. Back up and restore into an empty account → the corrections come back on
    the restored entries. The data export has "salary_history".
+
+### K9. AI helpers
+
+Needs `ANTHROPIC_API_KEY` set for `ai-helper` on TEST. Fake data only: a
+throwaway account with a few categories, a budget and some months of
+entries. Check at 390px (light and dark, English and Greek) and desktop 1280.
+
+1. Settings → AI helpers: three switches, all off for a new account; each
+   says what is sent; the note says it goes to Anthropic, isn't used for
+   training and is deleted within 30 days. Turning one on or off shows at
+   once and survives a reload; Settings → Privacy → consent history lists
+   each change. The demo account can't turn one on.
+2. All off: no "Type it" on Add, no Suggested chips on Import, no summary on
+   Insights or Home.
+3. Type to add (Add, new entries only): "coffee 3.60 yesterday" fills
+   Expense, 3.60, the main currency, yesterday, a matching category and
+   "coffee", each marked Suggested; "μισθός 2792 στις 28" fills Income,
+   Salary, the 28th; "sushi ¥1800 last friday" fills JPY 1800 and last
+   Friday's date. Undo puts the form back. A line with no amount says it
+   couldn't tell. Nothing is saved until Save.
+4. Import a statement with new merchants: under the review text, "Finding
+   categories…", then "Suggested for n of m" and Suggested chips on the rows
+   it could place (only your own categories, expense for money out, income
+   for money in); a
+   private person's name stays blank. Keeping a suggestion and importing
+   saves the rule like a hand-picked one.
+5. Month in plain words: Insights (top) and Home show 2–3 lines about this
+   month, written once; reload → the same text, no new call. Add an entry →
+   "Your totals changed since this was written." with Update; Update writes a new one. Switch the
+   language → it's rewritten in that language. Home's card can be hidden for
+   until next month. Turn the helper off → the stored summaries are gone.
+6. Failures: with the key removed every helper says AI helpers aren't available, and
+   Add, Import and Insights still work normally. The data export has
+   "ai_month_summaries".
