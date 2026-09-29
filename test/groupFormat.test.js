@@ -61,7 +61,7 @@ test('splitLabel: equal vs custom splits, pluralised', () => {
   assert.equal(splitLabel({}), 'split 0 ways')
 })
 
-test('settlePlan: fewest payments, named, viewer shown as You and flagged', () => {
+test('settlePlan: fewest payments, named, viewer shown as You and flagged; others not mine; empty when settled', () => {
   const ms = [{ id: 'y', display_name: 'Alex' }, { id: 'a', display_name: 'Anna' }, { id: 's', display_name: 'Sofia' }]
   const plan = settlePlan(new Map([['y', 1500], ['a', -500], ['s', -1000]]), ms, 'y')
   assert.equal(plan.length, 2)
@@ -70,6 +70,13 @@ test('settlePlan: fewest payments, named, viewer shown as You and flagged', () =
   // Seen by Sofia: she pays, so her row is negative.
   const [s] = settlePlan(new Map([['y', 1000], ['s', -1000]]), ms, 's')
   assert.equal(`${s.fromName}->${s.toName}:${s.tone}`, 'You->Alex:negative')
+  // Empty when everyone is settled; others' payments are marked not mine.
+  const withBen = [...ms, { id: 'b', display_name: 'Ben' }]
+  assert.deepEqual(settlePlan(new Map([['y', 0], ['a', 0]]), withBen, 'y'), [])
+  const [t] = settlePlan(new Map([['y', 0], ['a', 300], ['b', -300]]), withBen, 'y')
+  assert.equal(`${t.fromName}->${t.toName}`, 'Ben->Anna')
+  assert.equal(t.mine, false)
+  assert.equal(t.tone, 'default')
 })
 
 test('mySettleSuggestions: only your payments, biggest first, with the form values', () => {
@@ -85,22 +92,7 @@ test('mySettleSuggestions: only your payments, biggest first, with the form valu
   assert.deepEqual(mySettleSuggestions(undefined, 'y'), [])
 })
 
-test('settlePlan: empty when everyone is settled; others marked not mine', () => {
-  const ms = [{ id: 'y', display_name: 'Alex' }, { id: 'a', display_name: 'Anna' }, { id: 'b', display_name: 'Ben' }]
-  assert.deepEqual(settlePlan(new Map([['y', 0], ['a', 0]]), ms, 'y'), [])
-  const [t] = settlePlan(new Map([['y', 0], ['a', 300], ['b', -300]]), ms, 'y')
-  assert.equal(`${t.fromName}->${t.toName}`, 'Ben->Anna')
-  assert.equal(t.mine, false)
-  assert.equal(t.tone, 'default')
-})
-
-test('paidByLabel: "You" for the viewer, the name otherwise', () => {
-  assert.equal(paidByLabel(members, 'a', 'a'), 'Paid by You')
-  assert.equal(paidByLabel(members, 'b', 'a'), 'Paid by Bob')
-  assert.equal(paidByLabel(members, 'zzz', 'a'), 'Paid by —')
-})
-
-test('groupTotal: sums the group-currency expenses in minor units', () => {
+test('groupTotal: sums the group-currency expenses in minor units, a foreign one at its group amount', () => {
   const ex = [
     { amount_minor: 24000, currency: 'EUR' }, { amount_minor: 8640, currency: 'EUR' },
     { amount_minor: 1860, currency: 'EUR' }, { amount_minor: 1200, currency: 'EUR' },
@@ -110,14 +102,11 @@ test('groupTotal: sums the group-currency expenses in minor units', () => {
   assert.equal(groupTotal([...ex, { amount_minor: 500, currency: 'GBP' }, { amount_minor: '100' }], 'EUR'), 35800)
   assert.equal(groupTotal([], 'EUR'), 0)
   assert.equal(groupTotal(null, 'EUR'), 0)
-})
-
-test('groupTotal: a foreign-currency expense counts at its group amount', () => {
-  const ex = [
+  // A foreign-currency expense counts at its group amount.
+  assert.equal(groupTotal([
     { amount_minor: 1200, currency: 'EUR' },
     { amount_minor: 4250, currency: 'GBP', exchange_rate: 1.1699, group_amount_minor: 4972 },
-  ]
-  assert.equal(groupTotal(ex, 'EUR'), 6172)
+  ], 'EUR'), 6172)
 })
 
 test('memberBalances: every member, you first as "You", missing rows settled', () => {
@@ -215,12 +204,15 @@ test('groupSummaryText: total and who owes whom by name, text only', () => {
   assert.match(settled, /Everyone is settled up\./)
 })
 
-test('viewerName: "You" for the viewer, the member\'s name otherwise', () => {
+test('viewerName / paidByLabel: "You" for the viewer, the member\'s name otherwise', () => {
   const ms = [{ id: 'y', display_name: 'Alex' }, { id: 'a', display_name: 'Anna' }]
   assert.equal(viewerName(ms, 'y', 'y'), 'You')
   assert.equal(viewerName(ms, 'a', 'y'), 'Anna')
   assert.equal(viewerName(ms, 'y', null), 'Alex')
   assert.equal(viewerName(ms, 'zzz', 'y'), '—')
+  assert.equal(paidByLabel(members, 'a', 'a'), 'Paid by You')
+  assert.equal(paidByLabel(members, 'b', 'a'), 'Paid by Bob')
+  assert.equal(paidByLabel(members, 'zzz', 'a'), 'Paid by —')
 })
 
 test('expenseLabel / settlementLabel: the names rows and comment pages use', () => {

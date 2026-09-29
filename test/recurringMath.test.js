@@ -2,15 +2,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { monthlyMinor, frequencyLabel, expectedInWindow } from '../src/features/recurring/recurringMath.js'
 
-test('monthlyMinor: monthly is itself', () => {
+test('monthlyMinor: monthly is itself, weekly scales by 52/12, every 2 months halves', () => {
   assert.equal(monthlyMinor({ amount_minor: 1000, frequency: 'monthly', interval_n: 1 }), 1000)
-})
-
-test('monthlyMinor: weekly scales by 52/12', () => {
   assert.equal(monthlyMinor({ amount_minor: 1200, frequency: 'weekly', interval_n: 1 }), Math.round(1200 * 52 / 12))
-})
-
-test('monthlyMinor: every 2 months halves', () => {
   assert.equal(monthlyMinor({ amount_minor: 1000, frequency: 'monthly', interval_n: 2 }), 500)
 })
 
@@ -19,45 +13,35 @@ test('frequencyLabel wording', () => {
   assert.equal(frequencyLabel({ frequency: 'weekly', interval_n: 2 }), 'every 2 weeks')
 })
 
-test('expectedInWindow: counts occurrences inside the window only', () => {
-  const rules = [{
-    is_active: true, kind: 'expense', amount_minor: 500,
-    frequency: 'weekly', interval_n: 1, next_run: '2026-07-10', end_date: null,
-  }]
-  // Window 2026-07-01..31 → 10, 17, 24, 31 = 4 charges.
-  assert.deepEqual(expectedInWindow(rules, '2026-07-01', '2026-07-31'), { expense: 2000, income: 0 })
-})
-
-test('expectedInWindow: no double count for already-materialised charges', () => {
-  // next_run already advanced past the whole window → nothing projected.
-  const rules = [{
-    is_active: true, kind: 'expense', amount_minor: 500,
-    frequency: 'monthly', interval_n: 1, next_run: '2026-08-01', end_date: null,
-  }]
-  assert.deepEqual(expectedInWindow(rules, '2026-07-01', '2026-07-31'), { expense: 0, income: 0 })
-})
-
-test('expectedInWindow: respects end_date and inactive rules', () => {
-  const rules = [
-    { is_active: true, kind: 'expense', amount_minor: 100, frequency: 'daily', interval_n: 1, next_run: '2026-07-01', end_date: '2026-07-03' },
-    { is_active: false, kind: 'expense', amount_minor: 999, frequency: 'daily', interval_n: 1, next_run: '2026-07-01', end_date: null },
+test('expectedInWindow: in-window charges only, no double count, end_date and inactive rules, income vs expense', () => {
+  const cases = [
+    // Window 2026-07-01..31 → 10, 17, 24, 31 = 4 charges.
+    ['counts occurrences inside the window only', [
+      { is_active: true, kind: 'expense', amount_minor: 500, frequency: 'weekly', interval_n: 1, next_run: '2026-07-10', end_date: null },
+    ], '2026-07-01', '2026-07-31', { expense: 2000, income: 0 }],
+    // next_run already advanced past the whole window → nothing projected.
+    ['no double count for already-materialised charges', [
+      { is_active: true, kind: 'expense', amount_minor: 500, frequency: 'monthly', interval_n: 1, next_run: '2026-08-01', end_date: null },
+    ], '2026-07-01', '2026-07-31', { expense: 0, income: 0 }],
+    // 3 charges (1st..3rd), inactive ignored.
+    ['respects end_date and inactive rules', [
+      { is_active: true, kind: 'expense', amount_minor: 100, frequency: 'daily', interval_n: 1, next_run: '2026-07-01', end_date: '2026-07-03' },
+      { is_active: false, kind: 'expense', amount_minor: 999, frequency: 'daily', interval_n: 1, next_run: '2026-07-01', end_date: null },
+    ], '2026-07-01', '2026-07-31', { expense: 300, income: 0 }],
+    ['income vs expense split', [
+      { is_active: true, kind: 'income', amount_minor: 200000, frequency: 'monthly', interval_n: 1, next_run: '2026-07-28', end_date: null },
+      { is_active: true, kind: 'expense', amount_minor: 800, frequency: 'monthly', interval_n: 1, next_run: '2026-07-20', end_date: null },
+    ], '2026-07-15', '2026-07-31', { expense: 800, income: 200000 }],
   ]
-  // 3 charges (1st..3rd), inactive ignored.
-  assert.deepEqual(expectedInWindow(rules, '2026-07-01', '2026-07-31'), { expense: 300, income: 0 })
-})
-
-test('expectedInWindow: income vs expense split', () => {
-  const rules = [
-    { is_active: true, kind: 'income', amount_minor: 200000, frequency: 'monthly', interval_n: 1, next_run: '2026-07-28', end_date: null },
-    { is_active: true, kind: 'expense', amount_minor: 800, frequency: 'monthly', interval_n: 1, next_run: '2026-07-20', end_date: null },
-  ]
-  assert.deepEqual(expectedInWindow(rules, '2026-07-15', '2026-07-31'), { expense: 800, income: 200000 })
+  for (const [name, rules, from, to, expected] of cases) {
+    assert.deepEqual(expectedInWindow(rules, from, to), expected, name)
+  }
 })
 
 // ---- Repeat from an entry: next charge one period after the transaction -----
 import { nextRunAfter, ruleFromTransaction } from '../src/features/recurring/recurringMath.js'
 
-test('nextRunAfter: one period later, as the SQL materializer steps', () => {
+test('nextRunAfter: one period later, as the SQL materializer steps; month ends clamp to the shorter month', () => {
   assert.equal(nextRunAfter('2026-09-01', 'monthly'), '2026-10-01') // rent on the 1st
   assert.equal(nextRunAfter('2026-09-01', 'weekly'), '2026-09-08')
   assert.equal(nextRunAfter('2026-12-28', 'weekly'), '2027-01-04') // across a year
@@ -65,9 +49,7 @@ test('nextRunAfter: one period later, as the SQL materializer steps', () => {
   assert.equal(nextRunAfter('2026-09-01', 'yearly'), '2027-09-01')
   assert.equal(nextRunAfter('2026-09-15', 'weekly', 2), '2026-09-29')
   assert.equal(nextRunAfter('2026-11-30', 'monthly', 3), '2027-02-28')
-})
-
-test('nextRunAfter: month ends clamp to the shorter month (Postgres date + interval)', () => {
+  // Month ends clamp to the shorter month (Postgres date + interval).
   assert.equal(nextRunAfter('2026-01-31', 'monthly'), '2026-02-28')
   assert.equal(nextRunAfter('2028-01-31', 'monthly'), '2028-02-29') // leap year
   assert.equal(nextRunAfter('2026-03-31', 'monthly'), '2026-04-30')

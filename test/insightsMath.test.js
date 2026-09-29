@@ -90,7 +90,7 @@ test('spendingShares: a real "Other" category that absorbs the tail still comes 
   assert.equal(shares[4].share, 16) // 174 + 64 + 48 of 1785
 })
 
-test('foreignSpending: this month\'s foreign expenses converted at their captured rate', () => {
+test('foreignSpending: this month\'s foreign expenses converted at their captured rate (whole units for a zero-decimal base)', () => {
   const rows = [
     tx({ id: 1, spent_at: '2026-09-20', amount_minor: 4250, currency: 'GBP', exchange_rate: 1.17, description: 'Train to London' }),
     tx({ id: 2, spent_at: '2026-09-18', amount_minor: 18900, currency: 'USD', exchange_rate: 0.92, categories: { name: 'Hotels' } }),
@@ -108,11 +108,9 @@ test('foreignSpending: this month\'s foreign expenses converted at their capture
   ])
   assert.equal(totalBaseMinor, 23477) // the landing card's €234.77
   assert.deepEqual(foreignSpending(rows.slice(3, 4), '2026-09', 'EUR'), { items: [], totalBaseMinor: 0 })
-})
-
-test('foreignSpending: a zero-decimal base currency gets whole minor units', () => {
-  const rows = [tx({ id: 1, spent_at: '2026-09-01', amount_minor: 1000, currency: 'EUR', exchange_rate: 160.5, description: 'Hotel' })]
-  assert.equal(foreignSpending(rows, '2026-09', 'JPY').totalBaseMinor, 1605)
+  // A zero-decimal base currency gets whole minor units.
+  const hotel = [tx({ id: 1, spent_at: '2026-09-01', amount_minor: 1000, currency: 'EUR', exchange_rate: 160.5, description: 'Hotel' })]
+  assert.equal(foreignSpending(hotel, '2026-09', 'JPY').totalBaseMinor, 1605)
 })
 
 test('hasTrendData: any income or spending in any month', () => {

@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { ERROR_VARIANTS, errorScreen, errorVariant, isChunkLoadError } from '../src/shared/ui/errorScreens.js'
 
-test('isChunkLoadError: recognises every browser’s failed-chunk message', () => {
+test('isChunkLoadError: recognises every browser’s failed-chunk message, and nothing else', () => {
   const messages = [
     'Failed to fetch dynamically imported module: https://budgeer.com/assets/Budgets-abc123.js', // Chrome
     'Importing a module script failed.', // Safari
@@ -19,9 +19,7 @@ test('isChunkLoadError: recognises every browser’s failed-chunk message', () =
   named.name = 'ChunkLoadError'
   assert.equal(isChunkLoadError(named), true)
   assert.equal(isChunkLoadError('Failed to fetch dynamically imported module'), true)
-})
-
-test('isChunkLoadError: ordinary errors are not chunk errors', () => {
+  // Ordinary errors are not chunk errors.
   for (const e of [
     new Error('Cannot read properties of undefined (reading "map")'),
     new TypeError('Failed to fetch'), // a data request, not a code chunk

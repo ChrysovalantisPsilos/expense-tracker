@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { offlineReadRpc, offlineReadKey, requestUser } from '../src/shared/lib/offlineReads.js'
 
-test('offlineReadRpc: allowlisted read RPCs via POST', () => {
+test('offlineReadRpc: allowlisted read RPCs via POST; writes, anon preview, GETs and odd paths are never cached', () => {
   assert.equal(offlineReadRpc('POST', '/rest/v1/rpc/my_transactions'), 'my_transactions')
   assert.equal(offlineReadRpc('POST', '/rest/v1/rpc/group_ledger'), 'group_ledger')
   // The device-made statement's reads, so an export works offline too.
@@ -10,9 +10,7 @@ test('offlineReadRpc: allowlisted read RPCs via POST', () => {
   // Your salary's corrections (0102): read offline, never the save.
   assert.equal(offlineReadRpc('POST', '/rest/v1/rpc/my_salary_history'), 'my_salary_history')
   assert.equal(offlineReadRpc('POST', '/rest/v1/rpc/save_salary_history'), null)
-})
-
-test('offlineReadRpc: writes, anon preview, GETs and odd paths are never cached', () => {
+  // Writes, the anon preview, GETs and odd paths are never cached.
   assert.equal(offlineReadRpc('POST', '/rest/v1/rpc/save_transactions'), null)
   assert.equal(offlineReadRpc('POST', '/rest/v1/rpc/add_settlement'), null)
   assert.equal(offlineReadRpc('POST', '/rest/v1/rpc/group_preview'), null)

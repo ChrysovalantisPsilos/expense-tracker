@@ -10,7 +10,7 @@ import {
 const parts = (total, n) => Array.from({ length: n }, (_, i) => spreadPart(total, n, i))
 const sum = (xs) => xs.reduce((a, b) => a + b, 0)
 
-test('spreadPart: equal integer parts, remainder to the earliest months, exact sum', () => {
+test('spreadPart: equal integer parts, remainder to the earliest months, exact sum (24 months too)', () => {
   assert.deepEqual(parts(12000, 12), Array(12).fill(1000))
   assert.deepEqual(parts(12005, 12), [1001, 1001, 1001, 1001, 1001, 1000, 1000, 1000, 1000, 1000, 1000, 1000])
   assert.deepEqual(parts(11, 12), [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0])
@@ -24,9 +24,7 @@ test('spreadPart: equal integer parts, remainder to the earliest months, exact s
   }
   assert.equal(spreadPart(12005, 12, -1), 0)
   assert.equal(spreadPart(12005, 12, 12), 0)
-})
-
-test('spreadPart: a 24-month spread (every 2 years)', () => {
+  // A 24-month spread (every 2 years).
   const p = parts(10000, 24) // 416 r 16
   assert.equal(p.filter((x) => x === 417).length, 16)
   assert.deepEqual(p.slice(15, 17), [417, 416])

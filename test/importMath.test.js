@@ -25,7 +25,7 @@ const fileKeys = (descriptions, opts) => {
   })
 }
 
-test('merchantKey: strips bank noise, numbers, dates, branches', () => {
+test('merchantKey: strips bank noise, numbers, dates, branches; nothing left is no key', () => {
   assert.equal(key('BANCONTACT LIDL 1234 BRUXELLES 19/07'), 'LIDL')
   assert.equal(key('LIDL 992 GENT'), 'LIDL')
   assert.equal(key('Netflix.com 12.99'), 'NETFLIX')
@@ -34,6 +34,11 @@ test('merchantKey: strips bank noise, numbers, dates, branches', () => {
   // A town right after the name is a branch, not part of the name.
   assert.equal(key('DELHAIZE LEUVEN 14/09 12:31 Kaart 1234'), 'DELHAIZE')
   assert.equal(key('ΑΓΟΡΑ ΣΚΛΑΒΕΝΙΤΗΣ ΑΘΗΝΑ'), 'ΣΚΛΑΒΕΝΙΤΗΣ')
+  // Empty inputs have no key.
+  assert.equal(merchantKey(''), '')
+  assert.equal(merchantKey(null), '')
+  assert.equal(merchantKey('12/07/2026 99.50'), '')
+  assert.deepEqual(groupMerchants([]), new Map())
 })
 
 test('merchantKey: Belgian card and app payment prefixes are noise', () => {
@@ -191,13 +196,6 @@ test('rowMerchantName: counterparty first, the holder column marks own transfers
   assert.equal(rowMerchantName({ cp: 'KUMAR RAVI', d: 'x' }, { counterparty: 'cp', description: 'd' }), 'KUMAR RAVI')
 })
 
-test('merchantKey: empty inputs', () => {
-  assert.equal(merchantKey(''), '')
-  assert.equal(merchantKey(null), '')
-  assert.equal(merchantKey('12/07/2026 99.50'), '')
-  assert.deepEqual(groupMerchants([]), new Map())
-})
-
 test('parseAmount: plain, comma-decimal, mixed separators, junk', () => {
   assert.equal(parseAmount('12.34'), 12.34)
   assert.equal(parseAmount('12,34'), 12.34)
@@ -208,11 +206,8 @@ test('parseAmount: plain, comma-decimal, mixed separators, junk', () => {
   assert.ok(Number.isNaN(parseAmount(null)))
 })
 
-test('parseDate: Date objects keep the local day', () => {
+test('parseDate: Date objects keep the local day; strings and invalids', () => {
   assert.equal(parseDate(new Date(2026, 6, 21)), '2026-07-21')
-})
-
-test('parseDate: strings and invalids', () => {
   assert.equal(parseDate('2026-07-21'), '2026-07-21')
   assert.equal(parseDate('2026-07-21T00:30:00'), '2026-07-21')
   assert.equal(parseDate('2026-02-30'), null)

@@ -7,52 +7,36 @@ import {
 
 const receipt = (name) => readFileSync(new URL(`./fixtures/receipts/${name}`, import.meta.url), 'utf8')
 
-test('English café: TOTAL beats subtotal, VAT, cash and change', () => {
-  assert.deepEqual(readReceipt(receipt('en-cafe.txt')),
-    { merchant: 'THE BEAN HOUSE', date: '2026-09-14', total: 13.3, currency: 'EUR' })
+test('readReceipt: each fixture receipt reads to its merchant, date, total and currency', () => {
+  const cases = [
+    // English café: TOTAL beats subtotal, VAT, cash and change.
+    ['en-cafe.txt', { merchant: 'THE BEAN HOUSE', date: '2026-09-14', total: 13.3, currency: 'EUR' }],
+    // Greek supermarket: ΣΥΝΟΛΟ, not ΜΕΡΙΚΟ ΣΥΝΟΛΟ or the VAT table; date at the bottom.
+    ['el-supermarket.txt', { merchant: 'ΣΚΛΑΒΕΝΙΤΗΣ', date: '2026-09-21', total: 9.4, currency: null }],
+    // Greek taverna: ΠΛΗΡΩΤΕΟ with the amount on the next line, Greek month name.
+    ['el-taverna.txt', { merchant: 'ΤΑΒΕΡΝΑ Ο ΜΙΧΑΛΗΣ', date: '2026-09-05', total: 36.5, currency: 'EUR' }],
+    // French bakery: "Total à payer" beats Sous-total TTC and Total HT; "03 août 2026".
+    ['fr-boulangerie.txt', { merchant: 'BOULANGERIE DUPRÉ', date: '2026-08-03', total: 16.5, currency: 'EUR' }],
+    // Dutch supermarket: "Totaal te betalen" beats Subtotaal and BTW; dd.mm.yyyy.
+    ['nl-supermarkt.txt', { merchant: 'DELHAIZE LEUVEN', date: '2026-09-18', total: 9.43, currency: 'EUR' }],
+    // Noisy OCR: junk punctuation, total split over two lines, two-digit year.
+    ['en-noisy.txt', { merchant: 'FRESH MART', date: '2026-09-12', total: 7.25, currency: null }],
+  ]
+  for (const [file, want] of cases) assert.deepEqual(readReceipt(receipt(file)), want, file)
 })
 
-test('Greek supermarket: ΣΥΝΟΛΟ, not ΜΕΡΙΚΟ ΣΥΝΟΛΟ or the VAT table; date at the bottom', () => {
-  assert.deepEqual(readReceipt(receipt('el-supermarket.txt')),
-    { merchant: 'ΣΚΛΑΒΕΝΙΤΗΣ', date: '2026-09-21', total: 9.4, currency: null })
-})
-
-test('Greek taverna: ΠΛΗΡΩΤΕΟ with the amount on the next line, Greek month name', () => {
-  assert.deepEqual(readReceipt(receipt('el-taverna.txt')),
-    { merchant: 'ΤΑΒΕΡΝΑ Ο ΜΙΧΑΛΗΣ', date: '2026-09-05', total: 36.5, currency: 'EUR' })
-})
-
-test('French bakery: "Total à payer" beats Sous-total TTC and Total HT; "03 août 2026"', () => {
-  assert.deepEqual(readReceipt(receipt('fr-boulangerie.txt')),
-    { merchant: 'BOULANGERIE DUPRÉ', date: '2026-08-03', total: 16.5, currency: 'EUR' })
-})
-
-test('Dutch supermarket: "Totaal te betalen" beats Subtotaal and BTW; dd.mm.yyyy', () => {
-  assert.deepEqual(readReceipt(receipt('nl-supermarkt.txt')),
-    { merchant: 'DELHAIZE LEUVEN', date: '2026-09-18', total: 9.43, currency: 'EUR' })
-})
-
-test('noisy OCR: junk punctuation, total split over two lines, two-digit year', () => {
-  assert.deepEqual(readReceipt(receipt('en-noisy.txt')),
-    { merchant: 'FRESH MART', date: '2026-09-12', total: 7.25, currency: null })
-})
-
-test('extractTotal: prefers a total line over subtotal', () => {
+test('extractTotal: a total line over subtotal, else the largest amount that isn\'t cash, change or tax; never a date or VAT rate', () => {
   assert.equal(extractTotal('Subtotal 10.00\nTOTAL 12.34'), 12.34)
   assert.equal(extractTotal('GRAND TOTAL: $1,234.56'), 1234.56)
   assert.equal(extractTotal('Amount Due 1.234,56'), 1234.56) // euro-style separators
   assert.equal(extractTotal('TOTAL 12.50\nTOTAL ITEMS 3'), 12.5)
-})
-
-test('extractTotal: falls back to the largest amount that isn\'t cash, change or tax', () => {
+  // The fallback: the largest amount that isn't cash, change or tax.
   assert.equal(extractTotal('Coffee 5.00\nCake 9.99\nThanks!'), 9.99)
   assert.equal(extractTotal('Coffee 5.00\nCash 50.00\nChange 45.00'), 5)
   assert.equal(extractTotal('VAT 24,00% 1,20\nItem 5,00'), 5)
   assert.equal(extractTotal('no money here'), null)
   assert.equal(extractTotal(''), null)
-})
-
-test('extractTotal: dates and VAT rates are never read as money', () => {
+  // Dates and VAT rates are never read as money.
   assert.equal(extractTotal('21.07.26 TOTAL 3,20'), 3.2)
   assert.equal(extractTotal('ΦΠΑ 24,00%\nΣΥΝΟΛΟ 4,96'), 4.96)
 })

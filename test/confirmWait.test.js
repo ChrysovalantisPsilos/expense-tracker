@@ -62,11 +62,16 @@ function setup({ results = [NOT_CONFIRMED], visible = true, manual = false } = {
   return { clock, log, waiter, state, pendingResolves }
 }
 
-test('nextDelay: 6 s during the first minute, then 15 s', () => {
+test('nextDelay: 6 s during the first minute, then 15 s, inside the 30-per-5-minutes sign-in limit', () => {
   assert.equal(nextDelay(0), FAST_MS)
   assert.equal(nextDelay(FAST_PHASE_MS - 1), FAST_MS)
   assert.equal(nextDelay(FAST_PHASE_MS), SLOW_MS)
   assert.equal(nextDelay(GIVE_UP_MS), SLOW_MS)
+  // The schedule stays inside the default 30-per-5-minutes sign-in limit.
+  let t = 0
+  let n = 0
+  while (t < 5 * 60_000) { t += nextDelay(t); n += 1 }
+  assert.ok(n <= 26, `${n} tries in the first five minutes`)
 })
 
 test('attemptOutcome: only "email not confirmed" means keep waiting', () => {
@@ -75,13 +80,6 @@ test('attemptOutcome: only "email not confirmed" means keep waiting', () => {
   assert.equal(attemptOutcome({ error: { code: 'over_request_rate_limit' } }), 'stop')
   assert.equal(attemptOutcome({ error: { code: 'invalid_credentials' } }), 'stop')
   assert.equal(attemptOutcome({ error: new TypeError('Failed to fetch') }), 'stop')
-})
-
-test('the schedule stays inside the default 30-per-5-minutes sign-in limit', () => {
-  let t = 0
-  let n = 0
-  while (t < 5 * 60_000) { t += nextDelay(t); n += 1 }
-  assert.ok(n <= 26, `${n} tries in the first five minutes`)
 })
 
 test('waits, retries every 6 s, and stops on success, forgetting the password', async () => {

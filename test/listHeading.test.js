@@ -9,18 +9,19 @@ test('countLabel: singular and plural', () => {
   assert.equal(countLabel(1, 'result', 'results'), '1 result')
 })
 
-test('listHeading: title by kind, period and count as the subtitle', () => {
+test('listHeading: title by kind (savings for a savings category), period and count as the subtitle', () => {
   assert.deepEqual(listHeading({ kind: 'expense', periodLabel: 'This month', count: 3 }),
     { title: 'Expenses', subtitle: 'This month · 3 entries' })
   assert.deepEqual(listHeading({ kind: 'income', periodLabel: 'August 2026', count: 1 }),
     { title: 'Income', subtitle: 'August 2026 · 1 entry' })
   assert.deepEqual(listHeading({ periodLabel: 'This month', count: 0 }),
     { title: 'All transactions', subtitle: 'This month · 0 entries' })
-})
-
-test('listHeading: no count while loading', () => {
-  assert.deepEqual(listHeading({ kind: 'expense', periodLabel: 'This month', count: 0, loading: true }),
-    { title: 'Expenses', subtitle: 'This month' })
+  // A savings category's list is "Savings", like its "Saved" total.
+  assert.deepEqual(listHeading({ kind: 'income', savings: true, periodLabel: 'This month', count: 2 }),
+    { title: 'Savings', subtitle: 'This month · 2 entries' })
+  assert.equal(listHeading({ kind: 'income', periodLabel: 'This month', count: 2 }).title, 'Income')
+  // Only income can be savings.
+  assert.equal(listHeading({ kind: 'expense', savings: true, periodLabel: 'This month', count: 2 }).title, 'Expenses')
 })
 
 test('listHeading: a search counts results', () => {
@@ -30,7 +31,9 @@ test('listHeading: a search counts results', () => {
     { title: 'Search results', subtitle: 'Searching…' })
 })
 
-test('listHeading: no count when the list failed to load, so it never reads "0 entries"', () => {
+test('listHeading: no count while loading, or when the list failed to load, so it never reads "0 entries"', () => {
+  assert.deepEqual(listHeading({ kind: 'expense', periodLabel: 'This month', count: 0, loading: true }),
+    { title: 'Expenses', subtitle: 'This month' })
   assert.deepEqual(listHeading({ kind: 'expense', periodLabel: 'This month', count: 0, failed: true }),
     { title: 'Expenses', subtitle: 'This month' })
   assert.deepEqual(listHeading({ count: 0, searching: true, failed: true }),
@@ -46,12 +49,4 @@ test('isFirstRun: only a loaded, empty list with no first transaction at all', (
   assert.equal(isFirstRun({ ...base, count: 2 }), false)
   assert.equal(isFirstRun({ ...base, oldest: '2026-01-04' }), false) // entries in other periods
   assert.equal(isFirstRun({ ...base, oldest: undefined }), false) // not known (yet, or unreadable)
-})
-
-test('listHeading: a savings category\'s list is "Savings", like its "Saved" total', () => {
-  assert.deepEqual(listHeading({ kind: 'income', savings: true, periodLabel: 'This month', count: 2 }),
-    { title: 'Savings', subtitle: 'This month · 2 entries' })
-  assert.equal(listHeading({ kind: 'income', periodLabel: 'This month', count: 2 }).title, 'Income')
-  // Only income can be savings.
-  assert.equal(listHeading({ kind: 'expense', savings: true, periodLabel: 'This month', count: 2 }).title, 'Expenses')
 })

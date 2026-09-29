@@ -5,18 +5,12 @@ import {
   linkErrorMessage, redirectError,
 } from '../src/features/settings/authMethods.js'
 
-test('hasPasswordIdentity: email identity has a password', () => {
+test('hasPasswordIdentity: an email identity has a password, OAuth-only has none, unknown defaults to one', () => {
   assert.equal(hasPasswordIdentity({ app_metadata: { providers: ['email'] } }), true)
   assert.equal(hasPasswordIdentity({ app_metadata: { providers: ['google', 'email'] } }), true)
   assert.equal(hasPasswordIdentity({ app_metadata: { provider: 'email' } }), true)
-})
-
-test('hasPasswordIdentity: OAuth-only accounts have no password', () => {
   assert.equal(hasPasswordIdentity({ app_metadata: { providers: ['google'] } }), false)
   assert.equal(hasPasswordIdentity({ app_metadata: { provider: 'google' } }), false)
-})
-
-test('hasPasswordIdentity: unknown providers default to requiring a password', () => {
   assert.equal(hasPasswordIdentity({ app_metadata: {} }), true)
   assert.equal(hasPasswordIdentity({}), true)
   assert.equal(hasPasswordIdentity(null), true)

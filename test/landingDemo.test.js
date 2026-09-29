@@ -13,13 +13,15 @@ import { toBaseMinor, toMinor } from '../src/shared/lib/currency.js'
 
 const sum = (xs) => xs.reduce((a, b) => a + b, 0)
 
-test('buildTripDemo: shape and one step per expense', () => {
+test('buildTripDemo: shape and one step per expense, deterministic', () => {
   const demo = buildTripDemo()
   assert.equal(demo.groupName, 'Lisbon weekend')
   assert.equal(demo.currency, DEMO_CURRENCY)
   assert.deepEqual(demo.members.map((m) => m.id), ['you', 'anna', 'marco', 'sofia'])
   assert.equal(demo.steps.length, demo.expenses.length)
   for (const e of demo.expenses) assert.ok(Number.isInteger(e.amountMinor))
+  // Deterministic.
+  assert.deepEqual(buildTripDemo(), buildTripDemo())
 })
 
 test('buildTripDemo: totals accumulate and visible expenses grow', () => {
@@ -31,16 +33,11 @@ test('buildTripDemo: totals accumulate and visible expenses grow', () => {
   assert.equal(steps.at(-1).totalMinor, 35700)
 })
 
-test('buildTripDemo: every step balances to zero', () => {
-  for (const s of buildTripDemo().steps) {
-    assert.equal(sum(s.balances.map((b) => b.netMinor)), 0)
-  }
-})
-
-test('buildTripDemo: settlements settle the balances at every step', () => {
+test('buildTripDemo: every step balances to zero, and its settlements settle the balances', () => {
   const { steps, members } = buildTripDemo()
   const nameOf = new Map(members.map((m) => [m.id, m.name]))
   for (const s of steps) {
+    assert.equal(sum(s.balances.map((b) => b.netMinor)), 0)
     const after = new Map(s.balances.map((b) => [b.id, b.netMinor]))
     for (const t of s.settlements) {
       assert.ok(t.amountMinor > 0)
@@ -52,10 +49,6 @@ test('buildTripDemo: settlements settle the balances at every step', () => {
     for (const v of after.values()) assert.equal(v, 0)
     assert.ok(s.settlements.length <= members.length - 1)
   }
-})
-
-test('buildTripDemo: deterministic', () => {
-  assert.deepEqual(buildTripDemo(), buildTripDemo())
 })
 
 test('budgetsDemo: pct is integer spent/cap and one is over budget', () => {

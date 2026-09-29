@@ -248,46 +248,44 @@ test('releaseText: fills in the words and keeps the ids and the shape', () => {
   assert.equal(releaseText(null, (k) => k), null)
 })
 
-test('this release (2026-09-30): one page, next month once the salary is in', () => {
-  const r = inEnglish(RELEASES[0])
-  assert.equal(r.id, '2026-09-30')
-  assert.equal(r.pages.length, 1)
-  assert.match(r.pages[0].title, /Next month/)
-})
+test('the recent releases: their pages, and the actions and words that matter', () => {
+  const release = (id) => inEnglish(RELEASES.find((x) => x.id === id))
+  // This release (2026-09-30): one page, next month once the salary is in.
+  const r30 = inEnglish(RELEASES[0])
+  assert.equal(r30.id, '2026-09-30')
+  assert.equal(r30.pages.length, 1)
+  assert.match(r30.pages[0].title, /Next month/)
 
-test('the 2026-09-29 release: five pages, the four features open their pages', () => {
-  const r = inEnglish(RELEASES.find((x) => x.id === '2026-09-29'))
-  assert.equal(r.id, '2026-09-29')
-  assert.equal(r.pages.length, 5)
-  assert.deepEqual(r.pages.map((p) => p.action?.to),
+  // 2026-09-29: five pages, the four features open their pages.
+  const r29 = release('2026-09-29')
+  assert.equal(r29.id, '2026-09-29')
+  assert.equal(r29.pages.length, 5)
+  assert.deepEqual(r29.pages.map((p) => p.action?.to),
     ['/plan', '/settings/vouchers', '/insights/salary', '/settings/ai', undefined])
   // The AI helpers are optional: the page says where to switch them on.
-  assert.match(r.pages[3].body, /off until you switch it on in Settings › AI helpers/)
-})
+  assert.match(r29.pages[3].body, /off until you switch it on in Settings › AI helpers/)
 
-test('the 2026-09-27 release: five pages, language and Savings open their pages', () => {
-  const r = inEnglish(RELEASES.find((x) => x.id === '2026-09-27'))
-  assert.equal(r.id, '2026-09-27')
-  assert.equal(r.pages.length, 5)
-  assert.deepEqual(r.pages[0].action, { label: 'Choose language', to: '/settings/language' })
-  assert.deepEqual(r.pages[2].action, { label: 'Open Savings', to: '/savings' })
-})
+  // 2026-09-27: five pages, language and Savings open their pages.
+  const r27 = release('2026-09-27')
+  assert.equal(r27.id, '2026-09-27')
+  assert.equal(r27.pages.length, 5)
+  assert.deepEqual(r27.pages[0].action, { label: 'Choose language', to: '/settings/language' })
+  assert.deepEqual(r27.pages[2].action, { label: 'Open Savings', to: '/savings' })
 
-test('the 2026-09-26 release: three pages, the status page has no action', () => {
-  const r = inEnglish(RELEASES.find((x) => x.id === '2026-09-26'))
-  assert.equal(r.id, '2026-09-26')
-  assert.equal(r.pages.length, 3)
-  assert.deepEqual(r.pages.map((p) => p.title),
+  // 2026-09-26: three pages, the status page has no action.
+  const r26 = release('2026-09-26')
+  assert.equal(r26.id, '2026-09-26')
+  assert.equal(r26.pages.length, 3)
+  assert.deepEqual(r26.pages.map((p) => p.title),
     ['Sideways phones, redesigned', 'Service status', 'And a few more'])
   // status.budgeer.com is outside the app, and actions only open in-app pages.
-  assert.equal(r.pages[1].action, undefined)
-  assert.match(r.pages[1].body, /status\.budgeer\.com/)
-})
+  assert.equal(r26.pages[1].action, undefined)
+  assert.match(r26.pages[1].body, /status\.budgeer\.com/)
 
-test('this release: five pages, the salary page opens Monthly spending', () => {
-  const r = inEnglish(RELEASES.find((x) => x.id === '2026-09-25'))
-  assert.equal(r.pages.length, 5)
-  assert.deepEqual(r.pages[2].action, { label: 'Open settings', to: '/settings/spending' })
+  // 2026-09-25: five pages, the salary page opens Monthly spending.
+  const r25 = release('2026-09-25')
+  assert.equal(r25.pages.length, 5)
+  assert.deepEqual(r25.pages[2].action, { label: 'Open settings', to: '/settings/spending' })
 })
 
 // The dev and live sites behave the same: one releases.js drives both (a

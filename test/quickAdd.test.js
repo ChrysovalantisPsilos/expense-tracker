@@ -11,7 +11,7 @@ const g = (id, created_at) => ({ id, name: id, created_at })
 const GROUPS = [g('a', '2026-01-01T00:00:00Z'), g('b', '2026-03-01T00:00:00Z'), g('c', '2026-02-01T00:00:00Z')]
 const ids = (list) => list.map((x) => x.id)
 
-test('byRecent: most recently used first, then newest first', () => {
+test('byRecent: most recently used first, then newest first; inputs left alone', () => {
   assert.deepEqual(ids(byRecent(GROUPS, ['a'])), ['a', 'b', 'c'])
   assert.deepEqual(ids(byRecent(GROUPS, ['c', 'a'])), ['c', 'a', 'b'])
   // Nothing used yet (or only groups the user has left): newest first.
@@ -19,9 +19,7 @@ test('byRecent: most recently used first, then newest first', () => {
   assert.deepEqual(ids(byRecent(GROUPS, ['gone'])), ['b', 'c', 'a'])
   assert.deepEqual(ids(byRecent(GROUPS)), ['b', 'c', 'a'])
   assert.deepEqual(byRecent(null, ['a']), [])
-})
-
-test('byRecent leaves its inputs alone', () => {
+  // It leaves its inputs alone.
   const groups = [...GROUPS]
   byRecent(groups, ['c'])
   assert.deepEqual(groups, GROUPS)
@@ -61,43 +59,35 @@ test('validGroupParam: only one of the viewer’s own groups', () => {
 
 const draft = (over) => ({ amount: '84.60', currency: 'EUR', currencyPicked: false, description: 'Dinner', spentAt: '2026-09-20', ...over })
 
-test('carryDraft: amount, description and date travel as typed', () => {
+test('carryDraft: amount, description and date travel as typed; the amount takes the new currency’s decimals', () => {
   const out = carryDraft(draft(), 'EUR')
   assert.deepEqual(out, draft())
   assert.equal(carryDraft(null, 'EUR'), null)
+  assert.equal(carryDraft(draft(), 'JPY').amount, '85')
+  assert.equal(carryDraft(draft({ amount: '1800', currency: 'JPY' }), 'EUR').amount, '1800.00')
+  assert.equal(carryDraft(draft({ amount: '' }), 'JPY').amount, '')
+  assert.equal(carryDraft(draft({ amount: undefined }), 'EUR').amount, '')
 })
 
-test('carryDraft: an untouched currency becomes the other side’s default', () => {
+test('carryDraft: an untouched currency becomes the other side’s default; a picked one travels, if the other side offers it', () => {
   // Just me (EUR base) → a GBP group, and back.
   const toGroup = carryDraft(draft(), 'GBP')
   assert.equal(toGroup.currency, 'GBP')
   assert.equal(toGroup.currencyPicked, false)
   assert.equal(toGroup.amount, '84.60')
   assert.equal(carryDraft(toGroup, 'EUR').currency, 'EUR')
-})
-
-test('carryDraft: a currency the user picked travels', () => {
-  const picked = draft({ currency: 'USD', currencyPicked: true })
-  const toGroup = carryDraft(picked, 'GBP')
-  assert.equal(toGroup.currency, 'USD')
-  assert.equal(toGroup.currencyPicked, true)
-  assert.equal(carryDraft(toGroup, 'EUR').currency, 'USD')
-  // Even when it's the same as this side's default.
+  // A currency the user picked travels…
+  const picked = carryDraft(draft({ currency: 'USD', currencyPicked: true }), 'GBP')
+  assert.equal(picked.currency, 'USD')
+  assert.equal(picked.currencyPicked, true)
+  assert.equal(carryDraft(picked, 'EUR').currency, 'USD')
+  // …even when it's the same as this side's default.
   assert.equal(carryDraft(draft({ currencyPicked: true }), 'GBP').currency, 'EUR')
-})
-
-test('carryDraft: a picked currency the other side can’t offer falls back to its default', () => {
-  // A group in a currency outside the app's list, picked there, back on Just me.
+  // A picked currency the other side can't offer falls back to its default: a group in a
+  // currency outside the app's list, picked there, back on Just me.
   assert.equal(carryDraft(draft({ currency: 'XAF', currencyPicked: true }), 'EUR').currency, 'EUR')
   // …but it stays on that group's own form.
   assert.equal(carryDraft(draft({ currency: 'XAF', currencyPicked: true }), 'XAF').currency, 'XAF')
-})
-
-test('carryDraft: the amount takes the new currency’s decimals', () => {
-  assert.equal(carryDraft(draft(), 'JPY').amount, '85')
-  assert.equal(carryDraft(draft({ amount: '1800', currency: 'JPY' }), 'EUR').amount, '1800.00')
-  assert.equal(carryDraft(draft({ amount: '' }), 'JPY').amount, '')
-  assert.equal(carryDraft(draft({ amount: undefined }), 'EUR').amount, '')
 })
 
 test('splitCountLabel: everyone, or some of them', () => {
