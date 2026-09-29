@@ -267,6 +267,7 @@ const upcoming = (r) => r.is_active && (!r.end_date || r.next_run <= r.end_date)
 //   perMonth   Σ monthlyMinor of them (the same per-rule rounding as the
 //              statement's yearly section, so both agree)
 //   next       the `limit` soonest upcoming rules (as they are, own currency)
+//   live       every upcoming rule, soonest first (the card's "Show all")
 //   count      how many upcoming rules
 //   converted  some upcoming rule in another currency was converted
 //   missing    the upcoming foreign rules left out of the totals: no rate
@@ -288,6 +289,7 @@ export function subscriptionGroups(rules, baseCurrency, { limit = 3, upcomingOnl
       total: fx.rules.reduce((s, r) => s + periodMinor(r), 0),
       perMonth: fx.rules.reduce((s, r) => s + monthlyMinor(r), 0),
       next: live.slice(0, limit),
+      live,
       count: live.length,
       converted: fx.converted,
       missing: fx.missing,

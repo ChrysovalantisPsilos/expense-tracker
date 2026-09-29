@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
 import { Box, Button, Text } from '@chakra-ui/react'
-import { Repeat } from 'lucide-react'
+import { ChevronDown, ChevronUp, Repeat } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import Figure from '../../shared/ui/kit/Figure.jsx'
 import { CardEmptyState } from '../../shared/ui/EmptyState.jsx'
@@ -64,6 +64,7 @@ function YearlyNote() {
 
 function Upcoming({ rules, rates, loading, error, onRetry, baseCurrency }) {
   const t = useT('recurring')
+  const [showAll, setShowAll] = useState(false)
   const groups = useMemo(
     () => subscriptionGroups(rules, baseCurrency, { upcomingOnly: true, rates }), [rules, baseCurrency, rates])
   if (error) return <QueryError error={error} onRetry={onRetry} what={t('card.whatUpcoming')} />
@@ -81,8 +82,8 @@ function Upcoming({ rules, rates, loading, error, onRetry, baseCurrency }) {
           <GroupTotal group={g} baseCurrency={baseCurrency} />
           {g.key === 'yearly' && <YearlyNote />}
           <SectionLabel mt={4} mb={1}>{t('card.nextCharges')}</SectionLabel>
-          <Box as="ul" listStyleType="none">
-            {g.next.map((r) => (
+          <Box as="ul" listStyleType="none" id={`next-charges-${g.key}`}>
+            {(showAll ? g.live : g.next).map((r) => (
               <ItemRow as="li" key={r.id} py={2.5}
                 media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
                 title={entryName(r, t('kinds.expense'))}
@@ -91,10 +92,11 @@ function Upcoming({ rules, rates, loading, error, onRetry, baseCurrency }) {
             ))}
           </Box>
           {g.count > g.next.length && (
-            <Text as={RouterLink} to="/recurring" display="inline-block" mt={2} fontSize="sm"
-              color="accent.fg" fontWeight="600">
-              {t('card.seeAll', { n: g.count })}
-            </Text>
+            <Button size="sm" variant="outline" colorScheme="gray" w="full" mt={2}
+              aria-controls={`next-charges-${g.key}`} aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}
+              rightIcon={showAll ? <ChevronUp size={16} /> : <ChevronDown size={16} />}>
+              {showAll ? t('card.showNext', { n: g.next.length }) : t('card.showAll', { n: g.count })}
+            </Button>
           )}
         </>
       )}
