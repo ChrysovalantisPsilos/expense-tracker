@@ -31,6 +31,10 @@ import { userMessage } from '../../shared/lib/errors.js'
 import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
+import QuickEntry from '../ai/QuickEntry.jsx'
+import SuggestedMark from '../ai/SuggestedMark.jsx'
+import { useAiHelpers } from '../ai/ai.js'
+import { fillPlan, settlePendingCategory } from '../ai/aiMath.js'
 
 // The Expense / Income switch's options; `t` is useT('transactions').
 export const kindOptions = (t) => ['expense', 'income'].map((k) => [k, t(`kinds.${k}`)])
@@ -98,6 +102,21 @@ export default function TransactionForm({
   }) : []
   const from = sources.includes(paidFrom) ? paidFrom : 'bank'
   const [busy, setBusy] = useState(false)
+  // "Type it" (Settings → AI helpers, new entries only): the fields it filled
+  // carry a "Suggested" mark until edited; Undo restores what was there. Its
+  // category waits for that kind's categories to load (settlePendingCategory).
+  const quickOn = useAiHelpers().quickEntry && !isEdit
+  const [marks, setMarks] = useState(() => new Set())
+  const [pendingCat, setPendingCat] = useState(null)
+  const beforeFill = useRef(null)
+  if (pendingCat) {
+    const settled = settlePendingCategory(pendingCat, categories, categoriesLoading)
+    if (settled.done) {
+      setPendingCat(null)
+      if (settled.pick !== null) setCategoryId(settled.pick)
+    }
+  }
+  const unmark = (field) => setMarks((m) => (m.has(field) ? new Set([...m].filter((f) => f !== field)) : m))
   // Inline field errors, shown from the first submit on.
   const [tried, setTried] = useState(false)
   const amountRef = useRef(null)
@@ -149,6 +168,37 @@ export default function TransactionForm({
     setPreset('')
     setCategoryId('') // categories are per kind
   }
+
+  // Put a form state ({ kind, amount, currency, currencyPicked, categoryId,
+  // description, spentAt }) in place: Type it's fill, or Undo's way back.
+  function putFields(f) {
+    if (f.kind !== kind) pickKind(f.kind)
+    setAmount(f.amount)
+    setCurrency(f.currency)
+    setCurrencyPicked(f.currencyPicked)
+    changeDate(f.spentAt)
+    setDescription(f.description)
+    setPendingCat({ id: f.categoryId, kind: f.kind })
+  }
+  function applyFill(entry) {
+    const current = { kind, amount, currency, currencyPicked, categoryId, description, spentAt }
+    const { next, marked } = fillPlan(entry, current)
+    beforeFill.current ??= current
+    putFields({ ...next, currencyPicked: currencyPicked || next.currency !== currency })
+    setMarks(new Set(marked))
+  }
+  function undoFill() {
+    if (beforeFill.current) putFields(beforeFill.current)
+    beforeFill.current = null
+    setMarks(new Set())
+  }
+  // A field's label, with the mark while Type it's value is still in it.
+  const label = (field, text) => (marks.has(field) ? (
+    <HStack justify="space-between" align="baseline" mb={2} spacing={2}>
+      <FormLabel mb={0}>{text}</FormLabel>
+      <SuggestedMark />
+    </HStack>
+  ) : <FormLabel>{text}</FormLabel>)
 
   // After the entry is saved: its rule. Never fails the save — the entry is
   // already in, so a failure here is a warning.
@@ -241,8 +291,9 @@ export default function TransactionForm({
 
       <HStack align="start">
         <FormControl isRequired isInvalid={!!errors.amount}>
-          <FormLabel>{t('form.amount')}</FormLabel>
-          <MoneyInput ref={amountRef} currency={currency} value={amount} onChange={setAmount} />
+          {label('amount', t('form.amount'))}
+          <MoneyInput ref={amountRef} currency={currency} value={amount}
+            onChange={(v) => { setAmount(v); unmark('amount') }} />
           <FormErrorMessage>{errors.amount}</FormErrorMessage>
         </FormControl>
         <FormControl maxW="110px">
@@ -257,6 +308,7 @@ export default function TransactionForm({
       )}
     </>
   )
+  const quickEntry = quickOn && <QuickEntry onFill={applyFill} onUndo={undoFill} />
   const manageCategories = (
     <Link as={RouterLink} to="/settings/categories" color="accent.fg">{t('form.manageCategories')}</Link>
   )
@@ -269,14 +321,14 @@ export default function TransactionForm({
   const otherFields = (
     <>
       <FormControl>
-        <FormLabel>{t('form.description')}</FormLabel>
-        <Input value={description} onChange={(e) => setDescription(e.target.value)}
+        {label('description', t('form.description'))}
+        <Input value={description} onChange={(e) => { setDescription(e.target.value); unmark('description') }}
           placeholder={t(`form.placeholder.${kind}`)} />
       </FormControl>
 
       <FormControl isRequired isInvalid={!!errors.date}>
-        <FormLabel>{t('form.date')}</FormLabel>
-        <Input ref={dateRef} type="date" value={spentAt} onChange={(e) => changeDate(e.target.value)} />
+        {label('date', t('form.date'))}
+        <Input ref={dateRef} type="date" value={spentAt} onChange={(e) => { changeDate(e.target.value); unmark('date') }} />
         <FormErrorMessage>{errors.date}</FormErrorMessage>
       </FormControl>
 
@@ -301,6 +353,7 @@ export default function TransactionForm({
         <SimpleGrid columns={2} spacing={3} alignItems="start">
           <Panel>
             <Stack spacing={4}>
+              {quickEntry}
               {kindField}
               {kind === 'expense' && who}
               {amountFields}
@@ -309,24 +362,27 @@ export default function TransactionForm({
             </Stack>
           </Panel>
           <Panel>
-            <Text fontSize="sm" fontWeight="600" color="text.muted" mb={3}>
-              {t('form.category')}
-            </Text>
-            <CategoryGrid categories={categories} value={categoryId} onChange={setCategoryId} kind={kind} />
+            <HStack justify="space-between" mb={3} spacing={2}>
+              <Text fontSize="sm" fontWeight="600" color="text.muted">{t('form.category')}</Text>
+              {marks.has('category') && <SuggestedMark />}
+            </HStack>
+            <CategoryGrid categories={categories} value={categoryId} kind={kind}
+              onChange={(id) => { setCategoryId(id); unmark('category') }} />
             <Text fontSize="sm" mt={3}>{manageCategories}</Text>
           </Panel>
         </SimpleGrid>
       ) : (
       <Panel>
         <Stack spacing={4}>
+          {quickEntry}
           {kindField}
           {kind === 'expense' && who}
           {amountFields}
 
           <FormControl>
-            <FormLabel>{t('form.category')}</FormLabel>
+            {label('category', t('form.category'))}
             <Select placeholder={t('uncategorized')} value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}>
+              onChange={(e) => { setCategoryId(e.target.value); unmark('category') }}>
               {categories.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
             </Select>
             <FormHelperText>{manageCategories}</FormHelperText>

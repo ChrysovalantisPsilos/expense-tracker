@@ -35,6 +35,10 @@ import { BusyNote, RingSpinner } from '../../shared/ui/RingLoader.jsx'
 import { InfoNote } from '../../shared/ui/InfoToggle.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { useAiHelpers, useCategoryIdeas } from '../ai/ai.js'
+import { isSuggested } from '../ai/aiMath.js'
+import CategoryIdeasNote from '../ai/CategoryIdeasNote.jsx'
+import SuggestedMark from '../ai/SuggestedMark.jsx'
 
 // A row's error code (importMath.rowToDraft) in words: import:reasons.*.
 function reasonText(t, reason) {
@@ -66,6 +70,12 @@ export default function ImportExpenses() {
   const [result, setResult] = useState(null)
   const [pending, setPending] = useState(null)   // { valid, errors, groups }
   const [assign, setAssign] = useState({})       // merchant pattern -> category id
+  // Category ideas for the new merchants (Settings → AI helpers): they fill
+  // the merchants not picked yet, and stay marked until changed.
+  const { importCategories: ideasOn } = useAiHelpers()
+  const ideas = useCategoryIdeas({
+    groups: step === 'review' ? pending?.groups : null, categories, enabled: ideasOn, setAssign,
+  })
   const [missingRates, setMissingRates] = useState([]) // [{ currency, count }]
   const [rateInput, setRateInput] = useState({})  // currency -> typed rate
 
@@ -310,6 +320,8 @@ export default function ImportExpenses() {
       {step === 'review' && pending && (
         <Panel icon={Store} title={t('review.title')}>
           <Text fontSize="sm" color="text.muted" mb={4}>{t('review.text')}</Text>
+          {ideasOn && <CategoryIdeasNote status={ideas.status} count={Object.keys(ideas.suggested).length}
+            total={pending.groups.length} mb={4} />}
           <Stack spacing={2}>
             {pending.groups.map((g) => (
               <Tile key={g.id}>
@@ -319,6 +331,7 @@ export default function ImportExpenses() {
                     <Text fontSize="sm" fontWeight="600" overflowWrap="break-word">{g.pattern}</Text>
                     <Text fontSize="xs" color="text.muted">
                       {t('map.rows', { count: g.count })} · {t(g.kind === 'income' ? 'review.moneyIn' : 'review.moneyOut')}
+                      {isSuggested(ideas.suggested, assign, g.id) && <SuggestedMark ml={2} />}
                     </Text>
                   </Box>
                   <Select size="sm" maxW={{ base: 'full', sm: '200px' }} bg="bg.surface" placeholder={t('review.uncategorized')}

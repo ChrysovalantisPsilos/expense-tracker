@@ -17,6 +17,7 @@ export default {
     appearance: { label: 'Appearance', desc: 'Light, dark or match your device' },
     language: { label: 'Language', desc: 'English, Greek or match your device' },
     importRules: { label: 'Import rules', desc: 'Categories your bank imports fill in automatically' },
+    ai: { label: 'AI helpers', desc: 'Optional · off until you turn them on' },
     security: { label: 'Security', desc: 'Sign-in and account deletion' },
     data: { label: 'Your data', desc: 'Back up or restore your account' },
     privacy: { label: 'Privacy', desc: 'Your data rights, consents and requests' },

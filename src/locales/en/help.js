@@ -375,6 +375,13 @@ export default {
           p1: 'No. There are no ads, no analytics or tracking scripts, and we don’t sell your data.',
         },
       },
+      aiHelpers: {
+        q: 'Does Budgeer use AI?',
+        a: {
+          p1: 'Only if you want it to. Settings → AI helpers has three optional helpers, each off until you turn it on: “Type to add” fills in a new entry from a line like “coffee 3.60 yesterday”, “Category ideas on import” suggests categories for merchants Budgeer hasn’t seen yet, and “Month in plain words” writes a short summary of your month on Insights and Home.',
+          p2: 'They use Claude, by Anthropic. Each one sends only what it needs (never your name, email or bank details); Anthropic doesn’t train on it and deletes it within 30 days. Nothing is saved until you check it and tap Save or Import.',
+        },
+      },
       downloadDeleteData: {
         q: 'How do I download or delete my data?',
         a: {
