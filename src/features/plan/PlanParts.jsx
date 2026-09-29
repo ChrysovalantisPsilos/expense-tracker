@@ -4,6 +4,7 @@
 // change or the ideas are in PlanEditors.jsx. The wording is planText.js, the
 // maths behind every figure planMath.js.
 import { Link as RouterLink } from 'react-router-dom'
+import { addEntryLink } from '../../shared/lib/addLinks.js'
 import {
   Box, Button, Flex, HStack, IconButton, Stack, Switch, Tag, Text,
 } from '@chakra-ui/react'
@@ -146,7 +147,7 @@ function IncomeHint() {
         <Box color="accent.fg" mt="2px" flexShrink={0}><Info size={16} /></Box>
         <Text fontSize="sm">{t('impact.addIncome')}</Text>
       </HStack>
-      <Button as={RouterLink} to="/recurring/new?kind=income" size="sm" variant="outline" mt={2} ml={6}
+      <Button as={RouterLink} to={addEntryLink({ kind: 'income', repeat: true })} size="sm" variant="outline" mt={2} ml={6}
         maxW="calc(100% - 24px)" h="auto" minH="36px" py={1.5} whiteSpace="normal" textAlign="left"
         leftIcon={<Plus size={16} />}>
         {t('impact.addIncomeButton')}

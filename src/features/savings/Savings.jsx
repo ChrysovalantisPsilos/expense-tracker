@@ -1,5 +1,6 @@
 import { Fragment, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { addEntryLink } from '../../shared/lib/addLinks.js'
 import {
   Box, Button, Divider, Flex, HStack, SimpleGrid, Stack, Text, useToken,
 } from '@chakra-ui/react'
@@ -49,9 +50,11 @@ export default function Savings() {
   const { rules } = useRecurring()
   const { categories } = useCategories('income')
 
-  // "Add to savings": a new income entry in the user's savings category.
+  // "Add to savings": a new income entry in the user's savings category (and
+  // "Make it automatic": the same with Repeat on).
   const savingsCategory = savingsCategoryOf(categories)
-  const add = () => navigate(`/transactions/new?kind=income${savingsCategory ? `&category=${savingsCategory}` : ''}`)
+  const addLink = (repeat) => addEntryLink({ kind: 'income', category: savingsCategory, repeat })
+  const add = () => navigate(addLink(false))
 
   const series = useMemo(() => {
     const n = seriesLength(moves)
@@ -65,7 +68,7 @@ export default function Savings() {
   let body
   if (error) body = <Panel><QueryError error={error} onRetry={reload} what={t('what')} /></Panel>
   else if (loading) body = <SavingsSkeleton />
-  else if (moves.length === 0 && total.source === 'entries') body = <FirstSavings add={add} goals={goals} />
+  else if (moves.length === 0 && total.source === 'entries') body = <FirstSavings add={add} auto={addLink(true)} goals={goals} />
   else {
     const card = {
       pot: <PotCard total={total} month={month} series={line} currency={baseCurrency} add={add} strip={sideways} />,
@@ -256,7 +259,7 @@ const HOW = [
   { id: 'fromSavings', icon: ShoppingBag },
 ]
 
-function FirstSavings({ add, goals }) {
+function FirstSavings({ add, auto, goals }) {
   const navigate = useNavigate()
   const t = useT('savings')
   return (
@@ -280,7 +283,7 @@ function FirstSavings({ add, goals }) {
         </Stack>
         <Divider borderColor="border.default" my={3} />
         <ItemRow icon={Repeat} title={t('how.auto.title')} meta={t('how.auto.meta')}
-          onClick={() => navigate('/recurring/new?kind=income')} chevron />
+          onClick={() => navigate(auto)} chevron />
       </Panel>
     </>
   )

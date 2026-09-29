@@ -118,10 +118,29 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
    Each fires exactly once per month per threshold.
 
 ### D. Recurring & reminders
-10. Add a rule (e.g. rent, monthly, next charge in 2 days) with
-    "Remind me before each charge" = 3 days → tomorrow 08:00 UTC you get the
-    reminder push/bell; the charge itself books automatically on its date.
+10. Add a recurring entry the one way there is: Add (e.g. rent) with Repeat
+    switched on, monthly, "Remind me before each charge" = 3 days, and the
+    next charge in 2 days → tomorrow 08:00 UTC you get the reminder
+    push/bell; the charge itself books automatically on its date.
 11. Pause a rule → it stops projecting into the dashboard.
+11a. One form: Recurring has no Add button. Its empty tabs, Home's Recurring
+    card ("Add a recurring payment"), Plan's empty page and "Add recurring
+    income", and Savings' "Make it automatic" all open Add with Repeat
+    already on (`/transactions/new?repeat=1`, income where it's income; the
+    Savings one on the savings category). An old `/recurring/new?kind=income`
+    bookmark lands on Add as income with Repeat on. With Repeat on, "Paid
+    from" offers Bank · Savings only (a rule can't pay with meal vouchers).
+11b. Edit a rule (Recurring → a row): the same form as Add, in the same
+    order and look — Expense/Income, Amount + Currency, Category + Manage
+    categories, the savings choices, Description (optional: an empty one
+    lists the rule under its category's name), then "Next charge" where Add
+    has Date — and the Repeat card below, always on with no switch: How
+    often, Every, Set an end date, Remind me, Paused. No Notes (rules don't
+    keep any) and no Type it (it's for new entries). A foreign currency shows
+    "Each charge is converted at the exchange rate of its day." A next charge
+    in the past says missed charges are added tonight. Save changes returns
+    to Recurring; the kind can still be switched (a savings income's "Taken
+    from my income" is kept, an expense's "Paid from savings" too).
 
 ### E. Import
 12. Export a bank CSV (or make one: date, description, amount with negatives
@@ -279,8 +298,9 @@ the app stays scrollable, and the file downloads within seconds.
     (Home's "Spending by category" → Home, Insights or Settings › Categories →
     More, Budgets → Budgets; opened by its address → Budgets), and going back
     to it from an entry keeps that tab.
-    The floating "+" is only on Home and Budgets (Transactions, Groups and
-    Recurring have their own + in the header); scrolled to the end, the last
+    The floating "+" is only on Home and Budgets (Transactions and Groups
+    have their own + in the header; Recurring has none: recurring entries
+    are added from Add with Repeat on); scrolled to the end, the last
     row sits clear above it.
 35. Desktop: the sidebar is Home, Transactions, Groups, Budgets, a divider,
     Insights, Savings, Recurring, Plan (then Meal vouchers, with a voucher
@@ -369,7 +389,7 @@ heading, one muted line and its buttons (full width on the phone).
 | Groups | No groups yet (ring in three slices) | Create your first group |
 | A group, Expenses tab | No shared expenses yet (three slices) | Add the first expense · Invite people (only while you're alone in it) |
 | Budgets | No budgets yet (the "Set a monthly cap" form under it) | Set your first budget (scrolls to the form, cursor in Category) · Copy last month's budgets (only when last month has caps) |
-| Recurring, each tab | No subscriptions or bills yet / No recurring income yet | Add a subscription or bill / Add recurring income |
+| Recurring, each tab | No subscriptions or bills yet / No recurring income yet | Add a subscription or bill / Add recurring income (both open Add with Repeat on) |
 | Savings | Start your savings pot (then "How savings work") | Add to savings · Set a goal (only with no goals) |
 
 While one of these shows, the phone's floating "+" is hidden, so it never
@@ -392,7 +412,8 @@ camera step inside the expense page, and it never submits that page.
 | `/groups/<id>/comments/<itemId>` | the comment icon on an expense or settlement |
 | `/groups/<id>/members` | the member stack under the group's name |
 | `/groups/<id>/edit` | ⋯ → Rename group (owner) |
-| `/recurring/new?kind=…`, `/recurring/<id>` | Recurring → Add; a rule's Edit; Plan's "Open payment" |
+| `/transactions/new?repeat=1` | adding a recurring entry (Recurring's empty tabs, Home's Recurring card, Plan, Savings' "Make it automatic"; the old `/recurring/new` redirects here) |
+| `/recurring/<id>` | a rule's Edit; Plan's "Open payment" |
 | `/savings/goals/new`, `/savings/goals/<id>` | Savings → Goal; a goal's Edit (the old `/insights/goals/…` links redirect here) |
 | `/insights/accounts/new`, `/insights/accounts/<id>` | Insights → Account; an account's Edit |
 | `/settings/categories/new?kind=…` | Settings → Categories → Add (Edit opens the category's page with its Edit panel, like Budgets → Edit) |
@@ -596,7 +617,7 @@ and puts focus back on what opened it.
     (Year: "…a year") with the total as a positive amount; cancelling one
     strikes the old total through and the chip says "€13.99 less" in
     green. The hint "Add your salary as recurring income to see your net."
-    with "Add recurring income" opens the Recurring form set to Income.
+    with "Add recurring income" opens Add as income with Repeat on.
     "Your changes" totals "Change in payments" (a saving is a minus, in
     green) and the Apply sheet says "Payments after applying". Adding a
     recurring income (or salary entries, or an income in "What if I add…")

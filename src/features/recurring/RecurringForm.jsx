@@ -1,109 +1,56 @@
 import { useState } from 'react'
-import { Stack, HStack, Button, FormControl, FormLabel, Input, Select, useToast } from '@chakra-ui/react'
-import MoneyInput from '../../shared/ui/MoneyInput.jsx'
+import { Text, useToast } from '@chakra-ui/react'
 import { PageForm } from '../../shared/ui/FormPage.jsx'
-import { useCategories, useSavingsIds } from '../../shared/lib/categories.js'
-import { PaidFromChoice, SavingsSourceSwitch } from '../../shared/ui/SavingsSwitches.jsx'
-import { paidFromSources } from '../../shared/lib/savings.js'
-import { toMinor, minorToInput } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { saveRecurring } from './recurring.js'
-import { editRepeat, repeatDraft, repeatRuleFields } from './recurringMath.js'
-import RepeatFields from './RepeatFields.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import EntryFields from '../transactions/EntryFields.jsx'
+import { useEntryFields } from '../transactions/useEntryFields.js'
+import { saveRecurring } from './recurring.js'
+import { editRepeat } from './recurringMath.js'
+import { ruleFromForm, ruleToForm } from './ruleForm.js'
+import RepeatFields, { RepeatPanel } from './RepeatFields.jsx'
 
-// The body of a recurring rule's page (RecurringPage). `rule` edits an
-// existing one; otherwise a new one starts as `kind`. Pausing lives on the
-// Recurring page's rows, so the schedule here has no Paused switch.
-// Recurring income in a savings category (0084) asks "Taken from my income"
-// (on for a new rule, as stored when editing); each entry the rule adds
-// carries it. A recurring expense asks "Paid from savings" (0085; off for a
-// new rule, as stored when editing) once the user has a savings category, and
-// hands it to its entries the same way. `onSaved` runs after a successful save.
-export default function RecurringForm({ rule, kind: initialKind = 'expense', baseCurrency, onSaved }) {
+// The body of a recurring rule's page (RecurringPage): the rule in Add's own
+// form — the same entry fields (EntryFields), then the Repeat section, which
+// is always on here (the entry is the rule) and has no switch. The differences
+// from Add, each because a rule isn't one entry: the date field is the next
+// charge (and Repeat has no second one), there are no notes (rules don't keep
+// them), no exchange rate is captured (each charge gets its own day's rate),
+// "Paid from" has no meal vouchers (vouchers pay as you go), and the kind can
+// still be switched (the server moves the savings flags with it). Paused sits
+// in Repeat, as on Add for an entry in a series. `onSaved` runs after a
+// successful save.
+export default function RecurringForm({ rule, baseCurrency, onSaved }) {
   const t = useT('recurring')
   const toast = useToast()
-  const isEdit = !!rule
-  const [kind, setKind] = useState(rule?.kind ?? initialKind)
-  const { categories } = useCategories(kind)
-  const [amount, setAmount] = useState(rule ? minorToInput(rule.amount_minor, rule.currency) : '')
-  const [currency] = useState(rule?.currency ?? baseCurrency)
-  const [categoryId, setCategoryId] = useState(rule?.category_id ?? '')
-  const [description, setDescription] = useState(rule?.description ?? '')
-  const [draft, setDraft] = useState(() => repeatDraft(rule, { todayISO: today() }))
-  const { savingsIds, loading: savingsLoading } = useSavingsIds()
-  const isSavings = kind === 'income' && savingsIds.has(categoryId)
-  const [fromIncome, setFromIncome] = useState(rule ? !!rule.savings_from_income : true)
-  const [fromSavings, setFromSavings] = useState(!!rule?.paid_from_savings)
-  // Recurring expenses come from the bank or savings (vouchers pay as you go).
-  const sources = kind === 'expense' ? paidFromSources({ savings: savingsIds.size > 0 || !!rule?.paid_from_savings }) : []
-  const showFromSavings = sources.length > 0
+  const [start] = useState(() => ruleToForm(rule))
+  const [draft, setDraft] = useState(start.draft)
+  const f = useEntryFields(start.form, { isEdit: true, allowVouchers: false })
   const { busy, run } = useAsyncSubmit()
 
   async function submit() {
-    if (!amount || Number(amount) <= 0) return toast({ title: t('form.enterAmount'), status: 'warning' })
+    if (!f.validate()) return
     await run(async () => {
-      await saveRecurring({
-        id: rule?.id,
-        kind,
-        category_id: categoryId || null,
-        amount_minor: toMinor(amount, currency),
-        currency,
-        description: description || null,
-        savings_from_income: isSavings && fromIncome,
-        paid_from_savings: showFromSavings && fromSavings,
-        ...repeatRuleFields(draft),
-      })
-      toast({ title: t(isEdit ? 'form.updated' : 'form.added'), status: 'success' })
+      await saveRecurring({ id: rule.id, ...ruleFromForm(f.values(), draft, { isSavings: f.isSavings }) })
+      toast({ title: t('form.updated'), status: 'success' })
       onSaved()
     })
   }
 
-  const pickKind = (k) => { setKind(k); setCategoryId('') }
-
   return (
-    <PageForm onSubmit={submit} busy={busy} submitLabel={t(isEdit ? 'form.saveChanges' : 'form.submit')}
-      submitProps={{ isDisabled: savingsLoading }}>
-      <Stack spacing={4}>
-        <HStack spacing={2}>
-          <Button flex="1" variant={kind === 'expense' ? 'solid' : 'outline'}
-            colorScheme={kind === 'expense' ? 'brand' : 'gray'} aria-pressed={kind === 'expense'}
-            onClick={() => pickKind('expense')}>{t('kinds.expense')}</Button>
-          <Button flex="1" variant={kind === 'income' ? 'solid' : 'outline'}
-            colorScheme={kind === 'income' ? 'brand' : 'gray'} aria-pressed={kind === 'income'}
-            onClick={() => pickKind('income')}>{t('kinds.income')}</Button>
-        </HStack>
+    <PageForm bare onSubmit={submit} noValidate busy={busy} submitLabel={t('form.saveChanges')}
+      submitProps={{ isDisabled: f.savingsLoading }}>
+      <EntryFields f={f} dateLabel={t('repeat.nextCharge')}
+        dateHelp={f.date && f.date < today() ? t('form.nextMissed') : undefined}
+        afterAmount={f.currency !== baseCurrency && (
+          <Text fontSize="sm" color="text.muted" mt={-2}>{t('form.eachChargeRate')}</Text>
+        )} />
 
-        <FormControl isRequired>
-          <FormLabel>{t('form.description')}</FormLabel>
-          <Input value={description} onChange={(e) => setDescription(e.target.value)}
-            placeholder={t(`form.placeholder.${kind}`)} />
-        </FormControl>
-
-        <FormControl isRequired>
-          <FormLabel>{t('form.amount', { currency })}</FormLabel>
-          <MoneyInput currency={currency} value={amount} onChange={setAmount} />
-        </FormControl>
-
-        <FormControl>
-          <FormLabel>{t('form.category')}</FormLabel>
-          <Select placeholder={t('form.uncategorized')} value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}>
-            {categories.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
-          </Select>
-        </FormControl>
-        {isSavings && <SavingsSourceSwitch value={fromIncome} onChange={setFromIncome} />}
-        {showFromSavings && (
-          <PaidFromChoice sources={sources} value={fromSavings ? 'savings' : 'bank'}
-            onChange={(v) => setFromSavings(v === 'savings')} />
-        )}
-
+      <RepeatPanel subtitle={t('form.repeatSubtitle')}>
         <RepeatFields value={draft} onChange={(c) => setDraft((d) => editRepeat(d, c))}
-          kind={kind} currency={currency} amountMinor={Number(amount) > 0 ? toMinor(amount, currency) : 0}
-          idPrefix="rule" />
-      </Stack>
+          showNext={false} pausable kind={f.kind} currency={f.currency} amountMinor={f.amountMinor} />
+      </RepeatPanel>
     </PageForm>
   )
 }

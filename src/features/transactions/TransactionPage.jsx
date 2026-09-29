@@ -19,7 +19,9 @@ import { carryDraft, validGroupParam } from '../groups/quickAddMath.js'
 import WhoForChips from '../groups/WhoForChips.jsx'
 import GroupExpenseForm from '../groups/GroupExpenseForm.jsx'
 import { useTransaction, deleteTransaction } from '../../shared/lib/transactions.js'
-import TransactionForm, { kindOptions } from './TransactionForm.jsx'
+import TransactionForm from './TransactionForm.jsx'
+import { kindOptions } from './EntryFields.jsx'
+import { parseAddParams } from '../../shared/lib/addLinks.js'
 import DeleteTransactionDialog from '../../shared/ui/DeleteTransactionDialog.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
@@ -28,7 +30,9 @@ import { entryName } from '../../shared/lib/categoryName.js'
 // The add/edit page for one expense or income:
 //   /transactions/new?kind=expense|income   a new entry; &category=<id>
 //                                           opens it on one of the user's
-//                                           categories of that kind
+//                                           categories of that kind, and
+//                                           &repeat=1 with Repeat on
+//                                           (addLinks.js)
 //   /transactions/:id                       an existing one (the list passes
 //                                           the row in router state)
 // The back arrow — and saving or deleting — returns to wherever the user came
@@ -60,7 +64,8 @@ export default function TransactionPage() {
   const back = useGoBack('/transactions', { replace: true })
 
   const isNew = !id
-  const linkKind = params.get('kind') === 'income' ? 'income' : 'expense'
+  const link = parseAddParams(params)
+  const linkKind = link.kind
   // A new entry's kind as the user last switched it (the title follows it);
   // a link to the other kind starts over from that one.
   const [kindNow, setKindNow] = useState(linkKind)
@@ -178,7 +183,7 @@ export default function TransactionPage() {
     body = (
       <TransactionForm key={`new-${linkKind}-${baseCurrency}-${nonce}`} kind={kindNow} baseCurrency={baseCurrency}
         initial={carryDraft(draft.current, baseCurrency)} onDraft={onDraft} onKind={setKindNow} who={who}
-        initialCategory={params.get('category')} onSaved={back} />
+        initialCategory={link.category} repeat={link.repeat} onSaved={back} />
     )
   } else {
     body = (

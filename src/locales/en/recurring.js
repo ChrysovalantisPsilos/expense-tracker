@@ -66,7 +66,6 @@ export default {
   },
   list: {
     title: 'Recurring',
-    add: 'Add',
     what: 'recurring payments',
     tabs: {
       subscriptions: 'Subscriptions',
@@ -102,24 +101,16 @@ export default {
     remindDays: '{{days}}d',
     paused: 'Paused',
   },
+  // A rule's page (RecurringForm): Add's fields (transactions:form), plus these.
   form: {
-    enterAmount: 'Enter an amount',
     updated: 'Recurring entry updated',
-    added: 'Recurring entry added',
     saveChanges: 'Save changes',
-    submit: 'Add recurring entry',
-    description: 'Description',
-    placeholder: {
-      expense: 'Netflix, rent, gym…',
-      income: 'Salary',
-    },
-    amount: 'Amount ({{currency}})',
-    category: 'Category',
-    uncategorized: 'Uncategorized',
+    repeatSubtitle: 'It’s logged on this schedule',
+    eachChargeRate: 'Each charge is converted at the exchange rate of its day.',
+    nextMissed: 'Any charges missed since then are added tonight.',
   },
   page: {
     editTitle: 'Edit recurring entry',
-    newTitle: 'New recurring entry',
     what: 'this recurring entry',
     gone: 'This recurring entry doesn’t exist any more.',
     goToList: 'Go to Recurring',
@@ -165,7 +156,7 @@ export default {
     yearlySpread: 'Each counts in your monthly spending a twelfth at a time.',
     whatUpcoming: 'your recurring payments',
     whatCharged: 'your recurring charges',
-    empty: 'No recurring payments yet. Set an expense to repeat, or add bills and subscriptions in Recurring.',
+    empty: 'No recurring payments yet. Add an expense and switch on Repeat to log it on a schedule.',
     add: 'Add a recurring payment',
     upcomingByFrequency: 'Recurring payments by frequency',
     chargedByFrequency: 'Recurring charges by frequency',

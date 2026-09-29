@@ -23,6 +23,7 @@ import { useCategories, useSavingsIds } from '../../shared/lib/categories.js'
 import { isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS } from './txnFilter.js'
 import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { parseLedgerParams, withLedgerParams } from './ledgerLinks.js'
+import { addEntryLink } from '../../shared/lib/addLinks.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { formatSigned } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
@@ -202,7 +203,7 @@ export default function LedgerPage() {
         <>{search}{moreMenu}</>
       ) : (<>
         <PageAction icon={<Plus size={16} />} data-tour="add-expense" label={t(`ledger.add.${type}`)}
-          onClick={() => navigate(`/transactions/new?kind=${kind ?? 'expense'}`)} />
+          onClick={() => navigate(addEntryLink({ kind }))} />
         {moreMenu}
       </>)} />
 

@@ -2,7 +2,8 @@ import {
   FormControl, FormHelperText, FormLabel, HStack, Input, NumberInput, NumberInputField, Select, Stack,
   Switch, Text, useToast,
 } from '@chakra-ui/react'
-import { Bell } from 'lucide-react'
+import { Bell, Repeat } from 'lucide-react'
+import Panel from '../../shared/ui/kit/Panel.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import { enablePush } from '../../shared/lib/push.js'
 import { formatMoney } from '../../shared/lib/currency.js'
@@ -10,15 +11,34 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { REPEAT_CHOICES, choiceToRule, monthlyBudgetShare } from './recurringMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
-// The schedule of a recurring rule — how often, every N, next charge, end
-// date, reminder, and (with `pausable`) paused — shared by the transaction
-// page's Repeat section and the recurring-entry form. Controlled: `value` is a
-// repeatDraft (recurringMath.js) and `onChange(changes)` reports a partial
-// update for the parent to apply with editRepeat. `nextHelp` sits under the
-// next-charge date. `kind`/`amountMinor`/`currency` show how a yearly expense
-// counts in monthly budgets. `idPrefix` keeps the switches' ids unique.
+// The Repeat section under an entry's fields (EntryFields): the card with its
+// title, `subtitle` and — on Add — the switch that turns it on or off
+// (`isOn`/`onToggle`). Without `onToggle` it's always on and has no switch: a
+// recurring rule's page, where the entry is the rule. `children` are its
+// contents (RepeatFields, and any note).
+export function RepeatPanel({ subtitle, isOn = true, onToggle, children }) {
+  const t = useT('transactions')
+  return (
+    <Panel icon={Repeat} title={t('form.repeat.title')} subtitle={subtitle}
+      action={onToggle && (
+        <Switch id="repeat-switch" isChecked={isOn} onChange={(e) => onToggle(e.target.checked)}
+          aria-label={t('form.repeat.title')} />
+      )}>
+      {children}
+    </Panel>
+  )
+}
+
+// The schedule of a recurring rule — how often, every N, next charge (unless
+// `showNext` is off: a rule's page has it among the entry's fields), end date,
+// reminder, and (with `pausable`) paused — inside the Repeat section on Add and
+// on a rule's page. Controlled: `value` is a repeatDraft (recurringMath.js)
+// and `onChange(changes)` reports a partial update for the parent to apply
+// with editRepeat. `nextHelp` sits under the next-charge date.
+// `kind`/`amountMinor`/`currency` show how a yearly expense counts in monthly
+// budgets.
 export default function RepeatFields({
-  value: d, onChange, nextHelp, pausable = false, kind, amountMinor, currency, idPrefix = 'repeat',
+  value: d, onChange, nextHelp, showNext = true, pausable = false, kind, amountMinor, currency,
 }) {
   const t = useT('recurring')
   const toast = useToast()
@@ -77,11 +97,13 @@ export default function RepeatFields({
         </Text>
       )}
 
-      <FormControl>
-        <FormLabel>{t('repeat.nextCharge')}</FormLabel>
-        <Input type="date" value={d.nextRun} onChange={(e) => onChange({ nextRun: e.target.value })} />
-        {nextHelp && <FormHelperText>{nextHelp}</FormHelperText>}
-      </FormControl>
+      {showNext && (
+        <FormControl>
+          <FormLabel>{t('repeat.nextCharge')}</FormLabel>
+          <Input type="date" value={d.nextRun} onChange={(e) => onChange({ nextRun: e.target.value })} />
+          {nextHelp && <FormHelperText>{nextHelp}</FormHelperText>}
+        </FormControl>
+      )}
 
       <FormControl>
         <OptionalDate label={t('repeat.endDate')} value={d.endDate} onChange={(v) => onChange({ endDate: v })} />
@@ -89,13 +111,13 @@ export default function RepeatFields({
 
       <FormControl>
         <HStack justify="space-between">
-          <FormLabel mb={0} htmlFor={`${idPrefix}-remind`}>
+          <FormLabel mb={0} htmlFor="repeat-remind">
             <HStack spacing={2}>
               <Bell size={15} aria-hidden />
               <Text>{t('repeat.remind')}</Text>
             </HStack>
           </FormLabel>
-          <Switch id={`${idPrefix}-remind`} isChecked={d.remind} onChange={toggleRemind} />
+          <Switch id="repeat-remind" isChecked={d.remind} onChange={toggleRemind} />
         </HStack>
         {d.remind && (
           <HStack mt={3} spacing={2}>
@@ -111,8 +133,8 @@ export default function RepeatFields({
       {pausable && (
         <FormControl>
           <HStack justify="space-between">
-            <FormLabel mb={0} htmlFor={`${idPrefix}-paused`}>{t('repeat.paused')}</FormLabel>
-            <Switch id={`${idPrefix}-paused`} isChecked={!d.active}
+            <FormLabel mb={0} htmlFor="repeat-paused">{t('repeat.paused')}</FormLabel>
+            <Switch id="repeat-paused" isChecked={!d.active}
               onChange={(e) => onChange({ active: !e.target.checked })} />
           </HStack>
           <FormHelperText>{t('repeat.pausedHelp')}</FormHelperText>

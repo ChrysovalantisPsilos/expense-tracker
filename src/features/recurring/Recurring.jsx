@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { addEntryLink } from '../../shared/lib/addLinks.js'
 import {
   Stack, Text, Button, List, ListItem, Switch, Tag, Box, Tabs, TabList, Tab, TabPanels, TabPanel,
   useToast, SimpleGrid,
@@ -11,7 +12,7 @@ import Figure from '../../shared/ui/kit/Figure.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import MetaLine from '../../shared/ui/MetaLine.jsx'
 import EmptyState from '../../shared/ui/EmptyState.jsx'
-import PageHeader, { PageAction } from '../../shared/ui/PageHeader.jsx'
+import PageHeader from '../../shared/ui/PageHeader.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
@@ -32,9 +33,11 @@ const TABS = ['expense', 'income']
 
 // The Recurring page (/recurring): "Subscriptions" (money going out, by
 // frequency — the same groups as Home's card, each with its total) and
-// "Income" (money coming in on a schedule). Pause and delete here; adding and
-// editing open a rule's own page (RecurringPage). The open tab is kept in the
-// address (?tab=income), so coming back from a rule's page lands on it.
+// "Income" (money coming in on a schedule). Pause and delete here; editing
+// opens a rule's own page (RecurringPage). There's no Add here: a recurring
+// entry is added from Add with Repeat on, where an empty tab's button leads.
+// The open tab is kept in the address (?tab=income), so coming back from a
+// rule's page lands on it.
 export default function Recurring() {
   const t = useT('recurring')
   const { baseCurrency = 'EUR' } = useProfile()
@@ -56,7 +59,7 @@ export default function Recurring() {
   const incomeMonthly = useMemo(
     () => incomePerMonth(rules, savingsIds, baseCurrency, rates), [rules, savingsIds, baseCurrency, rates])
 
-  const openNew = () => navigate(`/recurring/new?kind=${TABS[tab]}`)
+  const openNew = () => navigate(addEntryLink({ kind: TABS[tab], repeat: true }))
   const openEdit = (r) => navigate(`/recurring/${r.id}`, { state: { rule: r } })
 
   async function toggle(r) {
@@ -93,8 +96,7 @@ export default function Recurring() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader title={t('list.title')}
-        action={<PageAction icon={<Plus size={16} />} label={t('list.add')} onClick={openNew} />} />
+      <PageHeader title={t('list.title')} />
 
       <Panel>
         {error ? <QueryError error={error} onRetry={reload} what={t('list.what')} /> : loading ? (

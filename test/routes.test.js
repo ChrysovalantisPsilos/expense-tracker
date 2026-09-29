@@ -30,9 +30,10 @@ test('real signed-in pages match, including the legacy redirects', () => {
     // The form pages (no dialogs): a signed-out deep link signs in and comes back.
     '/groups/new', '/groups/abc/settle', '/groups/abc/edit', '/groups/abc/members',
     '/groups/abc/expenses/new', '/groups/abc/expenses/e1', '/groups/abc/comments/e1',
-    '/recurring/new', '/recurring/r1', '/savings/goals/new', '/savings/goals/g1',
-    // Goals' old addresses, which redirect to their Savings pages.
-    '/insights/goals/new', '/insights/goals/g1',
+    '/recurring/r1', '/savings/goals/new', '/savings/goals/g1',
+    // Goals' old addresses, which redirect to their Savings pages, and the old
+    // new-recurring-entry page, which redirects to Add with Repeat on.
+    '/insights/goals/new', '/insights/goals/g1', '/recurring/new',
     '/insights/accounts/new', '/insights/accounts/a1', '/settings/categories/new',
     '/settings/data/export', '/settings/data/restore', '/settings/privacy/request',
   ]) {

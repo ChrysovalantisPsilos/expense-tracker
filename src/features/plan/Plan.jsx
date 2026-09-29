@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import { addEntryLink } from '../../shared/lib/addLinks.js'
 import { Box, Button, Stack, useToast } from '@chakra-ui/react'
 import { Plus } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
@@ -93,7 +94,7 @@ export default function Plan() {
         <Panel>
           <EmptyState title={t('empty.title')} text={t('empty.text')}
             actions={<>
-              <Button as={RouterLink} to="/recurring/new" leftIcon={<Plus size={18} />}>{t('empty.add')}</Button>
+              <Button as={RouterLink} to={addEntryLink({ repeat: true })} leftIcon={<Plus size={18} />}>{t('empty.add')}</Button>
               <Button as={RouterLink} to="/recurring" variant="outline">{t('empty.go')}</Button>
             </>} />
         </Panel>

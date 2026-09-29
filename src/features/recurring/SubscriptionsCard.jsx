@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link as RouterLink } from 'react-router-dom'
+import { addEntryLink } from '../../shared/lib/addLinks.js'
 import { Box, Button, Text } from '@chakra-ui/react'
 import { ChevronDown, ChevronUp, Repeat } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
@@ -72,7 +73,7 @@ function Upcoming({ rules, rates, loading, error, onRetry, baseCurrency }) {
   if (groups.length === 0) {
     return (
       <CardEmptyState text={t('card.empty')}
-        action={<Button as={RouterLink} to="/recurring/new" size="sm" variant="outline">{t('card.add')}</Button>} />
+        action={<Button as={RouterLink} to={addEntryLink({ repeat: true })} size="sm" variant="outline">{t('card.add')}</Button>} />
     )
   }
   return (
