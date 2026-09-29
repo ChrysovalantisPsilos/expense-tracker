@@ -51,6 +51,14 @@ export default {
       title: 'Spend abroad, track at home',
       body: 'Add expenses in the currency you paid in, on your own or in a group. Budgeer converts them at the European Central Bank rate for that day, and each one keeps its rate, so past totals never shift.',
     },
+    ai: {
+      eyebrow: 'Optional AI helpers',
+      title: 'Type it, and it’s filled in',
+      body: 'Write “coffee 3.60 yesterday” and Add fills in the amount, category, date and more, for you to check and save. Import can suggest categories for new merchants, and Insights can sum up your month in a few lines.',
+      // One line under the three helpers' names, then a link to the FAQ.
+      note: 'Optional, and off until you turn it on. It uses Claude by Anthropic and sends only what each helper needs.',
+      how: 'How it works',
+    },
   },
   also: {
     eyebrow: 'Also included',
@@ -114,6 +122,7 @@ export default {
       entertainment: 'Entertainment',
       housing: 'Housing',
       other: 'Other',
+      salary: 'Salary',
     },
     budgets: {
       title: 'September budgets',
@@ -131,6 +140,13 @@ export default {
       train: 'Train to London',
       hotel: 'NYC hotel night',
       ramen: 'Ramen in Tokyo',
+    },
+    // The AI helpers' illustration (aiDemo.js): the lines typed into
+    // "Type it" and the descriptions they fill in, by example id.
+    ai: {
+      label: 'Example: typing “coffee 3.60 yesterday” fills in the Add form with €3.60, Food & Dining, yesterday’s date, the description “Coffee” and Paid from Bank, each marked Suggested for you to check.',
+      lines: { coffee: 'coffee 3.60 yesterday', salary: 'salary 2450 today' },
+      descriptions: { coffee: 'Coffee', salary: 'Salary' },
     },
   },
 }

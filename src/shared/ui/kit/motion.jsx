@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { chakra, shouldForwardProp } from '@chakra-ui/react'
 import { isValidMotionProp, motion, useInView, useReducedMotion } from 'framer-motion'
 import { nextPhase, playProps } from './kitMath.js'
@@ -8,15 +8,25 @@ export const MotionBox = chakra(motion.div, {
   shouldForwardProp: (prop) => isValidMotionProp(prop) || shouldForwardProp(prop),
 })
 
+// Whether the tab is showing (false while it's in the background).
+const onVisibility = (cb) => {
+  document.addEventListener('visibilitychange', cb)
+  return () => document.removeEventListener('visibilitychange', cb)
+}
+const pageVisible = () => document.visibilityState !== 'hidden'
+const usePageVisible = () => useSyncExternalStore(onVisibility, pageVisible, () => true)
+
 // Playback gate for animated kit pieces: attach `ref` to the container and
 // pass the result as their `playback` prop. They animate only while scrolled
-// into view and never when the visitor prefers reduced motion (then they
-// render their final state). Omit `playback` entirely to render statically.
+// into view with the tab showing, and never when the visitor prefers reduced
+// motion (then they render their final state). Omit `playback` entirely to
+// render statically.
 export function usePlayback({ once = false, amount = 0.35 } = {}) {
   const ref = useRef(null)
   const inView = useInView(ref, { once, amount })
   const reduce = Boolean(useReducedMotion())
-  return { ref, reduce, inView, playing: inView && !reduce }
+  const visible = usePageVisible()
+  return { ref, reduce, inView, playing: inView && visible && !reduce }
 }
 
 // AnimatePresence item props for a mock's content swapping in: a short rise

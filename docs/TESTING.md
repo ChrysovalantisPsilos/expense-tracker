@@ -638,6 +638,14 @@ and puts focus back on what opened it.
     expense split → your share; payments → all balances €0.00). With reduced
     motion they show the final state, still. No layout shift, no sideways
     scroll at 390px; check light and dark.
+    The "Optional AI helpers" row after Multi-currency: a phone on Add where
+    "coffee 3.60 yesterday" types itself, "Filling in the form…" shows, and
+    amount, category, date, description and Paid from fill in one by one,
+    each marked Suggested; then "salary 2450 today" fills an income, and it
+    loops (Greek lines in Greek). It pauses off-screen and in a background
+    tab; with reduced motion it shows the filled coffee form, still. The card
+    keeps its height throughout; the three helper chips and the one-line note
+    sit beside it, and "How it works" opens Help#ai-helpers.
 46. Help & FAQ: the hobby-project notice is at the top; "Install Budgeer on
     your phone" has steps and a sketch per browser (the landing footer's
     "Install the app" opens it). Opening an answer with a clip loads only
