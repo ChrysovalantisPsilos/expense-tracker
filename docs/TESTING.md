@@ -175,6 +175,11 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     with a dialog open, or on a form page with unsaved input (even after
     tapping outside the fields) it waits, then updates once you save or leave
     the page, or switch away. A closed notification bell never holds it back.
+    The same holds on a tab opened on a first visit (no service worker in
+    control yet): after a deploy it reloads on its own too. A page opened
+    after a deploy on a tab still on the old build reloads once by itself and
+    opens, instead of the "A new version of Budgeer is ready" screen (session
+    storage then holds `budge:chunkReload` with the original error).
 
 ### I. Reports
 29. Insights → Statement export: personal PDF downloads with brand styling.

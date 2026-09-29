@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
   overviewTab: 'budge:overviewTab',    // localStorage — Home overview's Numbers | In words switch
   linkingGoogle: 'budge:linkingGoogle', // sessionStorage — a Google link attempt is in flight
   legalConsentPending: 'budge:legalConsentPending', // sessionStorage — Terms/Privacy versions ticked before a Google sign-up
+  chunkReload: 'budge:chunkReload',   // sessionStorage — when this tab last reloaded onto a new version after a page failed to load, and why
   legalAccepted: 'budge:legalAccepted', // localStorage — account + Terms/Privacy versions it accepted (offline check)
   importMappings: 'budgeer:import-mappings:v1', // localStorage — confirmed import column mappings
   importHolder: 'budgeer:import-holder:v1', // localStorage — the holder's name, for own transfers on import

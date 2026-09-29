@@ -83,6 +83,7 @@ const STORAGE_NAMES = {
   passkeyPrompted: <code>{STORAGE_KEYS.passkeyPrompted}</code>,
   linkingGoogle: <code>{STORAGE_KEYS.linkingGoogle}</code>,
   legalConsentPending: <code>{STORAGE_KEYS.legalConsentPending}</code>,
+  chunkReload: <code>{STORAGE_KEYS.chunkReload}</code>,
   whatsNewSeen: <code>{RETIRED_STORAGE_KEYS.whatsNewSeen}</code>,
   aiSummaryHidden: <code>{RETIRED_STORAGE_KEYS.aiSummaryHidden}</code>,
 }
