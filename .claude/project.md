@@ -250,6 +250,16 @@ npm run dev       # Vite
   Fonts: Poppins, Nunito Sans and Manrope are bundled (OFL, static TTFs);
   Greek body text uses the system font. CI: `.github/workflows/ios-app.yml`
   (snapshots of Home and Sign-in as the `snapshots` artifact).
+- **The owner builds and runs the app with Xcode 27** on their Mac (and a
+  free Apple ID for now), while CI builds with Xcode 15.4. Every package pin
+  and Swift change must work on both: check a dependency's newest releases
+  (what Xcode 27 resolves) as well as the oldest CI accepts. Package pins
+  live in `ios/Budgeer/project.yml` with the reason beside each; the
+  swift-clocks / swift-custom-dump caps exist because Xcode 27 otherwise
+  resolves them onto the renamed swift-issue-reporting and refuses the graph.
+  Local run steps: `git pull`, `npm run ios:prepare`, then
+  `xcodebuild -resolvePackageDependencies -scheme "Budgeer Dev"` in
+  `ios/Budgeer` if packages changed.
 
 ## Follow-ups a feature here usually needs
 
