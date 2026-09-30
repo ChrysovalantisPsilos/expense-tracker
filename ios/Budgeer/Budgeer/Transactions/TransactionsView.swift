@@ -104,13 +104,13 @@ struct TransactionsView: View {
                 } else {
                     LazyVStack(spacing: 0) {
                         ForEach(figures.rows) { row in
+                            // A group's share is edited in its group: shown, not opened.
                             Button {
-                                if let saved = model.row(id: row.id) { onOpen(saved) }
+                                if !row.shared, let saved = model.row(id: row.id) { onOpen(saved) }
                             } label: {
                                 EntryRowView(row: row)
                             }
                             .buttonStyle(.plain)
-                            .disabled(row.shared)
                             if row.id != figures.rows.last?.id { Divider().overlay(Theme.Colors.border) }
                         }
                     }

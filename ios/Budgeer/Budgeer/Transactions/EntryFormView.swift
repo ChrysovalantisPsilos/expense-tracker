@@ -36,6 +36,7 @@ struct EntryFormView: View {
                 }
             }
         }
+        .tint(Theme.Colors.accentFg)
         .task(id: language.current) { if !model.ready { await model.load() } }
     }
 

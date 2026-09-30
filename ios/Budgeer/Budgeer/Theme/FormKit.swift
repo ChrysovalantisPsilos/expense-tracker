@@ -64,6 +64,7 @@ struct SuggestedMark: View {
 struct DayField: View {
     let label: String
     @Binding var iso: String
+    @Environment(AppLanguage.self) private var language
 
     var body: some View {
         DatePicker(label, selection: Binding(
@@ -74,6 +75,8 @@ struct DayField: View {
         .datePickerStyle(.compact)
         .tint(Theme.Colors.accentFg)
         .accessibilityLabel(label)
+        // The day in the app's language (Greek months on the Greek form).
+        .environment(\.locale, language.current == "el" ? Locale(identifier: "el_GR") : Locale.current)
     }
 }
 
