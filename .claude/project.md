@@ -236,20 +236,25 @@ npm run dev       # Vite
   macOS). Maths is never re-implemented in Swift: a figure the app needs goes
   in a pure web module first (ios/README.md "Adding a module"). UI, storage,
   auth and push are Swift.
-- **The app (phase 1b, `ios/Budgeer`):** XcodeGen project (`project.yml`;
+- **The app (phase 2, `ios/Budgeer`):** XcodeGen project (`project.yml`;
   never commit the .xcodeproj), Dev scheme = TEST project, Prod scheme =
   PROD, from `Config/*.xcconfig` (public anon keys only). `npm run
   ios:prepare` builds the core, the strings and the project. Sign-in is
-  email/password via supabase-swift 2.49.0 (the last on Swift tools 5.10;
-  CI pins Xcode 15.4 on macos-14); the legal gate sends the user to the web
-  to accept. Home is real; Transactions, Groups and Budgets are placeholders.
+  email/password or Google (`budgeer://auth-callback`) via supabase-swift
+  2.49.0 (the last on Swift tools 5.10; CI pins Xcode 15.4 on macos-14);
+  the legal gate sends the user to the web to accept. Real: Home (period
+  picker, projection, Recurring card), Add/Edit, Transactions, Budgets,
+  Recurring and Insights (from More), over a cached, realtime data layer;
+  Groups is a placeholder (ios/README.md lists what is not yet there).
   Strings come from `src/locales` (`mobile-core/strings.mjs`), never written
-  in Swift; the app's own few words are the `ios` namespace. Home's figures
-  are checked against the web's through `Fixtures/home.json`
-  (`npm run ios:fixture` after a maths change; `test/iosHome.test.js`).
+  in Swift; the app's own few words are the `ios` namespace. Each screen's
+  figures are checked against the web's through `Fixtures/*.json`
+  (`npm run ios:fixture` after a maths change; `test/iosHome.test.js`,
+  `test/iosScreens.test.js`); logic a screen needs that a web component
+  worked out inline moves into the feature's pure module first.
   Fonts: Poppins, Nunito Sans and Manrope are bundled (OFL, static TTFs);
   Greek body text uses the system font. CI: `.github/workflows/ios-app.yml`
-  (snapshots of Home and Sign-in as the `snapshots` artifact).
+  (snapshots of every screen as the `snapshots` artifact).
 - **The owner builds and runs the app with Xcode 27** on their Mac (and a
   free Apple ID for now), while CI builds with Xcode 15.4. Every package pin
   and Swift change must work on both: check a dependency's newest releases
