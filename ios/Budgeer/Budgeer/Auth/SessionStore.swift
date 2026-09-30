@@ -56,7 +56,12 @@ final class SessionStore {
     }
 
     func signIn(email: String, password: String) async throws {
-        let user = try await auth.signIn(.password(email: email, password: password))
+        try await signIn(with: .password(email: email, password: password))
+    }
+
+    /// Any way in (email, Google): the legal check follows, the same for each.
+    func signIn(with method: SignInMethod) async throws {
+        let user = try await auth.signIn(method)
         await settle(user)
     }
 

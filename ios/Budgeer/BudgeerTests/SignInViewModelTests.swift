@@ -52,4 +52,53 @@ final class SignInViewModelTests: XCTestCase {
         XCTAssertEqual(SignInViewModel.messageKey(for: SignInError.unsupported(.google)), "common:errors.generic")
         XCTAssertEqual(SignInViewModel.messageKey(for: FakeError(description: "?")), "common:errors.generic")
     }
+
+    // Google: the same session flow as email (the legal check after it).
+
+    func testGoogleSignsInAndTheLegalCheckFollows() async {
+        let auth = FakeAuthService()
+        let session = SessionStore(auth: auth)
+        await session.start()
+        let model = SignInViewModel()
+        await model.signInWithGoogle(session: session)
+        XCTAssertEqual(auth.signIns, [.google])
+        XCTAssertNil(model.errorKey)
+        XCTAssertFalse(model.googleBusy)
+        XCTAssertEqual(session.state, .ready(.sample))
+    }
+
+    func testGoogleWithDocumentsToAcceptShowsTheGate() async {
+        let auth = FakeAuthService()
+        auth.legal = .success(.fresh)
+        let session = SessionStore(auth: auth)
+        await session.start()
+        await SignInViewModel().signInWithGoogle(session: session)
+        XCTAssertEqual(session.state, .legalRequired(.sample, .fresh))
+    }
+
+    func testClosingGooglesSheetShowsNoError() async {
+        let auth = FakeAuthService(signInResult: .failure(SignInError.cancelled))
+        let session = SessionStore(auth: auth)
+        await session.start()
+        let model = SignInViewModel()
+        await model.signInWithGoogle(session: session)
+        XCTAssertEqual(auth.signIns, [.google])
+        XCTAssertNil(model.errorKey)
+        XCTAssertFalse(model.googleBusy)
+        XCTAssertEqual(session.state, .signedOut)
+    }
+
+    func testAGoogleFailureShowsTheWebsMessage() async {
+        let auth = FakeAuthService(signInResult: .failure(SignInError.rejected(code: "provider_disabled", message: "x")))
+        let session = SessionStore(auth: auth)
+        await session.start()
+        let model = SignInViewModel()
+        await model.signInWithGoogle(session: session)
+        XCTAssertEqual(model.errorKey, "auth:serverError")
+        XCTAssertEqual(session.state, .signedOut)
+
+        auth.signInResult = .failure(SignInError.network("offline"))
+        await model.signInWithGoogle(session: session)
+        XCTAssertEqual(model.errorKey, "common:errors.connection")
+    }
 }
