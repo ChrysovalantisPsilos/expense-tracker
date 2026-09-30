@@ -28,6 +28,16 @@ function warnOnce(msg) {
 
 export const getLanguage = () => active
 
+// Make `lang` the active language now, out of the dictionaries already in
+// hand (`pack` adds a language's dictionaries first, for a host that bundles
+// every language, like the mobile core). English stays active for a language
+// with no dictionaries. Returns the language that is active.
+export function setLanguage(lang, pack) {
+  if (pack) loaded[lang] = pack
+  active = loaded[lang] ? lang : DEFAULT_LANGUAGE
+  return active
+}
+
 // Fetch `lang`'s dictionaries (once) and make it the active language. English
 // stays active when the pack can't load (offline before it was cached), so
 // the app still opens.
@@ -37,12 +47,10 @@ export async function loadLanguage(lang) {
       loaded[lang] = (await PACKS[lang]()).default
     } catch (err) {
       console.error(`[i18n] couldn't load the ${lang} strings; showing English`, err)
-      active = DEFAULT_LANGUAGE
-      return active
+      return setLanguage(DEFAULT_LANGUAGE)
     }
   }
-  active = loaded[lang] ? lang : DEFAULT_LANGUAGE
-  return active
+  return setLanguage(lang)
 }
 
 // Translate `key` ('ns:path.to.string', or 'path' with `defaultNs`) into the

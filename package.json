@@ -13,6 +13,8 @@
     "test:utc": "TZ=UTC node --test test/*.test.js",
     "test:tz": "TZ=Europe/Brussels node --test test/*.test.js",
     "test:tz-west": "TZ=America/Los_Angeles node --test test/*.test.js",
+    "core:build": "node mobile-core/build.mjs",
+    "core:vectors": "node mobile-core/record/vectors.mjs",
     "functions:serve": "supabase functions serve",
     "emails:auth": "node scripts/build-auth-emails.mjs"
   },
