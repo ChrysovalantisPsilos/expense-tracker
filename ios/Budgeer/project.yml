@@ -12,6 +12,9 @@ options:
   deploymentTarget:
     iOS: "17.0"
   xcodeVersion: "15.4"
+  # Xcode 15 project format (object version 63): XcodeGen's default is
+  # Xcode 16's, which Xcode 15.4 (CI) cannot open.
+  projectFormat: xcode15_3
   createIntermediateGroups: true
   generateEmptyDirectories: false
   groupSortPosition: top
@@ -57,7 +60,8 @@ targets:
     sources:
       - path: Budgeer
         excludes:
-          - "Resources/Generated/**/.gitkeep"
+          # The fonts' licence texts stay in the repository, not in the app.
+          - "Resources/Fonts/*.txt"
     dependencies:
       - package: BudgeerCore
       - package: Supabase
@@ -108,6 +112,10 @@ targets:
     platform: iOS
     sources:
       - path: BudgeerTests
+        excludes:
+          - "Fixtures/**"
+      - path: BudgeerTests/Fixtures
+        buildPhase: resources
     dependencies:
       - target: Budgeer
     settings:

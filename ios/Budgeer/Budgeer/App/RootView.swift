@@ -3,6 +3,7 @@
 // screen, the legal gate, or the app's tabs.
 import SwiftUI
 
+@MainActor
 struct RootView: View {
     let container: AppContainer
     @State private var signIn = SignInViewModel()

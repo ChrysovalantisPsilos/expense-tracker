@@ -28,6 +28,12 @@ if ! command -v node >/dev/null 2>&1 && [ -s "$HOME/.nvm/nvm.sh" ]; then
   # shellcheck disable=SC1091
   . "$HOME/.nvm/nvm.sh"
 fi
+if ! command -v node >/dev/null 2>&1; then
+  # A GitHub Actions runner (actions/setup-node).
+  for bin in "$HOME"/hostedtoolcache/node/*/*/bin; do
+    [ -x "$bin/node" ] && export PATH="$PATH:$bin"
+  done
+fi
 if ! command -v npm >/dev/null 2>&1; then
   echo "error: npm not found; install Node 22 and run npm ci once in $ROOT" >&2
   exit 1
