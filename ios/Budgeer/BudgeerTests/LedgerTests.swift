@@ -129,7 +129,7 @@ final class LedgerModelTests: XCTestCase {
     func testNothingLoggedShowsTheFirstEntry() async throws {
         let store = FakeStore()
         store.oldest = .success(nil)
-        let now = EntryFormModelTests.now
+        let now = TestData.now
         let model = LedgerModel(data: store.data, core: .shared, now: { now })
         await model.load()
         guard case .loaded(let figures) = model.state else { return XCTFail("\(model.state)") }
@@ -140,7 +140,7 @@ final class LedgerModelTests: XCTestCase {
     func testAFailedFirstReadShowsTheError() async {
         let store = FakeStore()
         store.rowsResult = .failure(FakeError(description: "offline"))
-        let now = EntryFormModelTests.now
+        let now = TestData.now
         let model = LedgerModel(data: store.data, core: .shared, now: { now })
         await model.load()
         XCTAssertEqual(model.state, .failed("offline"))

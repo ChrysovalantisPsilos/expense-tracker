@@ -5,6 +5,8 @@ import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 import { monthAlone, monthTitle } from '../../shared/lib/dates.js'
 import { isMonthPeriod } from '../../shared/lib/periods.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { categoryLook } from '../../shared/lib/categoryStyle.js'
+import { formatMoney } from '../../shared/lib/currency.js'
 
 // How close spend is to its cap, as the tone its progress bar takes (the
 // theme's Progress variants): 'negative' once over the cap, 'warning' from 80%
@@ -38,6 +40,16 @@ export function budgetChange(currentMinor, amount, currency) {
 // A month without budgets of its own uses the most recent earlier month's
 // caps. my_budgets returns that month's rows, so their period_start says
 // where they came from.
+
+// One month's my_budgets answer as budget sets (capsInMonth): the month the
+// rows carry (their period_start, which names an earlier month when its caps
+// rolled over), or none.
+export const monthSets = (rows) => (rows?.length ? [{ period: rows[0].period_start, rows }] : [])
+
+// Whether the Budgets page offers "Copy last month's budgets": once this
+// month has its own caps (or none) and last month had some (`previousCount`);
+// a month still showing last month's is already using them.
+export const canCopyBudgets = (carried, previousCount) => !carried && previousCount > 0
 
 // The first day of the month before `periodStart` ('YYYY-MM-01').
 export function previousPeriod(periodStart) {
@@ -196,4 +208,25 @@ export function budgetsEmpty(period, current) {
   if (!current) return { text: t('budgets:card.emptyPast', { period: period.label }), canSet: false }
   const thisYear = !isMonthPeriod(period) && isRelativeLabel(period)
   return { text: t(thisYear ? 'budgets:card.emptyThisYear' : 'budgets:card.emptyYet'), canSet: true }
+}
+
+// A budget row as BudgetRow shows it (the web's, and the native app's):
+// the category's name and badge, "€312.40 of €400.00", the percent (its
+// label and the bar's length), the bar's tone and whether it's over (an
+// "Over budget" pill, the percent in red). `item` is one of periodBudgets'.
+export function budgetRowParts(item, currency) {
+  const percent = budgetPercent(item.spent, item.limit)
+  const over = item.tone === 'negative'
+  return {
+    id: item.id,
+    categoryId: item.categoryId,
+    name: item.name,
+    look: categoryLook(item.category),
+    meta: t('budgets:progress', { spent: formatMoney(item.spent, currency), limit: formatMoney(item.limit, currency) }),
+    percent,
+    valueLabel: `${percent}%`,
+    tone: item.tone ?? null,
+    over,
+    overLabel: over ? t('common:budget.over') : null,
+  }
 }

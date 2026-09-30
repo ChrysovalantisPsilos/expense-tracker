@@ -40,11 +40,11 @@ final class SnapshotTests: XCTestCase {
     }
 
     func testEntryFormSnapshots() async throws {
-        let now = EntryFormModelTests.now
+        let now = TestData.now
         for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
             let language = language(lang)
             let store = FakeStore()
-            store.categoriesResult = .success(EntryFormModelTests.categories)
+            store.categoriesResult = .success(TestData.categories)
             store.savingsResult = .success([["id": "c-sav", "kind": "income", "is_savings": true]])
             // Add: an expense with Repeat on.
             let add = EntryFormModel(mode: .add, repeats: true, data: store.data, core: .shared, now: { now })
@@ -81,6 +81,18 @@ final class SnapshotTests: XCTestCase {
             await model.setType("all")
             try snapshot(TransactionsView(model: model).environment(language),
                          name: "transactions-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1300)
+        }
+    }
+
+    func testBudgetsSnapshots() async throws {
+        let fixture = try BudgetsFixture.load()
+        let now = fixture.now
+        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+            let language = language(lang)
+            let model = BudgetsModel(data: fixture.store("own").data, core: .shared, now: { now })
+            await model.load()
+            try snapshot(BudgetsView(model: model).environment(language),
+                         name: "budgets-\(lang)\(dark ? "-dark" : "")", dark: dark)
         }
     }
 

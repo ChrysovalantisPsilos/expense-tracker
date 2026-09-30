@@ -9,19 +9,6 @@ import BudgeerCore
 
 @MainActor
 final class EntryFormModelTests: XCTestCase {
-    static let now = ISO8601DateFormatter.fractional.date(from: "2026-09-15T10:00:00.000Z")!
-
-    static let categories: JSONValue = [
-        ["id": "c-food", "name": "Groceries", "kind": "expense", "icon": .null, "color": .null,
-         "default_key": "groceries", "is_archived": false, "is_savings": false],
-        ["id": "c-fun", "name": "Fun", "kind": "expense", "icon": .null, "color": "teal",
-         "default_key": .null, "is_archived": false, "is_savings": false],
-        ["id": "c-pay", "name": "Salary", "kind": "income", "icon": .null, "color": .null,
-         "default_key": "salary", "is_archived": false, "is_savings": false],
-        ["id": "c-sav", "name": "Savings", "kind": "income", "icon": .null, "color": .null,
-         "default_key": "savings", "is_archived": false, "is_savings": true],
-    ]
-
     override func setUpWithError() throws {
         try super.setUpWithError()
         try BudgeerCore.shared.setLanguage("en")
@@ -29,14 +16,14 @@ final class EntryFormModelTests: XCTestCase {
 
     private func store() -> FakeStore {
         let store = FakeStore()
-        store.categoriesResult = .success(EntryFormModelTests.categories)
+        store.categoriesResult = .success(TestData.categories)
         store.savingsResult = .success([["id": "c-sav", "kind": "income", "is_savings": true]])
         return store
     }
 
     private func model(_ mode: EntryFormModel.Mode, _ store: FakeStore, kind: String = "expense", repeats: Bool = false,
                        transaction: JSONValue? = nil, rule: JSONValue? = nil) async -> EntryFormModel {
-        let now = EntryFormModelTests.now
+        let now = TestData.now
         let model = EntryFormModel(mode: mode, kind: kind, repeats: repeats, transaction: transaction, rule: rule,
                                    data: store.data, core: .shared, now: { now })
         await model.load()

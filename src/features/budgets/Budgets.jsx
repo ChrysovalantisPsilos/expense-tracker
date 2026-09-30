@@ -16,7 +16,7 @@ import { unsavedFormAttr } from '../../shared/lib/autoUpdate.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import { editBudget, deleteBudget, copyPreviousBudgets, useMonthBudgets } from './budgets.js'
 import { useBudgetProgress } from './useBudgetProgress.js'
-import { carriedLabel, previousPeriod } from './budgetMath.js'
+import { canCopyBudgets, carriedLabel, previousPeriod } from './budgetMath.js'
 import BudgetRow from './BudgetRow.jsx'
 import { categoryPath } from '../../shared/lib/categoryLinks.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
@@ -97,7 +97,7 @@ export default function Budgets() {
 
   // Copying makes sense once this month has its own caps (or none): a month
   // still showing last month's is already using them.
-  const canCopy = !carriedFrom && prev.rows.length > 0
+  const canCopy = canCopyBudgets(carriedFrom, prev.rows.length)
   // On a phone the button gets its own line under the card's title (its
   // label is long in Greek and would squeeze the title); from sm up it sits
   // in the header.

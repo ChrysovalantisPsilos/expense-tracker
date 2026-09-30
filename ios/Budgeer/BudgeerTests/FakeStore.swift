@@ -126,3 +126,20 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
 
     var data: DataLayer { DataLayer(self) }
 }
+
+/// The fake data several tests share: an instant in September 2026 and the
+/// user's categories (two of each kind, one income category for savings).
+enum TestData {
+    static let now = ISO8601DateFormatter.fractional.date(from: "2026-09-15T10:00:00.000Z")!
+
+    static let categories: JSONValue = [
+        ["id": "c-food", "name": "Groceries", "kind": "expense", "icon": .null, "color": .null,
+         "default_key": "groceries", "is_archived": false, "is_savings": false],
+        ["id": "c-fun", "name": "Fun", "kind": "expense", "icon": .null, "color": "teal",
+         "default_key": .null, "is_archived": false, "is_savings": false],
+        ["id": "c-pay", "name": "Salary", "kind": "income", "icon": .null, "color": .null,
+         "default_key": "salary", "is_archived": false, "is_savings": false],
+        ["id": "c-sav", "name": "Savings", "kind": "income", "icon": .null, "color": .null,
+         "default_key": "savings", "is_archived": false, "is_savings": true],
+    ]
+}

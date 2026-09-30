@@ -12,6 +12,7 @@ struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var home: HomeViewModel?
     @State private var ledger: LedgerModel?
+    @State private var budgets: BudgetsModel?
     /// The entry form, when open.
     @State private var entry: EntrySheet?
 
@@ -43,7 +44,16 @@ struct MainTabView: View {
                 .tabItem { Label(language.t("shell:nav.transactions"), systemImage: "list.bullet.rectangle") }
             ComingSoonView(title: language.t("shell:nav.groups"))
                 .tabItem { Label(language.t("shell:nav.groups"), systemImage: "person.2") }
-            ComingSoonView(title: language.t("shell:nav.budgets"))
+            Group {
+                if let budgets {
+                    BudgetsView(model: budgets)
+                        .liveRefresh(container.live, tables: ["budgets", "transactions", "categories", "profiles"]) {
+                            await budgets.load()
+                        }
+                } else {
+                    LoadingView()
+                }
+            }
                 .tabItem { Label(language.t("shell:nav.budgets"), systemImage: "chart.pie") }
             MoreView(config: container.config, session: container.session, user: user)
                 .tabItem { Label(language.t("shell:nav.more"), systemImage: "ellipsis.circle") }
@@ -55,6 +65,7 @@ struct MainTabView: View {
         .onAppear {
             if home == nil { home = HomeViewModel(data: container.data) }
             if ledger == nil { ledger = LedgerModel(data: container.data) }
+            if budgets == nil { budgets = BudgetsModel(data: container.data) }
         }
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.

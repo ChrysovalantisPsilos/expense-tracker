@@ -136,6 +136,8 @@ struct ProgressRow<Media: View>: View {
     let valueLabel: String
     var fill: Color = Theme.Colors.fill
     var valueTone: Color = Theme.Colors.textMuted
+    /// A red pill under the title (a budget's "Over budget").
+    var pill: String? = nil
     @ViewBuilder var media: () -> Media
     @Environment(AppLanguage.self) private var language
 
@@ -153,6 +155,15 @@ struct ProgressRow<Media: View>: View {
                         .font(Theme.Fonts.body(13, weight: .regular, lang: language.current))
                         .foregroundStyle(Theme.Colors.textMuted)
                         .lineLimit(1)
+                }
+                if let pill {
+                    Text(pill)
+                        .font(Theme.Fonts.body(11, weight: .bold, lang: language.current))
+                        .foregroundStyle(Theme.Colors.negative)
+                        .padding(.horizontal, Theme.Space.s2)
+                        .padding(.vertical, 2)
+                        .background(Theme.Colors.negativeSubtle)
+                        .clipShape(Capsule())
                 }
                 HStack(spacing: Theme.Space.s2) {
                     GeometryReader { geometry in

@@ -17,6 +17,13 @@ import { isFirstRun, ledgerSummary, listHeading } from '../src/features/transact
 import { listParts } from '../src/features/transactions/rowParts.js'
 import { pageCount, pageSlice } from '../src/shared/lib/paginate.js'
 import { t } from '../src/shared/lib/i18n/i18n.js'
+import { thisMonthPeriod } from '../src/shared/lib/periods.js'
+import { isoDate, monthTitle } from '../src/shared/lib/dates.js'
+import { spendRows } from '../src/shared/lib/spread.js'
+import {
+  budgetRowParts, budgetWindow, canCopyBudgets, capsInMonth, carriedFrom, carriedLabel, monthSets, periodBudgets,
+  previousPeriod,
+} from '../src/features/budgets/budgetMath.js'
 import { setLanguage } from './index.js'
 
 export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
@@ -46,6 +53,32 @@ export function ledgerFigures({ rows, profile, categories, kind = null, period, 
     pages,
     position: t('common:paginator.position', { page, pages }),
     rows: listParts(pageSlice(shown, page, LEDGER_PAGE), { kind, baseCurrency, salaryShift, savingsIds }),
+  }
+}
+
+// The Budgets page (Budgets.jsx + useBudgetProgress) for this month: the
+// month it sets caps for, its heading, where its caps were carried over
+// from, whether "Copy last month's" is offered, and each budget's row.
+//   budgets   my_budgets(this month)       previous  my_budgets(last month)
+//   rows      my_transactions(expense, the month, p_spread)
+export function budgetFigures({ profile, budgets, previous, rows, now, lang = 'en' }) {
+  setLanguage(lang)
+  const date = new Date(now)
+  const baseCurrency = profile?.base_currency || 'EUR'
+  const span = budgetWindow(thisMonthPeriod(date), isoDate(date))
+  const sets = monthSets(budgets)
+  const spend = spendRows(rows, baseCurrency, span.from, span.to, { separateYearly: !!profile?.yearly_separate })
+  const { items } = periodBudgets({ sets, span, spend, baseCurrency })
+  const carried = carriedFrom(capsInMonth(sets, span.first), span.first)
+  return {
+    periodStart: span.last,
+    previousPeriod: previousPeriod(span.last),
+    fetchFrom: span.from,
+    fetchTo: span.to,
+    heading: monthTitle(date),
+    subtitle: carried ? carriedLabel(carried, span.last) : null,
+    canCopy: canCopyBudgets(carried, previous.length),
+    items: items.map((item) => budgetRowParts(item, baseCurrency)),
   }
 }
 
@@ -113,10 +146,49 @@ export function ledgerFixture() {
   return { input: LEDGER_INPUT, expected }
 }
 
+const budget = (category, amount_minor, period_start) => ({
+  category_id: category.id, amount_minor, currency: 'EUR', period_start, categories: category,
+})
+const BUDGET_ROWS = [
+  txn('c1', '2020-09-14', 'expense', 31240, GROCERIES),
+  txn('c2', '2020-09-10', 'expense', 2500, EATING, { currency: 'USD', exchange_rate: 0.9123 }),
+  txn('c3', '2020-09-09', 'expense', 9000, EATING),
+  txn('c4', '2020-03-15', 'expense', 9600, SUBS, { spread_months: 12 }),
+]
+export const BUDGETS_INPUT = {
+  now: '2020-09-15T10:00:00.000Z',
+  profile: PROFILE,
+  rows: BUDGET_ROWS,
+  views: [
+    {
+      name: 'own',
+      budgets: [budget(GROCERIES, 40000, '2020-09-01'), budget(EATING, 10000, '2020-09-01'), budget(SUBS, 2000, '2020-09-01')],
+      previous: [budget(GROCERIES, 35000, '2020-08-01')],
+    },
+    {
+      name: 'carried',
+      budgets: [budget(GROCERIES, 35000, '2020-08-01'), budget(EATING, 12000, '2020-08-01')],
+      previous: [budget(GROCERIES, 35000, '2020-08-01'), budget(EATING, 12000, '2020-08-01')],
+    },
+  ],
+}
+
+export function budgetsFixture() {
+  const expected = {}
+  for (const lang of ['en', 'el']) {
+    expected[lang] = {}
+    for (const view of BUDGETS_INPUT.views) expected[lang][view.name] = budgetFigures({ ...BUDGETS_INPUT, ...view, lang })
+  }
+  setLanguage('en')
+  return { input: BUDGETS_INPUT, expected }
+}
+
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
   const root = fileURLToPath(new URL('..', import.meta.url))
   const out = resolve(root, FIXTURES_DIR, 'ledger.json')
   await writeFile(out, JSON.stringify(ledgerFixture(), null, 2) + '\n')
   console.log(`ledger fixture: ${FIXTURES_DIR}/ledger.json`)
+  await writeFile(resolve(root, FIXTURES_DIR, 'budgets.json'), JSON.stringify(budgetsFixture(), null, 2) + '\n')
+  console.log(`budgets fixture: ${FIXTURES_DIR}/budgets.json`)
 }

@@ -204,3 +204,35 @@ test('budget labels in Greek: the month in its genitive, a plural for months', a
     await loadLanguage('en')
   }
 })
+
+import { budgetRowParts, canCopyBudgets, monthSets } from '../src/features/budgets/budgetMath.js'
+
+test('monthSets: one month\'s answer as its set, named by the month its caps came from', () => {
+  const rows = [{ category_id: 'c1', amount_minor: 100, period_start: '2026-08-01' }]
+  assert.deepEqual(monthSets(rows), [{ period: '2026-08-01', rows }])
+  assert.deepEqual(monthSets([]), [])
+  assert.deepEqual(monthSets(null), [])
+})
+
+test('canCopyBudgets: only when this month has its own caps (or none) and last month had some', () => {
+  assert.equal(canCopyBudgets(null, 3), true)
+  assert.equal(canCopyBudgets('2026-08-01', 3), false)
+  assert.equal(canCopyBudgets(null, 0), false)
+})
+
+test('budgetRowParts: the row\'s words, percent, tone and over', () => {
+  const item = {
+    id: 'c1', categoryId: 'c1', category: { name: 'Groceries', icon: null, color: 'green' }, name: 'Groceries',
+    limit: 40000, spent: 31240, tone: 'warning',
+  }
+  assert.deepEqual(budgetRowParts(item, 'EUR'), {
+    id: 'c1', categoryId: 'c1', name: 'Groceries',
+    look: { key: 'groceries', tone: 'accent', tint: { fg: '#2E9B62', bg: '#2E9B6229' } },
+    meta: '€312.40 of €400.00', percent: 78, valueLabel: '78%', tone: 'warning', over: false, overLabel: null,
+  })
+  const over = budgetRowParts({ ...item, spent: 45000, tone: 'negative' }, 'EUR')
+  assert.equal(over.over, true)
+  assert.equal(over.overLabel, 'Over budget')
+  assert.equal(over.valueLabel, '113%')
+  assert.equal(budgetRowParts({ ...item, spent: 100, tone: undefined }, 'EUR').tone, null)
+})
