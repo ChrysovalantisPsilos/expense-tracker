@@ -104,7 +104,7 @@ targets:
       # fails loudly if it did not run (a build started outside the scheme).
       - name: Check the core and the strings
         script: |
-          "$SRCROOT/scripts/prebuild.sh" check
+          /bin/bash "$SRCROOT/scripts/prebuild.sh" check
         basedOnDependencyAnalysis: false
 
   BudgeerTests:
@@ -132,7 +132,7 @@ schemes:
         - name: Build the core and the strings
           settingsTarget: Budgeer
           script: |
-            "$SRCROOT/scripts/prebuild.sh"
+            /bin/bash "$SRCROOT/scripts/prebuild.sh"
     run:
       config: Debug-Dev
     test:
@@ -152,7 +152,7 @@ schemes:
         - name: Build the core and the strings
           settingsTarget: Budgeer
           script: |
-            "$SRCROOT/scripts/prebuild.sh"
+            /bin/bash "$SRCROOT/scripts/prebuild.sh"
     run:
       config: Debug-Prod
     profile:
