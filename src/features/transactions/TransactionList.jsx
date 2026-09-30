@@ -1,24 +1,17 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Box, List, ListItem, Text, Tag, useToast } from '@chakra-ui/react'
 import { Pencil, Repeat, Trash2 } from 'lucide-react'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import DeleteTransactionDialog from '../../shared/ui/DeleteTransactionDialog.jsx'
-import { formatMoney, rateText, baseEquivalent, formatSigned } from '../../shared/lib/currency.js'
-import { shortDate } from '../../shared/lib/dates.js'
-import { groupLabel } from '../../shared/lib/txnRollup.js'
-import { monthlyShare } from '../../shared/lib/spread.js'
-import { countsForLabel } from '../../shared/lib/salaryShift.js'
-import { savingsNoteLabel } from '../../shared/lib/savings.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { deleteTransaction } from '../../shared/lib/transactions.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
-import { frequencyLabel } from '../recurring/recurringMath.js'
 import MetaLine from '../../shared/ui/MetaLine.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName, entryName } from '../../shared/lib/categoryName.js'
+import { listParts } from './rowParts.js'
 
 // Shared list of personal transactions with edit + delete.
 // Group-mirrored rows (group_expense_id set) are read-only here — they're
@@ -42,6 +35,9 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
   const [removing, setRemoving] = useState(null)
   const [busy, setBusy] = useState(false)
   const { savingsIds } = useSavingsIds()
+  const { salaryShift } = useProfile()
+  const parts = useMemo(
+    () => listParts(rows, { kind, baseCurrency, salaryShift, savingsIds }), [rows, kind, baseCurrency, salaryShift, savingsIds])
 
   // The page gets the row in router state, so it opens without a fetch.
   const open = (r) => navigate(`/transactions/${r.id}`, { state: { row: r } })
@@ -66,27 +62,25 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
   return (
     <>
       <List spacing={0}>
-        {rows.map((r) => {
-          const shared = !!r.group_expense_id
-          const rk = kindOf(r, kind)
-          const conv = baseEquivalent(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
+        {rows.map((r, i) => {
+          const p = parts[i]
           return (
             <ListItem key={r.id}>
-              <ItemRow py={2.5} onClick={shared ? undefined : () => open(r)}
-                media={<CategoryBadge category={r.categories} kind={rk} size={32} />}
-                title={entryName(r, t(`kinds.${rk === 'income' ? 'income' : 'expense'}`))}
-                meta={<RowMeta row={r} shared={shared} saved={savingsNoteLabel(r, savingsIds)} />}
-                amount={formatSigned(r.amount_minor, r.currency, { plus: rk === 'income' })}
-                amountTone={rk === 'income' ? 'positive' : 'default'}
-                amountMeta={conv && (
+              <ItemRow py={2.5} onClick={p.shared ? undefined : () => open(r)}
+                media={<CategoryBadge category={r.categories} kind={p.kind} size={32} />}
+                title={p.title}
+                meta={<RowMeta parts={p} />}
+                amount={p.amount}
+                amountTone={p.tone}
+                amountMeta={p.approx && (
                   <>
-                    {t('list.approx', { amount: formatMoney(conv.baseMinor, baseCurrency) })}
-                    <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {rateText(conv.rate)}</Box>
+                    {p.approx}
+                    <Box as="span" display={{ base: 'none', sm: 'inline' }}> · {p.rate}</Box>
                     {/* Rate estimated on this device until the server records it. */}
-                    {r.rate_estimated && ` · ${t('list.estimated')}`}
+                    {p.estimated && ` · ${p.estimated}`}
                   </>
                 )}
-                actionSlots={2} actions={shared ? [] : [
+                actionSlots={2} actions={p.shared ? [] : [
                   { label: t('common:actions.edit'), icon: Pencil, onClick: () => open(r) },
                   { label: t('common:actions.delete'), icon: Trash2, danger: true, onClick: () => setRemoving(r) },
                 ]} />
@@ -101,45 +95,32 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
   )
 }
 
-// The muted line under a row's title: date · category · where savings came
-// from · note, then the group's tag on group-share rows. One line sideways.
-function RowMeta({ row: r, shared, saved }) {
-  const t = useT('transactions')
-  const { salaryShift } = useProfile()
-  const share = monthlyShare(r)
-  const countsFor = countsForLabel(r, salaryShift)
+// The muted line under a row's title (rowParts): date · category · where
+// savings came from · note, then the group's tag on group-share rows, the
+// repeat, a yearly payment's monthly share and a late salary's month. One
+// line sideways.
+function RowMeta({ parts: p }) {
   return (
     <MetaLine>
-      <Text whiteSpace="nowrap">{shortDate(r.spent_at)}</Text>
-      {r.description && r.categories?.name && (
-        <Text overflowWrap="anywhere">{categoryDisplayName(r.categories)}</Text>
+      {p.meta.map((part) => <Text key={part} overflowWrap="anywhere">{part}</Text>)}
+      {p.notes && (
+        <Text fontStyle="italic" minW={0} overflowWrap="anywhere">{p.notes}</Text>
       )}
-      {saved && <Text whiteSpace="nowrap">{saved}</Text>}
-      {r.notes && (
-        <Text fontStyle="italic" minW={0} overflowWrap="anywhere">{r.notes}</Text>
-      )}
-      {shared && (
+      {p.group && (
         <MetaLine.Bare>
           <Tag size="sm" colorScheme="brand" borderRadius="md" maxW="100%" py={0.5}>
             {/* not TagLabel: that clamps to one line */}
-            <Text as="span" lineHeight="1.2" overflowWrap="anywhere">{groupLabel(r)}</Text>
+            <Text as="span" lineHeight="1.2" overflowWrap="anywhere">{p.group}</Text>
           </Tag>
         </MetaLine.Bare>
       )}
-      {r.recurring && (
+      {p.repeats && (
         <Text whiteSpace="nowrap" display="inline-flex" alignItems="center" gap={1}>
-          <Repeat size={11} aria-hidden /> {t('list.repeats', { frequency: frequencyLabel(r.recurring) })}
-          {!r.recurring.is_active && ` ${t('list.paused')}`}
+          <Repeat size={11} aria-hidden /> {p.repeats}
         </Text>
       )}
-      {share && (
-        <Text whiteSpace="nowrap">
-          {share.exact ? '' : '≈ '}{t('list.spread', {
-            amount: formatMoney(share.perMonth, r.currency), months: share.months,
-          })}
-        </Text>
-      )}
-      {countsFor && <Text whiteSpace="nowrap">{countsFor}</Text>}
+      {p.spread && <Text whiteSpace="nowrap">{p.spread}</Text>}
+      {p.countsFor && <Text whiteSpace="nowrap">{p.countsFor}</Text>}
     </MetaLine>
   )
 }

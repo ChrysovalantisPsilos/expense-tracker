@@ -1,7 +1,7 @@
 // The signed-in app: five tabs after the web's bottom navigation (Home,
-// Transactions, Groups, Budgets, More). Home is real; Transactions, Groups
-// and Budgets say "coming soon" until their phase; More holds the account
-// (sign out), the language and the build's details.
+// Transactions, Groups, Budgets, More). Groups says "coming soon" until its
+// phase; More holds Recurring, Insights, the account, the language and the
+// build. The entry form opens over any tab (Add from "+", Edit from a row).
 import SwiftUI
 
 @MainActor
@@ -11,6 +11,7 @@ struct MainTabView: View {
     @Environment(AppLanguage.self) private var language
     @Environment(\.scenePhase) private var scenePhase
     @State private var home: HomeViewModel?
+    @State private var ledger: LedgerModel?
     /// The entry form, when open.
     @State private var entry: EntrySheet?
 
@@ -27,7 +28,18 @@ struct MainTabView: View {
                 }
             }
             .tabItem { Label(language.t("shell:nav.home"), systemImage: "house") }
-            ComingSoonView(title: language.t("shell:nav.transactions"))
+            Group {
+                if let ledger {
+                    TransactionsView(model: ledger,
+                                     onAdd: { kind in entry = EntrySheet.add(kind: kind, data: container.data) },
+                                     onOpen: { row in entry = EntrySheet.edit(row, data: container.data) })
+                        .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
+                            await ledger.reloadRows()
+                        }
+                } else {
+                    LoadingView()
+                }
+            }
                 .tabItem { Label(language.t("shell:nav.transactions"), systemImage: "list.bullet.rectangle") }
             ComingSoonView(title: language.t("shell:nav.groups"))
                 .tabItem { Label(language.t("shell:nav.groups"), systemImage: "person.2") }
@@ -42,6 +54,7 @@ struct MainTabView: View {
         }
         .onAppear {
             if home == nil { home = HomeViewModel(data: container.data) }
+            if ledger == nil { ledger = LedgerModel(data: container.data) }
         }
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.

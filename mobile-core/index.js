@@ -63,6 +63,7 @@ import * as insightsMath from '../src/features/insights/insightsMath.js'
 import * as aiMath from '../src/features/ai/aiMath.js'
 import * as entryForm from '../src/features/transactions/entryForm.js'
 import * as txnFilter from '../src/features/transactions/txnFilter.js'
+import * as rowParts from '../src/features/transactions/rowParts.js'
 import * as listHeading from '../src/features/transactions/listHeading.js'
 
 // The language every wording function answers in. English is the default and
@@ -126,6 +127,7 @@ export const modules = {
   aiMath,
   entryForm,
   txnFilter,
+  rowParts,
   listHeading,
 }
 

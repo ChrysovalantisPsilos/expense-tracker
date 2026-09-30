@@ -71,6 +71,7 @@ export const CORE_MODULES = {
   aiMath: 'src/features/ai/aiMath.js',
   entryForm: 'src/features/transactions/entryForm.js',
   txnFilter: 'src/features/transactions/txnFilter.js',
+  rowParts: 'src/features/transactions/rowParts.js',
   listHeading: 'src/features/transactions/listHeading.js',
 }
 

@@ -66,6 +66,24 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    func testTransactionsSnapshots() async throws {
+        let fixture = try LedgerFixture.load()
+        let now = fixture.now
+        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+            let language = language(lang)
+            let store = FakeStore()
+            store.profileResult = .success(fixture.input.profile)
+            store.savingsResult = .success(fixture.input.categories)
+            store.oldest = .success(fixture.input.oldest)
+            store.rowsFor = { query in fixture.rows(kind: query.kind) }
+            let model = LedgerModel(data: store.data, core: .shared, now: { now })
+            await model.load()
+            await model.setType("all")
+            try snapshot(TransactionsView(model: model).environment(language),
+                         name: "transactions-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1300)
+        }
+    }
+
     private func language(_ lang: String) -> AppLanguage {
         let defaults = UserDefaults(suiteName: "SnapshotTests")!
         return AppLanguage(preference: lang, defaults: defaults, deviceLanguages: ["en"])
