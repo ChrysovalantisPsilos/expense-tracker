@@ -134,3 +134,15 @@ export function categoryTile(colorKey) {
   const hex = CATEGORY_COLORS[colorKey]
   return hex ? { fg: hex, bg: `${hex}29` } : null
 }
+
+// How a category's badge looks (CategoryBadge, and the native app's): the
+// icon key it shows, the tone of a plain tile's icon (income positive, else
+// accent), and its tint when the user picked a colour (null: the sand tile).
+// `category` is a row, a plain name, or nothing (uncategorised: 'other').
+export function categoryLook(category, kind) {
+  return {
+    key: categoryIconKey(category ?? ''),
+    tone: kind === 'income' ? 'positive' : 'accent',
+    tint: categoryTile(typeof category === 'string' ? null : category?.color),
+  }
+}

@@ -1,6 +1,6 @@
 // Email and password sign-in, the web's Login page's words. Google, Apple
-// and passkeys have their place below the form (a divider "or continue
-// with") but no buttons until their phase.
+// and passkeys come with their phase, and with them the web's "or continue
+// with" divider under the form: an empty one would promise nothing.
 import SwiftUI
 
 @MainActor
@@ -59,7 +59,6 @@ struct SignInView: View {
             VStack(spacing: Theme.Space.s6) {
                 header
                 form
-                methods
                 Text(language.t("common:hobby.disclaimer"))
                     .font(Theme.Fonts.body(12, lang: language.current))
                     .foregroundStyle(Theme.Colors.textMuted)
@@ -156,18 +155,5 @@ struct SignInView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xxl, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.xxl, style: .continuous).stroke(Theme.Colors.border, lineWidth: 1))
         .shadow(color: Theme.Shadow.softColor, radius: Theme.Shadow.softRadius, y: Theme.Shadow.softY)
-    }
-
-    /// Where Google and passkeys go in a later phase (SignInMethod).
-    private var methods: some View {
-        HStack(spacing: Theme.Space.s3) {
-            Rectangle().fill(Theme.Colors.border).frame(height: 1)
-            Text(language.t("auth:orContinue"))
-                .font(Theme.Fonts.body(12, lang: language.current))
-                .foregroundStyle(Theme.Colors.textMuted)
-                .fixedSize()
-            Rectangle().fill(Theme.Colors.border).frame(height: 1)
-        }
-        .opacity(0.6)
     }
 }

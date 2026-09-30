@@ -35,6 +35,10 @@ struct HomeBar: Codable, Equatable, Sendable {
     /// The bar's length relative to the largest, 0…1.
     let ratio: Double
     let amount: String
+    /// A group's share of an expense (the people badge) rather than a category.
+    let group: Bool
+    /// The category's badge (categoryStyle.categoryLook).
+    let look: CategoryLook
 }
 
 struct HomeFigures: Codable, Equatable, Sendable {
@@ -82,17 +86,23 @@ struct HomeFigures: Codable, Equatable, Sendable {
         let proj: JSONValue = try core.call("dashboardMath", "periodProjection",
                                             [JSONValue.array([]), range, todayISO, separateYearly, salaryShift, savingsIds])
         let figures: JSONValue = try core.call("dashboardMath", "projectedTotals", [totals, proj])
-        // bucketRow is a Map (tagged {"$":"map","v":[[key, row], …]}); its rows label the bars.
-        let bucketRows: [JSONValue] = (totals["bucketRow"]?["v"]?.arrayValue ?? []).compactMap { $0.arrayValue?.last }
+        // bucketRow is a Map (tagged {"$":"map","v":[[key, row], …]}); its rows
+        // label the bars and give each its badge.
+        let bucketPairs = JSONValue.mapPairs(totals["bucketRow"])
+        let bucketRows = bucketPairs.map(\.value)
         let labels: JSONValue = try core.call("txnRollup", "bucketLabels", [JSONValue.array(bucketRows)])
         let byCategory = totals["byCategory"] ?? JSONValue.array([])
         let ranked: [JSONValue] = try core.call("breakdown", "categoryBars", [byCategory, noFold])
         let bars = try ranked.map { c -> HomeBar in
+            let name = c["name"]?.stringValue ?? ""
+            let row = bucketPairs.first { $0.key.stringValue == name }?.value
             let value = c["value"]?.doubleValue ?? 0
             let label: String = try core.call("txnRollup", "bucketLabel", [c, labels])
             let amount: String = try core.call("currency", "formatMoney", [value, baseCurrency])
-            return HomeBar(name: c["name"]?.stringValue ?? "", label: label, value: value,
-                           share: c["share"]?.intValue ?? 0, ratio: c["ratio"]?.doubleValue ?? 0, amount: amount)
+            return HomeBar(name: name, label: label, value: value,
+                           share: c["share"]?.intValue ?? 0, ratio: c["ratio"]?.doubleValue ?? 0, amount: amount,
+                           group: row?["group_expense_id"]?.stringValue != nil,
+                           look: try CategoryLook.of(row?["categories"], core: core))
         }
         let spentTotal = figures["spentTotal"]?.doubleValue ?? 0
         let earnedTotal = figures["earnedTotal"]?.doubleValue ?? 0

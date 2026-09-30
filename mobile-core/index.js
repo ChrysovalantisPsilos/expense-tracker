@@ -23,6 +23,7 @@ import * as txnRollup from '../src/shared/lib/txnRollup.js'
 import * as ruleFx from '../src/shared/lib/ruleFx.js'
 import * as salaryShift from '../src/shared/lib/salaryShift.js'
 import * as categoryName from '../src/shared/lib/categoryName.js'
+import * as categoryStyle from '../src/shared/lib/categoryStyle.js'
 import * as paginate from '../src/shared/lib/paginate.js'
 import * as savings from '../src/shared/lib/savings.js'
 import * as formChecks from '../src/shared/lib/formChecks.js'
@@ -84,6 +85,7 @@ export const modules = {
   ruleFx,
   salaryShift,
   categoryName,
+  categoryStyle,
   paginate,
   savings,
   formChecks,

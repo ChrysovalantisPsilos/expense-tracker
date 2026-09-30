@@ -24,6 +24,7 @@ import { bucketLabel, bucketLabels } from '../src/shared/lib/txnRollup.js'
 import { formatMoney, formatSigned } from '../src/shared/lib/currency.js'
 import { signTone } from '../src/shared/ui/kit/kitMath.js'
 import { isoDate } from '../src/shared/lib/dates.js'
+import { categoryLook } from '../src/shared/lib/categoryStyle.js'
 import { setLanguage } from './index.js'
 
 export const FIXTURE_FILE = 'ios/Budgeer/BudgeerTests/Fixtures/home.json'
@@ -49,10 +50,16 @@ export function homeFigures({ rows, profile, categories, now, lang = 'en' }) {
   const proj = periodProjection([], { from: period.from, to: period.to }, isoDate(date), separateYearly, salaryShift, savingsIds)
   const figures = projectedTotals(totals, proj)
   const labels = bucketLabels([...totals.bucketRow.values()])
-  const bars = categoryBars(totals.byCategory, NO_FOLD).map((c) => ({
-    name: c.name, label: bucketLabel(c, labels), value: c.value, share: c.share, ratio: c.ratio,
-    amount: formatMoney(c.value, baseCurrency),
-  }))
+  // Each bar's badge as Dashboard's BucketIcon draws it: a group's share
+  // wears the people icon, anything else its category's look.
+  const bars = categoryBars(totals.byCategory, NO_FOLD).map((c) => {
+    const row = totals.bucketRow.get(c.name)
+    return {
+      name: c.name, label: bucketLabel(c, labels), value: c.value, share: c.share, ratio: c.ratio,
+      amount: formatMoney(c.value, baseCurrency),
+      group: !!row?.group_expense_id, look: categoryLook(row?.categories),
+    }
+  })
   return {
     period: { value: period.value, from: period.from, to: period.to, label: period.label },
     fetchFrom: shiftFetchFrom(period.from, salaryShift) ?? period.from,
@@ -78,7 +85,7 @@ const SALARY = '11111111-1111-4111-8111-111111111111'
 const SAVINGS = '22222222-2222-4222-8222-222222222222'
 const cat = (id, name, kind = 'expense', extra = {}) => ({ id, name, kind, icon: null, color: null, ...extra })
 const GROCERIES = cat('33333333-3333-4333-8333-333333333333', 'Groceries')
-const EATING = cat('44444444-4444-4444-8444-444444444444', 'Eating out')
+const EATING = cat('44444444-4444-4444-8444-444444444444', 'Eating out', 'expense', { color: 'teal' })
 const TRANSPORT = cat('55555555-5555-4555-8555-555555555555', 'Transport')
 const SUBS = cat('66666666-6666-4666-8666-666666666666', 'Subscriptions')
 const txn = (id, spent_at, kind, amount_minor, categories, extra = {}) => ({

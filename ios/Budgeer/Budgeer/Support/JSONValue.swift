@@ -81,6 +81,36 @@ enum JSONValue: Codable, Equatable, Sendable {
         return nil
     }
 
+    var objectValue: [String: JSONValue]? {
+        if case .object(let value) = self { return value }
+        return nil
+    }
+
+    /// The entries of a Map the core answered ({"$":"map","v":[[key, value], …]}), in order.
+    static func mapPairs(_ value: JSONValue?) -> [(key: JSONValue, value: JSONValue)] {
+        (value?["v"]?.arrayValue ?? []).compactMap { pair in
+            guard let items = pair.arrayValue, items.count == 2 else { return nil }
+            return (key: items[0], value: items[1])
+        }
+    }
+
+    /// A value from Swift (a Decodable answer back to JSON, a struct to send).
+    static func from<T: Encodable>(_ value: T) throws -> JSONValue {
+        try JSONDecoder().decode(JSONValue.self, from: JSONEncoder().encode(value))
+    }
+
+    /// This value as a Swift type.
+    func decode<T: Decodable>(_ type: T.Type = T.self) throws -> T {
+        try JSONDecoder().decode(T.self, from: JSONEncoder().encode(self))
+    }
+
+    /// An object with `key` set to `value` (a non-object stays as it is).
+    func with(_ key: String, _ value: JSONValue) -> JSONValue {
+        guard case .object(var object) = self else { return self }
+        object[key] = value
+        return .object(object)
+    }
+
     // MARK: Text
 
     static func parse(_ text: String) throws -> JSONValue {
@@ -90,4 +120,22 @@ enum JSONValue: Codable, Equatable, Sendable {
     static func parse(_ data: Data) throws -> JSONValue {
         try JSONDecoder().decode(JSONValue.self, from: data)
     }
+}
+
+// Literals, so a call's arguments read as the JSON they are.
+extension JSONValue: ExpressibleByStringLiteral, ExpressibleByIntegerLiteral, ExpressibleByFloatLiteral,
+    ExpressibleByBooleanLiteral, ExpressibleByArrayLiteral, ExpressibleByDictionaryLiteral {
+    init(stringLiteral value: String) { self = .string(value) }
+    init(integerLiteral value: Int) { self = .int(value) }
+    init(floatLiteral value: Double) { self = .double(value) }
+    init(booleanLiteral value: Bool) { self = .bool(value) }
+    init(arrayLiteral elements: JSONValue...) { self = .array(elements) }
+    init(dictionaryLiteral elements: (String, JSONValue)...) {
+        self = .object(Dictionary(elements, uniquingKeysWith: { _, last in last }))
+    }
+}
+
+extension Optional where Wrapped == String {
+    /// The string, or JSON null.
+    var json: JSONValue { map { JSONValue.string($0) } ?? .null }
 }

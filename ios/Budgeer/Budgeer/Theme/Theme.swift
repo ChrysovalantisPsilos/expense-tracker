@@ -146,6 +146,20 @@ extension Color {
     init(hex: UInt32) {
         self.init(uiColor: UIColor(hex: hex))
     }
+
+    /// "#RRGGBB" or "#RRGGBBAA" (a category's tint from the core); nil for
+    /// anything else.
+    init?(hexString: String) {
+        var text = hexString
+        if text.hasPrefix("#") { text.removeFirst() }
+        guard text.count == 6 || text.count == 8, let value = UInt64(text, radix: 16) else { return nil }
+        let rgba = text.count == 6 ? (value << 8) | 0xFF : value
+        self.init(.sRGB,
+                  red: Double((rgba >> 24) & 0xFF) / 255,
+                  green: Double((rgba >> 16) & 0xFF) / 255,
+                  blue: Double((rgba >> 8) & 0xFF) / 255,
+                  opacity: Double(rgba & 0xFF) / 255)
+    }
 }
 
 extension UIColor {

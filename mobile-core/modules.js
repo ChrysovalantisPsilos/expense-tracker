@@ -26,6 +26,7 @@ export const CORE_MODULES = {
   ruleFx: 'src/shared/lib/ruleFx.js',
   salaryShift: 'src/shared/lib/salaryShift.js',
   categoryName: 'src/shared/lib/categoryName.js',
+  categoryStyle: 'src/shared/lib/categoryStyle.js',
   paginate: 'src/shared/lib/paginate.js',
   savings: 'src/shared/lib/savings.js',
   formChecks: 'src/shared/lib/formChecks.js',

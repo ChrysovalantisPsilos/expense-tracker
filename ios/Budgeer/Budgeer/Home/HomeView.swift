@@ -89,7 +89,9 @@ private struct CategoriesPanel: View {
             } else {
                 VStack(spacing: Theme.Space.s3) {
                     ForEach(bars, id: \.name) { bar in
-                        ProgressRow(title: bar.label, meta: bar.amount, ratio: bar.ratio, valueLabel: "\(bar.share)%")
+                        ProgressRow(title: bar.label, meta: bar.amount, ratio: bar.ratio, valueLabel: "\(bar.share)%") {
+                            if bar.group { GroupBadge() } else { CategoryBadge(look: bar.look) }
+                        }
                     }
                 }
             }

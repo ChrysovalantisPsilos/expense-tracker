@@ -76,7 +76,7 @@
           "name": "Eating out",
           "kind": "expense",
           "icon": null,
-          "color": null
+          "color": "teal"
         },
         "description": null,
         "notes": null,
@@ -100,7 +100,7 @@
           "name": "Eating out",
           "kind": "expense",
           "icon": null,
-          "color": null
+          "color": "teal"
         },
         "description": null,
         "notes": null,
@@ -238,7 +238,7 @@
           "name": "Eating out",
           "kind": "expense",
           "icon": null,
-          "color": null
+          "color": "teal"
         },
         "description": null,
         "notes": null,
@@ -303,7 +303,13 @@
           "value": 12000,
           "share": 38,
           "ratio": 1,
-          "amount": "€120.00"
+          "amount": "€120.00",
+          "group": false,
+          "look": {
+            "key": "other",
+            "tone": "accent",
+            "tint": null
+          }
         },
         {
           "name": "Groceries",
@@ -311,7 +317,13 @@
           "value": 6149,
           "share": 19,
           "ratio": 0.5124166666666666,
-          "amount": "€61.49"
+          "amount": "€61.49",
+          "group": false,
+          "look": {
+            "key": "groceries",
+            "tone": "accent",
+            "tint": null
+          }
         },
         {
           "name": "Eating out",
@@ -319,7 +331,16 @@
           "value": 5881,
           "share": 18,
           "ratio": 0.4900833333333333,
-          "amount": "€58.81"
+          "amount": "€58.81",
+          "group": false,
+          "look": {
+            "key": "utensils",
+            "tone": "accent",
+            "tint": {
+              "fg": "#16939A",
+              "bg": "#16939A29"
+            }
+          }
         },
         {
           "name": "Transport",
@@ -327,7 +348,13 @@
           "value": 4900,
           "share": 15,
           "ratio": 0.4083333333333333,
-          "amount": "€49.00"
+          "amount": "€49.00",
+          "group": false,
+          "look": {
+            "key": "transport",
+            "tone": "accent",
+            "tint": null
+          }
         },
         {
           "name": "Lisbon trip",
@@ -335,7 +362,16 @@
           "value": 2200,
           "share": 7,
           "ratio": 0.18333333333333332,
-          "amount": "€22.00"
+          "amount": "€22.00",
+          "group": true,
+          "look": {
+            "key": "utensils",
+            "tone": "accent",
+            "tint": {
+              "fg": "#16939A",
+              "bg": "#16939A29"
+            }
+          }
         },
         {
           "name": "Subscriptions",
@@ -343,7 +379,13 @@
           "value": 800,
           "share": 3,
           "ratio": 0.06666666666666667,
-          "amount": "€8.00"
+          "amount": "€8.00",
+          "group": false,
+          "look": {
+            "key": "streaming",
+            "tone": "accent",
+            "tint": null
+          }
         }
       ]
     },
@@ -370,7 +412,13 @@
           "value": 12000,
           "share": 38,
           "ratio": 1,
-          "amount": "120,00 €"
+          "amount": "120,00 €",
+          "group": false,
+          "look": {
+            "key": "other",
+            "tone": "accent",
+            "tint": null
+          }
         },
         {
           "name": "Groceries",
@@ -378,7 +426,13 @@
           "value": 6149,
           "share": 19,
           "ratio": 0.5124166666666666,
-          "amount": "61,49 €"
+          "amount": "61,49 €",
+          "group": false,
+          "look": {
+            "key": "groceries",
+            "tone": "accent",
+            "tint": null
+          }
         },
         {
           "name": "Eating out",
@@ -386,7 +440,16 @@
           "value": 5881,
           "share": 18,
           "ratio": 0.4900833333333333,
-          "amount": "58,81 €"
+          "amount": "58,81 €",
+          "group": false,
+          "look": {
+            "key": "utensils",
+            "tone": "accent",
+            "tint": {
+              "fg": "#16939A",
+              "bg": "#16939A29"
+            }
+          }
         },
         {
           "name": "Transport",
@@ -394,7 +457,13 @@
           "value": 4900,
           "share": 15,
           "ratio": 0.4083333333333333,
-          "amount": "49,00 €"
+          "amount": "49,00 €",
+          "group": false,
+          "look": {
+            "key": "transport",
+            "tone": "accent",
+            "tint": null
+          }
         },
         {
           "name": "Lisbon trip",
@@ -402,7 +471,16 @@
           "value": 2200,
           "share": 7,
           "ratio": 0.18333333333333332,
-          "amount": "22,00 €"
+          "amount": "22,00 €",
+          "group": true,
+          "look": {
+            "key": "utensils",
+            "tone": "accent",
+            "tint": {
+              "fg": "#16939A",
+              "bg": "#16939A29"
+            }
+          }
         },
         {
           "name": "Subscriptions",
@@ -410,7 +488,13 @@
           "value": 800,
           "share": 3,
           "ratio": 0.06666666666666667,
-          "amount": "8,00 €"
+          "amount": "8,00 €",
+          "group": false,
+          "look": {
+            "key": "streaming",
+            "tone": "accent",
+            "tint": null
+          }
         }
       ]
     }

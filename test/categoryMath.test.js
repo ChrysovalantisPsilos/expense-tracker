@@ -9,7 +9,7 @@ import { NO_CATEGORY, presetCategoryId } from '../src/shared/lib/categoryName.js
 import { latestSql } from './migrations.js'
 import {
   CATEGORY_ICON_KEYS, CATEGORY_ICON_LABELS, CATEGORY_ICON_GROUPS, CATEGORY_COLOR_KEYS,
-  CATEGORY_COLORS, categoryTile, categoryIconKey,
+  CATEGORY_COLORS, categoryTile, categoryIconKey, categoryLook,
 } from '../src/shared/lib/categoryStyle.js'
 
 test('categoryNameError mirrors the server rule: 1–60 chars trimmed, no control chars', () => {
@@ -122,6 +122,18 @@ test('categoryTile: a known colour key tints the tile; anything else keeps the d
   assert.equal(categoryTile(null), null)
   assert.equal(categoryTile('#ff0000'), null)
   for (const hex of Object.values(CATEGORY_COLORS)) assert.match(hex, /^#[0-9A-F]{6}$/)
+})
+
+test('categoryLook: the icon key, the tone by kind and the tint of a picked colour', () => {
+  const pets = { id: 'c1', name: 'Pets', icon: 'gifts', color: 'blue' }
+  assert.deepEqual(categoryLook(pets, 'expense'),
+    { key: 'gifts', tone: 'accent', tint: { fg: CATEGORY_COLORS.blue, bg: `${CATEGORY_COLORS.blue}29` } })
+  assert.deepEqual(categoryLook({ name: 'Salary', icon: null, color: null }, 'income'),
+    { key: 'salary', tone: 'positive', tint: null })
+  // Uncategorised (no row), a plain name, no kind.
+  assert.deepEqual(categoryLook(null), { key: 'other', tone: 'accent', tint: null })
+  assert.deepEqual(categoryLook(undefined, 'income'), { key: 'other', tone: 'positive', tint: null })
+  assert.deepEqual(categoryLook('Taxi'), { key: 'taxi', tone: 'accent', tint: null })
 })
 
 // The icon and colour keys are CHECK constraints on the server (colours: 0060;

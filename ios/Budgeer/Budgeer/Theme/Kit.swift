@@ -125,20 +125,23 @@ struct BalanceTile: View {
 
 // MARK: ProgressRow
 
-/// A ranked bar: title and amount over a coral bar sized by `ratio`, with
-/// the share at the end. Identity is the label, not a colour.
-struct ProgressRow: View {
+/// A ranked bar: title and amount over a bar sized by `ratio`, with the share
+/// at the end, and the row's badge (`media`) in front. Identity is the label,
+/// not a colour; `fill` colours the bar (a budget's tone), coral by default.
+struct ProgressRow<Media: View>: View {
     let title: String
     let meta: String
-    /// 0…1, the bar's length relative to the largest row.
+    /// 0…1, the bar's length relative to the largest row (or to the cap).
     let ratio: Double
     let valueLabel: String
-    var systemImage = "tag"
+    var fill: Color = Theme.Colors.fill
+    var valueTone: Color = Theme.Colors.textMuted
+    @ViewBuilder var media: () -> Media
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.s3) {
-            IconTile(systemName: systemImage)
+            media()
             VStack(alignment: .leading, spacing: Theme.Space.s1) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(title)
@@ -155,14 +158,14 @@ struct ProgressRow: View {
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
                             Capsule().fill(Theme.Colors.subtle)
-                            Capsule().fill(Theme.Colors.fill)
+                            Capsule().fill(fill)
                                 .frame(width: geometry.size.width * barFraction)
                         }
                     }
                     .frame(height: 8)
                     Text(valueLabel)
                         .font(Theme.Fonts.body(12, weight: .semibold, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
+                        .foregroundStyle(valueTone)
                         .frame(minWidth: 34, alignment: .trailing)
                 }
             }
