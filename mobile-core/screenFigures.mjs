@@ -24,6 +24,9 @@ import {
   budgetRowParts, budgetWindow, canCopyBudgets, capsInMonth, carriedFrom, carriedLabel, monthSets, periodBudgets,
   previousPeriod,
 } from '../src/features/budgets/budgetMath.js'
+import {
+  groupTotalParts, incomePerMonth, incomeRules, incomeTotalParts, ruleRowParts, subscriptionGroups,
+} from '../src/features/recurring/recurringMath.js'
 import { setLanguage } from './index.js'
 
 export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
@@ -79,6 +82,26 @@ export function budgetFigures({ profile, budgets, previous, rows, now, lang = 'e
     subtitle: carried ? carriedLabel(carried, span.last) : null,
     canCopy: canCopyBudgets(carried, previous.length),
     items: items.map((item) => budgetRowParts(item, baseCurrency)),
+  }
+}
+
+// The Recurring page (Recurring.jsx): the subscriptions by frequency, each
+// group's headline and rules, and the Income tab's headline and rules.
+// `rates` are today's rates of the rules' foreign currencies.
+export function recurringFigures({ profile, categories, rules, rates, lang = 'en' }) {
+  setLanguage(lang)
+  const baseCurrency = profile?.base_currency || 'EUR'
+  const options = { baseCurrency, rates, separateYearly: !!profile?.yearly_separate }
+  const income = incomePerMonth(rules, savingsIdsOf(categories), baseCurrency, rates)
+  return {
+    groups: subscriptionGroups(rules, baseCurrency, { rates }).map((g) => ({
+      key: g.key, label: g.label, total: groupTotalParts(g, baseCurrency),
+      rows: g.rules.map((r) => ruleRowParts(r, options)),
+    })),
+    income: {
+      total: incomeTotalParts(income, baseCurrency),
+      rows: incomeRules(rules).map((r) => ruleRowParts(r, options)),
+    },
   }
 }
 
@@ -173,6 +196,33 @@ export const BUDGETS_INPUT = {
   ],
 }
 
+const rule = (id, kind, amount_minor, frequency, next_run, categories, extra = {}) => ({
+  id, kind, amount_minor, currency: 'EUR', frequency, interval_n: 1, next_run, end_date: null, is_active: true,
+  remind_days_before: null, description: null, category_id: categories?.id ?? null, categories,
+  savings_from_income: false, paid_from_savings: false, ...extra,
+})
+export const RECURRING_INPUT = {
+  profile: PROFILE,
+  categories: SAVINGS_CATEGORIES,
+  rates: { USD: 0.9, GBP: 1.17 },
+  rules: [
+    rule('r1', 'expense', 1299, 'monthly', '2020-10-05', SUBS, { description: 'Music', remind_days_before: 3 }),
+    rule('r2', 'expense', 90000, 'monthly', '2020-10-01', null, { description: 'Rent' }),
+    rule('r3', 'expense', 999, 'monthly', '2020-10-12', SUBS, { currency: 'USD', description: 'Cloud' }),
+    rule('r4', 'expense', 9600, 'yearly', '2021-03-15', SUBS, { description: 'Antivirus' }),
+    rule('r5', 'expense', 1500, 'weekly', '2020-09-21', EATING, { description: 'Lunch club', is_active: false }),
+    rule('r6', 'expense', 2999, 'monthly', '2020-10-20', SUBS, { currency: 'PLN', description: 'Gym' }),
+    rule('r7', 'income', 250000, 'monthly', '2020-09-28', PAY),
+    rule('r8', 'income', 30000, 'monthly', '2020-10-01', cat(SAVINGS, 'Savings', 'income'), { savings_from_income: true }),
+  ],
+}
+
+export function recurringFixture() {
+  const expected = { en: recurringFigures(RECURRING_INPUT), el: recurringFigures({ ...RECURRING_INPUT, lang: 'el' }) }
+  setLanguage('en')
+  return { input: RECURRING_INPUT, expected }
+}
+
 export function budgetsFixture() {
   const expected = {}
   for (const lang of ['en', 'el']) {
@@ -191,4 +241,6 @@ if (isMain) {
   console.log(`ledger fixture: ${FIXTURES_DIR}/ledger.json`)
   await writeFile(resolve(root, FIXTURES_DIR, 'budgets.json'), JSON.stringify(budgetsFixture(), null, 2) + '\n')
   console.log(`budgets fixture: ${FIXTURES_DIR}/budgets.json`)
+  await writeFile(resolve(root, FIXTURES_DIR, 'recurring.json'), JSON.stringify(recurringFixture(), null, 2) + '\n')
+  console.log(`recurring fixture: ${FIXTURES_DIR}/recurring.json`)
 }

@@ -13,8 +13,24 @@ struct MainTabView: View {
     @State private var home: HomeViewModel?
     @State private var ledger: LedgerModel?
     @State private var budgets: BudgetsModel?
+    @State private var recurring: RecurringModel?
     /// The entry form, when open.
     @State private var entry: EntrySheet?
+
+    /// More's Money pages (the web's order: Insights, then Recurring).
+    private var morePages: [MorePage] {
+        var pages: [MorePage] = []
+        if let recurring {
+            pages.append(MorePage(id: "recurring", icon: "repeat", view: AnyView(
+                RecurringView(model: recurring,
+                              onOpen: { rule in entry = EntrySheet.rule(rule, data: container.data) },
+                              onAdd: { kind in entry = EntrySheet.add(kind: kind, repeats: true, data: container.data) })
+                    .liveRefresh(container.live, tables: ["recurring_rules", "categories", "profiles"]) {
+                        await recurring.load()
+                    })))
+        }
+        return pages
+    }
 
     var body: some View {
         TabView {
@@ -55,7 +71,7 @@ struct MainTabView: View {
                 }
             }
                 .tabItem { Label(language.t("shell:nav.budgets"), systemImage: "chart.pie") }
-            MoreView(config: container.config, session: container.session, user: user)
+            MoreView(config: container.config, session: container.session, user: user, pages: morePages)
                 .tabItem { Label(language.t("shell:nav.more"), systemImage: "ellipsis.circle") }
         }
         .sheet(item: $entry) { sheet in
@@ -66,6 +82,7 @@ struct MainTabView: View {
             if home == nil { home = HomeViewModel(data: container.data) }
             if ledger == nil { ledger = LedgerModel(data: container.data) }
             if budgets == nil { budgets = BudgetsModel(data: container.data) }
+            if recurring == nil { recurring = RecurringModel(data: container.data) }
         }
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.

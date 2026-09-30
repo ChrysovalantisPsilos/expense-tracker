@@ -8,7 +8,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { FIXTURES_DIR, budgetsFixture, ledgerFixture } from '../mobile-core/screenFigures.mjs'
+import { FIXTURES_DIR, budgetsFixture, ledgerFixture, recurringFixture } from '../mobile-core/screenFigures.mjs'
 
 const committed = (name) => JSON.parse(readFileSync(resolve(FIXTURES_DIR, `${name}.json`), 'utf8'))
 const fresh = (value) => JSON.parse(JSON.stringify(value))
@@ -47,4 +47,21 @@ test('ios budgets fixture: caps, spend, tones and the carried-over month', () =>
   assert.equal(byName.Subscriptions.meta, '€8.00 of €20.00')
   assert.equal(carried.subtitle, 'Carried over from August')
   assert.equal(carried.canCopy, false)
+})
+
+test('ios recurring fixture: the committed file is what the web\'s functions give', () => {
+  assert.deepEqual(committed('recurring'), fresh(recurringFixture()))
+})
+
+test('ios recurring fixture: groups, totals at today\'s rates, and the income tab', () => {
+  const { groups, income } = committed('recurring').expected.en
+  assert.deepEqual(groups.map((g) => g.key), ['weekly', 'monthly', 'yearly'])
+  const monthly = groups.find((g) => g.key === 'monthly')
+  assert.equal(monthly.total.converted, 'Other currencies converted at today’s rate.')
+  assert.match(monthly.total.missing, /not included/)
+  assert.equal(monthly.rows.find((r) => r.id === 'r3').hint, '≈ €8.99')
+  assert.equal(groups.find((g) => g.key === 'weekly').rows[0].paused, 'Paused')
+  // The savings rule is listed with the income but not summed as income.
+  assert.equal(income.total.value, '≈ €2,500.00/month')
+  assert.deepEqual(income.rows.map((r) => r.id), ['r7', 'r8'])
 })

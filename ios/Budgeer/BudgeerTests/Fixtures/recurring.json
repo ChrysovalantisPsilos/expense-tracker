@@ -1,0 +1,620 @@
+{
+  "input": {
+    "profile": {
+      "base_currency": "EUR",
+      "yearly_separate": false,
+      "salary_shift_from_day": 25,
+      "salary_category_id": "11111111-1111-4111-8111-111111111111"
+    },
+    "categories": [
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "kind": "income",
+        "is_savings": true
+      }
+    ],
+    "rates": {
+      "USD": 0.9,
+      "GBP": 1.17
+    },
+    "rules": [
+      {
+        "id": "r1",
+        "kind": "expense",
+        "amount_minor": 1299,
+        "currency": "EUR",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-05",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": 3,
+        "description": "Music",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r2",
+        "kind": "expense",
+        "amount_minor": 90000,
+        "currency": "EUR",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-01",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Rent",
+        "category_id": null,
+        "categories": null,
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r3",
+        "kind": "expense",
+        "amount_minor": 999,
+        "currency": "USD",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-12",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Cloud",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r4",
+        "kind": "expense",
+        "amount_minor": 9600,
+        "currency": "EUR",
+        "frequency": "yearly",
+        "interval_n": 1,
+        "next_run": "2021-03-15",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Antivirus",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r5",
+        "kind": "expense",
+        "amount_minor": 1500,
+        "currency": "EUR",
+        "frequency": "weekly",
+        "interval_n": 1,
+        "next_run": "2020-09-21",
+        "end_date": null,
+        "is_active": false,
+        "remind_days_before": null,
+        "description": "Lunch club",
+        "category_id": "44444444-4444-4444-8444-444444444444",
+        "categories": {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "name": "Eating out",
+          "kind": "expense",
+          "icon": null,
+          "color": "teal"
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r6",
+        "kind": "expense",
+        "amount_minor": 2999,
+        "currency": "PLN",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-20",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Gym",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r7",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-09-28",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": null,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r8",
+        "kind": "income",
+        "amount_minor": 30000,
+        "currency": "EUR",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-01",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": null,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": true,
+        "paid_from_savings": false
+      }
+    ]
+  },
+  "expected": {
+    "en": {
+      "groups": [
+        {
+          "key": "weekly",
+          "label": "Weekly",
+          "total": {
+            "label": "Weekly total",
+            "value": "€0.00/week",
+            "perMonth": "≈ €0.00/month",
+            "converted": null,
+            "missing": null
+          },
+          "rows": [
+            {
+              "id": "r5",
+              "title": "Lunch club",
+              "look": {
+                "key": "utensils",
+                "tone": "accent",
+                "tint": {
+                  "fg": "#16939A",
+                  "bg": "#16939A29"
+                }
+              },
+              "active": false,
+              "meta": [
+                "every week",
+                "next 21 Sep 2020"
+              ],
+              "remind": null,
+              "paused": "Paused",
+              "amount": "€15.00",
+              "hint": null,
+              "tone": "default"
+            }
+          ]
+        },
+        {
+          "key": "monthly",
+          "label": "Monthly",
+          "total": {
+            "label": "Monthly total",
+            "value": "€921.98/month",
+            "perMonth": null,
+            "converted": "Other currencies converted at today’s rate.",
+            "missing": "PLN 29.99 not included — no exchange rate right now."
+          },
+          "rows": [
+            {
+              "id": "r1",
+              "title": "Music",
+              "look": {
+                "key": "streaming",
+                "tone": "accent",
+                "tint": null
+              },
+              "active": true,
+              "meta": [
+                "every month",
+                "next 5 Oct 2020"
+              ],
+              "remind": "3d",
+              "paused": null,
+              "amount": "€12.99",
+              "hint": null,
+              "tone": "default"
+            },
+            {
+              "id": "r2",
+              "title": "Rent",
+              "look": {
+                "key": "other",
+                "tone": "accent",
+                "tint": null
+              },
+              "active": true,
+              "meta": [
+                "every month",
+                "next 1 Oct 2020"
+              ],
+              "remind": null,
+              "paused": null,
+              "amount": "€900.00",
+              "hint": null,
+              "tone": "default"
+            },
+            {
+              "id": "r3",
+              "title": "Cloud",
+              "look": {
+                "key": "streaming",
+                "tone": "accent",
+                "tint": null
+              },
+              "active": true,
+              "meta": [
+                "every month",
+                "next 12 Oct 2020"
+              ],
+              "remind": null,
+              "paused": null,
+              "amount": "$9.99",
+              "hint": "≈ €8.99",
+              "tone": "default"
+            },
+            {
+              "id": "r6",
+              "title": "Gym",
+              "look": {
+                "key": "streaming",
+                "tone": "accent",
+                "tint": null
+              },
+              "active": true,
+              "meta": [
+                "every month",
+                "next 20 Oct 2020"
+              ],
+              "remind": null,
+              "paused": null,
+              "amount": "PLN 29.99",
+              "hint": null,
+              "tone": "default"
+            }
+          ]
+        },
+        {
+          "key": "yearly",
+          "label": "Yearly",
+          "total": {
+            "label": "Yearly total",
+            "value": "€96.00/year",
+            "perMonth": "≈ €8.00/month",
+            "converted": null,
+            "missing": null
+          },
+          "rows": [
+            {
+              "id": "r4",
+              "title": "Antivirus",
+              "look": {
+                "key": "streaming",
+                "tone": "accent",
+                "tint": null
+              },
+              "active": true,
+              "meta": [
+                "every year",
+                "next 15 Mar 2021",
+                "€8.00/mo in budgets"
+              ],
+              "remind": null,
+              "paused": null,
+              "amount": "€96.00",
+              "hint": null,
+              "tone": "default"
+            }
+          ]
+        }
+      ],
+      "income": {
+        "total": {
+          "value": "≈ €2,500.00/month",
+          "converted": null,
+          "missing": null
+        },
+        "rows": [
+          {
+            "id": "r7",
+            "title": "Salary",
+            "look": {
+              "key": "salary",
+              "tone": "positive",
+              "tint": null
+            },
+            "active": true,
+            "meta": [
+              "every month",
+              "next 28 Sep 2020"
+            ],
+            "remind": null,
+            "paused": null,
+            "amount": "€2,500.00",
+            "hint": null,
+            "tone": "positive"
+          },
+          {
+            "id": "r8",
+            "title": "Savings",
+            "look": {
+              "key": "savings",
+              "tone": "positive",
+              "tint": null
+            },
+            "active": true,
+            "meta": [
+              "every month",
+              "next 1 Oct 2020"
+            ],
+            "remind": null,
+            "paused": null,
+            "amount": "€300.00",
+            "hint": null,
+            "tone": "positive"
+          }
+        ]
+      }
+    },
+    "el": {
+      "groups": [
+        {
+          "key": "weekly",
+          "label": "Εβδομαδιαία",
+          "total": {
+            "label": "Σύνολο εβδομάδας",
+            "value": "0,00 €/εβδομάδα",
+            "perMonth": "≈ 0,00 €/μήνα",
+            "converted": null,
+            "missing": null
+          },
+          "rows": [
+            {
+              "id": "r5",
+              "title": "Lunch club",
+              "look": {
+                "key": "utensils",
+                "tone": "accent",
+                "tint": {
+                  "fg": "#16939A",
+                  "bg": "#16939A29"
+                }
+              },
+              "active": false,
+              "meta": [
+                "κάθε εβδομάδα",
+                "επόμενη 21 Σεπ 2020"
+              ],
+              "remind": null,
+              "paused": "Σε παύση",
+              "amount": "15,00 €",
+              "hint": null,
+              "tone": "default"
+            }
+          ]
+        },
+        {
+          "key": "monthly",
+          "label": "Μηνιαία",
+          "total": {
+            "label": "Σύνολο μήνα",
+            "value": "921,98 €/μήνα",
+            "perMonth": null,
+            "converted": "Τα άλλα νομίσματα μετατράπηκαν με τη σημερινή ισοτιμία.",
+            "missing": "Δεν περιλαμβάνονται: 29,99 PLN — δεν υπάρχει ισοτιμία αυτή τη στιγμή."
+          },
+          "rows": [
+            {
+              "id": "r1",
+              "title": "Music",
+              "look": {
+                "key": "streaming",
+                "tone": "accent",
+                "tint": null
+              },
+              "active": true,
+              "meta": [
+                "κάθε μήνα",
+                "επόμενη 5 Οκτ 2020"
+              ],
+              "remind": "3 ημ.",
+              "paused": null,
+              "amount": "12,99 €",
+              "hint": null,
+              "tone": "default"
+            },
+            {
+              "id": "r2",
+              "title": "Rent",
+              "look": {
+                "key": "other",
+                "tone": "accent",
+                "tint": null
+              },
+              "active": true,
+              "meta": [
+                "κάθε μήνα",
+                "επόμενη 1 Οκτ 2020"
+              ],
+              "remind": null,
+              "paused": null,
+              "amount": "900,00 €",
+              "hint": null,
+              "tone": "default"
+            },
+            {
+              "id": "r3",
+              "title": "Cloud",
+              "look": {
+                "key": "streaming",
+                "tone": "accent",
+                "tint": null
+              },
+              "active": true,
+              "meta": [
+                "κάθε μήνα",
+                "επόμενη 12 Οκτ 2020"
+              ],
+              "remind": null,
+              "paused": null,
+              "amount": "9,99 $",
+              "hint": "≈ 8,99 €",
+              "tone": "default"
+            },
+            {
+              "id": "r6",
+              "title": "Gym",
+              "look": {
+                "key": "streaming",
+                "tone": "accent",
+                "tint": null
+              },
+              "active": true,
+              "meta": [
+                "κάθε μήνα",
+                "επόμενη 20 Οκτ 2020"
+              ],
+              "remind": null,
+              "paused": null,
+              "amount": "29,99 PLN",
+              "hint": null,
+              "tone": "default"
+            }
+          ]
+        },
+        {
+          "key": "yearly",
+          "label": "Ετήσια",
+          "total": {
+            "label": "Σύνολο έτους",
+            "value": "96,00 €/χρόνο",
+            "perMonth": "≈ 8,00 €/μήνα",
+            "converted": null,
+            "missing": null
+          },
+          "rows": [
+            {
+              "id": "r4",
+              "title": "Antivirus",
+              "look": {
+                "key": "streaming",
+                "tone": "accent",
+                "tint": null
+              },
+              "active": true,
+              "meta": [
+                "κάθε χρόνο",
+                "επόμενη 15 Μαρ 2021",
+                "8,00 €/μήνα στους προϋπολογισμούς"
+              ],
+              "remind": null,
+              "paused": null,
+              "amount": "96,00 €",
+              "hint": null,
+              "tone": "default"
+            }
+          ]
+        }
+      ],
+      "income": {
+        "total": {
+          "value": "≈ 2.500,00 €/μήνα",
+          "converted": null,
+          "missing": null
+        },
+        "rows": [
+          {
+            "id": "r7",
+            "title": "Μισθός",
+            "look": {
+              "key": "salary",
+              "tone": "positive",
+              "tint": null
+            },
+            "active": true,
+            "meta": [
+              "κάθε μήνα",
+              "επόμενη 28 Σεπ 2020"
+            ],
+            "remind": null,
+            "paused": null,
+            "amount": "2.500,00 €",
+            "hint": null,
+            "tone": "positive"
+          },
+          {
+            "id": "r8",
+            "title": "Savings",
+            "look": {
+              "key": "savings",
+              "tone": "positive",
+              "tint": null
+            },
+            "active": true,
+            "meta": [
+              "κάθε μήνα",
+              "επόμενη 1 Οκτ 2020"
+            ],
+            "remind": null,
+            "paused": null,
+            "amount": "300,00 €",
+            "hint": null,
+            "tone": "positive"
+          }
+        ]
+      }
+    }
+  }
+}

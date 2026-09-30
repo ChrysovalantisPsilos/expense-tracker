@@ -4,9 +4,11 @@ import {
 } from '../../shared/lib/spread.js'
 import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
-import { rulesInBase } from '../../shared/lib/ruleFx.js'
+import { missingRatesNote, ruleInBase, rulesInBase } from '../../shared/lib/ruleFx.js'
 import { countedDate } from '../../shared/lib/salaryShift.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
+import { entryName } from '../../shared/lib/categoryName.js'
+import { categoryLook } from '../../shared/lib/categoryStyle.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 
 // A rule's cost in monthly minor units (shared with the statement).
@@ -372,4 +374,75 @@ export function incomePerMonth(rules, savingsIds = new Set(), baseCurrency = 'EU
   const fx = rulesInBase(rules.filter((r) => r.kind === 'income' && upcoming(r) && !isSavingsRow(r, savingsIds)),
     baseCurrency, rates)
   return { perMonth: fx.rules.reduce((s, r) => s + monthlyMinor(r), 0), converted: fx.converted, missing: fx.missing }
+}
+
+// ---- The Recurring page's words (Recurring.jsx, SubscriptionGroups.jsx, the
+// native app) ------------------------------------------------------------------
+
+// The income rules (the page's Income tab), savings ones included.
+export const incomeRules = (rules) => rules.filter((r) => r.kind === 'income')
+
+// What a foreign rule's charge is in the base currency at today's rate
+// ("≈ €6.98"), shown under its own amount; null for a base-currency rule or
+// one with no rate.
+export function baseHint(rule, baseCurrency, rates) {
+  const b = rule.currency !== baseCurrency && ruleInBase(rule, baseCurrency, rates)
+  return b ? `≈ ${formatMoney(b.amount_minor, baseCurrency)}` : null
+}
+
+// The notes under a total built from rules: foreign ones converted at
+// today's rate, and those left out for want of a rate: { converted, missing }
+// (each a line, or null).
+export function ratesNotes(converted, missing) {
+  return {
+    converted: converted ? t('recurring:rates.converted') : null,
+    missing: missingRatesNote(missing, formatMoney, (amounts) => t('recurring:rates.missing', { amounts })),
+  }
+}
+
+// A frequency group's headline (GroupTotal): its label ("Monthly total"),
+// what it costs per period ("€29.97/month"), about how much a month for the
+// other periods, and the rates notes.
+export function groupTotalParts(group, baseCurrency) {
+  return {
+    label: t(`recurring:groups.total.${group.key}`),
+    value: t(`recurring:groups.perUnit.${group.unit}`, { amount: formatMoney(group.total, baseCurrency) }),
+    perMonth: group.unit === 'month' ? null
+      : t('recurring:groups.aboutPerMonth', { amount: formatMoney(group.perMonth, baseCurrency) }),
+    ...ratesNotes(group.converted, group.missing),
+  }
+}
+
+// One rule as the Recurring page lists it (RuleRow): its name and badge,
+// the muted line (how often, the next charge, a yearly expense's monthly
+// budget share unless kept separate), the reminder and paused tags, and
+// its amount in its own currency with the base-currency hint.
+export function ruleRowParts(rule, { baseCurrency, rates = {}, separateYearly = false }) {
+  const kind = rule.kind === 'income' ? 'income' : 'expense'
+  const share = separateYearly ? null : monthlyBudgetShare(rule)
+  return {
+    id: rule.id,
+    title: entryName(rule, t(`recurring:kinds.${kind}`)),
+    look: categoryLook(rule.categories, rule.kind),
+    active: !!rule.is_active,
+    meta: [
+      frequencyLabel(rule),
+      t('recurring:row.next', { date: shortDate(rule.next_run) }),
+      share && `${share.exact ? '' : '≈ '}${t('recurring:row.budgetShare', { amount: formatMoney(share.perMonth, rule.currency) })}`,
+    ].filter(Boolean),
+    remind: rule.remind_days_before != null ? t('recurring:row.remindDays', { days: rule.remind_days_before }) : null,
+    paused: rule.is_active ? null : t('recurring:row.paused'),
+    amount: formatMoney(rule.amount_minor, rule.currency),
+    hint: baseHint(rule, baseCurrency, rates),
+    tone: kind === 'income' ? 'positive' : 'default',
+  }
+}
+
+// The Income tab's headline: about how much the income rules bring in a
+// month (incomePerMonth), with the rates notes.
+export function incomeTotalParts(income, baseCurrency) {
+  return {
+    value: t('recurring:groups.aboutPerMonth', { amount: formatMoney(income.perMonth, baseCurrency) }),
+    ...ratesNotes(income.converted, income.missing),
+  }
 }

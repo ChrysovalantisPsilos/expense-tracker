@@ -96,6 +96,18 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    func testRecurringSnapshots() async throws {
+        let fixture = try RecurringFixture.load()
+        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+            let language = language(lang)
+            let model = RecurringModel(data: fixture.store().data, core: .shared)
+            await model.load()
+            model.group = "monthly"
+            try snapshot(NavigationStack { RecurringView(model: model) }.environment(language),
+                         name: "recurring-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1100)
+        }
+    }
+
     private func language(_ lang: String) -> AppLanguage {
         let defaults = UserDefaults(suiteName: "SnapshotTests")!
         return AppLanguage(preference: lang, defaults: defaults, deviceLanguages: ["en"])
