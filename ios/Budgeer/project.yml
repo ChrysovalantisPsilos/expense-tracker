@@ -96,6 +96,9 @@ targets:
         SupabaseAnonKey: $(SUPABASE_ANON_KEY)
     settings:
       base:
+        # Per target, never in the shared xcconfig: a test bundle named like
+        # the app writes the same Budgeer.swiftmodule and the build refuses.
+        PRODUCT_NAME: Budgeer
         PRODUCT_BUNDLE_IDENTIFIER: com.budgeer.app
         GENERATE_INFOPLIST_FILE: "NO"
     preBuildScripts:
@@ -120,6 +123,7 @@ targets:
       - target: Budgeer
     settings:
       base:
+        PRODUCT_NAME: BudgeerTests
         GENERATE_INFOPLIST_FILE: "YES"
 
 schemes:

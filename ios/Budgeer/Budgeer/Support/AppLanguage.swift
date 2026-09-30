@@ -19,13 +19,17 @@ final class AppLanguage: @unchecked Sendable {
     /// Each language's name in itself, as the web's Language page shows them.
     static let nativeNames = ["en": "English", "el": "Ελληνικά"]
 
-    /// 'system', 'en' or 'el'.
+    /// 'system', 'en' or 'el'. A computed face over the tracked storage:
+    /// the choice is saved and applied on every set.
     var preference: String {
-        didSet {
-            defaults.set(preference, forKey: AppLanguage.preferenceKey)
+        get { stored }
+        set {
+            stored = newValue
+            defaults.set(newValue, forKey: AppLanguage.preferenceKey)
             apply()
         }
     }
+    private var stored: String
     /// The language on screen ('en' or 'el').
     private(set) var current: String = "en"
 
@@ -38,7 +42,7 @@ final class AppLanguage: @unchecked Sendable {
         self.defaults = defaults
         self.core = core
         self.deviceLanguages = deviceLanguages
-        self.preference = preference ?? defaults.string(forKey: AppLanguage.preferenceKey) ?? AppLanguage.system
+        stored = preference ?? defaults.string(forKey: AppLanguage.preferenceKey) ?? AppLanguage.system
         apply()
     }
 

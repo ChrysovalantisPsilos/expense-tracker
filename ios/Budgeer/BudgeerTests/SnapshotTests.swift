@@ -47,15 +47,21 @@ final class SnapshotTests: XCTestCase {
     private func snapshot<V: View>(_ view: V, name: String, dark: Bool) throws {
         let host = UIHostingController(rootView: view)
         host.overrideUserInterfaceStyle = dark ? .dark : .light
-        let window = UIWindow(frame: CGRect(origin: .zero, size: SnapshotTests.size))
+        // A window in the host app's scene, so it is really on screen and
+        // drawHierarchy has something to draw.
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: .zero)
+        window.frame = CGRect(origin: .zero, size: SnapshotTests.size)
         window.overrideUserInterfaceStyle = dark ? .dark : .light
         window.rootViewController = host
         window.makeKeyAndVisible()
         host.view.layoutIfNeeded()
         // Let SwiftUI settle its first layout and the tab bar's rendering.
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.6))
-        let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
-            window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+        let image = UIGraphicsImageRenderer(bounds: window.bounds).image { context in
+            if !window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) {
+                window.layer.render(in: context.cgContext)
+            }
         }
         let data = try XCTUnwrap(image.pngData())
         let attachment = XCTAttachment(image: image)

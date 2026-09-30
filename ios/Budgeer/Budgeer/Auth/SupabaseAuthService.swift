@@ -20,7 +20,7 @@ final class SupabaseAuthService: AuthService {
     }
 
     var userChanges: AsyncStream<AuthUser?> {
-        AsyncStream { continuation in
+        AsyncStream { [client] continuation in
             let task = Task {
                 for await (event, session) in client.auth.authStateChanges {
                     switch event {
