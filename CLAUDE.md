@@ -63,6 +63,7 @@ aspirations — if a change would break one, fix the cause, don't paper over it.
 | DB config (JWT verify per function) | `supabase/config.toml` |
 | Service worker (precache, offline reads, push) | `src/sw.js` |
 | Public status page (Cloudflare Worker + D1, own deploy) | `status/` (pure logic in `status/src/{state,fxCalendar,uptime,validate,html,time,access}.js`, tests `test/status*.test.js`, deploy `.github/workflows/status-deploy.yml`) |
+| iOS core (the web's pure maths and wording run in JavaScriptCore by the native app; never re-implemented in Swift) | `mobile-core/` (`modules.js` the module list, `index.js` the entry, `build.mjs` → `core.js` with a forbidden-import guard, `record/` the vector recorder), `ios/BudgeerCore/` (Swift package, `BudgeerCore.swift`, `vectors.json`), `ios/README.md`; `npm run core:build`, `npm run core:vectors`; replay tests `test/mobileCore.test.js` (Node) and `VectorReplayTests` (`.github/workflows/ios-core.yml`, macOS) |
 | Lint / CI | `eslint.config.js`, `.github/workflows/test.yml` |
 
 Each feature folder holds its components (`*.jsx`), its data module (`*.js`

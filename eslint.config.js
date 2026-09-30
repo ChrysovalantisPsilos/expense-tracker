@@ -15,7 +15,8 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 
 export default [
   // Edge functions are Deno/TypeScript and are checked by `supabase functions`.
-  { ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'supabase/functions/**', '.claude/**', 'status/.wrangler/**'] },
+  // ios/ holds Swift and the generated core bundle (mobile-core/build.mjs).
+  { ignores: ['dist/**', 'dev-dist/**', 'node_modules/**', 'supabase/functions/**', '.claude/**', 'status/.wrangler/**', 'ios/**'] },
   js.configs.recommended,
   {
     files: ['src/**/*.{js,jsx}'],
@@ -92,4 +93,12 @@ export default [
   // Plain scripts served as-is from public/ (index.html's colour-mode boot).
   { files: ['public/**/*.js'], languageOptions: { sourceType: 'script', globals: { ...globals.browser } } },
   { files: ['test/**/*.js', 'scripts/**/*.mjs', '*.config.js'], languageOptions: { globals: { ...globals.node } } },
+  // The mobile core (mobile-core/): the entry and codec run in JavaScriptCore
+  // (engine globals only); the build and the vector recorder are Node scripts.
+  {
+    files: ['mobile-core/**/*.{js,mjs}'],
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.node } },
+    plugins: { 'unused-imports': unusedImports },
+    rules: { 'no-unused-vars': 'off', 'unused-imports/no-unused-imports': 'error', 'unused-imports/no-unused-vars': ['warn', { args: 'after-used', caughtErrors: 'none' }] },
+  },
 ]

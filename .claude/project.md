@@ -227,9 +227,15 @@ npm run dev       # Vite
 
 ## iOS app
 
-- **Dropped by the owner (28 Sep 2026)** after the Capacitor shell was built;
-  it was removed again (reverted). Budgeer stays a web app/PWA. Don't propose
-  a native app unless the owner asks.
+- **Capacitor shell dropped by the owner (28 Sep 2026)** after it was built;
+  it was removed again (reverted).
+- **iOS: native SwiftUI; the maths is the web's JS via JavaScriptCore**
+  (`mobile-core/`, `ios/BudgeerCore`), proven by recorded vectors
+  (`npm run core:vectors` → `vectors.json`, replayed by `test/mobileCore.test.js`
+  on Linux and by the Swift tests in `.github/workflows/ios-core.yml` on
+  macOS). Maths is never re-implemented in Swift: a figure the app needs goes
+  in a pure web module first (ios/README.md "Adding a module"). UI, storage,
+  auth and push are Swift, in later phases.
 
 ## Follow-ups a feature here usually needs
 

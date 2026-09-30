@@ -234,7 +234,7 @@ export default {
     withVouchers: 'meal vouchers',
   },
   // A shifted salary's note in the lists (countsForLabel); {{month}} is the
-  // month's name as Intl gives it on its own (Greek: the genitive).
+  // month's name on its own (dates.monthAlone; Greek: the genitive).
   countsFor: {
     month: 'Counts for {{month}}',
     withYear: 'Counts for {{month}} {{year}}',

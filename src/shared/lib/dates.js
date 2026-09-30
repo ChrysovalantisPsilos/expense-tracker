@@ -31,6 +31,20 @@ export function monthName(d = new Date()) {
     .formatToParts(d).find((p) => p.type === 'month').value
 }
 
+// A month named on its own after another word ("Counts for October",
+// "Ίδια όρια με του Οκτωβρίου"): English by Intl, Greek in the genitive from
+// this list. Intl's own answer for a month-only format differs between
+// engines (Chrome and Node give the genitive, Safari and JavaScriptCore the
+// nominative), so the app keeps the one form every engine must show.
+const GREEK_GENITIVE = [
+  'Ιανουαρίου', 'Φεβρουαρίου', 'Μαρτίου', 'Απριλίου', 'Μαΐου', 'Ιουνίου',
+  'Ιουλίου', 'Αυγούστου', 'Σεπτεμβρίου', 'Οκτωβρίου', 'Νοεμβρίου', 'Δεκεμβρίου',
+]
+export function monthAlone(month, locale = intlLocale('en-US')) {
+  if (/^el(-|$)/i.test(String(locale ?? ''))) return GREEK_GENITIVE[month - 1]
+  return new Date(Date.UTC(2000, month - 1, 1)).toLocaleString(locale, { month: 'long', timeZone: 'UTC' })
+}
+
 // A month's heading from its key ('YYYY-MM'): "September", or "September
 // 2025" outside the current year (history lists).
 export function monthHeading(key, now = new Date()) {

@@ -25,3 +25,9 @@ supabase/.temp
 # Status page Worker: local wrangler state and secrets (status/.dev.vars)
 status/.dev.vars
 status/.wrangler/
+
+# Mobile core: the bundle is built (npm run core:build) by CI and by Xcode;
+# the recorded vectors (npm run core:vectors) are committed.
+ios/BudgeerCore/Sources/BudgeerCore/Resources/core.js
+ios/BudgeerCore/.build/
+ios/BudgeerCore/.swiftpm/
