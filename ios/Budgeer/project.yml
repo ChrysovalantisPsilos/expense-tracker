@@ -39,6 +39,12 @@ packages:
   Supabase:
     url: https://github.com/supabase/supabase-swift
     exactVersion: 2.49.0
+  # Supabase's transitive dependency, held back: 1.10 moved its sources to
+  # Swift 6's access-level imports, which Xcode 15.4's compiler refuses.
+  # Declared here only to bound the resolver; no target links it directly.
+  IssueReporting:
+    url: https://github.com/pointfreeco/xctest-dynamic-overlay
+    exactVersion: 1.9.0
 
 settings:
   base:
