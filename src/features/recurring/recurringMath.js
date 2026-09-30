@@ -4,6 +4,7 @@ import {
 } from '../../shared/lib/spread.js'
 import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
+import { isMonthPeriod, isPastPeriod } from '../../shared/lib/periods.js'
 import { missingRatesNote, ruleInBase, rulesInBase } from '../../shared/lib/ruleFx.js'
 import { countedDate } from '../../shared/lib/salaryShift.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
@@ -445,4 +446,56 @@ export function incomeTotalParts(income, baseCurrency) {
     value: t('recurring:groups.aboutPerMonth', { amount: formatMoney(income.perMonth, baseCurrency) }),
     ...ratesNotes(income.converted, income.missing),
   }
+}
+
+// ---- Home's Recurring card (SubscriptionsCard, the native Home) -------------
+
+// Whether the card shows today's rules (this month, and next month once its
+// salary is in) rather than what was charged in a past period.
+export const showsUpcoming = (period, todayISO) => !period || (isMonthPeriod(period) && !isPastPeriod(period, todayISO))
+
+// A group's note: the Yearly tab says how yearly payments count in monthly
+// spending; the others have none (null).
+export const groupNote = (key, separateYearly) => (key !== 'yearly' ? null
+  : t(separateYearly ? 'recurring:card.yearlySeparate' : 'recurring:card.yearlySpread'))
+
+// The button under a group's next charges, when it has more to come than
+// it shows: { showAll: "Show all 5 charges", showNext: "Show the next 3" },
+// or null.
+export function upcomingToggle(group) {
+  return group.count > group.next.length ? {
+    showAll: t('recurring:card.showAll', { n: group.count }),
+    showNext: t('recurring:card.showNext', { n: group.next.length }),
+  } : null
+}
+
+// One of the next charges: its name and badge, "3 Oct · every month", the
+// amount in its own currency and its base-currency hint.
+export function nextChargeParts(rule, baseCurrency, rates) {
+  return {
+    id: rule.id,
+    title: entryName(rule, t('recurring:kinds.expense')),
+    look: categoryLook(rule.categories, rule.kind),
+    meta: `${shortDate(rule.next_run)} · ${frequencyLabel(rule)}`,
+    amount: formatMoney(rule.amount_minor, rule.currency),
+    hint: baseHint(rule, baseCurrency, rates),
+  }
+}
+
+// One charge a past period saw: its name and badge, "3 Sep · every month"
+// and the amount as paid.
+export function chargeParts(row) {
+  return {
+    id: row.id,
+    title: entryName(row, t('recurring:kinds.expense')),
+    look: categoryLook(row.categories, row.kind),
+    meta: `${shortDate(row.spent_at)} · ${frequencyLabel(row.recurring ?? { frequency: 'monthly' })}`,
+    amount: formatMoney(row.amount_minor, row.currency),
+    hint: null,
+  }
+}
+
+// A charged group's headline ("Monthly charged", "€42.00").
+export function chargedHeadline(group, baseCurrency) {
+  return { label: t(`recurring:groups.charged.${group.key}`), value: formatMoney(group.total, baseCurrency) }
 }

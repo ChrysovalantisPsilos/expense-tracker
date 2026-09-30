@@ -73,19 +73,31 @@ extension FakeStore {
         profileResult = .success(fixture.input.profile)
         savingsResult = .success(fixture.input.categories)
         rowsResult = .success(fixture.input.rows)
+        rulesResult = .success(fixture.input.rules)
+        for (currency, rate) in fixture.input.rates.objectValue ?? [:] {
+            if let value = rate.doubleValue { rates["\(currency)>EUR"] = value }
+        }
     }
 }
 
-/// Fixtures/home.json: the inputs and the figures the web's functions give.
+/// Fixtures/home.json: the inputs and, per language and view (this month,
+/// a past month), the figures the web's functions give.
 struct HomeFixture: Decodable {
+    struct View: Decodable {
+        let name: String
+        let periodValue: String?
+    }
     struct Input: Decodable {
         let now: String
         let profile: JSONValue
         let categories: JSONValue
         let rows: JSONValue
+        let rules: JSONValue
+        let rates: JSONValue
+        let views: [View]
     }
     let input: Input
-    let expected: [String: HomeFigures]
+    let expected: [String: [String: HomeFigures]]
 
     static func load() throws -> HomeFixture {
         try JSONDecoder().decode(HomeFixture.self, from: fixtureData("home"))
@@ -95,8 +107,12 @@ struct HomeFixture: Decodable {
         ISO8601DateFormatter.fractional.date(from: input.now)!
     }
 
-    var homeInput: HomeInput {
-        HomeInput(rows: input.rows, profile: input.profile, categories: input.categories, now: now)
+    /// This month's figures in `lang`.
+    func thisMonth(_ lang: String = "en") -> HomeFigures? { expected[lang]?["thisMonth"] }
+
+    func homeInput(periodValue: String? = nil) -> HomeInput {
+        HomeInput(rows: input.rows, profile: input.profile, categories: input.categories, rules: input.rules,
+                  rates: input.rates, now: now, periodValue: periodValue)
     }
 }
 

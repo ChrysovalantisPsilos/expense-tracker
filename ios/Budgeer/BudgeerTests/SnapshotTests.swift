@@ -31,11 +31,13 @@ final class SnapshotTests: XCTestCase {
         for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
             let language = language(lang)
             let now = fixture.now
-            let model = HomeViewModel(data: FakeStore(home: fixture).data, core: .shared, now: { now })
+            let store = FakeStore(home: fixture)
+            store.oldest = .success("2020-03-15")
+            let model = HomeViewModel(data: store.data, core: .shared, now: { now })
             await model.load()
-            XCTAssertEqual(model.state, .loaded(try XCTUnwrap(fixture.expected[lang])))
+            XCTAssertEqual(model.state, .loaded(try XCTUnwrap(fixture.thisMonth(lang))))
             let view = HomeView(model: model).environment(language)
-            try snapshot(view, name: "home-\(lang)\(dark ? "-dark" : "")", dark: dark)
+            try snapshot(view, name: "home-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1700)
         }
     }
 

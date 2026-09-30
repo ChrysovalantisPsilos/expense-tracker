@@ -1,6 +1,6 @@
 {
   "input": {
-    "now": "2026-09-15T10:00:00.000Z",
+    "now": "2020-09-15T10:00:00.000Z",
     "profile": {
       "base_currency": "EUR",
       "yearly_separate": false,
@@ -17,7 +17,7 @@
     "rows": [
       {
         "id": "a1",
-        "spent_at": "2026-09-14",
+        "spent_at": "2020-09-14",
         "kind": "expense",
         "amount_minor": 4250,
         "currency": "EUR",
@@ -41,7 +41,7 @@
       },
       {
         "id": "a2",
-        "spent_at": "2026-09-12",
+        "spent_at": "2020-09-12",
         "kind": "expense",
         "amount_minor": 1899,
         "currency": "EUR",
@@ -65,7 +65,7 @@
       },
       {
         "id": "a3",
-        "spent_at": "2026-09-10",
+        "spent_at": "2020-09-10",
         "kind": "expense",
         "amount_minor": 3600,
         "currency": "EUR",
@@ -89,7 +89,7 @@
       },
       {
         "id": "a4",
-        "spent_at": "2026-09-09",
+        "spent_at": "2020-09-09",
         "kind": "expense",
         "amount_minor": 2500,
         "currency": "USD",
@@ -113,7 +113,7 @@
       },
       {
         "id": "a5",
-        "spent_at": "2026-09-05",
+        "spent_at": "2020-09-05",
         "kind": "expense",
         "amount_minor": 4900,
         "currency": "EUR",
@@ -137,7 +137,7 @@
       },
       {
         "id": "a6",
-        "spent_at": "2026-09-03",
+        "spent_at": "2020-09-03",
         "kind": "expense",
         "amount_minor": 12000,
         "currency": "EUR",
@@ -155,7 +155,7 @@
       },
       {
         "id": "a7",
-        "spent_at": "2026-09-02",
+        "spent_at": "2020-09-02",
         "kind": "income",
         "amount_minor": 30000,
         "currency": "EUR",
@@ -179,7 +179,7 @@
       },
       {
         "id": "a8",
-        "spent_at": "2026-09-01",
+        "spent_at": "2020-09-01",
         "kind": "income",
         "amount_minor": 5000,
         "currency": "EUR",
@@ -203,7 +203,7 @@
       },
       {
         "id": "a9",
-        "spent_at": "2026-08-27",
+        "spent_at": "2020-08-27",
         "kind": "income",
         "amount_minor": 250000,
         "currency": "EUR",
@@ -227,7 +227,7 @@
       },
       {
         "id": "b1",
-        "spent_at": "2026-09-08",
+        "spent_at": "2020-09-08",
         "kind": "expense",
         "amount_minor": 2200,
         "currency": "EUR",
@@ -255,7 +255,7 @@
       },
       {
         "id": "b2",
-        "spent_at": "2026-03-15",
+        "spent_at": "2020-03-15",
         "kind": "expense",
         "amount_minor": 9600,
         "currency": "EUR",
@@ -276,227 +276,827 @@
         "paid_with_vouchers": false,
         "savings_from_income": null,
         "spread_months": 12
+      },
+      {
+        "id": "c1",
+        "spent_at": "2020-08-05",
+        "kind": "expense",
+        "amount_minor": 1299,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "description": "Music",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null,
+        "recurring_rule_id": "r1",
+        "recurring": {
+          "frequency": "monthly",
+          "interval_n": 1,
+          "is_active": true
+        }
+      }
+    ],
+    "rules": [
+      {
+        "id": "r1",
+        "kind": "expense",
+        "amount_minor": 1299,
+        "currency": "EUR",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-09-20",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Music",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r2",
+        "kind": "expense",
+        "amount_minor": 999,
+        "currency": "USD",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-09-25",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Cloud",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r3",
+        "kind": "expense",
+        "amount_minor": 3900,
+        "currency": "EUR",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-02",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Bus pass",
+        "category_id": "55555555-5555-4555-8555-555555555555",
+        "categories": {
+          "id": "55555555-5555-4555-8555-555555555555",
+          "name": "Transport",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r4",
+        "kind": "expense",
+        "amount_minor": 9600,
+        "currency": "EUR",
+        "frequency": "yearly",
+        "interval_n": 1,
+        "next_run": "2021-03-15",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Antivirus",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r5",
+        "kind": "expense",
+        "amount_minor": 1500,
+        "currency": "EUR",
+        "frequency": "weekly",
+        "interval_n": 1,
+        "next_run": "2020-09-21",
+        "end_date": null,
+        "is_active": false,
+        "remind_days_before": null,
+        "description": "Lunch club",
+        "category_id": "44444444-4444-4444-8444-444444444444",
+        "categories": {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "name": "Eating out",
+          "kind": "expense",
+          "icon": null,
+          "color": "teal"
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      }
+    ],
+    "rates": {
+      "USD": 0.9
+    },
+    "views": [
+      {
+        "name": "thisMonth",
+        "periodValue": null
+      },
+      {
+        "name": "august",
+        "periodValue": "m:2020-8"
       }
     ]
   },
   "expected": {
     "en": {
-      "period": {
-        "value": "m:2026-9",
-        "from": "2026-09-01",
-        "to": "2026-09-30",
-        "label": "This month"
-      },
-      "fetchFrom": "2026-08-25",
-      "spentTotal": 31930,
-      "earnedTotal": 255000,
-      "netTotal": 205070,
-      "spent": "€319.30",
-      "income": "€2,550.00",
-      "net": "+€2,050.70",
-      "netTone": "positive",
-      "saved": "+€300.00 in · −€120.00 out",
-      "bars": [
-        {
-          "name": "Uncategorized",
-          "label": "Uncategorized",
-          "value": 12000,
-          "share": 38,
-          "ratio": 1,
-          "amount": "€120.00",
-          "group": false,
-          "look": {
-            "key": "other",
-            "tone": "accent",
-            "tint": null
-          }
+      "thisMonth": {
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "This month"
         },
-        {
-          "name": "Groceries",
-          "label": "Groceries",
-          "value": 6149,
-          "share": 19,
-          "ratio": 0.5124166666666666,
-          "amount": "€61.49",
-          "group": false,
-          "look": {
-            "key": "groceries",
-            "tone": "accent",
-            "tint": null
-          }
-        },
-        {
-          "name": "Eating out",
-          "label": "Eating out",
-          "value": 5881,
-          "share": 18,
-          "ratio": 0.4900833333333333,
-          "amount": "€58.81",
-          "group": false,
-          "look": {
-            "key": "utensils",
-            "tone": "accent",
-            "tint": {
-              "fg": "#16939A",
-              "bg": "#16939A29"
+        "fetchFrom": "2020-08-25",
+        "spentTotal": 34128,
+        "earnedTotal": 255000,
+        "netTotal": 202872,
+        "spent": "€341.28",
+        "income": "€2,550.00",
+        "net": "+€2,028.72",
+        "netTone": "positive",
+        "saved": "+€300.00 in · −€120.00 out",
+        "bars": [
+          {
+            "name": "Uncategorized",
+            "label": "Uncategorized",
+            "value": 12000,
+            "share": 38,
+            "ratio": 1,
+            "amount": "€120.00",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            }
+          },
+          {
+            "name": "Groceries",
+            "label": "Groceries",
+            "value": 6149,
+            "share": 19,
+            "ratio": 0.5124166666666666,
+            "amount": "€61.49",
+            "group": false,
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            }
+          },
+          {
+            "name": "Eating out",
+            "label": "Eating out",
+            "value": 5881,
+            "share": 18,
+            "ratio": 0.4900833333333333,
+            "amount": "€58.81",
+            "group": false,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            }
+          },
+          {
+            "name": "Transport",
+            "label": "Transport",
+            "value": 4900,
+            "share": 15,
+            "ratio": 0.4083333333333333,
+            "amount": "€49.00",
+            "group": false,
+            "look": {
+              "key": "transport",
+              "tone": "accent",
+              "tint": null
+            }
+          },
+          {
+            "name": "Lisbon trip",
+            "label": "Lisbon trip",
+            "value": 2200,
+            "share": 7,
+            "ratio": 0.18333333333333332,
+            "amount": "€22.00",
+            "group": true,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            }
+          },
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 800,
+            "share": 3,
+            "ratio": 0.06666666666666667,
+            "amount": "€8.00",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
             }
           }
-        },
-        {
-          "name": "Transport",
-          "label": "Transport",
-          "value": 4900,
-          "share": 15,
-          "ratio": 0.4083333333333333,
-          "amount": "€49.00",
-          "group": false,
-          "look": {
-            "key": "transport",
-            "tone": "accent",
-            "tint": null
-          }
-        },
-        {
-          "name": "Lisbon trip",
-          "label": "Lisbon trip",
-          "value": 2200,
-          "share": 7,
-          "ratio": 0.18333333333333332,
-          "amount": "€22.00",
-          "group": true,
-          "look": {
-            "key": "utensils",
-            "tone": "accent",
-            "tint": {
-              "fg": "#16939A",
-              "bg": "#16939A29"
+        ],
+        "recurring": {
+          "upcoming": true,
+          "subtitle": null,
+          "empty": "No recurring payments yet. Add an expense and switch on Repeat to log it on a schedule.",
+          "groups": [
+            {
+              "key": "monthly",
+              "label": "Monthly",
+              "headline": {
+                "label": "Monthly total",
+                "value": "€60.98/month",
+                "perMonth": null,
+                "converted": "Other currencies converted at today’s rate.",
+                "missing": null
+              },
+              "note": null,
+              "section": "Next charges",
+              "rows": [
+                {
+                  "id": "r1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "20 Sep 2020 · every month",
+                  "amount": "€12.99",
+                  "hint": null
+                },
+                {
+                  "id": "r2",
+                  "title": "Cloud",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "25 Sep 2020 · every month",
+                  "amount": "$9.99",
+                  "hint": "≈ €8.99"
+                },
+                {
+                  "id": "r3",
+                  "title": "Bus pass",
+                  "look": {
+                    "key": "transport",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "2 Oct 2020 · every month",
+                  "amount": "€39.00",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "r1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "20 Sep 2020 · every month",
+                  "amount": "€12.99",
+                  "hint": null
+                },
+                {
+                  "id": "r2",
+                  "title": "Cloud",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "25 Sep 2020 · every month",
+                  "amount": "$9.99",
+                  "hint": "≈ €8.99"
+                },
+                {
+                  "id": "r3",
+                  "title": "Bus pass",
+                  "look": {
+                    "key": "transport",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "2 Oct 2020 · every month",
+                  "amount": "€39.00",
+                  "hint": null
+                }
+              ],
+              "toggle": null
+            },
+            {
+              "key": "yearly",
+              "label": "Yearly",
+              "headline": {
+                "label": "Yearly total",
+                "value": "€96.00/year",
+                "perMonth": "≈ €8.00/month",
+                "converted": null,
+                "missing": null
+              },
+              "note": "Each counts in your monthly spending a twelfth at a time.",
+              "section": "Next charges",
+              "rows": [
+                {
+                  "id": "r4",
+                  "title": "Antivirus",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "15 Mar 2021 · every year",
+                  "amount": "€96.00",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "r4",
+                  "title": "Antivirus",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "15 Mar 2021 · every year",
+                  "amount": "€96.00",
+                  "hint": null
+                }
+              ],
+              "toggle": null
             }
-          }
-        },
-        {
-          "name": "Subscriptions",
-          "label": "Subscriptions",
-          "value": 800,
-          "share": 3,
-          "ratio": 0.06666666666666667,
-          "amount": "€8.00",
-          "group": false,
-          "look": {
-            "key": "streaming",
-            "tone": "accent",
-            "tint": null
-          }
+          ]
         }
-      ]
+      },
+      "august": {
+        "period": {
+          "value": "m:2020-8",
+          "from": "2020-08-01",
+          "to": "2020-08-31",
+          "label": "August 2020"
+        },
+        "fetchFrom": "2020-07-25",
+        "spentTotal": 2099,
+        "earnedTotal": 0,
+        "netTotal": -2099,
+        "spent": "€20.99",
+        "income": "€0.00",
+        "net": "−€20.99",
+        "netTone": "negative",
+        "saved": null,
+        "bars": [
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 2099,
+            "share": 100,
+            "ratio": 1,
+            "amount": "€20.99",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            }
+          }
+        ],
+        "recurring": {
+          "upcoming": false,
+          "subtitle": "Charged in August 2020",
+          "empty": "No recurring charges in August 2020.",
+          "groups": [
+            {
+              "key": "monthly",
+              "label": "Monthly",
+              "headline": {
+                "label": "Monthly charged",
+                "value": "€12.99"
+              },
+              "note": null,
+              "section": "1 charge",
+              "rows": [
+                {
+                  "id": "c1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "5 Aug 2020 · every month",
+                  "amount": "€12.99",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "c1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "5 Aug 2020 · every month",
+                  "amount": "€12.99",
+                  "hint": null
+                }
+              ],
+              "toggle": null
+            }
+          ]
+        }
+      }
     },
     "el": {
-      "period": {
-        "value": "m:2026-9",
-        "from": "2026-09-01",
-        "to": "2026-09-30",
-        "label": "Αυτός ο μήνας"
-      },
-      "fetchFrom": "2026-08-25",
-      "spentTotal": 31930,
-      "earnedTotal": 255000,
-      "netTotal": 205070,
-      "spent": "319,30 €",
-      "income": "2.550,00 €",
-      "net": "+2.050,70 €",
-      "netTone": "positive",
-      "saved": "+300,00 € μέσα · −120,00 € έξω",
-      "bars": [
-        {
-          "name": "Χωρίς κατηγορία",
-          "label": "Χωρίς κατηγορία",
-          "value": 12000,
-          "share": 38,
-          "ratio": 1,
-          "amount": "120,00 €",
-          "group": false,
-          "look": {
-            "key": "other",
-            "tone": "accent",
-            "tint": null
-          }
+      "thisMonth": {
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "Αυτός ο μήνας"
         },
-        {
-          "name": "Groceries",
-          "label": "Groceries",
-          "value": 6149,
-          "share": 19,
-          "ratio": 0.5124166666666666,
-          "amount": "61,49 €",
-          "group": false,
-          "look": {
-            "key": "groceries",
-            "tone": "accent",
-            "tint": null
-          }
-        },
-        {
-          "name": "Eating out",
-          "label": "Eating out",
-          "value": 5881,
-          "share": 18,
-          "ratio": 0.4900833333333333,
-          "amount": "58,81 €",
-          "group": false,
-          "look": {
-            "key": "utensils",
-            "tone": "accent",
-            "tint": {
-              "fg": "#16939A",
-              "bg": "#16939A29"
+        "fetchFrom": "2020-08-25",
+        "spentTotal": 34128,
+        "earnedTotal": 255000,
+        "netTotal": 202872,
+        "spent": "341,28 €",
+        "income": "2.550,00 €",
+        "net": "+2.028,72 €",
+        "netTone": "positive",
+        "saved": "+300,00 € μέσα · −120,00 € έξω",
+        "bars": [
+          {
+            "name": "Χωρίς κατηγορία",
+            "label": "Χωρίς κατηγορία",
+            "value": 12000,
+            "share": 38,
+            "ratio": 1,
+            "amount": "120,00 €",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            }
+          },
+          {
+            "name": "Groceries",
+            "label": "Groceries",
+            "value": 6149,
+            "share": 19,
+            "ratio": 0.5124166666666666,
+            "amount": "61,49 €",
+            "group": false,
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            }
+          },
+          {
+            "name": "Eating out",
+            "label": "Eating out",
+            "value": 5881,
+            "share": 18,
+            "ratio": 0.4900833333333333,
+            "amount": "58,81 €",
+            "group": false,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            }
+          },
+          {
+            "name": "Transport",
+            "label": "Transport",
+            "value": 4900,
+            "share": 15,
+            "ratio": 0.4083333333333333,
+            "amount": "49,00 €",
+            "group": false,
+            "look": {
+              "key": "transport",
+              "tone": "accent",
+              "tint": null
+            }
+          },
+          {
+            "name": "Lisbon trip",
+            "label": "Lisbon trip",
+            "value": 2200,
+            "share": 7,
+            "ratio": 0.18333333333333332,
+            "amount": "22,00 €",
+            "group": true,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            }
+          },
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 800,
+            "share": 3,
+            "ratio": 0.06666666666666667,
+            "amount": "8,00 €",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
             }
           }
-        },
-        {
-          "name": "Transport",
-          "label": "Transport",
-          "value": 4900,
-          "share": 15,
-          "ratio": 0.4083333333333333,
-          "amount": "49,00 €",
-          "group": false,
-          "look": {
-            "key": "transport",
-            "tone": "accent",
-            "tint": null
-          }
-        },
-        {
-          "name": "Lisbon trip",
-          "label": "Lisbon trip",
-          "value": 2200,
-          "share": 7,
-          "ratio": 0.18333333333333332,
-          "amount": "22,00 €",
-          "group": true,
-          "look": {
-            "key": "utensils",
-            "tone": "accent",
-            "tint": {
-              "fg": "#16939A",
-              "bg": "#16939A29"
+        ],
+        "recurring": {
+          "upcoming": true,
+          "subtitle": null,
+          "empty": "Δεν έχεις επαναλαμβανόμενες πληρωμές ακόμα. Πρόσθεσε ένα έξοδο και άνοιξε την «Επανάληψη» για να καταχωρείται με πρόγραμμα.",
+          "groups": [
+            {
+              "key": "monthly",
+              "label": "Μηνιαία",
+              "headline": {
+                "label": "Σύνολο μήνα",
+                "value": "60,98 €/μήνα",
+                "perMonth": null,
+                "converted": "Τα άλλα νομίσματα μετατράπηκαν με τη σημερινή ισοτιμία.",
+                "missing": null
+              },
+              "note": null,
+              "section": "Επόμενες χρεώσεις",
+              "rows": [
+                {
+                  "id": "r1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "20 Σεπ 2020 · κάθε μήνα",
+                  "amount": "12,99 €",
+                  "hint": null
+                },
+                {
+                  "id": "r2",
+                  "title": "Cloud",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "25 Σεπ 2020 · κάθε μήνα",
+                  "amount": "9,99 $",
+                  "hint": "≈ 8,99 €"
+                },
+                {
+                  "id": "r3",
+                  "title": "Bus pass",
+                  "look": {
+                    "key": "transport",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "2 Οκτ 2020 · κάθε μήνα",
+                  "amount": "39,00 €",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "r1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "20 Σεπ 2020 · κάθε μήνα",
+                  "amount": "12,99 €",
+                  "hint": null
+                },
+                {
+                  "id": "r2",
+                  "title": "Cloud",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "25 Σεπ 2020 · κάθε μήνα",
+                  "amount": "9,99 $",
+                  "hint": "≈ 8,99 €"
+                },
+                {
+                  "id": "r3",
+                  "title": "Bus pass",
+                  "look": {
+                    "key": "transport",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "2 Οκτ 2020 · κάθε μήνα",
+                  "amount": "39,00 €",
+                  "hint": null
+                }
+              ],
+              "toggle": null
+            },
+            {
+              "key": "yearly",
+              "label": "Ετήσια",
+              "headline": {
+                "label": "Σύνολο έτους",
+                "value": "96,00 €/χρόνο",
+                "perMonth": "≈ 8,00 €/μήνα",
+                "converted": null,
+                "missing": null
+              },
+              "note": "Η καθεμία μετράει στα μηνιαία έξοδά σου ένα δωδέκατο κάθε μήνα.",
+              "section": "Επόμενες χρεώσεις",
+              "rows": [
+                {
+                  "id": "r4",
+                  "title": "Antivirus",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "15 Μαρ 2021 · κάθε χρόνο",
+                  "amount": "96,00 €",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "r4",
+                  "title": "Antivirus",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "15 Μαρ 2021 · κάθε χρόνο",
+                  "amount": "96,00 €",
+                  "hint": null
+                }
+              ],
+              "toggle": null
             }
-          }
-        },
-        {
-          "name": "Subscriptions",
-          "label": "Subscriptions",
-          "value": 800,
-          "share": 3,
-          "ratio": 0.06666666666666667,
-          "amount": "8,00 €",
-          "group": false,
-          "look": {
-            "key": "streaming",
-            "tone": "accent",
-            "tint": null
-          }
+          ]
         }
-      ]
+      },
+      "august": {
+        "period": {
+          "value": "m:2020-8",
+          "from": "2020-08-01",
+          "to": "2020-08-31",
+          "label": "Αύγουστος 2020"
+        },
+        "fetchFrom": "2020-07-25",
+        "spentTotal": 2099,
+        "earnedTotal": 0,
+        "netTotal": -2099,
+        "spent": "20,99 €",
+        "income": "0,00 €",
+        "net": "−20,99 €",
+        "netTone": "negative",
+        "saved": null,
+        "bars": [
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 2099,
+            "share": 100,
+            "ratio": 1,
+            "amount": "20,99 €",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            }
+          }
+        ],
+        "recurring": {
+          "upcoming": false,
+          "subtitle": "Χρεώσεις: Αύγουστος 2020",
+          "empty": "Καμία επαναλαμβανόμενη χρέωση (Αύγουστος 2020).",
+          "groups": [
+            {
+              "key": "monthly",
+              "label": "Μηνιαία",
+              "headline": {
+                "label": "Μηνιαίες χρεώσεις",
+                "value": "12,99 €"
+              },
+              "note": null,
+              "section": "1 χρέωση",
+              "rows": [
+                {
+                  "id": "c1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "5 Αυγ 2020 · κάθε μήνα",
+                  "amount": "12,99 €",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "c1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "5 Αυγ 2020 · κάθε μήνα",
+                  "amount": "12,99 €",
+                  "hint": null
+                }
+              ],
+              "toggle": null
+            }
+          ]
+        }
+      }
     }
   }
 }

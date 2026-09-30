@@ -420,3 +420,28 @@ test('groupTotalParts and ratesNotes: the headline and its notes', () => {
   assert.deepEqual(incomeTotalParts({ perMonth: 250000, converted: false, missing: [] }, 'EUR'),
     { value: '≈ €2,500.00/month', converted: null, missing: null })
 })
+
+import {
+  chargeParts, chargedHeadline, groupNote, nextChargeParts, showsUpcoming, upcomingToggle,
+} from '../src/features/recurring/recurringMath.js'
+
+test('Home\'s Recurring card: upcoming or charged, its rows, notes and toggle', () => {
+  const d = new Date(2020, 8, 15)
+  assert.equal(showsUpcoming(periodFromValue('m:2020-9', d), '2020-09-15'), true)
+  assert.equal(showsUpcoming(periodFromValue('m:2020-10', d), '2020-09-15'), true)
+  assert.equal(showsUpcoming(periodFromValue('m:2020-8', d), '2020-09-15'), false)
+  assert.equal(showsUpcoming(periodFromValue('y:2020', d), '2020-09-15'), false)
+  assert.equal(showsUpcoming(null, '2020-09-15'), true)
+  assert.deepEqual(nextChargeParts(ruleOf({ currency: 'USD' }), 'EUR', { USD: 0.9 }), {
+    id: 'r1', title: 'Music', look: { key: 'streaming', tone: 'accent', tint: null },
+    meta: '3 Oct 2020 · every month', amount: '$12.99', hint: '≈ €11.69',
+  })
+  assert.equal(chargeParts({ id: 't1', kind: 'expense', spent_at: '2020-09-03', amount_minor: 1299, currency: 'EUR',
+    description: null, categories: null, recurring: { frequency: 'yearly', interval_n: 1 } }).meta, '3 Sep 2020 · every year')
+  assert.deepEqual(chargedHeadline({ key: 'monthly', total: 4200 }, 'EUR'), { label: 'Monthly charged', value: '€42.00' })
+  assert.equal(groupNote('monthly', false), null)
+  assert.equal(groupNote('yearly', false), 'Each counts in your monthly spending a twelfth at a time.')
+  assert.match(groupNote('yearly', true), /Kept out/)
+  assert.equal(upcomingToggle({ count: 3, next: [1, 2, 3] }), null)
+  assert.deepEqual(upcomingToggle({ count: 5, next: [1, 2, 3] }), { showAll: 'Show all 5 charges', showNext: 'Show the next 3' })
+})
