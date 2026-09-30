@@ -2,7 +2,8 @@
 import {
   monthlyMinor, monthlyShare, perYearMinor, ruleSpreadMonths, ruleCountsMonthly, spreadDates, spreadPart,
 } from '../../shared/lib/spread.js'
-import { toBaseMinor } from '../../shared/lib/currency.js'
+import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
+import { shortDate } from '../../shared/lib/dates.js'
 import { rulesInBase } from '../../shared/lib/ruleFx.js'
 import { countedDate } from '../../shared/lib/salaryShift.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
@@ -32,6 +33,9 @@ export function choiceToRule(choice, n = 1) {
     ? { frequency: 'monthly', interval_n: 3 }
     : { frequency: choice, interval_n: every(n) }
 }
+
+// The choices as a picker lists them: [{ value, label }] in the app's language.
+export const repeatChoiceOptions = () => REPEAT_CHOICES.map(([value, key]) => ({ value, label: t(key) }))
 
 // The other way: a stored rule → { choice, n } for the form.
 export function ruleToChoice(rule) {
@@ -162,6 +166,28 @@ export function repeatDraft(rule, { fromDate } = {}) {
     remindDays: String(rule?.remind_days_before ?? 3),
     active: rule?.is_active ?? true,
   }
+}
+
+// The line under the Repeat section's next charge on Add (a new rule made
+// from the entry): when the first repeat is due, or that it is already past
+// (it is charged on the next run); null for an entry already in a series or
+// with Repeat off.
+export function repeatNextHelp({ rule, repeat, draft, todayISO }) {
+  if (rule || !repeat) return null
+  return t(draft.nextRun < todayISO ? 'transactions:form.nextHelpMissed' : 'transactions:form.nextHelp',
+    { date: shortDate(draft.nextRun) })
+}
+
+// What a yearly expense counts in each month's budgets, under the Repeat
+// choice, or null: not spread, no amount yet, or yearly subscriptions kept
+// out of monthly spending (Settings).
+export function repeatShareLine({ choice, n, kind, amountMinor, currency, separateYearly = false }) {
+  if (!(amountMinor > 0) || separateYearly) return null
+  const { frequency, interval_n } = choiceToRule(choice, n)
+  const share = monthlyBudgetShare({ kind, frequency, interval_n, amount_minor: amountMinor })
+  return share && t(share.exact ? 'recurring:repeat.countsAs' : 'recurring:repeat.countsAsAbout', {
+    amount: formatMoney(share.perMonth, currency), months: share.months,
+  })
 }
 
 // Apply `changes` to a draft. While the next charge follows the entry's date

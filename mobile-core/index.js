@@ -27,6 +27,7 @@ import * as categoryStyle from '../src/shared/lib/categoryStyle.js'
 import * as paginate from '../src/shared/lib/paginate.js'
 import * as savings from '../src/shared/lib/savings.js'
 import * as formChecks from '../src/shared/lib/formChecks.js'
+import * as fxPreview from '../src/shared/lib/fxPreview.js'
 import * as kitMath from '../src/shared/ui/kit/kitMath.js'
 import * as sharedMoney from '../supabase/functions/_shared/money.ts'
 import * as sharedSavings from '../supabase/functions/_shared/savings.ts'
@@ -89,6 +90,7 @@ export const modules = {
   paginate,
   savings,
   formChecks,
+  fxPreview,
   kitMath,
   sharedMoney,
   sharedSavings,

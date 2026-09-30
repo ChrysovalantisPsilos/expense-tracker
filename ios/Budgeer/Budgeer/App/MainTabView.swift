@@ -11,12 +11,14 @@ struct MainTabView: View {
     @Environment(AppLanguage.self) private var language
     @Environment(\.scenePhase) private var scenePhase
     @State private var home: HomeViewModel?
+    /// The entry form, when open.
+    @State private var entry: EntrySheet?
 
     var body: some View {
         TabView {
             Group {
                 if let home {
-                    HomeView(model: home)
+                    HomeView(model: home, onAdd: { entry = EntrySheet.add(data: container.data) })
                         .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
                             await home.refresh()
                         }
@@ -33,6 +35,10 @@ struct MainTabView: View {
                 .tabItem { Label(language.t("shell:nav.budgets"), systemImage: "chart.pie") }
             MoreView(config: container.config, session: container.session, user: user)
                 .tabItem { Label(language.t("shell:nav.more"), systemImage: "ellipsis.circle") }
+        }
+        .sheet(item: $entry) { sheet in
+            EntryFormView(model: sheet.model) { _ in entry = nil }
+                .environment(language)
         }
         .onAppear {
             if home == nil { home = HomeViewModel(data: container.data) }

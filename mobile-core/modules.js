@@ -30,6 +30,7 @@ export const CORE_MODULES = {
   paginate: 'src/shared/lib/paginate.js',
   savings: 'src/shared/lib/savings.js',
   formChecks: 'src/shared/lib/formChecks.js',
+  fxPreview: 'src/shared/lib/fxPreview.js',
   // The design kit's pure rules (a signed amount's tone, a bar's width).
   kitMath: 'src/shared/ui/kit/kitMath.js',
 

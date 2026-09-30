@@ -1,4 +1,4 @@
-// Pictures of Sign-in and Home (light, dark, Greek) with the fixture's fake
+// Pictures of every screen (light, dark, Greek) with the fixture's fake
 // data, at an iPhone 15's size. Each PNG is attached to the test and, when
 // SNAPSHOT_DIR is set (CI passes it as TEST_RUNNER_SNAPSHOT_DIR), written
 // there for the workflow's artifact. Nothing is compared: these are for
@@ -39,19 +39,46 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    func testEntryFormSnapshots() async throws {
+        let now = EntryFormModelTests.now
+        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+            let language = language(lang)
+            let store = FakeStore()
+            store.categoriesResult = .success(EntryFormModelTests.categories)
+            store.savingsResult = .success([["id": "c-sav", "kind": "income", "is_savings": true]])
+            // Add: an expense with Repeat on.
+            let add = EntryFormModel(mode: .add, repeats: true, data: store.data, core: .shared, now: { now })
+            await add.load()
+            add.setAmount("12.99")
+            add.pickCategory("c-fun")
+            add.setDescription("Streaming")
+            try snapshot(EntryFormView(model: add) { _ in }.environment(language),
+                         name: "add-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1500)
+            // Edit: a saved expense.
+            let row: JSONValue = ["id": "t1", "kind": "expense", "amount_minor": 4250, "currency": "EUR",
+                                  "exchange_rate": 1, "category_id": "c-food", "description": "Market", "notes": "Weekly shop",
+                                  "spent_at": "2026-09-14", "recurring_rule_id": .null, "account_id": .null,
+                                  "savings_from_income": false, "paid_from_savings": false, "paid_with_vouchers": false]
+            let edit = EntryFormModel(mode: .edit, transaction: row, data: store.data, core: .shared, now: { now })
+            await edit.load()
+            try snapshot(EntryFormView(model: edit) { _ in }.environment(language),
+                         name: "edit-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1100)
+        }
+    }
+
     private func language(_ lang: String) -> AppLanguage {
         let defaults = UserDefaults(suiteName: "SnapshotTests")!
         return AppLanguage(preference: lang, defaults: defaults, deviceLanguages: ["en"])
     }
 
-    private func snapshot<V: View>(_ view: V, name: String, dark: Bool) throws {
+    private func snapshot<V: View>(_ view: V, name: String, dark: Bool, height: CGFloat = SnapshotTests.size.height) throws {
         let host = UIHostingController(rootView: view)
         host.overrideUserInterfaceStyle = dark ? .dark : .light
         // A window in the host app's scene, so it is really on screen and
         // drawHierarchy has something to draw.
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: .zero)
-        window.frame = CGRect(origin: .zero, size: SnapshotTests.size)
+        window.frame = CGRect(origin: .zero, size: CGSize(width: SnapshotTests.size.width, height: height))
         window.overrideUserInterfaceStyle = dark ? .dark : .light
         window.rootViewController = host
         window.makeKeyAndVisible()

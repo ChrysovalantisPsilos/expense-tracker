@@ -245,3 +245,24 @@ struct FieldLabel: View {
             .foregroundStyle(Theme.Colors.textPrimary)
     }
 }
+
+// MARK: AddButton
+
+/// The "+" in a screen's bar that opens the entry form: the web's coral Add.
+struct AddButton: View {
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Theme.Colors.onAccent)
+                .frame(width: 32, height: 32)
+                .background(Theme.Colors.accentSolid)
+                .clipShape(Circle())
+        }
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("add")
+    }
+}

@@ -1,8 +1,6 @@
 import { forwardRef } from 'react'
 import { Input } from '@chakra-ui/react'
-import { sanitizeAmountInput, sanitizeSignedAmountInput } from '../lib/moneyParse.js'
-import { minorFactor } from '../lib/currency.js'
-import { intlLocale } from '../lib/i18n/i18n.js'
+import { amountFieldHints, sanitizeAmountInput, sanitizeSignedAmountInput } from '../lib/moneyParse.js'
 
 // Controlled money field. `value` is the raw numeric string ("1234.56") that
 // callers pass straight to toMinor(); `onChange(raw)` receives the same.
@@ -20,14 +18,14 @@ import { intlLocale } from '../lib/i18n/i18n.js'
 // Forwards its ref (e.g. to focus the field).
 export default forwardRef(function MoneyInput({ value, onChange, currency, allowNegative = false, ...props }, ref) {
   const sanitize = allowNegative ? sanitizeSignedAmountInput : sanitizeAmountInput
-  const whole = !!currency && minorFactor(currency) === 1
+  const { whole, placeholder } = amountFieldHints(currency)
   return (
     <Input
       ref={ref}
       inputMode={whole ? 'numeric' : 'decimal'}
       value={value ?? ''}
       onChange={(e) => onChange(sanitize(e.target.value, currency))}
-      placeholder={whole ? '0' : (0).toLocaleString(intlLocale('en-US'), { minimumFractionDigits: 2 })}
+      placeholder={placeholder}
       {...props}
     />
   )

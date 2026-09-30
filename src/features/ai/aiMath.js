@@ -4,6 +4,7 @@
 // month summary card is in. Returns data and translation keys, never text.
 import { MERCHANTS_MAX } from '../../../supabase/functions/_shared/aiHelper.ts'
 import { minorToInput } from '../../shared/lib/currency.js'
+import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
 // The four helpers: the profile switch (0103, 0105) behind each.
 export const AI_SWITCHES = {
@@ -23,10 +24,10 @@ export function helpersOn(profile) {
 // The first of the month of a local date 'YYYY-MM-DD'.
 export const monthStartOf = (iso) => `${iso.slice(0, 7)}-01`
 
-// A category id → the name the app shows for it (`displayName` is
-// categoryDisplayName), sent so a default category is named in the app's
-// language; the server only uses the ones that are the caller's own.
-export function categoryLabels(categories, displayName) {
+// A category id → the name the app shows for it (categoryDisplayName),
+// sent so a default category is named in the app's language; the server
+// only uses the ones that are the caller's own.
+export function categoryLabels(categories, displayName = categoryDisplayName) {
   return Object.fromEntries((categories ?? []).map((c) => [c.id, displayName(c)]))
 }
 

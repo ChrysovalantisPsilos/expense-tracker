@@ -9,6 +9,11 @@ import { intlLocale } from './i18n/i18n.js'
 // function checks a typed entry's currency against it too).
 export { CURRENCIES }
 
+// Every currency dropdown's codes: the supported ones, with `include` first
+// when it isn't one of them (a group's own currency).
+export const currencyCodes = (include) =>
+  (include && !CURRENCIES.includes(include) ? [include, ...CURRENCIES] : CURRENCIES)
+
 // Minor units per ISO 4217: most currencies have 2 decimal places; the
 // zero-decimal set (one copy, in _shared/money.ts, checked against the SQL
 // minor-unit helper) has 0. HUF and IDR are 2 in ISO even though cash rounds

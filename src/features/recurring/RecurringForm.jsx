@@ -8,7 +8,7 @@ import EntryFields from '../transactions/EntryFields.jsx'
 import { useEntryFields } from '../transactions/useEntryFields.js'
 import { saveRecurring } from './recurring.js'
 import { editRepeat } from './recurringMath.js'
-import { ruleFromForm, ruleToForm } from './ruleForm.js'
+import { nextChargeHelp, ruleFromForm, ruleToForm } from './ruleForm.js'
 import RepeatFields, { RepeatPanel } from './RepeatFields.jsx'
 
 // The body of a recurring rule's page (RecurringPage): the rule in Add's own
@@ -42,7 +42,7 @@ export default function RecurringForm({ rule, baseCurrency, onSaved }) {
     <PageForm bare onSubmit={submit} noValidate busy={busy} submitLabel={t('form.saveChanges')}
       submitProps={{ isDisabled: f.savingsLoading }}>
       <EntryFields f={f} dateLabel={t('repeat.nextCharge')}
-        dateHelp={f.date && f.date < today() ? t('form.nextMissed') : undefined}
+        dateHelp={nextChargeHelp(f.date, today()) ?? undefined}
         afterAmount={f.currency !== baseCurrency && (
           <Text fontSize="sm" color="text.muted" mt={-2}>{t('form.eachChargeRate')}</Text>
         )} />

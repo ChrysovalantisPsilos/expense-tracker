@@ -1,13 +1,11 @@
 import { useRef, useState } from 'react'
 import { useCategories, useSavingsIds } from '../../shared/lib/categories.js'
 import { presetCategoryId } from '../../shared/lib/categoryName.js'
-import { paidFromSources } from '../../shared/lib/savings.js'
-import { toMinor } from '../../shared/lib/currency.js'
 import { useMealVouchers } from '../vouchers/vouchers.js'
 import { useAiHelpers } from '../ai/ai.js'
 import { fillPlan, settlePendingCategory } from '../ai/aiMath.js'
 import { firstInvalid } from '../../shared/lib/formChecks.js'
-import { ENTRY_FIELDS, entryErrors } from './entryForm.js'
+import { ENTRY_FIELDS, entryDerived, entryErrors } from './entryForm.js'
 
 // The state behind EntryFields — the fields Add and a recurring rule's page
 // share — started from a form state (entryForm.js: newForm, formFromRow).
@@ -44,15 +42,12 @@ export function useEntryFields(start, { isEdit = false, allowVouchers = true, pr
   const [description, setDescription] = useState(start.description)
   const [date, setDate] = useState(start.date)
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
-  const isSavings = kind === 'income' && savingsIds.has(categoryId)
   const [fromIncome, setFromIncome] = useState(start.fromIncome)
   const { settings: vouchers } = useMealVouchers()
   const [paidFrom, setPaidFrom] = useState(start.paidFrom)
-  const sources = kind === 'expense' ? paidFromSources({
-    savings: savingsIds.size > 0 || start.paidFrom === 'savings',
-    vouchers: allowVouchers && (!!vouchers || start.paidFrom === 'vouchers'),
-  }) : []
-  const from = sources.includes(paidFrom) ? paidFrom : 'bank'
+  const { isSavings, sources, from, amountMinor } = entryDerived(
+    { kind, amount, currency, categoryId, paidFrom },
+    { savingsIds, vouchersOn: !!vouchers, allowVouchers, startPaidFrom: start.paidFrom })
 
   const quickOn = useAiHelpers().quickEntry && !isEdit
   const [marks, setMarks] = useState(() => new Set())
@@ -125,7 +120,7 @@ export function useEntryFields(start, { isEdit = false, allowVouchers = true, pr
     isSavings, fromIncome, setFromIncome, sources, from, setPaidFrom, savingsLoading,
     quickOn, marks, unmark, applyFill, undoFill,
     errors: tried ? entryErrors({ amount, date }) : {}, amountRef, dateRef, validate,
-    amountMinor: Number(amount) > 0 ? toMinor(amount, currency) : 0,
+    amountMinor,
     values: () => ({
       kind, amount, currency, currencyPicked, categoryId, description, date, fromIncome, paidFrom: from,
     }),

@@ -7,6 +7,8 @@ import SwiftUI
 @MainActor
 struct HomeView: View {
     let model: HomeViewModel
+    /// "+": the entry form (Add).
+    var onAdd: () -> Void = {}
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
@@ -17,7 +19,7 @@ struct HomeView: View {
                     case .loading:
                         Panel { SkeletonRows() }
                     case .failed(let message):
-                        Panel { RetryBlock(message: message) { await model.load() } }
+                        Panel { LoadErrorBlock(message: message) { await model.load() } }
                     case .loaded(let figures):
                         if let error = model.refreshError {
                             Text(error)
@@ -35,6 +37,11 @@ struct HomeView: View {
             .background(Theme.Colors.canvas.ignoresSafeArea())
             .navigationTitle(language.t("shell:nav.home"))
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    AddButton(label: language.t("transactions:ledger.add.all"), action: onAdd)
+                }
+            }
         }
         .task(id: language.current) { await model.load() }
     }
@@ -111,30 +118,5 @@ private struct SkeletonRows: View {
             }
         }
         .accessibilityHidden(true)
-    }
-}
-
-/// A failed load: the message and a Retry (the web's QueryError).
-private struct RetryBlock: View {
-    let message: String
-    let retry: () async -> Void
-    @Environment(AppLanguage.self) private var language
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s3) {
-            Text(language.t("common:errors.connection"))
-                .font(Theme.Fonts.body(15, lang: language.current))
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Text(message)
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(Theme.Colors.textMuted)
-                .lineLimit(3)
-            Button {
-                Task { await retry() }
-            } label: {
-                Text(language.t("common:actions.retry"))
-            }
-            .buttonStyle(OutlineButtonStyle())
-        }
     }
 }

@@ -6,9 +6,8 @@ import { Bell, Repeat } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import OptionalDate from '../../shared/ui/OptionalDate.jsx'
 import { enablePush } from '../../shared/lib/push.js'
-import { formatMoney } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { REPEAT_CHOICES, choiceToRule, monthlyBudgetShare } from './recurringMath.js'
+import { repeatChoiceOptions, repeatShareLine } from './recurringMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // The Repeat section under an entry's fields (EntryFields): the card with its
@@ -43,11 +42,9 @@ export default function RepeatFields({
   const t = useT('recurring')
   const toast = useToast()
   const { separateYearly } = useProfile()
-  const { frequency, interval_n } = choiceToRule(d.choice, d.n)
   // A yearly expense counts evenly in each month's budgets (spread.js), unless
   // the user keeps yearly subscriptions out of monthly spending (Settings).
-  const share = amountMinor > 0 && !separateYearly
-    ? monthlyBudgetShare({ kind, frequency, interval_n, amount_minor: amountMinor }) : null
+  const share = repeatShareLine({ choice: d.choice, n: d.n, kind, amountMinor, currency, separateYearly })
 
   // Enrol this device for push the moment reminders are switched on — the
   // flip is the user gesture iOS needs for the permission prompt. A refusal
@@ -74,7 +71,7 @@ export default function RepeatFields({
         <FormControl flex="1">
           <FormLabel>{t('repeat.howOften')}</FormLabel>
           <Select value={d.choice} onChange={(e) => onChange({ choice: e.target.value })}>
-            {REPEAT_CHOICES.map(([v, key]) => <option key={v} value={v}>{t(key)}</option>)}
+            {repeatChoiceOptions().map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </Select>
         </FormControl>
         {d.choice !== 'quarterly' && (
@@ -90,11 +87,7 @@ export default function RepeatFields({
         )}
       </HStack>
       {share && (
-        <Text fontSize="sm" color="text.muted" mt={-2}>
-          {t(share.exact ? 'repeat.countsAs' : 'repeat.countsAsAbout', {
-            amount: formatMoney(share.perMonth, currency), months: share.months,
-          })}
-        </Text>
+        <Text fontSize="sm" color="text.muted" mt={-2}>{share}</Text>
       )}
 
       {showNext && (
