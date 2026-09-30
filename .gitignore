@@ -31,3 +31,12 @@ status/.wrangler/
 ios/BudgeerCore/Sources/BudgeerCore/Resources/core.js
 ios/BudgeerCore/.build/
 ios/BudgeerCore/.swiftpm/
+
+# iOS app: the project is generated (xcodegen, from ios/Budgeer/project.yml),
+# the strings from src/locales (npm run ios:strings); Xcode's own state too.
+ios/Budgeer/Budgeer.xcodeproj/
+ios/Budgeer/Budgeer/Info.plist
+ios/Budgeer/Budgeer/Resources/Generated/
+ios/Budgeer/DerivedData/
+ios/Budgeer/.swiftpm/
+xcuserdata/

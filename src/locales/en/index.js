@@ -13,6 +13,7 @@ import groups from './groups.js'
 import help from './help.js'
 import importNs from './import.js'
 import insights from './insights.js'
+import ios from './ios.js'
 import landing from './landing.js'
 import notifications from './notifications.js'
 import onboarding from './onboarding.js'
@@ -39,6 +40,7 @@ export default {
   help,
   import: importNs,
   insights,
+  ios,
   landing,
   notifications,
   onboarding,

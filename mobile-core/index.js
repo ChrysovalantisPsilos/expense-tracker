@@ -26,6 +26,7 @@ import * as categoryName from '../src/shared/lib/categoryName.js'
 import * as paginate from '../src/shared/lib/paginate.js'
 import * as savings from '../src/shared/lib/savings.js'
 import * as formChecks from '../src/shared/lib/formChecks.js'
+import * as kitMath from '../src/shared/ui/kit/kitMath.js'
 import * as sharedMoney from '../supabase/functions/_shared/money.ts'
 import * as sharedSavings from '../supabase/functions/_shared/savings.ts'
 import * as sharedSalaryShift from '../supabase/functions/_shared/salaryShift.ts'
@@ -86,6 +87,7 @@ export const modules = {
   paginate,
   savings,
   formChecks,
+  kitMath,
   sharedMoney,
   sharedSavings,
   sharedSalaryShift,

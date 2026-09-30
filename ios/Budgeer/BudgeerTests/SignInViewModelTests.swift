@@ -1,0 +1,55 @@
+// The sign-in form's rules and the words a refusal gets.
+import XCTest
+@testable import Budgeer
+
+@MainActor
+final class SignInViewModelTests: XCTestCase {
+    func testCanSubmitNeedsBothFields() {
+        let model = SignInViewModel()
+        XCTAssertFalse(model.canSubmit)
+        model.email = "  sam@example.com "
+        XCTAssertFalse(model.canSubmit)
+        model.password = "pw"
+        XCTAssertTrue(model.canSubmit)
+        model.email = "   "
+        XCTAssertFalse(model.canSubmit)
+    }
+
+    func testSubmitTrimsTheEmailAndSignsIn() async {
+        let auth = FakeAuthService()
+        let session = SessionStore(auth: auth)
+        await session.start()
+        let model = SignInViewModel()
+        model.email = " sam@example.com "
+        model.password = "pw"
+        await model.submit(session: session)
+        XCTAssertEqual(auth.signIns, [.password(email: "sam@example.com", password: "pw")])
+        XCTAssertNil(model.errorKey)
+        XCTAssertFalse(model.submitting)
+        XCTAssertEqual(session.state, .ready(.sample))
+    }
+
+    func testARefusalShowsTheWebsMessage() async {
+        let auth = FakeAuthService(signInResult: .failure(SignInError.rejected(code: "invalid_credentials", message: "x")))
+        let session = SessionStore(auth: auth)
+        await session.start()
+        let model = SignInViewModel()
+        model.email = "sam@example.com"
+        model.password = "wrong"
+        await model.submit(session: session)
+        XCTAssertEqual(model.errorKey, "common:errors.auth.invalidCredentials")
+        XCTAssertEqual(session.state, .signedOut)
+    }
+
+    func testMessageKeys() {
+        XCTAssertEqual(SignInViewModel.messageKey(for: SignInError.rejected(code: "email_not_confirmed", message: "")),
+                       "common:errors.auth.emailNotConfirmed")
+        XCTAssertEqual(SignInViewModel.messageKey(for: SignInError.rejected(code: "over_request_rate_limit", message: "")),
+                       "common:errors.tooMany")
+        XCTAssertEqual(SignInViewModel.messageKey(for: SignInError.rejected(code: "something_else", message: "")),
+                       "auth:serverError")
+        XCTAssertEqual(SignInViewModel.messageKey(for: SignInError.network("timed out")), "common:errors.connection")
+        XCTAssertEqual(SignInViewModel.messageKey(for: SignInError.unsupported(.google)), "common:errors.generic")
+        XCTAssertEqual(SignInViewModel.messageKey(for: FakeError(description: "?")), "common:errors.generic")
+    }
+}

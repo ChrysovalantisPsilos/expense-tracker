@@ -1,0 +1,9 @@
+// The TEST / DEV Supabase project (dev.budgeer.com's). The anon key is the
+// public client key the website ships too, guarded by Row Level Security;
+// it is not a secret (never put an sb_secret_ key here). $() breaks the //
+// so xcconfig doesn't read the URL's slashes as a comment.
+#include "Base.xcconfig"
+
+BUDGEER_ENV = dev
+SUPABASE_URL = https:/$()/ctvdljzybbujuywppixo.supabase.co
+SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0dmRsanp5YmJ1anV5d3BwaXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjQ3MjgsImV4cCI6MjA5ODQwMDcyOH0.8-VpXSYpMU3lyJmE-yvwzOAP90PmNtnKcZUIjqXByGw

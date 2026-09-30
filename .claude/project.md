@@ -235,7 +235,21 @@ npm run dev       # Vite
   on Linux and by the Swift tests in `.github/workflows/ios-core.yml` on
   macOS). Maths is never re-implemented in Swift: a figure the app needs goes
   in a pure web module first (ios/README.md "Adding a module"). UI, storage,
-  auth and push are Swift, in later phases.
+  auth and push are Swift.
+- **The app (phase 1b, `ios/Budgeer`):** XcodeGen project (`project.yml`;
+  never commit the .xcodeproj), Dev scheme = TEST project, Prod scheme =
+  PROD, from `Config/*.xcconfig` (public anon keys only). `npm run
+  ios:prepare` builds the core, the strings and the project. Sign-in is
+  email/password via supabase-swift 2.49.0 (the last on Swift tools 5.10;
+  CI pins Xcode 15.4 on macos-14); the legal gate sends the user to the web
+  to accept. Home is real; Transactions, Groups and Budgets are placeholders.
+  Strings come from `src/locales` (`mobile-core/strings.mjs`), never written
+  in Swift; the app's own few words are the `ios` namespace. Home's figures
+  are checked against the web's through `Fixtures/home.json`
+  (`npm run ios:fixture` after a maths change; `test/iosHome.test.js`).
+  Fonts: Poppins, Nunito Sans and Manrope are bundled (OFL, static TTFs);
+  Greek body text uses the system font. CI: `.github/workflows/ios-app.yml`
+  (snapshots of Home and Sign-in as the `snapshots` artifact).
 
 ## Follow-ups a feature here usually needs
 

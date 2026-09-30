@@ -1,0 +1,4 @@
+// Shared by every configuration. Dev.xcconfig and Prod.xcconfig include it
+// and add the Supabase project. A developer's own settings (DEVELOPMENT_TEAM
+// for a device build) go in Local.xcconfig, which is not tracked.
+#include? "Local.xcconfig"

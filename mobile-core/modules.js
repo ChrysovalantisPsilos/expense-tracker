@@ -29,6 +29,8 @@ export const CORE_MODULES = {
   paginate: 'src/shared/lib/paginate.js',
   savings: 'src/shared/lib/savings.js',
   formChecks: 'src/shared/lib/formChecks.js',
+  // The design kit's pure rules (a signed amount's tone, a bar's width).
+  kitMath: 'src/shared/ui/kit/kitMath.js',
 
   // supabase/functions/_shared (the client ↔ edge-function parity modules).
   sharedMoney: 'supabase/functions/_shared/money.ts',
