@@ -45,6 +45,19 @@ packages:
   IssueReporting:
     url: https://github.com/pointfreeco/xctest-dynamic-overlay
     exactVersion: 1.9.0
+  # The newest swift-clocks (1.1.1+) and swift-custom-dump (1.7.1+) depend on
+  # the same library under its new name, swift-issue-reporting, while
+  # supabase-swift 2.49.0 names it xctest-dynamic-overlay: a newer Xcode (16+)
+  # resolves both and refuses the graph ("conflicting target name
+  # IssueReporting"). Held below the rename so one name is used everywhere.
+  Clocks:
+    url: https://github.com/pointfreeco/swift-clocks
+    minVersion: 1.0.0
+    maxVersion: 1.1.1
+  CustomDump:
+    url: https://github.com/pointfreeco/swift-custom-dump
+    minVersion: 1.0.0
+    maxVersion: 1.7.1
 
 settings:
   base:
