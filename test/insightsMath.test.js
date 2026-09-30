@@ -4,6 +4,7 @@ import {
   buildTrend, hasTrendData, spendDelta, netWorth, spendingShares, foreignSpending,
 } from '../src/features/insights/insightsMath.js'
 import { axisTick } from '../src/shared/ui/chartAxis.js'
+import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 
 const months = [
   { key: '2026-01', label: 'Jan' },
@@ -45,6 +46,16 @@ test('axisTick: compact labels that stay distinct between neighbouring ticks', (
   assert.equal(axisTick(120000), '120k')
   assert.equal(axisTick(1500000), '1.5M')
   assert.equal(axisTick(250), '250')
+})
+
+test('axisTick in Greek: thousands and millions in Greek words', async () => {
+  await loadLanguage('el')
+  try {
+    assert.deepEqual([0, 800, 1600, 3000].map(axisTick), ['0', '800', '1,6 χιλ.', '3 χιλ.'])
+    assert.equal(axisTick(1500000), '1,5 εκ.')
+  } finally {
+    await loadLanguage('en')
+  }
 })
 
 const tx = (o) => ({ kind: 'expense', exchange_rate: 1, currency: 'EUR', ...o })

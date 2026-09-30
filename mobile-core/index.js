@@ -29,6 +29,7 @@ import * as savings from '../src/shared/lib/savings.js'
 import * as formChecks from '../src/shared/lib/formChecks.js'
 import * as fxPreview from '../src/shared/lib/fxPreview.js'
 import * as kitMath from '../src/shared/ui/kit/kitMath.js'
+import * as chartAxis from '../src/shared/ui/chartAxis.js'
 import * as sharedMoney from '../supabase/functions/_shared/money.ts'
 import * as sharedSavings from '../supabase/functions/_shared/savings.ts'
 import * as sharedSalaryShift from '../supabase/functions/_shared/salaryShift.ts'
@@ -93,6 +94,7 @@ export const modules = {
   formChecks,
   fxPreview,
   kitMath,
+  chartAxis,
   sharedMoney,
   sharedSavings,
   sharedSalaryShift,

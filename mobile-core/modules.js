@@ -33,6 +33,8 @@ export const CORE_MODULES = {
   fxPreview: 'src/shared/lib/fxPreview.js',
   // The design kit's pure rules (a signed amount's tone, a bar's width).
   kitMath: 'src/shared/ui/kit/kitMath.js',
+  // The money charts' y-axis tick labels ("1.6k", "1,6 χιλ.").
+  chartAxis: 'src/shared/ui/chartAxis.js',
 
   // supabase/functions/_shared (the client ↔ edge-function parity modules).
   sharedMoney: 'supabase/functions/_shared/money.ts',

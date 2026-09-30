@@ -88,4 +88,12 @@ final class InsightsModelTests: XCTestCase {
         await model.load()
         XCTAssertEqual(model.state, .failed("offline"))
     }
+
+    func testTheChartsAxisIsWordedByTheCore() throws {
+        try BudgeerCore.shared.setLanguage("en")
+        XCTAssertEqual(InsightsView.axisTick(1600), "1.6k")
+        try BudgeerCore.shared.setLanguage("el")
+        defer { try? BudgeerCore.shared.setLanguage("en") }
+        XCTAssertEqual(InsightsView.axisTick(3000), "3\u{00a0}χιλ.")
+    }
 }

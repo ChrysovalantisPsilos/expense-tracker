@@ -132,6 +132,17 @@ struct InsightsView: View {
                         }
                     }
                     .chartForegroundStyleScale([income: Theme.Colors.positive, expenses: Theme.Palette.brand500])
+                    .chartYAxis {
+                        // The web's tick labels ("1.6k", "1,6 χιλ."): chartAxis.axisTick.
+                        AxisMarks(position: .leading) { value in
+                            AxisGridLine()
+                            AxisValueLabel {
+                                if let amount = value.as(Double.self) {
+                                    Text(Self.axisTick(amount)).foregroundStyle(Theme.Colors.textMuted)
+                                }
+                            }
+                        }
+                    }
                     .chartLegend(position: .bottom)
                     .frame(height: 220)
                 } else {
@@ -147,6 +158,11 @@ struct InsightsView: View {
         case "negative": return Theme.Colors.negative
         default: return Theme.Colors.textMuted
         }
+    }
+
+    /// A y-axis tick in major units, worded by the core as the web's money charts word it.
+    static func axisTick(_ amount: Double) -> String {
+        (try? BudgeerCore.shared.call("chartAxis", "axisTick", [amount]) as String) ?? ""
     }
 }
 
