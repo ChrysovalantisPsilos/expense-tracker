@@ -1,4 +1,6 @@
-import { toBaseMinor, minorFactor, baseEquivalent } from '../../shared/lib/currency.js'
+import { toBaseMinor, minorFactor, baseEquivalent, formatMoney } from '../../shared/lib/currency.js'
+import { monthHeading } from '../../shared/lib/dates.js'
+import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { bucketLabel, bucketLabels, bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { isSavingsAccount, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { categoryBars } from '../dashboard/categoryBars.js'
@@ -110,4 +112,42 @@ export function foreignSpending(rows, monthKey, baseCurrency) {
     })
   }
   return { items, totalBaseMinor: items.reduce((sum, i) => sum + i.baseMinor, 0) }
+}
+
+// ---- The Insights page's words (Insights.jsx, the native app) ---------------
+
+// A trend value (major units, buildTrend's) as money: back to minor units,
+// then formatted ("€1,635.00").
+export const trendMoney = (major, currency) => formatMoney(Math.round(major * minorFactor(currency)), currency)
+
+// "Where your money went"'s month: this one ("This month"), or the column
+// tapped in the six-month bars ("August", "December 2025").
+export function pickedMonthLabel(months, picked, now = new Date()) {
+  return picked === months.length - 1 ? t('insights:thisMonth') : monthHeading(months[picked].key, now)
+}
+
+// The six-month spending bars (TrendBars): each month's spend, its label
+// and what a tap says, and the headline over them for the picked month
+// ("Aug: €1,635.00").
+export function spendingBars(trend, picked, currency) {
+  const shown = trend[picked]
+  return {
+    aside: `${shown.label}: ${trendMoney(shown.expense, currency)}`,
+    bars: trend.map((m) => ({
+      label: m.label, value: m.expense,
+      ariaLabel: t('insights:spending.pickMonth', { month: m.label, amount: trendMoney(m.expense, currency) }),
+    })),
+  }
+}
+
+// "Income vs expenses" for this month: the two tiles, what's left over
+// (signed, with its tone) and the change in spending from last month.
+export function incomeFigures(trend, currency) {
+  const latest = trend[trend.length - 1]
+  return {
+    income: trendMoney(latest.income, currency),
+    spent: trendMoney(latest.expense, currency),
+    net: signedAmount(latest.net, (m) => trendMoney(m, currency)),
+    delta: spendDelta(trend),
+  }
 }

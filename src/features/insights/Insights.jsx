@@ -19,7 +19,6 @@ import Figure from '../../shared/ui/kit/Figure.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import { StackedBar, ShareLegend } from '../../shared/ui/kit/ShareBar.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
-import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { axisTick } from '../../shared/ui/chartAxis.js'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
@@ -28,12 +27,13 @@ import { linkBuckets } from '../../shared/lib/categoryLinks.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
 import { lastMonths, monthHeading } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { formatMoney, minorFactor, formatSigned } from '../../shared/lib/currency.js'
+import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
 import { spendRows } from '../../shared/lib/spread.js'
 import { useAccounts, deleteAccount } from '../../shared/lib/accounts.js'
 import { useSavingsMoves } from '../savings/savings.js'
 import {
-  buildTrend, hasTrendData, spendDelta, netWorth, accountSections, spendingShares, foreignSpending,
+  buildTrend, hasTrendData, netWorth, accountSections, spendingShares, foreignSpending, trendMoney, pickedMonthLabel,
+  spendingBars, incomeFigures,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
 import SalaryCard from '../salary/SalaryCard.jsx'
@@ -67,11 +67,10 @@ export default function Insights() {
   // The month "Where your money went" splits: this one, or the bar tapped.
   const [picked, setPicked] = useState(months.length - 1)
   const month = months[picked]
-  const monthLabel = picked === months.length - 1 ? t('thisMonth') : monthHeading(month.key)
+  const monthLabel = pickedMonthLabel(months, picked)
 
   // Trend values are major units (chart axis); `money` converts back to minor.
-  const factor = minorFactor(baseCurrency)
-  const money = (major) => formatMoney(Math.round(major * factor), baseCurrency)
+  const money = (major) => trendMoney(major, baseCurrency)
   const trend = useMemo(
     () => buildTrend(spend, months, baseCurrency, savingsIds), [spend, months, baseCurrency, savingsIds])
   // Each legend entry drills down to the month's expenses in it (a group share
@@ -90,10 +89,10 @@ export default function Insights() {
   return (
     <Stack spacing={5}>
       <PageHeader leading={<MoreBackButton />} title={t('title')} />
-      <SpendingCard loading={loading} failed={failed} shares={shares} trend={trend} money={money}
+      <SpendingCard loading={loading} failed={failed} shares={shares} trend={trend} baseCurrency={baseCurrency}
         picked={picked} onPick={setPicked} monthLabel={monthLabel} monthName={monthHeading(month.key)} monthLink={monthLink} />
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}
-      <IncomeCard loading={loading} failed={failed} trend={trend} money={money} />
+      <IncomeCard loading={loading} failed={failed} trend={trend} money={money} baseCurrency={baseCurrency} />
       <SalaryCard />
       <NetWorthCard baseCurrency={baseCurrency} />
       <ReportsCard noEntries={oldest === null} />
@@ -166,9 +165,9 @@ function NetWorthSkeleton() {
 // ── Where your money went ───────────────────────────────────────────────────
 // A month's spending split by category — this month, or the one tapped in
 // the six-month bars below — with a link to that month's expenses.
-function SpendingCard({ loading, failed, shares, trend, money, picked, onPick, monthLabel, monthName, monthLink }) {
+function SpendingCard({ loading, failed, shares, trend, baseCurrency, picked, onPick, monthLabel, monthName, monthLink }) {
   const t = useT('insights')
-  const shown = trend[picked]
+  const { aside, bars } = spendingBars(trend, picked, baseCurrency)
   return (
     <Panel title={t('spending.title')} subtitle={monthLabel}>
       {failed ? failed : loading ? <SpendingSkeleton /> : (
@@ -187,12 +186,10 @@ function SpendingCard({ loading, failed, shares, trend, money, picked, onPick, m
           )}
           {hasTrendData(trend) && (
             <Box>
-              <SectionLabel mb={3} aside={`${shown.label}: ${money(shown.expense)}`}>
+              <SectionLabel mb={3} aside={aside}>
                 {t('lastMonths')}
               </SectionLabel>
-              <TrendBars current={picked} onPick={onPick} bars={trend.map((m) => ({
-                label: m.label, value: m.expense, ariaLabel: t('spending.pickMonth', { month: m.label, amount: money(m.expense) }),
-              }))} />
+              <TrendBars current={picked} onPick={onPick} bars={bars} />
             </Box>
           )}
         </Stack>
@@ -227,12 +224,11 @@ function AbroadCard({ abroad, baseCurrency }) {
 }
 
 // ── Income vs expenses ──────────────────────────────────────────────────────
-function IncomeCard({ loading, failed, trend, money }) {
+function IncomeCard({ loading, failed, trend, money, baseCurrency }) {
   const t = useT('insights')
   const chart = useChartTheme()
-  const delta = spendDelta(trend)
-  const latest = trend[trend.length - 1]
-  const net = signedAmount(latest.net, money) // income − expenses − savings taken from income
+  // Left over: income − expenses − savings taken from income.
+  const { income, spent, net, delta } = incomeFigures(trend, baseCurrency)
   return (
     <Panel title={t('income.title')} action={delta != null && <SpendDelta delta={delta} />}>
       {failed ? failed : loading ? <IncomeSkeleton /> : (
@@ -240,8 +236,8 @@ function IncomeCard({ loading, failed, trend, money }) {
           <Box>
             <SectionLabel mb={3}>{t('thisMonth')}</SectionLabel>
             <BalanceGrid>
-              <BalanceTile label={t('income.income')} value={money(latest.income)} tone="positive" />
-              <BalanceTile label={t('income.spent')} value={money(latest.expense)} />
+              <BalanceTile label={t('income.income')} value={income} tone="positive" />
+              <BalanceTile label={t('income.spent')} value={spent} />
             </BalanceGrid>
             <Figure layout="inline" label={t('income.leftOver')} value={net.text} tone={net.tone} mt={3} />
           </Box>

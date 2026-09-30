@@ -14,12 +14,20 @@ struct MainTabView: View {
     @State private var ledger: LedgerModel?
     @State private var budgets: BudgetsModel?
     @State private var recurring: RecurringModel?
+    @State private var insights: InsightsModel?
     /// The entry form, when open.
     @State private var entry: EntrySheet?
 
     /// More's Money pages (the web's order: Insights, then Recurring).
     private var morePages: [MorePage] {
         var pages: [MorePage] = []
+        if let insights {
+            pages.append(MorePage(id: "insights", icon: "chart.bar.xaxis", view: AnyView(
+                InsightsView(model: insights)
+                    .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
+                        await insights.load()
+                    })))
+        }
         if let recurring {
             pages.append(MorePage(id: "recurring", icon: "repeat", view: AnyView(
                 RecurringView(model: recurring,
@@ -83,6 +91,7 @@ struct MainTabView: View {
             if ledger == nil { ledger = LedgerModel(data: container.data) }
             if budgets == nil { budgets = BudgetsModel(data: container.data) }
             if recurring == nil { recurring = RecurringModel(data: container.data) }
+            if insights == nil { insights = InsightsModel(data: container.data) }
         }
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.

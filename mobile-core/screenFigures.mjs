@@ -18,7 +18,7 @@ import { listParts } from '../src/features/transactions/rowParts.js'
 import { pageCount, pageSlice } from '../src/shared/lib/paginate.js'
 import { t } from '../src/shared/lib/i18n/i18n.js'
 import { thisMonthPeriod } from '../src/shared/lib/periods.js'
-import { isoDate, monthTitle } from '../src/shared/lib/dates.js'
+import { isoDate, lastMonths, monthTitle } from '../src/shared/lib/dates.js'
 import { spendRows } from '../src/shared/lib/spread.js'
 import {
   budgetRowParts, budgetWindow, canCopyBudgets, capsInMonth, carriedFrom, carriedLabel, monthSets, periodBudgets,
@@ -27,6 +27,9 @@ import {
 import {
   groupTotalParts, incomePerMonth, incomeRules, incomeTotalParts, ruleRowParts, subscriptionGroups,
 } from '../src/features/recurring/recurringMath.js'
+import {
+  buildTrend, hasTrendData, incomeFigures, pickedMonthLabel, spendingBars, spendingShares,
+} from '../src/features/insights/insightsMath.js'
 import { setLanguage } from './index.js'
 
 export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
@@ -102,6 +105,34 @@ export function recurringFigures({ profile, categories, rules, rates, lang = 'en
       total: incomeTotalParts(income, baseCurrency),
       rows: incomeRules(rules).map((r) => ruleRowParts(r, options)),
     },
+  }
+}
+
+// The Insights page (Insights.jsx): the last six months' rows (with yearly
+// payments spread and a late salary shifted), "Where your money went" for
+// the picked month (this one by default), the six-month bars and "Income
+// vs expenses" for this month.
+export function insightsFigures({ profile, categories, rows, now, picked = null, lang = 'en' }) {
+  setLanguage(lang)
+  const date = new Date(now)
+  const baseCurrency = profile?.base_currency || 'EUR'
+  const months = lastMonths(6, date)
+  const from = months[0].from
+  const to = months[months.length - 1].to
+  const spend = spendRows(rows, baseCurrency, from, to,
+    { separateYearly: !!profile?.yearly_separate, salaryShift: salaryShiftOf(profile) })
+  const trend = buildTrend(spend, months, baseCurrency, savingsIdsOf(categories))
+  const index = picked ?? months.length - 1
+  return {
+    fetchFrom: from,
+    fetchTo: to,
+    picked: index,
+    monthLabel: pickedMonthLabel(months, index, date),
+    shares: spendingShares(spend, months[index].key, baseCurrency),
+    hasTrend: hasTrendData(trend),
+    bars: spendingBars(trend, index, baseCurrency),
+    income: incomeFigures(trend, baseCurrency),
+    chart: trend.map((m) => ({ label: m.label, income: m.income, expense: m.expense })),
   }
 }
 
@@ -223,6 +254,36 @@ export function recurringFixture() {
   return { input: RECURRING_INPUT, expected }
 }
 
+const INSIGHT_ROWS = [
+  ...LEDGER_ROWS,
+  txn('d1', '2020-08-20', 'expense', 64000, GROCERIES),
+  txn('d2', '2020-08-11', 'expense', 90000, null, { description: 'Rent' }),
+  txn('d3', '2020-07-28', 'income', 250000, PAY),
+  txn('d4', '2020-07-11', 'expense', 90000, null, { description: 'Rent' }),
+  txn('d5', '2020-07-02', 'expense', 15500, EATING),
+  txn('d6', '2020-06-11', 'expense', 90000, null, { description: 'Rent' }),
+  txn('d7', '2020-05-11', 'expense', 90000, null, { description: 'Rent' }),
+  txn('d8', '2020-05-05', 'income', 240000, PAY),
+  txn('d9', '2020-04-15', 'expense', 3000, EATING, { currency: 'GBP', exchange_rate: 1.1 }),
+]
+export const INSIGHTS_INPUT = {
+  now: '2020-09-15T10:00:00.000Z',
+  profile: PROFILE,
+  categories: SAVINGS_CATEGORIES,
+  rows: INSIGHT_ROWS,
+  views: [{ name: 'thisMonth', picked: null }, { name: 'august', picked: 4 }],
+}
+
+export function insightsFixture() {
+  const expected = {}
+  for (const lang of ['en', 'el']) {
+    expected[lang] = {}
+    for (const view of INSIGHTS_INPUT.views) expected[lang][view.name] = insightsFigures({ ...INSIGHTS_INPUT, ...view, lang })
+  }
+  setLanguage('en')
+  return { input: INSIGHTS_INPUT, expected }
+}
+
 export function budgetsFixture() {
   const expected = {}
   for (const lang of ['en', 'el']) {
@@ -243,4 +304,6 @@ if (isMain) {
   console.log(`budgets fixture: ${FIXTURES_DIR}/budgets.json`)
   await writeFile(resolve(root, FIXTURES_DIR, 'recurring.json'), JSON.stringify(recurringFixture(), null, 2) + '\n')
   console.log(`recurring fixture: ${FIXTURES_DIR}/recurring.json`)
+  await writeFile(resolve(root, FIXTURES_DIR, 'insights.json'), JSON.stringify(insightsFixture(), null, 2) + '\n')
+  console.log(`insights fixture: ${FIXTURES_DIR}/insights.json`)
 }

@@ -108,6 +108,18 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    func testInsightsSnapshots() async throws {
+        let fixture = try InsightsFixture.load()
+        let now = fixture.now
+        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+            let language = language(lang)
+            let model = InsightsModel(data: fixture.store().data, core: .shared, now: { now })
+            await model.load()
+            try snapshot(NavigationStack { InsightsView(model: model) }.environment(language),
+                         name: "insights-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1100)
+        }
+    }
+
     private func language(_ lang: String) -> AppLanguage {
         let defaults = UserDefaults(suiteName: "SnapshotTests")!
         return AppLanguage(preference: lang, defaults: defaults, deviceLanguages: ["en"])

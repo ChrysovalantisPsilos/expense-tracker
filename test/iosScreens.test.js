@@ -8,7 +8,9 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { FIXTURES_DIR, budgetsFixture, ledgerFixture, recurringFixture } from '../mobile-core/screenFigures.mjs'
+import {
+  FIXTURES_DIR, budgetsFixture, insightsFixture, ledgerFixture, recurringFixture,
+} from '../mobile-core/screenFigures.mjs'
 
 const committed = (name) => JSON.parse(readFileSync(resolve(FIXTURES_DIR, `${name}.json`), 'utf8'))
 const fresh = (value) => JSON.parse(JSON.stringify(value))
@@ -64,4 +66,20 @@ test('ios recurring fixture: groups, totals at today\'s rates, and the income ta
   // The savings rule is listed with the income but not summed as income.
   assert.equal(income.total.value, '≈ €2,500.00/month')
   assert.deepEqual(income.rows.map((r) => r.id), ['r7', 'r8'])
+})
+
+test('ios insights fixture: the committed file is what the web\'s functions give', () => {
+  assert.deepEqual(committed('insights'), fresh(insightsFixture()))
+})
+
+test('ios insights fixture: the six months, the picked month\'s shares, this month\'s income', () => {
+  const { thisMonth, august } = committed('insights').expected.en
+  assert.equal(thisMonth.fetchFrom, '2020-04-01')
+  assert.deepEqual(thisMonth.chart.map((m) => m.label), ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'])
+  assert.equal(thisMonth.monthLabel, 'This month')
+  assert.equal(august.monthLabel, 'August')
+  assert.equal(august.bars.aside, 'Aug: €1,540.00')
+  assert.equal(thisMonth.shares.reduce((s, c) => s + c.share, 0), 100)
+  // The late-August salary counts in September.
+  assert.equal(thisMonth.income.income, '€2,500.00')
 })
