@@ -2,7 +2,7 @@
 import { toMinor } from '../../shared/lib/currency.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
-import { monthTitle } from '../../shared/lib/dates.js'
+import { monthAlone, monthTitle } from '../../shared/lib/dates.js'
 import { isMonthPeriod } from '../../shared/lib/periods.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
@@ -58,7 +58,7 @@ export function carriedFrom(rows, periodStart) {
 // Αυγούστου»): the month-and-year format would give the nominative.
 export function carriedLabel(source, periodStart, locale = intlLocale()) {
   const [y, m] = source.split('-').map(Number)
-  const name = new Date(Date.UTC(y, m - 1, 1)).toLocaleString(locale, { month: 'long', timeZone: 'UTC' })
+  const name = monthAlone(m, locale)
   const month = periodStart.slice(0, 4) !== source.slice(0, 4) ? `${name} ${y}` : name
   return t('budgets:carriedFrom', { month })
 }
