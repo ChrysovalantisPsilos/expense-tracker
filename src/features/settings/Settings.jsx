@@ -13,6 +13,7 @@ import { useSiteSwitch } from '../../shared/lib/useSiteSwitch.js'
 import { startTour } from '../onboarding/tour.js'
 import DemoNotice from './DemoNotice.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
 
 // Each row's words are rows.<id>.label / .desc in the settings namespace.
 const PREFERENCES = [
@@ -49,7 +50,7 @@ export default function Settings() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader title={t('title')} />
+      <PageHeader leading={<MoreBackButton />} title={t('title')} />
 
       <NavList label={t('sections.profile')}>
         <NavRow to="/settings/account" label={profile?.display_name || t('yourName')}

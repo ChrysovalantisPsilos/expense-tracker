@@ -35,6 +35,7 @@ import GoalsCard from './GoalsCard.jsx'
 import SavingsHistory from './SavingsHistory.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { entryName } from '../../shared/lib/categoryName.js'
+import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
 
 // The Savings page: the pot (its all-time total and month-end line), this
 // month's flow and the savings that repeat, the goals, and the history of
@@ -93,7 +94,7 @@ export default function Savings() {
 
   return (
     <Stack spacing={sideways ? 3 : 5}>
-      <PageHeader title={t('title')} />
+      <PageHeader leading={<MoreBackButton />} title={t('title')} />
       {body}
     </Stack>
   )

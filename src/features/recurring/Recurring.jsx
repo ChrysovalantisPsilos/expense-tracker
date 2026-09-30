@@ -28,6 +28,7 @@ import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Ske
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { entryName } from '../../shared/lib/categoryName.js'
 import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
+import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
 
 const TABS = ['expense', 'income']
 
@@ -96,7 +97,7 @@ export default function Recurring() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader title={t('list.title')} />
+      <PageHeader leading={<MoreBackButton />} title={t('list.title')} />
 
       <Panel>
         {error ? <QueryError error={error} onRetry={reload} what={t('list.what')} /> : loading ? (

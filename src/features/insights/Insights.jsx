@@ -40,6 +40,7 @@ import SalaryCard from '../salary/SalaryCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
 
 // How many foreign-currency rows "Spending abroad" lists (the total covers all).
 const ABROAD_ROWS = 5
@@ -88,7 +89,7 @@ export default function Insights() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader title={t('title')} />
+      <PageHeader leading={<MoreBackButton />} title={t('title')} />
       <SpendingCard loading={loading} failed={failed} shares={shares} trend={trend} money={money}
         picked={picked} onPick={setPicked} monthLabel={monthLabel} monthName={monthHeading(month.key)} monthLink={monthLink} />
       {abroad.items.length > 0 && <AbroadCard abroad={abroad} baseCurrency={baseCurrency} />}

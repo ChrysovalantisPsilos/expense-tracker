@@ -28,6 +28,7 @@ import { AddForm, EditForm, PickPanel } from './PlanEditors.jsx'
 import { AppliedBanner, AppliedNote, ClearDialog, RealityBanner, UndoDialog } from './PlanBanners.jsx'
 import PlanWhatIf, { WHAT_IF_KEY } from './PlanWhatIf.jsx'
 import { useAiHelpers } from '../ai/ai.js'
+import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
 
 // Plan mode (/plan): a sandbox over the user's recurring payments and income.
 // Every edit shows at once how the monthly net moves, before → after; the plan
@@ -83,7 +84,7 @@ export default function Plan() {
   // "Plan saved" only once there is something in it to keep (or a save
   // failed and needs a retry).
   const saved = sum.changes.length > 0 || d.status === 'error'
-  const header = <PageHeader title={t('title')} meta={saved ? <SavedNote status={d.status} onRetry={d.retry} /> : undefined} />
+  const header = <PageHeader leading={<MoreBackButton />} title={t('title')} meta={saved ? <SavedNote status={d.status} onRetry={d.retry} /> : undefined} />
   if (d.error) {
     return <Stack spacing={5}>{header}<Panel><QueryError error={d.error} onRetry={d.reload} what={t('what')} /></Panel></Stack>
   }
@@ -93,7 +94,7 @@ export default function Plan() {
   if (!items.length) {
     return (
       <Stack spacing={5}>
-        <PageHeader title={t('title')} description={t('empty.lead')} />
+        <PageHeader leading={<MoreBackButton />} title={t('title')} description={t('empty.lead')} />
         <Panel>
           <EmptyState title={t('empty.title')} text={t('empty.text')}
             actions={<>

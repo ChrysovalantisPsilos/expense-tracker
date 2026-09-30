@@ -26,11 +26,12 @@ import { HISTORY_MONTHS, HISTORY_MORE } from '../savings/savingsMath.js'
 import { daysFor, withDays } from './voucherMath.js'
 import { saveMealVouchers, useMealVouchers, useVoucherCard } from './vouchers.js'
 import { NextTopUp, monthOfKey } from './VoucherParts.jsx'
+import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
 
 export default function Vouchers() {
   const t = useT('vouchers')
   const { settings, loading, error, reload } = useMealVouchers()
-  const header = <PageHeader title={t('title')} action={
+  const header = <PageHeader leading={<MoreBackButton />} title={t('title')} action={
     <IconButton as={RouterLink} to="/settings/vouchers" state={{ from: 'vouchers' }} size="sm" variant="ghost" aria-label={t('settingsLink')}
       icon={<Settings2 size={18} />} />
   } />
