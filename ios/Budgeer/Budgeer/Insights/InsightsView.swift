@@ -194,7 +194,7 @@ private struct SectionHead: View {
 
     var body: some View {
         HStack {
-            Text(label.uppercased())
+            Text(label.capsLabel)
                 .font(Theme.Fonts.body(11, weight: .bold, lang: language.current))
                 .kerning(0.6)
                 .foregroundStyle(Theme.Colors.textMuted)

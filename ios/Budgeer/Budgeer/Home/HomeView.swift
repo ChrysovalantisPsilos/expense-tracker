@@ -179,7 +179,7 @@ private struct RecurringCardPanel: View {
                         if let missing = group.headline.missing { Note(text: missing, tone: Theme.Colors.warning) }
                         if let note = group.note { Note(text: note) }
                     }
-                    Text(group.section.uppercased())
+                    Text(group.section.capsLabel)
                         .font(Theme.Fonts.body(11, weight: .bold, lang: language.current))
                         .kerning(0.6)
                         .foregroundStyle(Theme.Colors.textMuted)
