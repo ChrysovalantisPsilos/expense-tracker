@@ -145,16 +145,18 @@ struct ProgressRow<Media: View>: View {
         HStack(alignment: .center, spacing: Theme.Space.s3) {
             media()
             VStack(alignment: .leading, spacing: Theme.Space.s1) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(title)
-                        .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                        .lineLimit(1)
-                    Spacer(minLength: Theme.Space.s2)
-                    Text(meta)
-                        .font(Theme.Fonts.body(13, weight: .regular, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
-                        .lineLimit(1)
+                // Name and amount side by side; stacked when both don't fit
+                // (a long Greek "312,40 € από 400,00 €"), never cut short.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) {
+                        titleText
+                        Spacer(minLength: Theme.Space.s2)
+                        metaText
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        titleText
+                        metaText
+                    }
                 }
                 if let pill {
                     Text(pill)
@@ -182,6 +184,20 @@ struct ProgressRow<Media: View>: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var titleText: some View {
+        Text(title)
+            .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
+            .foregroundStyle(Theme.Colors.textPrimary)
+            .lineLimit(1)
+    }
+
+    private var metaText: some View {
+        Text(meta)
+            .font(Theme.Fonts.body(13, weight: .regular, lang: language.current))
+            .foregroundStyle(Theme.Colors.textMuted)
+            .lineLimit(1)
     }
 
     // kitMath.barWidth: clamped to 0…100%; a sliver stays visible (the web's
