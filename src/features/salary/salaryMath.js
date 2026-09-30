@@ -355,16 +355,37 @@ export function project({ level, rate, years, nowKey, ratios = {} }) {
   return { rate, monthly: pay, regular, extras, total: regular + extras, series }
 }
 
-// The three ways ahead: 'trend' (the average raise so far; left out without a
-// year of pay), 'index' (inflation only) and 'whatIf' (the slider's % a year).
+// How much of a GROSS raise reaches NET pay: a rough estimate, not a tax
+// calculation. Indexation and raises are on gross pay, but the pay history is
+// net, and each extra euro loses social security and income tax at the
+// marginal rate. Belgium: 13.07% social security, then a 40–50% marginal
+// rate plus the commune's surcharge on a typical salary → about half. Greece:
+// about 13.9% social security, then a 28–44% marginal rate → a bit more than
+// half. The app says it's an estimate wherever it's used (SalaryOutlook).
+export const NET_SHARE = { BE: 0.5, GR: 0.55 }
+const DEFAULT_NET_SHARE = 0.5
+
+// A gross yearly raise as the net raise it gives, roughly (NET_SHARE).
+export function netRate(grossRate, country) {
+  return grossRate * (NET_SHARE[country] ?? DEFAULT_NET_SHARE)
+}
+
+// The three ways ahead: 'trend' (the average raise so far, already net: it
+// comes from the net pay history; left out without a year of pay), 'index'
+// (inflation only) and 'whatIf' (the slider's % a year). The last two are
+// gross raises: projected at their net share (netRate), with `gross` kept to
+// show both.
 export function projections(report, { country, years, whatIf, nowKey }) {
   const args = { level: report.level, years, nowKey, ratios: report.ratios }
   const ways = [
-    report.average != null && { id: 'trend', rate: report.average },
-    { id: 'index', rate: indexationRate(country, nowKey) },
-    { id: 'whatIf', rate: whatIf / 100 },
+    report.average != null && { id: 'trend', rate: report.average, gross: null },
+    { id: 'index', gross: indexationRate(country, nowKey) },
+    { id: 'whatIf', gross: whatIf / 100 },
   ].filter(Boolean)
-  return ways.map((w) => ({ id: w.id, ...project({ ...args, rate: w.rate }) }))
+  return ways.map((w) => {
+    const rate = w.gross == null ? w.rate : netRate(w.gross, country)
+    return { id: w.id, gross: w.gross, ...project({ ...args, rate }) }
+  })
 }
 
 // ── The pay chart ────────────────────────────────────────────────────────────

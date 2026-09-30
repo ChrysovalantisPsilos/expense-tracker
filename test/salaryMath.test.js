@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import {
+import { NET_SHARE, netRate,
   INFLATION, INFLATION_LATEST, inflationRate, defaultCountry, splitPay, payLevels, raiseKind, averageRaise,
   yearTotals, priceRise, sinceChoices, vsInflation, indexationRate, extraRatios, project, projections,
   salaryReport, normaliseNotes, withFix, bonusCategoryId, monthsBetween, payChartRows, payChartAxis, offMonths,
@@ -253,7 +253,8 @@ test('the three ways ahead; my trend needs a year of pay', () => {
   const ways = projections(report, { country: 'BE', years: 5, whatIf: 3, nowKey: '2026-09' })
   assert.deepEqual(ways.map((w) => w.id), ['trend', 'index', 'whatIf'])
   assert.ok(Math.abs(ways[0].rate - report.average) < 1e-12)
-  assert.equal(ways[2].rate, 0.03)
+  assert.equal(ways[2].gross, 0.03)
+  assert.equal(ways[2].rate, 0.015) // the slider is a gross raise: half reaches net pay in Belgium
   assert.ok(ways[0].total > ways[1].total)
   const young = salaryReport(monthly('2026-03', 6, 2000), { ...opts(), nowKey: '2026-09' })
   assert.deepEqual(projections(young, { country: 'GR', years: 1, whatIf: 0, nowKey: '2026-09' }).map((w) => w.id), ['index', 'whatIf'])
@@ -349,4 +350,19 @@ test('the pay chart axis: round steps around every dot, labels that never repeat
     assert.equal(new Set(labels).size, labels.length, labels.join(' '))
     assert.ok(a.ticks.length >= 3 && a.ticks.length <= 7, labels.join(' '))
   }
+})
+
+test('gross raises reach net pay at the country net share; the own trend is already net', () => {
+  assert.equal(netRate(0.032, 'BE'), 0.016)
+  assert.equal(Math.round(netRate(0.1, 'GR') * 1000) / 1000, 0.055)
+  assert.equal(netRate(0.1, 'XX'), 0.05) // unknown country: the default share
+  const report = { level: 250000, ratios: {}, average: 0.04 }
+  const ways = projections(report, { country: 'BE', years: 1, whatIf: 10, nowKey: '2026-09' })
+  const by = Object.fromEntries(ways.map((w) => [w.id, w]))
+  assert.equal(by.trend.gross, null)
+  assert.equal(by.trend.rate, 0.04)
+  assert.equal(by.whatIf.gross, 0.1)
+  assert.equal(by.whatIf.rate, 0.05)
+  assert.equal(by.whatIf.monthly, 262500) // +5% net in January, not +10%
+  assert.equal(by.index.rate, by.index.gross * NET_SHARE.BE)
 })

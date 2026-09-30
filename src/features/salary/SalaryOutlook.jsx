@@ -18,7 +18,7 @@ import { minorFactor } from '../../shared/lib/currency.js'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { axisTick } from '../../shared/ui/chartAxis.js'
 import {
-  COUNTRIES, HORIZONS, WHAT_IF, INFLATION_FROM, monthNum, projections, sinceChoices, vsInflation, yearOf,
+  COUNTRIES, HORIZONS, WHAT_IF, INFLATION_FROM, monthNum, payChartAxis, projections, sinceChoices, vsInflation, yearOf,
 } from './salaryMath.js'
 import { monthLabel, pctText, rounded } from './SalaryParts.jsx'
 
@@ -33,7 +33,8 @@ function ProjectionChart({ ways, currency, h }) {
   const data = ways[0].series.map((p, i) => Object.fromEntries([['key', p.key], ...ways.map((w) => [w.id, w.series[i].pay / f])]))
   const januaries = data.filter((d) => monthNum(d.key) === 1).map((d) => d.key)
   const every = Math.ceil(januaries.length / 6)
-  const low = Math.min(...data.map((d) => Math.min(...ways.map((w) => d[w.id]))))
+  // The pay chart's axis rule (round steps, labels that never repeat), over every way's pay.
+  const yAxis = payChartAxis(ways.flatMap((w) => w.series.map((p) => ({ level: p.pay, pay: null }))), f)
   const axis = { tickLine: false, axisLine: false, fontSize: 11, tick: chart.tick }
   return (
     <Box h={`${h}px`} mx={-1} role="img" aria-label={t('projection.chart')}>
@@ -42,7 +43,7 @@ function ProjectionChart({ ways, currency, h }) {
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={chart.grid} />
           <XAxis dataKey="key" ticks={januaries.filter((_, i) => i % every === 0)} tickFormatter={(k) => String(yearOf(k))}
             interval={0} {...axis} />
-          <YAxis width={44} domain={[Math.floor(low * 0.95), 'auto']} tickFormatter={axisTick} {...axis} />
+          <YAxis width={44} domain={yAxis.domain} ticks={yAxis.ticks} interval={0} tickFormatter={axisTick} {...axis} />
           <Tooltip formatter={(v) => rounded(Math.round(v * f), currency)} labelFormatter={monthLabel} {...chart.tooltip} />
           {[...ways].reverse().map((w) => (
             <Line key={w.id} type="stepAfter" dataKey={w.id} name={t(`projection.${w.id}`)} stroke={chart.series[LINE[w.id].color]}
@@ -66,8 +67,11 @@ function WayRow({ way, currency, children }) {
             <Box w="16px" h="3px" borderRadius="full" bg={chart.series[LINE[way.id].color]} />
           </Box>
         )}
-        title={t('projection.way', { way: t(`projection.${way.id}`), pct: pctText(way.rate) })}
-        meta={t('projection.monthlyIn', { amount: rounded(way.monthly, currency), month: monthLabel(end) })}
+        title={t(way.gross == null ? 'projection.way' : 'projection.wayNet', { way: t(`projection.${way.id}`), pct: pctText(way.rate) })}
+        meta={[
+          way.gross != null && t('projection.gross', { pct: pctText(way.gross) }),
+          t('projection.monthlyIn', { amount: rounded(way.monthly, currency), month: monthLabel(end) }),
+        ].filter(Boolean).join(' · ')}
         amount={rounded(way.total, currency)}
         amountMeta={<Text fontSize="xs" color="text.muted">{t('projection.earned')}</Text>} />
       {children}
@@ -111,6 +115,7 @@ export function ProjectionCard({ report, currency, country, nowKey, sideways }) 
         ))}
       </Stack>
       {report.average == null && <Text mt={2} fontSize="xs" color="text.muted">{t('projection.trendLater')}</Text>}
+      <Text mt={2} fontSize="xs" color="text.muted">{t('projection.estimate')}</Text>
     </Panel>
   )
 }

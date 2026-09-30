@@ -100,6 +100,11 @@ export default {
     whatIf: 'What if',
     // "My trend · +5.4%"
     way: '{{way}} · {{pct}}',
+    // A gross raise as the net raise it's estimated to give ("Indexation
+    // only · ≈ +1.6% net"), its gross % in the line under it ("+3.2% gross").
+    wayNet: '{{way}} · ≈ {{pct}} net',
+    gross: '{{pct}} gross',
+    estimate: 'An estimate: after tax, only part of a gross raise reaches your pay.',
     monthlyIn: '{{amount}} a month by {{month}}',
     earned: 'earned',
     slider: 'Yearly raise',
@@ -107,7 +112,7 @@ export default {
     total_other: 'Earned in {{count}} years',
     chart: 'Monthly pay each way',
     trendLater: 'My trend shows after a year of pay.',
-    info: 'Pay rises every January: at your average raise so far, at the average inflation of the last three years, or at the rate you pick. Totals add holiday pay and the 13th month; bonuses aren’t counted. Net pay, at today’s taxes.',
+    info: 'Pay rises every January: at your average raise so far, at the average inflation of the last three years, or at the rate you pick. Totals add holiday pay and the 13th month; bonuses aren’t counted. All of it is an estimate of your net pay: indexation and raises are on gross pay, and after social security and income tax only part of a gross raise reaches you — about half in Belgium, a little more in Greece. Your own trend is already net, so it’s used as it is.',
   },
   empty: {
     noCategoryTitle: 'No Salary category',
