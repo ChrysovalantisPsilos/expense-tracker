@@ -1,11 +1,16 @@
-# Budgeer for iOS: the core
+# Budgeer for iOS
+
+Two parts: the **core** (the web's JavaScript in JavaScriptCore) and the
+**app** (SwiftUI) that shows what the core answers. The core first.
+
+## The core
 
 The native app is SwiftUI. Its maths and wording are **the web app's own
 JavaScript**, bundled into one file and run in Apple's JavaScriptCore. One
 engine, not two: a figure the app shows is computed by the same function the
 website runs, from the same source file, so the two can't disagree.
 
-## Why JavaScriptCore
+### Why JavaScriptCore
 
 Budgeer's logic (splits, spreads, salary shifts, plan maths, statement
 parsing, vouchers, the wording of every period and row) is pure JavaScript
@@ -22,7 +27,7 @@ would.
 figure the core doesn't give, add it to the web's pure module (with its unit
 test) and expose the module, then call it from Swift.
 
-## Layout
+### Layout
 
 ```
 mobile-core/
@@ -38,7 +43,7 @@ ios/BudgeerCore/    the Swift package (iOS 17 / macOS 14, no dependencies)
   Tests/BudgeerCoreTests/Resources/vectors.json   the recorded vectors (committed)
 ```
 
-## Building the core
+### Building the core
 
 ```bash
 npm run core:build      # → ios/BudgeerCore/Sources/BudgeerCore/Resources/core.js
@@ -67,7 +72,7 @@ come back as a `BudgeerCoreError`. The context is shared and every call is
 serialised on one queue. Dates format in the process time zone; English
 uses the device's Intl locale, as the web does.
 
-## How the vectors work
+### How the vectors work
 
 The proof that bundle = source lives in `vectors.json`. Nobody writes it by
 hand:
@@ -98,7 +103,7 @@ A vector that differs between engines points at an engine difference
 (Intl's spacing or month abbreviations, say), which is exactly what the
 suite is for.
 
-## Adding a module
+### Adding a module
 
 1. Keep the module pure: a function of its arguments and the active
    language. Data access stays in the feature's data module.
@@ -108,3 +113,124 @@ suite is for.
    then `npm run core:vectors` and commit the new `vectors.json`.
 4. `npm test` replays it on Linux; the `ios-core` workflow replays it on a
    Mac.
+
+## The app
+
+`ios/Budgeer` is a SwiftUI app for iOS 17, bundle id `com.budgeer.app`. Its
+Xcode project is generated, never committed:
+
+```bash
+brew install xcodegen
+npm run ios:prepare     # core.js, the strings, then xcodegen generate
+open ios/Budgeer/Budgeer.xcodeproj
+```
+
+Pick the **Budgeer Dev** scheme (the default: the TEST Supabase project,
+dev.budgeer.com's accounts) or **Budgeer Prod** (PROD; release builds only).
+Each scheme's pre-action runs `scripts/prebuild.sh`, which rebuilds the core
+and the strings from the web's source, and the target's first build phase
+fails with a clear message when they are missing.
+
+### Configuration
+
+`Config/Dev.xcconfig` and `Config/Prod.xcconfig` hold the project URL and its
+public anon key (the same key the website ships; Row Level Security is the
+guard, and no secret key ever goes here). They reach Swift through Info.plist
+(`AppConfig.load()`); a build without them shows what is missing instead of
+talking to nowhere. A developer's own settings (`DEVELOPMENT_TEAM` for a
+device build) go in `Config/Local.xcconfig`, which is not tracked.
+
+### Layout
+
+```
+ios/Budgeer/
+  project.yml            the XcodeGen spec (targets, schemes, packages)
+  Config/                Base / Dev / Prod xcconfig
+  scripts/prebuild.sh    core + strings before a build
+  Budgeer/
+    BudgeerApp.swift     the entry: AppConfig → AppContainer → RootView
+    App/                 AppContainer (the one client, the stores), RootView (per session state), MainTabView
+    Auth/                AuthService (protocol) + SupabaseAuthService, SessionStore, SignInView, LegalGateView
+    Home/                HomeRepository (the web's reads), HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView
+    More/                MoreView (account, sign out, language, build)
+    Theme/               Theme (tokens from palette.js / theme.js), Kit (Panel, Figure, BalanceTile, ProgressRow, buttons, fields)
+    Support/             AppLanguage, L10n (the generated strings), JSONValue
+    Resources/Fonts/     Poppins, Nunito Sans, Manrope (OFL, static TTFs)
+    Resources/Generated/ <lang>.lproj/Localizable.strings — generated, not committed
+  BudgeerTests/          view models over fakes, Home's parity, the strings, snapshots
+    Fixtures/home.json   the web's Home figures for fake inputs (npm run ios:fixture)
+```
+
+### What is real and what is not (phase 1b)
+
+- **Sign-in** with email and password (supabase-swift, pinned to 2.49.0: the
+  last release on Swift tools 5.10, which Xcode 15.4 builds). The session
+  lives in the Keychain (the client's own store) and sign-out works. Google,
+  Apple and passkeys are `SignInMethod` cases the service refuses until
+  their phase; the screen leaves them room.
+- **The legal gate**: `my_legal_status` after every sign-in, failing closed
+  as the web does. The app cannot record consent yet: the gate says to
+  accept on the website, then "Retry".
+- **Home**: the web's reads (`profiles`, `categories` with `is_savings`,
+  `my_transactions` with `p_spread` from the shifted fetch start) and the
+  web's figures — Spent, Income, Net with its sign and tone, the savings
+  line, spending by category — each from a core call, in `HomeFigures.swift`.
+  Pull to refresh. Not yet: recurring rules in the projection, pending FX
+  rates (`fillPendingRates`), the period picker, the lists.
+- **Transactions, Groups, Budgets**: "Coming to the app soon".
+- **More**: who is signed in, sign out, the language, the version.
+
+### Strings
+
+The app never writes a user-facing string in Swift. `npm run ios:strings`
+(`mobile-core/strings.mjs`) turns `src/locales/{en,el}` into one
+`Localizable.strings` per language, every leaf as the web's `"ns:path.key"`,
+and refuses to build when Greek is out of step with English. `L10n.string`
+reads a plain string; a string with `{{placeholders}}` or plural forms goes
+through the core's `i18n.t` (`AppLanguage.t(key, vars)`), so it is worded
+exactly as on the web. The few words only the app needs are the `ios`
+namespace (`src/locales/{en,el}/ios.js`).
+
+The language preference ('system', 'en', 'el') is the web's own rule
+(`language.resolveLanguage` in the core) and the result goes to
+`BudgeerCore.setLanguage`, so every figure the core answers is in it.
+
+### Theme and fonts
+
+`Theme.swift` ports the kit's tokens: the raw ramps of
+`src/shared/ui/palette.js`, the light and dark semantic tokens of
+`src/app/theme.js`, the radii, shadows and the 4pt spacing scale. Poppins
+(headings), Nunito Sans (body) and Manrope (Greek headings) are bundled as
+static TTFs under the SIL Open Font License, with the licence texts beside
+them. Nunito Sans has no Greek, so Greek body text uses the system font (the
+web falls back to Noto Sans, which is not bundled).
+
+### Tests
+
+```bash
+npm run ios:prepare
+xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
+  -destination "platform=iOS Simulator,name=iPhone 15,OS=17.5"
+```
+
+- `SessionStoreTests`, `SignInViewModelTests`, `HomeViewModelTests`: the
+  view models over `FakeAuthService` and `FakeHomeRepository`.
+- `HomeParityTests`: the fixture's inputs through `HomeFigures` must give
+  the figures the web's Dashboard functions wrote into `Fixtures/home.json`,
+  in English and Greek. `npm run ios:fixture` rewrites the fixture from the
+  web's source; `test/iosHome.test.js` (in `npm test`) fails when the
+  committed file no longer matches the web.
+- `L10nTests`: both languages bundled, the web's keys, the fallback, the
+  language preference.
+- `SnapshotTests`: PNGs of Sign-in and Home (light, dark, Greek) with the
+  fixture's data, attached to the test run and written to `SNAPSHOT_DIR`
+  when set (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
+
+CI is `.github/workflows/ios-app.yml` (macos-14, Xcode 15.4): XcodeGen, a
+Simulator build, the tests, and the snapshots as the `snapshots` artifact.
+
+### Running on a device
+
+A simulator build needs no signing. For a device, put `DEVELOPMENT_TEAM =
+<your team id>` in `ios/Budgeer/Config/Local.xcconfig` and let Xcode manage
+the profile.
