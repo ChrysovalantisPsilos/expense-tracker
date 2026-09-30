@@ -1,8 +1,8 @@
-// Home's state: the reads (HomeRepository) in the web's order, the profile
+// Home's state: the reads in the web's order (Dashboard.jsx), the profile
 // first because it says where the month's rows start (the salary shift),
-// then the rows and the savings categories together, then the figures
-// from the core (HomeFigures). A refresh that fails keeps the figures on
-// screen and shows the error beside them.
+// then the rows and the savings categories together, then the figures from
+// the core (HomeFigures). A refresh that fails keeps the figures on screen
+// and shows the error beside them.
 import Foundation
 import Observation
 import BudgeerCore
@@ -22,12 +22,12 @@ final class HomeViewModel {
     /// The last refresh's error, cleared by the next one that works.
     private(set) var refreshError: String?
 
-    private let repository: HomeRepository
+    private let data: DataLayer
     private let core: BudgeerCore
     private let now: @Sendable () -> Date
 
-    init(repository: HomeRepository, core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() }) {
-        self.repository = repository
+    init(data: DataLayer, core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() }) {
+        self.data = data
         self.core = core
         self.now = now
     }
@@ -45,15 +45,15 @@ final class HomeViewModel {
         }
     }
 
-    /// Pull to refresh.
+    /// Pull to refresh, a live change.
     func refresh() async { await load() }
 
     private func figures() async throws -> HomeFigures {
         let instant = now()
-        let profile = try await repository.profile()
+        let profile = try await data.profile.profile()
         let window = try HomeFigures.window(profile: profile, now: instant, core: core)
-        async let rows = repository.transactions(from: window.fetchFrom, to: window.period.to)
-        async let categories = repository.savingsCategories()
+        async let rows = data.transactions.transactions(TxnQuery(from: window.fetchFrom, to: window.period.to, spread: true))
+        async let categories = data.categories.savingsCategories()
         let input = HomeInput(rows: try await rows, profile: profile, categories: try await categories, now: instant)
         return try HomeFigures.compute(input, core: core)
     }

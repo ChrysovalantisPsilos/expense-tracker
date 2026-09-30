@@ -31,7 +31,7 @@ final class SnapshotTests: XCTestCase {
         for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
             let language = language(lang)
             let now = fixture.now
-            let model = HomeViewModel(repository: FakeHomeRepository(fixture: fixture), core: .shared, now: { now })
+            let model = HomeViewModel(data: FakeStore(home: fixture).data, core: .shared, now: { now })
             await model.load()
             XCTAssertEqual(model.state, .loaded(try XCTUnwrap(fixture.expected[lang])))
             let view = HomeView(model: model).environment(language)

@@ -1,7 +1,8 @@
 // Everything the app makes once from its configuration: the Supabase
-// client, the auth service behind the session store, and each feature's
-// repository. Views get what they need from here; nothing else makes a
-// client.
+// client, the auth service behind the session store, the offline cache, the
+// live-refresh hub and its realtime feed, and the data layer every screen
+// reads through (SupabaseStore). Views get what they need from here; nothing
+// else makes a client.
 import Foundation
 import Supabase
 
@@ -10,12 +11,30 @@ final class AppContainer {
     let config: AppConfig
     let client: SupabaseClient
     let session: SessionStore
-    let home: HomeRepository
+    let cache: QueryCache
+    let live: LiveHub
+    let feed: RealtimeFeed
+    let data: DataLayer
 
     init(config: AppConfig) {
         self.config = config
         client = SupabaseClientProvider.make(config)
         session = SessionStore(auth: SupabaseAuthService(client: client))
-        home = SupabaseHomeRepository(client: client)
+        cache = QueryCache.standard()
+        let live = LiveHub()
+        self.live = live
+        feed = RealtimeFeed(client: client, hub: live)
+        // A write refreshes every screen showing its table at once.
+        let store = SupabaseStore(client: client, cache: cache, announce: { table in
+            Task { @MainActor in live.changed([table]) }
+        })
+        data = DataLayer(store)
+    }
+
+    /// Signed out: stop the realtime feed and forget the offline copies, so
+    /// the next account never sees this one's.
+    func signedOut() async {
+        await feed.stop()
+        await cache.clear()
     }
 }

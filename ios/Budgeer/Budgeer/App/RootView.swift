@@ -25,6 +25,9 @@ struct RootView: View {
             }
         }
         .task { await session.start() }
+        .onChange(of: session.state) { _, state in
+            if state == .signedOut { Task { await container.signedOut() } }
+        }
     }
 }
 

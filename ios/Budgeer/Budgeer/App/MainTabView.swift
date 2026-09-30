@@ -9,6 +9,7 @@ struct MainTabView: View {
     let container: AppContainer
     let user: AuthUser
     @Environment(AppLanguage.self) private var language
+    @Environment(\.scenePhase) private var scenePhase
     @State private var home: HomeViewModel?
 
     var body: some View {
@@ -16,6 +17,9 @@ struct MainTabView: View {
             Group {
                 if let home {
                     HomeView(model: home)
+                        .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
+                            await home.refresh()
+                        }
                 } else {
                     LoadingView()
                 }
@@ -31,7 +35,13 @@ struct MainTabView: View {
                 .tabItem { Label(language.t("shell:nav.more"), systemImage: "ellipsis.circle") }
         }
         .onAppear {
-            if home == nil { home = HomeViewModel(repository: container.home) }
+            if home == nil { home = HomeViewModel(data: container.data) }
+        }
+        // Live updates for this account while the app is open; back in the
+        // foreground, everything catches up on what realtime missed.
+        .task(id: user.id) { await container.feed.start(userId: user.id) }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { container.live.catchUp() }
         }
     }
 }
