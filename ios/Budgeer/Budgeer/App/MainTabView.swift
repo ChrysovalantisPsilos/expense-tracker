@@ -4,6 +4,7 @@
 // (sign out), the language and the build's details.
 import SwiftUI
 
+@MainActor
 struct MainTabView: View {
     let container: AppContainer
     let user: AuthUser

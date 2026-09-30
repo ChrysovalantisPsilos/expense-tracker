@@ -5,6 +5,7 @@
 // Sign out is the other way out, as on the web.
 import SwiftUI
 
+@MainActor
 struct LegalGateView: View {
     let status: LegalStatus
     let session: SessionStore
@@ -66,6 +67,7 @@ struct LegalGateView: View {
 
 /// The legal check could not reach the server: "Try again" or sign out,
 /// nothing of the app (the web's LegalCheckError).
+@MainActor
 struct LegalCheckErrorView: View {
     let message: String
     let session: SessionStore

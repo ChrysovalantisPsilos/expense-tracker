@@ -4,6 +4,7 @@
 // (HomeFigures); the view only lays them out. Pull down to refresh.
 import SwiftUI
 
+@MainActor
 struct HomeView: View {
     let model: HomeViewModel
     @Environment(AppLanguage.self) private var language

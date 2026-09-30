@@ -4,6 +4,7 @@
 // their phase.
 import SwiftUI
 
+@MainActor
 struct MoreView: View {
     let config: AppConfig
     let session: SessionStore
