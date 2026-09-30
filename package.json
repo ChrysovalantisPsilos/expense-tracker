@@ -15,6 +15,9 @@
     "test:tz-west": "TZ=America/Los_Angeles node --test test/*.test.js",
     "core:build": "node mobile-core/build.mjs",
     "core:vectors": "node mobile-core/record/vectors.mjs",
+    "ios:strings": "node mobile-core/strings.mjs",
+    "ios:fixture": "TZ=UTC node mobile-core/homeFigures.mjs",
+    "ios:prepare": "npm run core:build && npm run ios:strings && cd ios/Budgeer && xcodegen generate",
     "functions:serve": "supabase functions serve",
     "emails:auth": "node scripts/build-auth-emails.mjs"
   },
