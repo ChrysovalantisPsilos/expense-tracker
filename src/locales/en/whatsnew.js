@@ -8,6 +8,19 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-10-04': {
+      widgets: {
+        title: 'Widgets on your iPhone',
+        body: 'The iPhone app now has widgets: This month on your Home Screen, with what you spent, what came in and your net, and on your Lock Screen, where the amounts stay hidden until you unlock. A + Add button opens Add straight away.',
+        chips: { month: 'This month', lock: 'Lock Screen' },
+      },
+      links: {
+        title: 'Links and passkeys in the app',
+        body: 'Group invites and the links in our emails now open the iPhone app when you have it, and you can log in with a passkey there too. A passkey you made on the website works in the app, and the other way round.',
+        chips: { opens: 'Opens the app', passkey: 'Passkeys' },
+        action: 'Open Security',
+      },
+    },
     '2026-10-03': {
       iphone: {
         title: 'Budgeer for iPhone',

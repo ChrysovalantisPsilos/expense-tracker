@@ -262,9 +262,17 @@ test('whatsNewList: the releases with pages, newest first, dated and worded', ()
 
 test('the recent releases: their pages, and the actions and words that matter', () => {
   const release = (id) => inEnglish(RELEASES.find((x) => x.id === id))
-  // This release (2026-10-03): the iPhone app, Sign in with Apple (opens
-  // Security), groups (opens Groups) and the smaller things.
-  const r3 = inEnglish(RELEASES[0])
+  // This release (2026-10-04): the iPhone widgets, and links and passkeys
+  // in the app (opens Security).
+  const r4 = inEnglish(RELEASES[0])
+  assert.equal(r4.id, '2026-10-04')
+  assert.deepEqual(r4.pages.map((p) => p.id), ['widgets', 'links'])
+  assert.deepEqual(r4.pages.map((p) => p.action?.to), [undefined, '/settings/security'])
+  assert.match(r4.pages[0].body, /hidden until you unlock/)
+
+  // 2026-10-03: the iPhone app, Sign in with Apple (opens Security), groups
+  // (opens Groups) and the smaller things.
+  const r3 = release('2026-10-03')
   assert.equal(r3.id, '2026-10-03')
   assert.deepEqual(r3.pages.map((p) => p.id), ['iphone', 'apple', 'groups', 'more'])
   assert.deepEqual(r3.pages.map((p) => p.action?.to), [undefined, '/settings/security', '/groups', undefined])
