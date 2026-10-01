@@ -43,7 +43,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Budgets per category/month, with 80% / 100% push alerts
 - Recurring rules (subscriptions, salary) auto-logged nightly, with per-rule payment reminders
 - Plan mode (/plan): try changes to your recurring payments, income and savings from income (cancel, change the amount or how often, add a new one) and see what's left over a month before → after, with "How it adds up" (Income − Recurring payments − Put into savings = Left over) behind the ⓘ (a salary or savings logged as entries count as derived Salary / Savings rows; with no recurring income the card shows the payments total instead); ideas to save computed on the device; the plan is saved to the account (encrypted); optional Apply changes the real rules in one step, with Undo for 24 hours
-- Meal vouchers (/vouchers, Settings → Meal vouchers): a card topped up on a chosen day for last month's working days (Mon–Fri minus Belgian or Greek public holidays) × the amount per day; what's on the card, this month's top-ups and spending, the next top-up with Fix days (leave, sick days), the history; a Home card; expenses "Paid from: Meal vouchers" are spending but not against the Net; the setup is encrypted, in backups and the data export
+- Meal vouchers (/vouchers, Settings → Meal vouchers): a card topped up on a chosen day for last month's working days (Mon–Fri minus Belgian or Greek public holidays) × the amount per day; what's on the card, this month's top-ups and spending, the next top-up with Edit days (leave, sick days), the history; a Home card; expenses "Paid from: Meal vouchers" are spending but not against the Net; the setup is encrypted, in backups and the data export
 - Your salary (Insights card → /insights/salary): regular pay over time from the Salary entries (the salary shift respected), raises (Belgian January indexation labelled), extras (holiday pay, 13th month, bonus; guessed ones correctable in place; the Bonus category by its default key or picked on the page), "If things go on" (1/3/5/10 years: my trend, indexation only, what if; monthly pay and total earned, bonuses left out), pay against Belgian or Greek inflation (Eurostat HICP, shipped with the app), year-by-year totals; the corrections are encrypted, in backups and the data export
 - Optional AI helpers (Settings → AI helpers, all off by default; Claude by Anthropic): Type to add on Add fills the form from a typed line, with Undo; category ideas for new merchants on Import; Month in plain words in Home's overview (Numbers | In words), written once and stored encrypted, with Update when the totals change; What-if in your own words in Plan (a typed what-if becomes suggested plan changes to tick, edit and add, with Undo)
 - Savings page: the pot (all time, month by month), this month's flow, repeating savings, goals and a savings-only history
@@ -747,7 +747,7 @@ on the card) and a few lunches and groceries paid with vouchers. Check at
    expenses paid with vouchers since; this month's top-ups and spending;
    Next top-up counts last month's weekdays minus that country's holidays
    (e.g. November in Belgium: 11 Nov off; April in Greece: Good Friday and
-   Easter Monday off). Fix days opens in place: −/+ changes the amount, Save
+   Easter Monday off). Edit days opens in place: −/+ changes the amount, Save
    keeps it ("your days"), Cancel doesn't; setting it back to the calendar's
    count removes the fix.
 4. History: month by month, newest first, each month's net; top-ups, the

@@ -1,6 +1,6 @@
 // The Face ID lock: off until the owner turns it on (and passes the check),
 // then locked on every launch and after a minute away, open again only
-// after the check; turning it off unlocks at once.
+// after the check (or the app PIN); turning it off unlocks at once.
 import XCTest
 @testable import Budgeer
 
@@ -8,6 +8,7 @@ import XCTest
 final class AppLockTests: XCTestCase {
     private var defaults: UserDefaults!
     private var clock = Date(timeIntervalSince1970: 1_000_000)
+    private let vault = MemoryPinVault()
 
     override func setUp() {
         super.setUp()
@@ -16,7 +17,8 @@ final class AppLockTests: XCTestCase {
     }
 
     private func makeLock(_ owner: FakeOwner) -> AppLock {
-        AppLock(defaults: defaults, owner: owner, now: { [unowned self] in clock })
+        AppLock(defaults: defaults, owner: owner, pin: AppPin(vault: vault, hasher: PlainPinHasher(), now: { [unowned self] in clock }),
+                now: { [unowned self] in clock })
     }
 
     func testOffUntilTheOwnerTurnsItOn() async {
@@ -77,6 +79,43 @@ final class AppLockTests: XCTestCase {
         XCTAssertFalse(lock.enabled)
         XCTAssertFalse(lock.covers)
         XCTAssertEqual(owner.asked.count, asked)
-        XCTAssertFalse(AppLock(defaults: defaults, owner: owner).enabled)
+        XCTAssertFalse(makeLock(owner).enabled)
+    }
+
+    func testThePinUnlocksWhenFaceIDFails() async {
+        let owner = FakeOwner()
+        let first = makeLock(owner)
+        XCTAssertFalse(first.hasPin)
+        XCTAssertTrue(first.setPin("2580"))
+        await first.set(true, reason: "r")
+        let lock = makeLock(owner)
+        XCTAssertTrue(lock.hasPin)
+        XCTAssertEqual(lock.pinLength, 4)
+        owner.answer = false
+        await lock.unlock(reason: "r")
+        XCTAssertTrue(lock.covers)
+        XCTAssertEqual(lock.unlock(pin: "1111"), .wrong(wait: 0))
+        XCTAssertTrue(lock.covers)
+        XCTAssertEqual(lock.unlock(pin: "2580"), .ok)
+        XCTAssertFalse(lock.covers)
+    }
+
+    func testWithoutFaceIDThePinIsWhatTurnsItOn() async {
+        let owner = FakeOwner()
+        owner.available = false
+        let lock = makeLock(owner)
+        XCTAssertFalse(lock.available)
+        await lock.set(true, reason: "r")
+        XCTAssertFalse(lock.enabled)
+        lock.setPin("135790")
+        XCTAssertTrue(lock.available)
+        await lock.set(true, reason: "r")
+        XCTAssertTrue(lock.enabled)
+        XCTAssertEqual(owner.asked, [])
+        // Removing the PIN there takes the lock with it: nothing else could open it.
+        lock.removePin()
+        XCTAssertFalse(lock.hasPin)
+        XCTAssertFalse(lock.enabled)
+        XCTAssertFalse(lock.covers)
     }
 }

@@ -1,7 +1,7 @@
 // Which language the app opens in: the device's first language only (what
 // iOS Safari reports to the web), and, signed in, the profile's language
 // first (ProfileLanguage over the fake store), as the web's
-// reconcileLanguage decides it.
+// reconcileLanguage decides it; a choice made here stays made.
 import XCTest
 import BudgeerCore
 @testable import Budgeer
@@ -50,7 +50,7 @@ final class AppLanguageTests: XCTestCase {
         let lang = language(device: ["en-BE"])
         let store = FakeStore()
         store.profileResult = .success(["base_currency": "EUR", "language": "el", "is_demo": false])
-        await ProfileLanguage.sync(lang, profiles: store)
+        await ProfileLanguage(language: lang, profiles: store).sync()
         XCTAssertEqual(lang.preference, "el")
         XCTAssertEqual(lang.current, "el")
         XCTAssertEqual(defaults.string(forKey: AppLanguage.preferenceKey), "el")
@@ -61,7 +61,7 @@ final class AppLanguageTests: XCTestCase {
         let lang = language("el", device: ["en-BE"])
         let store = FakeStore()
         store.profileResult = .success(["base_currency": "EUR", "language": .null, "is_demo": false])
-        await ProfileLanguage.sync(lang, profiles: store)
+        await ProfileLanguage(language: lang, profiles: store).sync()
         XCTAssertEqual(lang.preference, "el")
         XCTAssertEqual(store.savedLanguages, ["el"])
     }
@@ -70,7 +70,7 @@ final class AppLanguageTests: XCTestCase {
         let lang = language(device: ["en-BE", "el-GR"])
         let store = FakeStore()
         store.profileResult = .success(["base_currency": "EUR", "language": .null, "is_demo": false])
-        await ProfileLanguage.sync(lang, profiles: store)
+        await ProfileLanguage(language: lang, profiles: store).sync()
         XCTAssertEqual(lang.preference, AppLanguage.system)
         XCTAssertEqual(lang.current, "en")
         XCTAssertEqual(store.savedLanguages, [])
@@ -80,9 +80,11 @@ final class AppLanguageTests: XCTestCase {
         let lang = language("en", device: ["en-BE"])
         let store = FakeStore()
         store.profileResult = .success(["base_currency": "EUR", "language": "el", "is_demo": true])
-        await ProfileLanguage.sync(lang, profiles: store)
+        let sync = ProfileLanguage(language: lang, profiles: store)
+        await sync.sync()
         XCTAssertEqual(lang.preference, "en")
-        await ProfileLanguage.save(lang, profiles: store)
+        await sync.choose("el")
+        XCTAssertEqual(lang.preference, "el")
         XCTAssertEqual(store.savedLanguages, [])
     }
 
@@ -90,10 +92,57 @@ final class AppLanguageTests: XCTestCase {
         let lang = language(device: ["en-BE"])
         let store = FakeStore()
         store.profileResult = .success(["base_currency": "EUR", "language": .null, "is_demo": false])
-        lang.preference = "el"
-        await ProfileLanguage.save(lang, profiles: store)
-        lang.preference = AppLanguage.system
-        await ProfileLanguage.save(lang, profiles: store)
+        let sync = ProfileLanguage(language: lang, profiles: store)
+        await sync.choose("el")
+        await sync.choose(AppLanguage.system)
         XCTAssertEqual(store.savedLanguages, ["el", nil])
+    }
+
+    /// The owner's report: Greek on the profile, then "Follow my device" on an
+    /// English phone. The choice is saved as null, and a profile read that
+    /// still answers Greek (begun before the save, realtime catching up)
+    /// doesn't put Greek back; once the profile says null it's settled, and a
+    /// later Greek from another device still wins.
+    func testFollowMyDeviceAfterGreekStays() async {
+        let lang = language(device: ["en-BE"])
+        let store = FakeStore()
+        store.profileResult = .success(["base_currency": "EUR", "language": "el", "is_demo": false])
+        let sync = ProfileLanguage(language: lang, profiles: store)
+        await sync.sync()
+        XCTAssertEqual(lang.current, "el")
+
+        await sync.choose(AppLanguage.system)
+        XCTAssertEqual(store.savedLanguages, [nil])
+        XCTAssertEqual(lang.preference, AppLanguage.system)
+        XCTAssertEqual(lang.current, "en")
+
+        // The fake doesn't update the profile on a save: this read is the old one.
+        await sync.sync()
+        XCTAssertEqual(lang.preference, AppLanguage.system)
+        XCTAssertEqual(lang.current, "en")
+
+        store.profileResult = .success(["base_currency": "EUR", "language": .null, "is_demo": false])
+        await sync.sync()
+        XCTAssertEqual(lang.preference, AppLanguage.system)
+        XCTAssertEqual(store.savedLanguages, [nil])
+
+        store.profileResult = .success(["base_currency": "EUR", "language": "el", "is_demo": false])
+        await sync.sync()
+        XCTAssertEqual(lang.preference, "el")
+    }
+
+    /// A save that fails keeps the choice on this device: the profile's old
+    /// language, read again, doesn't undo it.
+    func testAFailedSaveKeepsTheChoiceHere() async {
+        let lang = language(device: ["en-BE"])
+        let store = FakeStore()
+        store.profileResult = .success(["base_currency": "EUR", "language": "el", "is_demo": false])
+        let sync = ProfileLanguage(language: lang, profiles: store)
+        await sync.sync()
+        store.writeError = URLError(.notConnectedToInternet)
+        await sync.choose(AppLanguage.system)
+        await sync.sync()
+        XCTAssertEqual(lang.preference, AppLanguage.system)
+        XCTAssertEqual(lang.current, "en")
     }
 }

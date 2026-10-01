@@ -2,7 +2,8 @@
 // the subscriptions by how often they charge, each group under its total;
 // the recurring income under its own. Tap a rule to edit it in the Add
 // sheet; swipe right to pause or resume it, left to remove it (it asks
-// first); + adds one. Every figure and word is RecurringModel's.
+// first); the floating Add adds one of the kind shown (AppFrame lends it).
+// Every figure and word is RecurringModel's.
 import SwiftUI
 
 @MainActor
@@ -59,12 +60,6 @@ struct RecurringView: View {
         .background(NativeStyle.canvas)
         .nativeTabBarRoom()
         .navigationTitle(language.t("recurring:list.title"))
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { add(model.tab) } label: { Image(systemName: "plus") }
-                    .accessibilityLabel(language.t("transactions:actions.add"))
-            }
-        }
         .refreshable { await model.load() }
         .task(id: language.current) { await model.load() }
         .confirmationDialog(language.t("recurring:list.remove.title"),

@@ -1,12 +1,14 @@
 // A group's page: its picture and name as a proper title with the members
 // under it, a balance card (your balance, the line that matters most,
 // Settle up in prominent glass and Balances beside it), then one chat-like
-// timeline of expenses, settlements
-// and comments, newest at the bottom like Messages, with the comment field
-// floating over its foot. Add expense and the … menu (Members, Share
-// summary, Download statement (PDF) to the share sheet, Rename (Edit group:
-// the name and the picture, also from the camera on the owner's picture),
-// Leave, Delete) are in the bar; who owes whom is the Balances page.
+// timeline of expenses (each with the badge its description suggests),
+// settlements and comments, newest at the bottom like Messages, with the
+// comment field floating over its foot. The floating Add adds an expense
+// to this group (the page lends it, AddSlot); the … menu holds Members,
+// Share summary (the group-report PDF to the share sheet), Edit group,
+// Leave and Delete. The owner renames the group in place (tap its name)
+// and changes its picture any time (tap the picture: Edit group). Deleting
+// asks for the name on a small sheet. Who owes whom is the Balances page.
 // Settling the group up bursts confetti behind the cards. Everything it
 // shows is GroupModel's (the core's).
 import SwiftUI
@@ -62,6 +64,9 @@ struct GroupPageView: View {
     @State private var sharing = false
     @State private var blocked = false
     @State private var typed = ""
+    /// The name being edited in place (the owner), nil when not renaming.
+    @State private var renaming: String?
+    @FocusState private var naming: Bool
     @State private var comment = ""
     @State private var replyTo: String?
     @State private var celebrating: Bool
@@ -90,6 +95,7 @@ struct GroupPageView: View {
                 toolbar
             }
             .task(id: language.current) { await model.load() }
+            .lendsAdd(.run { addExpense() })
             .onChange(of: model.figures?.balances.plan.isEmpty) { was, now in
                 if was == false, now == true {
                     celebrating = true
@@ -112,16 +118,8 @@ struct GroupPageView: View {
             } message: {
                 Text(language.t(model.figures?.isOwner == true ? "groups:modals.leave.bodyOwner" : "groups:modals.leave.body"))
             }
-            .alert(language.t("groups:modals.delete.title", ["name": .string(model.groupName)]), isPresented: $confirmDelete) {
-                TextField(model.groupName, text: $typed)
-                Button(language.t("groups:header.delete"), role: .destructive) {
-                    Task { if await model.delete() { onGone() } }
-                }
-                .disabled(!model.deleteConfirmed(typed))
-                Button(language.t("common:actions.cancel"), role: .cancel) {}
-            } message: {
-                NativeRich.text(model.rich(language.t("groups:modals.delete.body")))
-                    + Text("\n\n" + language.t("groups:modals.delete.confirm"))
+            .sheet(isPresented: $confirmDelete) {
+                DeleteGroupSheet(model: model, typed: $typed) { onGone() }.environment(language)
             }
             .alert(language.t("groups:modals.deleteBlocked.title", ["name": .string(model.groupName)]), isPresented: $blocked) {
                 Button(language.t("groups:modals.deleteBlocked.manage")) { showMembers = true }
@@ -166,30 +164,9 @@ struct GroupPageView: View {
     private func hero(_ figures: GroupPageFigures) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 14) {
-                GroupPicture(imageUrl: figures.imageUrl, colour: figures.colour, size: 58)
-                    .overlay(alignment: .bottomTrailing) {
-                        // The owner changes the picture (and the name) on Edit group.
-                        if figures.isOwner {
-                            Button { editing = true } label: {
-                                Image(systemName: "camera.fill")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(NativeStyle.tint)
-                                    .frame(width: 26, height: 26)
-                                    .nativeGlass(Circle(), interactive: true)
-                            }
-                            .buttonStyle(.plain)
-                            .offset(x: 6, y: 6)
-                            .accessibilityLabel(language.t("groups:header.changePhoto"))
-                            .accessibilityIdentifier("group.photo")
-                        }
-                    }
+                picture(figures)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(figures.name)
-                        .font(NativeStyle.title(28, lang: language.current, relativeTo: .largeTitle))
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.75)
-                        .accessibilityAddTraits(.isHeader)
-                        .accessibilityIdentifier("group.title")
+                    title(figures)
                     Button { showMembers = true } label: {
                         HStack(spacing: 6) {
                             NativeAvatarStack(stack: figures.avatars, size: 22, ring: NativeStyle.canvas)
@@ -207,8 +184,13 @@ struct GroupPageView: View {
                 Text(language.t("groups:balances.yours"))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                NativeMoney(text: figures.balances.mine.text, value: 0, font: NativeStyle.money(38),
-                            color: NativeStyle.tone(figures.balances.mine.tone))
+                Text(figures.balances.mine.text)
+                    .font(NativeStyle.money(38))
+                    .foregroundStyle(NativeStyle.tone(figures.balances.mine.tone))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .nativeFigure(figures.balances.mine.text)
                     .accessibilityIdentifier("group.mine")
                 Text(highlight(figures.balances.highlight))
                     .font(.footnote)
@@ -234,6 +216,99 @@ struct GroupPageView: View {
             .padding(.vertical, 14)
             .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
+    }
+
+    /// The group's picture; the owner taps it (or its camera) to change it on Edit group.
+    @ViewBuilder private func picture(_ figures: GroupPageFigures) -> some View {
+        let tile = GroupPicture(imageUrl: figures.imageUrl, colour: figures.colour, size: 58)
+        if figures.isOwner {
+            Button { editing = true } label: {
+                tile.overlay(alignment: .bottomTrailing) {
+                    Image(systemName: "camera.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(NativeStyle.tint)
+                        .frame(width: 26, height: 26)
+                        .nativeGlass(Circle())
+                        .offset(x: 6, y: 6)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(language.t("groups:header.changePhoto"))
+            .accessibilityIdentifier("group.photo")
+        } else {
+            tile
+        }
+    }
+
+    /// The name as the page's title; the owner taps it to rename the group in
+    /// place (the field, then Save or Cancel beside it).
+    @ViewBuilder private func title(_ figures: GroupPageFigures) -> some View {
+        let font = NativeStyle.title(28, lang: language.current, relativeTo: .largeTitle)
+        if let draft = renaming {
+            HStack(spacing: 8) {
+                TextField(language.t("groups:edit.name"), text: Binding(get: { draft }, set: { renaming = $0 }))
+                    .font(font)
+                    .focused($naming)
+                    .submitLabel(.done)
+                    .onSubmit { rename() }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 4)
+                    .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .accessibilityIdentifier("group.name")
+                Button { rename() } label: {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 36, height: 36)
+                        .background(NativeStyle.solid, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(model.busy || draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityLabel(language.t("common:actions.save"))
+                Button {
+                    withAnimation(NativeMotion.expand) { renaming = nil }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, height: 36)
+                        .background(Theme.Colors.subtle, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(language.t("common:actions.cancel"))
+            }
+            .transition(.opacity)
+        } else {
+            Text(figures.name)
+                .font(font)
+                .lineLimit(2)
+                .minimumScaleFactor(0.75)
+                .accessibilityAddTraits(figures.isOwner ? [.isHeader, .isButton] : .isHeader)
+                .accessibilityIdentifier("group.title")
+                .onTapGesture {
+                    guard figures.isOwner else { return }
+                    withAnimation(NativeMotion.expand) { renaming = figures.name }
+                    naming = true
+                }
+                .transition(.opacity)
+        }
+    }
+
+    /// Save the name typed in place (GroupModel.saveEdit, the name only).
+    private func rename() {
+        guard let draft = renaming else { return }
+        Task {
+            if await model.saveEdit(name: draft, cover: nil) {
+                NativeHaptics.success()
+                withAnimation(NativeMotion.expand) { renaming = nil }
+            }
+        }
+    }
+
+    /// A new expense in this group (the floating Add, while the page is on top).
+    private func addExpense() {
+        guard model.figures?.myMemberId != nil else { return }
+        sheet = GroupSheet(kind: .expense(model.expenseForm(expenseId: nil)))
     }
 
     /// The line that matters most: its words, then the amount.
@@ -265,6 +340,7 @@ struct GroupPageView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
+            .animation(NativeMotion.expand, value: model.timeline)
         }
         .defaultScrollAnchor(.bottom)
         .scrollDismissesKeyboard(.interactively)
@@ -316,35 +392,25 @@ struct GroupPageView: View {
     // MARK: The bar
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
-        ToolbarItemGroup(placement: .topBarTrailing) {
-            if model.figures?.myMemberId != nil {
-                Button { sheet = GroupSheet(kind: .expense(model.expenseForm(expenseId: nil))) } label: {
-                    Image(systemName: "plus")
-                }
-                .accessibilityLabel(language.t("groups:header.addExpense"))
-                .accessibilityIdentifier("group.add")
-            }
+        ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button { showMembers = true } label: {
                     Label(language.t("groups:members.title"), systemImage: "person.2")
                 }
-                if let text = model.figures?.shareText {
-                    ShareLink(item: text, subject: Text(model.groupName)) {
-                        Label(language.t("groups:header.shareSummary"), systemImage: "square.and.arrow.up")
-                    }
-                }
+                // Share summary: the group's PDF report (group-report), as the statement is.
                 Button {
                     Task {
                         await model.makeStatement()
                         if model.statementFile != nil { sharing = true }
                     }
                 } label: {
-                    Label(language.t("groups:header.statement"), systemImage: "doc.richtext")
+                    Label(language.t("groups:header.shareSummary"), systemImage: "square.and.arrow.up")
                 }
                 .disabled(model.busy)
+                .accessibilityIdentifier("group.share")
                 if model.figures?.isOwner == true {
                     Button { editing = true } label: {
-                        Label(language.t("groups:header.rename"), systemImage: "pencil")
+                        Label(language.t("groups:edit.title"), systemImage: "pencil")
                     }
                 }
                 if model.figures?.myMemberId != nil {
@@ -441,11 +507,9 @@ struct TimelineRow: View {
                 }
                 Button(action: open) {
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "doc.text")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(NativeStyle.tint)
-                            .frame(width: 34, height: 34)
-                            .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        if let look = row.look {
+                            CategoryBadge(look: look, size: 34)
+                        }
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(alignment: .firstTextBaseline, spacing: 8) {
                                 Text(row.title).font(.subheadline.weight(.semibold)).lineLimit(2)
@@ -530,5 +594,60 @@ struct TimelineRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(language.t("groups:history.comments"))
+    }
+}
+
+/// Delete a group (the owner, once everyone else has left): the web's
+/// words, the name typed to confirm in a proper field, Delete or Cancel.
+@MainActor
+struct DeleteGroupSheet: View {
+    let model: GroupModel
+    @Binding var typed: String
+    let onGone: () -> Void
+    @Environment(AppLanguage.self) private var language
+    @Environment(\.dismiss) private var dismiss
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 14) {
+                NativeRich.text(model.rich(language.t("groups:modals.delete.body"))).font(.subheadline)
+                Text(language.t("groups:modals.delete.confirm")).font(.subheadline).foregroundStyle(.secondary)
+                TextField(model.groupName, text: $typed)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .focused($focused)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 46)
+                    .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .accessibilityIdentifier("group.deleteName")
+                Button(role: .destructive) {
+                    Task {
+                        if await model.delete() {
+                            dismiss()
+                            onGone()
+                        }
+                    }
+                } label: {
+                    Text(language.t("groups:header.delete")).frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(NativeStyle.negative)
+                .controlSize(.large)
+                .disabled(model.busy || !model.deleteConfirmed(typed))
+                .accessibilityIdentifier("group.deleteConfirm")
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+            .navigationTitle(language.t("groups:modals.delete.title", ["name": .string(model.groupName)]))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(language.t("common:actions.cancel")) { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+        .onAppear { focused = true }
     }
 }

@@ -99,9 +99,9 @@ struct NotificationRow: View {
     /// amber, the summaries in green.
     static func colour(_ type: String) -> Color {
         switch type {
-        case "budget", "reminder", "nudge": return Theme.Palette.amber400
-        case "digest", "settlement": return Color(hex: 0x2E9B62)
-        default: return NativeStyle.coral
+        case "budget", "reminder", "nudge": return NativeTone.amber
+        case "digest", "settlement": return NativeTone.green
+        default: return NativeTone.coral
         }
     }
 }

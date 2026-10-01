@@ -68,7 +68,7 @@ function Card({ settings }) {
   )
 }
 
-// The next top-up; "Fix days" opens the days of the month it pays for, in place.
+// The next top-up; "Edit days" opens the days of the month it pays for, in place.
 function NextCard({ settings, next }) {
   const t = useT('vouchers')
   const [open, setOpen] = useState(false)

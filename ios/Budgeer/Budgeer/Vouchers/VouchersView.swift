@@ -1,6 +1,6 @@
 // Meal vouchers (from Home's card, More › Money once set up), after the web's
 // Vouchers page: what's on the card with this month's top-ups and spending,
-// the next top-up with "Fix days" opening in place (a stepper, the new
+// the next top-up with "Edit days" opening in place (a stepper, the new
 // amount, Save or Cancel), and the card's history month by month (tap an
 // expense to edit it; Show older). The gear opens Settings › Meal vouchers;
 // without a setup the page offers to set it up. Every figure and word is
@@ -122,7 +122,7 @@ struct VouchersView: View {
     private func nextSection(_ figures: VoucherFigures) -> some View {
         Section {
             HStack(alignment: .center, spacing: 12) {
-                NativeIconTile(symbol: "ticket.fill", color: NativeStyle.amber, size: 34)
+                NativeIconTile(symbol: "ticket.fill", color: NativeTone.amber, size: 34)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(figures.next.amount)
                         .font(.headline)
@@ -133,7 +133,7 @@ struct VouchersView: View {
                 Spacer(minLength: 8)
                 if model.fixing == nil {
                     Button {
-                        withAnimation(.snappy) { model.startFix() }
+                        withAnimation(NativeMotion.expand) { model.startFix() }
                     } label: {
                         Label(language.t("vouchers:fix.button"), systemImage: "pencil")
                     }
@@ -151,7 +151,7 @@ struct VouchersView: View {
         .listRowBackground(NativeStyle.card)
     }
 
-    /// Fix days in place: the month's days worked, a stepper, what the top-up comes to, Save or Cancel.
+    /// Edit days in place: the month's days worked, a stepper, what the top-up comes to, Save or Cancel.
     @ViewBuilder
     private func fixRows(_ fix: DaysFix) -> some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -178,7 +178,7 @@ struct VouchersView: View {
                     .tint(NativeStyle.solid)
                     .disabled(model.busy)
                     .accessibilityIdentifier("vouchers.fixSave")
-                Button(language.t("vouchers:fix.cancel")) { withAnimation(.snappy) { model.cancelFix() } }
+                Button(language.t("vouchers:fix.cancel")) { withAnimation(NativeMotion.expand) { model.cancelFix() } }
                     .buttonStyle(.borderless)
                     .disabled(model.busy)
             }
@@ -258,7 +258,7 @@ struct VouchersView: View {
                 CategoryBadge(look: look, size: 36)
             } else {
                 NativeIconTile(symbol: line.type == "topup" ? "ticket.fill" : "wallet.pass.fill",
-                               color: line.type == "topup" ? NativeStyle.amber : SettingsRow.slate, size: 36)
+                               color: line.type == "topup" ? NativeStyle.amber : NativeTone.sand, size: 36)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(line.title).font(.body.weight(.medium)).lineLimit(1)

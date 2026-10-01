@@ -275,7 +275,7 @@ struct AiHelpersView: View {
             }
             Section {
                 HStack(alignment: .top, spacing: 14) {
-                    NativeIconTile(symbol: "checkmark.shield.fill", color: SettingsRow.green)
+                    NativeIconTile(symbol: "checkmark.shield.fill", color: NativeTone.green)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(language.t("ai:settings.note")).font(.subheadline)
                         Text(language.t("ai:settings.noteMore")).font(.footnote).foregroundStyle(.secondary)
