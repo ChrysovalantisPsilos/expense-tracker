@@ -116,11 +116,9 @@ struct AccountView: View {
     /// Getting paid: the IBAN, Revolut tag and PayPal.me name, then Save.
     private var payment: some View {
         Section {
-            field("settings:payment.iban", text: $model.iban, id: "account.iban")
-            field("settings:payment.revolut", prompt: "settings:payment.revolutPlaceholder", text: $model.revolut,
-                  id: "account.revolut")
-            field("settings:payment.paypal", prompt: "settings:payment.paypalPlaceholder", text: $model.paypal,
-                  id: "account.paypal")
+            GettingPaidFields(iban: $model.iban, revolut: $model.revolut, paypal: $model.paypal, ids: "account") { field in
+                field.padding(.vertical, 2)
+            }
             Button {
                 Task { await model.savePayment() }
             } label: {
@@ -136,17 +134,6 @@ struct AccountView: View {
         .listRowBackground(NativeStyle.card)
     }
 
-    private func field(_ label: String, prompt: String? = nil, text: Binding<String>, id: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(language.t(label)).font(.footnote).foregroundStyle(.secondary)
-            TextField(prompt.map { language.t($0) } ?? "", text: text)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .accessibilityIdentifier(id)
-        }
-        .padding(.vertical, 2)
-    }
-
     /// The photo as a JPEG at most 1024 px across (the avatars bucket's limit is generous; a profile picture needs no more).
     static func jpeg(_ image: UIImage) -> Data? {
         let side = max(image.size.width, image.size.height)
@@ -158,5 +145,37 @@ struct AccountView: View {
             image.draw(in: CGRect(origin: .zero, size: size))
         }
         return resized.jpegData(compressionQuality: 0.85)
+    }
+}
+
+/// Getting paid's three fields (the IBAN, the Revolut tag, the PayPal.me
+/// name), each its name over the field: Settings › Account's, and Settle
+/// up's ask. `row` dresses each one for where it sits.
+@MainActor
+struct GettingPaidFields<Row: View>: View {
+    @Binding var iban: String
+    @Binding var revolut: String
+    @Binding var paypal: String
+    /// The fields' accessibility identifiers' prefix ("account.iban", …).
+    let ids: String
+    @ViewBuilder let row: (AnyView) -> Row
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        row(field("settings:payment.iban", text: $iban, id: "\(ids).iban"))
+        row(field("settings:payment.revolut", prompt: "settings:payment.revolutPlaceholder", text: $revolut,
+                  id: "\(ids).revolut"))
+        row(field("settings:payment.paypal", prompt: "settings:payment.paypalPlaceholder", text: $paypal,
+                  id: "\(ids).paypal"))
+    }
+
+    private func field(_ label: String, prompt: String? = nil, text: Binding<String>, id: String) -> AnyView {
+        AnyView(VStack(alignment: .leading, spacing: 4) {
+            Text(language.t(label)).font(.footnote).foregroundStyle(.secondary)
+            TextField(prompt.map { language.t($0) } ?? "", text: text)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .accessibilityIdentifier(id)
+        })
     }
 }

@@ -1,9 +1,13 @@
 // Settle up, after the web's SettleUpPage: always from the user's side (they
 // paid someone, or someone paid them), opening on the biggest payment
 // they're part of, with the suggestions one tap away, a reminder for
-// someone who owes them, and "Pay Sam directly" from the payment details
-// Sam saved. The rules are settleForm.js's (SettleFigures); the writes are
-// the web's (add_settlement, nudge_member, member_payment_info).
+// someone who owes them, "Pay Sam directly" from the payment details Sam
+// saved, and, when you're the one being paid and have none, the web's
+// one-time ask for yours (PaymentDetailsAsk), filled in place and saved as
+// Settings › Account › Getting paid saves them. The rules are settleForm.js's
+// (SettleFigures) and payLinks.js's; the reads and writes are the web's
+// (add_settlement, nudge_member, member_payment_info, my_payment_info,
+// set_payment_info).
 import Foundation
 import Observation
 import BudgeerCore
@@ -31,18 +35,36 @@ final class SettleUpModel {
     private(set) var payInfo: JSONValue?
     private var payFor: String?
 
+    /// The ask for your payment details: your details (nil until read),
+    /// "Not now" (this device remembers it, as the web's browser does), the
+    /// fields once opened, and what saving them said.
+    private var myInfo: JSONValue?
+    private(set) var askDismissed: Bool
+    private(set) var askOpen = false
+    var iban = ""
+    var revolut = ""
+    var paypal = ""
+    private(set) var askProblem: String?
+
     private let balances: JSONValue
     private let data: DataLayer
     private let core: BudgeerCore
+    private let defaults: UserDefaults
+
+    /// STORAGE_KEYS.paymentAskDismissed, the web's own key.
+    static let askKey = "budge:paymentAsk"
 
     init(group: JSONValue, members: JSONValue, balances: JSONValue, myMemberId: String, data: DataLayer,
-         core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() }) {
+         core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() },
+         defaults: UserDefaults = .standard) {
         self.group = group
         self.members = members
         self.balances = balances
         self.myMemberId = myMemberId
         self.data = data
         self.core = core
+        self.defaults = defaults
+        askDismissed = defaults.string(forKey: SettleUpModel.askKey) == "1"
         let today = (try? core.isoDate(now())) ?? ""
         let opened = try? SettleFigures.open(group: group, members: members, balances: balances, myMemberId: myMemberId,
                                              today: today, core: core)
@@ -129,6 +151,55 @@ final class SettleUpModel {
         guard member?["user_id"]?.stringValue != nil else { return }
         let info = (try? await data.groups.memberPaymentInfo(memberId: id)) ?? [:]
         if payFor == id { payInfo = info }
+    }
+
+    // MARK: Getting paid (the web's PaymentDetailsAsk)
+
+    /// The ask shows: you're being paid, your details are read and empty,
+    /// and "Not now" wasn't tapped (payLinks.askForPaymentDetails).
+    var asksForDetails: Bool {
+        let args: JSONValue = ["direction": .string(direction), "info": myInfo ?? .null, "dismissed": .bool(askDismissed)]
+        return (try? core.call("payLinks", "askForPaymentDetails", [args])) ?? false
+    }
+
+    /// Read your own details once, when you're the one being paid (none on a failure: just don't ask).
+    func loadMyInfo() async {
+        guard direction == "in", !askDismissed, myInfo == nil else { return }
+        myInfo = try? await data.profile.myPaymentInfo()
+    }
+
+    /// "Add payment details": the fields, in place.
+    func openAsk() {
+        askOpen = true
+    }
+
+    /// "Not now", remembered on this device.
+    func notNow() {
+        defaults.set("1", forKey: SettleUpModel.askKey)
+        askDismissed = true
+        askOpen = false
+    }
+
+    /// Save the details as Getting paid saves them (payLinks.paymentDetailsToSave,
+    /// set_payment_info); once in, the ask goes.
+    func saveDetails() async {
+        let input: JSONValue = ["iban": .string(iban), "revolut": .string(revolut), "paypal": .string(paypal)]
+        guard let details = try? core.json("payLinks", "paymentDetailsToSave", [input]) else { return }
+        if let error = details["error"]?.stringValue {
+            askProblem = core.text(error)
+            return
+        }
+        busy = true
+        defer { busy = false }
+        do {
+            try await data.profile.savePaymentInfo(details)
+            askProblem = nil
+            askOpen = false
+            myInfo = (try? await data.profile.myPaymentInfo()) ?? myInfo
+            message = core.text("settings:payment.saved")
+        } catch {
+            askProblem = UserMessage.of(error, core: core)
+        }
     }
 
     // MARK: Writes

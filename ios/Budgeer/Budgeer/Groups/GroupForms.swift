@@ -194,6 +194,63 @@ struct GroupExpenseForm<Extra: View>: View {
 
 // MARK: Settle up
 
+/// Settle up's one-time ask when you're being paid and friends have no way
+/// to pay you yet (the web's PaymentDetailsAsk): Add payment details opens
+/// Getting paid's three fields here, saved as Settings saves them; Not now is
+/// remembered on this phone.
+@MainActor
+struct PaymentDetailsAsk: View {
+    @Bindable var model: SettleUpModel
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                NativeIconTile(symbol: "building.columns.fill", color: NativeStyle.coral, size: 30)
+                Text(language.t("groups:paymentAsk.body")).font(.subheadline)
+            }
+            if model.askOpen {
+                VStack(spacing: 0) {
+                    GettingPaidFields(iban: $model.iban, revolut: $model.revolut, paypal: $model.paypal, ids: "ask") { field in
+                        field.padding(.vertical, 8)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                if let problem = model.askProblem {
+                    Text(problem).font(.footnote.weight(.semibold)).foregroundStyle(NativeStyle.negative)
+                }
+                Text(language.t("settings:payment.lead")).font(.caption).foregroundStyle(.secondary)
+            }
+            HStack(spacing: 10) {
+                Button { model.notNow() } label: {
+                    Text(language.t("groups:paymentAsk.notNow")).frame(maxWidth: .infinity)
+                }
+                .nativeGlassButton()
+                .accessibilityIdentifier("ask.notNow")
+                if model.askOpen {
+                    Button { Task { await model.saveDetails() } } label: {
+                        Text(language.t("settings:account.save")).frame(maxWidth: .infinity)
+                    }
+                    .nativeGlassButton(prominent: true)
+                    .disabled(model.busy)
+                    .accessibilityIdentifier("ask.save")
+                } else {
+                    Button { model.openAsk() } label: {
+                        Text(language.t("groups:paymentAsk.add")).frame(maxWidth: .infinity)
+                    }
+                    .nativeGlassButton(prominent: true)
+                    .accessibilityIdentifier("ask.add")
+                }
+            }
+        }
+        .padding(16)
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .animation(.snappy, value: model.askOpen)
+    }
+
+}
+
 /// Settle up, as a sheet: a hero with who pays whom (both avatars, the
 /// arrow between) over the amount in big figures, I paid | I received and
 /// the person as avatar chips, the suggested payments (a tap fills the form;
@@ -222,6 +279,7 @@ struct SettleUpView: View {
                     } else {
                         hero
                         who
+                        if model.asksForDetails { PaymentDetailsAsk(model: model) }
                         if !model.suggestions.isEmpty { suggestions }
                         NativeFormCard {
                             DayRow(title: language.t("groups:settle.date"), iso: $model.settledAt)
@@ -271,7 +329,10 @@ struct SettleUpView: View {
                         .accessibilityLabel(language.t("common:actions.cancel"))
                 }
             }
-            .task(id: "\(model.otherId)|\(model.direction)") { await model.loadPayInfo() }
+            .task(id: "\(model.otherId)|\(model.direction)") {
+                await model.loadPayInfo()
+                await model.loadMyInfo()
+            }
         }
         .presentationDetents([.large])
     }

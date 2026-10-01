@@ -215,6 +215,10 @@ protocol GroupsRepository: Sendable {
     func groupComments(groupId: String, targetId: String) async throws -> JSONValue
     /// member_payment_info: a co-member's IBAN / Revolut / PayPal ({} without).
     func memberPaymentInfo(memberId: String) async throws -> JSONValue
+    /// preview_link_invite: a share link's { status, group_id?, preview? } (never writes).
+    func previewLinkInvite(token: String) async throws -> JSONValue
+    /// group-report: the group's statement as a PDF, its bytes.
+    func groupStatement(groupId: String) async throws -> Data
 
     /// create_group: the new group's id.
     func createGroup(name: String, currency: String) async throws -> String
@@ -235,6 +239,8 @@ protocol GroupsRepository: Sendable {
     func deleteGroup(id: String) async throws
     /// respond_to_invite: the group's id when accepted.
     func respondToInvite(id: String, accept: Bool) async throws -> String?
+    /// join_via_link: join through a share link (the link stays open): the group's id.
+    func joinViaLink(token: String) async throws -> String
     /// invite_user_to_group: 'invited', 'no_account', 'already_member' or 'already_invited'.
     func inviteExistingUser(groupId: String, email: String) async throws -> String?
     /// A group_invites row (its creator and expiry are the server's): its token.

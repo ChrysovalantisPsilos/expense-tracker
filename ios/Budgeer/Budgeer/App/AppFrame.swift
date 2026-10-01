@@ -17,6 +17,8 @@ enum AppRoute: Hashable {
     case language
     case group(String)
     case newGroup
+    /// Join a group from an invite link: its token (a budgeer://join link), or nil to paste one.
+    case join(String?)
     case notifications
     // Settings' pages.
     case account
@@ -80,6 +82,13 @@ final class AppRouter {
         case .groups: groups.append(AppRoute.notifications)
         case .more: more.append(AppRoute.notifications)
         }
+    }
+
+    /// An invite link opened from outside: the join page on the Groups tab.
+    func openJoin(_ token: String) {
+        tab = .groups
+        groups = NavigationPath()
+        groups.append(AppRoute.join(token))
     }
 
     /// A web path (a notification's, bellMath.notificationPath) as a tab and page.
@@ -218,6 +227,12 @@ struct AppFrame: View {
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.
         .task(id: user.id) { await container.feed.start(userId: user.id) }
+        // A budgeer://join link (RootView keeps it until the frame is up).
+        .onChange(of: container.joinInbox.token, initial: true) { _, token in
+            guard let token else { return }
+            container.joinInbox.token = nil
+            router.openJoin(token)
+        }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
@@ -403,6 +418,12 @@ struct AppFrame: View {
             }
         case .newGroup:
             NewGroupHost(data: container.data, site: container.config.siteURL) { id in
+                router.groups = NavigationPath()
+                router.groups.append(AppRoute.group(id))
+                Task { await models.groups.load() }
+            }
+        case .join(let token):
+            JoinHost(token: token, data: container.data) { id in
                 router.groups = NavigationPath()
                 router.groups.append(AppRoute.group(id))
                 Task { await models.groups.load() }

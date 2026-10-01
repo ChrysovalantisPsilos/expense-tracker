@@ -2,9 +2,9 @@
 // waiting for an answer first, as a banner card each (Accept / Decline),
 // then the groups as a grid of square cards (the picture, or the brand's
 // gradient with the group's letters; the name, the avatars, and your
-// balance as a chip in the corner), New group last. A card opens the
-// group's page; New group opens its flow. Every word is GroupsModel's (the
-// core's).
+// balance as a chip in the corner), New group last, then Join with a link.
+// A card opens the group's page; New group and Join open their flows.
+// Every word is GroupsModel's (the core's).
 import SwiftUI
 
 @MainActor
@@ -30,6 +30,7 @@ struct GroupsView: View {
                         empty
                     } else {
                         grid(figures.cards)
+                        joinRow
                     }
                 }
             }
@@ -55,8 +56,30 @@ struct GroupsView: View {
                 Text(language.t("groups:list.empty.action"))
             }
             .nativeGlassButton(prominent: true)
+            NavigationLink(value: AppRoute.join(nil)) {
+                Label(language.t("ios:native.join.entry"), systemImage: "link")
+            }
+            .nativeGlassButton()
+            .accessibilityIdentifier("groups.join")
         }
         .padding(.top, 40)
+    }
+
+    /// Join with a link: under the grid, as a row.
+    private var joinRow: some View {
+        NavigationLink(value: AppRoute.join(nil)) {
+            HStack(spacing: 12) {
+                NativeIconTile(symbol: "link", color: NativeStyle.coral, size: 30)
+                Text(language.t("ios:native.join.entry")).font(.subheadline.weight(.semibold))
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right").font(.footnote.weight(.bold)).foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 52)
+            .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("groups.join")
     }
 
     // MARK: The grid

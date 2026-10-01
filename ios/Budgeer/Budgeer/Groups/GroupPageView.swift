@@ -4,9 +4,11 @@
 // timeline of expenses, settlements
 // and comments, newest at the bottom like Messages, with the comment field
 // floating over its foot. Add expense and the … menu (Members, Share
-// summary, Rename, Leave, Delete) are in the bar; who owes whom is the
-// Balances page. Settling the group up bursts confetti behind the cards.
-// Everything it shows is GroupModel's (the core's).
+// summary, Download statement (PDF) to the share sheet, Rename (Edit group:
+// the name and the picture, also from the camera on the owner's picture),
+// Leave, Delete) are in the bar; who owes whom is the Balances page.
+// Settling the group up bursts confetti behind the cards. Everything it
+// shows is GroupModel's (the core's).
 import SwiftUI
 
 /// Holds one group's model while its page is in the stack.
@@ -56,7 +58,8 @@ struct GroupPageView: View {
     @State private var showBalances = false
     @State private var confirmLeave = false
     @State private var confirmDelete = false
-    @State private var renaming = false
+    @State private var editing = false
+    @State private var sharing = false
     @State private var blocked = false
     @State private var typed = ""
     @State private var comment = ""
@@ -128,10 +131,9 @@ struct GroupPageView: View {
                     + NativeRich.text(model.rich(language.t("groups:modals.deleteBlocked.stillIn",
                                                             ["names": .string(model.figures?.stillIn ?? "")])))
             }
-            .alert(language.t("groups:edit.title"), isPresented: $renaming) {
-                TextField(language.t("groups:edit.name"), text: $typed)
-                Button(language.t("common:actions.save")) { Task { _ = await model.rename(typed) } }
-                Button(language.t("common:actions.cancel"), role: .cancel) {}
+            .navigationDestination(isPresented: $editing) { EditGroupView(model: model) }
+            .sheet(isPresented: $sharing) {
+                if let file = model.statementFile { ShareSheet(items: [file]) }
             }
     }
 
@@ -165,6 +167,22 @@ struct GroupPageView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 14) {
                 GroupPicture(imageUrl: figures.imageUrl, colour: figures.colour, size: 58)
+                    .overlay(alignment: .bottomTrailing) {
+                        // The owner changes the picture (and the name) on Edit group.
+                        if figures.isOwner {
+                            Button { editing = true } label: {
+                                Image(systemName: "camera.fill")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundStyle(NativeStyle.tint)
+                                    .frame(width: 26, height: 26)
+                                    .nativeGlass(Circle(), interactive: true)
+                            }
+                            .buttonStyle(.plain)
+                            .offset(x: 6, y: 6)
+                            .accessibilityLabel(language.t("groups:header.changePhoto"))
+                            .accessibilityIdentifier("group.photo")
+                        }
+                    }
                 VStack(alignment: .leading, spacing: 5) {
                     Text(figures.name)
                         .font(NativeStyle.title(28, lang: language.current, relativeTo: .largeTitle))
@@ -315,11 +333,17 @@ struct GroupPageView: View {
                         Label(language.t("groups:header.shareSummary"), systemImage: "square.and.arrow.up")
                     }
                 }
+                Button {
+                    Task {
+                        await model.makeStatement()
+                        if model.statementFile != nil { sharing = true }
+                    }
+                } label: {
+                    Label(language.t("groups:header.statement"), systemImage: "doc.richtext")
+                }
+                .disabled(model.busy)
                 if model.figures?.isOwner == true {
-                    Button {
-                        typed = model.groupName
-                        renaming = true
-                    } label: {
+                    Button { editing = true } label: {
                         Label(language.t("groups:header.rename"), systemImage: "pencil")
                     }
                 }

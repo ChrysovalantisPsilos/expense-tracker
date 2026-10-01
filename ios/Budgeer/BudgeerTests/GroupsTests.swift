@@ -211,7 +211,7 @@ final class GroupsModelTests: XCTestCase {
         model.name = " Ski week "
         model.shareLink = true
         XCTAssertEqual(model.nextSteps.count, 4)
-        let cover = NewGroupModel.CoverFile(data: Data([1, 2, 3]), contentType: "image/png", ext: "png")
+        let cover = GroupCoverFile(data: Data([1, 2, 3]), contentType: "image/png", ext: "png")
         let made = await model.create(cover: cover)
         XCTAssertTrue(made)
         XCTAssertEqual(store.groupWrites.map { $0.name },

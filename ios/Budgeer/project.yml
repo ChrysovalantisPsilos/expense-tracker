@@ -100,6 +100,9 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         # budgeer://auth-callback: where Google sign-in returns (a Redirect URL
         # in both Supabase projects; SupabaseAuthService.callback).
+        # budgeer://join/<token>: an invite link opened in the app (RootView;
+        # the website's https links stay as they are: Universal Links need
+        # Associated Domains, a paid developer account's).
         CFBundleURLTypes:
           - CFBundleURLName: com.budgeer.app.auth
             CFBundleURLSchemes: [budgeer]
@@ -107,6 +110,9 @@ targets:
         # The Face ID lock (AppLock); each language's words are the generated
         # InfoPlist.strings (ios:native.lock.usage).
         NSFaceIDUsageDescription: Budgeer uses Face ID to keep your money private.
+        # Scan a receipt on Add; each language's words are the generated
+        # InfoPlist.strings (ios:native.receipt.cameraUsage).
+        NSCameraUsageDescription: Budgeer uses the camera to read a receipt on this iPhone. The photo isn’t saved or uploaded.
         CFBundleDevelopmentRegion: en
         UIAppFonts:
           - Poppins-SemiBold.ttf

@@ -72,12 +72,14 @@ struct CoverColour: Codable, Equatable, Sendable {
     }
 }
 
-/// A cover: the photo, or the emoji (or the people symbol) on its colour;
-/// square-cornered for the image to upload.
+/// A cover: the photo, or the emoji (or the group's photo now, else the
+/// people symbol) on its colour; square-cornered for the image to upload.
 struct GroupCoverView: View {
     var photo: UIImage? = nil
     var emoji: String? = nil
     var colour: CoverColour = GroupCoverArt.colour("")
+    /// The group's photo now, under a new pick (the edit page).
+    var current: String? = nil
     var size: CGFloat = 132
     var rounded = true
 
@@ -93,6 +95,13 @@ struct GroupCoverView: View {
                     Image(systemName: "person.2.fill")
                         .font(.system(size: size * 0.32, weight: .semibold))
                         .foregroundStyle(Color.white.opacity(0.92))
+                    if let current, let url = URL(string: current) {
+                        AsyncImage(url: url) { image in
+                            image.resizable().scaledToFill()
+                        } placeholder: {
+                            Color.clear
+                        }
+                    }
                 }
             }
         }
@@ -101,69 +110,22 @@ struct GroupCoverView: View {
     }
 }
 
+/// The picture's choices, the website's CoverPicker: a photo from the
+/// library, or an emoji on a colour (groupCover.coverChoices), with the
+/// preview on top and × to keep the picture as it was. `current` is the
+/// group's photo now (the edit page).
 @MainActor
-struct NewGroupView: View {
-    @Bindable var model: NewGroupModel
-    let onCreated: (String) -> Void
+struct GroupCoverPicker: View {
+    @Binding var photo: UIImage?
+    @Binding var emoji: String?
+    @Binding var colour: String
+    var current: String? = nil
     @Environment(AppLanguage.self) private var language
     @State private var pick: PhotosPickerItem?
-    @State private var photo: UIImage?
-    @State private var emoji: String?
-    @State private var colour: String
-    @FocusState private var typing: Bool
-
-    init(model: NewGroupModel, onCreated: @escaping (String) -> Void, photo: UIImage? = nil, emoji: String? = nil,
-         colour: String = "") {
-        self.model = model
-        self.onCreated = onCreated
-        _photo = State(initialValue: photo)
-        _emoji = State(initialValue: emoji)
-        _colour = State(initialValue: colour)
-    }
 
     var body: some View {
-        Group {
-            if let done = model.done { doneView(done) } else { form }
-        }
-        .background(NativeStyle.canvas.ignoresSafeArea())
-        .navigationTitle(language.t("groups:create.title"))
-        .navigationBarTitleDisplayMode(.inline)
-        .task { await model.load() }
-        .onChange(of: pick) { _, item in
-            guard let item else { return }
-            Task {
-                if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
-                    photo = image
-                }
-            }
-        }
-    }
-
-    // MARK: The form
-
-    private var form: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                if let message = model.message {
-                    NativeNotice(text: message, warning: true).padding(.horizontal, 4)
-                }
-                cover
-                details
-                people
-                next
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 40)
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .safeAreaInset(edge: .bottom, spacing: 0) { createBar }
-        .nativeTabBarRoom()
-    }
-
-    private var cover: some View {
         VStack(spacing: 14) {
-            GroupCoverView(photo: photo, emoji: emoji, colour: GroupCoverArt.colour(colour))
+            GroupCoverView(photo: photo, emoji: emoji, colour: GroupCoverArt.colour(colour), current: current)
                 .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 10)
                 .accessibilityLabel(language.t("groups:cover.title"))
             HStack(spacing: 10) {
@@ -176,9 +138,10 @@ struct NewGroupView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("newGroup.photo")
-                if photo != nil {
+                if photo != nil || emoji != nil {
                     Button {
                         photo = nil
+                        emoji = nil
                         pick = nil
                     } label: {
                         Label(language.t("groups:cover.reset"), systemImage: "xmark")
@@ -247,6 +210,71 @@ struct NewGroupView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
+        .onChange(of: pick) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self), let image = UIImage(data: data) {
+                    photo = image
+                    emoji = nil
+                }
+            }
+        }
+    }
+}
+
+@MainActor
+struct NewGroupView: View {
+    @Bindable var model: NewGroupModel
+    let onCreated: (String) -> Void
+    @Environment(AppLanguage.self) private var language
+    @State private var photo: UIImage?
+    @State private var emoji: String?
+    @State private var colour: String
+    @FocusState private var typing: Bool
+
+    init(model: NewGroupModel, onCreated: @escaping (String) -> Void, photo: UIImage? = nil, emoji: String? = nil,
+         colour: String = "") {
+        self.model = model
+        self.onCreated = onCreated
+        _photo = State(initialValue: photo)
+        _emoji = State(initialValue: emoji)
+        _colour = State(initialValue: colour)
+    }
+
+    var body: some View {
+        Group {
+            if let done = model.done { doneView(done) } else { form }
+        }
+        .background(NativeStyle.canvas.ignoresSafeArea())
+        .navigationTitle(language.t("groups:create.title"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await model.load() }
+    }
+
+    // MARK: The form
+
+    private var form: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                if let message = model.message {
+                    NativeNotice(text: message, warning: true).padding(.horizontal, 4)
+                }
+                cover
+                details
+                people
+                next
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 40)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) { createBar }
+        .nativeTabBarRoom()
+    }
+
+    private var cover: some View {
+        GroupCoverPicker(photo: $photo, emoji: $emoji, colour: $colour)
     }
 
     private var details: some View {
@@ -362,7 +390,9 @@ struct NewGroupView: View {
     private var createBar: some View {
         Button {
             Task {
-                if await model.create(cover: coverFile()) { NativeHaptics.success() }
+                if await model.create(cover: GroupCoverFile.make(photo: photo, emoji: emoji, colour: colour)) {
+                    NativeHaptics.success()
+                }
             }
         } label: {
             Group {
@@ -438,13 +468,14 @@ struct NewGroupView: View {
         }
         .nativeTabBarRoom()
     }
+}
 
-    // MARK: The picture as an image
-
+extension GroupCoverFile {
     /// The cover to upload: the photo as a JPEG at most 1600 px across (the
     /// bucket takes 5 MB), or the emoji on its colour as the website draws it
     /// (groupCover.COVER_IMAGE: a 600 px PNG); none when neither was picked.
-    private func coverFile() -> NewGroupModel.CoverFile? {
+    @MainActor
+    static func make(photo: UIImage?, emoji: String?, colour: String) -> GroupCoverFile? {
         if let photo {
             let side = max(photo.size.width, photo.size.height)
             let scale = min(1, 1600 / max(side, 1))
@@ -455,14 +486,14 @@ struct NewGroupView: View {
                 photo.draw(in: CGRect(origin: .zero, size: size))
             }
             guard let data = resized.jpegData(compressionQuality: 0.85) else { return nil }
-            return NewGroupModel.CoverFile(data: data, contentType: "image/jpeg", ext: "jpg")
+            return GroupCoverFile(data: data, contentType: "image/jpeg", ext: "jpg")
         }
         guard let emoji, let image = GroupCoverArt.choices.image else { return nil }
         let renderer = ImageRenderer(content: GroupCoverView(emoji: emoji, colour: GroupCoverArt.colour(colour),
                                                              size: image.size, rounded: false))
         renderer.scale = 1
         guard let data = renderer.uiImage?.pngData() else { return nil }
-        return NewGroupModel.CoverFile(data: data, contentType: image.type, ext: image.ext)
+        return GroupCoverFile(data: data, contentType: image.type, ext: image.ext)
     }
 }
 

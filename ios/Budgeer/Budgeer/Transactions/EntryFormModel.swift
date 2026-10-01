@@ -5,7 +5,8 @@
 // every start (newForm, formFromRow, ruleToForm), every derived value
 // (entryDerived, entryErrors, keptRate, effectiveRate, fxPreview, the
 // Repeat lines), every save (entrySaveFields, ruleFromForm, planRepeat) and
-// Type it's fill (aiMath.fillPlan, settlePendingCategory) is a core call.
+// Type it's fill (aiMath.fillPlan, settlePendingCategory) and a receipt's
+// (receiptRead.receiptFill, ReceiptModel) is a core call.
 // This file holds the fields and does the I/O.
 import Foundation
 import Observation
@@ -96,6 +97,8 @@ final class EntryFormModel {
     private(set) var notice: String?
     /// Saved, but the repeat part failed (a warning, the entry is in).
     private(set) var repeatWarning: String?
+    /// Scan a receipt (a new expense only, as on the web).
+    let receipt: ReceiptModel
 
     init(mode: Mode, kind: String = "expense", repeats: Bool = false, transaction: JSONValue? = nil,
          rule: JSONValue? = nil, initial: JSONValue = .null, preset: String? = nil, data: DataLayer,
@@ -110,6 +113,7 @@ final class EntryFormModel {
         self.data = data
         self.core = core
         self.now = now
+        receipt = ReceiptModel(core: core)
     }
 
     private var today: String { (try? core.isoDate(now())) ?? "" }
@@ -424,6 +428,22 @@ final class EntryFormModel {
 
     func unmark(_ field: String) {
         if marks.contains(field) { marks.remove(field) }
+    }
+
+    // MARK: A receipt
+
+    /// "Scan a receipt" is offered on a new expense (TransactionForm).
+    var offersReceipt: Bool { mode == .add && kind == "expense" }
+
+    /// "Use these": what the receipt changes (receiptFill) goes in, in the web's order.
+    func useReceipt() {
+        guard let scan = receipt.use() else { return }
+        let form: JSONValue = ["currency": .string(currency), "description": .string(description)]
+        guard let fill = try? core.json("receiptRead", "receiptFill", [scan, form]) else { return }
+        if let amount = fill["amount"]?.stringValue { setAmount(amount) }
+        if let day = fill["date"]?.stringValue { changeDate(day) }
+        if let shop = fill["description"]?.stringValue { setDescription(shop) }
+        if let code = fill["currency"]?.stringValue { pickCurrency(code) }
     }
 
     // MARK: Type it

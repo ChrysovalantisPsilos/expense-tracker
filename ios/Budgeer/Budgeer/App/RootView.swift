@@ -1,7 +1,7 @@
 // What the window shows for each session state (SessionStore): a spinner
 // while the stored session is read or the legal check runs, the sign-in
 // screen, the legal gate, or the app's tabs (under the Face ID lock when
-// it's on).
+// it's on). An invite link the app is opened with waits for the tabs.
 import SwiftUI
 
 @MainActor
@@ -33,6 +33,8 @@ struct RootView: View {
             }
         }
         .task { await session.start() }
+        // budgeer://join/<token>: shown on the Groups tab once signed in.
+        .onOpenURL { url in _ = container.joinInbox.open(url) }
         // Settings › Appearance: this device's light, dark or the phone's.
         .onChange(of: appearance, initial: true) { _, pref in AppAppearance.apply(pref) }
         .onChange(of: session.state) { _, state in
