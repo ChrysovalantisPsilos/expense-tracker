@@ -25,6 +25,7 @@ import {
 import {
   settleFormStart, settleOtherLine, settleOthers, settleParties, settleProblem, settleSuggestionParts, settlementArgs,
 } from '../src/features/groups/settleForm.js'
+import { groupColour } from '../src/features/groups/groupCover.js'
 import { setLanguage } from './index.js'
 
 export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
@@ -63,6 +64,7 @@ export function groupPageFigures({ detail, auditLog, counts, userId, now, lang =
   return {
     name: group.name,
     imageUrl: group.image_url ?? null,
+    colour: groupColour(group.id),
     currency: cur,
     total: formatMoney(groupTotal(expenses, cur), cur),
     members: pluralise(members.length, 'member'),

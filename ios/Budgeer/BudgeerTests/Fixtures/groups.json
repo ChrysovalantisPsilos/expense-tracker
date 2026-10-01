@@ -508,6 +508,11 @@
       "owner": {
         "name": "Lisbon trip",
         "imageUrl": null,
+        "colour": {
+          "key": "blue",
+          "from": "#3A78D4",
+          "to": "#7fb3f5"
+        },
         "currency": "EUR",
         "total": "€299.72",
         "members": "4 members",
@@ -869,6 +874,11 @@
       "member": {
         "name": "Lisbon trip",
         "imageUrl": null,
+        "colour": {
+          "key": "blue",
+          "from": "#3A78D4",
+          "to": "#7fb3f5"
+        },
         "currency": "EUR",
         "total": "€299.72",
         "members": "4 members",
@@ -1706,6 +1716,11 @@
       "owner": {
         "name": "Lisbon trip",
         "imageUrl": null,
+        "colour": {
+          "key": "blue",
+          "from": "#3A78D4",
+          "to": "#7fb3f5"
+        },
         "currency": "EUR",
         "total": "299,72 €",
         "members": "4 μέλη",
@@ -2067,6 +2082,11 @@
       "member": {
         "name": "Lisbon trip",
         "imageUrl": null,
+        "colour": {
+          "key": "blue",
+          "from": "#3A78D4",
+          "to": "#7fb3f5"
+        },
         "currency": "EUR",
         "total": "299,72 €",
         "members": "4 μέλη",
