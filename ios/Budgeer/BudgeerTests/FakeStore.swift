@@ -35,12 +35,18 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     private(set) var budgetDeletes: [(categoryId: String, period: String)] = []
     private(set) var copies: [String] = []
     private(set) var aiLines: [String] = []
+    /// profiles.language writes (nil = follow the device).
+    private(set) var savedLanguages: [String?] = []
     /// Set to make every write fail.
     var writeError: Error?
 
     init() {}
 
     func profile() async throws -> JSONValue { try profileResult.get() }
+    func saveLanguage(_ language: String?) async throws {
+        if let writeError { throw writeError }
+        savedLanguages.append(language)
+    }
     func mealVouchers() async throws -> JSONValue { try vouchersResult.get() }
 
     func categories(kind: String?) async throws -> JSONValue {

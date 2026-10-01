@@ -31,6 +31,8 @@ export const CORE_MODULES = {
   savings: 'src/shared/lib/savings.js',
   formChecks: 'src/shared/lib/formChecks.js',
   fxPreview: 'src/shared/lib/fxPreview.js',
+  // The shared demo login (profiles.is_demo): what it keeps to this device.
+  demoAccount: 'src/shared/lib/demoAccount.js',
   // The design kit's pure rules (a signed amount's tone, a bar's width).
   kitMath: 'src/shared/ui/kit/kitMath.js',
   // The money charts' y-axis tick labels ("1.6k", "1,6 χιλ.").
