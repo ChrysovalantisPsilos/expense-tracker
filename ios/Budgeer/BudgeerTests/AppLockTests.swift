@@ -15,13 +15,13 @@ final class AppLockTests: XCTestCase {
         defaults.removePersistentDomain(forName: "AppLockTests")
     }
 
-    private func lock(_ owner: FakeOwner) -> AppLock {
+    private func makeLock(_ owner: FakeOwner) -> AppLock {
         AppLock(defaults: defaults, owner: owner, now: { [unowned self] in clock })
     }
 
     func testOffUntilTheOwnerTurnsItOn() async {
         let owner = FakeOwner()
-        let lock = lock(owner)
+        let lock = makeLock(owner)
         XCTAssertFalse(lock.enabled)
         XCTAssertFalse(lock.covers)
         lock.wentAway()
@@ -41,9 +41,9 @@ final class AppLockTests: XCTestCase {
 
     func testLocksOnLaunchAndAfterAMinuteAway() async {
         let owner = FakeOwner()
-        await lock(owner).set(true, reason: "r")
+        await makeLock(owner).set(true, reason: "r")
         // The next launch starts locked.
-        let lock = lock(owner)
+        let lock = makeLock(owner)
         XCTAssertTrue(lock.covers)
         owner.answer = false
         await lock.unlock(reason: "r")
@@ -69,8 +69,8 @@ final class AppLockTests: XCTestCase {
 
     func testTurningItOffUnlocksAtOnce() async {
         let owner = FakeOwner()
-        await lock(owner).set(true, reason: "r")
-        let lock = lock(owner)
+        await makeLock(owner).set(true, reason: "r")
+        let lock = makeLock(owner)
         XCTAssertTrue(lock.covers)
         let asked = owner.asked.count
         await lock.set(false, reason: "r")
