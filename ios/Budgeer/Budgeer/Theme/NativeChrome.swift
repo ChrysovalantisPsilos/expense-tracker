@@ -55,7 +55,7 @@ extension EnvironmentValues {
 /// seconds) and clears. Pages draw it behind their cards, so it never
 /// covers words; it never takes a touch.
 struct NativeConfetti: View {
-    var pieces = 70
+    var pieces = 90
     @Environment(\.nativeFrozenMotion) private var frozen
     @State private var start = Date()
     @State private var done = false
@@ -93,13 +93,13 @@ struct NativeConfetti: View {
                 // A fixed spread per piece (no randomness, so a picture is stable).
                 let seed = Double((index * 7919) % 997) / 997
                 let angle = (Double(index) / Double(pieces)) * 2 * Double.pi + seed
-                let speed = 140 + seed * 300
+                let speed = 220 + seed * 380
                 let x = origin.x + cos(angle) * speed * t
                 let y = origin.y + sin(angle) * speed * t * 0.8 + 320 * t * t
                 var piece = context
                 piece.translateBy(x: x, y: y)
                 piece.rotate(by: .radians(seed * 12 + t * 6))
-                piece.opacity = max(0, 1 - t)
+                piece.opacity = max(0, 1 - t * t)
                 let color = NativeConfetti.colors[index % NativeConfetti.colors.count]
                 if index % 4 == 0 {
                     piece.fill(Path(ellipseIn: CGRect(x: -3, y: -3, width: 6, height: 6)), with: .color(color))

@@ -20,6 +20,13 @@ struct HomeView: View {
 
     private static let celebratedKey = "budgeer.celebratedMonths"
 
+    init(model: HomeViewModel, chrome: PageChrome) {
+        self.model = model
+        self.chrome = chrome
+        // The pager opens on the month the model is showing, not always this one.
+        _month = State(initialValue: model.currentValue.isEmpty ? nil : model.currentValue)
+    }
+
     var body: some View {
         List {
             Section { hero }

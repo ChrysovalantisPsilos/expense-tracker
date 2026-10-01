@@ -235,13 +235,20 @@ struct AddSheet: View {
                     }
                     if !entry.sources.isEmpty {
                         if entry.isSavings { Divider() }
-                        Picker(language.t("common:paidFrom.label"), selection: Binding(get: { entry.shownPaidFrom },
-                                                                                      set: { entry.pickPaidFrom($0) })) {
-                            ForEach(entry.sources, id: \.self) { source in
-                                Text(language.t("common:paidFrom.\(source)")).tag(source)
+                        // Outside a Form a menu picker drops its label: the label is its own text.
+                        HStack {
+                            Text(language.t("common:paidFrom.label"))
+                            Spacer(minLength: 12)
+                            Picker(language.t("common:paidFrom.label"), selection: Binding(get: { entry.shownPaidFrom },
+                                                                                          set: { entry.pickPaidFrom($0) })) {
+                                ForEach(entry.sources, id: \.self) { source in
+                                    Text(language.t("common:paidFrom.\(source)")).tag(source)
+                                }
                             }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .fixedSize()
                         }
-                        .pickerStyle(.menu)
                         .padding(.vertical, 6)
                         FormNote(text: language.t("common:paidFrom.\(entry.shownPaidFrom)Info"))
                     }

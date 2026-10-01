@@ -103,11 +103,18 @@ struct GroupExpenseForm<Extra: View>: View {
                             .accessibilityIdentifier("groupExpense.description")
                         if let error = model.errors["description"] { FormNote(text: error, warning: true) }
                         Divider()
-                        Picker(language.t("groups:form.paidBy"), selection: Binding(get: { model.form.paidBy },
-                                                                                   set: { model.pickPayer($0) })) {
-                            ForEach(model.memberRows, id: \.id) { row in Text(row.name).tag(row.id) }
+                        // Outside a Form a menu picker drops its label: the label is its own text.
+                        HStack {
+                            Text(language.t("groups:form.paidBy"))
+                            Spacer(minLength: 12)
+                            Picker(language.t("groups:form.paidBy"), selection: Binding(get: { model.form.paidBy },
+                                                                                       set: { model.pickPayer($0) })) {
+                                ForEach(model.memberRows, id: \.id) { row in Text(row.name).tag(row.id) }
+                            }
+                            .pickerStyle(.menu)
+                            .labelsHidden()
+                            .fixedSize()
                         }
-                        .pickerStyle(.menu)
                         .padding(.vertical, 6)
                         if let error = model.errors["paidBy"] { FormNote(text: error, warning: true) }
                     }

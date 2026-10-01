@@ -27,23 +27,23 @@ final class SnapshotTests: XCTestCase {
 
     // MARK: Signed out
 
-    func testSignInSnapshots() throws {
+    func testSignInSnapshots() async throws {
         for (lang, dark) in SnapshotTests.variants {
             let session = SessionStore(auth: FakeAuthService())
-            try shots(SignInView(model: SignInViewModel(), session: session, site: "https://dev.budgeer.com"),
+            try await shots(SignInView(model: SignInViewModel(), session: session, site: "https://dev.budgeer.com"),
                       name: "signin", lang: lang, dark: dark)
-            try shots(LegalGateView(status: .outdated, session: session), name: "legal", lang: lang, dark: dark)
+            try await shots(LegalGateView(status: .outdated, session: session), name: "legal", lang: lang, dark: dark)
         }
     }
 
-    func testLockSnapshots() throws {
+    func testLockSnapshots() async throws {
         for (lang, dark) in SnapshotTests.variants {
             let defaults = UserDefaults(suiteName: "SnapshotTests.lock")!
             defaults.set(true, forKey: AppLock.key)
             let owner = FakeOwner()
             owner.answer = false
             let lock = AppLock(defaults: defaults, owner: owner)
-            try shots(LockView(lock: lock), name: "lock", lang: lang, dark: dark)
+            try await shots(LockView(lock: lock), name: "lock", lang: lang, dark: dark)
         }
     }
 
@@ -53,14 +53,14 @@ final class SnapshotTests: XCTestCase {
         let fixture = try HomeFixture.load()
         for (lang, dark) in SnapshotTests.variants {
             let model = try await homeModel(fixture, lang: lang)
-            try shots(framed(.home) { NavigationStack { HomeView(model: model, chrome: SnapshotTests.chrome) } },
+            try await shots(framed(.home) { NavigationStack { HomeView(model: model, chrome: SnapshotTests.chrome) } },
                       name: "home", lang: lang, dark: dark, long: 2200)
             // The categories' See all.
-            try shots(framed(.home) { NavigationStack { HomeCategoriesPage(model: model) } },
+            try await shots(framed(.home) { NavigationStack { HomeCategoriesPage(model: model) } },
                       name: "home-categories", lang: lang, dark: dark)
             // A past month that kept every budget.
             await model.setPeriod("m:2020-8")
-            try shots(framed(.home) { NavigationStack { HomeView(model: model, chrome: SnapshotTests.chrome) } },
+            try await shots(framed(.home) { NavigationStack { HomeView(model: model, chrome: SnapshotTests.chrome) } },
                       name: "home-held", lang: lang, dark: dark)
         }
     }
@@ -72,7 +72,7 @@ final class SnapshotTests: XCTestCase {
         let now = TestData.now
         for (lang, dark) in SnapshotTests.variants {
             let home = try await homeModel(fixture, lang: lang)
-            let store = formStore()
+            let store = try formStore()
             let groups = MyGroupsModel(data: store.data, userId: SnapshotTests.user, defaults: defaults())
             // Add, as it first comes up: the amount and the keypad.
             let add = EntryFormModel(mode: .add, data: store.data, core: .shared, now: { now })
@@ -80,23 +80,23 @@ final class SnapshotTests: XCTestCase {
             add.setAmount("12.99")
             add.pickCategory("c-fun")
             add.setDescription("Streaming")
-            try shots(overHome(home) {
+            try await shots(overHome(home) {
                 AddSheet(request: AddRequest(model: add), data: store.data, userId: SnapshotTests.user, groups: groups)
             }, name: "add", lang: lang, dark: dark, settle: 1.6)
             // Edit: a saved expense, the whole sheet.
             let edit = EntryFormModel(mode: .edit, transaction: SnapshotTests.saved, data: store.data, core: .shared,
                                       now: { now })
             await edit.load()
-            try shots(overHome(home) {
+            try await shots(overHome(home) {
                 AddSheet(request: AddRequest(model: edit), data: store.data, userId: SnapshotTests.user, groups: groups)
             }, name: "edit", lang: lang, dark: dark, settle: 1.6)
             // Split with a group: "Who's it for?" on the group's quick form.
             let split = EntryFormModel(mode: .add, transaction: SnapshotTests.saved, data: store.data, core: .shared,
                                        now: { now })
-            try shots(overHome(home) {
+            try await shots(overHome(home) {
                 AddSheet(request: AddRequest(model: split, splitting: SnapshotTests.saved), data: store.data,
                          userId: SnapshotTests.user, groups: groups)
-            }, name: "add-group", lang: lang, dark: dark, settle: 1.6)
+            }, name: "add-group", lang: lang, dark: dark, settle: 2.5)
         }
     }
 
@@ -114,7 +114,7 @@ final class SnapshotTests: XCTestCase {
             store.rowsFor = { query in fixture.rows(kind: query.kind) }
             let model = LedgerModel(data: store.data, core: .shared, now: { now })
             await model.load()
-            try shots(framed(.activity) {
+            try await shots(framed(.activity) {
                 NavigationStack {
                     ActivityView(model: model, chrome: SnapshotTests.chrome, open: { _ in }, duplicate: { _ in },
                                  split: { _ in })
@@ -134,23 +134,23 @@ final class SnapshotTests: XCTestCase {
             // The Groups tab: an invite and two groups.
             let list = GroupsModel(data: store.data, userId: SnapshotTests.user)
             await list.load()
-            try shots(framed(.groups) { NavigationStack { GroupsView(model: list, chrome: SnapshotTests.chrome) } },
+            try await shots(framed(.groups) { NavigationStack { GroupsView(model: list, chrome: SnapshotTests.chrome) } },
                       name: "groups", lang: lang, dark: dark)
-            try shots(framed(.groups) { NavigationStack { NewGroupView(model: list) { _ in } } },
+            try await shots(framed(.groups) { NavigationStack { NewGroupView(model: list) { _ in } } },
                       name: "group-new", lang: lang, dark: dark)
             // A group's page, seen by its owner.
             let group = GroupModel(groupId: fixture.groupId, userId: SnapshotTests.user, site: "https://dev.budgeer.com",
                                    data: store.data, now: { now })
             await group.load()
-            try shots(framed(.groups) { NavigationStack { GroupPageView(model: group) } },
+            try await shots(framed(.groups) { NavigationStack { GroupPageView(model: group) } },
                       name: "group", lang: lang, dark: dark)
             // Settled: the confetti behind the cards, caught mid-fall.
-            try shots(framed(.groups) {
+            try await shots(framed(.groups) {
                 NavigationStack { GroupPageView(model: group, celebrating: true) }
-                    .environment(\.nativeFrozenMotion, 0.45)
+                    .environment(\.nativeFrozenMotion, 0.6)
             }, name: "group-settled", lang: lang, dark: dark)
             // Balances, in its half sheet.
-            try shots(framed(.groups) {
+            try await shots(framed(.groups) {
                 NavigationStack { GroupPageView(model: group) }
                     .sheet(isPresented: .constant(true)) { BalancesSheet(model: group) {} }
             }, name: "group-balances", lang: lang, dark: dark, settle: 1.6)
@@ -161,18 +161,18 @@ final class SnapshotTests: XCTestCase {
             form.pickMode("exact")
             form.setShare("m1", "40")
             form.setShare("m2", "20")
-            try shots(framed(.groups) {
+            try await shots(framed(.groups) {
                 NavigationStack { GroupPageView(model: group) }
                     .sheet(isPresented: .constant(true)) { GroupExpenseSheet(model: form) { _ in } }
             }, name: "group-expense", lang: lang, dark: dark, settle: 1.6)
             // Settle up, on the biggest payment you're part of.
             let settle = try XCTUnwrap(group.settleUp())
-            try shots(framed(.groups) {
+            try await shots(framed(.groups) {
                 NavigationStack { GroupPageView(model: group) }
                     .sheet(isPresented: .constant(true)) { SettleUpView(model: settle) {} }
             }, name: "group-settle", lang: lang, dark: dark, settle: 1.6)
             // Members.
-            try shots(framed(.groups) { NavigationStack { MembersView(model: group) } },
+            try await shots(framed(.groups) { NavigationStack { MembersView(model: group) } },
                       name: "group-members", lang: lang, dark: dark)
         }
     }
@@ -185,12 +185,12 @@ final class SnapshotTests: XCTestCase {
             let session = SessionStore(auth: FakeAuthService(user: .sample))
             let owner = FakeOwner()
             let lock = AppLock(defaults: UserDefaults(suiteName: "SnapshotTests.settings")!, owner: owner)
-            try shots(framed(.more) {
+            try await shots(framed(.more) {
                 NavigationStack {
                     MoreView(name: "Sam Morgan", email: "sam@example.com", initials: "SM", chrome: SnapshotTests.chrome)
                 }
             }, name: "more", lang: lang, dark: dark)
-            try shots(framed(.more) {
+            try await shots(framed(.more) {
                 NavigationStack {
                     SettingsView(config: SnapshotTests.config, session: session, lock: lock, name: "Sam Morgan",
                                  email: "sam@example.com", initials: "SM")
@@ -201,7 +201,7 @@ final class SnapshotTests: XCTestCase {
             store.notificationsResult = .success(SnapshotTests.notifications)
             let shell = ShellModel(data: store.data)
             await shell.load()
-            try shots(framed(.more) {
+            try await shots(framed(.more) {
                 NavigationStack {
                     MoreView(name: "Sam Morgan", email: "sam@example.com", initials: "SM", chrome: SnapshotTests.chrome)
                 }
@@ -217,7 +217,7 @@ final class SnapshotTests: XCTestCase {
             _ = language(lang)
             let model = BudgetsModel(data: fixture.store("own").data, core: .shared, now: { now })
             await model.load()
-            try shots(framed(.home) { NavigationStack { BudgetsView(model: model) } },
+            try await shots(framed(.home) { NavigationStack { BudgetsView(model: model) } },
                       name: "budgets", lang: lang, dark: dark, long: 1300)
         }
     }
@@ -228,7 +228,7 @@ final class SnapshotTests: XCTestCase {
             _ = language(lang)
             let model = RecurringModel(data: fixture.store().data, core: .shared)
             await model.load()
-            try shots(framed(.more) { NavigationStack { RecurringView(model: model, open: { _ in }, add: { _ in }) } },
+            try await shots(framed(.more) { NavigationStack { RecurringView(model: model, open: { _ in }, add: { _ in }) } },
                       name: "recurring", lang: lang, dark: dark, long: 1400)
         }
     }
@@ -240,7 +240,7 @@ final class SnapshotTests: XCTestCase {
             _ = language(lang)
             let model = InsightsModel(data: fixture.store().data, core: .shared, now: { now })
             await model.load()
-            try shots(framed(.more) { NavigationStack { InsightsView(model: model) } },
+            try await shots(framed(.more) { NavigationStack { InsightsView(model: model) } },
                       name: "insights", lang: lang, dark: dark, long: 1600)
         }
     }
@@ -281,9 +281,9 @@ final class SnapshotTests: XCTestCase {
         return model
     }
 
-    /// The categories an entry picks from, and a savings category.
-    private func formStore() -> FakeStore {
-        let store = FakeStore()
+    /// The categories an entry picks from, a savings category, and the groups' fixture (Who's it for?).
+    private func formStore() throws -> FakeStore {
+        let store = try GroupsFixture.load().store()
         store.categoriesResult = .success(TestData.categories)
         store.savingsResult = .success([["id": "c-sav", "kind": "income", "is_savings": true]])
         return store
@@ -316,16 +316,17 @@ final class SnapshotTests: XCTestCase {
 
     /// The phone's screen, and the whole page when `long` is given.
     private func shots<V: View>(_ view: V, name: String, lang: String, dark: Bool, long: CGFloat? = nil,
-                                settle: TimeInterval = 0.8) throws {
+                                settle: TimeInterval = 0.8) async throws {
         let dressed = view.environment(language(lang)).tint(NativeStyle.tint)
         let variant = "\(lang)\(dark ? "-dark" : "")"
-        try snapshot(dressed, name: "\(name)-\(variant)", dark: dark, height: SnapshotTests.size.height, settle: settle)
+        try await snapshot(dressed, name: "\(name)-\(variant)", dark: dark, height: SnapshotTests.size.height, settle: settle)
         if let long {
-            try snapshot(dressed, name: "\(name)-\(variant)-long", dark: dark, height: long, settle: settle)
+            try await snapshot(dressed, name: "\(name)-\(variant)-long", dark: dark, height: long, settle: settle)
         }
     }
 
-    private func snapshot<V: View>(_ view: V, name: String, dark: Bool, height: CGFloat, settle: TimeInterval) throws {
+    private func snapshot<V: View>(_ view: V, name: String, dark: Bool, height: CGFloat,
+                                   settle: TimeInterval) async throws {
         let host = UIHostingController(rootView: view)
         host.overrideUserInterfaceStyle = dark ? .dark : .light
         // A window in the host app's scene, so it is really on screen and
@@ -337,8 +338,10 @@ final class SnapshotTests: XCTestCase {
         window.rootViewController = host
         window.makeKeyAndVisible()
         host.view.layoutIfNeeded()
-        // Let SwiftUI lay out, and a sheet finish coming up.
-        RunLoop.main.run(until: Date(timeIntervalSinceNow: settle))
+        // Let SwiftUI lay out, and a sheet finish coming up: the test steps
+        // aside (rather than spinning the run loop inside itself), so the
+        // pages' own tasks run on the main actor in turn.
+        try await Task.sleep(nanoseconds: UInt64(settle * 1_000_000_000))
         let image = UIGraphicsImageRenderer(bounds: window.bounds).image { context in
             if !window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) {
                 window.layer.render(in: context.cgContext)
