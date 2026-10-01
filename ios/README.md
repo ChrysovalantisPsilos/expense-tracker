@@ -152,8 +152,7 @@ ios/Budgeer/
     App/                 AppContainer (the client, the data layer, the cache, the live feed, the lock), RootView
                          (sign-in, the legal gate, the frame, the lock over it), AppFrame (the tabs, each tab's
                          stack of pages (AppRoute), the Add sheet, AppRouter), NotificationsView (the bell's page),
-                         DesignOptions (the designs on trial), AppLock + LockView (Face ID), ShellModel (your
-                         initials, the bell's feed), LiveRefresh
+                         AppLock + LockView (Face ID), ShellModel (your initials, the bell's feed), LiveRefresh
     Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView
     Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables),
                          QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
@@ -167,7 +166,7 @@ ios/Budgeer/
     Recurring/           RecurringFigures, RecurringModel, RecurringView
     Insights/            InsightsFigures, InsightsModel, InsightsView (Swift Charts draws, the core computes)
     Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab's
-                         gallery), NewGroupModel + NewGroupView (the new-group flow), GroupModel (+ GroupInvite) +
+                         grid), NewGroupModel + NewGroupView (the new-group flow), GroupModel (+ GroupInvite) +
                          GroupTimeline + GroupPageView (a group's page, its timeline), BalancesView,
                          GroupExpenseModel + SettleUpModel + GroupForms (the expense sheet and Add's quick group
                          form, Settle up, Members), CommentsModel, MyGroupsModel (Add's "Who's it for?")
@@ -236,11 +235,10 @@ a core call (the web's function); Swift reads, lays out and draws.
   AI switch is on), Coming up (or what a past month was charged), By
   category and Meal vouchers, a few rows each with See all.
 - **Activity**: the month at a glance (spent, income and net, a bar per
-  day or the month's running line, the biggest day; rowParts.monthPulse),
-  glass chips for the kind and the categories, then the month's entries by
-  day, each day with what it spent; a floating pill for the month; search
-  over all history. Two designs are on trial (`DesignOptions.activity`: A a
-  card per day, B one list under sticky glass day headers).
+  day, the biggest day; rowParts.monthPulse), chips for the kind and the
+  categories, then the month's entries by day, each day in its own card
+  with what it spent; a floating glass pill for the month; search over all
+  history.
   Swipe left to Delete (after the web's question), right to Duplicate (Add
   with today's date) or Split with a group (the group's quick form; the
   personal entry goes once the group's is saved); a tap opens Edit.
@@ -252,11 +250,9 @@ a core call (the web's function); Swift reads, lays out and draws.
   last six), "Income vs expenses" and Spending abroad. Not yet: your
   salary, net worth, the statement.
 - **Groups**: the tab shows the invites as banner cards (Accept /
-  Decline), then the groups as a gallery, in two designs on trial
-  (`DesignOptions.groups`: A a grid of square cards, B paging cards for the
-  groups with money open, galleryParts, and a list of the rest); each card
-  the picture (or the brand's gradient with the group's letters), the name,
-  the avatars and your balance. New group is one flow: a picture (a photo
+  Decline), then the groups as a grid of square cards: the picture (or the
+  brand's gradient with the group's letters), the name, the avatars and
+  your balance as a chip in the corner; New group last. New group is one flow: a picture (a photo
   from the library, or an emoji on a colour, uploaded as the web's
   `uploadGroupImage` does), the name and currency, people to invite (by
   email, as the Members page sends them, and a share link), what happens
@@ -362,8 +358,8 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   (the floating tab bar, the screen's tab picked) of Sign-in (and three
   moments of its intro), the legal gate, the lock, Home (this month, a past
   month that held its budgets, By category's See all), the Add sheet (as it
-  comes up, Edit pulled up, Split with a group), Activity (designs A and
-  B), Groups (the tab in designs A and B, New group empty, filled and made,
+  comes up, Edit pulled up, Split with a group), Activity, Groups (the
+  tab, New group empty, filled and made,
   a group's page, settled with its confetti caught mid-fall, Balances, an
   expense split by amounts, Settle up, Members), More, Settings, the
   notifications, Budgets,

@@ -42,7 +42,7 @@ struct EntryDay: Codable, Equatable, Identifiable, Sendable {
 }
 
 /// The month at a glance over the list (rowParts.monthPulse): spent,
-/// income and net in their words, a bar and a running line per day.
+/// income and net in their words, a bar per day.
 struct MonthPulse: Codable, Equatable, Sendable {
     struct Figure: Codable, Equatable, Sendable {
         let label: String
@@ -59,8 +59,6 @@ struct MonthPulse: Codable, Equatable, Sendable {
         let label: String
         /// The day's amount next to the biggest day's (0…1).
         let bar: Double
-        /// The running total next to the month's (0…1).
-        let line: Double
         let today: Bool
         let future: Bool
         var id: String { key }

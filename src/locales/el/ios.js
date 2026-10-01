@@ -32,9 +32,6 @@ export default {
     group: {
       commentOn: 'Σχόλιο για: {{name}}',
     },
-    groups: {
-      more: 'Άλλες ομάδες',
-    },
     balances: {
       everyone: 'Όλοι',
       owes: 'Χρωστά',

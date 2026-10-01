@@ -1,10 +1,8 @@
 // Activity (the web's Transactions): the picked month at a glance (spent,
-// income and net, a bar per day), a row of glass chips that filter by kind
-// and category, then the month's entries by day; search over all history in
-// the bar, and a floating glass pill that steps through the months. Two
-// designs are on trial (DesignOptions.activity): A puts each day in its own
-// card under the month's card; B is one list under sticky glass day
-// headers, with the month's running line. Swipe left to delete (it asks
+// income and net, a bar per day, the biggest day), a row of chips that
+// filter by kind and category, then the month's entries by day, each day in
+// its own card; search over all history in the bar, and a floating glass
+// pill that steps through the months. Swipe left to delete (it asks
 // first); swipe right to duplicate or split with a group; tap a row to edit
 // it in the Add sheet. A group's share is read-only here (it's edited in the
 // group). Every figure and word is LedgerModel's (the core's).
@@ -23,8 +21,6 @@ struct ActivityView: View {
     @State private var deleted = 0
     @State private var notice: String?
 
-    private var option: DesignOption { DesignOptions.activity }
-
     var body: some View {
         List {
             switch model.state {
@@ -38,10 +34,10 @@ struct ActivityView: View {
                 loaded(figures)
             }
         }
-        .activityListStyle(option)
-        .listSectionSpacing(option == .a ? 14 : 0)
+        .listStyle(.insetGrouped)
+        .listSectionSpacing(14)
         .scrollContentBackground(.hidden)
-        .background(option == .a ? NativeStyle.canvas : NativeStyle.card)
+        .background(NativeStyle.canvas)
         .searchable(text: Binding(get: { model.text }, set: { model.setText($0) }),
                     placement: .navigationBarDrawer(displayMode: .automatic),
                     prompt: language.t("transactions:ledger.search"))
@@ -85,20 +81,14 @@ struct ActivityView: View {
         } else {
             Section {
                 if !figures.pulse.days.isEmpty {
-                    Group {
-                        if option == .a {
-                            MonthBarsCard(pulse: figures.pulse, period: model.period?.label ?? "")
-                        } else {
-                            MonthLineCard(pulse: figures.pulse, period: model.period?.label ?? "")
-                        }
-                    }
+                    MonthBarsCard(pulse: figures.pulse, period: model.period?.label ?? "")
                     .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 6, trailing: 16))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .accessibilityIdentifier("activity.header")
                 }
-                // The chips' row runs edge to edge, with room for the glass's shadow.
-                ActivityChips(model: model, inset: option == .a ? 4 : 16, glass: option == .b)
+                // The chips' row runs across the card's width, with room for their shadow.
+                ActivityChips(model: model)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
@@ -114,11 +104,7 @@ struct ActivityView: View {
                 Section {
                     ForEach(day.rows) { row in rowView(row) }
                 } header: {
-                    if option == .a {
-                        DayCardHeader(day: day)
-                    } else {
-                        DayGlassHeader(day: day)
-                    }
+                    DayCardHeader(day: day)
                 }
             }
             // Room for the last day to scroll clear of the month pill and the tab bar.
@@ -133,12 +119,12 @@ struct ActivityView: View {
     @ViewBuilder
     private func rowView(_ row: EntryRow) -> some View {
         if row.shared {
-            rowChrome(EntryRowView(row: row, badge: option == .a ? 44 : 40))
+            rowChrome(EntryRowView(row: row))
         } else {
             rowChrome(Button {
                 if let saved = model.row(id: row.id) { open(saved) }
             } label: {
-                EntryRowView(row: row, badge: option == .a ? 44 : 40)
+                EntryRowView(row: row)
             }
             .foregroundStyle(Color.primary))
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -168,24 +154,12 @@ struct ActivityView: View {
         }
     }
 
-    /// A row's place in the list: on its day's card (A) or the page (B),
-    /// the hairline starting under the words.
+    /// A row's place on its day's card, the hairline starting under the words.
     private func rowChrome<Content: View>(_ content: Content) -> some View {
         content
-            .listRowBackground(option == .a ? NativeStyle.card : Color.clear)
+            .listRowBackground(NativeStyle.card)
             .listRowSeparatorTint(Color.primary.opacity(0.08))
-            .alignmentGuide(.listRowSeparatorLeading) { _ in option == .a ? 56 : 52 }
-    }
-}
-
-extension View {
-    /// Design A's inset cards, or design B's plain list (its headers stick).
-    @ViewBuilder
-    func activityListStyle(_ option: DesignOption) -> some View {
-        switch option {
-        case .a: listStyle(InsetGroupedListStyle())
-        case .b: listStyle(PlainListStyle())
-        }
+            .alignmentGuide(.listRowSeparatorLeading) { _ in 56 }
     }
 }
 
@@ -242,7 +216,7 @@ private struct MonthSideFigures: View {
     }
 }
 
-/// Design A's header card: the figures, then a bar per day (today in the
+/// The month's card: the figures, then a bar per day (today in the
 /// tint, the days ahead faint) and the biggest day.
 struct MonthBarsCard: View {
     let pulse: MonthPulse
@@ -304,94 +278,13 @@ private struct PeakLabelStyle: LabelStyle {
     }
 }
 
-/// Design B's header: the figures over the month's running line (how the
-/// spending built up day by day), filled under it, today marked.
-struct MonthLineCard: View {
-    let pulse: MonthPulse
-    let period: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                MonthFigures(pulse: pulse, period: period)
-                MonthSideFigures(pulse: pulse)
-            }
-            RunningLine(days: pulse.days)
-                .frame(height: 64)
-                .accessibilityHidden(true)
-            if let peak = pulse.peak {
-                Label(peak, systemImage: "flame.fill")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .labelStyle(PeakLabelStyle())
-            }
-        }
-        .padding(18)
-        .background {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(LinearGradient(colors: [Theme.Colors.accentSubtle, NativeStyle.card],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-        }
-        .overlay { RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(Color.primary.opacity(0.06)) }
-    }
-}
-
-/// The running line: one point per day up to today, the area under it in a
-/// soft coral, a dot on today.
-private struct RunningLine: View {
-    let days: [MonthPulse.Day]
-
-    var body: some View {
-        GeometryReader { proxy in
-            let shown = days.filter { !$0.future }
-            let step = days.count > 1 ? proxy.size.width / CGFloat(days.count - 1) : 0
-            let point = { (index: Int, day: MonthPulse.Day) in
-                CGPoint(x: CGFloat(index) * step, y: proxy.size.height * (1 - CGFloat(day.line)) * 0.92 + 3)
-            }
-            let points = shown.enumerated().map { point($0.offset, $0.element) }
-            ZStack(alignment: .topLeading) {
-                Path { path in
-                    path.move(to: CGPoint(x: 0, y: proxy.size.height))
-                    path.addLine(to: CGPoint(x: proxy.size.width, y: proxy.size.height))
-                }
-                .stroke(Color.primary.opacity(0.08), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
-                if let last = points.last {
-                    Path { path in
-                        path.move(to: CGPoint(x: 0, y: proxy.size.height))
-                        for next in points { path.addLine(to: next) }
-                        path.addLine(to: CGPoint(x: last.x, y: proxy.size.height))
-                        path.closeSubpath()
-                    }
-                    .fill(LinearGradient(colors: [NativeStyle.coral.opacity(0.35), NativeStyle.coral.opacity(0.02)],
-                                         startPoint: .top, endPoint: .bottom))
-                    Path { path in
-                        path.move(to: points[0])
-                        for next in points.dropFirst() { path.addLine(to: next) }
-                    }
-                    .stroke(NativeStyle.tint, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                    Circle()
-                        .fill(NativeStyle.tint)
-                        .overlay(Circle().stroke(NativeStyle.card, lineWidth: 2.5))
-                        .frame(width: 11, height: 11)
-                        .position(last)
-                }
-            }
-        }
-    }
-}
-
 // MARK: The chips
 
 /// All · Expenses · Income, then the kind's categories, as chips in one
-/// sideways row; the picked one in the tint.
+/// sideways row: solid cards with a hairline, the picked one in the tint.
 @MainActor
 struct ActivityChips: View {
     let model: LedgerModel
-    /// The row's lead-in before the first chip.
-    var inset: CGFloat = 16
-    /// Glass chips (B); A's sit on the sand as solid cards (inside an inset
-    /// list's cell the glass's backdrop shows as a band).
-    var glass = true
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
@@ -416,7 +309,7 @@ struct ActivityChips: View {
                     }
                 }
             }
-            .padding(.horizontal, inset)
+            .padding(.horizontal, 4)
             .padding(.vertical, 10)
         }
         .scrollClipDisabled()
@@ -432,32 +325,17 @@ struct ActivityChips: View {
                 .lineLimit(1)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 36)
-                .modifier(ChipSurface(picked: picked, glass: glass))
+                .background(picked ? NativeStyle.solid : NativeStyle.card, in: Capsule())
+                .overlay { Capsule().stroke(Color.primary.opacity(picked ? 0 : 0.08), lineWidth: 1) }
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(picked ? .isSelected : [])
     }
 }
 
-/// A chip's surface: glass, or a solid card with a hairline (the tint when picked).
-private struct ChipSurface: ViewModifier {
-    let picked: Bool
-    let glass: Bool
-
-    func body(content: Content) -> some View {
-        if glass {
-            content.nativeGlass(Capsule(), tint: picked ? NativeStyle.solid : nil, interactive: true)
-        } else {
-            content
-                .background(picked ? NativeStyle.solid : NativeStyle.card, in: Capsule())
-                .overlay { Capsule().stroke(Color.primary.opacity(picked ? 0 : 0.08), lineWidth: 1) }
-        }
-    }
-}
-
 // MARK: The days
 
-/// Design A's day heading over its card: the day, then what it spent.
+/// A day's heading over its card: the day, then what it spent.
 private struct DayCardHeader: View {
     let day: EntryDay
 
@@ -474,29 +352,6 @@ private struct DayCardHeader: View {
     }
 }
 
-/// Design B's sticky day heading: a glass capsule with the day and what it spent.
-private struct DayGlassHeader: View {
-    let day: EntryDay
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(day.title).font(.subheadline.weight(.semibold)).foregroundStyle(Color.primary)
-            if let spent = day.spent {
-                Text(verbatim: "·").foregroundStyle(Theme.Colors.textMuted)
-                Text(spent).font(.subheadline).foregroundStyle(Theme.Colors.textMuted).monospacedDigit()
-            }
-        }
-        .lineLimit(1)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 7)
-        .nativeGlass(Capsule())
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .textCase(nil)
-        .padding(.vertical, 4)
-        .listRowInsets(EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12))
-    }
-}
-
 /// An entry: its badge, its name (the merchant or description first), the
 /// muted line (the category, where savings came from, the notes; the group
 /// it's shared in; how it repeats; a yearly payment's monthly share; which
@@ -504,7 +359,7 @@ private struct DayGlassHeader: View {
 /// its plus) with a foreign amount's value.
 struct EntryRowView: View {
     let row: EntryRow
-    var badge: CGFloat = 44
+    private let badge: CGFloat = 44
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {

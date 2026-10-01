@@ -104,7 +104,7 @@ test('dayGroups: newest day first, each day\'s spend in the base currency, its r
   assert.deepEqual(dayGroups([], opts, '2026-09-29'), [])
 })
 
-test('monthPulse: spent, income and net over the list, a bar and a running line per day of the month', () => {
+test('monthPulse: spent, income and net over the list, a bar per day of the month', () => {
   const rows = [
     row({ id: 'a', spent_at: '2026-09-02', amount_minor: 1000 }),
     row({ id: 'b', spent_at: '2026-09-04', amount_minor: 4000 }),
@@ -121,7 +121,6 @@ test('monthPulse: spent, income and net over the list, a bar and a running line 
   assert.deepEqual(pulse.net, { label: 'Net', text: '+€2,140.00', tone: 'positive' })
   assert.equal(pulse.days.length, 30)
   assert.deepEqual(pulse.days.slice(0, 5).map((d) => d.bar), [0, 0.2, 0, 1, 0])
-  assert.deepEqual(pulse.days.slice(0, 5).map((d) => d.line), [0, 1 / 6, 1 / 6, 1, 1])
   assert.deepEqual(pulse.days.slice(3, 6).map((d) => [d.label, d.today, d.future]), [['4', false, false], ['5', true, false], ['6', false, true]])
   assert.equal(pulse.peak, 'Biggest day: 4 Sep · €50.00')
 })

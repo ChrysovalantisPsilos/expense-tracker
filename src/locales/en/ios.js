@@ -38,10 +38,6 @@ export default {
     group: {
       commentOn: 'Comment on {{name}}',
     },
-    // The Groups tab's gallery (design B's list under the paging cards).
-    groups: {
-      more: 'More groups',
-    },
     // A group's Balances page.
     balances: {
       everyone: 'Everyone',

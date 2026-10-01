@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   activityParts, avatarStackParts, deleteNameMatches, balancesFrom, balancesParts, commentCountsFrom, commentParts, expenseRowParts,
-  galleryParts, groupCardParts, groupShareText, memberAvatar, groupViewer, inviteLink, inviteRowParts, inviteRefusal, memberRowParts, membersWithAvatars, settlementRowParts,
+  groupCardParts, groupShareText, memberAvatar, groupViewer, inviteLink, inviteRowParts, inviteRefusal, memberRowParts, membersWithAvatars, settlementRowParts,
   stillInNames,
 } from '../src/features/groups/groupFormat.js'
 import { avatarColor } from '../src/shared/ui/avatarLook.js'
@@ -68,19 +68,6 @@ test('balancesParts: your balance, everyone\'s, the line that matters, the plan'
   assert.deepEqual([alone.mine, alone.tiles, alone.plan, alone.planSubtitle],
     [{ text: '€0.00', tone: 'muted' }, [], [], null])
   assert.deepEqual(alone.highlight, { text: 'You’re all settled up', amount: null, tone: null })
-})
-
-test('galleryParts: the groups with an open balance first (three at most), else the newest; the rest after', () => {
-  const card = (id, tone) => ({ id, balance: tone ? { label: '', amount: null, tone } : null })
-  const cards = [card('a', 'muted'), card('b', 'positive'), card('c', null), card('d', 'negative'), card('e', 'positive'),
-    card('f', 'negative')]
-  const g = galleryParts(cards)
-  assert.deepEqual(g.featured.map((c) => c.id), ['b', 'd', 'e'])
-  assert.deepEqual(g.rest.map((c) => c.id), ['a', 'c', 'f'])
-  const settled = galleryParts([card('a', 'muted'), card('b', null)])
-  assert.deepEqual([settled.featured.map((c) => c.id), settled.rest.map((c) => c.id)], [['a'], ['b']])
-  assert.deepEqual(galleryParts([]), { featured: [], rest: [] })
-  assert.deepEqual(galleryParts(null), { featured: [], rest: [] })
 })
 
 test('expenseRowParts / settlementRowParts / activityParts: the history\'s rows', () => {

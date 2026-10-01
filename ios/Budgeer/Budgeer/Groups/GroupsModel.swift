@@ -1,7 +1,6 @@
 // The Groups tab's state, after the web's Groups page: the user's groups as
-// cards (their members, avatars and balance, from each group's summary,
-// and the gallery's split of them), and the invites waiting for an answer
-// (Accept / Decline). The reads and writes are the web's (groups,
+// cards (their members, avatars and balance, from each group's summary),
+// and the invites waiting for an answer (Accept / Decline). The reads and writes are the web's (groups,
 // list_my_group_invites, group_member_avatars, group_balances,
 // respond_to_invite); every figure and word is the core's
 // (GroupsListFigures). A new group is NewGroupModel's.

@@ -1,7 +1,7 @@
 // The Groups screens as the web works them out, every step a core call (in
 // Node the same sequence writes the parity fixture:
 // mobile-core/groupFigures.mjs): the groups list's cards and invites
-// (groupCardParts, inviteRowParts, galleryParts), a group's page (groupViewer, the total,
+// (groupCardParts, inviteRowParts), a group's page (groupViewer, the total,
 // balancesParts, the history's rows, memberRowParts, the share text, the
 // delete check), the expense form (groupExpenseForm.js) and settle up
 // (settleForm.js). Nothing is summed, split, sorted or worded here: Swift
@@ -70,16 +70,9 @@ struct InviteRow: Codable, Equatable, Identifiable, Sendable {
     let text: String
 }
 
-/// The gallery (galleryParts): the paging cards, then the rest.
-struct GroupGallery: Codable, Equatable, Sendable {
-    let featured: [GroupCard]
-    let rest: [GroupCard]
-}
-
 struct GroupsListFigures: Codable, Equatable, Sendable {
     let cards: [GroupCard]
     let invites: [InviteRow]
-    let gallery: GroupGallery
 
     /// - groups: listGroups' rows; summaries: each group's { members, avatars, balances } as read
     /// - invites: list_my_group_invites' rows
@@ -98,8 +91,7 @@ struct GroupsListFigures: Codable, Equatable, Sendable {
         let rows = try (invites.arrayValue ?? []).map { invite -> InviteRow in
             try core.call("groupFormat", "inviteRowParts", [invite])
         }
-        let gallery: GroupGallery = try core.call("groupFormat", "galleryParts", [cards])
-        return GroupsListFigures(cards: cards, invites: rows, gallery: gallery)
+        return GroupsListFigures(cards: cards, invites: rows)
     }
 }
 

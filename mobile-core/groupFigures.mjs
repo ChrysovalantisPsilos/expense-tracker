@@ -14,7 +14,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { formatMoney } from '../src/shared/lib/currency.js'
 import {
-  activityParts, avatarStackParts, balancesFrom, balancesParts, commentCountsFrom, expenseRowParts, galleryParts, groupCardParts,
+  activityParts, avatarStackParts, balancesFrom, balancesParts, commentCountsFrom, expenseRowParts, groupCardParts,
   groupDeleteCheck, groupShareText, groupTotal, groupViewer, inviteRowParts, memberRowParts, membersWithAvatars,
   pluralise, settlementRowParts, stillInNames,
 } from '../src/features/groups/groupFormat.js'
@@ -41,8 +41,7 @@ export function groupsListFigures({ groups, summaries, invites, userId, lang = '
       : undefined
     return groupCardParts(g, summary, userId)
   })
-  // The gallery's paging cards and the rest (galleryParts).
-  return { cards, invites: invites.map(inviteRowParts), gallery: galleryParts(cards) }
+  return { cards, invites: invites.map(inviteRowParts) }
 }
 
 // A group's page (GroupDetail: the header, the balances, the history; the

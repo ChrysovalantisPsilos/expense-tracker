@@ -285,7 +285,7 @@ export function groupCardParts(group, summary, myUserId) {
     name: group.name,
     imageUrl: group.image_url ?? null,
     members: pluralise(count, 'member'),
-    // The cover's letters when there's no photo (the native app's gallery).
+    // The cover's letters when there's no photo (the native app's grid).
     initials: avatarInitials(group.name).toUpperCase(),
     currency: group.currency,
     avatars: summary ? avatarStackParts(summary.members, myUserId) : null,
@@ -295,18 +295,6 @@ export function groupCardParts(group, summary, myUserId) {
       tone: bal.tone,
     },
   }
-}
-
-// The groups list as a gallery (the native app's paging cards): up to
-// `max` featured groups — the ones where you're owed or owe, in list order,
-// else the newest — and the rest for the compact list under them.
-// `cards` are groupCardParts'. { featured, rest }
-export function galleryParts(cards, max = 3) {
-  const list = cards ?? []
-  const open = list.filter((c) => c.balance && c.balance.tone !== 'muted').slice(0, max)
-  const featured = open.length ? open : list.slice(0, 1)
-  const ids = new Set(featured.map((c) => c.id))
-  return { featured, rest: list.filter((c) => !ids.has(c.id)) }
 }
 
 // The group page's balances card and "Who owes whom" (GroupBalances): your

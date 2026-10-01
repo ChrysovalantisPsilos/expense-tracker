@@ -127,9 +127,8 @@ function monthDays({ from, to }) {
 // income) and what came in (income, not savings), each worded with its
 // label, the net in its tone (All only), and one bar per day of `month`
 // ({ from, to }): the day's amount of the list's kind (income for Income,
-// spending otherwise) as a share of the biggest day's (`bar`, 0…1), the
-// running total as a share of the month's (`line`, 0…1), and whether the
-// day is today or still ahead. `peak` words the biggest day. `month` null
+// spending otherwise) as a share of the biggest day's (`bar`, 0…1), and
+// whether the day is today or still ahead. `peak` words the biggest day. `month` null
 // (a search over all history): no days.
 export function monthPulse(rows, { kind, baseCurrency, savingsIds = new Set() }, month, todayISO) {
   const list = rows ?? []
@@ -151,20 +150,13 @@ export function monthPulse(rows, { kind, baseCurrency, savingsIds = new Set() },
   const peakKey = [...byDay.entries()].filter(([key]) => keys.includes(key))
     .reduce((best, entry) => (!best || entry[1] > best[1] ? entry : best), null)
   const most = peakKey?.[1] ?? 0
-  const total = keys.reduce((sum, key) => sum + (byDay.get(key) ?? 0), 0)
-  let running = 0
-  const days = keys.map((key) => {
-    const value = byDay.get(key) ?? 0
-    running += value
-    return {
-      key,
-      label: String(Number(key.slice(8))),
-      bar: most > 0 ? value / most : 0,
-      line: total > 0 ? running / total : 0,
-      today: key === todayISO,
-      future: key > todayISO,
-    }
-  })
+  const days = keys.map((key) => ({
+    key,
+    label: String(Number(key.slice(8))),
+    bar: most > 0 ? (byDay.get(key) ?? 0) / most : 0,
+    today: key === todayISO,
+    future: key > todayISO,
+  }))
   return {
     spent: kind === 'income' ? null : { label: t('dashboard:overview.spent'), amount: money(spent) },
     income: kind === 'expense' ? null

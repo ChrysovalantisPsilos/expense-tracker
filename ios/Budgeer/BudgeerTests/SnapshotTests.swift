@@ -3,8 +3,7 @@
 // picked, Add beside it) at an iPhone 17's size: "<name>-<variant>.png",
 // plus "<name>-<variant>-long.png" for the pages worth seeing whole. Sheets
 // are shown over the page they come up on; what plays once (the sign-in's
-// intro, the confetti) is caught at fixed moments. Activity and Groups are
-// drawn in both designs on trial (DesignOptions): "-a" and "-b". Each PNG is attached to the test
+// intro, the confetti) is caught at fixed moments. Each PNG is attached to the test
 // and, when SNAPSHOT_DIR is set (CI passes it as TEST_RUNNER_SNAPSHOT_DIR),
 // written there for the workflow's artifact. Nothing is compared: these are
 // for looking at.
@@ -112,26 +111,22 @@ final class SnapshotTests: XCTestCase {
     func testActivitySnapshots() async throws {
         let fixture = try LedgerFixture.load()
         let now = fixture.now
-        defer { DesignOptions.activity = .a }
-        for option in DesignOption.allCases {
-            DesignOptions.activity = option
-            for (lang, dark) in SnapshotTests.variants {
-                _ = language(lang)
-                let store = FakeStore()
-                store.profileResult = .success(fixture.input.profile)
-                store.savingsResult = .success(fixture.input.categories)
-                store.categoriesResult = .success(TestData.categories)
-                store.oldest = .success(fixture.input.oldest)
-                store.rowsFor = { query in fixture.rows(kind: query.kind) }
-                let model = LedgerModel(data: store.data, core: .shared, now: { now })
-                await model.load()
-                try await shots(framed(.activity) {
-                    NavigationStack {
-                        ActivityView(model: model, chrome: SnapshotTests.chrome, open: { _ in }, duplicate: { _ in },
-                                     split: { _ in })
-                    }
-                }, name: "activity-\(option.rawValue)", lang: lang, dark: dark, long: 1900)
-            }
+        for (lang, dark) in SnapshotTests.variants {
+            _ = language(lang)
+            let store = FakeStore()
+            store.profileResult = .success(fixture.input.profile)
+            store.savingsResult = .success(fixture.input.categories)
+            store.categoriesResult = .success(TestData.categories)
+            store.oldest = .success(fixture.input.oldest)
+            store.rowsFor = { query in fixture.rows(kind: query.kind) }
+            let model = LedgerModel(data: store.data, core: .shared, now: { now })
+            await model.load()
+            try await shots(framed(.activity) {
+                NavigationStack {
+                    ActivityView(model: model, chrome: SnapshotTests.chrome, open: { _ in }, duplicate: { _ in },
+                                 split: { _ in })
+                }
+            }, name: "activity", lang: lang, dark: dark, long: 2000)
         }
     }
 
@@ -140,18 +135,14 @@ final class SnapshotTests: XCTestCase {
     func testGroupsSnapshots() async throws {
         let fixture = try GroupsFixture.load()
         let now = fixture.now
-        defer { DesignOptions.groups = .a }
         for (lang, dark) in SnapshotTests.variants {
             _ = language(lang)
             let store = SnapshotTests.galleryStore(fixture)
-            // The Groups tab: an invite and four groups, in both designs.
+            // The Groups tab: an invite and four groups.
             let list = GroupsModel(data: store.data, userId: SnapshotTests.user)
             await list.load()
-            for option in DesignOption.allCases {
-                DesignOptions.groups = option
-                try await shots(framed(.groups) { NavigationStack { GroupsView(model: list, chrome: SnapshotTests.chrome) } },
-                          name: "groups-\(option.rawValue)", lang: lang, dark: dark, long: 1300)
-            }
+            try await shots(framed(.groups) { NavigationStack { GroupsView(model: list, chrome: SnapshotTests.chrome) } },
+                      name: "groups", lang: lang, dark: dark, long: 1500)
             // New group: empty, filled in (an emoji cover, two invites, a link), and made.
             let empty = NewGroupModel(data: store.data, site: "https://dev.budgeer.com")
             await empty.load()
