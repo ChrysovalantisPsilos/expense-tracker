@@ -6,7 +6,7 @@ import SwiftUI
 
 @MainActor
 struct GoalEditView: View {
-    @Bindable var model: GoalEditorModel
+    let model: GoalEditorModel
     @Environment(AppLanguage.self) private var language
     @Environment(\.dismiss) private var dismiss
     @State private var confirming = false
@@ -21,7 +21,7 @@ struct GoalEditView: View {
                     Section { NativeNotice(text: error, warning: true) }.listRowBackground(NativeStyle.card)
                 }
                 Section {
-                    TextField(language.t("savings:goal.nameHint"), text: $model.name)
+                    TextField(language.t("savings:goal.nameHint"), text: Binding(get: { model.name }, set: { model.setName($0) }))
                         .font(.body.weight(.semibold))
                         .accessibilityIdentifier("goal.name")
                 } header: {
@@ -38,7 +38,7 @@ struct GoalEditView: View {
                     if model.dated {
                         DatePicker(language.t("savings:goal.targetDate"),
                                    selection: Binding(get: { ISODay.date(model.targetDate) ?? Date() },
-                                                      set: { model.targetDate = ISODay.string($0) }),
+                                                      set: { model.setTargetDate(ISODay.string($0)) }),
                                    displayedComponents: .date)
                             .labelsHidden()
                             .accessibilityIdentifier("goal.date")

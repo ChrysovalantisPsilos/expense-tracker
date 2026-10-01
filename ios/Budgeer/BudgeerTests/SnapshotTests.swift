@@ -389,7 +389,7 @@ final class SnapshotTests: XCTestCase {
             try await shots(framed(.more) {
                 NavigationStack { SavingsView(model: first, add: { _, _ in }, open: { _ in }, openRule: { _ in }) }
             }, name: "savings-first", lang: lang, dark: dark, long: 1600)
-            // A goal's page, and a new one missing its name.
+            // A goal's page, and a new one as it opens (nothing said before Save).
             let goal = GoalEditorModel(goal: fixture.input.goals.arrayValue?.first, data: store.data, core: .shared,
                                        now: { now })
             await goal.load()
@@ -397,7 +397,6 @@ final class SnapshotTests: XCTestCase {
                       name: "savings-goal", lang: lang, dark: dark)
             let fresh = GoalEditorModel(goal: nil, data: store.data, core: .shared, now: { now })
             await fresh.load()
-            _ = await fresh.save()
             try await shots(framed(.more) { NavigationStack { GoalEditView(model: fresh) } },
                       name: "savings-goal-new", lang: lang, dark: dark)
         }
