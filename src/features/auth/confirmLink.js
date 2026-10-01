@@ -25,12 +25,27 @@ export function confirmLinkTemplate(type) {
   return `{{ .SiteURL }}${CONFIRM_PATH}?token_hash={{ .TokenHash }}&type=${type}`
 }
 
-// `search` (location.search) → { tokenHash, type }, or null when the link is
-// incomplete or malformed (the page then shows the expired-link screen).
+// The first value of `name` in a query string, as URLSearchParams.get reads
+// it ('+' a space, %-escapes decoded), or null. Written out because the iOS
+// app runs this module in JavaScriptCore, which has no URLSearchParams.
+function queryParam(search, name) {
+  const decode = (s) => {
+    try { return decodeURIComponent(s.replace(/\+/g, ' ')) } catch { return s }
+  }
+  for (const pair of search.replace(/^\?/, '').split('&')) {
+    const at = pair.indexOf('=')
+    if (decode(at < 0 ? pair : pair.slice(0, at)) === name) return at < 0 ? '' : decode(pair.slice(at + 1))
+  }
+  return null
+}
+
+// `search` (location.search; the iOS app passes an opened link's query) →
+// { tokenHash, type }, or null when the link is incomplete or malformed (the
+// page then shows the expired-link screen).
 export function parseConfirmLink(search) {
-  const params = new URLSearchParams(typeof search === 'string' ? search : '')
-  const tokenHash = params.get('token_hash')
-  const type = params.get('type')
+  const query = typeof search === 'string' ? search : ''
+  const tokenHash = queryParam(query, 'token_hash')
+  const type = queryParam(query, 'type')
   if (!tokenHash || !TOKEN_HASH.test(tokenHash) || !TYPES.has(type)) return null
   return { tokenHash, type }
 }

@@ -20,6 +20,12 @@ struct AppConfig: Equatable, Sendable {
         environment == .prod ? "https://www.budgeer.com" : "https://dev.budgeer.com"
     }
 
+    /// The website's hosts whose links open this app (Universal Links): the
+    /// Associated Domains of its entitlements (BUDGEER_WEB_HOST, _APEX).
+    var linkHosts: [String] {
+        environment == .prod ? ["www.budgeer.com", "budgeer.com"] : ["dev.budgeer.com"]
+    }
+
     enum Error: Swift.Error, CustomStringConvertible {
         case missing(String)
         var description: String {

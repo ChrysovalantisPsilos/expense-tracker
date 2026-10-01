@@ -3,7 +3,7 @@
 // in the app's language (settings:signIn.*).
 import { userMessage } from '../../shared/lib/errors.js'
 import { validatePassword } from '../../shared/lib/password.js'
-import { t } from '../../shared/lib/i18n/i18n.js'
+import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 
 // True when the account has an email/password identity (so it has a password
 // to change or re-enter). Defaults to true when the providers can't be read,
@@ -18,6 +18,21 @@ export function hasPasswordIdentity(user) {
 // normalize either to an array.
 export function toPasskeyList(data) {
   return Array.isArray(data) ? data : (data?.passkeys ?? [])
+}
+
+// The day a passkey was added: 2026-09-26 in English, 26/09/2026 in Greek.
+const addedDay = (ts) => new Date(ts).toLocaleDateString(intlLocale('en-CA'),
+  { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' })
+
+// Settings → Security's passkey rows from the list API's answer (either
+// shape): each one's id, its name (or "Passkey") and when it was added
+// (null without a date). The website's card and the iOS app show these.
+export function passkeyRows(data) {
+  return toPasskeyList(data).map((pk) => ({
+    id: pk.id,
+    name: pk.friendly_name || t('settings:passkeys.fallbackName'),
+    meta: pk.created_at ? t('settings:passkeys.addedOn', { date: addedDay(pk.created_at) }) : null,
+  }))
 }
 
 // Whether the account has a password at all: an email identity, or a Google

@@ -185,8 +185,9 @@ ios/Budgeer/
   Budgeer/
     BudgeerApp.swift     the entry: AppConfig → AppContainer → RootView
     App/                 AppContainer (the client, the data layer, the cache, the live feed, the lock, the join
-                         link waiting), RootView (sign-in, the legal gate, the frame, the lock over it, a
-                         budgeer://join link), AppFrame (the tabs, each tab's
+                         link waiting, where an opened link leads), AppLinks (AppLink: a Universal Link or
+                         budgeer:// as an invite, an auth email's link or a page), RootView (sign-in, the legal
+                         gate, a reset link's new password, the frame, the lock over it, opened links), AppFrame (the tabs, each tab's
                          stack of pages (AppRoute), the Add sheet, AppRouter), AddSlot (what Add does on a page
                          that lends it its own add), NotificationsView (the bell's page), AppLock (Face ID; its screen
                          is Lock/LockScreen), AppPin (the lock's PIN: rules, backoff) + PinKeychain (the Keychain item, PBKDF2) +
@@ -195,7 +196,9 @@ ios/Budgeer/
                          WelcomeLayer (the default categories, the setup wizard or What's new, once per session) +
                          OnboardingView + WhatsNewStoryView, TourModel + TourOverlay (the tour's coach marks,
                          tourTarget)
-    Auth/                AuthService + SupabaseAuthService (email, Google, Apple), SessionStore, SignInView,
+    Auth/                AuthService + SupabaseAuthService (email, Google, Apple, a passkey, an email link's
+                         token), Passkeys (PasskeyServer: Supabase Auth's /passkeys calls; PasskeyAuthorizer:
+                         the system's passkey sheet; PasskeyJSON: its answers as a browser's), SessionStore, SignInView,
                          LegalGateView (the documents, Accept), AppleSignIn (the nonce, Apple's button,
                          AppleAuthorizer), AccountSecurity (Settings › Security's calls: identities, the token's
                          claims, the password, linking Google and Apple), AccountAccess + SupabaseAccountAccess
@@ -305,7 +308,16 @@ a core call (the web's function); Swift reads, lays out and draws.
   checks the token against the raw nonce). Apple gives the name only the
   first time: it goes to `user_metadata.full_name` and, while the profile
   still has the sign-up's default name, to the profile
-  (`authMethods.appleProfileName`). Passkeys stay the website's.
+  (`authMethods.appleProfileName`). **Log in with a passkey**: the
+  server's challenge (`POST /auth/v1/passkeys/authentication/options`, as
+  supabase-js' `signInWithPasskey`), the system's passkey sheet
+  (`ASAuthorizationPlatformPublicKeyCredentialProvider` for the relying
+  party the server names: `www.budgeer.com` on PROD, `dev.budgeer.com` on
+  TEST), its answer sent back as the JSON a browser sends (`PasskeyJSON`)
+  for a session (`setSession`). The app may use the site's passkeys because
+  the site lists it under `webcredentials` and the app claims the host in
+  its Associated Domains, so a passkey made on the website signs in here
+  and the other way round; a closed sheet is no error.
   **Sign up** is its own page, as the web's sign-up mode: email and
   password with the password's rules (`authChecks.authErrors`, shown from
   the first try), the "I'm 16 or older and I accept…" tick with the Terms
@@ -316,13 +328,18 @@ a core call (the web's function); Swift reads, lays out and draws.
   **Check your inbox**, which signs in by itself once the link is opened on
   any device (`confirmWait`'s schedule, the password kept in memory only),
   with Log in when it gives up, "resend it" (then a minute's wait) and "use
-  a different email". The confirmation link itself is the website's
-  (`/auth/confirm`, as every Supabase Auth email links). **Forgot
-  password** sends the reset link (`resetPasswordForEmail`, the same answer
-  whether or not the address has an account); the email's link opens the
-  website's reset page, as the emails link to the website and the app has
-  no Universal Links yet (Associated Domains need a paid developer
-  account), so the new password is chosen there.
+  a different email". **Forgot password** sends the reset link
+  (`resetPasswordForEmail`, the same answer whether or not the address has
+  an account). **The auth emails' links** (`/auth/confirm?token_hash=…&type=…`:
+  confirm a sign-up, reset the password, change the email) open the app
+  where it is installed (Universal Links, below): the link is read by
+  `confirmLink.parseConfirmLink` and its token verified (`verifyOTP` with
+  the token hash), as the website's page does; a reset link's session asks
+  for the new password first (`SessionStore` `.recovering`,
+  `ResetPasswordModel`: `authMethods.newPasswordError`, then `updateUser`),
+  and a link that can't be used shows what to do
+  (`confirmLink.expiredLinkHelp`). Signed in already, the link is left
+  alone, as on the website.
 - **The legal gate**: `my_legal_status` after every sign-in, failing
   closed; a new account (made with Google or Apple) or a version bump shows
   the web's prompt: the two documents (the website's pages in Safari),
@@ -346,8 +363,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   friends (a first group, optional), Stay in the loop (Enable notifications:
   `WelcomeModel.pushOptIn` is `PushModel.optIn`, what Settings ›
   Notifications' push switch does turned on: `notify_push` on, iOS asked
-  once, this iPhone registered; not on the demo login; the web's passkey
-  offer is left out, passkeys being the website's), and the tour
+  once, this iPhone registered; not on the demo login) and Add a passkey
+  (Settings › Security's Add), and the tour
   (Start tour or Skip tour); closing it stamps it done
   (`onboardingMath.finishFields`, the tour marked seen unless it follows);
   a group made on the way is where it ends up. Then the **app tour**
@@ -362,6 +379,24 @@ a core call (the web's function); Swift reads, lays out and draws.
   `profiles.whats_new_seen`, marked seen as it opens): the story full
   screen, a page per change with the brand's ring and its chips, "New · 1
   of 2 · 2 Oct", the action opening that screen (`AppPaths`), Skip and Next.
+  After it, the web's **passkey ask** for an account without a passkey (a
+  sheet: Not now or Create passkey, "Don't remind me again" =
+  `profiles.passkey_reminder_off`; not on the demo login, not when the
+  server's passkey list fails).
+- **Universal Links**: the website's https links open the app where it is
+  installed. The site serves `/.well-known/apple-app-site-association`
+  (`public/.well-known/`, JSON by `vercel.json`, `test/appSiteAssociation.test.js`)
+  naming both apps (team `Z9KGWP5G82`) for the links the app handles and
+  for `webcredentials` (passkeys); each build claims only its own site in
+  Associated Domains (`BUDGEER_WEB_HOST`/`BUDGEER_WEB_APEX` from
+  `Config/Dev.xcconfig`/`Prod.xcconfig` into `Config/Budgeer-*.entitlements`:
+  Budgeer Dev `dev.budgeer.com`, Budgeer `www.budgeer.com` and
+  `budgeer.com`). An opened link (`onOpenURL` or a browsing activity) goes
+  through `AppLink.of` (`App/AppLinks.swift`): `/join/<token>` (and
+  `budgeer://join/<token>`) waits in `JoinInbox` for the Groups tab,
+  `/auth/confirm` signs in (above), and any page `AppPaths` knows opens as a
+  tapped notification does (`AppRouter.open(path:)`); other pages (the
+  legal pages, a group's sub-pages the app hasn't got) stay on the website.
 - **The data layer** (`Data/`): repositories over the web's RPCs and
   tables, every read cached on disk (per account, cleared on sign-out) and
   served when offline, and one realtime channel whose changes refetch the
@@ -546,9 +581,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   through `joinParts`: the picture, the name, the members), Accept & join
   (`join_via_link`) or Decline; a group you're in opens at once, and the
   server's refusals (an expired link, the shared demo account, too many
-  joins) are the web's words. The website's https links stay as they
-  are: opening them in the app needs Universal Links (Associated Domains,
-  a paid developer account). Everything is the web's RPCs and tables,
+  joins) are the web's words. The website's own invite links
+  (`https://…/join/<token>`) open the same page (Universal Links). Everything is the web's RPCs and tables,
   cached for offline and live through the groups' tables on the realtime
   channel.
 - **Savings** (More › Money, Home's savings line), as the web's page: the
@@ -643,9 +677,12 @@ a core call (the web's function); Swift reads, lays out and draws.
     removing the PIN there turns the lock off.
   - **AI helpers**: the four switches, what each sends, the privacy note;
     the demo note on the demo account.
-  - **Security**: the sign-in methods (email & password, Google, Apple;
-    passkeys stay the website's, so they are not listed, as on a browser
-    without them), Connect Google (the system's web sheet, then the session)
+  - **Security**: the sign-in methods (email & password, Google, Apple,
+    passkeys), the **passkeys** as the website's card
+    (`authMethods.passkeyRows`: the name, when it was added) with Remove
+    and Add (a sign-in in the last few minutes first, `reauth.isRecentClaims`,
+    then the server's options, the system's sheet, the passkey saved;
+    hidden when the server's list fails, as with passkeys off), Connect Google (the system's web sheet, then the session)
     or Apple (Apple's sheet, its token linked: `linkIdentityWithIdToken`)
     and Disconnect (never the last way in: `disconnectBlock`), Set a
     password (Google- or Apple-only) or

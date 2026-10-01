@@ -32,6 +32,30 @@ final class FakeAuthService: AuthService, @unchecked Sendable {
         return user
     }
 
+    /// The server's passkey challenge (sign-in's first half).
+    var challenge: Result<PasskeyChallenge, Error> = .success(.signIn)
+
+    func passkeyChallenge() async throws -> PasskeyChallenge { try challenge.get() }
+
+    /// What an auth email's link signs in as.
+    var linkResult: Result<AuthUser, Error> = .success(.sample)
+    private(set) var verifiedLinks: [EmailLink] = []
+
+    func verifyEmailLink(_ link: EmailLink) async throws -> AuthUser {
+        verifiedLinks.append(link)
+        let user = try linkResult.get()
+        self.user = user
+        return user
+    }
+
+    var newPasswordError: Error?
+    private(set) var newPasswords: [String] = []
+
+    func setNewPassword(_ password: String) async throws {
+        if let newPasswordError { throw newPasswordError }
+        newPasswords.append(password)
+    }
+
     func signOut() async throws {
         signedOut += 1
         user = nil
@@ -52,6 +76,32 @@ final class FakeAuthService: AuthService, @unchecked Sendable {
 
     /// What the service reports from outside (a token that died, a sign-in elsewhere).
     func change(to user: AuthUser?) { emit.yield(user) }
+}
+
+/// The system's passkey sheet, answered by the test.
+@MainActor
+final class FakePasskeySheet: PasskeySheet {
+    /// What the sheet answers (an ASAuthorizationError(.canceled) when closed).
+    var answer: Result<JSONValue, Error> = .success(["id": "cred-1", "rawId": "cred-1", "type": "public-key"])
+    private(set) var used: [JSONValue] = []
+    private(set) var created: [JSONValue] = []
+
+    func usePasskey(_ options: JSONValue) async throws -> JSONValue {
+        used.append(options)
+        return try answer.get()
+    }
+
+    func createPasskey(_ options: JSONValue) async throws -> JSONValue {
+        created.append(options)
+        return try answer.get()
+    }
+}
+
+extension PasskeyChallenge {
+    static let signIn = PasskeyChallenge(id: "ch-1", options: ["challenge": "c2lnbi1pbg", "rpId": "dev.budgeer.com",
+                                                                "userVerification": "preferred"])
+    static let add = PasskeyChallenge(id: "reg-1", options: ["challenge": "YWRk", "rp": ["id": "dev.budgeer.com", "name": "Budgeer"],
+                                                             "user": ["id": "dXNlcg", "name": "sam@example.com"]])
 }
 
 /// The device owner's check, answered by the test.

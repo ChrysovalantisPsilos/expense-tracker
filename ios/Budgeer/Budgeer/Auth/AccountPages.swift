@@ -2,8 +2,9 @@
 // password with the password's rules, the Terms and Privacy tick the web
 // records as consent, the hobby-project line, Sign up with Google behind
 // the same tick), Check your inbox (signing in by itself once the link is
-// opened, Log in, resend it or use a different email), and Forgot password
-// (the reset link by email; the link opens the website's reset page). The
+// opened, Log in, resend it or use a different email), Forgot password
+// (the reset link by email), an email link that can't be used (expired or
+// used already: what to do), and the new password a reset link leads to. The
 // Terms of Use and the Privacy Notice open in Safari inside the app.
 import BudgeerCore
 import SwiftUI
@@ -12,6 +13,8 @@ import SwiftUI
 enum AuthPage: Hashable {
     case signUp
     case forgot
+    /// An auth email's link that couldn't be used, by its type.
+    case expired(String)
 }
 
 /// Sign in and its pages, one stack.
@@ -27,15 +30,7 @@ struct AuthFlowView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            SignInView(model: signIn, session: session,
-                       onSignUp: {
-                           signUp = SignUpModel(access: access, site: site)
-                           path.append(.signUp)
-                       },
-                       onForgot: {
-                           forgot = ForgotPasswordModel(access: access, site: site)
-                           path.append(.forgot)
-                       })
+            SignInView(model: signIn, session: session, onSignUp: openSignUp, onForgot: openForgot)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: AuthPage.self) { page in
                     switch page {
@@ -50,10 +45,141 @@ struct AuthFlowView: View {
                         if let forgot {
                             ForgotPasswordView(model: forgot) { path.removeAll() }
                         }
+                    case .expired(let type):
+                        ExpiredLinkView(type: type) { to in
+                            switch to {
+                            case "/forgot-password": openForgot()
+                            case "/login?signup=1": openSignUp()
+                            default: path.removeAll()
+                            }
+                        }
                     }
                 }
         }
         .tint(NativeStyle.tint)
+        // An email link opened in the app that couldn't be used: what to do.
+        .onChange(of: session.linkProblem, initial: true) { _, type in
+            guard let type else { return }
+            session.dismissLinkProblem()
+            path = [.expired(type)]
+        }
+    }
+
+    private func openSignUp() {
+        signUp = SignUpModel(access: access, site: site)
+        path = [.signUp]
+    }
+
+    private func openForgot() {
+        forgot = ForgotPasswordModel(access: access, site: site)
+        path = [.forgot]
+    }
+}
+
+// MARK: An email link that can't be used
+
+/// The web's LinkExpired: what happened in plain words, and the ways on
+/// (confirmLink.expiredLinkHelp: a new reset link, or log in / sign up again).
+@MainActor
+struct ExpiredLinkView: View {
+    let type: String
+    /// One of the help's pages (/forgot-password, /login, /login?signup=1).
+    let go: (String) -> Void
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        let help = ExpiredLinkHelp.of(type)
+        ScrollView {
+            VStack(spacing: 18) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 40))
+                    .foregroundStyle(NativeStyle.warning)
+                    .padding(.top, 24)
+                Text(language.t("auth:expired.title"))
+                    .font(NativeStyle.title(24, lang: language.current))
+                    .multilineTextAlignment(.center)
+                if let help {
+                    Text(help.text)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("expired.text")
+                    ForEach(Array(help.actions.enumerated()), id: \.element) { index, action in
+                        Button { go(action.to) } label: {
+                            Text(action.label).frame(maxWidth: .infinity)
+                        }
+                        .nativeGlassButton(prominent: index == 0)
+                        .accessibilityIdentifier("expired.\(index)")
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+        }
+        .background(NativeStyle.canvas.ignoresSafeArea())
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: A new password (a reset link)
+
+/// The web's ResetPassword, full screen while a reset link's session waits
+/// for its new password: the new password twice, then Update password.
+@MainActor
+struct ResetPasswordView: View {
+    @Bindable var model: ResetPasswordModel
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                Image(systemName: "key.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(NativeStyle.tint)
+                    .padding(.top, 48)
+                Text(language.t("auth:reset.title"))
+                    .font(NativeStyle.title(24, lang: language.current))
+                    .multilineTextAlignment(.center)
+                VStack(alignment: .leading, spacing: 6) {
+                    VStack(spacing: 0) {
+                        SecureField(language.t("auth:password.new"), text: $model.password)
+                            .textContentType(.newPassword)
+                            .padding(.vertical, 14)
+                            .accessibilityIdentifier("reset.password")
+                        Divider()
+                        SecureField(language.t("auth:password.confirmNew"), text: $model.confirm)
+                            .textContentType(.newPassword)
+                            .submitLabel(.go)
+                            .onSubmit { Task { await model.submit() } }
+                            .padding(.vertical, 14)
+                            .accessibilityIdentifier("reset.confirm")
+                    }
+                    .padding(.horizontal, 16)
+                    .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    Text(language.t("auth:password.hint")).font(.footnote).foregroundStyle(.secondary)
+                    if let problem = model.problem {
+                        Text(problem)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(NativeStyle.negative)
+                            .accessibilityIdentifier("reset.problem")
+                    }
+                }
+                Button {
+                    Task { await model.submit() }
+                } label: {
+                    Group {
+                        if model.busy { ProgressView().tint(Color.white) } else { Text(language.t("auth:password.update")) }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .nativeGlassButton(prominent: true)
+                .disabled(!model.canSubmit)
+                .accessibilityIdentifier("reset.submit")
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+        }
+        .scrollDismissesKeyboard(.interactively)
+        .background(NativeStyle.canvas.ignoresSafeArea())
     }
 }
 

@@ -1,10 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  hasPasswordIdentity, toPasskeyList, hasPassword, signInMethods, disconnectBlock, appleProfileName,
+  hasPasswordIdentity, toPasskeyList, passkeyRows, hasPassword, signInMethods, disconnectBlock, appleProfileName,
   linkErrorMessage, redirectError, newPasswordError, deleteAccountCheck, deletionScope, DELETE_CONFIRM_WORD,
 } from '../src/features/settings/authMethods.js'
 import en from '../src/locales/en/index.js'
+import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 
 test('hasPasswordIdentity: an email identity has a password, OAuth-only has none, unknown defaults to one', () => {
   assert.equal(hasPasswordIdentity({ app_metadata: { providers: ['email'] } }), true)
@@ -23,6 +24,27 @@ test('toPasskeyList: accepts a bare array or a { passkeys } object', () => {
   assert.deepEqual(toPasskeyList({ passkeys: pk }), pk)
   assert.deepEqual(toPasskeyList({}), [])
   assert.deepEqual(toPasskeyList(null), [])
+})
+
+test('passkeyRows: the name (or "Passkey") and the day it was added, in either language', async () => {
+  const list = [
+    { id: 'a', friendly_name: 'iPhone', created_at: '2026-09-26T21:30:00Z' },
+    { id: 'b', friendly_name: '', created_at: null },
+  ]
+  assert.deepEqual(passkeyRows(list), [
+    { id: 'a', name: 'iPhone', meta: 'added 2026-09-26' },
+    { id: 'b', name: 'Passkey', meta: null },
+  ])
+  assert.deepEqual(passkeyRows({ passkeys: list }).map((r) => r.id), ['a', 'b'])
+  assert.deepEqual(passkeyRows(null), [])
+  await loadLanguage('el')
+  try {
+    const [greek, unnamed] = passkeyRows(list)
+    assert.match(greek.meta, /26\/09\/2026/)
+    assert.notEqual(unnamed.name, 'Passkey')
+  } finally {
+    await loadLanguage('en')
+  }
 })
 
 const emailUser = { email: 'a@x.test', app_metadata: { providers: ['email'] } }

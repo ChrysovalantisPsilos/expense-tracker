@@ -1,8 +1,9 @@
 // Settings › Security's account calls, after the web's AuthProvider (the
 // sign-in methods): the signed-in user and its identities as the web's
 // authMethods reads them, when this session signed in (reauth), changing or
-// setting the password, and connecting or disconnecting Google (its web
-// consent) or Apple (the system's sheet, its token linked). Behind a
+// setting the password, connecting or disconnecting Google (its web
+// consent) or Apple (the system's sheet, its token linked), and the
+// account's passkeys (listed, added, removed: Passkeys.swift). Behind a
 // protocol so the security page can be tested with a fake. The rules
 // (which methods show, what can be removed, how recent a sign-in must be)
 // are the core's; this file only talks to Supabase Auth.
@@ -31,6 +32,15 @@ protocol AccountSecurity: Sendable {
     func linkApple(_ credential: AppleCredential) async throws
     /// unlinkIdentity for the provider's ('google', 'apple') identity.
     func unlink(provider: String) async throws
+    /// passkey.list: the account's passkeys as the server lists them
+    /// (authMethods.passkeyRows reads them); throws when passkeys are off.
+    func passkeys() async throws -> JSONValue
+    /// registerPasskey's first half: the server's options for a new passkey.
+    func passkeyOptions() async throws -> PasskeyChallenge
+    /// registerPasskey's second half: the sheet's new passkey saved.
+    func savePasskey(_ answer: PasskeyCredential) async throws
+    /// passkey.delete.
+    func removePasskey(id: String) async throws
 }
 
 /// The current password was wrong (common:errors.auth.currentPasswordInvalid).
@@ -41,10 +51,13 @@ final class SupabaseAccountSecurity: AccountSecurity {
     private let config: AppConfig
     private let http: URLSession
 
+    private let passkeyServer: PasskeyServer
+
     init(client: SupabaseClient, config: AppConfig, http: URLSession = .shared) {
         self.client = client
         self.config = config
         self.http = http
+        passkeyServer = PasskeyServer(config: config, http: http)
     }
 
     func accountUser() async throws -> JSONValue {
@@ -139,6 +152,22 @@ final class SupabaseAccountSecurity: AccountSecurity {
             guard let identity = list.first(where: { $0.provider == provider }) else { return }
             try await client.auth.unlinkIdentity(identity)
         }
+    }
+
+    func passkeys() async throws -> JSONValue {
+        try await passkeyServer.list(token: try await client.auth.session.accessToken)
+    }
+
+    func passkeyOptions() async throws -> PasskeyChallenge {
+        try await passkeyServer.addChallenge(token: try await client.auth.session.accessToken)
+    }
+
+    func savePasskey(_ answer: PasskeyCredential) async throws {
+        try await passkeyServer.add(answer, token: try await client.auth.session.accessToken)
+    }
+
+    func removePasskey(id: String) async throws {
+        try await passkeyServer.remove(id: id, token: try await client.auth.session.accessToken)
     }
 
     /// Supabase Auth's refusal in the web's shape (its error code and message).

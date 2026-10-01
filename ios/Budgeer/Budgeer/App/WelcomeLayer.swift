@@ -1,6 +1,7 @@
 // What greets a signed-in account over the frame (WelcomeModel, TourModel):
-// the setup wizard or the What's new story full screen, and the tour's coach
-// marks over the tabs. The pages mark what the tour points at (tourTarget)
+// the setup wizard or the What's new story full screen, the ask to add a
+// passkey (a sheet, once the story is closed), and the tour's coach marks
+// over the tabs. The pages mark what the tour points at (tourTarget)
 // through the environment's TourTargets. Where the wizard, the story's
 // actions and the tour lead is the router's (AppPaths).
 import SwiftUI
@@ -25,6 +26,8 @@ private struct WelcomeLayer: ViewModifier {
     let router: AppRouter
     @Environment(AppLanguage.self) private var language
     @State private var targets = TourTargets()
+    /// The passkey ask on screen (it waits for the story's cover to go).
+    @State private var askingPasskey = false
 
     func body(content: Content) -> some View {
         content
@@ -49,6 +52,22 @@ private struct WelcomeLayer: ViewModifier {
                     .environment(language)
                 }
             }
+            .sheet(isPresented: $askingPasskey, onDismiss: {
+                if welcome.passkeyAsk { Task { await welcome.closePasskeyAsk() } }
+            }) {
+                PasskeyAskView(welcome: welcome)
+                    .environment(language)
+                    .presentationDetents([.medium, .large])
+            }
+            .task(id: welcome.passkeyAsk && welcome.story == nil && !welcome.wizard) {
+                guard welcome.passkeyAsk, welcome.story == nil, !welcome.wizard else {
+                    askingPasskey = false
+                    return
+                }
+                // After the story's cover has gone, never over it.
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                if !Task.isCancelled { askingPasskey = true }
+            }
             .task { await welcome.greet() }
             .onChange(of: welcome.tourRequest) { _, request in
                 guard let request else { return }
@@ -70,6 +89,63 @@ private struct WelcomeLayer: ViewModifier {
             // Swiped away: a story is closed (the wizard can't be).
             if value == nil { welcome.story = nil }
         })
+    }
+}
+
+/// The web's PasskeyPrompt: log in faster with a passkey, "Don't remind me
+/// again", then Not now or Create passkey.
+@MainActor
+private struct PasskeyAskView: View {
+    @Bindable var welcome: WelcomeModel
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                NativeIconTile(symbol: "person.badge.key.fill", color: NativeTone.coral)
+                Text(language.t("settings:passkeyPrompt.title"))
+                    .font(NativeStyle.title(20, lang: language.current))
+            }
+            Text(language.t("settings:passkeyPrompt.body")).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Toggle(language.t("settings:passkeyPrompt.never"), isOn: $welcome.passkeyNever)
+                .tint(NativeStyle.tint)
+                .accessibilityIdentifier("passkeyAsk.never")
+            if welcome.passkeyNever {
+                Text(language.t("settings:passkeyPrompt.later")).font(.footnote).foregroundStyle(.secondary)
+            }
+            if let problem = welcome.passkeyAskProblem {
+                Text(problem).font(.footnote.weight(.semibold)).foregroundStyle(NativeStyle.negative)
+            }
+            Spacer(minLength: 0)
+            HStack(spacing: 10) {
+                Button {
+                    Task { await welcome.closePasskeyAsk() }
+                } label: {
+                    Text(language.t("settings:passkeyPrompt.notNow")).frame(maxWidth: .infinity)
+                }
+                .nativeGlassButton()
+                .accessibilityIdentifier("passkeyAsk.notNow")
+                Button {
+                    Task { await welcome.createAskedPasskey() }
+                } label: {
+                    Group {
+                        if welcome.busy {
+                            ProgressView().tint(Color.white)
+                        } else {
+                            Label(language.t("settings:passkeyPrompt.create"), systemImage: "person.badge.key")
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .nativeGlassButton(prominent: true)
+                .disabled(welcome.busy)
+                .accessibilityIdentifier("passkeyAsk.create")
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(NativeStyle.canvas.ignoresSafeArea())
     }
 }
 

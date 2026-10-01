@@ -326,6 +326,16 @@ npm run dev       # Vite
   runs by hand with "snapshots" ticked; develop pushes and PRs skip them.
   A commit that can't change a check (notes, workflow-only edits
   already checked) may carry `[skip ci]`.
+- **Universal Links and passkeys (Oct 2026):** the site serves
+  `/.well-known/apple-app-site-association` (both app ids under team
+  `Z9KGWP5G82`, applinks + webcredentials); each build claims its own host
+  through `BUDGEER_WEB_HOST`/`_APEX` in the xcconfigs. Apple's CDN follows
+  no redirect, so `budgeer.com` verifies only once the Vercel domain serves
+  (vercel.json then redirects everything but `/.well-known/` to www).
+  Passkeys' relying party is the site host the server names
+  (`www.budgeer.com` on PROD, `dev.budgeer.com` on TEST); the app calls
+  Supabase Auth's `/auth/v1/passkeys/*` itself (supabase-swift has no
+  passkey API) with the system's passkey sheet.
 - **Feature parity (owner rule, 1 Oct 2026):** every feature the website
   offers must also be in the iOS app, and the other way round, before a
   release; no discrepancies. App-only extras that are platform features

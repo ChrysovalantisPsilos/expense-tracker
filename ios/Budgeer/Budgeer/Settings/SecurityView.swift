@@ -1,8 +1,9 @@
 // Settings › Security (SecurityModel): "Log in again" when a fresh sign-in
 // is needed, the sign-in methods with Connect / Disconnect for Google and
-// Apple and "Set a password" for an account without one, Change password, and the
-// danger zone's Delete account, which asks once more in a sheet (the only
-// confirmation here). On the shared demo account, the demo note instead.
+// Apple and "Set a password" for an account without one, Change password, the
+// passkeys (Add, Remove), and the danger zone's Delete account, which asks
+// once more in a sheet (the only confirmation here). On the shared demo
+// account, the demo note instead.
 import AuthenticationServices
 import SwiftUI
 
@@ -54,6 +55,7 @@ struct SecurityView: View {
         methods
         if model.settingFirst { firstPassword }
         if model.hasPassword { changePassword }
+        if let passkeys = model.passkeys { passkeySection(passkeys) }
         Section {
             Button(role: .destructive) {
                 model.deleteValue = ""
@@ -167,6 +169,49 @@ struct SecurityView: View {
                 if !isAppleCancel(error) { model.linkFailed("apple") }
             }
         }
+    }
+
+    // MARK: Passkeys
+
+    /// The account's passkeys (the website's too), each with Remove, then Add.
+    private func passkeySection(_ passkeys: [PasskeyRow]) -> some View {
+        Section {
+            ForEach(passkeys) { passkey in
+                HStack(spacing: 14) {
+                    NativeIconTile(symbol: "person.badge.key.fill", color: NativeTone.sand)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(passkey.name)
+                        if let meta = passkey.meta {
+                            Text(meta).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    Button(role: .destructive) {
+                        Task { await model.removePasskey(passkey.id) }
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(model.busy)
+                    .accessibilityLabel(language.t("settings:passkeys.remove"))
+                    .accessibilityIdentifier("security.passkey.remove")
+                }
+                .padding(.vertical, 2)
+            }
+            Button {
+                Task { await model.addPasskey() }
+            } label: {
+                Label(language.t("settings:passkeys.add"), systemImage: "plus.circle.fill")
+                    .fontWeight(.semibold)
+            }
+            .disabled(model.busy)
+            .accessibilityIdentifier("security.passkey.add")
+        } header: {
+            NativeCapsHeader(title: language.t("settings:passkeys.title"))
+        } footer: {
+            if passkeys.isEmpty { Text(language.t("settings:passkeys.empty")) }
+        }
+        .listRowBackground(NativeStyle.card)
     }
 
     // MARK: Passwords

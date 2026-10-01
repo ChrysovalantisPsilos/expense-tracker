@@ -8,5 +8,12 @@ BUDGEER_ENV = dev
 // "Budgeer Dev": its own app beside the real one, on the TEST project.
 BUDGEER_BUNDLE_ID = com.budgeer.app.dev
 BUDGEER_DISPLAY_NAME = Budgeer Dev
+// The website this app opens links from (Universal Links) and shares
+// passkeys with (its relying party): the Associated Domains of
+// Config/Budgeer-*.entitlements, matched by the site's
+// /.well-known/apple-app-site-association.
+// The dev site has no second name: the apex entry repeats it.
+BUDGEER_WEB_HOST = dev.budgeer.com
+BUDGEER_WEB_APEX = dev.budgeer.com
 SUPABASE_URL = https:/$()/ctvdljzybbujuywppixo.supabase.co
 SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0dmRsanp5YmJ1anV5d3BwaXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjQ3MjgsImV4cCI6MjA5ODQwMDcyOH0.8-VpXSYpMU3lyJmE-yvwzOAP90PmNtnKcZUIjqXByGw

@@ -1,5 +1,6 @@
 // Joining a group from an invite link, after the web's JoinGroup: the link
-// (opened as budgeer://join/<token>, or pasted on the Groups tab's "Join with
+// (opened as budgeer://join/<token> or the website's https link, or pasted
+// on the Groups tab's "Join with
 // a link") is read for its token (groupFormat.inviteToken), the group shown
 // from preview_link_invite (joinParts: the name, the picture, the members),
 // then Accept & join (join_via_link) or Decline. Someone already in the
@@ -10,19 +11,12 @@ import Foundation
 import Observation
 import BudgeerCore
 
-/// A join link opened from outside the app, waiting for the signed-in frame
-/// to show it (it arrives before sign-in too).
+/// A join link opened from outside the app (AppLink), waiting for the
+/// signed-in frame to show it (it arrives before sign-in too).
 @MainActor
 @Observable
 final class JoinInbox {
     var token: String?
-
-    /// A URL the app was opened with: its invite token, when it holds one.
-    func open(_ url: URL, core: BudgeerCore = .shared) -> Bool {
-        guard let found: String = try? core.call("groupFormat", "inviteToken", [url.absoluteString]) else { return false }
-        token = found
-        return true
-    }
 }
 
 /// joinParts' 'joinable' answer.

@@ -1,0 +1,51 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["Z9KGWP5G82.com.budgeer.app", "Z9KGWP5G82.com.budgeer.app.dev"],
+        "components": [
+          { "/": "/join/*/?*", "exclude": true, "comment": "an invite link is /join/<token>, nothing under it" },
+          { "/": "/groups/*/?*", "exclude": true, "comment": "a group's other pages (edit, members, settle, an expense, comments) stay on the website" },
+          { "/": "/categories/*/?*", "exclude": true, "comment": "a category's page is /categories/<id>, nothing under it" },
+          { "/": "/join/*", "comment": "a group invite: the app's join page" },
+          { "/": "/auth/confirm", "?": { "token_hash": "?*", "type": "?*" }, "comment": "the auth emails' links: confirm a sign-up, reset the password, change the email" },
+          { "/": "/", "comment": "Home" },
+          { "/": "/budgets" },
+          { "/": "/transactions" },
+          { "/": "/import" },
+          { "/": "/groups" },
+          { "/": "/groups/*", "comment": "a group, or /groups/new" },
+          { "/": "/more" },
+          { "/": "/recurring" },
+          { "/": "/plan" },
+          { "/": "/insights" },
+          { "/": "/insights/salary" },
+          { "/": "/savings" },
+          { "/": "/vouchers" },
+          { "/": "/categories/*", "comment": "a category's page (with its ?period)" },
+          { "/": "/help" },
+          { "/": "/settings" },
+          { "/": "/settings/account" },
+          { "/": "/settings/notifications" },
+          { "/": "/settings/appearance" },
+          { "/": "/settings/language" },
+          { "/": "/settings/spending" },
+          { "/": "/settings/vouchers" },
+          { "/": "/settings/ai" },
+          { "/": "/settings/categories" },
+          { "/": "/settings/security" },
+          { "/": "/settings/privacy" },
+          { "/": "/settings/privacy/request" },
+          { "/": "/settings/whats-new" },
+          { "/": "/settings/import-rules" },
+          { "/": "/settings/data" },
+          { "/": "/settings/data/export" },
+          { "/": "/settings/data/restore" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["Z9KGWP5G82.com.budgeer.app", "Z9KGWP5G82.com.budgeer.app.dev"]
+  }
+}

@@ -7,8 +7,10 @@
 // DELETE typed; the delete-account edge function). Connecting, disconnecting
 // and deleting without a password need a sign-in in the last ten minutes
 // (reauth.isRecentClaims), as on the web; "Log in again" signs out so the
-// next sign-in is fresh. Passkeys are the web's alone (this app can't make
-// them), so they are not listed, as on a browser without them.
+// next sign-in is fresh. Then the passkeys, as the web's PasskeysCard
+// (authMethods.passkeyRows): Add (the system's sheet, after a recent
+// sign-in) and Remove; the same passkeys the website lists, hidden when the
+// server's list fails (passkeys off).
 import Foundation
 import Observation
 import BudgeerCore
@@ -20,6 +22,13 @@ struct SignInMethodRow: Decodable, Equatable, Identifiable {
     let connected: Bool
     let detail: String
     var id: String { key }
+}
+
+/// One passkey (authMethods.passkeyRows): its name and when it was added.
+struct PasskeyRow: Decodable, Equatable, Identifiable {
+    let id: String
+    let name: String
+    let meta: String?
 }
 
 /// deleteAccountCheck: what deleting the account asks for, and whether Delete can be pressed.
@@ -50,6 +59,8 @@ final class SecurityModel {
     private(set) var hasPassword = false
     /// Whether this session signed in within the last few minutes.
     private(set) var recent = false
+    /// The account's passkeys; nil hides them (the server's list failed: passkeys are off).
+    private(set) var passkeys: [PasskeyRow]?
     private(set) var busy = false
     private(set) var message: String?
     private(set) var warning = false
@@ -65,16 +76,20 @@ final class SecurityModel {
 
     private var user: JSONValue = [:]
     private var identities: JSONValue = .null
+    /// The server's passkey list (either shape), null when it can't be read.
+    private var passkeyList: JSONValue = .null
     private let data: DataLayer
     private let security: AccountSecurity
+    private let sheet: PasskeySheet
     private let signOut: @MainActor () async -> Void
     private let core: BudgeerCore
     private let now: @Sendable () -> Date
 
     init(data: DataLayer, security: AccountSecurity, signOut: @escaping @MainActor () async -> Void,
-         core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() }) {
+         sheet: PasskeySheet? = nil, core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() }) {
         self.data = data
         self.security = security
+        self.sheet = sheet ?? PasskeyAuthorizer()
         self.signOut = signOut
         self.core = core
         self.now = now
@@ -86,6 +101,7 @@ final class SecurityModel {
             isDemo = (try? core.call("demoAccount", "isDemoAccount", [profile])) ?? false
             user = try await security.accountUser()
             identities = (try? await security.identities()) ?? .null
+            passkeyList = (try? await security.passkeys()) ?? .null
             await checkRecent()
             figure()
             state = .loaded
@@ -247,6 +263,39 @@ final class SecurityModel {
             ?? core.text("settings:signIn.\(provider).linkFallback")
     }
 
+    // MARK: Passkeys
+
+    /// Add: a passkey made on this iPhone (or a device beside it), for this account.
+    func addPasskey() async {
+        busy = true
+        defer { busy = false }
+        switch await security.addPasskey(sheet: sheet, core: core, now: now()) {
+        case .added:
+            say(core.text("settings:passkeys.added"))
+            await reloadPasskeys()
+        case .cancelled:
+            break
+        case .failed(let why):
+            say(why, warning: true)
+        }
+    }
+
+    func removePasskey(_ id: String) async {
+        busy = true
+        defer { busy = false }
+        do {
+            try await security.removePasskey(id: id)
+            await reloadPasskeys()
+        } catch {
+            say(UserMessage.of(error, fallback: core.text("settings:passkeys.removeFailed"), core: core), warning: true)
+        }
+    }
+
+    private func reloadPasskeys() async {
+        passkeyList = (try? await security.passkeys()) ?? .null
+        figure()
+    }
+
     // MARK: Deleting the account
 
     /// Delete: the edge function, then signed out (the app goes back to sign-in).
@@ -291,8 +340,15 @@ final class SecurityModel {
 
     /// The methods, the providers' blocks and the password, from the user and its identities.
     private func figure() {
-        let args: JSONValue = ["user": user, "identities": identities, "passkeys": .null]
+        let list = passkeyList.isNull ? JSONValue.null : ((try? core.json("authMethods", "toPasskeyList", [passkeyList])) ?? .null)
+        let args: JSONValue = ["user": user, "identities": identities, "passkeys": list]
         methods = (try? core.call("authMethods", "signInMethods", [args])) ?? []
+        if list.isNull {
+            passkeys = nil
+        } else {
+            let rows: [PasskeyRow]? = try? core.call("authMethods", "passkeyRows", [list])
+            passkeys = rows ?? []
+        }
         blocks = [:]
         // The providers' rows sit between the password's and the passkeys' (authMethods.PROVIDERS).
         for provider in methods.map(\.key) where provider != "password" && provider != "passkeys" {

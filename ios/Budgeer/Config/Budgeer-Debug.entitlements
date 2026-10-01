@@ -4,6 +4,12 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:$(BUDGEER_WEB_HOST)</string>
+		<string>applinks:$(BUDGEER_WEB_APEX)</string>
+		<string>webcredentials:$(BUDGEER_WEB_HOST)</string>
+	</array>
 	<key>com.apple.developer.applesignin</key>
 	<array>
 		<string>Default</string>

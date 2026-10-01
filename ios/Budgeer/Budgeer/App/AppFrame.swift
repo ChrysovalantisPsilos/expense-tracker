@@ -185,8 +185,12 @@ final class AppModels {
     let welcome: WelcomeModel
     let tour: TourModel
 
+    /// The system's passkey sheet (Settings › Security, the wizard, the ask after signing in).
+    let passkeySheet: PasskeyAuthorizer
+
     init(data: DataLayer, userId: String, language: AppLanguage, security accountSecurity: AccountSecurity,
          signOut: @escaping @MainActor () async -> Void) {
+        passkeySheet = PasskeyAuthorizer()
         shell = ShellModel(data: data)
         home = HomeViewModel(data: data)
         ledger = LedgerModel(data: data)
@@ -197,7 +201,7 @@ final class AppModels {
         myGroups = MyGroupsModel(data: data, userId: userId)
         account = AccountModel(data: data)
         preferences = PreferencesModel(data: data)
-        security = SecurityModel(data: data, security: accountSecurity, signOut: signOut)
+        security = SecurityModel(data: data, security: accountSecurity, signOut: signOut, sheet: passkeySheet)
         privacy = PrivacyModel(data: data)
         categories = CategoriesModel(data: data)
         savings = SavingsModel(data: data)
@@ -255,6 +259,8 @@ struct AppFrame: View {
                                       signOut: { await session.signOut() })
                 // The wizard's "Enable notifications" is Settings' push switch turned on.
                 built.welcome.pushOptIn = { await push.optIn() }
+                // Its "Add a passkey", and the ask after signing in, are Settings › Security's Add.
+                built.welcome.passkeyKit = PasskeyKit(security: container.security, sheet: built.passkeySheet)
                 models = built
             }
         }

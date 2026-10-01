@@ -49,6 +49,11 @@ final class SnapshotTests: XCTestCase {
                                 lang: lang, dark: dark, settle: 0.4)
             }
             try await shots(LegalGateView(status: .outdated, session: session), name: "legal", lang: lang, dark: dark)
+            // A reset link opened in the app: the new password; a link that can't be used.
+            try await shots(ResetPasswordView(model: ResetPasswordModel(session: session)), name: "reset-password",
+                            lang: lang, dark: dark)
+            try await shots(NavigationStack { ExpiredLinkView(type: "recovery") { _ in } }, name: "link-expired",
+                            lang: lang, dark: dark)
         }
     }
 

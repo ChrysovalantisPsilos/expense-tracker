@@ -123,4 +123,26 @@ final class FakeSecurity: AccountSecurity, @unchecked Sendable {
         calls.append("unlink:\(provider)")
         identityRows = .array((identityRows.arrayValue ?? []).filter { $0["provider"]?.stringValue != provider })
     }
+
+    /// The server's passkey list (a failure: passkeys are off for the project).
+    var passkeyList: Result<JSONValue, Error> = .success([])
+
+    func passkeys() async throws -> JSONValue { try passkeyList.get() }
+
+    func passkeyOptions() async throws -> PasskeyChallenge {
+        calls.append("passkeyOptions")
+        return .add
+    }
+
+    func savePasskey(_ answer: PasskeyCredential) async throws {
+        calls.append("savePasskey:\(answer.challengeId)")
+        let list = (try? passkeyList.get())?.arrayValue ?? []
+        passkeyList = .success(.array(list + [["id": "pk-new", "friendly_name": "iPhone", "created_at": "2026-09-15T09:00:00Z"]]))
+    }
+
+    func removePasskey(id: String) async throws {
+        calls.append("removePasskey:\(id)")
+        let list = (try? passkeyList.get())?.arrayValue ?? []
+        passkeyList = .success(.array(list.filter { $0["id"]?.stringValue != id }))
+    }
 }

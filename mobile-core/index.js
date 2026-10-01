@@ -98,6 +98,7 @@ import * as whatsNewMath from '../src/features/whatsnew/whatsNewMath.js'
 import * as categoryLinks from '../src/shared/lib/categoryLinks.js'
 import * as authChecks from '../src/features/auth/authChecks.js'
 import * as confirmWait from '../src/features/auth/confirmWait.js'
+import * as confirmLink from '../src/features/auth/confirmLink.js'
 import * as onboardingMath from '../src/features/onboarding/onboardingMath.js'
 import * as tourSteps from '../src/features/onboarding/tourSteps.js'
 import * as faqContent from '../src/features/help/faqContent.js'
@@ -197,6 +198,7 @@ export const modules = {
   categoryLinks,
   authChecks,
   confirmWait,
+  confirmLink,
   onboardingMath,
   tourSteps,
   faqContent,

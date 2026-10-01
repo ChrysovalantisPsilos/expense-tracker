@@ -143,13 +143,10 @@ final class GroupLinksTests: XCTestCase {
         guard case .joinable = demo.state else { return XCTFail("left the preview") }
     }
 
-    func testTheAppsOwnLinkWaitsInTheInbox() {
-        let inbox = JoinInbox()
-        XCTAssertTrue(inbox.open(URL(string: "budgeer://join/a1b2c3d4e5f6a7b8c9")!))
-        XCTAssertEqual(inbox.token, "a1b2c3d4e5f6a7b8c9")
-        inbox.token = nil
-        XCTAssertFalse(inbox.open(URL(string: "budgeer://auth-callback#access_token=x")!))
-        XCTAssertNil(inbox.token)
+    func testTheAppsOwnLinkIsAnInvite() {
+        XCTAssertEqual(AppLink.of(URL(string: "budgeer://join/a1b2c3d4e5f6a7b8c9")!, hosts: ["dev.budgeer.com"]),
+                       .join("a1b2c3d4e5f6a7b8c9"))
+        XCTAssertNil(AppLink.of(URL(string: "budgeer://auth-callback#access_token=x")!, hosts: ["dev.budgeer.com"]))
     }
 
     // MARK: Settle up's ask for your payment details
