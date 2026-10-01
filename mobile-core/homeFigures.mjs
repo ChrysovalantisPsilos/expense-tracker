@@ -44,6 +44,8 @@ export const FIXTURE_FILE = 'ios/Budgeer/BudgeerTests/Fixtures/home.json'
 // can't carry Infinity, so the app and this fixture pass a number no list
 // reaches. The same constant lives in HomeFigures.swift.
 export const NO_FOLD = 1_000_000
+// The donut's legend on the native Home: the four biggest, then "Other".
+export const LEGEND_TOP = 4
 
 // The Recurring card (SubscriptionsCard) for `period`: today's rules by
 // frequency (this month, and next month once its salary is in), or what a
@@ -114,16 +116,20 @@ export function homeFigures({ rows, profile, categories, rules = [], rates = {},
   const labels = bucketLabels([...totals.bucketRow.values()])
   // Each bar's badge as Dashboard's BucketIcon draws it: a group's share
   // wears the people icon, anything else its category's look.
-  const ranked = categoryBars(totals.byCategory, NO_FOLD)
-  const lines = barLines(ranked, spend, baseCurrency)
-  const bars = ranked.map((c, i) => {
-    const row = totals.bucketRow.get(c.name)
-    return {
-      name: c.name, label: bucketLabel(c, labels), value: c.value, share: c.share, ratio: c.ratio,
-      amount: formatMoney(c.value, baseCurrency), meta: lines[i],
-      group: !!row?.group_expense_id, look: categoryLook(row?.categories),
-    }
-  })
+  const shape = (ranked) => {
+    const lines = barLines(ranked, spend, baseCurrency)
+    return ranked.map((c, i) => {
+      const row = totals.bucketRow.get(c.name)
+      return {
+        name: c.name, label: bucketLabel(c, labels), value: c.value, share: c.share, ratio: c.ratio,
+        amount: formatMoney(c.value, baseCurrency), meta: lines[i],
+        group: !!row?.group_expense_id, look: categoryLook(row?.categories),
+      }
+    })
+  }
+  const bars = shape(categoryBars(totals.byCategory, NO_FOLD))
+  // The native app's donut: the top four and the rest folded into "Other".
+  const legend = shape(categoryBars(totals.byCategory, LEGEND_TOP))
   // "Show all": the top rows first (visibleBars), the button's two words.
   const folded = visibleBars(bars, false)
   const fold = {
@@ -151,6 +157,7 @@ export function homeFigures({ rows, profile, categories, rules = [], rates = {},
     sum: netSum(figures, baseCurrency),
     notes: overviewNotes({ proj }, baseCurrency),
     bars,
+    legend,
     fold,
     cards: homeCards({ firstRun }),
     expenseList: homeList('expense', lists.expenses, listOptions),

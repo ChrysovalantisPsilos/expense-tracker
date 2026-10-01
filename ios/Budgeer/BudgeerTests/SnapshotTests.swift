@@ -15,11 +15,11 @@ import BudgeerCore
 @MainActor
 final class SnapshotTests: XCTestCase {
     private static let size = CGSize(width: 402, height: 874)
-    private static let variants = [("en", false), ("en", true), ("el", false)]
+    static let variants = [("en", false), ("en", true), ("el", false)]
     private static let config = AppConfig(environment: .dev, supabaseURL: URL(string: "https://example.supabase.co")!,
                                           supabaseAnonKey: "test")
     private static let user = AuthUser.sample.id.uuidString.lowercased()
-    private static let chrome = PageChrome(initials: "SM", badge: "1", onBell: {}, onProfile: {})
+    static let chrome = PageChrome(initials: "SM", badge: "1", onBell: {}, onProfile: {})
     /// Your circle (no photo: the initials in the accent).
     private static var avatar: Avatar? { Avatar.viewer(["display_name": "Sam Morgan"], core: .shared) }
 
@@ -58,14 +58,14 @@ final class SnapshotTests: XCTestCase {
             let owner = FakeOwner()
             owner.answer = false
             let lock = SnapshotTests.lock("SnapshotTests.lock", owner: owner)
-            try await shots(LockView(lock: lock), name: "lock", lang: lang, dark: dark)
+            try await shots(LockScreen(lock: lock), name: "lock", lang: lang, dark: dark)
             // With an app PIN: "Use PIN" under Unlock; on a phone that can't check its owner, the pad itself.
             let withPin = SnapshotTests.lock("SnapshotTests.lock", owner: owner, pin: "2580")
-            try await shots(LockView(lock: withPin), name: "lock-pin-offer", lang: lang, dark: dark)
+            try await shots(LockScreen(lock: withPin), name: "lock-pin-offer", lang: lang, dark: dark)
             let noFaceID = FakeOwner()
             noFaceID.available = false
             let padOnly = SnapshotTests.lock("SnapshotTests.lock", owner: noFaceID, pin: "2580")
-            try await shots(LockView(lock: padOnly), name: "lock-pin", lang: lang, dark: dark)
+            try await shots(LockScreen(lock: padOnly), name: "lock-pin", lang: lang, dark: dark)
         }
     }
 
@@ -609,7 +609,7 @@ final class SnapshotTests: XCTestCase {
             await model.load()
             try await shots(framed(.home) { NavigationStack { VouchersView(model: model) { _ in } } },
                       name: "vouchers", lang: lang, dark: dark, long: 1900)
-            // Fix days, open in place.
+            // Edit days, open in place.
             model.startFix()
             model.step(-1)
             try await shots(framed(.home) { NavigationStack { VouchersView(model: model) { _ in } } },
@@ -739,7 +739,7 @@ final class SnapshotTests: XCTestCase {
 
     // MARK: Helpers
 
-    private func language(_ lang: String) -> AppLanguage {
+    func language(_ lang: String) -> AppLanguage {
         let language = AppLanguage(preference: lang, defaults: defaults(), deviceLanguages: ["en"])
         NativeStyle.installAppearance(lang: language.current)
         return language
@@ -748,7 +748,7 @@ final class SnapshotTests: XCTestCase {
     private func defaults() -> UserDefaults { UserDefaults(suiteName: "SnapshotTests")! }
 
     /// A page in the frame, with its tab picked.
-    private func framed<V: View>(_ tab: NativeTab, @ViewBuilder _ page: @escaping () -> V) -> some View {
+    func framed<V: View>(_ tab: NativeTab, @ViewBuilder _ page: @escaping () -> V) -> some View {
         NativeTabs(tab: .constant(tab), onAdd: {}) { shown in
             if shown == tab { page() } else { Color.clear }
         }
@@ -763,7 +763,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     /// The phone's screen, and the whole page when `long` is given.
-    private func shots<V: View>(_ view: V, name: String, lang: String, dark: Bool, long: CGFloat? = nil,
+    func shots<V: View>(_ view: V, name: String, lang: String, dark: Bool, long: CGFloat? = nil,
                                 settle: TimeInterval = 0.8) async throws {
         let dressed = view.environment(language(lang)).tint(NativeStyle.tint)
         let variant = "\(lang)\(dark ? "-dark" : "")"

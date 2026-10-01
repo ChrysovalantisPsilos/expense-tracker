@@ -1,6 +1,6 @@
 // Meal vouchers (from Home's card, More › Money once set up), after the web's
 // Vouchers page: what's on the card with this month's top-ups and spending,
-// the next top-up with "Fix days" opening in place (a stepper, the new
+// the next top-up with "Edit days" opening in place (a stepper, the new
 // amount, Save or Cancel), and the card's history month by month (tap an
 // expense to edit it; Show older). The gear opens Settings › Meal vouchers;
 // without a setup the page offers to set it up. Every figure and word is
@@ -151,7 +151,7 @@ struct VouchersView: View {
         .listRowBackground(NativeStyle.card)
     }
 
-    /// Fix days in place: the month's days worked, a stepper, what the top-up comes to, Save or Cancel.
+    /// Edit days in place: the month's days worked, a stepper, what the top-up comes to, Save or Cancel.
     @ViewBuilder
     private func fixRows(_ fix: DaysFix) -> some View {
         VStack(alignment: .leading, spacing: 10) {

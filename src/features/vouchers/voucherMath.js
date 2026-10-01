@@ -7,7 +7,7 @@
 // start_on / start_balance_minor are what was on the card when the user last
 // saved the setup ("On your card today"); every save starts again from there,
 // so a new amount per day never rewrites past top-ups. `days` holds the
-// months the user fixed ("Fix days": leave, sick days).
+// months the user fixed ("Edit days": leave, sick days).
 //
 // A top-up lands on topup_day each month (the month's last day when it's
 // shorter: 31 → 30 Sep, 28 Feb) and pays for the working days of the month

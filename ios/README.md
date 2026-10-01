@@ -153,8 +153,8 @@ ios/Budgeer/
                          link waiting), RootView (sign-in, the legal gate, the frame, the lock over it, a
                          budgeer://join link), AppFrame (the tabs, each tab's
                          stack of pages (AppRoute), the Add sheet, AppRouter), AddSlot (what Add does on a page
-                         that lends it its own add), NotificationsView (the bell's page), AppLock + LockView (Face
-                         ID), AppPin (the lock's PIN: rules, backoff) + PinKeychain (the Keychain item, PBKDF2) +
+                         that lends it its own add), NotificationsView (the bell's page), AppLock (Face ID; its screen
+                         is Lock/LockScreen), AppPin (the lock's PIN: rules, backoff) + PinKeychain (the Keychain item, PBKDF2) +
                          LockPinEntry (the lock screen's "Use PIN" slot, PinPad), ShellModel (your picture, the
                          bell's feed), LiveRefresh
     Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView,
@@ -168,7 +168,10 @@ ios/Budgeer/
                          QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
                          refetch), FxRates (ECB rates as fx.js), PeriodSource (the period pickers' options)
     Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView (the month pager,
-                         the sections, HomeCategoriesPage)
+                         the cards, HomeCategoriesPage), HomeCard (a card, a charge's tile), HomeCategoryViews
+                         (By category's donut, a category's row), HomeVoucherCard (the Meal vouchers card)
+    Lock/                LockScreen (the lock's screen: the mark on the glow, Unlock, a slot under it for another
+                         way in)
     Transactions/        EntryFormModel + AddSheet (Add/Edit/a rule: the amount, the keypad, the details),
                          ReceiptModel + ReceiptCard + ReceiptReader (Scan a receipt: Vision on the device, the
                          check, CameraPicker),
@@ -188,7 +191,7 @@ ios/Budgeer/
     Savings/             SavingsFigures (Savings.jsx's steps as core calls), SavingsModel, SavingsView (the pot and
                          its line, This month, the goals, the history), GoalEditorModel + GoalEditView (+ GoalEditHost)
     Vouchers/            VoucherFigures (Vouchers.jsx's steps), VouchersModel + VouchersView (the card, the next top-up
-                         with Fix days, the history), VoucherSetupModel + VoucherSetupView (Settings › Meal vouchers)
+                         with Edit days, the history), VoucherSetupModel + VoucherSetupView (Settings › Meal vouchers)
     Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab's
                          grid, Join with a link), NewGroupModel + NewGroupView (the new-group flow; the cover
                          picker and its upload, GroupCoverPicker + GroupCoverFile), GroupModel (+ GroupInvite) +
@@ -296,11 +299,18 @@ a core call (the web's function); Swift reads, lays out and draws.
   entry), the month's spend with Income and Net (the ⓘ: How Net adds up);
   "every budget held" on a past month that kept them all (a burst of
   confetti the first time), and what was put aside with "See savings ›"
-  (Savings); then Budgets, the month in plain words (when its AI switch is
-  on), Coming up (or what a past month was charged), By category and Meal
-  vouchers, a few rows each with See all (Meal vouchers' opens their page).
+  (Savings); then a summary first, each title on the canvas over a rounded
+  card without hairlines, See all beside it: the month in plain words (when
+  its AI switch is on), Coming up (or what a past month was charged) as a
+  strip of tiles, By category as a donut of the four biggest and "Other"
+  (categoryBars at four) with what was spent in its middle and a legend of
+  their amounts, Budgets, and Meal vouchers as the card itself in coral
+  (what's on it, opening their page) with the next top-up as a line
+  beneath. The cards spring in and the figures roll.
 - **Activity**: the month at a glance (spent, income and net, a bar per
-  day, the biggest day; rowParts.monthPulse), chips for the kind and the
+  day, the biggest day; rowParts.monthPulse; the card the same size every
+  month and every kind, the bars in 31 even places, folding away smoothly
+  when a search or a filter hides it), chips for the kind and the
   categories (and Groups: only your shares of group expenses, txnFilter's
   shared filter), then the month's entries by day, each day in its own card
   with what it spent; a floating glass pill for the month; search over all
@@ -371,7 +381,10 @@ a core call (the web's function); Swift reads, lays out and draws.
   go on (1, 3, 5 or 10 years, the three ways as step lines with what each
   adds up to, the yearly raise on a slider, the estimate's note behind the
   ⓘ), Against prices (Belgium or Greece, saved; since which year; the three
-  tiles and the monthly gap) and year by year. Before a Salary category or
+  figures and the monthly gap) and year by year. If things go on shows each
+  way with what it adds up to, a tap opening its line, the chart with it
+  lit and (What if) the raise; Against prices has the country and the year
+  as one menu over the three figures. Before a Salary category or
   any pay it says how to start (a new income category; Add income in the
   Salary category). Corrections (an extra's kind, the country, the Bonus
   category) are saved whole with save_salary_history, shown at once and put
@@ -448,7 +461,7 @@ a core call (the web's function); Swift reads, lays out and draws.
   web's toast).
 - **Meal vouchers** (Home's card, More › Money once set up): what's on the
   card (red below zero) with this month's top-ups and spending, the next
-  top-up and why, Fix days in place (a stepper, "× €8.00 = **€160.00**",
+  top-up and why, Edit days in place (a stepper, "× €8.00 = **€160.00**",
   the calendar's count, Save or Cancel; the calendar's own count removes the
   fix), and the card's history by month (expenses open in Edit; top-ups;
   the starting balance; Show older). The gear opens the setup; without one
@@ -603,7 +616,7 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   (Account, the switches, Security over `FakeSecurity`, Privacy), `CategoriesModelTests` (the
   list, archive, delete with a move, adding and editing), `SavingsModelTests` (the web's reads, the
   filter without a read, savings accounts as the total, the first run, Show older, a goal's quick
-  add, deleting goals and entries, a goal's page), `VouchersModelTests` (the card, Fix days and the
+  add, deleting goals and entries, a goal's page), `VouchersModelTests` (the card, Edit days and the
   calendar's count, no setup, the setup's form, turning vouchers off),
   `PlanModelTests` (the web's reads, a row's editor and the save, a failed save, What if I add…, the
   ideas and the picker, Apply and Undo, Clear plan, the salary from the entries, Type a what-if,
@@ -643,7 +656,7 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   new one with a name taken, deleting), the notifications, Budgets,
   Recurring and Insights, Savings (from the entries, from savings accounts,
   before anything was saved, a goal's page, a new goal as it opens),
-  Meal vouchers (the page, Fix days open, no setup, the setup, More with
+  Meal vouchers (the page, Edit days open, no setup, the setup, More with
   their row), Plan (the page, a row's editor, the overlap picker, What if I
   add…, Type a what-if, a plan with changes and its Apply sheet, just
   applied, the salary from the entries, no income, nothing to plan), Your

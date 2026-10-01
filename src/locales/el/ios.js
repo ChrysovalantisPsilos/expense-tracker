@@ -23,6 +23,9 @@ export default {
       comingUp: 'Έρχονται',
       byCategory: 'Ανά κατηγορία',
     },
+    salary: {
+      pricesFrom: '{{country}} · από το {{year}}',
+    },
     add: {
       pullUp: 'Σύρε πάνω για επανάληψη, σημειώσεις και ομάδες',
     },
