@@ -49,7 +49,7 @@ struct NativeActivityView: View {
             .scrollContentBackground(.hidden)
             .background(NativeStyle.card)
             .navigationTitle(language.t("ios:native.tabs.activity"))
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always),
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .automatic),
                         prompt: language.t("ios:native.activity.search"))
             .toolbar {
                 NativeAccountItems(me: sample.me, unread: true, bellLabel: language.t("notifications:bell.title"),
