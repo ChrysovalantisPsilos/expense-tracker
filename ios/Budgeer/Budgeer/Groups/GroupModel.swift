@@ -2,8 +2,9 @@
 // edit group): the group read as useGroup reads it (getGroup, the activity
 // log) with its comment counts and the comments themselves (the timeline
 // shows them under their item), and what the page can do: leave (or leave
-// silently), delete (the owner, once everyone else has left), rename,
-// remove a member, invite by email or with a link. Every figure and word is
+// silently), delete (the owner, once everyone else has left), rename and
+// change the picture, the PDF statement, remove a member, invite by email or
+// with a link. Every figure and word is
 // the core's (GroupPageFigures, GroupTimeline); the expense, settle-up and
 // comment models come from here.
 import Foundation
@@ -114,7 +115,7 @@ final class GroupModel {
                              data: data, core: core, now: now)
     }
 
-    // MARK: Leaving, deleting, renaming
+    // MARK: Leaving, deleting, editing
 
     /// Leave the group (`silent`: without telling it): true once out.
     func leave(silent: Bool) async -> Bool {
@@ -133,16 +134,57 @@ final class GroupModel {
         await act(failure: "groups:detail.deleteFailed") { try await self.data.groups.deleteGroup(id: self.groupId) }
     }
 
-    /// Rename the group (the owner): true once saved.
-    func rename(_ name: String) async -> Bool {
+    /// Edit group's Save (the owner; EditGroupPage): the name when it
+    /// changed, then the new picture as uploadGroupImage sends it. True once
+    /// both are in; what went in is said, a failure under the photo's title
+    /// when there was one, as on the web.
+    func saveEdit(name: String, cover: GroupCoverFile?) async -> Bool {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
-        let done = await act(failure: nil) { try await self.data.groups.renameGroup(id: self.groupId, name: trimmed) }
-        if done {
-            message = core.text("groups:edit.renamed")
+        busy = true
+        defer { busy = false }
+        var said: [String] = []
+        do {
+            if trimmed != groupName {
+                try await data.groups.renameGroup(id: groupId, name: trimmed)
+                said.append(core.text("groups:edit.renamed"))
+            }
+            if let cover {
+                _ = try await data.groups.uploadGroupImage(groupId: groupId, data: cover.data,
+                                                           contentType: cover.contentType, ext: cover.ext)
+                said.append(core.text("groups:header.photoUpdated"))
+            }
+        } catch {
+            let why = UserMessage.of(error, core: core)
+            message = cover == nil ? why : [core.text("groups:header.photoFailed"), why].joined(separator: ". ")
             await load()
+            return false
         }
-        return done
+        message = said.isEmpty ? nil : said.joined(separator: "\n")
+        await load()
+        return true
+    }
+
+    // MARK: The statement
+
+    /// Download statement (PDF): the group-report function's file, named as
+    /// the website names it (reportFiles.groupStatementFilename), to share.
+    private(set) var statementFile: URL?
+
+    func makeStatement() async {
+        busy = true
+        statementFile = nil
+        defer { busy = false }
+        do {
+            let bytes = try await data.groups.groupStatement(groupId: groupId)
+            let name: String = try core.call("reportFiles", "groupStatementFilename", [groupName])
+            let file = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+            try bytes.write(to: file, options: .atomic)
+            statementFile = file
+            message = nil
+        } catch {
+            message = [core.text("groups:detail.reportFailed"), UserMessage.of(error, core: core)].joined(separator: ". ")
+        }
     }
 
     // MARK: Members

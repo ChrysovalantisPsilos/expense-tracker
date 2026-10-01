@@ -1,6 +1,7 @@
 // Add (and Edit, and a recurring rule) as a sheet, amount first. Collapsed
 // (two thirds of the screen): the big amount, the date and currency, the
-// number pad, then the category chips. Pulled up (the large detent), the
+// number pad, then the category chips; on a new expense, Scan a receipt
+// (ReceiptCard: the phone reads it, the check fills the form). Pulled up (the large detent), the
 // pad steps aside for the details: "Type it" (when its helper is on), what
 // it was for, "Who's it for?" (a group turns the sheet into that group's
 // quick form, carrying what was typed), taken from income, Paid from,
@@ -63,6 +64,10 @@ struct AddSheet: View {
     @State private var groupId: String?
     @State private var detent: PresentationDetent
     @State private var confirmDelete = false
+    /// The receipt's photo (kept in memory for its thumbnail, never saved) and its pickers.
+    @State private var receiptPhoto: UIImage?
+    @State private var takingPhoto = false
+    @State private var pickingPhoto = false
 
     init(request: AddRequest, data: DataLayer, userId: String, groups: MyGroupsModel) {
         self.request = request
@@ -99,6 +104,8 @@ struct AddSheet: View {
             .toolbar { toolbar }
         }
         .nativeAddPresentation(detent: $detent)
+        // A group's receipt check needs the room the keypad takes, as the entry's does.
+        .onChange(of: groupForm?.receipt.stage) { _, stage in if stage == .check { detent = .large } }
         .task {
             if !entry.ready { await entry.load() }
             if entry.mode == .add { await groups.load() }
@@ -161,6 +168,13 @@ struct AddSheet: View {
                              error: entry.errors["amount"], suggested: entry.marks.contains("amount")) {
                     DayPill(iso: Binding(get: { entry.date }, set: { entry.changeDate($0) }))
                     CurrencyPill(options: entry.currencyOptions, value: entry.currency) { entry.pickCurrency($0) }
+                    if entry.offersReceipt, entry.receipt.stage == .idle {
+                        ReceiptPill(camera: { takingPhoto = true }, library: { pickingPhoto = true })
+                    }
+                }
+                if entry.offersReceipt, entry.receipt.stage != .idle || entry.receipt.problem != nil {
+                    ReceiptCard(receipt: entry.receipt, photo: receiptPhoto) { entry.useReceipt() }
+                        .padding(.horizontal, 16)
                 }
                 if entry.mode == .rule, entry.currency != entry.baseCurrency {
                     Text(language.t("recurring:form.eachChargeRate")).font(.footnote).foregroundStyle(.secondary)
@@ -187,6 +201,9 @@ struct AddSheet: View {
             .animation(.snappy, value: expanded)
         }
         .scrollDismissesKeyboard(.interactively)
+        .modifier(ReceiptCapture(receipt: entry.receipt, camera: $takingPhoto, library: $pickingPhoto, photo: $receiptPhoto))
+        // The check needs the room the keypad takes.
+        .onChange(of: entry.receipt.stage, initial: true) { _, stage in if stage == .check { detent = .large } }
     }
 
     private var categoryChips: some View {

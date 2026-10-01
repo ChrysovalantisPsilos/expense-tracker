@@ -103,6 +103,17 @@ final class SnapshotTests: XCTestCase {
                 AddSheet(request: AddRequest(model: split, splitting: SnapshotTests.saved), data: store.data,
                          userId: SnapshotTests.user, groups: groups)
             }, name: "add-group", lang: lang, dark: dark, settle: 2.5)
+            // Scan a receipt: the check (what the phone read, to correct), then used.
+            let scanned = EntryFormModel(mode: .add, data: store.data, core: .shared, now: { now })
+            await scanned.load()
+            scanned.receipt.read(boxes: ReceiptTests.boxes)
+            try await shots(overHome(home) {
+                AddSheet(request: AddRequest(model: scanned), data: store.data, userId: SnapshotTests.user, groups: groups)
+            }, name: "add-receipt", lang: lang, dark: dark, settle: 1.6)
+            scanned.useReceipt()
+            try await shots(overHome(home) {
+                AddSheet(request: AddRequest(model: scanned), data: store.data, userId: SnapshotTests.user, groups: groups)
+            }, name: "add-receipt-used", lang: lang, dark: dark, settle: 1.6)
         }
     }
 
@@ -188,16 +199,51 @@ final class SnapshotTests: XCTestCase {
                 NavigationStack { GroupPageView(model: group) }
                     .sheet(isPresented: .constant(true)) { GroupExpenseSheet(model: form) { _ in } }
             }, name: "group-expense", lang: lang, dark: dark, settle: 1.6)
+            // A new expense from a receipt: the check.
+            let scanned = group.expenseForm(expenseId: nil)
+            scanned.receipt.read(boxes: ReceiptTests.boxes)
+            try await shots(framed(.groups) {
+                NavigationStack { GroupPageView(model: group) }
+                    .sheet(isPresented: .constant(true)) { GroupExpenseSheet(model: scanned) { _ in } }
+            }, name: "group-expense-receipt", lang: lang, dark: dark, settle: 1.6)
             // Settle up, on the biggest payment you're part of.
             let settle = try XCTUnwrap(group.settleUp())
             try await shots(framed(.groups) {
                 NavigationStack { GroupPageView(model: group) }
                     .sheet(isPresented: .constant(true)) { SettleUpView(model: settle) {} }
             }, name: "group-settle", lang: lang, dark: dark, settle: 1.6)
+            // Being paid without payment details: the ask, opened in place.
+            let asked = try XCTUnwrap(group.settleUp())
+            await asked.loadMyInfo()
+            asked.openAsk()
+            asked.iban = "BE68 5390 0754 7034"
+            try await shots(framed(.groups) {
+                NavigationStack { GroupPageView(model: group) }
+                    .sheet(isPresented: .constant(true)) { SettleUpView(model: asked) {} }
+            }, name: "group-settle-ask", lang: lang, dark: dark, settle: 1.6)
+            // Edit group (the owner): a new picture picked, the name.
+            try await shots(framed(.groups) {
+                NavigationStack { EditGroupView(model: group, emoji: "🎉", colour: "teal") }
+            }, name: "group-edit", lang: lang, dark: dark)
             // Members, with a share link made.
             await group.makeInviteLink()
             try await shots(framed(.groups) { NavigationStack { MembersView(model: group) } },
                       name: "group-members", lang: lang, dark: dark, long: 1300)
+            // Join with a link: the link pasted, the group it opens, and one that has expired.
+            store.linkPreviews["a1b2c3d4e5f6a7b8c9"] = GroupLinksTests.preview
+            store.linkPreviews["expired1"] = ["status": "invalid"]
+            let paste = JoinModel(token: nil, data: store.data)
+            paste.text = "https://budgeer.com/join/a1b2c3d4e5f6a7b8c9"
+            try await shots(framed(.groups) { NavigationStack { JoinView(model: paste) { _ in } } },
+                      name: "group-join", lang: lang, dark: dark)
+            let opened = JoinModel(token: "a1b2c3d4e5f6a7b8c9", data: store.data)
+            await opened.load()
+            try await shots(framed(.groups) { NavigationStack { JoinView(model: opened) { _ in } } },
+                      name: "group-join-preview", lang: lang, dark: dark)
+            let expired = JoinModel(token: "expired1", data: store.data)
+            await expired.load()
+            try await shots(framed(.groups) { NavigationStack { JoinView(model: expired) { _ in } } },
+                      name: "group-join-invalid", lang: lang, dark: dark)
         }
     }
 

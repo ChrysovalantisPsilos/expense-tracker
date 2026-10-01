@@ -149,8 +149,9 @@ ios/Budgeer/
   scripts/prebuild.sh    core + strings before a build
   Budgeer/
     BudgeerApp.swift     the entry: AppConfig → AppContainer → RootView
-    App/                 AppContainer (the client, the data layer, the cache, the live feed, the lock), RootView
-                         (sign-in, the legal gate, the frame, the lock over it), AppFrame (the tabs, each tab's
+    App/                 AppContainer (the client, the data layer, the cache, the live feed, the lock, the join
+                         link waiting), RootView (sign-in, the legal gate, the frame, the lock over it, a
+                         budgeer://join link), AppFrame (the tabs, each tab's
                          stack of pages (AppRoute), the Add sheet, AppRouter), NotificationsView (the bell's page),
                          AppLock + LockView (Face ID), ShellModel (your initials, the bell's feed), LiveRefresh
     Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView,
@@ -166,6 +167,8 @@ ios/Budgeer/
     Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView (the month pager,
                          the sections, HomeCategoriesPage)
     Transactions/        EntryFormModel + AddSheet (Add/Edit/a rule: the amount, the keypad, the details),
+                         ReceiptModel + ReceiptCard + ReceiptReader (Scan a receipt: Vision on the device, the
+                         check, CameraPicker),
                          LedgerFigures + LedgerModel + ActivityView (the month's header, the chips, the rows by
                          day, the month pill, search, swipes), TransactionWords (the delete question)
     Budgets/             BudgetFigures, BudgetsModel, BudgetsView
@@ -184,10 +187,13 @@ ios/Budgeer/
     Vouchers/            VoucherFigures (Vouchers.jsx's steps), VouchersModel + VouchersView (the card, the next top-up
                          with Fix days, the history), VoucherSetupModel + VoucherSetupView (Settings › Meal vouchers)
     Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab's
-                         grid), NewGroupModel + NewGroupView (the new-group flow), GroupModel (+ GroupInvite) +
-                         GroupTimeline + GroupPageView (a group's page, its timeline), BalancesView,
-                         GroupExpenseModel + SettleUpModel + GroupForms (the expense sheet and Add's quick group
-                         form, Settle up, Members), CommentsModel, MyGroupsModel (Add's "Who's it for?")
+                         grid, Join with a link), NewGroupModel + NewGroupView (the new-group flow; the cover
+                         picker and its upload, GroupCoverPicker + GroupCoverFile), GroupModel (+ GroupInvite) +
+                         GroupTimeline + GroupPageView (a group's page, its timeline, the statement),
+                         EditGroupView (the name and the picture), BalancesView, GroupExpenseModel +
+                         SettleUpModel + GroupForms (the expense sheet and Add's quick group form, Settle up
+                         with the payment-details ask, Members), CommentsModel, MyGroupsModel (Add's "Who's it
+                         for?"), JoinModel + JoinView (a group from an invite link; JoinInbox)
     More/                MoreView (your profile, Money (Budgets, Savings, Recurring, Plan, Categories; Meal vouchers
                          once set up), Insights)
     Settings/            SettingsView (the list, its rows, the demo note), AccountModel + AccountView,
@@ -253,7 +259,22 @@ a core call (the web's function); Swift reads, lays out and draws.
   (Just me or a group, most recently used first; a group turns the sheet
   into its quick form, carrying what was typed) and Notes. Saved with
   `save_transactions` / `update_transaction` / `save_recurring_rule`,
-  deleted after a confirm. Not yet: receipts.
+  deleted after a confirm. **Scan a receipt** on a new expense (a pill
+  beside the day and the currency: Take a photo, or Choose a photo): the
+  phone reads the words with Apple's Vision (`VNRecognizeTextRequest`, on
+  the device), the core turns its boxes into the receipt's lines
+  (`receiptRead.receiptText`) and reads them as the web does
+  (`readReceipt`); the check shows the merchant, total, currency and date
+  to correct in place (`receiptFields`, the web's "Correct anything…" or,
+  when little was read, its note), and Use these fills the form as the
+  web's (`receiptResult`, `receiptFill`: the amount in the receipt's
+  currency, the date, the shop while the description is empty). The photo
+  is never uploaded or kept, as on the web; the website's crop and turn
+  step isn't here (Vision reads a photo upright and whole). The camera's
+  reason is `NSCameraUsageDescription` (`ios:native.receipt.cameraUsage`,
+  in both languages' InfoPlist.strings). A new group expense scans one
+  too (its sheet, and Add's quick group form), filling only the total in
+  the currency paid and the date, as the web's group form does.
 - **Home**: a month per page you swipe between (the months since the first
   entry), the month's spend with Income and Net (the ⓘ: How Net adds up);
   "every budget held" on a past month that kept them all (a burst of
@@ -355,14 +376,32 @@ a core call (the web's function); Swift reads, lays out and draws.
   middle, then who pays whom. Settle up opens on your biggest payment
   (from → to with both circles, the amount in big figures), with the
   suggestions, the reminder bell and Pay directly (Revolut, PayPal, a bank QR drawn on
-  the device from the core's EPC payload, the IBAN to copy). The … menu:
-  Members (remove, invite by email or a share link), Share summary, Rename
-  (the owner), Leave (or leave silently) and Delete (type the name; the
-  web's "can't yet" while others are in it). Everything is the web's RPCs
-  and tables, cached for offline and live through the groups' tables on
-  the realtime channel. Not yet: changing an existing group's photo, the
-  PDF statement, joining from an invite link, the payment-details ask
-  on Settle up.
+  the device from the core's EPC payload, the IBAN to copy). When you're
+  the one being paid and have no payment details, Settle up asks for them
+  as the web does (`payLinks.askForPaymentDetails`): Add payment details
+  opens Getting paid's three fields in place, saved as Settings › Account
+  saves them (`paymentDetailsToSave`, `set_payment_info`); Not now is kept
+  on the phone (the web's `budge:paymentAsk`). The … menu: Members
+  (remove, invite by email or a share link), Share summary, **Download
+  statement (PDF)** (the `group-report` edge function's file, named as the
+  website names it, `reportFiles.groupStatementFilename`, then the share
+  sheet), Rename (the owner: **Edit group**, the name and the picture, as
+  a new group's (a photo or an emoji on a colour over the photo now), sent
+  by the same upload; also from the camera on the owner's picture), Leave
+  (or leave silently) and Delete (type the name; the web's "can't yet"
+  while others are in it). **Joining from an invite link**: a
+  `budgeer://join/<token>` link opens the join page on the Groups tab
+  (kept until you're signed in), and the tab's "Join with a link" takes a
+  pasted link or its code (Paste reads the clipboard only when tapped;
+  `groupFormat.inviteToken`); the page is the web's (`preview_link_invite`
+  through `joinParts`: the picture, the name, the members), Accept & join
+  (`join_via_link`) or Decline; a group you're in opens at once, and the
+  server's refusals (an expired link, the shared demo account, too many
+  joins) are the web's words. The website's https links stay as they
+  are: opening them in the app needs Universal Links (Associated Domains,
+  a paid developer account). Everything is the web's RPCs and tables,
+  cached for offline and live through the groups' tables on the realtime
+  channel.
 - **Savings** (More › Money, Home's savings line), as the web's page: the
   pot (its total, from the savings accounts when there are any, else the
   entries, with the web's line saying which; this month's chip, "since May ·
@@ -510,7 +549,12 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   `CategoryBadgeTests` (every category icon bundled), `GroupsModelTests` (the list and invites, a
   new group with its picture, invites and link, a group's page and its
   actions, invites, the expense form, settle up, comments, Who's it for's
-  order), `ShellModelTests` (the bell's feed, opening it), `AppLockTests` (off by default, the
+  order), `GroupLinksTests` (Edit group's rename and upload, the
+  statement's file, joining from a pasted or opened link and the refusals,
+  Settle up's payment-details ask and Not now), `ReceiptTests` (a receipt
+  read, checked and filling the form, a group expense's fill, little read, a new
+  expense only),
+  `ShellModelTests` (the bell's feed, opening it), `AppLockTests` (off by default, the
   owner's check, locked on launch and after the grace, off unlocks), `SettingsModelTests`
   (Account, the switches, Security over `FakeSecurity`, Privacy), `CategoriesModelTests` (the
   list, archive, delete with a move, adding and editing), `SavingsModelTests` (the web's reads, the
@@ -537,10 +581,13 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   (the floating tab bar, the screen's tab picked) of Sign-in (and three
   moments of its intro), the legal gate, the lock, Home (this month, a past
   month that held its budgets, By category's See all), the Add sheet (as it
-  comes up, Edit pulled up, Split with a group), Activity, Groups (the
+  comes up, Edit pulled up, Split with a group, a receipt's check and the
+  receipt used), Activity, Groups (the
   tab, New group empty, filled and made,
   a group's page, settled with its confetti caught mid-fall, Balances, an
-  expense split by amounts, Settle up, Members), More, Settings and its
+  expense split by amounts, a new one from a receipt, Settle up, its payment-details ask open, Edit
+  group, Members, Join with a link: the link pasted, the group it opens,
+  an expired one), More, Settings and its
   pages (Account, Monthly spending, Notifications, Appearance, AI helpers,
   What's new, Security with Delete account and a Google-only account,
   Privacy and its request), Categories (both kinds, a category's page, a

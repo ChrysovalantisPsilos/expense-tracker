@@ -4,7 +4,7 @@ import {
   Divider, useToast, ButtonGroup, InputGroup, InputRightAddon, Box, SimpleGrid, Switch,
 } from '@chakra-ui/react'
 import { Trash2 } from 'lucide-react'
-import { keptRate, effectiveRate, minorToInput, toMinor } from '../../shared/lib/currency.js'
+import { keptRate, effectiveRate } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today } from '../../shared/lib/dates.js'
 import { evenPercents } from './splitMath.js'
@@ -15,6 +15,7 @@ import {
 } from './groupExpenseForm.js'
 import { addSharedExpense, updateSharedExpense } from './groups.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
+import { receiptFill } from '../../shared/lib/receiptRead.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import FxPreview from '../../shared/ui/FxPreview.jsx'
 import { PageForm } from '../../shared/ui/FormPage.jsx'
@@ -106,8 +107,9 @@ export default function GroupExpenseForm({
   }
 
   function handleScan({ total, date }) {
-    if (total != null) setAmount(minorToInput(toMinor(total, paidCurrency), paidCurrency))
-    if (date) setSpentAt(date)
+    const fill = receiptFill({ total, date }, { currency: paidCurrency })
+    if (fill.amount != null) setAmount(fill.amount)
+    if (fill.date) setSpentAt(fill.date)
   }
 
   // Live-compute each included member's share (minor) for the current mode,

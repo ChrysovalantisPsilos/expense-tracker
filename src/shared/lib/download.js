@@ -1,12 +1,6 @@
 // Saving server-generated files (report PDFs / spreadsheets) in the browser.
-// fileStem and toBlob are pure (unit-tested); saveBlob touches the DOM.
-
-// A filename-safe stem: runs of anything but ASCII letters/digits become a
-// single '-', trimmed at the ends; falls back when nothing is left.
-export function fileStem(name, fallback = 'file') {
-  const stem = String(name ?? '').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '')
-  return stem || fallback
-}
+// toBlob is pure (unit-tested); saveBlob touches the DOM. The files' names
+// are supabase/functions/_shared/files.ts's.
 
 // Normalise an edge-function response body to a Blob of `type`. supabase-js
 // hands back a Blob for binary responses (a spreadsheet arrives as

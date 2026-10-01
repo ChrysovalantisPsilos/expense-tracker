@@ -1,6 +1,6 @@
 // The groups' reads and writes over the one client, after the web's
 // features/groups/groups.js and comments.js: the same tables, RPCs and edge
-// function, argument for argument. Reads are kept for offline use; each
+// functions, argument for argument. Reads are kept for offline use; each
 // write is announced so the screens showing its table refresh at once. A
 // refusal comes back as a ServerError in the web's shape (dbError's code and
 // message, or an edge function's own words), so the core's
@@ -88,6 +88,21 @@ extension SupabaseStore {
     func memberPaymentInfo(memberId: String) async throws -> JSONValue {
         try await refusal {
             try await client.rpc("member_payment_info", params: ["p_member": JSONValue.string(memberId)]).execute().value
+        }
+    }
+
+    func previewLinkInvite(token: String) async throws -> JSONValue {
+        try await refusal {
+            try await client.rpc("preview_link_invite", params: ["p_token": JSONValue.string(token)]).execute().value
+        }
+    }
+
+    func groupStatement(groupId: String) async throws -> Data {
+        // groups.js groupReportFromServer: the caller's own session, so RLS
+        // limits it to the user's groups (a non-member gets a 403).
+        let body: JSONValue = ["group_id": .string(groupId)]
+        return try await refusal {
+            try await client.functions.invoke("group-report", options: FunctionInvokeOptions(body: body)) { data, _ in data }
         }
     }
 
@@ -192,6 +207,14 @@ extension SupabaseStore {
         announce("group_invites")
         announce("group_members")
         return group.stringValue
+    }
+
+    func joinViaLink(token: String) async throws -> String {
+        let group: JSONValue = try await refusal {
+            try await client.rpc("join_via_link", params: ["p_token": JSONValue.string(token)]).execute().value
+        }
+        announce("group_members")
+        return group.stringValue ?? ""
     }
 
     func inviteExistingUser(groupId: String, email: String) async throws -> String? {

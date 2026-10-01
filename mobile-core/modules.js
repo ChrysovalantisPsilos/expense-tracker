@@ -21,6 +21,8 @@ export const CORE_MODULES = {
   periods: 'src/shared/lib/periods.js',
   moneyParse: 'src/shared/lib/moneyParse.js',
   localeParse: 'src/shared/lib/localeParse.js',
+  // A receipt's text (the phone reads the photo) → merchant, date, total, currency.
+  receiptRead: 'src/shared/lib/receiptRead.js',
   spread: 'src/shared/lib/spread.js',
   txnRollup: 'src/shared/lib/txnRollup.js',
   ruleFx: 'src/shared/lib/ruleFx.js',

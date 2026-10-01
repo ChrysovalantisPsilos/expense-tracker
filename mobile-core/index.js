@@ -18,6 +18,7 @@ import * as dates from '../src/shared/lib/dates.js'
 import * as periods from '../src/shared/lib/periods.js'
 import * as moneyParse from '../src/shared/lib/moneyParse.js'
 import * as localeParse from '../src/shared/lib/localeParse.js'
+import * as receiptRead from '../src/shared/lib/receiptRead.js'
 import * as spread from '../src/shared/lib/spread.js'
 import * as txnRollup from '../src/shared/lib/txnRollup.js'
 import * as ruleFx from '../src/shared/lib/ruleFx.js'
@@ -104,6 +105,7 @@ export const modules = {
   periods,
   moneyParse,
   localeParse,
+  receiptRead,
   spread,
   txnRollup,
   ruleFx,

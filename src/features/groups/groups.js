@@ -1,7 +1,7 @@
 import { supabase } from '../../shared/lib/supabase.js'
 import { useLiveQuery } from '../../shared/lib/db.js'
-import { fileStem, saveBlob, toBlob } from '../../shared/lib/download.js'
-import { FILE_TYPES } from '../../../supabase/functions/_shared/files.ts'
+import { saveBlob, toBlob } from '../../shared/lib/download.js'
+import { FILE_TYPES, groupStatementFilename } from '../../../supabase/functions/_shared/files.ts'
 import { dbError, edgeFunctionError } from '../../shared/lib/errors.js'
 import { deviceFirst } from '../../shared/lib/deviceFirst.js'
 import { balancesFrom, inviteLink, membersWithAvatars } from './groupFormat.js'
@@ -295,7 +295,7 @@ export async function downloadGroupReport(groupId, groupName = 'group') {
   const file = await deviceFirst('group statement',
     async (signal) => (await import('./deviceGroupStatement.js')).groupStatementOnDevice(supabase, groupId, { signal }),
     () => groupReportFromServer(groupId))
-  saveBlob(toBlob(file, FILE_TYPES.pdf), `${fileStem(groupName, 'group')}-statement.pdf`)
+  saveBlob(toBlob(file, FILE_TYPES.pdf), groupStatementFilename(groupName))
 }
 
 // TODO(release after next): remove with the group-report function.

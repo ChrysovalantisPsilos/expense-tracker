@@ -38,4 +38,6 @@ test('ios strings: the .strings file escapes quotes, backslashes and newlines', 
 test('ios strings: InfoPlist.strings carries the Face ID prompt’s reason in each language', () => {
   assert.match(infoPlistFile(PACKS.en), /^"NSFaceIDUsageDescription" = "Budgeer uses Face ID to keep your money private.";$/m)
   assert.match(infoPlistFile(PACKS.el), /"NSFaceIDUsageDescription" = "Το Budgeer χρησιμοποιεί το Face ID/)
+  assert.match(infoPlistFile(PACKS.en), /^"NSCameraUsageDescription" = "Budgeer uses the camera to read a receipt on this iPhone\. The photo isn’t saved or uploaded\.";$/m)
+  assert.match(infoPlistFile(PACKS.el), /"NSCameraUsageDescription" = "Το Budgeer χρησιμοποιεί την κάμερα/)
 })

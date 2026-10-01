@@ -1,9 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { ocrPaths, OCR_ASSET_DIR } from '../src/shared/lib/receiptScan.js'
 import {
-  extractTotal, extractDate, extractMerchant, extractCurrency, readReceipt, ocrPaths, OCR_ASSET_DIR,
-} from '../src/shared/lib/receiptScan.js'
+  extractTotal, extractDate, extractMerchant, extractCurrency, readReceipt, receiptText, receiptFields,
+  receiptNothingRead, receiptResult, receiptFill,
+} from '../src/shared/lib/receiptRead.js'
 
 const receipt = (name) => readFileSync(new URL(`./fixtures/receipts/${name}`, import.meta.url), 'utf8')
 
@@ -71,4 +73,46 @@ test('ocrPaths: every OCR engine file comes from our own origin', () => {
   for (const url of Object.values(paths)) {
     assert.ok(url.startsWith(`https://budgeer.com/${OCR_ASSET_DIR}/`), url)
   }
+})
+
+test('receiptText: Vision\'s boxes as printed lines, top to bottom, each left to right', () => {
+  // A label and its amount on one printed line, read as two boxes with a little skew.
+  const boxes = [
+    { text: '13,30', x: 0.7, y: 0.395, w: 0.2, h: 0.04 },
+    { text: 'TOTAL', x: 0.1, y: 0.4, w: 0.2, h: 0.04 },
+    { text: 'THE BEAN HOUSE', x: 0.2, y: 0.9, w: 0.6, h: 0.05 },
+    { text: ' 14/09/2026 ', x: 0.1, y: 0.2, w: 0.3, h: 0.03 },
+  ]
+  assert.equal(receiptText(boxes), 'THE BEAN HOUSE\nTOTAL 13,30\n14/09/2026')
+  assert.deepEqual(readReceipt(receiptText(boxes)),
+    { merchant: 'THE BEAN HOUSE', date: '2026-09-14', total: 13.3, currency: null })
+  assert.equal(receiptText([]), '')
+  assert.equal(receiptText(null), '')
+})
+
+test('receiptFields / receiptResult: the check\'s strings, and back to the scan a form takes', () => {
+  const read = { merchant: 'Café', date: '2026-09-14', total: 13.3, currency: 'EUR' }
+  const fields = receiptFields(read)
+  assert.deepEqual(fields, { merchant: 'Café', date: '2026-09-14', total: '13.3', currency: 'EUR' })
+  assert.deepEqual(receiptResult(fields), read)
+  const none = receiptFields({ merchant: null, date: null, total: null, currency: null })
+  assert.deepEqual(none, { merchant: '', date: '', total: '', currency: '' })
+  assert.equal(receiptNothingRead(none), true)
+  assert.equal(receiptNothingRead({ ...none, currency: 'EUR' }), true)
+  assert.equal(receiptNothingRead({ ...none, total: '2' }), false)
+  assert.deepEqual(receiptResult({ merchant: '  ', date: '', total: '0', currency: '' }),
+    { total: null, date: null, merchant: null, currency: null })
+})
+
+test('receiptFill: the amount in the receipt\'s currency when the app has it, the date, the shop while the description is empty', () => {
+  const scan = { total: 13.3, date: '2026-09-14', merchant: 'Café', currency: 'GBP' }
+  assert.deepEqual(receiptFill(scan, { currency: 'EUR', description: '' }),
+    { amount: '13.30', date: '2026-09-14', description: 'Café', currency: 'GBP' })
+  // A description typed already stays; the same currency isn't a change.
+  assert.deepEqual(receiptFill({ ...scan, currency: 'EUR' }, { currency: 'EUR', description: 'Lunch' }),
+    { amount: '13.30', date: '2026-09-14' })
+  // A currency the app doesn't have: the form's; a zero-decimal one rounds.
+  assert.deepEqual(receiptFill({ ...scan, currency: 'XYZ', merchant: null }, { currency: 'JPY' }),
+    { amount: '13', date: '2026-09-14' })
+  assert.deepEqual(receiptFill({ total: null, date: null, merchant: null, currency: null }, { currency: 'EUR' }), {})
 })

@@ -6,6 +6,7 @@ import {
 } from '@chakra-ui/react'
 import { Check, X } from 'lucide-react'
 import { previewLinkInvite, joinViaLink } from './groups.js'
+import { joinParts } from './groupFormat.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import GroupMark from './GroupMark.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
@@ -25,12 +26,13 @@ export default function JoinGroup() {
     previewLinkInvite(token)
       .then((res) => {
         if (!active) return
+        const parts = joinParts(res)
         // Already in the group — nothing to decide, go straight there.
-        if (res.status === 'already_member') {
-          navigate(`/groups/${res.group_id}`, { replace: true })
+        if (parts.status === 'open') {
+          navigate(`/groups/${parts.groupId}`, { replace: true })
           return
         }
-        setState(res)
+        setState(parts)
       })
       .catch((e) => {
         console.error('[groups] invite preview failed:', e)
@@ -74,9 +76,7 @@ export default function JoinGroup() {
   }
 
   // status === 'joinable'
-  const preview = state.preview ?? {}
-  const group = preview.group ?? {}
-  const members = preview.members ?? []
+  const { name, imageUrl, members } = state
 
   return (
     <Center minH="100dvh" px={4} py={8} bg="bg.canvas">
@@ -84,9 +84,9 @@ export default function JoinGroup() {
         <Stack spacing={5}>
           <Box textAlign="center">
             <Flex justify="center" mb={3}>
-              <GroupMark name={group.name} src={group.image_url} size={56} />
+              <GroupMark name={name} src={imageUrl} size={56} />
             </Flex>
-            <Heading size="lg">{group.name || t('join.groupInvite')}</Heading>
+            <Heading size="lg">{name}</Heading>
             <Text color="text.muted" mt={1}>{t('join.invited')}</Text>
           </Box>
 
@@ -97,8 +97,8 @@ export default function JoinGroup() {
                   <ListItem key={m.id}>
                     {i > 0 && <Divider />}
                     <HStack py={2.5}>
-                      <Avatar size="sm" name={m.display_name} src={m.avatar_url} />
-                      <Text fontWeight="500">{m.display_name}</Text>
+                      <Avatar size="sm" name={m.name} src={m.src} />
+                      <Text fontWeight="500">{m.name}</Text>
                       <Spacer />
                     </HStack>
                   </ListItem>

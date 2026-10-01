@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   activityParts, avatarStackParts, deleteNameMatches, balancesFrom, balancesParts, commentCountsFrom, commentParts, expenseRowParts,
-  groupCardParts, groupShareText, memberAvatar, groupViewer, inviteLink, inviteRowParts, inviteRefusal, memberRowParts, membersWithAvatars, settlementRowParts,
+  groupCardParts, groupShareText, memberAvatar, groupViewer, inviteLink, inviteToken, joinParts, inviteRowParts, inviteRefusal, memberRowParts, membersWithAvatars, settlementRowParts,
   stillInNames,
 } from '../src/features/groups/groupFormat.js'
 import { avatarColor } from '../src/shared/ui/avatarLook.js'
@@ -29,6 +29,38 @@ test('the server\'s rows as the pages read them: balances, comment counts, avata
   assert.deepEqual(groupViewer({ owner_id: 'u1' }, MEMBERS, 'u9'), { myMember: null, isOwner: false })
   assert.deepEqual(groupViewer(null, null, null), { myMember: null, isOwner: false })
   assert.equal(inviteLink('https://dev.budgeer.com', 'tok'), 'https://dev.budgeer.com/join/tok')
+})
+
+test('inviteToken: the token in a pasted join link, the app\'s link or on its own', () => {
+  const token = 'a1b2c3d4e5f6a7b8c9'
+  for (const text of [
+    `https://www.budgeer.com/join/${token}`, `https://dev.budgeer.com/join/${token}/`, `budgeer.com/join/${token}`,
+    `  http://budgeer.com/join/${token}?utm=x  `, `budgeer://join/${token}`, `BUDGEER://join/${token}#top`, token,
+    inviteLink('https://dev.budgeer.com', token),
+  ]) assert.equal(inviteToken(text), token, text)
+  for (const text of [
+    '', null, 'abc', 'https://example.com/join/abc123', `https://www.budgeer.com/groups/${token}`,
+    `budgeer://auth-callback#${token}`, 'two words here', `https://budgeer.com/join/`,
+  ]) assert.equal(inviteToken(text), null, String(text))
+})
+
+test('joinParts: the join page from preview_link_invite\'s answer', () => {
+  assert.deepEqual(joinParts({ status: 'already_member', group_id: 'g1' }), { status: 'open', groupId: 'g1' })
+  assert.deepEqual(joinParts({ status: 'invalid' }), { status: 'invalid' })
+  assert.deepEqual(joinParts(null), { status: 'invalid' })
+  const parts = joinParts({
+    status: 'joinable',
+    preview: { group: { name: 'Lisbon', image_url: null }, member_count: 2, members: MEMBERS.slice(0, 2) },
+  })
+  assert.equal(parts.status, 'joinable')
+  assert.equal(parts.name, 'Lisbon')
+  assert.equal(parts.imageUrl, null)
+  assert.deepEqual(parts.colour, groupColour('Lisbon'))
+  assert.deepEqual(parts.members, [memberAvatar(MEMBERS[0], false), memberAvatar(MEMBERS[1], false)])
+  const bare = joinParts({ status: 'joinable', preview: { group: { name: '', image_url: 'https://x/c.png' } } })
+  assert.equal(bare.name, 'Group invite')
+  assert.equal(bare.imageUrl, 'https://x/c.png')
+  assert.deepEqual(bare.members, [])
 })
 
 test('avatarStackParts / groupCardParts: the groups list\'s card', () => {

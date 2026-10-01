@@ -1,9 +1,9 @@
 // Everything the app makes once from its configuration: the Supabase
 // client, the auth service behind the session store (and Settings › Security's
-// account calls), the offline cache, the
-// live-refresh hub and its realtime feed, the Face ID lock, and the data layer every screen
-// reads through (SupabaseStore). Views get what they need from here; nothing
-// else makes a client.
+// account calls), the offline cache, the live-refresh hub and its realtime
+// feed, the Face ID lock, a join link waiting to be shown, and the data
+// layer every screen reads through (SupabaseStore). Views get what they
+// need from here; nothing else makes a client.
 import Foundation
 import Supabase
 
@@ -20,6 +20,8 @@ final class AppContainer {
     let security: AccountSecurity
     /// The Face ID lock (this device's choice).
     let lock = AppLock()
+    /// An invite link the app was opened with (budgeer://join/<token>).
+    let joinInbox = JoinInbox()
 
     init(config: AppConfig) {
         self.config = config

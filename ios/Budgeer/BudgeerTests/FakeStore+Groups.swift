@@ -22,6 +22,16 @@ extension FakeStore {
     func groupComments(groupId: String, targetId: String) async throws -> JSONValue { commentRows }
     func memberPaymentInfo(memberId: String) async throws -> JSONValue { paymentInfo }
 
+    func previewLinkInvite(token: String) async throws -> JSONValue {
+        guard let answer = linkPreviews[token] else { throw FakeError(description: "no link \(token)") }
+        return answer
+    }
+
+    func groupStatement(groupId: String) async throws -> Data {
+        try write("group-report", ["group_id": .string(groupId)])
+        return Data("%PDF-1.7 group".utf8)
+    }
+
     private func write(_ name: String, _ args: JSONValue) throws {
         if let writeError { throw writeError }
         groupWrites.append((name, args))
@@ -62,6 +72,11 @@ extension FakeStore {
     func respondToInvite(id: String, accept: Bool) async throws -> String? {
         try write("respond_to_invite", ["p_invite": .string(id), "p_accept": .bool(accept)])
         return accept ? "g-joined" : nil
+    }
+
+    func joinViaLink(token: String) async throws -> String {
+        try write("join_via_link", ["p_token": .string(token)])
+        return linkPreviews[token]?["group_id"]?.stringValue ?? "g-joined"
     }
 
     func inviteExistingUser(groupId: String, email: String) async throws -> String? {

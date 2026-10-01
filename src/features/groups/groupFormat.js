@@ -252,6 +252,36 @@ export function membersWithAvatars(members, avatars) {
 // The join link an invite's token opens, on the site at `origin`.
 export const inviteLink = (origin, token) => `${origin}/join/${token}`
 
+// The invite token in what someone pasted or opened: a join link on the site
+// (https://budgeer.com/join/<token>, www. or dev., with or without the
+// scheme), the native app's budgeer://join/<token>, or the token on its own.
+// Null when there's none in it.
+const JOIN_LINK = /^(?:(?:https?:\/\/)?(?:[a-z0-9-]+\.)*budgeer\.com\/join\/|budgeer:\/\/join\/)([A-Za-z0-9_-]+)\/?(?:[?#].*)?$/i
+export function inviteToken(text) {
+  const s = String(text ?? '').trim()
+  const link = s.match(JOIN_LINK)
+  if (link) return link[1]
+  return /^[A-Za-z0-9_-]{6,64}$/.test(s) ? s : null
+}
+
+// preview_link_invite's answer as the join page shows it: 'open' when the
+// viewer is in the group already (go straight there), 'invalid', or
+// 'joinable' with the group's name ("Group invite" without one), its picture,
+// its colour (keyed on the name: the preview has no id) and the members'
+// circles.
+export function joinParts(answer) {
+  if (answer?.status === 'already_member') return { status: 'open', groupId: answer.group_id }
+  if (answer?.status !== 'joinable') return { status: 'invalid' }
+  const group = answer.preview?.group ?? {}
+  return {
+    status: 'joinable',
+    name: group.name || t('groups:join.groupInvite'),
+    imageUrl: group.image_url ?? null,
+    colour: groupColour(group.name),
+    members: (answer.preview?.members ?? []).map((m) => memberAvatar(m, false)),
+  }
+}
+
 // Who is looking at a group: their member row (null when they aren't in it,
 // e.g. while an invite is open) and whether they own it.
 export function groupViewer(group, members, myUserId) {

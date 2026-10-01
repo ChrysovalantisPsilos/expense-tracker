@@ -11,16 +11,17 @@ import Foundation
 import Observation
 import BudgeerCore
 
+/// A group's picture as an upload: its bytes and type (made by the view,
+/// GroupCoverFile.make), for a new group and the edit page alike.
+struct GroupCoverFile: Equatable, Sendable {
+    let data: Data
+    let contentType: String
+    let ext: String
+}
+
 @MainActor
 @Observable
 final class NewGroupModel {
-    /// The picture as an upload: its bytes and type (made by the view).
-    struct CoverFile: Equatable, Sendable {
-        let data: Data
-        let contentType: String
-        let ext: String
-    }
-
     /// One invite's answer on the done page.
     struct Sent: Equatable, Identifiable, Sendable {
         let email: String
@@ -103,7 +104,7 @@ final class NewGroupModel {
 
     /// Create the group, then its picture, its invites and its link: true
     /// once the group exists (`done` says how the rest went).
-    func create(cover: CoverFile?) async -> Bool {
+    func create(cover: GroupCoverFile?) async -> Bool {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard canCreate else { return false }
         // An address typed but not added yet goes too, when it is one.

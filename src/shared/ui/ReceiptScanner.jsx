@@ -6,6 +6,7 @@ import {
 } from '@chakra-ui/react'
 import { Camera, X, RotateCw, ScanText } from 'lucide-react'
 import { scanReceipt } from '../lib/receiptScan.js'
+import { receiptFields, receiptNothingRead, receiptResult } from '../lib/receiptRead.js'
 import { decodeImage, orientedCanvas, prepareForOcr } from '../lib/receiptImage.js'
 import { useAsyncSubmit } from '../lib/useAsyncSubmit.js'
 import FormModal from './FormModal.jsx'
@@ -81,25 +82,13 @@ export default function ReceiptScanner({ onScan }) {
     setProgress(0)
     await run(async () => {
       const canvas = prepareForOcr(image, { quarterTurns: turns, crop })
-      const r = await scanReceipt(canvas, setProgress)
-      setFields({
-        merchant: r.merchant ?? '',
-        date: r.date ?? '',
-        total: r.total != null ? String(r.total) : '',
-        currency: r.currency ?? '',
-      })
+      setFields(receiptFields(await scanReceipt(canvas, setProgress)))
       setStage('confirm')
     }, { errorTitle: t('receipt.scanFailed') })
   }
 
   function confirm() {
-    const total = Number(fields.total)
-    onScan?.({
-      total: fields.total && total > 0 ? total : null,
-      date: fields.date || null,
-      merchant: fields.merchant.trim() || null,
-      currency: fields.currency || null,
-    })
+    onScan?.(receiptResult(fields))
     setStage('done')
   }
 
@@ -114,7 +103,7 @@ export default function ReceiptScanner({ onScan }) {
   }
 
   const set = (key) => (value) => setFields((f) => ({ ...f, [key]: value }))
-  const nothingRead = !fields.merchant && !fields.date && !fields.total
+  const nothingRead = receiptNothingRead(fields)
 
   return (
     <VStack align="stretch" spacing={3}>

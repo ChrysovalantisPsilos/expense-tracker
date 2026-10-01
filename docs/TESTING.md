@@ -259,9 +259,10 @@ the app stays scrollable, and the file downloads within seconds.
 > `statementMath.ts` and `groupStatement.ts` next to their features. Until
 > then, a `[statement] couldn't be made on this device; using the server
 > fallback.` warning in the console marks each time the fallback was used.
-> **Keep `generate-report` itself** while the native iOS app makes its
-> statement through it (Insights › Export statement, `ios/README.md`): the
-> app has no PDF/Excel builder of its own yet.
+> **Keep `generate-report` and `group-report` themselves** while the native
+> iOS app makes its statements through them (Insights › Export statement, a
+> group's … menu › Download statement; `ios/README.md`): the app has no
+> PDF/Excel builder of its own yet.
 
 ### J. Backup & restore **[2 accounts]**
 30. Settings → Your data → Export backup, once with no password and once

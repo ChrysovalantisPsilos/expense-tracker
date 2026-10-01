@@ -38,6 +38,23 @@ export default {
     group: {
       commentOn: 'Comment on {{name}}',
     },
+    // Scan a receipt on Add (the phone reads the photo; nothing is uploaded).
+    receipt: {
+      camera: 'Take a photo',
+      library: 'Choose a photo',
+      nothingRead: 'Couldn’t read much from this photo — fill in what you can, or try another photo.',
+      // Info.plist's NSCameraUsageDescription (iOS shows it the first time).
+      cameraUsage: 'Budgeer uses the camera to read a receipt on this iPhone. The photo isn’t saved or uploaded.',
+    },
+    // Joining a group from an invite link (the Groups tab, a budgeer:// link).
+    join: {
+      entry: 'Join with a link',
+      lead: 'Paste the invite link a friend sent you, or just its code.',
+      field: 'Invite link',
+      paste: 'Paste',
+      next: 'Continue',
+      notLink: 'That isn’t an invite link. It looks like budgeer.com/join/…',
+    },
     // A group's Balances page.
     balances: {
       everyone: 'Everyone',

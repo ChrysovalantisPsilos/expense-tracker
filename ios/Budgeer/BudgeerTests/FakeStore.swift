@@ -23,6 +23,8 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     var inviteStatus = "invited"
     /// Set to make the send-invite email fail.
     var emailError: Error?
+    /// preview_link_invite's answers, by token (an unknown token fails the read).
+    var linkPreviews: [String: JSONValue] = [:]
 
     // Reads.
     var profileResult: Result<JSONValue, Error> = .success(["base_currency": "EUR"])

@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { fileStem, toBlob } from '../src/shared/lib/download.js'
+import { toBlob } from '../src/shared/lib/download.js'
+import { fileStem, groupStatementFilename } from '../supabase/functions/_shared/files.ts'
 
 test('fileStem: collapses unsafe runs to one dash and trims the ends; falls back when nothing safe is left', () => {
   assert.equal(fileStem('Trip to Lisbon!'), 'Trip-to-Lisbon')
@@ -10,6 +11,11 @@ test('fileStem: collapses unsafe runs to one dash and trims the ends; falls back
   assert.equal(fileStem('🍕🍕', 'group'), 'group')
   assert.equal(fileStem(null), 'file')
   assert.equal(fileStem(''), 'file')
+})
+
+test('groupStatementFilename: the group\'s name made safe, "group" when nothing is left', () => {
+  assert.equal(groupStatementFilename('Trip to Lisbon!'), 'Trip-to-Lisbon-statement.pdf')
+  assert.equal(groupStatementFilename('🍕🍕'), 'group-statement.pdf')
 })
 
 test('toBlob: passes a Blob of the right (or no requested) type through untouched', () => {
