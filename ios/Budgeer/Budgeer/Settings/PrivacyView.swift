@@ -40,6 +40,8 @@ struct PrivacyView: View {
                     }
                     .accessibilityIdentifier("privacy.share")
                 }
+                NavigationLink(value: AppRoute.yourData) { Text(language.t("privacy:settings.download.backup")) }
+                    .accessibilityIdentifier("privacy.backup")
             }
             right("correct", symbol: "pencil", color: SettingsRow.amber) {
                 NavigationLink(value: AppRoute.account) { Text(language.t("privacy:settings.correct.profile")) }

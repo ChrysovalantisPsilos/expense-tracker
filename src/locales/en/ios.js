@@ -76,6 +76,12 @@ export default {
       done: '{{name}} is ready',
       open: 'Open the group',
     },
+    // Settings › Your data › Export backup: the file is made on the phone,
+    // then handed to the share sheet (the web downloads it instead).
+    backup: {
+      save: 'Save backup file',
+      ready: 'Your backup is ready. Save it to Files, or send it somewhere safe.',
+    },
     lock: {
       setting: 'Face ID lock',
       settingNote: 'Ask for Face ID (or your passcode) when Budgeer opens, and after a minute away.',

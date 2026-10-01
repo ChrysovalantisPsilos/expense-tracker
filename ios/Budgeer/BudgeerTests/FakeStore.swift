@@ -5,7 +5,7 @@ import Foundation
 
 final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepository, RecurringRepository,
     BudgetsRepository, FxRepository, AiRepository, GroupsRepository, PrivacyRepository, SavingsRepository,
-    PlanRepository, InsightsRepository, @unchecked Sendable {
+    PlanRepository, InsightsRepository, ImportRepository, BackupRepository, @unchecked Sendable {
     // The groups' reads (GroupsRepository, in FakeStore+Groups.swift).
     var groupsResult: Result<JSONValue, Error> = .success([])
     var invitesResult: Result<JSONValue, Error> = .success([])
@@ -97,6 +97,23 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     var whatIfLines: [String] = []
     /// my_salary_history's answer (a save becomes it).
     var salaryNotes: JSONValue = .null
+
+    // The import and the backup (FakeStore+Import.swift).
+    /// category_rules' rows (the writes change them).
+    var importRuleRows: JSONValue = []
+    /// What those writes did, in order: "saveRule", "updateRule", "deleteRule",
+    /// "saveTransactions", "createCategories", "saveBudget" plus the argument.
+    var importWrites: [(name: String, args: JSONValue)] = []
+    /// Set to make updating a rule fail (a ServerError 23505, say).
+    var ruleUpdateError: Error?
+    /// ai-helper suggest_categories' answer.
+    var ideasResult: Result<JSONValue, Error> = .success([])
+    /// The profile's backed-up settings (backupProfile).
+    var backupProfileRow: JSONValue = ["display_name": "Sam Morgan", "base_currency": "EUR", "notify_email": true,
+                                       "notify_push": false, "yearly_separate": false, "salary_shift_from_day": .null,
+                                       "salary_category_id": .null]
+    /// countTransactions' answer (nil: the rows my_transactions answers).
+    var transactionCount: Int?
 
     init() {}
 
