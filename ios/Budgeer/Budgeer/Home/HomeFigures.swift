@@ -186,7 +186,8 @@ struct HomeFigures: Codable, Equatable, Sendable {
         return (try period.decode(), fetchFrom.stringValue ?? from.stringValue)
     }
 
-    static func compute(_ input: HomeInput, core: BudgeerCore) throws -> HomeFigures {
+    /// `legendTop`: how many the legend keeps before "Other" (the widgets keep three).
+    static func compute(_ input: HomeInput, legendTop: Int = HomeFigures.legendTop, core: BudgeerCore) throws -> HomeFigures {
         let period = try period(input.periodValue, now: input.now, core: core)
         let from = period["from"] ?? .null
         let to = period["to"] ?? .null

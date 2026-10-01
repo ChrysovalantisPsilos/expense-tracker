@@ -8,5 +8,7 @@ BUDGEER_ENV = dev
 // "Budgeer Dev": its own app beside the real one, on the TEST project.
 BUDGEER_BUNDLE_ID = com.budgeer.app.dev
 BUDGEER_DISPLAY_NAME = Budgeer Dev
+// The App Group the app shares with its widgets (the widgets' snapshot).
+BUDGEER_APP_GROUP = group.com.budgeer.app.dev
 SUPABASE_URL = https:/$()/ctvdljzybbujuywppixo.supabase.co
 SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0dmRsanp5YmJ1anV5d3BwaXhvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MjQ3MjgsImV4cCI6MjA5ODQwMDcyOH0.8-VpXSYpMU3lyJmE-yvwzOAP90PmNtnKcZUIjqXByGw

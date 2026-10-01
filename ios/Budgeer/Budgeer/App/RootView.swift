@@ -33,8 +33,12 @@ struct RootView: View {
             }
         }
         .task { await session.start() }
-        // budgeer://join/<token>: shown on the Groups tab once signed in.
-        .onOpenURL { url in _ = container.joinInbox.open(url) }
+        // budgeer://join/<token>: shown on the Groups tab once signed in; a
+        // widget's budgeer://app/<path>: opened as a notification's page is.
+        .onOpenURL { url in
+            if container.joinInbox.open(url) { return }
+            if let path = WidgetLinks.path(url) { PushInbox.shared.path = path }
+        }
         // Settings › Appearance: this device's light, dark or the phone's.
         .onChange(of: appearance, initial: true) { _, pref in AppAppearance.apply(pref) }
         .onChange(of: session.state) { _, state in

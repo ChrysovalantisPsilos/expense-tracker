@@ -36,6 +36,10 @@ export default {
       comingUp: 'Coming up',
       byCategory: 'By category',
     },
+    // The widgets, with no figures for this month on the phone (signed out, or a new month).
+    widget: {
+      stale: 'Open Budgeer to see this month',
+    },
     // Your salary's Against prices: the country and the year compared from, as one menu.
     salary: {
       pricesFrom: '{{country}} · since {{year}}',

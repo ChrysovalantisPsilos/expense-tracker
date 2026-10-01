@@ -38,6 +38,7 @@ ios/Budgeer/Budgeer.xcodeproj/
 # A developer's own signing (DEVELOPMENT_TEAM): never committed.
 ios/Budgeer/Config/Local.xcconfig
 ios/Budgeer/Budgeer/Info.plist
+ios/Budgeer/BudgeerWidgets/Info.plist
 ios/Budgeer/Budgeer/Resources/Generated/
 ios/Budgeer/DerivedData/
 ios/Budgeer/.swiftpm/

@@ -48,10 +48,12 @@ final class AppContainer {
         session.beforeSignOut = { await push.forget() }
     }
 
-    /// Signed out: stop the realtime feed and forget the offline copies, so
-    /// the next account never sees this one's.
+    /// Signed out (the account deleted too): stop the realtime feed and forget
+    /// the offline copies and the widgets' figures, so the next account never
+    /// sees this one's.
     func signedOut() async {
         await feed.stop()
         await cache.clear()
+        WidgetSync.signedOut()
     }
 }

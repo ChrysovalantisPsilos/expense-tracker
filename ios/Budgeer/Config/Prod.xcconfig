@@ -6,5 +6,7 @@ BUDGEER_ENV = prod
 // "Budgeer": the App Store app, on PROD.
 BUDGEER_BUNDLE_ID = com.budgeer.app
 BUDGEER_DISPLAY_NAME = Budgeer
+// The App Group the app shares with its widgets (the widgets' snapshot).
+BUDGEER_APP_GROUP = group.com.budgeer.app
 SUPABASE_URL = https:/$()/tuxfpylowcxazinqtrzx.supabase.co
 SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1eGZweWxvd2N4YXppbnF0cnp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4MTc1NDEsImV4cCI6MjEwMDM5MzU0MX0.Xvjry6KSyzGZGbG6FtPJ7OwPJNKseaGH8gi-vdMFSts

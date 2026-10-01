@@ -63,7 +63,7 @@ const SECURITY = ['https', 'encrypted', 'rls', 'passwords', 'rateLimits', 'breac
 // Every key in STORAGE_KEYS (and each service-worker cache) is named here;
 // test/storageKeys.test.js fails if one is missing. Each is a self-closing
 // tag in the `notice.device` texts.
-const DEVICE = ['session', 'offline', 'appFiles', 'choices', 'recentGroups', 'importChoices', 'rates', 'signIn', 'acceptance', 'tab', 'retired']
+const DEVICE = ['session', 'offline', 'appFiles', 'choices', 'recentGroups', 'importChoices', 'rates', 'signIn', 'acceptance', 'tab', 'retired', 'widget']
 const STORAGE_NAMES = {
   restCache: <code>{REST_CACHE}</code>,
   rpcCache: <code>{RPC_CACHE}</code>,

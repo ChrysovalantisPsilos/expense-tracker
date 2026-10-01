@@ -267,7 +267,11 @@ npm run dev       # Vite
   icons from the ios-polish work. Capabilities: Push Notifications and Sign
   in with Apple (`Config/Budgeer-Debug.entitlements` = development APNs,
   `Budgeer-Release.entitlements` = production; TestFlight and the App Store
-  are Release builds). Automatic signing; `DEVELOPMENT_TEAM` lives only in
+  are Release builds), plus App Groups (`group.com.budgeer.app.dev` /
+  `group.com.budgeer.app`, `BUDGEER_APP_GROUP`) shared with the widget
+  extension (`$(BUDGEER_BUNDLE_ID).widgets`, `Config/BudgeerWidgets.entitlements`,
+  embedded in the app; the widgets show the snapshot the app writes there and
+  run no network). Automatic signing; `DEVELOPMENT_TEAM` lives only in
   `Config/Local.xcconfig` (gitignored) or CI's command line.
 - **TestFlight:** `.github/workflows/ios-testflight.yml`, by hand (Run
   workflow, app = dev | prod; default dev). macos-26 / Xcode 26.5,

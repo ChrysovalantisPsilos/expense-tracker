@@ -81,6 +81,8 @@ final class AppRouter {
     var groups = NavigationPath()
     var more = NavigationPath()
     var add: AddRequest?
+    /// The kind of entry a link asked Add for ('expense', 'income'), until the frame opens it.
+    var addKind: String?
     /// Each tab's Add slot: what Add does while a page there lends it (AddSlot).
     let slots: [NativeTab: AddSlot] = [.home: AddSlot(), .activity: AddSlot(), .groups: AddSlot(), .more: AddSlot()]
 
@@ -122,8 +124,13 @@ final class AppRouter {
     }
 
     /// A web path (a notification's, bellMath.notificationPath; What's new's
-    /// actions; the tour's stops) as a tab and its pages (AppPaths).
+    /// actions; the tour's stops; a widget's) as a tab and its pages
+    /// (AppPaths), or Add (/transactions/new).
     func open(path: String) {
+        if let kind = AppPaths.addKind(path) {
+            addKind = kind
+            return
+        }
         guard let place = AppPaths.place(path) else { return }
         var stack = NavigationPath()
         for route in place.routes { stack.append(route) }
@@ -184,6 +191,8 @@ final class AppModels {
     /// The wizard, What's new and the tour.
     let welcome: WelcomeModel
     let tour: TourModel
+    /// The widgets' snapshot of this month.
+    let widget: WidgetSync
 
     init(data: DataLayer, userId: String, language: AppLanguage, security accountSecurity: AccountSecurity,
          signOut: @escaping @MainActor () async -> Void) {
@@ -208,6 +217,9 @@ final class AppModels {
         profileLanguage = ProfileLanguage(language: language, profiles: data.profile)
         welcome = WelcomeModel(data: data)
         tour = TourModel(data: data)
+        let widget = WidgetSync(data: data)
+        self.widget = widget
+        home.onThisMonth = { widget.write($0) }
     }
 }
 
@@ -263,7 +275,17 @@ struct AppFrame: View {
         // (Keyed on the models: a task may start before onAppear makes them.)
         .task(id: models != nil) { await models?.profileLanguage.sync() }
         .liveRefresh(container.live, tables: ["profiles"]) { await models?.profileLanguage.sync() }
-        .onChange(of: language.current) { _, lang in NativeStyle.installAppearance(lang: lang, refresh: true) }
+        // The widgets' snapshot: on sign-in, whenever what it shows changes
+        // (this app's saves and deletes too), and in a new language.
+        .task(id: models != nil) { await models?.widget.refresh() }
+        .liveRefresh(container.live, tables: WidgetSync.tables) { await models?.widget.refresh() }
+        .onChange(of: language.current) { _, lang in
+            NativeStyle.installAppearance(lang: lang, refresh: true)
+            Task { await models?.widget.refresh() }
+        }
+        // A widget's + (Add as an expense), once the lock is off.
+        .onChange(of: router.addKind, initial: true) { _, _ in addFromLink() }
+        .onChange(of: lock.covers) { _, _ in addFromLink() }
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.
         .task(id: user.id) { await container.feed.start(userId: user.id) }
@@ -305,6 +327,14 @@ struct AppFrame: View {
             if let from { await models.ledger.setFilter("from", from) }
             if let to { await models.ledger.setFilter("to", to) }
         }
+    }
+
+    /// Add asked for by a link (a widget's +: the web's /transactions/new),
+    /// shown once the Face ID lock is off.
+    private func addFromLink() {
+        guard let kind = router.addKind, !lock.covers else { return }
+        router.addKind = nil
+        router.add = AddRequest(model: EntryFormModel(mode: .add, kind: kind, data: container.data))
     }
 
     /// Nothing logged yet: Add your first expense (the web's /transactions/new).
