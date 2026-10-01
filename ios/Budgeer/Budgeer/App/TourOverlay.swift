@@ -41,6 +41,7 @@ private struct TourTargetModifier: ViewModifier {
 
 extension View {
     /// Marks this view as what the tour's stops called `names` point at.
+    @MainActor
     func tourTarget(_ names: String...) -> some View {
         modifier(TourTargetModifier(names: names))
     }

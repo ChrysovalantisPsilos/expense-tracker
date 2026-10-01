@@ -75,6 +75,7 @@ private struct WelcomeLayer: ViewModifier {
 
 extension View {
     /// The wizard, What's new and the tour over the signed-in frame.
+    @MainActor
     func welcomeLayer(welcome: WelcomeModel, tour: TourModel, router: AppRouter) -> some View {
         modifier(WelcomeLayer(welcome: welcome, tour: tour, router: router))
     }
