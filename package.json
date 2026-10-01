@@ -16,6 +16,7 @@
     "core:build": "node mobile-core/build.mjs",
     "core:vectors": "node mobile-core/record/vectors.mjs",
     "ios:strings": "node mobile-core/strings.mjs",
+    "ios:icons": "node mobile-core/icons.mjs",
     "ios:fixture": "TZ=UTC node mobile-core/homeFigures.mjs && TZ=UTC node mobile-core/screenFigures.mjs && TZ=UTC node mobile-core/groupFigures.mjs",
     "ios:prepare": "npm run core:build && npm run ios:strings && cd ios/Budgeer && xcodegen generate",
     "functions:serve": "supabase functions serve",
