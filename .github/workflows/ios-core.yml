@@ -7,7 +7,7 @@
 name: ios-core
 on:
   push:
-    branches: [ios-native, ios-phase2, develop]
+    branches: [ios-native, ios-phase2, ios-phase3, develop]
     paths: ['mobile-core/**', 'ios/**', 'src/**', 'supabase/functions/_shared/**', 'test/**', 'package.json', 'package-lock.json', '.github/workflows/ios-core.yml']
   pull_request:
     paths: ['mobile-core/**', 'ios/**', 'src/**', 'supabase/functions/_shared/**', 'test/**', 'package.json', 'package-lock.json', '.github/workflows/ios-core.yml']
