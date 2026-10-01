@@ -39,6 +39,17 @@ final class FakeAuthService: AuthService, @unchecked Sendable {
 
     func legalStatus() async throws -> LegalStatus { try legal.get() }
 
+    /// What accept_legal_documents answers (nil: the accepted status).
+    var acceptResult: Result<LegalStatus, Error>?
+    private(set) var accepted = 0
+
+    func acceptLegal() async throws -> LegalStatus {
+        accepted += 1
+        let status = try (acceptResult ?? .success(.accepted)).get()
+        legal = .success(status)
+        return status
+    }
+
     /// What the service reports from outside (a token that died, a sign-in elsewhere).
     func change(to user: AuthUser?) { emit.yield(user) }
 }

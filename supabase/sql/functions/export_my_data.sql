@@ -34,7 +34,11 @@ begin
     'ai_month_summaries', (select coalesce(jsonb_agg(jsonb_build_object(
         'month', to_char(a.month, 'YYYY-MM'), 'summary', public.dec_text(a.payload_enc, k)::jsonb,
         'written_at', a.created_at) order by a.month), '[]'::jsonb)
-      from public.ai_month_summaries a where a.user_id = uid));
+      from public.ai_month_summaries a where a.user_id = uid),
+    'apns_devices', (select coalesce(jsonb_agg(jsonb_build_object(
+        'id', d.id, 'push_service', 'Apple Push Notification service', 'environment', d.env,
+        'created_at', d.created_at, 'last_seen_at', d.last_seen_at) order by d.created_at), '[]'::jsonb)
+      from public.apns_devices d where d.user_id = uid));
 end $$;
 revoke execute on function public.export_my_data() from public, anon;
 grant execute on function public.export_my_data() to authenticated;

@@ -1,8 +1,9 @@
 // What the app shows: nothing yet, sign-in, or the app, and between the
 // two the legal check, which fails closed as on the web (legalGateMath):
 // no screen of the app renders until the server says the Privacy Notice
-// and Terms in force are accepted. Acceptance itself is not offered here
-// yet; the gate sends the user to the website for it.
+// and Terms in force are accepted. The gate records an acceptance itself
+// (accept_legal_documents), as the web's prompt does for an account made
+// with Google or Apple.
 import Foundation
 import Observation
 
@@ -33,6 +34,9 @@ final class SessionStore {
     private(set) var state: SessionState = .loading
     private let auth: AuthService
     private var listening: Task<Void, Never>?
+    /// Runs while still signed in, just before a sign-out (the app forgets
+    /// this phone's push registration on the server).
+    var beforeSignOut: (@MainActor () async -> Void)?
 
     init(auth: AuthService) {
         self.auth = auth
@@ -59,15 +63,25 @@ final class SessionStore {
         try await signIn(with: .password(email: email, password: password))
     }
 
-    /// Any way in (email, Google): the legal check follows, the same for each.
+    /// Any way in (email, Google, Apple): the legal check follows, the same for each.
     func signIn(with method: SignInMethod) async throws {
         let user = try await auth.signIn(method)
         await settle(user)
     }
 
     func signOut() async {
+        if state.user != nil, let beforeSignOut { await beforeSignOut() }
         try? await auth.signOut()
         state = .signedOut
+    }
+
+    /// The gate's "I agree": the versions in force accepted, then the app
+    /// (or the gate again if the server still says otherwise). Throws when
+    /// the server refused or couldn't be reached; the gate says so.
+    func acceptLegal() async throws {
+        guard let user = state.user else { return }
+        let status = try await auth.acceptLegal()
+        state = status.needsAcceptance ? .legalRequired(user, status) : .ready(user)
     }
 
     /// Ask the server again after a failed legal check, or after the user

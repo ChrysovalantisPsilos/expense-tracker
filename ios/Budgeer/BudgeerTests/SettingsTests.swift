@@ -165,12 +165,13 @@ final class SettingsModelTests: XCTestCase {
         let fake = FakeSecurity()
         let model = security(store(), fake)
         await model.load()
-        XCTAssertEqual(model.methods.map(\.key), ["password", "google"])
+        XCTAssertEqual(model.methods.map(\.key), ["password", "google", "apple"])
         XCTAssertEqual(model.methods.first?.detail, "sam@example.com")
-        XCTAssertEqual(model.methods.last?.connected, false)
+        XCTAssertEqual(model.methods.map(\.connected), [true, false, false])
         XCTAssertTrue(model.hasPassword)
         XCTAssertNil(model.reauthText) // signed in a minute ago
-        XCTAssertNotNil(model.googleBlock) // nothing to disconnect
+        XCTAssertNotNil(model.blocks["google"]) // nothing to disconnect
+        XCTAssertNotNil(model.blocks["apple"])
     }
 
     func testChangingThePassword() async {
@@ -204,11 +205,11 @@ final class SettingsModelTests: XCTestCase {
         let url = await model.googleLinkURL()
         XCTAssertNotNil(url)
         await model.finishLink(try XCTUnwrap(url))
-        XCTAssertEqual(model.methods.last?.connected, true)
-        XCTAssertNil(model.googleBlock)
-        await model.disconnectGoogle()
-        XCTAssertEqual(fake.calls, ["linkURL", "finishLink", "unlink"])
-        XCTAssertEqual(model.methods.last?.connected, false)
+        XCTAssertEqual(model.methods[1].connected, true)
+        XCTAssertNil(model.blocks["google"])
+        await model.disconnect("google")
+        XCTAssertEqual(fake.calls, ["linkURL", "finishLink", "unlink:google"])
+        XCTAssertEqual(model.methods[1].connected, false)
 
         // An hour-old sign-in: Log in again first.
         fake.claims = ["iat": .int(Int(TestData.now.timeIntervalSince1970) - 3600)]
@@ -216,7 +217,36 @@ final class SettingsModelTests: XCTestCase {
         XCTAssertNotNil(model.reauthText)
         let refused = await model.googleLinkURL()
         XCTAssertNil(refused)
+        let mayConnect = await model.mayConnect()
+        XCTAssertFalse(mayConnect)
         XCTAssertEqual(fake.calls.count, 3)
+    }
+
+    func testConnectingAndDisconnectingApple() async {
+        let fake = FakeSecurity()
+        let model = security(store(), fake)
+        await model.load()
+        let mayConnect = await model.mayConnect()
+        XCTAssertTrue(mayConnect)
+        await model.connectApple(AppleCredential(idToken: "tok", nonce: "n"))
+        XCTAssertEqual(model.methods.map(\.connected), [true, false, true])
+        XCTAssertEqual(model.methods[2].detail, "x7k2@privaterelay.appleid.com")
+        XCTAssertEqual(model.message, BudgeerCore.shared.text("settings:signIn.apple.linkedBody"))
+        XCTAssertNil(model.blocks["apple"])
+        await model.disconnect("apple")
+        XCTAssertEqual(fake.calls, ["linkApple:tok", "unlink:apple"])
+        XCTAssertEqual(model.message, BudgeerCore.shared.text("settings:signIn.apple.disconnected"))
+        XCTAssertEqual(model.methods[2].connected, false)
+    }
+
+    func testAnAppleOnlyAccountKeepsApple() async {
+        let fake = FakeSecurity()
+        fake.user = ["email": "x7k2@privaterelay.appleid.com", "app_metadata": ["providers": ["apple"]], "user_metadata": [:]]
+        fake.identityRows = [["provider": "apple", "identity_id": "i-a", "identity_data": ["email": "x7k2@privaterelay.appleid.com"]]]
+        let model = security(store(), fake)
+        await model.load()
+        XCTAssertFalse(model.hasPassword)
+        XCTAssertEqual(model.blocks["apple"], BudgeerCore.shared.text("settings:signIn.apple.onlyWay"))
     }
 
     func testAGoogleOnlyAccountSetsAFirstPassword() async {

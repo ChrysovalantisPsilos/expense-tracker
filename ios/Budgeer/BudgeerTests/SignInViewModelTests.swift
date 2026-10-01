@@ -101,4 +101,33 @@ final class SignInViewModelTests: XCTestCase {
         await model.signInWithGoogle(session: session)
         XCTAssertEqual(model.errorKey, "common:errors.connection")
     }
+
+    // Apple: the sheet's credential (token, nonce, the first sign-in's name)
+    // goes to the service as it came; the legal check follows.
+
+    func testAppleSignsInWithTheCredentialAndTheGateFollows() async {
+        let auth = FakeAuthService()
+        auth.legal = .success(.fresh)
+        let session = SessionStore(auth: auth)
+        await session.start()
+        let model = SignInViewModel()
+        let credential = AppleCredential(idToken: "id.token.sig", nonce: "raw-nonce", fullName: "Sam Lee")
+        await model.signInWithApple(credential, session: session)
+        XCTAssertEqual(auth.signIns, [.apple(credential)])
+        XCTAssertNil(model.errorKey)
+        XCTAssertFalse(model.appleBusy)
+        XCTAssertEqual(session.state, .legalRequired(.sample, .fresh))
+    }
+
+    func testAnAppleRefusalShowsTheWebsMessage() async {
+        let auth = FakeAuthService(signInResult: .failure(SignInError.rejected(code: "provider_disabled", message: "x")))
+        let session = SessionStore(auth: auth)
+        await session.start()
+        let model = SignInViewModel()
+        await model.signInWithApple(AppleCredential(idToken: "t", nonce: "n"), session: session)
+        XCTAssertEqual(model.errorKey, "auth:serverError")
+        XCTAssertEqual(session.state, .signedOut)
+        model.appleFailed()
+        XCTAssertEqual(model.errorKey, "common:errors.generic")
+    }
 }

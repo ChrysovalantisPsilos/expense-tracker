@@ -64,6 +64,8 @@ test('the app\'s "sign in again" sentences are reauthMessage\'s, word for word',
   const r = common.errors.reauth
   assert.equal(r.connectGoogle, reauthMessage('connect Google'))
   assert.equal(r.disconnectGoogle, reauthMessage('disconnect Google'))
+  assert.equal(r.connectApple, reauthMessage('connect Apple'))
+  assert.equal(r.disconnectApple, reauthMessage('disconnect Apple'))
   assert.equal(r.addPasskey, reauthMessage('add a passkey'))
   assert.equal(r.deleteAccount, reauthMessage('delete your account')) // the delete-account function's
 })

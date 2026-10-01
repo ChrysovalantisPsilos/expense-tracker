@@ -22,6 +22,8 @@ final class AppContainer {
     let lock = AppLock()
     /// An invite link the app was opened with (budgeer://join/<token>).
     let joinInbox = JoinInbox()
+    /// Push on this iPhone (the permission, the device token on the server).
+    let push: PushModel
 
     init(config: AppConfig) {
         self.config = config
@@ -37,6 +39,10 @@ final class AppContainer {
             Task { @MainActor in live.changed([table]) }
         })
         data = DataLayer(store)
+        let push = PushModel(data: data, system: ApplePushSystem(), environment: config.apnsEnvironment)
+        self.push = push
+        // Signing out forgets this iPhone's token while the session still can.
+        session.beforeSignOut = { await push.forget() }
     }
 
     /// Signed out: stop the realtime feed and forget the offline copies, so

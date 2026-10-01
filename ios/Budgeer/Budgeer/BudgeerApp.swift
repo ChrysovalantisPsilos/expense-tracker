@@ -6,6 +6,8 @@ import SwiftUI
 
 @main
 struct BudgeerApp: App {
+    /// Push's system side: the APNs token, banners, taps (ApplePush.swift).
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let container: AppContainer?
     private let configError: String?
     @State private var language: AppLanguage

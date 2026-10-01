@@ -62,6 +62,8 @@ export default {
     reauth: {
       connectGoogle: 'For your security, please sign in again to connect Google.',
       disconnectGoogle: 'For your security, please sign in again to disconnect Google.',
+      connectApple: 'For your security, please sign in again to connect Apple.',
+      disconnectApple: 'For your security, please sign in again to disconnect Apple.',
       addPasskey: 'For your security, please sign in again to add a passkey.',
       deleteAccount: 'For your security, please sign in again to delete your account.',
     },

@@ -221,8 +221,11 @@ struct AppFrame: View {
                     page(tab, models)
                 }
                 .sheet(item: $router.add) { request in
-                    AddSheet(request: request, data: container.data, userId: userId, groups: models.myGroups)
-                        .environment(language)
+                    AddSheet(request: request, data: container.data, userId: userId, groups: models.myGroups) {
+                        // The first entry saved is the moment to ask about notifications (once).
+                        Task { await container.push.askAfterFirstAction() }
+                    }
+                    .environment(language)
                 }
                 .task(id: user.id) { await models.shell.load() }
                 .liveRefresh(container.live, tables: ["notifications", "profiles", "meal_vouchers"]) {
@@ -249,6 +252,14 @@ struct AppFrame: View {
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.
         .task(id: user.id) { await container.feed.start(userId: user.id) }
+        // Push: re-register when iOS already allows it (never asks here).
+        .task(id: user.id) { await container.push.refresh() }
+        // A tapped notification opens its page, as the bell's rows do.
+        .onChange(of: PushInbox.shared.path, initial: true) { _, path in
+            guard let path else { return }
+            PushInbox.shared.path = nil
+            router.open(path: path)
+        }
         // A budgeer://join link (RootView keeps it until the frame is up).
         .onChange(of: container.joinInbox.token, initial: true) { _, token in
             guard let token else { return }
@@ -397,7 +408,7 @@ struct AppFrame: View {
             SpendingView(model: models.preferences)
                 .liveRefresh(container.live, tables: ["profiles", "categories"]) { await models.preferences.load() }
         case .messages:
-            MessagesView(model: models.preferences)
+            MessagesView(model: models.preferences, push: container.push)
                 .liveRefresh(container.live, tables: ["profiles"]) { await models.preferences.load() }
         case .appearance:
             AppearanceView()

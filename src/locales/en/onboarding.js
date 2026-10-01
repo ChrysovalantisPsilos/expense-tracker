@@ -89,7 +89,7 @@ export default {
     },
     privacy: {
       title: 'Privacy and security',
-      body: 'How you log in (password, Google, passkeys), backups of your data, and Privacy: your data rights, consents and requests.',
+      body: 'How you log in (password, Google, Apple, passkeys), backups of your data, and Privacy: your data rights, consents and requests.',
     },
     done: {
       title: 'You’re all set',

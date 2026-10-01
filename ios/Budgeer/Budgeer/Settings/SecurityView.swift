@@ -1,6 +1,6 @@
 // Settings › Security (SecurityModel): "Log in again" when a fresh sign-in
 // is needed, the sign-in methods with Connect / Disconnect for Google and
-// "Set a password" for a Google-only account, Change password, and the
+// Apple and "Set a password" for an account without one, Change password, and the
 // danger zone's Delete account, which asks once more in a sheet (the only
 // confirmation here). On the shared demo account, the demo note instead.
 import AuthenticationServices
@@ -12,6 +12,7 @@ struct SecurityView: View {
     @Environment(AppLanguage.self) private var language
     @Environment(\.webAuthenticationSession) private var webAuthenticationSession
     @State private var deleting = false
+    @State private var apple = AppleAuthorizer()
 
     var body: some View {
         List {
@@ -81,6 +82,12 @@ struct SecurityView: View {
                         GoogleMark(size: 18)
                             .frame(width: 30, height: 30)
                             .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    } else if method.key == "apple" {
+                        Image(systemName: "apple.logo")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(.primary)
+                            .frame(width: 30, height: 30)
+                            .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                     } else {
                         NativeIconTile(symbol: method.key == "password" ? "key.fill" : "person.badge.key.fill",
                                        color: NativeTone.sand)
@@ -99,8 +106,8 @@ struct SecurityView: View {
         } footer: {
             VStack(alignment: .leading, spacing: 6) {
                 Text(language.t("settings:signIn.subtitle"))
-                if let block = model.googleBlock, model.methods.contains(where: { $0.key == "google" && $0.connected }) {
-                    Text(block)
+                ForEach(model.methods.filter { $0.connected && model.blocks[$0.key] != nil }) { method in
+                    Text(model.blocks[method.key] ?? "")
                 }
             }
         }
@@ -108,17 +115,19 @@ struct SecurityView: View {
     }
 
     @ViewBuilder private func action(_ method: SignInMethodRow) -> some View {
-        if method.key == "google" {
+        if method.key == "google" || method.key == "apple" {
             if method.connected {
-                Button(language.t("settings:signIn.disconnect")) { Task { await model.disconnectGoogle() } }
+                Button(language.t("settings:signIn.disconnect")) { Task { await model.disconnect(method.key) } }
                     .buttonStyle(.bordered)
-                    .disabled(model.googleBlock != nil || model.busy)
-                    .accessibilityIdentifier("security.disconnectGoogle")
+                    .disabled(model.blocks[method.key] != nil || model.busy)
+                    .accessibilityIdentifier("security.disconnect.\(method.key)")
             } else {
-                Button(language.t("settings:signIn.connect")) { connectGoogle() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(model.busy)
-                    .accessibilityIdentifier("security.connectGoogle")
+                Button(language.t("settings:signIn.connect")) {
+                    if method.key == "apple" { connectApple() } else { connectGoogle() }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(model.busy)
+                .accessibilityIdentifier("security.connect.\(method.key)")
             }
         } else if method.key == "password" && !method.connected && !model.settingFirst {
             Button(language.t("settings:signIn.setPassword")) { model.settingFirst = true }
@@ -138,7 +147,19 @@ struct SecurityView: View {
             } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
                 // Closed: nothing to say.
             } catch {
-                model.linkFailed()
+                model.linkFailed("google")
+            }
+        }
+    }
+
+    /// Apple's own sheet, then its token linked to this account.
+    private func connectApple() {
+        Task {
+            guard await model.mayConnect() else { return }
+            do {
+                await model.connectApple(try await apple.authorize())
+            } catch {
+                if !isAppleCancel(error) { model.linkFailed("apple") }
             }
         }
     }

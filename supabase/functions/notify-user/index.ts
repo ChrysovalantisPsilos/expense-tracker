@@ -4,7 +4,10 @@
 // trust domain as the reminders cron: this database calling this project).
 //
 // Channels, gated by the user's profile switches:
-//   push  (profiles.notify_push)  — every notification type
+//   push  (profiles.notify_push)  — every notification type, to the browsers
+//          (web push, VAPID keys in Vault) and to the iOS apps (APNs,
+//          _shared/apns.ts; function secrets APNS_KEY_ID, APNS_TEAM_ID,
+//          APNS_KEY_P8 — skipped without them)
 //   email (profiles.notify_email) — big events only: invite, member_joined,
 //          member_left. Email invites sent through send-invite already emailed
 //          the recipient, so those are skipped here (invite has invited_email).
@@ -15,11 +18,17 @@ import { brandEmail } from '../_shared/email.ts'
 import { appOrigin, inviteSender, sendEmail } from '../_shared/sendEmail.ts'
 import { requireCronSecret } from '../_shared/cron.ts'
 import { eachLimited, isAllowedPushEndpoint } from '../_shared/push.ts'
+import {
+  apnsConfig, apnsPayload, apnsRequest, apnsTopic, isDeadToken, providerTokenCache,
+} from '../_shared/apns.ts'
 
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 )
+
+// One APNs provider token per warm instance (Apple: reuse it 20–60 minutes).
+const providerToken = providerTokenCache()
 
 const EMAIL_TYPES = new Set(['invite', 'member_joined', 'member_left'])
 
@@ -84,6 +93,33 @@ Deno.serve(async (req) => {
         }
       }
     })
+  }
+
+  // -- iOS apps (APNs, all types) --------------------------------------------
+  const apns = apnsConfig((name) => Deno.env.get(name))
+  if ((prefs?.notify_push ?? true) && apns) {
+    const { data: devices } = await admin
+      .from('apns_devices')
+      .select('id, token, env')
+      .eq('user_id', n.user_id)
+      .order('last_seen_at', { ascending: false })
+      .limit(10)
+    if (devices?.length) {
+      const jwt = await providerToken(apns, Date.now() / 1000)
+      const topic = apnsTopic(Deno.env.get('SUPABASE_URL'))
+      const payload = apnsPayload({ title: n.title, body: n.body, url: urlFor(n), id: n.id })
+      await eachLimited(devices, 4, async (d) => {
+        const { url, init } = apnsRequest({ env: d.env, token: d.token, topic, jwt, payload })
+        const res = await fetch(url, init)
+        if (res.ok) { pushed += 1; await res.body?.cancel(); return }
+        const reason = (await res.json().catch(() => null))?.reason ?? null
+        if (isDeadToken(res.status, reason)) {
+          await admin.from('apns_devices').delete().eq('id', d.id)
+        } else {
+          console.error('[notify-user] APNs refused a notification:', res.status, reason)
+        }
+      })
+    }
   }
 
   // -- Email (big events only) ------------------------------------------------

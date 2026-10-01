@@ -8,27 +8,30 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import GoogleIcon from '../../shared/ui/GoogleIcon.jsx'
+import AppleIcon from '../../shared/ui/AppleIcon.jsx'
 import {
-  signInMethods, googleDisconnectBlock, linkErrorMessage, newPasswordError, redirectError,
+  PROVIDERS, signInMethods, disconnectBlock, linkErrorMessage, newPasswordError, redirectError,
 } from './authMethods.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
-// Set before leaving for Google's consent screen; its presence on the way
-// back means "this load is the end of a link attempt" (sessionStorage: the
-// same tab). Supabase may strip the URL's tokens before this page mounts, so
-// the outcome is read from the identities, not the URL alone.
-const LINKING = STORAGE_KEYS.linkingGoogle
+// Set (to the provider) before leaving for Google's or Apple's consent
+// screen; its presence on the way back means "this load is the end of a link
+// attempt" (sessionStorage: the same tab). Supabase may strip the URL's
+// tokens before this page mounts, so the outcome is read from the
+// identities, not the URL alone.
+const LINKING = STORAGE_KEYS.linkingProvider
 const ICONS = { password: KeyRound, passkeys: Fingerprint }
+const MARKS = { google: GoogleIcon, apple: AppleIcon }
 
 // Settings → Security: how this account can sign in — email & password,
-// Google, passkeys — with Connect/Disconnect for Google and "Set a password"
-// for a Google-only account. The last way in can't be removed
-// (googleDisconnectBlock; Supabase enforces it too).
+// Google, Apple, passkeys — with Connect/Disconnect for Google and Apple and
+// "Set a password" for an account without one. The last way in can't be
+// removed (disconnectBlock; Supabase enforces it too).
 export default function SignInMethodsCard({ user, identities, passkeys }) {
   const t = useT('settings')
-  const { linkGoogle, unlinkIdentity, setFirstPassword, markPasswordSet } = useAuth()
+  const { linkProvider, unlinkIdentity, setFirstPassword, markPasswordSet } = useAuth()
   const toast = useToast()
   const location = useLocation()
   const navigate = useNavigate()
@@ -36,68 +39,70 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
   const [settingPassword, setSettingPassword] = useState(false)
   const ids = identities.data
 
-  // Back from Google: say how it went, once, then tidy the URL.
+  // Back from Google or Apple: say how it went, once, then tidy the URL.
   const handled = useRef(false)
   useEffect(() => {
     let pending = null
     try { pending = sessionStorage.getItem(LINKING) } catch { /* storage blocked */ }
-    if (!pending || handled.current) return
+    if (!PROVIDERS.includes(pending) || handled.current) return
     const err = redirectError(location.search, window.location.hash)
     if (!err && ids === null) return // wait for the identities
     handled.current = true
     try { sessionStorage.removeItem(LINKING) } catch { /* storage blocked */ }
     if (err) {
-      console.error('[settings] Google link came back with an error:', err)
-      toast({ title: t('signIn.google.notLinked'), description: linkErrorMessage(err), status: 'error' })
-    } else if (ids.some((i) => i.provider === 'google')) {
-      toast({ title: t('signIn.google.linked'), description: t('signIn.google.linkedBody'), status: 'success' })
+      console.error(`[settings] ${pending} link came back with an error:`, err)
+      toast({ title: t(`signIn.${pending}.notLinked`), description: linkErrorMessage(err, null, pending), status: 'error' })
+    } else if (ids.some((i) => i.provider === pending)) {
+      toast({ title: t(`signIn.${pending}.linked`), description: t(`signIn.${pending}.linkedBody`), status: 'success' })
     } else {
-      toast({ title: t('signIn.google.notLinked'), status: 'warning' })
+      toast({ title: t(`signIn.${pending}.notLinked`), status: 'warning' })
     }
     if (location.search || window.location.hash) navigate(location.pathname, { replace: true })
   }, [ids, location.pathname, location.search, navigate, toast, t])
 
-  async function connect() {
-    setBusy('google')
-    try { sessionStorage.setItem(LINKING, '1') } catch { /* storage blocked */ }
-    const returnTo = `${window.location.origin}${location.pathname}?linked=google`
-    const { error } = await linkGoogle(returnTo)
-    if (error) { // it never left for Google
+  async function connect(provider) {
+    setBusy(provider)
+    try { sessionStorage.setItem(LINKING, provider) } catch { /* storage blocked */ }
+    const returnTo = `${window.location.origin}${location.pathname}?linked=${provider}`
+    const { error } = await linkProvider(provider, returnTo)
+    if (error) { // it never left for the provider
       try { sessionStorage.removeItem(LINKING) } catch { /* storage blocked */ }
       setBusy(null)
-      console.error('[settings] Google link failed:', error)
-      toast({ title: t('signIn.google.connectFailed'), description: linkErrorMessage(error), status: 'error' })
+      console.error(`[settings] ${provider} link failed:`, error)
+      toast({ title: t(`signIn.${provider}.connectFailed`), description: linkErrorMessage(error, null, provider), status: 'error' })
     }
   }
 
-  async function disconnect(identity) {
-    setBusy('google')
+  async function disconnect(provider, identity) {
+    setBusy(provider)
     const { error } = await unlinkIdentity(identity)
     setBusy(null)
     if (error) {
-      console.error('[settings] Google unlink failed:', error)
+      console.error(`[settings] ${provider} unlink failed:`, error)
       toast({
-        title: t('signIn.google.disconnectFailed'),
-        description: linkErrorMessage(error, t('signIn.google.stillConnected')),
+        title: t(`signIn.${provider}.disconnectFailed`),
+        description: linkErrorMessage(error, t(`signIn.${provider}.stillConnected`), provider),
         status: 'error',
       })
       return
     }
-    toast({ title: t('signIn.google.disconnected'), status: 'success' })
+    toast({ title: t(`signIn.${provider}.disconnected`), status: 'success' })
     identities.reload()
   }
 
   const methods = signInMethods({ user, identities: ids, passkeys })
-  const block = googleDisconnectBlock({ user, identities: ids })
+  const blocks = Object.fromEntries(PROVIDERS.map((provider) =>
+    [provider, disconnectBlock({ user, identities: ids, provider })]))
 
   function action(m) {
-    if (m.key === 'google') {
+    if (PROVIDERS.includes(m.key)) {
       if (!m.connected) {
-        return <Button size="sm" onClick={connect} isLoading={busy === 'google'}>{t('signIn.connect')}</Button>
+        return <Button size="sm" onClick={() => connect(m.key)} isLoading={busy === m.key}>{t('signIn.connect')}</Button>
       }
+      const block = blocks[m.key]
       const button = (
-        <Button size="sm" variant="outline" isDisabled={!!block} isLoading={busy === 'google'}
-          onClick={() => disconnect(m.identity)}>{t('signIn.disconnect')}</Button>
+        <Button size="sm" variant="outline" isDisabled={!!block} isLoading={busy === m.key}
+          onClick={() => disconnect(m.key, m.identity)}>{t('signIn.disconnect')}</Button>
       )
       return block ? <Tooltip label={block}><span>{button}</span></Tooltip> : button
     }
@@ -111,13 +116,13 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
     <Panel title={t('signIn.title')} icon={LogIn} subtitle={t('signIn.subtitle')}>
       <Stack spacing={1}>
         {methods.map((m) => (
-          <ItemRow key={m.key} media={m.key === 'google' ? <GoogleTile /> : undefined}
+          <ItemRow key={m.key} media={MARKS[m.key] ? <ProviderTile mark={MARKS[m.key]} /> : undefined}
             icon={ICONS[m.key]} title={m.label} meta={m.detail} trailing={action(m)} />
         ))}
       </Stack>
-      {block && ids && methods.find((m) => m.key === 'google')?.connected && (
-        <Text fontSize="xs" color="text.muted" mt={2}>{block}</Text>
-      )}
+      {ids && PROVIDERS.filter((p) => blocks[p] && methods.find((m) => m.key === p)?.connected).map((p) => (
+        <Text key={p} fontSize="xs" color="text.muted" mt={2}>{blocks[p]}</Text>
+      ))}
       {settingPassword && (
         <SetPasswordForm email={user?.email} onCancel={() => setSettingPassword(false)}
           onDone={() => setSettingPassword(false)}
@@ -127,15 +132,15 @@ export default function SignInMethodsCard({ user, identities, passkeys }) {
   )
 }
 
-function GoogleTile() {
+function ProviderTile({ mark: Mark }) {
   return (
     <Stack boxSize="32px" borderRadius="lg" bg="bg.subtle" align="center" justify="center" flexShrink={0}>
-      <GoogleIcon boxSize="16px" />
+      <Mark boxSize="16px" />
     </Stack>
   )
 }
 
-// A first password for a Google-only account (same rules as sign-up).
+// A first password for a Google- or Apple-only account (same rules as sign-up).
 function SetPasswordForm({ email, onCancel, onDone, setFirstPassword, markPasswordSet }) {
   const t = useT('settings')
   const toast = useToast()

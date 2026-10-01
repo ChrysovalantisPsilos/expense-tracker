@@ -23,7 +23,7 @@ function hasStoredSession() {
   return false
 }
 
-// Adding a passkey and connecting or disconnecting Google change how the
+// Adding a passkey and connecting or disconnecting Google or Apple change how the
 // account can be entered, so they need a recent sign-in (_shared/reauth.ts),
 // as deleting the account does. Supabase Auth doesn't ask for one on these
 // calls, so the app checks the session first; the returned error is copy for
@@ -214,22 +214,23 @@ export function AuthProvider({ children }) {
     return data?.identities ?? []
   }, [])
 
-  // Connect a Google account to the signed-in user: Google's consent screen,
-  // then back to `returnTo`. Returns { error } when it can't start (e.g.
-  // manual linking is off for the project: code manual_linking_disabled).
-  const linkGoogle = useCallback(async (returnTo) => {
-    const error = await reauthError('connectGoogle')
+  // Connect a Google or Apple account (`provider`) to the signed-in user: the
+  // provider's consent screen, then back to `returnTo`. Returns { error } when
+  // it can't start (e.g. manual linking is off for the project: code
+  // manual_linking_disabled).
+  const linkProvider = useCallback(async (provider, returnTo) => {
+    const error = await reauthError(provider === 'apple' ? 'connectApple' : 'connectGoogle')
     if (error) return { data: null, error }
-    return supabase.auth.linkIdentity({ provider: 'google', options: { redirectTo: returnTo } })
+    return supabase.auth.linkIdentity({ provider, options: { redirectTo: returnTo } })
   }, [])
 
   const unlinkIdentity = useCallback(async (identity) => {
-    const error = await reauthError('disconnectGoogle')
+    const error = await reauthError(identity?.provider === 'apple' ? 'disconnectApple' : 'disconnectGoogle')
     if (error) return { data: null, error }
     return supabase.auth.unlinkIdentity(identity)
   }, [])
 
-  // A first password for an account that signs in with Google only (no
+  // A first password for an account that signs in with Google or Apple only (no
   // current password to give). `password_set` in user_metadata only tells the
   // UI there's one now (Supabase adds no email identity); it grants nothing —
   // a later change needs the current password (changePassword), and if the
@@ -284,7 +285,7 @@ export function AuthProvider({ children }) {
     listPasskeys,
     deletePasskey,
     getIdentities,
-    linkGoogle,
+    linkProvider,
     unlinkIdentity,
     setFirstPassword,
     markPasswordSet,
@@ -292,7 +293,7 @@ export function AuthProvider({ children }) {
     session, loading, recovering, signInWithPassword, signUp, holdPendingSignIn, signInWithProvider, signOut,
     resendConfirmation, verifyEmailLink, sendPasswordReset, updatePassword, changePassword, clearRecovery,
     signInWithPasskey, registerPasskey, listPasskeys, deletePasskey,
-    getIdentities, linkGoogle, unlinkIdentity, setFirstPassword, markPasswordSet,
+    getIdentities, linkProvider, unlinkIdentity, setFirstPassword, markPasswordSet,
   ])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

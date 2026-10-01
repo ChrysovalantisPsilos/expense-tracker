@@ -10,6 +10,18 @@ import Foundation
 import Supabase
 
 extension SupabaseStore: PrivacyRepository {
+    // MARK: Push (this install's APNs token)
+
+    func saveDeviceToken(_ token: String, environment: String) async throws {
+        _ = try await refusal {
+            try await client.rpc("save_apns_token", params: ["p_token": token, "p_env": environment]).execute()
+        }
+    }
+
+    func deleteDeviceToken(_ token: String) async throws {
+        _ = try await refusal { try await client.rpc("delete_apns_token", params: ["p_token": token]).execute() }
+    }
+
     // MARK: The profile
 
     func updateProfile(_ fields: JSONValue) async throws {
