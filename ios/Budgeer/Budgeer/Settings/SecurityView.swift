@@ -83,7 +83,7 @@ struct SecurityView: View {
                             .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                     } else {
                         NativeIconTile(symbol: method.key == "password" ? "key.fill" : "person.badge.key.fill",
-                                       color: SettingsRow.slate)
+                                       color: NativeTone.sand)
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(method.label)

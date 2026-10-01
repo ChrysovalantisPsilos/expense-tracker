@@ -4,9 +4,10 @@
 import SwiftUI
 
 /// Every tab's top-right corner: the bell (badged when something is
-/// unread) and your initials, which open your profile and settings.
+/// unread) and your picture (or initials), which open your profile and settings.
 struct NativeAccountItems: ToolbarContent {
     let initials: String
+    var avatar: Avatar? = nil
     /// The unread count's words ("3", "9+"), nil with nothing unread.
     let badge: String?
     let onBell: () -> Void
@@ -24,11 +25,15 @@ struct NativeAccountItems: ToolbarContent {
             .accessibilityValue(badge ?? "")
             .accessibilityIdentifier("bar.bell")
             Button(action: onProfile) {
-                Text(initials)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 30, height: 30)
-                    .background(NativeStyle.solid, in: Circle())
+                if let avatar {
+                    NativeAvatar(avatar: avatar, size: 30)
+                } else {
+                    Text(initials)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 30, height: 30)
+                        .background(NativeStyle.solid, in: Circle())
+                }
             }
             .accessibilityLabel(language.t("ios:native.profile"))
             .accessibilityIdentifier("bar.profile")

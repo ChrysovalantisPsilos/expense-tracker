@@ -18,6 +18,8 @@ struct PlanDeltaTile: View {
                     .font(NativeStyle.money(19, relativeTo: .title3))
                     .foregroundStyle(SavingsView.color(delta.tone))
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize()
                     .contentTransition(.numericText())
             }
             Text(delta.perYear).font(.caption).foregroundStyle(.secondary).monospacedDigit()
@@ -116,18 +118,18 @@ struct PlanEditorView: View {
                 PlanFieldLabel(text: language.t("plan:edit.inPlan"))
                 Picker(language.t("plan:edit.inPlan"),
                        selection: Binding(get: { editor.cancelled ? "cancel" : "keep" },
-                                          set: { value in withAnimation(.snappy) { model.setCancelled(value == "cancel") } })) {
+                                          set: { value in withAnimation(NativeMotion.expand) { model.setCancelled(value == "cancel") } })) {
                     ForEach(editor.keep, id: \.value) { choice in Text(choice.label).tag(choice.value) }
                 }
                 .pickerStyle(.segmented)
             }
             HStack {
-                Button(language.t("plan:edit.reset")) { withAnimation(.snappy) { model.reset() } }
+                Button(language.t("plan:edit.reset")) { withAnimation(NativeMotion.expand) { model.reset() } }
                     .buttonStyle(.borderless)
                     .foregroundStyle(NativeStyle.tint)
                     .disabled(!editor.canReset)
                 Spacer()
-                Button(language.t("plan:edit.done")) { withAnimation(.snappy) { model.close() } }
+                Button(language.t("plan:edit.done")) { withAnimation(NativeMotion.expand) { model.close() } }
                     .buttonStyle(.borderedProminent)
                     .tint(NativeStyle.solid)
                     .accessibilityIdentifier("plan.editDone")
@@ -197,11 +199,11 @@ struct PlanAddFormView: View {
             }
             PlanDeltaTile(delta: form.delta)
             HStack {
-                Button(language.t("common:actions.cancel")) { withAnimation(.snappy) { model.close() } }
+                Button(language.t("common:actions.cancel")) { withAnimation(NativeMotion.expand) { model.close() } }
                     .buttonStyle(.borderless)
                     .foregroundStyle(NativeStyle.tint)
                 Spacer()
-                Button(form.submit) { withAnimation(.snappy) { model.saveAdd() } }
+                Button(form.submit) { withAnimation(NativeMotion.expand) { model.saveAdd() } }
                     .buttonStyle(.borderedProminent)
                     .tint(NativeStyle.solid)
                     .disabled(!form.ready)
@@ -224,7 +226,7 @@ struct PlanPickSection: View {
         Section {
             ForEach(pick.rows) { row in
                 Button {
-                    withAnimation(.snappy) { model.togglePick(row.id) }
+                    withAnimation(NativeMotion.expand) { model.togglePick(row.id) }
                 } label: {
                     HStack(spacing: 12) {
                         Image(systemName: row.picked ? "checkmark.circle.fill" : "circle")
@@ -232,11 +234,11 @@ struct PlanPickSection: View {
                             .foregroundStyle(row.picked ? NativeStyle.tint : Color.secondary)
                         CategoryBadge(look: row.look, size: 32)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(row.name).font(.body.weight(.semibold)).lineLimit(1)
+                            Text(row.name).font(.body.weight(.semibold)).lineLimit(2)
                             Text(row.perYear).font(.footnote).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 8)
-                        Text(row.perMonth).font(.subheadline.weight(.semibold)).monospacedDigit()
+                        Text(row.perMonth).font(.subheadline.weight(.semibold)).monospacedDigit().lineLimit(1).fixedSize()
                     }
                     .contentShape(Rectangle())
                 }
@@ -251,15 +253,17 @@ struct PlanPickSection: View {
                         .font(NativeStyle.money(19, relativeTo: .title3))
                         .foregroundStyle(SavingsView.color(pick.summary.tone))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .fixedSize()
                 }
                 Text(pick.summary.sub).font(.caption).foregroundStyle(.secondary)
             }
             HStack {
-                Button(language.t("common:actions.cancel")) { withAnimation(.snappy) { model.close() } }
+                Button(language.t("common:actions.cancel")) { withAnimation(NativeMotion.expand) { model.close() } }
                     .buttonStyle(.borderless)
                     .foregroundStyle(NativeStyle.tint)
                 Spacer()
-                Button(pick.add) { withAnimation(.snappy) { model.addPicked() } }
+                Button(pick.add) { withAnimation(NativeMotion.expand) { model.addPicked() } }
                     .buttonStyle(.borderedProminent)
                     .tint(NativeStyle.solid)
                     .disabled(pick.picked.isEmpty)
@@ -321,7 +325,7 @@ struct PlanWhatIfSection: View {
                     .font(.headline)
                     .foregroundStyle(Color.primary)
                 Button {
-                    withAnimation(.snappy) { info.toggle() }
+                    withAnimation(NativeMotion.expand) { info.toggle() }
                 } label: {
                     Image(systemName: info ? "info.circle.fill" : "info.circle")
                 }
@@ -345,7 +349,7 @@ struct PlanWhatIfSection: View {
             HStack {
                 Text(model.whatIfAddedText ?? "").font(.footnote).foregroundStyle(.secondary)
                 Spacer(minLength: 8)
-                Button(language.t("plan:typeIt.undo")) { withAnimation(.snappy) { model.undoWhatIf() } }
+                Button(language.t("plan:typeIt.undo")) { withAnimation(NativeMotion.expand) { model.undoWhatIf() } }
                     .buttonStyle(.borderless)
                     .foregroundStyle(NativeStyle.tint)
             }
@@ -383,7 +387,7 @@ struct PlanWhatIfSection: View {
                 .opacity(row.picked ? 1 : 0.6)
                 Spacer(minLength: 4)
                 Button(model.whatIfEditing == row.id ? language.t("plan:edit.done") : language.t("plan:typeIt.edit")) {
-                    withAnimation(.snappy) { model.editWhatIf(row.id) }
+                    withAnimation(NativeMotion.expand) { model.editWhatIf(row.id) }
                 }
                 .buttonStyle(.borderless)
                 .foregroundStyle(NativeStyle.tint)
@@ -395,11 +399,11 @@ struct PlanWhatIfSection: View {
             Text(notFound).font(.footnote).foregroundStyle(.secondary)
         }
         HStack {
-            Button(language.t("common:actions.cancel")) { withAnimation(.snappy) { model.cancelWhatIf() } }
+            Button(language.t("common:actions.cancel")) { withAnimation(NativeMotion.expand) { model.cancelWhatIf() } }
                 .buttonStyle(.borderless)
                 .foregroundStyle(NativeStyle.tint)
             Spacer()
-            Button(preview.add) { withAnimation(.snappy) { model.addWhatIf() } }
+            Button(preview.add) { withAnimation(NativeMotion.expand) { model.addWhatIf() } }
                 .buttonStyle(.borderedProminent)
                 .tint(NativeStyle.solid)
                 .disabled(preview.ready == 0)
@@ -455,7 +459,7 @@ struct PlanApplySheet: View {
                                 HStack(spacing: 12) {
                                     CategoryBadge(look: row.look, size: 32)
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(row.name).font(.body.weight(.semibold)).lineLimit(1)
+                                        Text(row.name).font(.body.weight(.semibold)).lineLimit(2)
                                         Text(row.line).font(.footnote).foregroundStyle(.secondary)
                                     }
                                     Spacer(minLength: 6)
@@ -463,6 +467,8 @@ struct PlanApplySheet: View {
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(SavingsView.color(row.amount.tone))
                                         .monospacedDigit()
+                                        .lineLimit(1)
+                                        .fixedSize()
                                 }
                             }
                             .tint(NativeStyle.positive)
@@ -478,7 +484,7 @@ struct PlanApplySheet: View {
                         HStack {
                             Text(sheet.after.label).foregroundStyle(.secondary)
                             Spacer(minLength: 8)
-                            Text(sheet.after.value).fontWeight(.semibold).monospacedDigit()
+                            Text(sheet.after.value).fontWeight(.semibold).monospacedDigit().lineLimit(1).fixedSize()
                         }
                         Label {
                             VStack(alignment: .leading, spacing: 4) {

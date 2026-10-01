@@ -18,6 +18,9 @@ struct TimelineExpense: Decodable, Equatable, Identifiable, Sendable {
     let mine: Bool
     let payer: Avatar?
     let share: String?
+    /// The badge its description suggests (categoryStyle.categoryLook over the
+    /// name, as an uncategorised entry's): a taxi, groceries, else the plain tag.
+    var look: CategoryLook?
 }
 
 /// A comment in the timeline, after the item it's on.
@@ -110,6 +113,11 @@ enum GroupTimeline {
             "counts": try core.json("groupFormat", "commentCountsFrom", [counts]),
             "now": try JSONValue.from(JSDate(now)),
         ]
-        return try core.call("groupFormat", "timelineParts", [args])
+        let items: [TimelineItem] = try core.call("groupFormat", "timelineParts", [args])
+        return try items.map { item in
+            guard case .expense(var row) = item else { return item }
+            row.look = try CategoryLook.of(.string(row.title), kind: "expense", core: core)
+            return .expense(row)
+        }
     }
 }

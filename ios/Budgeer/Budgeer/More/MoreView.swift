@@ -1,15 +1,18 @@
-// More, as an iOS Settings-style list: you at the top (Settings), then the
-// pages the tabs don't hold: Money (Budgets, Savings, Recurring, Plan,
-// Categories, and Meal vouchers once they're set up, as on the web) and
-// Insights (Your salary opens from its card there, as on the web). Settings
-// is its own page (Settings/SettingsView).
+// More, as an iOS Settings-style list: you at the top (your picture, name
+// and email over "Account & settings": the one way in to Settings), then
+// the pages the tabs don't hold: Money (Budgets, Savings, Recurring, Plan,
+// and Meal vouchers once they're set up, as on the web) and Insights (Your
+// salary opens from its card there, as on the web). Categories live in
+// Settings only (configuration has one home); Settings is its own page
+// (Settings/SettingsView).
 import SwiftUI
 
 @MainActor
 struct MoreView: View {
     let name: String
     let email: String
-    let initials: String
+    /// Your circle: the photo, or the initials in the accent.
+    let avatar: Avatar?
     /// Meal vouchers are set up: their page joins Money.
     var vouchers = false
     let chrome: PageChrome
@@ -20,15 +23,19 @@ struct MoreView: View {
             Section {
                 NavigationLink(value: AppRoute.settings) {
                     HStack(spacing: 14) {
-                        Text(initials)
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(Color.white)
-                            .frame(width: 58, height: 58)
-                            .background(NativeStyle.solid, in: Circle())
+                        if let avatar {
+                            NativeAvatar(avatar: avatar, size: 58)
+                        } else {
+                            Circle().fill(Theme.Colors.subtle).frame(width: 58, height: 58)
+                        }
                         VStack(alignment: .leading, spacing: 2) {
                             Text(name.isEmpty ? email : name).font(.title3.weight(.semibold)).lineLimit(1)
                             if !name.isEmpty { Text(email).font(.subheadline).foregroundStyle(.secondary).lineLimit(1) }
-                            Text(language.t("shell:more.settings")).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
+                            Label(language.t("ios:native.more.accountSettings"), systemImage: "gearshape.fill")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(NativeTone.coral)
+                                .labelStyle(.titleAndIcon)
+                                .padding(.top, 2)
                         }
                     }
                     .padding(.vertical, 6)
@@ -38,17 +45,14 @@ struct MoreView: View {
             .listRowBackground(NativeStyle.card)
 
             Section {
-                row(.budgets, symbol: "chart.pie.fill", color: NativeStyle.coral, title: "shell:nav.budgets", id: "more.budgets")
-                row(.savings, symbol: "banknote.fill", color: Color(hex: 0x2E9B62), title: "shell:nav.savings",
+                row(.budgets, symbol: "chart.pie.fill", title: "shell:nav.budgets", id: "more.budgets")
+                row(.savings, symbol: "banknote.fill", tone: NativeTone.green, title: "shell:nav.savings",
                     subtitle: "shell:more.savings", id: "more.savings")
-                row(.recurring, symbol: "arrow.triangle.2.circlepath", color: Color(hex: 0x8558D0),
-                    title: "shell:nav.recurring", subtitle: "shell:more.recurring", id: "more.recurring")
-                row(.plan, symbol: "slider.horizontal.3", color: Color(hex: 0x3A78D4), title: "shell:nav.plan",
-                    subtitle: "shell:more.plan", id: "more.plan")
-                row(.categoryList, symbol: "tag.fill", color: Color(hex: 0x16939A), title: "settings:rows.categories.label",
-                    subtitle: "settings:rows.categories.desc", id: "more.categories")
+                row(.recurring, symbol: "arrow.triangle.2.circlepath", title: "shell:nav.recurring",
+                    subtitle: "shell:more.recurring", id: "more.recurring")
+                row(.plan, symbol: "slider.horizontal.3", title: "shell:nav.plan", subtitle: "shell:more.plan", id: "more.plan")
                 if vouchers {
-                    row(.vouchers, symbol: "ticket.fill", color: Color(hex: 0xC98A0B), title: "shell:nav.vouchers",
+                    row(.vouchers, symbol: "ticket.fill", tone: NativeTone.amber, title: "shell:nav.vouchers",
                         subtitle: "shell:more.vouchers", id: "more.vouchers")
                 }
             } header: {
@@ -57,8 +61,8 @@ struct MoreView: View {
             .listRowBackground(NativeStyle.card)
 
             Section {
-                row(.insights, symbol: "chart.xyaxis.line", color: Color(hex: 0xD24D8A), title: "shell:nav.insights",
-                    subtitle: "shell:more.insights", id: "more.insights")
+                row(.insights, symbol: "chart.xyaxis.line", title: "shell:nav.insights", subtitle: "shell:more.insights",
+                    id: "more.insights")
             } header: {
                 NativeCapsHeader(title: language.t("insights:title"))
             }
@@ -73,11 +77,11 @@ struct MoreView: View {
         .pageChrome(chrome)
     }
 
-    private func row(_ route: AppRoute, symbol: String, color: Color, title: String, subtitle: String? = nil,
-                     id: String) -> some View {
+    private func row(_ route: AppRoute, symbol: String, tone: Color = NativeTone.coral, title: String,
+                     subtitle: String? = nil, id: String) -> some View {
         NavigationLink(value: route) {
             HStack(spacing: 14) {
-                NativeIconTile(symbol: symbol, color: color)
+                NativeIconTile(symbol: symbol, color: tone)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(language.t(title))
                     if let subtitle { Text(language.t(subtitle)).font(.footnote).foregroundStyle(.secondary) }

@@ -28,7 +28,7 @@ struct NativeShareBar: View {
         GeometryReader { proxy in
             let gaps = CGFloat(max(0, shares.count - 1)) * 2
             HStack(spacing: 2) {
-                ForEach(Array(shares.enumerated()), id: \.offset) { index, item in
+                ForEach(Array(shares.enumerated()), id: \.element.name) { index, item in
                     Rectangle()
                         .fill(NativeSwatch.color(index, item.name))
                         .frame(width: max(2, (proxy.size.width - gaps) * CGFloat(item.share) / 100))
@@ -36,6 +36,7 @@ struct NativeShareBar: View {
             }
         }
         .frame(height: 12)
+        .animation(NativeMotion.pick, value: shares.map(\.share))
         .clipShape(Capsule())
         .accessibilityHidden(true)
     }
