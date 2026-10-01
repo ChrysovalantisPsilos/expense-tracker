@@ -1,6 +1,9 @@
 // Appearance preference maths (pure). The preference is 'light' | 'dark' |
 // 'system'; 'system' follows the device (prefers-color-scheme) live.
 
+// The choices Settings › Appearance offers, in order (settings:appearance.<pref>).
+export const appearancePrefs = () => ['light', 'dark', 'system']
+
 // The colour mode a preference shows, given whether the device is dark.
 export const resolveMode = (pref, systemDark) =>
   (pref === 'system' ? (systemDark ? 'dark' : 'light') : pref)

@@ -10,7 +10,7 @@
 //     public.inactive_accounts() (0073), and INACTIVITY in
 //     supabase/functions/_shared/inactivity.ts.
 import { CONSENT_LABELS, LEGAL_CHANGES, LEGAL_VERSIONS } from '../../../supabase/functions/_shared/legal.ts'
-import { MESSAGE_MAX, validatePrivacyRequest } from '../../../supabase/functions/_shared/privacyRequest.ts'
+import { MESSAGE_MAX, REQUEST_KINDS, validatePrivacyRequest } from '../../../supabase/functions/_shared/privacyRequest.ts'
 import { DEFAULT_LANGUAGE } from '../../shared/lib/i18n/language.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 import en from '../../locales/en/privacy.js'
@@ -109,6 +109,22 @@ export function responseDeadline(d = new Date()) {
   const m = d.getMonth() + 1
   const last = new Date(y, m + 1, 0).getDate()
   return new Date(y, m, Math.min(d.getDate(), last))
+}
+
+// The privacy request form (the web's and the app's): what it can be about,
+// in the order offered (privacy:request.kinds.<kind>); a request as typed →
+// { request } to send, or { error } in the app's language; and the day the
+// answer is due for a request sent at `d`, as the receipt says it
+// ("23 October 2026").
+export const requestKinds = () => Object.keys(REQUEST_KINDS)
+export function privacyRequestToSend({ kind, message }) {
+  const checked = validatePrivacyRequest({ kind, message })
+  if (!checked.error) return { request: checked }
+  const key = requestErrorKey(checked.error)
+  return { error: key ? t(`privacy:request.errors.${key}`, { max: MESSAGE_MAX }) : checked.error }
+}
+export function responseDeadlineText(d = new Date()) {
+  return responseDeadline(d).toLocaleDateString(intlLocale('en-GB'), { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 // budgeer-my-data-2026-09-23.json (local date).

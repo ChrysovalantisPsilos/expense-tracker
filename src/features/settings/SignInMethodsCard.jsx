@@ -5,12 +5,11 @@ import {
 } from '@chakra-ui/react'
 import { Fingerprint, KeyRound, LogIn } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { validatePassword } from '../../shared/lib/password.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import GoogleIcon from '../../shared/ui/GoogleIcon.jsx'
 import {
-  signInMethods, googleDisconnectBlock, linkErrorMessage, redirectError,
+  signInMethods, googleDisconnectBlock, linkErrorMessage, newPasswordError, redirectError,
 } from './authMethods.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
@@ -146,9 +145,8 @@ function SetPasswordForm({ email, onCancel, onDone, setFirstPassword, markPasswo
 
   async function submit(e) {
     e.preventDefault()
-    const err = validatePassword(next)
+    const err = newPasswordError(next, confirm, 'auth:password.mismatch')
     if (err) { toast({ title: err, status: 'warning' }); return }
-    if (next !== confirm) { toast({ title: t('auth:password.mismatch'), status: 'warning' }); return }
     setBusy(true)
     const { error } = await setFirstPassword(next)
     setBusy(false)

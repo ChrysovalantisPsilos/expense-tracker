@@ -12,7 +12,7 @@ import {
 } from '../supabase/functions/_shared/sendEmail.ts'
 import { DELETION_SCOPE } from '../supabase/functions/_shared/accountDeletion.ts'
 import { LEGAL_CHANGES, LEGAL_VERSIONS, currentLegalChange } from '../supabase/functions/_shared/legal.ts'
-import { PRIVACY_EMAIL, STATUS_URL, SUPPORT_EMAIL } from '../src/shared/lib/contact.js'
+import { PRIVACY_EMAIL, STATUS_URL, SUPPORT_EMAIL, contactLinks } from '../src/shared/lib/contact.js'
 
 const ctx = { origin: 'https://dev.budgeer.com', privacyEmail: PRIVACY_EMAIL }
 const EVIL = '<script>alert("x")</script> & \'q\''
@@ -117,6 +117,10 @@ test('contact addresses have one source, shared with the app', () => {
 
 test('the service status link points at the status page, over https', () => {
   assert.equal(STATUS_URL, 'https://status.budgeer.com')
+})
+
+test('contactLinks: the three in one answer, for the native app', () => {
+  assert.deepEqual(contactLinks(), { support: SUPPORT_EMAIL, privacy: PRIVACY_EMAIL, status: STATUS_URL })
 })
 
 test('origin defaults to www and loses trailing slashes', () => {

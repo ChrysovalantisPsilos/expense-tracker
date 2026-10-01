@@ -16,6 +16,11 @@ export const AI_SWITCHES = {
   planWhatIf: 'ai_plan_whatif',
 }
 
+// The switches in Settings › AI helpers' order (ai:settings.<id>), and the
+// profile update that turns one on or off.
+export const aiSwitchIds = () => Object.keys(AI_SWITCHES)
+export const aiSwitchPatch = (id, on) => ({ [AI_SWITCHES[id]]: on })
+
 // Which helpers are on: each by its own switch (the shared demo login too,
 // 0106), all off until the profile is known.
 export function helpersOn(profile) {

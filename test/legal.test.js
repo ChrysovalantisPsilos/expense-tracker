@@ -7,7 +7,7 @@ import { latestSql } from './migrations.js'
 import {
   LEGAL_VERSIONS, LEGAL_CHANGES, RETENTION, changesSince, describeConsent, exportFileName,
   formatVersion, responseDeadline, signupConsentMetadata, validatePrivacyRequest, REQUEST_KINDS,
-  changeItems, legalLanguage, requestErrorKey, MESSAGE_MAX,
+  changeItems, legalLanguage, requestErrorKey, MESSAGE_MAX, requestKinds, privacyRequestToSend, responseDeadlineText,
 } from '../src/features/privacy/legal.js'
 import { DELETION_SCOPE } from '../supabase/functions/_shared/accountDeletion.ts'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
@@ -83,6 +83,17 @@ test('responseDeadline is one calendar month later, clamped to the month end', (
   assert.equal(iso(responseDeadline(new Date(2028, 0, 31))), '2028-2-29')
   assert.equal(iso(responseDeadline(new Date(2026, 8, 23))), '2026-10-23')
   assert.equal(iso(responseDeadline(new Date(2026, 11, 15))), '2027-1-15')
+})
+
+test('the request form: its kinds, a request checked into words, the answer\'s date', () => {
+  assert.deepEqual(requestKinds(), Object.keys(REQUEST_KINDS))
+  assert.deepEqual(privacyRequestToSend({ kind: 'object', message: '  Stop the weekly email.  ' }),
+    { request: { kind: 'object', message: 'Stop the weekly email.' } })
+  assert.deepEqual(privacyRequestToSend({ kind: '', message: 'long enough text' }), { error: enPrivacy.request.errors.kind })
+  assert.deepEqual(privacyRequestToSend({ kind: 'other', message: 'short' }), { error: enPrivacy.request.errors.short })
+  assert.deepEqual(privacyRequestToSend({ kind: 'other', message: 'x'.repeat(MESSAGE_MAX + 1) }),
+    { error: 'Keep it under 2000 characters.' })
+  assert.equal(responseDeadlineText(new Date(2026, 0, 31)), '28 February 2026')
 })
 
 test('exportFileName uses the local date', () => {

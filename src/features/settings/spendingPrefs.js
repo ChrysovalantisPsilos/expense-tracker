@@ -29,3 +29,23 @@ export function salaryShiftPatch(on, { fromDay, categoryId, categories }) {
     salary_category_id: defaultSalaryCategoryId(categories, categoryId),
   }
 }
+
+// What the salary-shift preference shows (Settings › Monthly spending, on the
+// web and in the app): whether it is on, whether the switch is held off (it
+// can't be turned on without an income category to count), the hint under
+// it (a settings: key), whether the ⓘ has more, and the "shorter months"
+// note for a start day past the 28th, and the days the "from day" picker
+// offers. `incomeCount` is how many active income categories there are;
+// `loading` is true while they are read.
+export function salaryShiftView({ fromDay, incomeCount, loading = false }) {
+  const on = fromDay != null
+  const blocked = !loading && incomeCount === 0 && !on
+  return {
+    on,
+    disabled: blocked,
+    hint: blocked ? 'settings:spending.salary.needsIncome' : 'settings:spending.salary.hint',
+    more: !blocked,
+    shortMonths: on && fromDay > 28,
+    days: SALARY_SHIFT_DAYS,
+  }
+}

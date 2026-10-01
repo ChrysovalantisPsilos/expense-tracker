@@ -6,10 +6,9 @@ import {
 import FormPage, { PageForm } from '../../shared/ui/FormPage.jsx'
 import useGoBack from '../../shared/ui/useGoBack.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { MESSAGE_MAX, REQUEST_KINDS, requestErrorKey, responseDeadline, validatePrivacyRequest } from './legal.js'
+import { MESSAGE_MAX, privacyRequestToSend, requestKinds, responseDeadlineText } from './legal.js'
 import { sendPrivacyRequest } from './privacyData.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // /settings/privacy/request — restrict, object, or any other privacy
@@ -26,16 +25,14 @@ export default function PrivacyRequestPage() {
   const { isDemo } = useProfile()
 
   async function submit() {
-    const checked = validatePrivacyRequest({ kind, message })
+    const checked = privacyRequestToSend({ kind, message })
     if (checked.error) {
-      const key = requestErrorKey(checked.error)
-      toast({ title: key ? t(`request.errors.${key}`, { max: MESSAGE_MAX }) : checked.error, status: 'warning' })
+      toast({ title: checked.error, status: 'warning' })
       return
     }
     await run(async () => {
-      await sendPrivacyRequest(checked)
-      const by = responseDeadline().toLocaleDateString(intlLocale('en-GB'), { day: 'numeric', month: 'long', year: 'numeric' })
-      toast({ title: t('request.sent'), status: 'success', description: t('request.sentBody', { date: by }) })
+      await sendPrivacyRequest(checked.request)
+      toast({ title: t('request.sent'), status: 'success', description: t('request.sentBody', { date: responseDeadlineText() }) })
       back()
     }, { errorTitle: t('request.failed') })
   }
@@ -48,7 +45,7 @@ export default function PrivacyRequestPage() {
           <FormControl>
             <FormLabel>{t('request.about')}</FormLabel>
             <Select value={kind} onChange={(e) => setKind(e.target.value)}>
-              {Object.keys(REQUEST_KINDS).map((k) => <option key={k} value={k}>{t(`request.kinds.${k}`)}</option>)}
+              {requestKinds().map((k) => <option key={k} value={k}>{t(`request.kinds.${k}`)}</option>)}
             </Select>
           </FormControl>
           <FormControl>

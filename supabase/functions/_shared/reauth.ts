@@ -51,7 +51,15 @@ export function signedInAt(claims: Record<string, unknown> | null): number | nul
 export function isRecentSignIn(
   token: string | null | undefined, nowMs = Date.now(), windowSeconds = REAUTH_WINDOW_SECONDS,
 ): boolean {
-  const at = signedInAt(jwtClaims(token))
+  return isRecentClaims(jwtClaims(token), nowMs, windowSeconds)
+}
+
+// The same for a token's claims already read (the native app reads its own
+// session's token and asks this through the mobile core).
+export function isRecentClaims(
+  claims: Record<string, unknown> | null, nowMs = Date.now(), windowSeconds = REAUTH_WINDOW_SECONDS,
+): boolean {
+  const at = signedInAt(claims)
   if (at == null) return false
   const age = nowMs / 1000 - at
   return age <= windowSeconds && age >= -60

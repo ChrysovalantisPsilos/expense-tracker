@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   revolutUrl, paypalUrl, normalisePaypalHandle, sepaQrPayload, hasPaymentDetails, askForPaymentDetails,
+  paymentDetailsToSave,
 } from '../src/shared/lib/payLinks.js'
 
 test('revolutUrl: the amount in minor units plus the currency', () => {
@@ -22,6 +23,16 @@ test('normalisePaypalHandle: accepts pasted links and @names, rejects anything e
   assert.equal(normalisePaypalHandle('x'.repeat(21)), null)
   assert.equal(normalisePaypalHandle('javascript:alert(1)'), null)
   assert.equal(normalisePaypalHandle(''), null)
+})
+
+test('paymentDetailsToSave: tidied for saving, empty fields null, a bad PayPal name refused', () => {
+  assert.deepEqual(paymentDetailsToSave({ iban: 'be68 5390 0754 7034', revolut: '@alexk ', paypal: 'paypal.me/AlexK' }),
+    { iban: 'BE68539007547034', revolut: 'alexk', paypal: 'AlexK' })
+  assert.deepEqual(paymentDetailsToSave({ iban: '  ', revolut: '', paypal: '   ' }),
+    { iban: null, revolut: null, paypal: null })
+  assert.deepEqual(paymentDetailsToSave({}), { iban: null, revolut: null, paypal: null })
+  assert.deepEqual(paymentDetailsToSave({ iban: 'BE68', revolut: 'a', paypal: 'alex k' }),
+    { error: 'settings:payment.paypalInvalid' })
 })
 
 test('paypalUrl: paypal.me/<name>/<amount><CUR> in major units', () => {

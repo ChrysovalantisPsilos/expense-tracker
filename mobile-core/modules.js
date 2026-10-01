@@ -44,6 +44,9 @@ export const CORE_MODULES = {
   avatarLook: 'src/shared/ui/avatarLook.js',
   // The loading ring's motion (the sign-in's intro).
   loaderTiming: 'src/shared/ui/loaderTiming.js',
+  // Settings: the appearance choices, where people reach Budgeer.
+  themePref: 'src/shared/lib/themePref.js',
+  contact: 'src/shared/lib/contact.js',
 
   // supabase/functions/_shared (the client ↔ edge-function parity modules).
   sharedMoney: 'supabase/functions/_shared/money.ts',
@@ -54,6 +57,9 @@ export const CORE_MODULES = {
   planRules: 'supabase/functions/_shared/planRules.ts',
   breakdown: 'supabase/functions/_shared/breakdown.ts',
   aiHelper: 'supabase/functions/_shared/aiHelper.ts',
+  // The recent-sign-in rule for the dangerous account actions (the app reads
+  // its token's claims itself: jwtClaims needs atob, which JavaScriptCore lacks).
+  reauth: 'supabase/functions/_shared/reauth.ts',
 
   // Feature maths.
   splitMath: 'src/features/groups/splitMath.js',
@@ -90,6 +96,11 @@ export const CORE_MODULES = {
   bellMath: 'src/features/notifications/bellMath.js',
   navMatch: 'src/app/navMatch.js',
   voucherText: 'src/features/vouchers/voucherText.js',
+  // Settings and its pages (Monthly spending, Security, Privacy, What's new).
+  spendingPrefs: 'src/features/settings/spendingPrefs.js',
+  authMethods: 'src/features/settings/authMethods.js',
+  legal: 'src/features/privacy/legal.js',
+  whatsNewMath: 'src/features/whatsnew/whatsNewMath.js',
 }
 
 // Where the bundle goes (the Swift package's resource) and where the recorded

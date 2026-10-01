@@ -40,6 +40,22 @@ export function normalisePaypalHandle(raw) {
   return /^[A-Za-z0-9]{1,20}$/.test(s) ? s : null
 }
 
+// "Getting paid" as typed (Settings › Account, on the web and in the app) →
+// what is saved: the IBAN without spaces in capitals, the Revolut tag
+// without its @, the PayPal.me name (normalisePaypalHandle); an empty field
+// is null. A PayPal field that holds no PayPal.me name can't be saved:
+// { error } is its words' key then.
+export function paymentDetailsToSave({ iban, revolut, paypal }) {
+  const typedPaypal = String(paypal ?? '').trim()
+  const paypalName = typedPaypal ? normalisePaypalHandle(typedPaypal) : null
+  if (typedPaypal && !paypalName) return { error: 'settings:payment.paypalInvalid' }
+  return {
+    iban: String(iban ?? '').replace(/\s+/g, '').toUpperCase() || null,
+    revolut: String(revolut ?? '').replace(/^@/, '').trim() || null,
+    paypal: paypalName,
+  }
+}
+
 // PayPal.me's documented format: paypal.me/<name>/<amount><CURRENCY>, the
 // amount in major units with a dot ("12.50EUR", "1800JPY").
 export function paypalUrl(handle, amountMinor, currency) {

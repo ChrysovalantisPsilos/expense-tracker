@@ -2,8 +2,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   hasPasswordIdentity, toPasskeyList, hasPassword, signInMethods, googleDisconnectBlock,
-  linkErrorMessage, redirectError,
+  linkErrorMessage, redirectError, newPasswordError, deleteAccountCheck, deletionScope, DELETE_CONFIRM_WORD,
 } from '../src/features/settings/authMethods.js'
+import en from '../src/locales/en/index.js'
 
 test('hasPasswordIdentity: an email identity has a password, OAuth-only has none, unknown defaults to one', () => {
   assert.equal(hasPasswordIdentity({ app_metadata: { providers: ['email'] } }), true)
@@ -74,6 +75,34 @@ test('linkErrorMessage: clear words for the known failures', () => {
   assert.match(linkErrorMessage({ code: 'access_denied', description: 'Denied' }), /wasn’t connected/)
   assert.equal(linkErrorMessage({ message: 'Boom' }, 'Google is still connected.'), 'Google is still connected.')
   assert.match(linkErrorMessage(null), /wasn’t connected/)
+})
+
+test('newPasswordError: the sign-up rules first, then the two fields matching', () => {
+  assert.match(newPasswordError('short1', 'short1'), /8/)
+  assert.equal(newPasswordError('longer-pass1', 'longer-pass1'), null)
+  assert.equal(newPasswordError('longer-pass1', 'longer-pass2'), 'New passwords don’t match.')
+  assert.equal(newPasswordError('longer-pass1', 'other', 'auth:password.mismatch'), en.auth.password.mismatch)
+})
+
+test('deleteAccountCheck: the password for an email account, else a recent sign-in and DELETE', () => {
+  const pw = deleteAccountCheck({ user: emailUser, recent: false, value: '' })
+  assert.deepEqual(pw, { password: true, needsReauth: false, canSubmit: false,
+    label: 'Enter your password to confirm', placeholder: 'Your password' })
+  assert.equal(deleteAccountCheck({ user: emailUser, recent: false, value: 'x' }).canSubmit, true)
+  const stale = deleteAccountCheck({ user: googleUser, recent: false, value: 'DELETE' })
+  assert.equal(stale.needsReauth, true)
+  assert.equal(stale.canSubmit, false)
+  const fresh = deleteAccountCheck({ user: googleUser, recent: true, value: ' delete ' })
+  assert.deepEqual(fresh, { password: false, needsReauth: false, canSubmit: true,
+    label: 'Type DELETE to confirm', placeholder: DELETE_CONFIRM_WORD })
+  assert.equal(deleteAccountCheck({ user: googleUser, recent: true, value: 'DELET' }).canSubmit, false)
+})
+
+test('deletionScope: the deletion email\'s lists, in the app\'s language', () => {
+  assert.deepEqual(deletionScope(), {
+    deleted: Object.values(en.settings.deleteAccount.scope.deleted),
+    stays: Object.values(en.settings.deleteAccount.scope.stays),
+  })
 })
 
 test('redirectError: reads ?error=… or #error=…', () => {

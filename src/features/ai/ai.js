@@ -13,7 +13,7 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useLanguage } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { today } from '../../shared/lib/dates.js'
 import {
-  AI_SWITCHES, applySuggestions, categoryLabels, helpersOn, monthStartOf, shouldAutoWrite, suggestionRequest, summaryState,
+  aiSwitchPatch, applySuggestions, categoryLabels, helpersOn, monthStartOf, shouldAutoWrite, suggestionRequest, summaryState,
 } from './aiMath.js'
 
 // { quickEntry, importCategories, monthSummary, planWhatIf }: which helpers are on.
@@ -25,7 +25,7 @@ export function useAiHelpers() {
 // Switch one helper on or off. The server records the change in the consent
 // history (and, for the month summary, turning it off deletes the summaries).
 export async function saveAiHelper(userId, id, on) {
-  await updateProfile(userId, { [AI_SWITCHES[id]]: on })
+  await updateProfile(userId, aiSwitchPatch(id, on))
   window.dispatchEvent(new Event(EVENTS.profileUpdated))
 }
 
