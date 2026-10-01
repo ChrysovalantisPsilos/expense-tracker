@@ -402,8 +402,10 @@ struct PlanView: View {
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(SavingsView.color(row.perMonth.tone))
                                     .monospacedDigit()
-                                Text(row.perYear).font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                                    .lineLimit(1)
+                                Text(row.perYear).font(.caption).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
                             }
+                            .fixedSize()
                         }
                     }
                     .buttonStyle(.plain)
@@ -441,6 +443,7 @@ struct PlanView: View {
                         .font(NativeStyle.money(20, relativeTo: .title3))
                         .foregroundStyle(SavingsView.color(changes.total.tone))
                         .monospacedDigit()
+                        .lineLimit(1)
                     Text(changes.total.perYear).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 }
             }
@@ -585,18 +588,21 @@ struct PlanRowView: View {
                             }
                         }
                     }
-                    .layoutPriority(1)
                     Spacer(minLength: 6)
+                    // An amount never breaks: it keeps its one line, the name takes the room left.
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(row.amount.text)
                             .font(.subheadline.weight(.semibold))
                             .strikethrough(row.amount.struck)
                             .foregroundStyle(SavingsView.color(row.amount.tone))
                             .monospacedDigit()
+                            .lineLimit(1)
                         if let was = row.was {
                             Text(was).font(.caption).strikethrough().foregroundStyle(.secondary).monospacedDigit()
+                                .lineLimit(1)
                         }
                     }
+                    .fixedSize()
                 }
                 .contentShape(Rectangle())
             }

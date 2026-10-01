@@ -18,6 +18,8 @@ struct PlanDeltaTile: View {
                     .font(NativeStyle.money(19, relativeTo: .title3))
                     .foregroundStyle(SavingsView.color(delta.tone))
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .fixedSize()
                     .contentTransition(.numericText())
             }
             Text(delta.perYear).font(.caption).foregroundStyle(.secondary).monospacedDigit()
@@ -232,11 +234,11 @@ struct PlanPickSection: View {
                             .foregroundStyle(row.picked ? NativeStyle.tint : Color.secondary)
                         CategoryBadge(look: row.look, size: 32)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(row.name).font(.body.weight(.semibold)).lineLimit(1)
+                            Text(row.name).font(.body.weight(.semibold)).lineLimit(2)
                             Text(row.perYear).font(.footnote).foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 8)
-                        Text(row.perMonth).font(.subheadline.weight(.semibold)).monospacedDigit()
+                        Text(row.perMonth).font(.subheadline.weight(.semibold)).monospacedDigit().lineLimit(1).fixedSize()
                     }
                     .contentShape(Rectangle())
                 }
@@ -251,6 +253,8 @@ struct PlanPickSection: View {
                         .font(NativeStyle.money(19, relativeTo: .title3))
                         .foregroundStyle(SavingsView.color(pick.summary.tone))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .fixedSize()
                 }
                 Text(pick.summary.sub).font(.caption).foregroundStyle(.secondary)
             }
@@ -455,7 +459,7 @@ struct PlanApplySheet: View {
                                 HStack(spacing: 12) {
                                     CategoryBadge(look: row.look, size: 32)
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(row.name).font(.body.weight(.semibold)).lineLimit(1)
+                                        Text(row.name).font(.body.weight(.semibold)).lineLimit(2)
                                         Text(row.line).font(.footnote).foregroundStyle(.secondary)
                                     }
                                     Spacer(minLength: 6)
@@ -463,6 +467,8 @@ struct PlanApplySheet: View {
                                         .font(.subheadline.weight(.semibold))
                                         .foregroundStyle(SavingsView.color(row.amount.tone))
                                         .monospacedDigit()
+                                        .lineLimit(1)
+                                        .fixedSize()
                                 }
                             }
                             .tint(NativeStyle.positive)
@@ -478,7 +484,7 @@ struct PlanApplySheet: View {
                         HStack {
                             Text(sheet.after.label).foregroundStyle(.secondary)
                             Spacer(minLength: 8)
-                            Text(sheet.after.value).fontWeight(.semibold).monospacedDigit()
+                            Text(sheet.after.value).fontWeight(.semibold).monospacedDigit().lineLimit(1).fixedSize()
                         }
                         Label {
                             VStack(alignment: .leading, spacing: 4) {
