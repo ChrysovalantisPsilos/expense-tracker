@@ -565,7 +565,9 @@ a core call (the web's function); Swift reads, lays out and draws.
     (after Security; also from Privacy's "Back up your data"): below.
   - Not offered: the tour and the live/test switch (the website's own).
 - **Import a bank statement** (Activity's ⋯ menu, "Import file", as the
-  web's Transactions menu; Import rules' "Import a statement"), one step at
+  web's Transactions menu; Import rules' "Import a statement"; and, with
+  nothing logged yet, Home's and Activity's first-run card, the web's
+  FirstEntry: Add your first expense or Import a bank statement), one step at
   a time as on the web: pick a CSV, TSV, TXT, XLSX or XLS file in Files; it
   is read on the phone and never uploaded (the size and Numbers checks
   first, `importText.fileProblem`; the bytes go to the core as they are,
@@ -587,7 +589,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   (`importMath.dropKnownRows`) and the rest saved 500 at a time with
   `save_transactions` (the server skips any id it knows). Done says what
   was imported, skipped and left out (`importText.doneText`); View
-  transactions opens Activity on those days (the Filters' From and To);
+  transactions opens Activity on those days (the Filters' From and To,
+  as the web's link sets them);
   Import another. The confirmed layout and your name stay on this phone
   under the web's own storage keys.
 - **Settings › Import rules**, as the web's page: what a rule does, your

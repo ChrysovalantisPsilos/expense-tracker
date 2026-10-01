@@ -71,6 +71,27 @@ extension SnapshotTests {
         }
     }
 
+    /// Nothing logged yet, on Home and Activity: Add your first expense, or import a statement.
+    func testFirstEntrySnapshots() async throws {
+        let now = TestData.now
+        for (lang, dark) in SnapshotTests.variants {
+            _ = language(lang)
+            let store = FakeStore()
+            store.categoriesResult = .success(TestData.categories)
+            let home = HomeViewModel(data: store.data, core: .shared, now: { now })
+            await home.load()
+            try await shots(framed(.home) { NavigationStack { HomeView(model: home, chrome: SnapshotTests.chrome) } },
+                            name: "home-first", lang: lang, dark: dark)
+            let ledger = LedgerModel(data: store.data, core: .shared, now: { now })
+            await ledger.load()
+            try await shots(framed(.activity) {
+                NavigationStack {
+                    ActivityView(model: ledger, chrome: SnapshotTests.chrome, open: { _ in }, duplicate: { _ in }, split: { _ in })
+                }
+            }, name: "activity-first", lang: lang, dark: dark)
+        }
+    }
+
     func testBackupSnapshots() async throws {
         let now = TestData.now
         let plain = String(decoding: try fixtureData("backup-plain"), as: UTF8.self)

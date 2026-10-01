@@ -209,6 +209,23 @@ final class ImportModelTests: XCTestCase {
     }
 }
 
+/// Nothing logged yet: Home and Activity offer the two ways to start (the web's FirstEntry).
+@MainActor
+final class FirstEntryTests: XCTestCase {
+    func testHomeAndActivityKnowItsTheFirstRun() async throws {
+        let store = FakeStore()
+        let now = TestData.now
+        let home = HomeViewModel(data: store.data, core: .shared, now: { now })
+        await home.load()
+        guard case .loaded(let figures) = home.state else { return XCTFail("\(home.state)") }
+        XCTAssertTrue(figures.cards.contains("firstEntry"))
+        let ledger = LedgerModel(data: store.data, core: .shared, now: { now })
+        await ledger.load()
+        guard case .loaded(let rows) = ledger.state else { return XCTFail("\(ledger.state)") }
+        XCTAssertTrue(rows.firstRun)
+    }
+}
+
 @MainActor
 final class ImportRulesTests: XCTestCase {
     private func store(rules count: Int = 3) -> FakeStore {

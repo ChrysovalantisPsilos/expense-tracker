@@ -16,6 +16,8 @@ struct ActivityView: View {
     let open: (JSONValue) -> Void
     let duplicate: (JSONValue) -> Void
     let split: (JSONValue) -> Void
+    /// Nothing logged yet: Add your first expense.
+    var addFirst: () -> Void = {}
     @Environment(AppLanguage.self) private var language
     @State private var pendingDelete: String?
     @State private var deleted = 0
@@ -77,7 +79,7 @@ struct ActivityView: View {
             NativeNotice(text: notice, warning: true).listRowSeparator(.hidden)
         }
         if figures.firstRun {
-            ContentUnavailableView(language.t("transactions:firstEntry.title"), systemImage: "tray")
+            FirstEntryView(add: addFirst)
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
         } else {

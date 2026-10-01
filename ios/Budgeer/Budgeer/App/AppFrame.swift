@@ -292,6 +292,11 @@ struct AppFrame: View {
     }
 
     /// The floating Add: what the page on top lends it (AddSlot), else a new entry.
+    /// Nothing logged yet: Add your first expense (the web's /transactions/new).
+    private func addFirstEntry() {
+        router.add = AddRequest(model: EntryFormModel(mode: .add, data: container.data))
+    }
+
     private func add(_ models: AppModels) {
         switch router.slot?.action {
         case .some(.run(let action)):
@@ -318,7 +323,7 @@ struct AppFrame: View {
         switch tab {
         case .home, .add:
             NavigationStack(path: $router.home) {
-                HomeView(model: models.home, chrome: chrome(models))
+                HomeView(model: models.home, chrome: chrome(models)) { addFirstEntry() }
                     .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "budgets", "recurring_rules",
                                                           "meal_vouchers"]) {
                         await models.home.refresh()
@@ -335,7 +340,8 @@ struct AppFrame: View {
                                                                                               data: container.data)) },
                              split: { row in router.add = AddRequest(model: EntryFormModel(mode: .add, transaction: row,
                                                                                           data: container.data),
-                                                                    splitting: row) })
+                                                                    splitting: row) },
+                             addFirst: { addFirstEntry() })
                     // The web's ⋯ menu: Import a file (a bank statement).
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {

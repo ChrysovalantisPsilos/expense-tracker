@@ -14,6 +14,8 @@ import SwiftUI
 struct HomeView: View {
     let model: HomeViewModel
     let chrome: PageChrome
+    /// Nothing logged yet: Add your first expense.
+    let addFirst: () -> Void
     @Environment(AppLanguage.self) private var language
     @State private var month: String?
     @State private var showSum = false
@@ -22,9 +24,10 @@ struct HomeView: View {
 
     private static let celebratedKey = "budgeer.celebratedMonths"
 
-    init(model: HomeViewModel, chrome: PageChrome) {
+    init(model: HomeViewModel, chrome: PageChrome, addFirst: @escaping () -> Void = {}) {
         self.model = model
         self.chrome = chrome
+        self.addFirst = addFirst
         // The pager opens on the month the model is showing, not always this one.
         _month = State(initialValue: model.currentValue.isEmpty ? nil : model.currentValue)
     }
@@ -92,6 +95,12 @@ struct HomeView: View {
                 .background(Theme.Colors.accentSubtle, in: HomeCardStyle.shape)
         }
         wordsCard
+        // Nothing logged yet (dashboardMath.homeCards): the two ways to start.
+        if figures.cards.contains("firstEntry") {
+            FirstEntryView(add: addFirst)
+                .background(NativeStyle.card, in: HomeCardStyle.shape)
+                .transition(HomeCardStyle.transition)
+        }
         comingUpCard(figures.recurring)
         categoriesCard(figures)
         budgetsCard
