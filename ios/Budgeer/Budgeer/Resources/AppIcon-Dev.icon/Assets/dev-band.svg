@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect x="596" y="168" width="272" height="120" rx="60.0" fill="#FBB324"/>
+  <path d="M644,196 H668 A24,32 0 0 1 692,228 A24,32 0 0 1 668,260 H644 Z M658,210 H666 A12,18 0 0 1 678,228 A12,18 0 0 1 666,246 H658 Z M708,196 H752 V210 H722 V221 H746 V235 H722 V246 H752 V260 H708 Z M768,196 H783 L794,238 L805,196 H820 L802,260 H786 Z" fill="#242019" fill-rule="evenodd"/>
+</svg>

@@ -1,0 +1,111 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.22745,0.20000,0.16471,1.00000",
+          "srgb:0.14118,0.12549,0.09804,1.00000"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.5,
+            "y": 0
+          },
+          "stop": {
+            "x": 0.5,
+            "y": 1
+          }
+        }
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "linear-gradient": [
+          "srgb:0.16863,0.15294,0.12157,1.00000",
+          "srgb:0.07843,0.06667,0.05490,1.00000"
+        ],
+        "orientation": {
+          "start": {
+            "x": 0.5,
+            "y": 0
+          },
+          "stop": {
+            "x": 0.5,
+            "y": 1
+          }
+        }
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "Dev band",
+      "layers": [
+        {
+          "name": "DEV",
+          "image-name": "dev-band.svg",
+          "glass": false
+        }
+      ],
+      "lighting": "individual",
+      "specular": true,
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.3
+      }
+    },
+    {
+      "name": "Stem",
+      "layers": [
+        {
+          "name": "Stem",
+          "image-name": "stem.svg",
+          "glass": true
+        }
+      ],
+      "lighting": "individual",
+      "specular": true,
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.3
+      }
+    },
+    {
+      "name": "Ring",
+      "layers": [
+        {
+          "name": "Coral arc",
+          "image-name": "arc-coral.svg",
+          "glass": true
+        },
+        {
+          "name": "Amber arc",
+          "image-name": "arc-amber.svg",
+          "glass": true
+        }
+      ],
+      "lighting": "individual",
+      "specular": true,
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.3
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

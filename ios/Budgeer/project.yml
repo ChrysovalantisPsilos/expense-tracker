@@ -18,6 +18,14 @@ options:
   createIntermediateGroups: true
   generateEmptyDirectories: false
   groupSortPosition: top
+  # Icon Composer documents (Resources/AppIcon.icon, AppIcon-Dev.icon) are
+  # packages: one file to Xcode 26+, which builds the layered iOS 26 icon
+  # (Liquid Glass, dark, tinted) and the older iOS sizes from it. Without
+  # this XcodeGen would add the json and the layers one by one.
+  fileTypes:
+    icon:
+      file: true
+      buildPhase: resources
 
 configs:
   Debug-Dev: debug
@@ -130,10 +138,18 @@ targets:
         PRODUCT_NAME: Budgeer
         PRODUCT_BUNDLE_IDENTIFIER: com.budgeer.app
         GENERATE_INFOPLIST_FILE: "NO"
-        # Resources/Assets.xcassets (in the sources above): the home-screen
-        # icon, one 1024 px opaque PNG of public/pwa-icon.svg (the web's
-        # apple-touch-icon artwork); iOS makes the other sizes and rounds it.
+        # The home-screen icon: Resources/AppIcon.icon, the layered Icon
+        # Composer document (the mark's stem and its two arcs as glass layers
+        # on the cream), with Assets.xcassets' AppIcon (one opaque 1024 px PNG)
+        # under the same name for a build that can't read it. The Dev
+        # configurations (the TEST project) take AppIcon-Dev: the same mark on
+        # the dark ink with an amber DEV band, so the two installs are told apart.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug-Dev:
+          ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-Dev
+        Release-Dev:
+          ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-Dev
     preBuildScripts:
       # The core and the strings must exist before anything compiles; the
       # scheme's pre-action builds them (scripts/prebuild.sh) and this phase
