@@ -29,6 +29,10 @@ on:
         description: 'Submit the newest build for Beta App Review (external testing)'
         type: boolean
         default: false
+      reviewer:
+        description: "Sign up the reviewer's account on the app's project if it doesn't exist (then confirm it)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -46,7 +50,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # No packages: the script uses Node's own crypto and fetch.
+      # No packages: the scripts use Node's own crypto and fetch.
+      - name: Reviewer account
+        if: inputs.reviewer
+        env:
+          REVIEW_EMAIL: ${{ secrets.REVIEW_EMAIL }}
+          REVIEW_PASSWORD: ${{ secrets.REVIEW_PASSWORD }}
+          REVIEW_EMAIL_DEV: ${{ secrets.REVIEW_EMAIL_DEV }}
+          REVIEW_PASSWORD_DEV: ${{ secrets.REVIEW_PASSWORD_DEV }}
+        run: node scripts/asc/reviewer.mjs --app "${{ inputs.app }}"
       - name: App Store Connect
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}

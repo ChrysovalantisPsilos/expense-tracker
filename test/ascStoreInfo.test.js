@@ -8,6 +8,7 @@ import { generateKeyPairSync, verify } from 'node:crypto'
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { legalVersions, signInState, signUpBody, supabaseFromXcconfig } from '../scripts/asc/reviewer.mjs'
 import { AUDIENCE, AscError, createClient, errorText, makeToken, normalisePem, tokenParts } from '../scripts/asc/api.mjs'
 import {
   APPS, LIMITS, LISTING_FILES, appUrls, length, listingProblems, loadStore, missingSecrets, requiredSecrets, reviewSecrets,
@@ -377,4 +378,20 @@ test('the app\'s primary language gets texts too: English for any English, Greek
   assert.equal(withPrimaryLocale(listings, 'en-GB')['en-GB'].n, 'en')
   assert.equal(withPrimaryLocale(listings, 'el-GR')['el-GR'].n, 'el')
   assert.equal(withPrimaryLocale(listings, undefined), listings)
+})
+
+test('the reviewer account: the app\'s project, the sign-up the website sends, what a sign-in means', () => {
+  const dev = readFileSync(new URL('../ios/Budgeer/Config/Dev.xcconfig', import.meta.url), 'utf8')
+  const { url, anonKey } = supabaseFromXcconfig(dev)
+  assert.equal(url, 'https://ctvdljzybbujuywppixo.supabase.co')
+  assert.ok(anonKey.length > 20)
+  assert.equal(supabaseFromXcconfig(readFileSync(new URL('../ios/Budgeer/Config/Prod.xcconfig', import.meta.url), 'utf8')).url,
+    'https://tuxfpylowcxazinqtrzx.supabase.co')
+  const versions = legalVersions(readFileSync(new URL('../supabase/functions/_shared/legal.ts', import.meta.url), 'utf8'))
+  assert.deepEqual(signUpBody({ email: 'r@x.test', password: 'p w', versions }), {
+    email: 'r@x.test', password: 'p w', data: { accepted_privacy: versions.privacy, accepted_terms: versions.terms },
+  })
+  assert.equal(signInState(200, {}), 'ready')
+  assert.equal(signInState(400, { error_code: 'email_not_confirmed', msg: 'Email not confirmed' }), 'unconfirmed')
+  assert.equal(signInState(400, { error_code: 'invalid_credentials', msg: 'Invalid login credentials' }), 'missing')
 })
