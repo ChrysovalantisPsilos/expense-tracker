@@ -1,0 +1,27 @@
+{
+  "locale": "en-US",
+  "prod": {
+    "appStore": {
+      "subtitle": "Track spending, split bills",
+      "promotionalText": "Track spending and income, set budgets, plan your recurring payments and split bills with friends. Free, with no ads, in English and Greek.",
+      "keywords": "expense tracker,budget,split bills,splitter,groups,income,savings,recurring,salary,meal vouchers",
+      "description": "Budgeer keeps track of your money and splits shared costs with friends, in one app.\n\nYOUR MONEY\n• Log expenses and income in any currency. Foreign amounts convert at the European Central Bank rate of the day and keep that rate.\n• Set a monthly budget per category, with a heads-up at 80% and when you go over.\n• Keep your recurring payments and income in one place. Plan lets you try changes to them (cancel a subscription, add a new bill) and see what's left each month before you change anything.\n• Savings: your savings pot, goals and net worth.\n• Meal vouchers: the card's balance and next top-up, worked out from your working days.\n• Your salary: pay history, raises, extras, and how your pay compares with prices.\n• Import bank statements (CSV or Excel), read on your iPhone. Scan a receipt with the camera; the photo stays on your iPhone.\n\nWITH FRIENDS\n• Make a group for a trip, your flat or a night out, and invite friends with a link.\n• Split equally, by amount, percentage or shares, in any currency.\n• Budgeer works out the fewest payments to settle up and shows each friend's IBAN, Revolut or PayPal.\n\nYOUR DATA\n• Amounts and notes are stored encrypted, in a database in the EU (Paris).\n• No ads, no analytics, and your data is never sold.\n• An optional Face ID lock, and encrypted backups you can download.\n• The AI helpers (type an entry in your own words, category ideas on import, your month in plain words, what-ifs in Plan) are optional and off until you turn them on.\n\nIn English and Greek. Your account works on the website too, at budgeer.com.\n\nBudgeer is a free project run by one person. It never holds or moves money, and it doesn't give financial advice."
+    },
+    "testFlight": {
+      "description": "Budgeer keeps track of your money and splits shared costs with friends: expenses and income in any currency, monthly budgets, recurring payments and Plan, savings, meal vouchers, salary insights, and groups that work out who owes what. In English and Greek, with no ads. Your account works on the website too, at budgeer.com.\n\nThis is a test build: things may change or break. Tell us what you find.",
+      "whatToTest": "Thanks for testing Budgeer. Please try:\n• Sign up or sign in (email, Apple or Google).\n• Add an expense and an income, in your currency and in another one.\n• Set a budget, add a recurring payment and open Plan.\n• Make a group, invite a friend with the link and split an expense.\n• Import a bank statement (CSV or Excel) or scan a receipt.\n• Turn on the Face ID lock and notifications in Settings.\n\nSend feedback with a screenshot from TestFlight, or email support@budgeer.com."
+    }
+  },
+  "dev": {
+    "appStore": {
+      "subtitle": "Test version, test data",
+      "promotionalText": "The test version of Budgeer, for trying new features before they reach the app. It uses the test server at dev.budgeer.com and test data.",
+      "keywords": "test,expense tracker,budget,split bills",
+      "description": "Budgeer Dev is the test version of Budgeer, for trying new features before they reach the Budgeer app.\n\nIt connects to the test server at dev.budgeer.com and uses test data: its accounts are separate from budgeer.com, and anything entered here may be changed or removed. Please don't keep real records in it; use Budgeer for that.\n\nWhat it does is the same as Budgeer:\n• Expenses and income in any currency, at the European Central Bank rate of the day.\n• Monthly budgets per category, recurring payments, and Plan to try changes to them.\n• Savings, meal vouchers and salary insights.\n• Bank statement import (CSV or Excel) and receipt scanning on your iPhone.\n• Groups with friends: split costs and settle up by IBAN, Revolut or PayPal.\n• Amounts and notes stored encrypted; no ads, no analytics, data never sold.\n• Optional AI helpers, off until you turn them on.\n\nIn English and Greek."
+    },
+    "testFlight": {
+      "description": "Budgeer Dev is the test version of Budgeer. It uses the test server at dev.budgeer.com and test data: accounts are separate from budgeer.com, and anything entered here may be changed or removed. Please don't keep real records in it.\n\nIt has everything Budgeer has: expenses and income in any currency, budgets, recurring payments and Plan, savings, meal vouchers, salary insights, and groups with friends.",
+      "whatToTest": "This build uses the test server (dev.budgeer.com) and test data. Please try:\n• Sign up or sign in (email, Apple or Google).\n• Add an expense and an income, in your currency and in another one.\n• Set a budget, add a recurring payment and open Plan.\n• Make a group, invite a friend with the link and split an expense.\n• Import a bank statement (CSV or Excel) or scan a receipt.\n• Turn on the Face ID lock and notifications in Settings.\n\nSend feedback with a screenshot from TestFlight, or email support@budgeer.com."
+    }
+  }
+}
