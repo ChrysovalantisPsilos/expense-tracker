@@ -22,7 +22,9 @@ this file current, so add project facts here, not in the skills.
     decisions.
   - Action buttons sit inline, at the end of the content they act on, not in
     sticky or floating bars over the page. Any "apply" gets a clear or
-    cancel button beside it.
+    cancel button beside it. This is the website's rule: the native iOS app
+    may use floating menus and controls (Liquid Glass, a floating tab bar on
+    every tab) as long as they look good and are easy to use.
   - No unnecessary popups: editing and picking happen inline (rows expand
     in place). Modals and sheets are only for real confirmations (applying
     changes, destructive actions, undo).
