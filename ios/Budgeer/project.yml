@@ -158,6 +158,10 @@ targets:
         # com.budgeer.app.dev or com.budgeer.app (Config/*.xcconfig).
         PRODUCT_BUNDLE_IDENTIFIER: $(BUDGEER_BUNDLE_ID)
         GENERATE_INFOPLIST_FILE: "NO"
+        # iPhone only, here and not only in the project's settings: XcodeGen's
+        # application preset sets "1,2" per target, and an iPad build that is
+        # portrait-only is refused by App Store Connect (iPad multitasking).
+        TARGETED_DEVICE_FAMILY: "1"
         # The home-screen icon: Resources/AppIcon.icon, the layered Icon
         # Composer document (the mark's stem and its two arcs as glass layers
         # on the cream), with Assets.xcassets' AppIcon (one opaque 1024 px PNG)
