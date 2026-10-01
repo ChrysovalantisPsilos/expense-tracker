@@ -125,7 +125,7 @@ struct NewGroupView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
-            .padding(.bottom, 24)
+            .padding(.bottom, 40)
         }
         .scrollDismissesKeyboard(.interactively)
         .safeAreaInset(edge: .bottom, spacing: 0) { createBar }
@@ -347,6 +347,7 @@ struct NewGroupView: View {
         .disabled(!model.canCreate)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .nativeFootBar()
         .accessibilityIdentifier("newGroup.create")
     }
 
@@ -392,7 +393,7 @@ struct NewGroupView: View {
                 if let link = done.link { InviteLinkCard(link: link) }
             }
             .padding(.horizontal, 16)
-            .padding(.bottom, 24)
+            .padding(.bottom, 40)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Button { onCreated(done.id) } label: {
@@ -401,6 +402,7 @@ struct NewGroupView: View {
             .nativeGlassButton(prominent: true)
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
+            .nativeFootBar()
             .accessibilityIdentifier("newGroup.open")
         }
         .nativeTabBarRoom()

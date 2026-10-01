@@ -231,7 +231,7 @@ struct SettleUpView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 6)
-                .padding(.bottom, 24)
+                .padding(.bottom, 40)
             }
             .scrollDismissesKeyboard(.interactively)
             .background(NativeStyle.canvas)
@@ -259,6 +259,7 @@ struct SettleUpView: View {
                     .disabled(model.busy)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
+                    .nativeFootBar()
                     .accessibilityIdentifier("settle.record")
                 }
             }
@@ -551,7 +552,7 @@ struct MembersView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 6)
-            .padding(.bottom, 24)
+            .padding(.bottom, NativeFoot.room)
         }
         .scrollDismissesKeyboard(.interactively)
         .background(NativeStyle.canvas)

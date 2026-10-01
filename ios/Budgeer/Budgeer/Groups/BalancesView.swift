@@ -22,7 +22,7 @@ struct BalancesView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 24)
+                .padding(.bottom, NativeFoot.room)
             }
         }
         .background(NativeStyle.canvas)
@@ -35,6 +35,7 @@ struct BalancesView: View {
                 .nativeGlassButton(prominent: true)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 10)
+                .nativeFootBar()
                 .accessibilityIdentifier("balances.settle")
             }
         }

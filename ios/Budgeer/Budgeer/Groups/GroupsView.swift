@@ -39,7 +39,7 @@ struct GroupsView: View {
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
-            .padding(.bottom, 24)
+            .padding(.bottom, NativeFoot.room)
         }
         .background(NativeStyle.canvas)
         .nativeTabBarRoom()

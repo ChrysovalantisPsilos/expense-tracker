@@ -121,6 +121,12 @@ struct ActivityView: View {
                     }
                 }
             }
+            // Room for the last day to scroll clear of the month pill and the tab bar.
+            Color.clear
+                .frame(height: NativeFoot.room)
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .accessibilityHidden(true)
         }
     }
 
