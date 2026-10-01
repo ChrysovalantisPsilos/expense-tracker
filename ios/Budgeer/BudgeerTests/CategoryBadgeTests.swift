@@ -1,6 +1,6 @@
 // The category badge: every key the core answers has the web's Lucide icon
 // bundled (Icons.xcassets "category-<key>"), an unknown key falls back to
-// the web's Tag, every app icon exists, and the look is the core's
+// the web's Tag, and the look is the core's
 // (categoryStyle.categoryLook).
 import UIKit
 import XCTest
@@ -8,13 +8,7 @@ import BudgeerCore
 @testable import Budgeer
 
 final class CategoryBadgeTests: XCTestCase {
-    func testEveryAppIconIsBundled() {
-        for icon in Lucide.allCases {
-            XCTAssertNotNil(UIImage(named: icon.rawValue), icon.rawValue)
-        }
-        for bold in ["layout-dashboard", "receipt-text", "users", "target", "more-horizontal", "plus"] {
-            XCTAssertNotNil(UIImage(named: "lucide-\(bold)-bold"), bold)
-        }
+    func testAnUnknownKeyFallsBackToTheTag() {
         XCTAssertEqual(CategoryBadge.asset(for: "no-such-key"), "category-fallback")
         XCTAssertNotNil(UIImage(named: "category-fallback"))
     }

@@ -43,6 +43,18 @@ final class FakeAuthService: AuthService, @unchecked Sendable {
     func change(to user: AuthUser?) { emit.yield(user) }
 }
 
+/// The device owner's check, answered by the test.
+final class FakeOwner: OwnerCheck, @unchecked Sendable {
+    var available = true
+    var answer = true
+    private(set) var asked: [String] = []
+
+    func check(reason: String) async -> Bool {
+        asked.append(reason)
+        return answer
+    }
+}
+
 extension AuthUser {
     static let sample = AuthUser(id: UUID(uuidString: "0BADBEEF-0000-4000-8000-000000000001")!, email: "sam@example.com")
 }

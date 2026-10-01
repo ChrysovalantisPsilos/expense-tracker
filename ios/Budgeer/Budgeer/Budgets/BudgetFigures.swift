@@ -25,13 +25,21 @@ struct BudgetItem: Codable, Equatable, Identifiable, Sendable {
     let overLabel: String?
 }
 
+/// A past month that kept every budget (budgetMath.heldNote).
+struct HeldNote: Codable, Equatable, Sendable {
+    let title: String
+    let note: String
+}
+
 /// Home's Budgets card for the picked period (BudgetsCard): the subtitle,
-/// the empty state and whether it offers "Set a budget", and the rows.
+/// the empty state and whether it offers "Set a budget", the rows, and the
+/// note when a past month kept every budget.
 struct BudgetCardFigures: Codable, Equatable, Sendable {
     let subtitle: String
     let empty: String
     let canSet: Bool
     let items: [BudgetItem]
+    let held: HeldNote?
 }
 
 struct BudgetFigures: Codable, Equatable, Sendable {
@@ -117,10 +125,13 @@ struct BudgetFigures: Codable, Equatable, Sendable {
         let subtitle: String = try core.call("budgetMath", "budgetSubtitle", [period, [
             "months": progress["months"] ?? .int(0), "carried": carried, "periodStart": span["last"] ?? .null,
         ] as JSONValue])
-        let items = try (progress["items"]?.arrayValue ?? []).map { item -> BudgetItem in
-            try core.call("budgetMath", "budgetRowParts", [item, base])
+        let parts = try (progress["items"]?.arrayValue ?? []).map { item -> JSONValue in
+            try core.json("budgetMath", "budgetRowParts", [item, base])
         }
+        let held = try core.json("budgetMath", "heldNote", [JSONValue.array(parts), period, todayISO])
         return BudgetCardFigures(subtitle: subtitle, empty: empty["text"]?.stringValue ?? "",
-                                 canSet: empty["canSet"]?.boolValue ?? false, items: items)
+                                 canSet: empty["canSet"]?.boolValue ?? false,
+                                 items: try parts.map { try $0.decode(BudgetItem.self) },
+                                 held: held.isNull ? nil : try held.decode(HeldNote.self))
     }
 }

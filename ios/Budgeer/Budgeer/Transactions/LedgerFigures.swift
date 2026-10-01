@@ -1,9 +1,10 @@
-// The Transactions list as the web's LedgerPage + TransactionList work it
-// out, every step a core call (the same sequence, in Node, writes the parity
-// fixture: mobile-core/screenFigures.mjs ledgerFigures): the search
-// (txnFilter), the heading and its line (listHeading, ledgerSummary, a
-// search's net), the first-run state, the page (paginate) and each row's
-// words (rowParts). Nothing is filtered, summed or worded here.
+// Activity (the web's Transactions list) as LedgerPage + TransactionList
+// work it out, every step a core call (the same sequence, in Node, writes
+// the parity fixture: mobile-core/screenFigures.mjs ledgerFigures): the
+// search (txnFilter), the heading and its line (listHeading, ledgerSummary,
+// a search's net), the first-run state, and the rows by day with each
+// row's words (rowParts.dayGroups). Nothing is filtered, summed, grouped or
+// worded here.
 import Foundation
 import BudgeerCore
 
@@ -30,18 +31,22 @@ struct EntryRow: Codable, Equatable, Identifiable, Sendable {
     let estimated: String?
 }
 
+/// One day of the list (rowParts.dayGroups): "Today", what was spent, its rows.
+struct EntryDay: Codable, Equatable, Identifiable, Sendable {
+    let key: String
+    let title: String
+    /// "€45.55 spent", nil without an expense that day.
+    let spent: String?
+    let rows: [EntryRow]
+    var id: String { key }
+}
+
 struct LedgerFigures: Codable, Equatable, Sendable {
     let title: String
     let subtitle: String
     /// Nothing logged at all yet (the first-entry state).
     let firstRun: Bool
-    let pages: Int
-    /// "Page 1 of 3".
-    let position: String
-    let rows: [EntryRow]
-
-    /// Rows per page (screenFigures.mjs LEDGER_PAGE).
-    static let pageSize = 20
+    let days: [EntryDay]
 
     /// The advanced filters, all empty (txnFilter.EMPTY_FILTERS): the app searches by text.
     static let noFilters: JSONValue = ["categoryId": "", "from": "", "to": "", "min": "", "max": ""]
@@ -50,9 +55,10 @@ struct LedgerFigures: Codable, Equatable, Sendable {
     /// - kind: 'expense', 'income', or nil for all
     /// - oldest: the first transaction's date (nil: none); `oldestKnown` false when it couldn't be read
     /// - filters: the Filters panel's (txnFilter.EMPTY_FILTERS' keys; all empty by default)
+    /// - today: 'YYYY-MM-DD' (the days' headings)
     static func compute(rows: JSONValue, profile: JSONValue, categories: JSONValue, kind: String?, periodLabel: String,
                         text: String, filters: JSONValue = noFilters, oldest: String?, oldestKnown: Bool = true,
-                        page: Int = 1, core: BudgeerCore) throws -> LedgerFigures {
+                        today: String, core: BudgeerCore) throws -> LedgerFigures {
         let base = profile["base_currency"]?.stringValue ?? "EUR"
         let salaryShift = try core.json("salaryShift", "salaryShiftOf", [profile])
         let savingsIds = try core.json("savings", "savingsIdsOf", [categories])
@@ -72,13 +78,9 @@ struct LedgerFigures: Codable, Equatable, Sendable {
         var run: JSONValue = ["loading": false, "failed": false, "count": .int(count), "searching": .bool(searching)]
         if oldestKnown { run = run.with("oldest", oldest.json) }
         let firstRun: Bool = try core.call("listHeading", "isFirstRun", [run])
-        let pages: Int = try core.call("paginate", "pageCount", [count, pageSize])
-        let position = core.text("common:paginator.position", ["page": .int(page), "pages": .int(pages)])
-        let visible = try core.json("paginate", "pageSlice", [shown, page, pageSize])
         let options: JSONValue = ["kind": kind.json, "baseCurrency": .string(base), "salaryShift": salaryShift,
                                   "savingsIds": savingsIds]
-        let parts: [EntryRow] = try core.call("rowParts", "listParts", [visible, options])
-        return LedgerFigures(title: head["title"]?.stringValue ?? "", subtitle: subtitle, firstRun: firstRun,
-                             pages: pages, position: position, rows: parts)
+        let days: [EntryDay] = try core.call("rowParts", "dayGroups", [shown, options, today])
+        return LedgerFigures(title: head["title"]?.stringValue ?? "", subtitle: subtitle, firstRun: firstRun, days: days)
     }
 }

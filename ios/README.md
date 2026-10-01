@@ -149,51 +149,48 @@ ios/Budgeer/
   scripts/prebuild.sh    core + strings before a build
   Budgeer/
     BudgeerApp.swift     the entry: AppConfig → AppContainer → RootView
-    App/                 AppContainer (the client, the data layer, the cache, the live feed), RootView,
-                         MainTabView (the frame, each tab's stack of pages, the bell's list, ShellRouter),
-                         ShellModel (your initials, the bell's feed, where the floating Add shows), LiveRefresh
+    App/                 AppContainer (the client, the data layer, the cache, the live feed, the lock), RootView
+                         (sign-in, the legal gate, the frame, the lock over it), AppFrame (the tabs, each tab's
+                         stack of pages (AppRoute), the Add sheet, the bell's sheet, AppRouter), AppLock + LockView
+                         (Face ID), ShellModel (your initials, the bell's feed), LiveRefresh
     Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView
     Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables),
                          QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
                          refetch), FxRates (ECB rates as fx.js), PeriodSource (the period pickers' options)
-    Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView
-    Transactions/        EntryFormModel + EntryFormView + EntrySheet (Add/Edit), LedgerFigures + LedgerModel +
-                         TransactionsView + EntryRowView (the list)
+    Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView (the month pager,
+                         the sections, HomeCategoriesPage)
+    Transactions/        EntryFormModel + AddSheet (Add/Edit/a rule: the amount, the keypad, the details),
+                         LedgerFigures + LedgerModel + ActivityView (the rows by day, the month pill, search,
+                         swipes), TransactionWords (the delete question)
     Budgets/             BudgetFigures, BudgetsModel, BudgetsView
     Recurring/           RecurringFigures, RecurringModel, RecurringView
     Insights/            InsightsFigures, InsightsModel, InsightsView (Swift Charts draws, the core computes)
-    Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab),
-                         GroupModel + GroupPageView (a group's page, rename, leave, delete), GroupExpenseModel +
-                         GroupExpenseView (add or edit an expense, the quick layout), SettleUpModel + SettleUpView,
-                         MembersView, CommentsModel + CommentsView, MyGroupsModel + WhoForAdd (Add's "Who's it
-                         for?"), GroupKit (avatars, GroupMark, TransferRow, HighlightPill, rich text)
-    More/                MoreView (Money, Account), SettingsView (Profile, Appearance, Language, Sign out,
-                         the build), LanguageSettingsView, AppearanceSettingsView
-    Theme/               Theme (tokens), Kit (the web's kit: Panel + CardHeader, IconTile, Figure, BalanceTile,
-                         ProgressRow, ItemRow + RowActionsMenu, SectionLabel, Eyebrow, KitTag, the Chakra
-                         buttons, SegmentedControl, LineTabs, PillTabs, Paginator, skeletons, empty states,
-                         InfoButton, NavList), FormKit (FormRow, the outline field, SelectMenu, DayField,
-                         the Switch), Shell (the top bar, the bottom bar, the floating Add, PageHeader, Page,
-                         ShellChrome, the mark, AppAppearance), CategoryBadge, Lucide (generated)
-    Native/              the native redesign's mockups (sign-off first, not wired to data or to RootView):
-                         NativeAppMock (the tabs and Add's sheet), Kit/ (NativeStyle: the coral tint, Poppins
-                         titles and figures; NativeGlass: Liquid Glass on iOS 26, the standard material on
-                         iOS 17–18; NativeTabs: the floating tab bar with Add beside it; NativeParts),
-                         Preview/NativeSample (made-up data worded by the core), Home/, Add/, Activity/,
-                         Groups/, More/, Extras/ (widgets, Siri phrases, the Face ID lock)
+    Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab, New
+                         group), GroupModel + GroupTimeline + GroupPageView (a group's page, its timeline, the
+                         Balances sheet), GroupExpenseModel + SettleUpModel + GroupForms (the expense sheet and
+                         Add's quick group form, Settle up, Members), CommentsModel, MyGroupsModel (Add's "Who's
+                         it for?")
+    More/                MoreView (your profile, Money), SettingsView (Profile, Language, the Face ID
+                         lock, Sign out, the build), LanguageView
+    Theme/               Theme (the web's colour tokens), NativeStyle (the coral tint, Poppins titles and money
+                         figures), NativeAppearance (the bars' title faces), NativeGlass (Liquid Glass on iOS 26,
+                         the standard material on iOS 17–18), NativeTabs (the floating tab bar with Add beside
+                         it), NativeParts (section headers, money, bars, tiles, avatars, loading and failure
+                         states, rich text), NativeChrome (the bell and initials, the confetti), NativeSwatch,
+                         NativeHaptics, CategoryBadge, BrandMark
     Support/             AppLanguage, ProfileLanguage (the account's language), L10n (the generated strings),
                          JSONValue, CoreHelpers, CategoryLook, ISODay
-    Resources/Fonts/     Poppins, Nunito Sans, Manrope (OFL, static TTFs)
+    Resources/Fonts/     Poppins and Manrope, semibold and bold (OFL, static TTFs)
     Resources/Assets.xcassets/  AppIcon: one 1024 px opaque PNG of public/pwa-icon.svg (the apple-touch-icon art)
-    Resources/Icons.xcassets/   the web's Lucide icons as template SVGs (npm run ios:icons; committed)
+    Resources/Icons.xcassets/   the web's Lucide category icons as template SVGs (npm run ios:icons; committed)
     Resources/LUCIDE-LICENSE.txt  Lucide's ISC licence
-    Resources/Generated/ <lang>.lproj/Localizable.strings — generated, not committed
+    Resources/Generated/ <lang>.lproj/Localizable.strings and InfoPlist.strings — generated, not committed
   BudgeerTests/          view models over FakeStore, the parity tests, the strings, snapshots
     Fixtures/*.json      the web's figures for fake inputs: home, ledger, budgets, recurring, insights,
                          groups (npm run ios:fixture)
 ```
 
-### What is real and what is not (phase 3)
+### What is real and what is not
 
 Every figure, label, grouping, validation and form ↔ row mapping below is
 a core call (the web's function); Swift reads, lays out and draws.
@@ -211,68 +208,66 @@ a core call (the web's function); Swift reads, lays out and draws.
   served when offline, and one realtime channel whose changes refetch the
   open screens (debounced, plus a catch-up when the app comes to the
   foreground), as `useLiveRefetch` does.
-- **Add / Edit an entry** (the "+" on Home and Transactions; a row opens
-  Edit): the web's fields in its order and words, Type it when the AI
-  switch is on (`ai-helper` `parse_entry`), Repeat, foreign currency with
-  the ECB preview, savings and meal-voucher sources; saved with
+- **The frame**: iOS's own. Four tabs in a floating bar (Home, Activity,
+  Groups, More) with Add beside them as its own button; on iOS 26 the
+  system's Liquid Glass tab bar (Add in its separate trailing slot, the bar
+  shrinking while you scroll), on iOS 17–18 a bar of the same shape in the
+  standard material. Every tab is a stack of pages under a large title, with
+  the bell (its unread count, the notifications in a sheet) and your
+  initials (Settings) top right. The appearance follows the system.
+- **Add / Edit an entry** (Add; a row in Activity; a rule in Recurring), a
+  sheet: the amount first, on a keypad, the category chips and the day; pull
+  it up for the rest, in the web's words: Type it when the AI switch is on
+  (`ai-helper` `parse_entry`), Repeat, the currency with the ECB preview
+  (or a rate typed), Paid from (savings, meal vouchers), "Who's it for?"
+  (Just me or a group, most recently used first; a group turns the sheet
+  into its quick form, carrying what was typed) and Notes. Saved with
   `save_transactions` / `update_transaction` / `save_recurring_rule`,
-  deleted after a confirm. A new expense asks "Who's it for?" when the
-  user is in a group (below). Not yet: receipts.
-- **The frame**: the web's own shell, not a tab bar: the top bar (the
-  mark, the bell with its unread count and list, the theme toggle, your
-  initials to Settings), the bottom bar with the web's Lucide icons, and
-  the floating Add where the web shows it (`navMatch.showsAddExpense`).
-  Pages are pushed inside each tab with the web's back buttons; the edge
-  swipe still goes back. No system navigation bar or sheet chrome.
-- **Settings** (your initials, or More): Profile, Appearance (System,
-  Light, Dark, also the top bar's toggle) and Language, Sign out, the
-  version.
-- **Transactions**: the month picker, search, the Filters panel (type,
-  category, paid from, the web's `ledgerRead`), the rows with the ⋮ Edit
-  and Delete and their "Counts for October" notes, 20 at a time.
-- **Budgets**: this month's bars and tones, set or change a budget inline
-  (the web's RPC), the carried-over label, copy last month's.
+  deleted after a confirm. Not yet: receipts.
+- **Home**: a month per page you swipe between (the months since the first
+  entry), the month's spend with Income and Net (the ⓘ: How Net adds up);
+  "every budget held" on a past month that kept them all (a burst of
+  confetti the first time); then Budgets, the month in plain words (when its
+  AI switch is on), Coming up (or what a past month was charged), By
+  category and Meal vouchers, a few rows each with See all.
+- **Activity**: the month's entries by day, each day with what it spent; a
+  floating pill for the month and the kind; search over all history.
+  Swipe left to Delete (after the web's question), right to Duplicate (Add
+  with today's date) or Split with a group (the group's quick form; the
+  personal entry goes once the group's is saved); a tap opens Edit.
+- **Budgets** (from Home): the month's bars and tones, set or change a
+  budget, the carried-over label, copy last month's.
 - **Recurring** (from More): Subscriptions and Income, the totals per
-  frequency, pause, tap to edit the rule. Rules are added from Add with
-  Repeat on, as on the web.
+  frequency, pause, tap to edit the rule, add one (Add with Repeat on).
 - **Insights** (from More): "Where your money went" (tap a month in the
   last six), "Income vs expenses" and Spending abroad. Not yet: your
   salary, net worth, the statement.
-- **Home**: the period picker (months, years, all time, next month once its
-  salary is in), the overview with the recurring payments still to come,
-  pending rates filled, the ⓘ (How Net adds up), In words (the month in
-  plain words when the AI switch is on), the meal vouchers card, spending
-  by category (chart or table, "Show all"), the budgets card, the expenses
-  and income lists and the Recurring card ("Show all N charges"), in the
-  web's order (`dashboardMath.homeCards`). Not yet: the savings, plan,
-  vouchers and category pages the cards link to on the web.
-- **Groups** (phase 3): the tab lists the invites (Accept / Decline) and
-  a card per group (picture, name, the avatar stack, the member count,
-  your balance in its tone); New group (a name and a currency). A group's
-  page: the header (picture, name over the avatars and member count, which
-  open Members, and the Total), the balances card (your balance with Settle
-  up, everyone's tiles, the highlight line), Who owes whom, and the history
-  (expenses with their split and comment counts, settlements, activity).
-  Add or edit an expense in any currency (the ECB rate, or one typed) with
-  every split mode (Equally, Amounts, Percent, Shares); delete it after a
+- **Groups**: the tab lists the invites (Accept / Decline) and a row per
+  group (picture, name, the avatars, your balance in its tone); New group
+  (a name and a currency). A group's page: the balance hero (the members,
+  your balance, the line that matters most, Settle up and Balances), then
+  one timeline of expenses, settlements and their comments, newest at the
+  bottom, with the comment field floating over its foot (a comment goes on
+  the item picked, else the newest). Settling the group up bursts confetti
+  behind the cards. Add or edit an expense in any currency with every
+  split mode (Equally, Amounts, Percent, Shares); delete it after a
   confirm. Settle up opens on your biggest payment, with the suggestions,
   the reminder bell and Pay directly (Revolut, PayPal, a bank QR drawn on
-  the device from the core's EPC payload, the IBAN to copy). Members:
-  remove (the owner), invite by email (a request in the app, else an
-  emailed link) or with a share link shown inline to copy or share.
-  Comments on an expense or a settlement. Rename (the owner), Share
-  summary, Leave (or leave silently) and Delete (type the name; the web's
-  "can't yet" while others are in it). Add's **"Who's it for?"**: Just me
-  or a group (most recently used first); a group turns Add into its quick
-  form (the split folded into one card with Adjust), carrying what was
-  typed. Everything is the web's RPCs and tables, cached for offline and
-  live through the groups' tables on the realtime channel (unfiltered:
-  Row Level Security scopes them). Not yet: the group photo upload (the
-  photo shows), the PDF statement, joining from an invite link, the
-  payment-details ask on Settle up, and opening a group from a shared row
-  in Transactions.
-- **More**: the Money pages (Recurring, Insights) and the Account
-  pages.
+  the device from the core's EPC payload, the IBAN to copy). The … menu:
+  Members (remove, invite by email or a share link), Share summary, Rename
+  (the owner), Leave (or leave silently) and Delete (type the name; the
+  web's "can't yet" while others are in it). Everything is the web's RPCs
+  and tables, cached for offline and live through the groups' tables on
+  the realtime channel. Not yet: the group photo upload (the photo shows),
+  the PDF statement, joining from an invite link, the payment-details ask
+  on Settle up.
+- **More**: your profile (to Settings), and Money: Budgets, Recurring and
+  Insights. The web's Savings, Plan, Meal vouchers, Salary and
+  Categories pages are not built yet and are not offered.
+- **Settings**: Profile, Language, the **Face ID lock** (off by default;
+  turning it on asks for Face ID or the passcode first; once on, Budgeer
+  asks when it opens and after a minute away, and the app switcher shows the
+  lock, not the money), Sign out, the version.
 
 ### Strings
 
@@ -297,32 +292,30 @@ and Settings › Language); the shared demo account keeps it on the device.
 
 ### Theme and fonts
 
-`Theme.swift` ports the kit's tokens: the raw ramps of
-`src/shared/ui/palette.js`, the light and dark semantic tokens of
-`src/app/theme.js`, the radii, shadows and the 4pt spacing scale. Poppins
-(headings), Nunito Sans (body) and Manrope (Greek headings) are bundled as
-static TTFs under the SIL Open Font License, with the licence texts beside
-them. Nunito Sans has no Greek, so Greek body text uses the system font (the
-web falls back to Noto Sans, which is not bundled).
+`Theme.swift` keeps the web's colour tokens the app draws with (the raw
+ramps of `src/shared/ui/palette.js`, the light and dark semantic tokens of
+`src/app/theme.js`). Everything else is iOS's own: inset-grouped lists,
+large titles, sheets with detents, swipe actions, the system's fonts for
+text. Poppins (large titles and money figures) and Manrope (the same in
+Greek, which Poppins lacks) are bundled as static TTFs under the SIL Open
+Font License, with the licence texts beside them. The controls that float
+(the tab bar, Add, the pills, the comment field) are Liquid Glass on iOS 26
+(`NativeGlass`, behind `#if compiler(>=6.2)` and `#available(iOS 26.0, *)`)
+and the standard material below it.
 
-`Kit.swift`, `FormKit.swift` and `Shell.swift` port the web's kit
-(`src/shared/ui/kit/`) and shell piece by piece under the same names
-(Panel, CardHeader, Figure, ItemRow, SectionLabel, the Chakra buttons,
-SegmentedControl, FormRow, SelectMenu, …). Icons are the web's own Lucide
-icons: `npm run ios:icons` (`mobile-core/icons.mjs`) writes the icons the
-app uses and every category icon of `src/shared/lib/icons.jsx` as template
-SVGs into `Resources/Icons.xcassets`, the bold ones of the bottom bar, and
-`Theme/Lucide.swift`; `test/iosIcons.test.js` fails when the committed
-files no longer match. Lucide's ISC licence is in
-`Resources/LUCIDE-LICENSE.txt`. The appearance (System, Light, Dark) is
-`AppAppearance`, kept on the device.
+Category icons are the web's own Lucide icons: `npm run ios:icons`
+(`mobile-core/icons.mjs`) writes every category icon of
+`src/shared/lib/icons.jsx` as a template SVG into `Resources/Icons.xcassets`;
+`test/iosIcons.test.js` fails when the committed files no longer match.
+Lucide's ISC licence is in `Resources/LUCIDE-LICENSE.txt`. Everything else
+is an SF Symbol.
 
 ### Tests
 
 ```bash
 npm run ios:prepare
 xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
-  -destination "platform=iOS Simulator,name=iPhone 15,OS=17.5"
+  -destination "platform=iOS Simulator,name=iPhone 17"
 ```
 
 - View models over fakes (`FakeStore` behind every repository,
@@ -332,7 +325,8 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   `RecurringTests`, `InsightsTests`, `HomeViewModelTests`,
   `CategoryBadgeTests` (every category icon bundled), `GroupsModelTests` (the list and invites, a
   group's page and its actions, invites, the expense form, settle up,
-  comments, Who's it for's order).
+  comments, Who's it for's order), `AppLockTests` (off by default, the
+  owner's check, locked on launch and after the grace, off unlocks).
 - Parity: each screen's fixture inputs through its `…Figures` (every step a
   core call) must give what the web's functions wrote into
   `Fixtures/{home,ledger,budgets,recurring,insights,groups}.json`, in
@@ -344,19 +338,17 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
 - `L10nTests`: both languages bundled, the web's keys, the fallback, the
   language preference. `AppLanguageTests`: the device's first language only,
   the profile's language first, the demo account left alone.
-- `SnapshotTests`: PNGs inside the frame (top bar, bottom bar) of Sign-in,
-  Home (every card, and In words), Add (an expense with Repeat on), Edit,
-  Transactions, Budgets, Recurring, Insights, More, Settings, Groups (the tab, a group's page and its activity,
-  an expense split by amounts, settle up, members, Add's quick group
-  form), each light, dark and Greek, with the fixtures'
-  data, whole and as the first screen (`-top`); attached to the test run and written to `SNAPSHOT_DIR` when set
+- `SnapshotTests`: PNGs at an iPhone 17's size (402×874) inside the frame
+  (the floating tab bar, the screen's tab picked) of Sign-in, the legal
+  gate, the lock, Home (this month, a past month that held its budgets, By
+  category's See all), the Add sheet (as it comes up, Edit pulled up, Split
+  with a group), Activity, Groups (the tab, New group, a group's page,
+  settled with its confetti caught mid-fall, Balances, an expense split by
+  amounts, Settle up, Members), More, Settings, the bell, Budgets,
+  Recurring and Insights, each light, dark and Greek, with the fixtures'
+  data (`<name>-<variant>.png`, and `-long` for the pages worth seeing
+  whole); attached to the test run and written to `SNAPSHOT_DIR` when set
   (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
-- `NativeSnapshotTests`: the redesign's mockups (`native-<screen>-<variant>.png`):
-  Home, Add collapsed and pulled up, Activity (plain, rows held mid-swipe,
-  the delete question), a group (and settled), More, the widgets, the Siri
-  phrases and the Face ID lock, light, dark and Greek. The glass needs the
-  iOS 26 SDK: built with Xcode 15.4 the pictures show the iOS 17–18
-  fallback (the same shapes in the standard material).
 
 CI is `.github/workflows/ios-app.yml` (macos-26, Xcode 26.5, iPhone 17 on iOS 26.5): XcodeGen, a
 Simulator build, the tests, and the snapshots as the `snapshots` artifact.

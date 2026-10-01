@@ -1,10 +1,11 @@
 // One group's state, after the web's GroupDetail and its pages (members,
 // edit group): the group read as useGroup reads it (getGroup, the activity
-// log) with its comment counts, and what the page can do: leave (or leave
+// log) with its comment counts and the comments themselves (the timeline
+// shows them under their item), and what the page can do: leave (or leave
 // silently), delete (the owner, once everyone else has left), rename,
 // remove a member, invite by email or with a link. Every figure and word is
-// the core's (GroupPageFigures); the expense, settle-up and comment pages
-// get their own models from here.
+// the core's (GroupPageFigures, GroupTimeline); the expense, settle-up and
+// comment models come from here.
 import Foundation
 import Observation
 import BudgeerCore
@@ -21,8 +22,8 @@ final class GroupModel {
     let groupId: String
     let userId: String
     private(set) var state: State = .loading
-    /// The history's tab: 'expenses', 'settlements' or 'activity'.
-    var tab = "expenses"
+    /// The expenses, settlements and comments as one timeline, oldest first.
+    private(set) var timeline: [TimelineItem] = []
     /// What the last action said (an invite sent, a member removed, a failure).
     private(set) var message: String?
     private(set) var busy = false
@@ -67,8 +68,15 @@ final class GroupModel {
             let read = try await data.groups.groupDetail(id: groupId)
             let activity = (try? await data.groups.groupActivity(id: groupId)) ?? []
             let counts = (try? await data.groups.groupCommentCounts(id: groupId)) ?? []
+            var comments: [String: JSONValue] = [:]
+            for row in counts.arrayValue ?? [] {
+                guard let target = row["target_id"]?.stringValue, (row["n"]?.intValue ?? 0) > 0 else { continue }
+                comments[target] = (try? await data.groups.groupComments(groupId: groupId, targetId: target)) ?? []
+            }
             detail = read
             context = try GroupPageFigures.context(detail: read, userId: userId, core: core)
+            timeline = try GroupTimeline.compute(detail: read, counts: counts, comments: comments, userId: userId,
+                                                 now: now(), core: core)
             state = .loaded(try GroupPageFigures.compute(detail: read, auditLog: activity, counts: counts, userId: userId,
                                                          now: now(), core: core))
         } catch {

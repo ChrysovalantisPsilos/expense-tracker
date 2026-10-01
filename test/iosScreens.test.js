@@ -22,13 +22,16 @@ test('ios ledger fixture: the committed file is what the web\'s functions give',
 test('ios ledger fixture: the list folds in the web\'s rules', () => {
   const { en } = committed('ledger').expected
   assert.equal(en.search.subtitle, '1 result · Net −€12.99')
-  const all = Object.fromEntries(en.all.rows.map((r) => [r.id, r]))
+  const all = Object.fromEntries(en.all.days.flatMap((d) => d.rows).map((r) => [r.id, r]))
   assert.equal(all.a4.approx, '≈ €22.81')
   assert.equal(all.a5.group, 'Lisbon trip')
   assert.equal(all.a6.repeats, 'Repeats every month')
   assert.equal(all.a9.spread, '€8.00/month over 12 months')
   assert.equal(all.b1.countsFor, 'Counts for September')
   assert.equal(all.b1.amount, '+€2,500.00')
+  // By day, newest first: what each day spent (nothing on a day of income only).
+  assert.deepEqual(en.all.days.slice(0, 2).map((d) => [d.title, d.spent]), [['Yesterday', '€42.50 spent'], ['12 Sep', '€18.99 spent']])
+  assert.equal(en.all.days.find((d) => d.title === '2 Sep').spent, null)
 })
 
 test('ios budgets fixture: the committed file is what the web\'s functions give', () => {

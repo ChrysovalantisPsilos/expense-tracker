@@ -22,12 +22,13 @@ enum NativeStyle {
     static let amber = Theme.Palette.amber400
     static let coral = Theme.Palette.brand500
 
-    /// A kitMath / budgetMath tone name as a colour (nil: the tint).
+    /// A kitMath / budgetMath tone name as a colour (nil: the tint; muted: secondary).
     static func tone(_ tone: String?) -> Color {
         switch tone {
         case "negative": return negative
         case "warning": return warning
         case "positive": return positive
+        case "muted": return Color.secondary
         default: return tint
         }
     }
@@ -44,25 +45,3 @@ enum NativeStyle {
         .custom(lang == "el" ? "Manrope-Bold" : "Poppins-Bold", size: size, relativeTo: style)
     }
 
-    /// The navigation bar's large and inline titles in the heading face,
-    /// for bars inside a NativeHost only (the current app's bars keep theirs).
-    static func installTitles(lang: String) {
-        let bar = UINavigationBar.appearance(whenContainedInInstancesOf: [NativeHost.self])
-        let bold = lang == "el" ? "Manrope-Bold" : "Poppins-Bold"
-        let semibold = lang == "el" ? "Manrope-SemiBold" : "Poppins-SemiBold"
-        let large = UIFont(name: bold, size: 32) ?? .systemFont(ofSize: 34, weight: .bold)
-        let inline = UIFont(name: semibold, size: 17) ?? .systemFont(ofSize: 17, weight: .semibold)
-        bar.largeTitleTextAttributes = [.font: UIFontMetrics(forTextStyle: .largeTitle).scaledFont(for: large)]
-        bar.titleTextAttributes = [.font: UIFontMetrics(forTextStyle: .headline).scaledFont(for: inline)]
-    }
-}
-
-/// The redesign's root controller: its navigation bars take the brand's
-/// title face (NativeStyle.installTitles) and its window the coral tint.
-final class NativeHost: UIHostingController<AnyView> {
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        // System alerts and confirmation dialogs take the window's tint.
-        view.window?.tintColor = UIColor(NativeStyle.tint)
-    }
-}

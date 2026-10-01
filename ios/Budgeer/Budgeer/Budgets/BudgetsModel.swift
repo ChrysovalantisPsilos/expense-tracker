@@ -1,4 +1,4 @@
-// The Budgets tab's state, after the web's Budgets page: this month's caps
+// The Budgets page's state, after the web's Budgets page: this month's caps
 // with their spend (BudgetFigures), the "Set a monthly cap" form (a row's
 // cap loads into it to change it), delete, and "Copy last month's
 // budgets". Reads and writes are the web's (my_budgets, edit_budget,
@@ -93,8 +93,9 @@ final class BudgetsModel {
     }
 
     /// "Set": edit_budget for this month (a carried month first gets its own copy).
-    func setCap() async {
-        guard canSet, let figures else { return }
+    @discardableResult
+    func setCap() async -> Bool {
+        guard canSet, let figures else { return false }
         busy = true
         defer { busy = false }
         do {
@@ -105,8 +106,10 @@ final class BudgetsModel {
             formAmount = ""
             message = core.text("budgets:saved")
             await load()
+            return true
         } catch {
             message = core.text("budgets:saveFailed")
+            return false
         }
     }
 

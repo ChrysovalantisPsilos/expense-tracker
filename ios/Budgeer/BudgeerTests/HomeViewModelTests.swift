@@ -34,6 +34,10 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(model.periods.first?.value, "m:2020-9")
         XCTAssertEqual(model.periods.last?.value, "all")
         XCTAssertEqual(model.currentValue, "m:2020-9")
+        // The hero pages through the months only, oldest first, ending on this one.
+        XCTAssertEqual(model.monthPeriods.first?.value, "m:2020-3")
+        XCTAssertEqual(model.monthPeriods.last?.value, "m:2020-9")
+        XCTAssertEqual(model.thisMonthValue, "m:2020-9")
     }
 
     func testAPastMonthShowsItsCharges() async throws {
@@ -78,15 +82,21 @@ final class HomeViewModelTests: XCTestCase {
         guard case .loaded(let card) = model.budgets else { return XCTFail("\(model.budgets)") }
         XCTAssertEqual(card.subtitle, "This month")
         XCTAssertEqual(card.items.map(\.name), ["Groceries"])
+        XCTAssertNil(card.held) // this month: no note yet
         // The month in plain words stays out while its switch is off.
         XCTAssertNil(model.words)
-        // The Expenses card, ten rows a page.
-        guard case .loaded(let figures) = model.state else { return XCTFail("\(model.state)") }
-        let page = model.page(figures.expenseList, 1)
-        XCTAssertEqual(page.pages, 1)
-        XCTAssertEqual(page.rows, figures.expenseList.rows)
-        XCTAssertEqual(page.position, "Page 1 of 1")
-        XCTAssertEqual(model.row(id: "a1")?["amount_minor"], 4250)
+    }
+
+    func testAPastMonthThatKeptEveryBudgetSaysSo() async throws {
+        let fixture = try HomeFixture.load()
+        let repository = FakeStore(home: fixture)
+        repository.oldest = .success("2020-03-15")
+        repository.budgetsByPeriod = ["2020-08-01": [HomeViewModelTests.groceriesCap.with("period_start", "2020-08-01")]]
+        let model = model(repository, fixture)
+        await model.load()
+        await model.setPeriod("m:2020-8")
+        guard case .loaded(let card) = model.budgets else { return XCTFail("\(model.budgets)") }
+        XCTAssertEqual(card.held, HeldNote(title: "August 2020: every budget held", note: "You stayed under your 1 budget."))
     }
 
     func testInWordsWhenTheHelperIsOn() async throws {
@@ -103,11 +113,6 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertEqual(words.state, "ready")
         XCTAssertEqual(words.title, "September in short")
         XCTAssertEqual(words.lines, ["You spent less on groceries."])
-        XCTAssertEqual(model.monthTitle, "September")
-        model.pickTab("numbers")
-        XCTAssertFalse(model.showsWords)
-        model.pickTab("words")
-        XCTAssertTrue(model.showsWords)
         XCTAssertTrue(repository.summariesWritten.isEmpty)
     }
 

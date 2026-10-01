@@ -79,10 +79,6 @@ final class CommentsModel {
         }
     }
 
-    var canSend: Bool {
-        myMemberId != nil && !busy && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-
     func send() async {
         let body = draft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let me = myMemberId, !body.isEmpty else { return }
