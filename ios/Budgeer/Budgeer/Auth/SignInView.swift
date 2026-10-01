@@ -1,7 +1,9 @@
 // Sign-in, the web's Login page's words and order under the wordmark (its
 // mark drawing itself as the website's loader does): email and password, then
-// "or continue with" and the Google button (Google's own look: white, the
-// four-colour G, "Sign in with Google"). Passkeys come with their phase.
+// "or continue with", the Google button (Google's own look: white, the
+// four-colour G, "Sign in with Google") and Apple's (its own button: black,
+// or white in dark mode); Forgot password and Sign up open their own pages
+// (AuthFlowView). Passkeys stay the website's.
 import BudgeerCore
 import SwiftUI
 
@@ -13,11 +15,15 @@ final class SignInViewModel {
     private(set) var submitting = false
     /// Google's sheet is open (or its answer is being checked).
     private(set) var googleBusy = false
+    /// Apple's answer is being exchanged for a session.
+    private(set) var appleBusy = false
+
+    private var busy: Bool { submitting || googleBusy || appleBusy }
     /// A "ns:key" of the message to show, or nil.
     private(set) var errorKey: String?
 
     var canSubmit: Bool {
-        !submitting && !googleBusy && !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
+        !busy && !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }
 
     func submit(session: SessionStore) async {
@@ -35,7 +41,7 @@ final class SignInViewModel {
     /// "Sign in with Google": the legal check follows as for email. Closing
     /// Google's sheet is no error.
     func signInWithGoogle(session: SessionStore) async {
-        guard !submitting, !googleBusy else { return }
+        guard !busy else { return }
         googleBusy = true
         errorKey = nil
         defer { googleBusy = false }
@@ -46,6 +52,25 @@ final class SignInViewModel {
         } catch {
             errorKey = SignInViewModel.messageKey(for: error)
         }
+    }
+
+    /// "Sign in with Apple": Apple's credential for a session; the legal
+    /// check follows as for the others (a new account meets the gate).
+    func signInWithApple(_ credential: AppleCredential, session: SessionStore) async {
+        guard !busy else { return }
+        appleBusy = true
+        errorKey = nil
+        defer { appleBusy = false }
+        do {
+            try await session.signIn(with: .apple(credential))
+        } catch {
+            errorKey = SignInViewModel.messageKey(for: error)
+        }
+    }
+
+    /// Apple's sheet failed (not closed by the person: that's no error).
+    func appleFailed() {
+        errorKey = "common:errors.generic"
     }
 
     /// Supabase Auth's codes → the web's copy (shared/lib/errors.js AUTH_MESSAGES).
@@ -70,8 +95,9 @@ final class SignInViewModel {
 struct SignInView: View {
     @Bindable var model: SignInViewModel
     let session: SessionStore
-    /// The website (Forgot password and Sign up open there); nil leaves them out.
-    var site: String? = nil
+    /// Sign up and Forgot password (AuthFlowView's pages); nil leaves them out.
+    var onSignUp: (() -> Void)? = nil
+    var onForgot: (() -> Void)? = nil
     @Environment(AppLanguage.self) private var language
     @State private var showPassword = false
     @FocusState private var focus: Field?
@@ -111,9 +137,9 @@ struct SignInView: View {
                 }
                 .nativeGlassButton(prominent: true)
                 // As on the web, Log in stays live; an empty form simply isn't sent.
-                .disabled(model.submitting || model.googleBusy)
+                .disabled(model.submitting || model.googleBusy || model.appleBusy)
                 .accessibilityIdentifier("signin.submit")
-                divider
+                AuthDivider()
                 Button {
                     Task { await model.signInWithGoogle(session: session) }
                 } label: {
@@ -123,13 +149,23 @@ struct SignInView: View {
                     }
                 }
                 .buttonStyle(GoogleButtonStyle())
-                .disabled(model.submitting || model.googleBusy)
+                .disabled(model.submitting || model.googleBusy || model.appleBusy)
                 .accessibilityIdentifier("signin.google")
-                if let site, let url = URL(string: site + "/login?signup=1") {
-                    Link(destination: url) {
-                        SignUpLine(nodes: (try? BudgeerCore.shared.json("translate", "parseRich", [language.t("auth:login.switch")]))
+                AppleSignInButton { credential in
+                    Task { await model.signInWithApple(credential, session: session) }
+                } onFailure: { error in
+                    if !isAppleCancel(error) { model.appleFailed() }
+                }
+                .disabled(model.submitting || model.googleBusy || model.appleBusy)
+                .overlay { if model.appleBusy { ProgressView() } }
+                .accessibilityIdentifier("signin.apple")
+                if let onSignUp {
+                    Button(action: onSignUp) {
+                        SwitchLine(nodes: (try? BudgeerCore.shared.json("translate", "parseRich", [language.t("auth:login.switch")]))
                                    ?? [.string(language.t("auth:login.switch"))])
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("signin.signup")
                 }
                 Text(language.t("common:hobby.disclaimer"))
                     .font(.caption)
@@ -186,16 +222,21 @@ struct SignInView: View {
             }
             .padding(.horizontal, 16)
             .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            if let site, let url = URL(string: site + "/forgot-password") {
-                Link(language.t("auth:login.forgot"), destination: url)
+            if let onForgot {
+                Button(language.t("auth:login.forgot"), action: onForgot)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NativeStyle.tint)
+                    .accessibilityIdentifier("signin.forgot")
             }
         }
     }
+}
 
-    /// "or continue with" between hairlines.
-    private var divider: some View {
+/// "or continue with" between hairlines (sign-in and sign-up).
+struct AuthDivider: View {
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
         HStack(spacing: 12) {
             Rectangle().fill(Color.primary.opacity(0.12)).frame(height: 1)
             Text(language.t("auth:orContinue")).font(.caption).foregroundStyle(.secondary).fixedSize()
@@ -204,8 +245,9 @@ struct SignInView: View {
     }
 }
 
-/// "Don't have an account? Sign up": the words, the action in the accent.
-private struct SignUpLine: View {
+/// "Don't have an account? Sign up" (and sign-up's "Already have one? Log
+/// in"): the words, the action in the accent.
+struct SwitchLine: View {
     let nodes: JSONValue
 
     var body: some View {

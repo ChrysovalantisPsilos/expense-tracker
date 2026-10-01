@@ -18,16 +18,21 @@ final class AppContainer {
     let data: DataLayer
     /// Settings › Security's sign-in methods and password.
     let security: AccountSecurity
+    /// Signing up, the confirmation again, a password reset (signed out).
+    let access: AccountAccess
     /// The Face ID lock (this device's choice).
     let lock = AppLock()
     /// An invite link the app was opened with (budgeer://join/<token>).
     let joinInbox = JoinInbox()
+    /// Push on this iPhone (the permission, the device token on the server).
+    let push: PushModel
 
     init(config: AppConfig) {
         self.config = config
         client = SupabaseClientProvider.make(config)
         session = SessionStore(auth: SupabaseAuthService(client: client))
         security = SupabaseAccountSecurity(client: client, config: config)
+        access = SupabaseAccountAccess(client: client)
         cache = QueryCache.standard()
         let live = LiveHub()
         self.live = live
@@ -37,6 +42,10 @@ final class AppContainer {
             Task { @MainActor in live.changed([table]) }
         })
         data = DataLayer(store)
+        let push = PushModel(data: data, system: ApplePushSystem(), environment: config.apnsEnvironment)
+        self.push = push
+        // Signing out forgets this iPhone's token while the session still can.
+        session.beforeSignOut = { await push.forget() }
     }
 
     /// Signed out: stop the realtime feed and forget the offline copies, so

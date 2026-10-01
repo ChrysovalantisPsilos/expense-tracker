@@ -15,6 +15,7 @@ import { signupConsentMetadata } from '../privacy/legal.js'
 import { rememberConsentMarker } from '../privacy/legalConsentStore.js'
 import AuthLayout from './AuthLayout.jsx'
 import GoogleIcon from '../../shared/ui/GoogleIcon.jsx'
+import AppleIcon from '../../shared/ui/AppleIcon.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { firstInvalid } from '../../shared/lib/formChecks.js'
 import { AUTH_FIELDS, authErrors, consentError } from './authChecks.js'
@@ -30,8 +31,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   // Field errors show from the first submit on, and then follow the typing.
   const [tried, setTried] = useState(false)
-  // "Sign up with Google" pressed without the tick: only the tick's error shows.
-  const [googleTried, setGoogleTried] = useState(false)
+  // "Sign up with Google/Apple" pressed without the tick: only the tick's error shows.
+  const [providerTried, setProviderTried] = useState(false)
   // A failed sign-in/up (wrong password, rate limit…), shown above the button.
   const [serverError, setServerError] = useState('')
   const fieldRefs = { email: useRef(null), password: useRef(null), consent: useRef(null) }
@@ -63,28 +64,29 @@ export default function Login() {
   }
 
   const errors = tried ? authErrors({ mode, email, password, accepted }) : {}
-  const consentMsg = errors.consent ?? (googleTried ? consentError({ mode, accepted }) : null)
+  const consentMsg = errors.consent ?? (providerTried ? consentError({ mode, accepted }) : null)
 
   function switchMode(m) {
     setMode(m)
     setTried(false)
-    setGoogleTried(false)
+    setProviderTried(false)
     setServerError('')
   }
 
-  // Signing up with Google needs the same tick as by email. Google can't carry
-  // it as account metadata, so the ticked versions wait in this tab until the
-  // app is back and records them (useLegalGate); logging in with Google ticks
-  // nothing, and a new account made that way meets the full prompt instead.
-  function handleGoogle() {
+  // Signing up with Google or Apple needs the same tick as by email. Neither
+  // can carry it as account metadata, so the ticked versions wait in this tab
+  // until the app is back and records them (useLegalGate); logging in with
+  // either ticks nothing, and a new account made that way meets the full
+  // prompt instead.
+  function handleProvider(provider) {
     if (mode === 'signup' && !accepted) {
-      setGoogleTried(true)
+      setProviderTried(true)
       fieldRefs.consent.current?.focus()
       return
     }
     rememberConsentMarker(mode === 'signup')
     rememberReturnPath(next)
-    signInWithProvider('google')
+    signInWithProvider(provider)
   }
 
   async function handleSubmit(e) {
@@ -208,8 +210,17 @@ export default function Login() {
           borderWidth="1px" borderColor="gray.300"
           _hover={{ bg: 'gray.50' }} _active={{ bg: 'gray.100' }}
           leftIcon={<GoogleIcon boxSize={5} />}
-          onClick={handleGoogle}>
+          onClick={() => handleProvider('google')}>
           {mode === 'signin' ? t('login.google') : t('signup.google')}
+        </Button>
+        {/* Apple's guidelines: black with white words and logo (white with
+            black in the dark theme), "Sign in/up with Apple". */}
+        <Button w="full" fontWeight="500"
+          bg="black" color="white" _hover={{ bg: 'gray.800' }} _active={{ bg: 'gray.700' }}
+          _dark={{ bg: 'white', color: 'black', _hover: { bg: 'gray.100' }, _active: { bg: 'gray.200' } }}
+          leftIcon={<AppleIcon boxSize={5} />}
+          onClick={() => handleProvider('apple')}>
+          {mode === 'signin' ? t('login.apple') : t('signup.apple')}
         </Button>
         {mode === 'signin' && passkeysSupported && (
           <Button variant="outline" colorScheme="gray" w="full"

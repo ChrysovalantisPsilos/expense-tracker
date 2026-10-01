@@ -20,10 +20,11 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
     private let defaults: UserDefaults
     let announce: @Sendable (String) -> Void
 
-    /// The profile columns the screens read (ProfileProvider's figures, the helpers' and the messages' switches).
+    /// The profile columns the screens read (ProfileProvider's figures, the helpers' and the messages' switches,
+    /// the setup wizard's, the tour's and What's new's marks).
     static let profileColumns = "id, base_currency, yearly_separate, salary_shift_from_day, salary_category_id, "
         + "ai_quick_entry, ai_import_categories, ai_month_summary, ai_plan_whatif, language, is_demo, display_name, avatar_url, "
-        + "notify_email, notify_digest"
+        + "notify_email, notify_push, notify_digest, onboarded_at, tour_done, whats_new_seen"
     /// shared/lib/categories.js CATEGORY_COLUMNS.
     static let categoryColumns = "id, name, kind, icon, color, is_archived, is_savings, default_key"
 

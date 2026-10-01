@@ -4,10 +4,9 @@
 // helpers and this phone's Face ID lock (its page: the switch and the app PIN). Privacy & security:
 // Security, Your data,
 // Privacy, and the Privacy Notice and Terms of Use (the website's pages in
-// Safari). Help: Help & FAQ and the status page (in Safari), What's new,
-// Contact support (Mail). Then Sign out and the version. Meal vouchers sits
-// after Monthly spending, as on the web. The tour and the live/test site
-// switch are the website's own.
+// Safari). Help: Help & FAQ (native), What's new, Take the tour again, the
+// status page (in Safari), Contact support (Mail). Then Sign out and the version. Meal vouchers sits
+// after Monthly spending, as on the web. The live/test site switch is the website's own.
 import SwiftUI
 
 @MainActor
@@ -16,6 +15,8 @@ struct SettingsView: View {
     let session: SessionStore
     let account: AccountModel
     let email: String
+    /// "Take the tour again" (the tour, back here when it ends).
+    var startTour: (() -> Void)? = nil
     @Environment(AppLanguage.self) private var language
     @AppStorage(AppAppearance.key) private var appearance = AppAppearance.system
     @State private var web: WebPage?
@@ -79,6 +80,7 @@ struct SettingsView: View {
                             title: language.t("settings:rows.data.label"), id: "settings.data")
                 SettingsRow(route: .privacy, symbol: "hand.raised.fill", color: NativeTone.sand,
                             title: language.t("settings:rows.privacy.label"), id: "settings.privacy")
+                    .tourTarget("settings-privacy")
                 webRow("/privacy", symbol: "doc.text.fill", color: NativeTone.sand,
                        title: language.t("settings:rows.privacyNotice.label"), id: "settings.privacyNotice")
                 webRow("/terms", symbol: "checkmark.seal.fill", color: NativeTone.sand,
@@ -89,10 +91,19 @@ struct SettingsView: View {
             .listRowBackground(NativeStyle.card)
 
             Section {
-                webRow("/help", symbol: "questionmark.circle.fill", color: NativeTone.amber,
-                       title: language.t("settings:rows.help.label"), id: "settings.help")
+                SettingsRow(route: .help(nil), symbol: "questionmark.circle.fill", color: NativeTone.amber,
+                            title: language.t("settings:rows.help.label"), id: "settings.help")
                 SettingsRow(route: .whatsNew, symbol: "sparkle", color: NativeTone.amber,
                             title: language.t("settings:rows.whatsNew.label"), id: "settings.whatsNew")
+                if let startTour {
+                    Button(action: startTour) {
+                        SettingsLabel(symbol: "safari.fill", color: NativeTone.amber,
+                                      title: language.t("settings:rows.tour.label"))
+                    }
+                    .foregroundStyle(Color.primary)
+                    .accessibilityHint(language.t("settings:rows.tour.desc"))
+                    .accessibilityIdentifier("settings.tour")
+                }
                 if let contact = SettingsFigures.contact() {
                     webRow(contact.status, symbol: "waveform.path.ecg", color: NativeTone.amber,
                            title: language.t("settings:rows.status.label"), id: "settings.status")

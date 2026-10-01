@@ -1,8 +1,9 @@
 // Budgets (from Home's "See all" and More): this month's caps with their
 // spend, each row's bar easing to its percent (a light warning tap the
-// first time one crosses its cap). Tap a row (or swipe it) to change its
-// cap; swipe it away to delete it; the floating Add sets a new one (the
-// page lends it, AddSlot); "Copy last month's
+// first time one crosses its cap). Tap a row for its category's page (its
+// entries and its budget, as the web's rows link); swipe it to change its
+// cap or to delete it; the floating Add sets a new one (the page lends it,
+// AddSlot); "Copy last month's
 // budgets" when they can be copied. Every figure and word is BudgetsModel's.
 import SwiftUI
 
@@ -44,12 +45,16 @@ struct BudgetsView: View {
                 } else {
                     Section {
                         ForEach(figures.items) { item in
-                            Button { edit(item) } label: { BudgetRowView(item: item) }
-                                .foregroundStyle(Color.primary)
+                            // The row opens its category's page (BudgetRow's link); swipe to change or delete.
+                            NavigationLink(value: AppRoute.categoryPage(item.categoryId, nil)) { BudgetRowView(item: item) }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     Button(role: .destructive) { removing = item } label: {
                                         Label(language.t("common:actions.delete"), systemImage: "trash")
                                     }
+                                    Button { edit(item) } label: {
+                                        Label(language.t("common:actions.edit"), systemImage: "pencil")
+                                    }
+                                    .tint(NativeStyle.tint)
                                 }
                                 .accessibilityIdentifier("budgets.row.\(item.categoryId)")
                         }

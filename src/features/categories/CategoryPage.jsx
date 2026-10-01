@@ -29,9 +29,9 @@ import { useTransactions, useOldestTransactionDate, useNewestCountedDate } from 
 import { buildPeriods, isMonthPeriod, withPeriod } from '../../shared/lib/periods.js'
 import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { useMonthBudgets, editBudget, deleteBudget } from '../budgets/budgets.js'
-import { budgetChange, budgetPercent, budgetTone, carriedLabel } from '../budgets/budgetMath.js'
+import { budgetChange } from '../budgets/budgetMath.js'
 import { useAllCategories, updateCategory } from '../../shared/lib/categories.js'
-import { categoryPatch, categoryPeriod, sameKindOthers } from './categoryMath.js'
+import { categoryBudget, categoryPageHead, categoryPatch, categoryPeriod, sameKindOthers } from './categoryMath.js'
 import { parseCategoryRoute } from '../../shared/lib/categoryLinks.js'
 import CategoryFields, { useCategoryDraft } from './CategoryFields.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
@@ -57,7 +57,8 @@ export default function CategoryPage() {
 
   const cats = useAllCategories()
   const category = uncategorised ? null : cats.rows.find((c) => c.id === categoryId) ?? null
-  const kind = uncategorised ? 'expense' : category?.kind
+  const head = categoryPageHead(category, uncategorised)
+  const { kind } = head
   const missing = !categoryId || (!uncategorised && !cats.loading && !cats.error && !category)
 
   const [oldest, recheckOldest] = useOldestTransactionDate()
@@ -96,7 +97,7 @@ export default function CategoryPage() {
   const [focusBudget, setFocusBudget] = useState(false)
   const openEdit = (withBudget) => { setFocusBudget(withBudget); setEditing(true) }
 
-  const name = uncategorised ? t('uncategorized') : categoryDisplayName(category)
+  const { name } = head
   const pickPeriod = (value) => setParams({ period: value }, { replace: true })
 
   if (missing) {
@@ -110,9 +111,7 @@ export default function CategoryPage() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader title={name || '…'}
-        eyebrow={t(`page.eyebrow.${category?.is_archived ? 'archived'
-          : category?.is_savings ? 'savings' : kind === 'income' ? 'income' : 'expense'}`)}
+      <PageHeader title={name || '…'} eyebrow={head.eyebrow}
         leading={(
           <HStack spacing={3} flexShrink={0}>
             <BackButton />
@@ -139,8 +138,7 @@ export default function CategoryPage() {
           {txns.loading ? (
             <SkeletonRegion flex="1"><SkeletonFigure size="xl" w="160px" /></SkeletonRegion>
           ) : (
-            <Figure label={t(`page.total.${category?.is_savings ? 'saved' : kind === 'income' ? 'earned' : 'spent'}`)} size="xl"
-              value={formatMoney(total, baseCurrency)} />
+            <Figure label={head.totalLabel} size="xl" value={formatMoney(total, baseCurrency)} />
           )}
           <Select w={{ base: '180px', sm: '200px' }} size="md" borderRadius="lg" aria-label={t('page.period')}
             value={period.value} onChange={(e) => pickPeriod(e.target.value)}>
@@ -173,33 +171,27 @@ export default function CategoryPage() {
   )
 }
 
-// The period's budget: a progress bar against the cap, or a way to set one.
+// The period's budget (categoryBudget): a progress bar against the cap, or a
+// way to set one.
 function BudgetSummary({ budget, spent, month, canEdit, period, loading, baseCurrency, onSetBudget }) {
-  const t = useT('categories')
-  if (!month) {
-    return <Text color="text.muted" fontSize="sm">{t('page.budgetsMonthly')}</Text>
-  }
+  const line = categoryBudget({ budget, spent, month, canEdit, period, baseCurrency })
+  if (line.state === 'monthly') return <Text color="text.muted" fontSize="sm">{line.text}</Text>
   if (loading) return <SkeletonRegion><SkeletonProgressRow /></SkeletonRegion>
-  if (budget) {
-    const carried = budget.period_start < period.from ? carriedLabel(budget.period_start, period.from) : null
+  if (line.state === 'bar') {
     return (
       <>
-        <ProgressRow icon={Target} title={t('page.budget')}
-          meta={t('page.budgetOf', {
-            spent: formatMoney(spent, baseCurrency), cap: formatMoney(budget.amount_minor, baseCurrency),
-          })}
-          percent={budgetPercent(spent, budget.amount_minor)}
-          tone={budgetTone(spent, budget.amount_minor)} over={spent > budget.amount_minor} />
-        {carried && <Text color="text.muted" fontSize="xs" mt={2}>{carried}</Text>}
+        <ProgressRow icon={Target} title={line.title} meta={line.meta} percent={line.percent}
+          tone={line.tone ?? undefined} over={line.over} />
+        {line.carried && <Text color="text.muted" fontSize="xs" mt={2}>{line.carried}</Text>}
       </>
     )
   }
-  return canEdit ? (
+  return line.state === 'set' ? (
     <Button variant="outline" h="44px" leftIcon={<Target size={16} />} onClick={onSetBudget}>
-      {t('page.setBudget')}
+      {line.text}
     </Button>
   ) : (
-    <Text color="text.muted" fontSize="sm">{t('page.noBudget', { period: period.label })}</Text>
+    <Text color="text.muted" fontSize="sm">{line.text}</Text>
   )
 }
 

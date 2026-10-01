@@ -9,6 +9,8 @@ import { toBaseMinor } from '../../shared/lib/currency.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 import { NO_CATEGORY, byDisplayName, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { categoryIconKey } from '../../shared/lib/categoryStyle.js'
+import { formatMoney } from '../../shared/lib/currency.js'
+import { budgetPercent, budgetTone, carriedLabel } from '../budgets/budgetMath.js'
 
 export const CATEGORY_NAME_MAX = 60
 
@@ -100,6 +102,49 @@ export function categoryPeriod(rows, { categoryId, from, to, baseCurrency, separ
   const total = spendRows(mine, baseCurrency, from, to, { separateYearly, salaryShift })
     .reduce((sum, r) => sum + toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency), 0)
   return { listed: paidInWindow(mine, from, to), total }
+}
+
+// The category page's heading (CategoryPage.jsx) for `category` (null for
+// the uncategorised bucket, `uncategorised` true): its kind, its name, the
+// eyebrow above it and the label of its total. A savings category's total is
+// what was saved (0084), never "Earned".
+export function categoryPageHead(category, uncategorised = false) {
+  const kind = uncategorised ? 'expense' : category?.kind
+  const eyebrow = category?.is_archived ? 'archived'
+    : category?.is_savings ? 'savings' : kind === 'income' ? 'income' : 'expense'
+  return {
+    kind,
+    name: uncategorised ? t('categories:uncategorized') : categoryDisplayName(category),
+    eyebrow: t(`categories:page.eyebrow.${eyebrow}`),
+    totalLabel: t(`categories:page.total.${category?.is_savings ? 'saved' : kind === 'income' ? 'earned' : 'spent'}`),
+  }
+}
+
+// The category page's budget line for a period: budgets are monthly, so a
+// longer period says so ('monthly'); a month with a cap shows its bar
+// ('bar': "€312.40 of €400.00", the percent, the tone, over, and where a
+// carried cap came from); without one, this month offers "Set a budget"
+// ('set') and any other month says it had none ('none').
+//   budget  — my_budgets' row for the category in the month, or null
+//   spent   — the period's total (minor units, base currency)
+//   canEdit — the month is this month (only its cap can change)
+export function categoryBudget({ budget, spent, month, canEdit, period, baseCurrency }) {
+  if (!month) return { state: 'monthly', text: t('categories:page.budgetsMonthly') }
+  if (budget) {
+    const cap = budget.amount_minor
+    return {
+      state: 'bar',
+      title: t('categories:page.budget'),
+      meta: t('categories:page.budgetOf', { spent: formatMoney(spent, baseCurrency), cap: formatMoney(cap, baseCurrency) }),
+      percent: budgetPercent(spent, cap),
+      tone: budgetTone(spent, cap) ?? null,
+      over: spent > cap,
+      carried: budget.period_start < period.from ? carriedLabel(budget.period_start, period.from) : null,
+    }
+  }
+  return canEdit
+    ? { state: 'set', text: t('categories:page.setBudget') }
+    : { state: 'none', text: t('categories:page.noBudget', { period: period.label }) }
 }
 
 // The default income categories added since 0081: new accounts are seeded

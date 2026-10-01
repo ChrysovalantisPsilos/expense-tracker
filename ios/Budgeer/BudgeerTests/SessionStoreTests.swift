@@ -35,6 +35,43 @@ final class SessionStoreTests: XCTestCase {
         XCTAssertEqual(store.state, .ready(.sample))
     }
 
+    func testTheGateRecordsTheAcceptance() async throws {
+        let auth = FakeAuthService(user: .sample)
+        auth.legal = .success(.fresh)
+        let store = SessionStore(auth: auth)
+        await store.start()
+        XCTAssertEqual(store.state, .legalRequired(.sample, .fresh))
+        try await store.acceptLegal()
+        XCTAssertEqual(auth.accepted, 1)
+        XCTAssertEqual(store.state, .ready(.sample))
+    }
+
+    func testAFailedAcceptanceKeepsTheGate() async {
+        let auth = FakeAuthService(user: .sample)
+        auth.legal = .success(.outdated)
+        auth.acceptResult = .failure(FakeError(description: "offline"))
+        let store = SessionStore(auth: auth)
+        await store.start()
+        do {
+            try await store.acceptLegal()
+            XCTFail("expected the refusal")
+        } catch {}
+        XCTAssertEqual(store.state, .legalRequired(.sample, .outdated))
+    }
+
+    func testSignOutRunsTheHookWhileSignedIn() async throws {
+        let auth = FakeAuthService()
+        let store = SessionStore(auth: auth)
+        var hooked: [Int] = []
+        store.beforeSignOut = { hooked.append(auth.signedOut) }
+        await store.start()
+        await store.signOut() // signed out already: nothing to forget
+        XCTAssertEqual(hooked, [])
+        try await store.signIn(email: "sam@example.com", password: "pw")
+        await store.signOut()
+        XCTAssertEqual(hooked, [1]) // before the service signed out (the earlier call counted once)
+    }
+
     func testLegalCheckFailureBlocksTheApp() async {
         let auth = FakeAuthService(user: .sample)
         auth.legal = .failure(FakeError(description: "offline"))

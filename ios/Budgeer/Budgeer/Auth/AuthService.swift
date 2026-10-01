@@ -1,15 +1,24 @@
 // Sign-in, the session and the legal check, behind one protocol so the view
-// models can be tested with a fake. Email and password and Google are wired
-// (Google through the system's web sheet, as the web's OAuth redirect);
-// Apple and passkeys are cases the service refuses until their phase (the
-// web has passkeys; Apple was dropped by the owner).
+// models can be tested with a fake. Email and password, Google (through the
+// system's web sheet, as the web's OAuth redirect) and Apple (the system's
+// Sign in with Apple sheet, its identity token exchanged for a session) are
+// wired; passkeys are a case the service refuses (they stay the website's).
 import Foundation
+
+/// What Sign in with Apple answered: its identity token, the nonce whose
+/// SHA-256 the request carried (Supabase checks the token's against it), and
+/// the person's name, which Apple gives only on the first sign-in.
+struct AppleCredential: Sendable, Equatable {
+    let idToken: String
+    let nonce: String
+    var fullName: String? = nil
+}
 
 /// A way into an account.
 enum SignInMethod: Sendable, Equatable {
     case password(email: String, password: String)
     case google
-    case apple
+    case apple(AppleCredential)
     case passkey
 }
 
@@ -59,4 +68,7 @@ protocol AuthService: Sendable {
     func signOut() async throws
     /// my_legal_status for the signed-in user.
     func legalStatus() async throws -> LegalStatus
+    /// accept_legal_documents: the versions in force accepted now (recorded
+    /// as consent, source 'prompt', as the web's legal prompt does); the new status.
+    func acceptLegal() async throws -> LegalStatus
 }

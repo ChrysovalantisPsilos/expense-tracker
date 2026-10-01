@@ -31,6 +31,7 @@ import { formatMoney, formatSigned } from '../src/shared/lib/currency.js'
 import { signTone } from '../src/shared/ui/kit/kitMath.js'
 import { isoDate } from '../src/shared/lib/dates.js'
 import { categoryLook } from '../src/shared/lib/categoryStyle.js'
+import { linkBuckets } from '../src/shared/lib/categoryLinks.js'
 import { t } from '../src/shared/lib/i18n/i18n.js'
 import {
   chargeParts, chargedGroups, chargedHeadline, chargedWording, groupNote, groupTotalParts, nextChargeParts,
@@ -116,14 +117,18 @@ export function homeFigures({ rows, profile, categories, rules = [], rates = {},
   const labels = bucketLabels([...totals.bucketRow.values()])
   // Each bar's badge as Dashboard's BucketIcon draws it: a group's share
   // wears the people icon, anything else its category's look.
+  // Each bar's drill-down (linkBuckets): its category's page for the period,
+  // or its group's; the folded "Other" has none.
   const shape = (ranked) => {
     const lines = barLines(ranked, spend, baseCurrency)
+    const linked = linkBuckets(ranked, spend, period)
     return ranked.map((c, i) => {
       const row = totals.bucketRow.get(c.name)
       return {
         name: c.name, label: bucketLabel(c, labels), value: c.value, share: c.share, ratio: c.ratio,
         amount: formatMoney(c.value, baseCurrency), meta: lines[i],
         group: !!row?.group_expense_id, look: categoryLook(row?.categories),
+        to: linked[i].to ?? null, linkLabel: linked[i].linkLabel ?? null,
       }
     })
   }

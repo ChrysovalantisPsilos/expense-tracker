@@ -95,6 +95,13 @@ import * as spendingPrefs from '../src/features/settings/spendingPrefs.js'
 import * as authMethods from '../src/features/settings/authMethods.js'
 import * as legal from '../src/features/privacy/legal.js'
 import * as whatsNewMath from '../src/features/whatsnew/whatsNewMath.js'
+import * as categoryLinks from '../src/shared/lib/categoryLinks.js'
+import * as authChecks from '../src/features/auth/authChecks.js'
+import * as confirmWait from '../src/features/auth/confirmWait.js'
+import * as onboardingMath from '../src/features/onboarding/onboardingMath.js'
+import * as tourSteps from '../src/features/onboarding/tourSteps.js'
+import * as faqContent from '../src/features/help/faqContent.js'
+import * as faqMath from '../src/features/help/faqMath.js'
 
 // The language every wording function answers in. English is the default and
 // always at hand; Greek is bundled here too (the web app fetches it lazily).
@@ -187,6 +194,13 @@ export const modules = {
   authMethods,
   legal,
   whatsNewMath,
+  categoryLinks,
+  authChecks,
+  confirmWait,
+  onboardingMath,
+  tourSteps,
+  faqContent,
+  faqMath,
 }
 
 // The paths each namespace comes from, for the guard test and the docs.

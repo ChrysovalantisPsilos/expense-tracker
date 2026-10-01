@@ -57,6 +57,10 @@ enum AppRoute: Hashable {
     case yourData
     case exportBackup
     case restoreBackup
+    /// A category's page (an id, or "none" for the uncategorised), for a period value (nil: this month).
+    case categoryPage(String, String?)
+    /// Help & FAQ, opened at a question when one is named (the web's #anchor).
+    case help(String?)
 }
 
 /// What the Add sheet opens on.
@@ -117,27 +121,18 @@ final class AppRouter {
         groups.append(AppRoute.join(token))
     }
 
-    /// A web path (a notification's, bellMath.notificationPath) as a tab and page.
+    /// A web path (a notification's, bellMath.notificationPath; What's new's
+    /// actions; the tour's stops) as a tab and its pages (AppPaths).
     func open(path: String) {
-        if path == "/" {
-            tab = .home
-            home = NavigationPath()
-        } else if path == "/budgets" {
-            tab = .home
-            home = NavigationPath()
-            home.append(AppRoute.budgets)
-        } else if path == "/recurring" {
-            tab = .more
-            more = NavigationPath()
-            more.append(AppRoute.recurring)
-
-        } else if path == "/groups" {
-            tab = .groups
-            groups = NavigationPath()
-        } else if path.hasPrefix("/groups/") {
-            tab = .groups
-            groups = NavigationPath()
-            groups.append(AppRoute.group(String(path.dropFirst("/groups/".count))))
+        guard let place = AppPaths.place(path) else { return }
+        var stack = NavigationPath()
+        for route in place.routes { stack.append(route) }
+        tab = place.tab
+        switch place.tab {
+        case .home, .add: home = stack
+        case .activity: activity = stack
+        case .groups: groups = stack
+        case .more: more = stack
         }
     }
 }
@@ -186,6 +181,9 @@ final class AppModels {
     let importRules: ImportRulesModel
     /// The account's language, lined up with this device's (Settings › Language saves through it).
     let profileLanguage: ProfileLanguage
+    /// The wizard, What's new and the tour.
+    let welcome: WelcomeModel
+    let tour: TourModel
 
     init(data: DataLayer, userId: String, language: AppLanguage, security accountSecurity: AccountSecurity,
          signOut: @escaping @MainActor () async -> Void) {
@@ -208,6 +206,8 @@ final class AppModels {
         salary = SalaryModel(data: data)
         importRules = ImportRulesModel(data: data)
         profileLanguage = ProfileLanguage(language: language, profiles: data.profile)
+        welcome = WelcomeModel(data: data)
+        tour = TourModel(data: data)
     }
 }
 
@@ -231,9 +231,13 @@ struct AppFrame: View {
                     page(tab, models)
                 }
                 .sheet(item: $router.add) { request in
-                    AddSheet(request: request, data: container.data, userId: userId, groups: models.myGroups)
-                        .environment(language)
+                    AddSheet(request: request, data: container.data, userId: userId, groups: models.myGroups) {
+                        // The first entry saved is the moment to ask about notifications (once).
+                        Task { await container.push.askAfterFirstAction() }
+                    }
+                    .environment(language)
                 }
+                .welcomeLayer(welcome: models.welcome, tour: models.tour, router: router)
                 .task(id: user.id) { await models.shell.load() }
                 .liveRefresh(container.live, tables: ["notifications", "profiles", "meal_vouchers"]) {
                     await models.shell.load()
@@ -246,8 +250,12 @@ struct AppFrame: View {
         .onAppear {
             if models == nil {
                 let session = container.session
-                models = AppModels(data: container.data, userId: userId, language: language, security: container.security,
-                                   signOut: { await session.signOut() })
+                let push = container.push
+                let built = AppModels(data: container.data, userId: userId, language: language, security: container.security,
+                                      signOut: { await session.signOut() })
+                // The wizard's "Enable notifications" is Settings' push switch turned on.
+                built.welcome.pushOptIn = { await push.optIn() }
+                models = built
             }
         }
         // The account's language: the profile's wins (ProfileLanguage), on
@@ -259,6 +267,14 @@ struct AppFrame: View {
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.
         .task(id: user.id) { await container.feed.start(userId: user.id) }
+        // Push: re-register when iOS already allows it (never asks here).
+        .task(id: user.id) { await container.push.refresh() }
+        // A tapped notification opens its page, as the bell's rows do.
+        .onChange(of: PushInbox.shared.path, initial: true) { _, path in
+            guard let path else { return }
+            PushInbox.shared.path = nil
+            router.open(path: path)
+        }
         // A budgeer://join link (RootView keeps it until the frame is up).
         .onChange(of: container.joinInbox.token, initial: true) { _, token in
             guard let token else { return }
@@ -291,12 +307,12 @@ struct AppFrame: View {
         }
     }
 
-    /// The floating Add: what the page on top lends it (AddSlot), else a new entry.
     /// Nothing logged yet: Add your first expense (the web's /transactions/new).
     private func addFirstEntry() {
         router.add = AddRequest(model: EntryFormModel(mode: .add, data: container.data))
     }
 
+    /// The floating Add: what the page on top lends it (AddSlot), else a new entry.
     private func add(_ models: AppModels) {
         switch router.slot?.action {
         case .some(.run(let action)):
@@ -432,7 +448,8 @@ struct AppFrame: View {
             HomeCategoriesPage(model: models.home)
         case .settings:
             SettingsView(config: container.config, session: container.session, account: models.account,
-                         email: user.email ?? "")
+                         email: user.email ?? "",
+                         startTour: { Task { await models.tour.start(returnTo: "/settings") } })
                 .liveRefresh(container.live, tables: ["profiles"]) { await models.account.refreshProfile() }
         case .language:
             LanguageView(profileLanguage: models.profileLanguage)
@@ -442,7 +459,7 @@ struct AppFrame: View {
             SpendingView(model: models.preferences)
                 .liveRefresh(container.live, tables: ["profiles", "categories"]) { await models.preferences.load() }
         case .messages:
-            MessagesView(model: models.preferences)
+            MessagesView(model: models.preferences, push: container.push)
                 .liveRefresh(container.live, tables: ["profiles"]) { await models.preferences.load() }
         case .appearance:
             AppearanceView()
@@ -526,6 +543,12 @@ struct AppFrame: View {
                 router.groups.append(AppRoute.group(id))
                 Task { await models.groups.load() }
             }
+        case .categoryPage(let id, let period):
+            CategoryPageHost(id: id, period: period, data: container.data, live: container.live,
+                             open: { row in router.add = AddRequest(model: EntryFormModel(mode: .edit, transaction: row,
+                                                                                         data: container.data)) })
+        case .help(let anchor):
+            HelpView(site: container.config.siteURL, anchor: anchor)
         case .notifications:
             NotificationsView(model: models.shell) { item in
                 if let path = item.path { router.open(path: path) }

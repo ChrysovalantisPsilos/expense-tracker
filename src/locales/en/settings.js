@@ -118,13 +118,13 @@ export default {
   },
   security: {
     title: 'Security',
-    demo: 'The password, email, passkeys, Google sign-in and account deletion can’t be changed on the shared demo account.',
+    demo: 'The password, email, passkeys, Google and Apple sign-in and account deletion can’t be changed on the shared demo account.',
   },
   // "Please sign in again" (ReauthNotice): one whole sentence per case.
   reauth: {
     logInAgain: 'Log in again',
-    passkeyGoogle: 'For your security, please sign in again to add a passkey or change your Google connection.',
-    passkeyGoogleDelete: 'For your security, please sign in again to add a passkey, change your Google connection or delete your account.',
+    passkeyGoogle: 'For your security, please sign in again to add a passkey or change your Google or Apple connection.',
+    passkeyGoogleDelete: 'For your security, please sign in again to add a passkey, change your Google or Apple connection or delete your account.',
   },
   signIn: {
     title: 'Sign-in methods',
@@ -132,6 +132,7 @@ export default {
     methods: {
       password: 'Email & password',
       google: 'Google',
+      apple: 'Apple',
       passkeys: 'Passkeys',
     },
     noPassword: 'No password yet',
@@ -143,6 +144,9 @@ export default {
     connect: 'Connect',
     disconnect: 'Disconnect',
     setPassword: 'Set a password',
+    // Each provider's words (authMethods: the toasts; notConnected, created
+    // and onlyWay say why it can't be disconnected (disconnectBlock);
+    // linkFallback and taken a failed link (linkErrorMessage)).
     google: {
       notLinked: 'Google wasn’t connected',
       linked: 'Google connected',
@@ -151,23 +155,35 @@ export default {
       disconnectFailed: 'Couldn’t disconnect Google',
       stillConnected: 'Google is still connected. Please try again.',
       disconnected: 'Google disconnected',
-    },
-    // Why Google can't be disconnected (googleDisconnectBlock).
-    block: {
-      loading: 'Still loading your sign-in methods.',
       notConnected: 'Google isn’t connected.',
-      createdWithGoogle: 'This account was created with Google, so Google stays connected. You can log in with either.',
+      created: 'This account was created with Google, so Google stays connected. You can log in with either.',
       onlyWay: 'Google is your only way to log in. Set a password first.',
-    },
-    // A failed link (linkErrorMessage).
-    linkError: {
-      fallback: 'Google wasn’t connected. Please try again.',
-      disabled: 'Connecting a Google account isn’t switched on for this site yet. Please try again later.',
+      linkFallback: 'Google wasn’t connected. Please try again.',
       taken: 'That Google account already belongs to another Budgeer account.',
     },
-    // A first password for a Google-only account.
+    apple: {
+      notLinked: 'Apple wasn’t connected',
+      linked: 'Apple connected',
+      linkedBody: 'You can now log in with Apple too.',
+      connectFailed: 'Couldn’t connect Apple',
+      disconnectFailed: 'Couldn’t disconnect Apple',
+      stillConnected: 'Apple is still connected. Please try again.',
+      disconnected: 'Apple disconnected',
+      notConnected: 'Apple isn’t connected.',
+      created: 'This account was created with Apple, so Apple stays connected. You can log in with either.',
+      onlyWay: 'Apple is your only way to log in. Set a password first.',
+      linkFallback: 'Apple wasn’t connected. Please try again.',
+      taken: 'That Apple ID already belongs to another Budgeer account.',
+    },
+    block: {
+      loading: 'Still loading your sign-in methods.',
+    },
+    linkError: {
+      disabled: 'Connecting another way to log in isn’t switched on for this site yet. Please try again later.',
+    },
+    // A first password for an account that logs in with Google or Apple only.
     firstPassword: {
-      lead: 'Log in with your email ({{email}}) and a password as well as with Google.',
+      lead: 'Log in with your email ({{email}}) and a password too.',
       submit: 'Set password',
       hasOne: 'This account already has a password',
       hasOneBody: 'Change it under Password below, or use “Forgot password?” on the log-in page.',

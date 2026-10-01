@@ -497,17 +497,23 @@
           {
             "name": "Uncategorized",
             "label": "Uncategorized",
-            "share": 42
+            "share": 42,
+            "to": "/categories/none",
+            "linkLabel": "Show Uncategorized expenses for this month"
           },
           {
             "name": "Groceries",
             "label": "Groceries",
-            "share": 22
+            "share": 22,
+            "to": "/categories/33333333-3333-4333-8333-333333333333",
+            "linkLabel": "Show Groceries expenses for this month"
           },
           {
             "name": "Eating out",
             "label": "Eating out",
-            "share": 21
+            "share": 21,
+            "to": "/categories/44444444-4444-4444-8444-444444444444",
+            "linkLabel": "Show Eating out expenses for this month"
           },
           {
             "name": "Lisbon trip",
@@ -517,7 +523,9 @@
           {
             "name": "Subscriptions",
             "label": "Subscriptions",
-            "share": 7
+            "share": 7,
+            "to": "/categories/66666666-6666-4666-8666-666666666666",
+            "linkLabel": "Show Subscriptions expenses for this month"
           }
         ],
         "hasTrend": true,
@@ -621,12 +629,16 @@
           {
             "name": "Uncategorized",
             "label": "Uncategorized",
-            "share": 58
+            "share": 58,
+            "to": "/categories/none",
+            "linkLabel": "Show Uncategorized expenses for August"
           },
           {
             "name": "Groceries",
             "label": "Groceries",
-            "share": 42
+            "share": 42,
+            "to": "/categories/33333333-3333-4333-8333-333333333333",
+            "linkLabel": "Show Groceries expenses for August"
           }
         ],
         "hasTrend": true,
@@ -732,17 +744,23 @@
           {
             "name": "Χωρίς κατηγορία",
             "label": "Χωρίς κατηγορία",
-            "share": 42
+            "share": 42,
+            "to": "/categories/none",
+            "linkLabel": "Δες τα έξοδα «Χωρίς κατηγορία» · Αυτός ο μήνας"
           },
           {
             "name": "Groceries",
             "label": "Σούπερ μάρκετ",
-            "share": 22
+            "share": 22,
+            "to": "/categories/33333333-3333-4333-8333-333333333333",
+            "linkLabel": "Δες τα έξοδα «Σούπερ μάρκετ» · Αυτός ο μήνας"
           },
           {
             "name": "Eating out",
             "label": "Eating out",
-            "share": 21
+            "share": 21,
+            "to": "/categories/44444444-4444-4444-8444-444444444444",
+            "linkLabel": "Δες τα έξοδα «Eating out» · Αυτός ο μήνας"
           },
           {
             "name": "Lisbon trip",
@@ -752,7 +770,9 @@
           {
             "name": "Subscriptions",
             "label": "Subscriptions",
-            "share": 7
+            "share": 7,
+            "to": "/categories/66666666-6666-4666-8666-666666666666",
+            "linkLabel": "Δες τα έξοδα «Subscriptions» · Αυτός ο μήνας"
           }
         ],
         "hasTrend": true,
@@ -856,12 +876,16 @@
           {
             "name": "Χωρίς κατηγορία",
             "label": "Χωρίς κατηγορία",
-            "share": 58
+            "share": 58,
+            "to": "/categories/none",
+            "linkLabel": "Δες τα έξοδα «Χωρίς κατηγορία» · Αύγουστος"
           },
           {
             "name": "Groceries",
             "label": "Σούπερ μάρκετ",
-            "share": 42
+            "share": 42,
+            "to": "/categories/33333333-3333-4333-8333-333333333333",
+            "linkLabel": "Δες τα έξοδα «Σούπερ μάρκετ» · Αύγουστος"
           }
         ],
         "hasTrend": true,

@@ -101,9 +101,10 @@ struct HomeView: View {
                 .background(NativeStyle.card, in: HomeCardStyle.shape)
                 .transition(HomeCardStyle.transition)
         }
-        comingUpCard(figures.recurring)
-        categoriesCard(figures)
-        budgetsCard
+        // The tour's stops point at these cards (tourTarget).
+        comingUpCard(figures.recurring).tourTarget("subscriptions")
+        categoriesCard(figures).tourTarget("categories")
+        budgetsCard.tourTarget("budgets")
         if let vouchers = model.vouchers {
             VoucherWallet(card: vouchers).transition(HomeCardStyle.transition)
         }
@@ -144,6 +145,7 @@ struct HomeView: View {
             }
         }
         .padding(.bottom, 6)
+        .tourTarget("period", "overview")
         .accessibilityElement(children: .contain)
         .accessibilityAdjustableAction { direction in
             let next = direction == .increment ? shown + 1 : shown - 1
@@ -201,7 +203,14 @@ struct HomeView: View {
                         .foregroundStyle(NativeStyle.tint)
                     }
                 } else {
-                    ForEach(card.items.prefix(3)) { BudgetRowView(item: $0) }
+                    ForEach(card.items.prefix(3)) { item in
+                        // The row opens its category's page for the month shown (BudgetRow's link).
+                        NavigationLink(value: AppRoute.categoryPage(item.categoryId, model.currentValue.isEmpty ? nil
+                                                                        : model.currentValue)) {
+                            BudgetRowView(item: item)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 if !card.subtitle.isEmpty {
                     Text(card.subtitle).font(.footnote).foregroundStyle(.secondary)
@@ -438,7 +447,7 @@ struct HomeCategoriesPage: View {
                 Section {
                     NativeShareBar(shares: figures.bars.map { ($0.name, $0.share) }).padding(.vertical, 6)
                     ForEach(Array(figures.bars.enumerated()), id: \.offset) { index, bar in
-                        CategoryRankRow(bar: bar, index: index).padding(.vertical, 4)
+                        BarLink(bar: bar) { CategoryRankRow(bar: bar, index: index).padding(.vertical, 4) }
                     }
                 } header: {
                     NativeCapsHeader(title: figures.period.label)

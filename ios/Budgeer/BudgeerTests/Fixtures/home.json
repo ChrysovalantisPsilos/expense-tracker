@@ -505,7 +505,9 @@
               "key": "other",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/none?period=m%3A2020-9",
+            "linkLabel": "Show Uncategorized expenses for this month"
           },
           {
             "name": "Groceries",
@@ -520,7 +522,9 @@
               "key": "groceries",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/33333333-3333-4333-8333-333333333333?period=m%3A2020-9",
+            "linkLabel": "Show Groceries expenses for this month"
           },
           {
             "name": "Eating out",
@@ -538,7 +542,9 @@
                 "fg": "#16939A",
                 "bg": "#16939A29"
               }
-            }
+            },
+            "to": "/categories/44444444-4444-4444-8444-444444444444?period=m%3A2020-9",
+            "linkLabel": "Show Eating out expenses for this month"
           },
           {
             "name": "Transport",
@@ -553,7 +559,9 @@
               "key": "transport",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/55555555-5555-4555-8555-555555555555?period=m%3A2020-9",
+            "linkLabel": "Show Transport expenses for this month"
           },
           {
             "name": "Lisbon trip",
@@ -571,7 +579,9 @@
                 "fg": "#16939A",
                 "bg": "#16939A29"
               }
-            }
+            },
+            "to": null,
+            "linkLabel": null
           },
           {
             "name": "Subscriptions",
@@ -586,7 +596,9 @@
               "key": "streaming",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-9",
+            "linkLabel": "Show Subscriptions expenses for this month"
           }
         ],
         "legend": [
@@ -603,7 +615,9 @@
               "key": "other",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/none?period=m%3A2020-9",
+            "linkLabel": "Show Uncategorized expenses for this month"
           },
           {
             "name": "Groceries",
@@ -618,7 +632,9 @@
               "key": "groceries",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/33333333-3333-4333-8333-333333333333?period=m%3A2020-9",
+            "linkLabel": "Show Groceries expenses for this month"
           },
           {
             "name": "Eating out",
@@ -636,7 +652,9 @@
                 "fg": "#16939A",
                 "bg": "#16939A29"
               }
-            }
+            },
+            "to": "/categories/44444444-4444-4444-8444-444444444444?period=m%3A2020-9",
+            "linkLabel": "Show Eating out expenses for this month"
           },
           {
             "name": "Transport",
@@ -651,7 +669,9 @@
               "key": "transport",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/55555555-5555-4555-8555-555555555555?period=m%3A2020-9",
+            "linkLabel": "Show Transport expenses for this month"
           },
           {
             "name": "Other",
@@ -666,7 +686,9 @@
               "key": "other",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": null,
+            "linkLabel": null
           }
         ],
         "fold": {
@@ -1115,7 +1137,9 @@
               "key": "streaming",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
+            "linkLabel": "Show Subscriptions expenses for August 2020"
           }
         ],
         "legend": [
@@ -1132,7 +1156,9 @@
               "key": "streaming",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
+            "linkLabel": "Show Subscriptions expenses for August 2020"
           }
         ],
         "fold": {
@@ -1300,7 +1326,9 @@
               "key": "other",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/none?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Χωρίς κατηγορία» · Αυτός ο μήνας"
           },
           {
             "name": "Groceries",
@@ -1315,7 +1343,9 @@
               "key": "groceries",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/33333333-3333-4333-8333-333333333333?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Groceries» · Αυτός ο μήνας"
           },
           {
             "name": "Eating out",
@@ -1333,7 +1363,9 @@
                 "fg": "#16939A",
                 "bg": "#16939A29"
               }
-            }
+            },
+            "to": "/categories/44444444-4444-4444-8444-444444444444?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Eating out» · Αυτός ο μήνας"
           },
           {
             "name": "Transport",
@@ -1348,7 +1380,9 @@
               "key": "transport",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/55555555-5555-4555-8555-555555555555?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Transport» · Αυτός ο μήνας"
           },
           {
             "name": "Lisbon trip",
@@ -1366,7 +1400,9 @@
                 "fg": "#16939A",
                 "bg": "#16939A29"
               }
-            }
+            },
+            "to": null,
+            "linkLabel": null
           },
           {
             "name": "Subscriptions",
@@ -1381,7 +1417,9 @@
               "key": "streaming",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Subscriptions» · Αυτός ο μήνας"
           }
         ],
         "legend": [
@@ -1398,7 +1436,9 @@
               "key": "other",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/none?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Χωρίς κατηγορία» · Αυτός ο μήνας"
           },
           {
             "name": "Groceries",
@@ -1413,7 +1453,9 @@
               "key": "groceries",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/33333333-3333-4333-8333-333333333333?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Groceries» · Αυτός ο μήνας"
           },
           {
             "name": "Eating out",
@@ -1431,7 +1473,9 @@
                 "fg": "#16939A",
                 "bg": "#16939A29"
               }
-            }
+            },
+            "to": "/categories/44444444-4444-4444-8444-444444444444?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Eating out» · Αυτός ο μήνας"
           },
           {
             "name": "Transport",
@@ -1446,7 +1490,9 @@
               "key": "transport",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/55555555-5555-4555-8555-555555555555?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Transport» · Αυτός ο μήνας"
           },
           {
             "name": "Other",
@@ -1461,7 +1507,9 @@
               "key": "other",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": null,
+            "linkLabel": null
           }
         ],
         "fold": {
@@ -1910,7 +1958,9 @@
               "key": "streaming",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
+            "linkLabel": "Δες τα έξοδα «Subscriptions» · Αύγουστος 2020"
           }
         ],
         "legend": [
@@ -1927,7 +1977,9 @@
               "key": "streaming",
               "tone": "accent",
               "tint": null
-            }
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
+            "linkLabel": "Δες τα έξοδα «Subscriptions» · Αύγουστος 2020"
           }
         ],
         "fold": {

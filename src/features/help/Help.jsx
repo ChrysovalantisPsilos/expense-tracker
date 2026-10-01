@@ -17,11 +17,11 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { STATUS_URL } from '../../shared/lib/contact.js'
 import { CURRENT_ENV, shareOrigin } from '../../shared/lib/environment.js'
-import { FAQ_SECTIONS } from './faqContent.js'
+import { FAQ_SECTIONS, faqSections } from './faqContent.js'
 import FaqClip from './FaqClip.jsx'
 import InstallIllustration from './InstallIllustration.jsx'
 import {
-  anchorFromHash, applyOpenIndexes, countItems, filterFaq, openIndexes, questionLink,
+  anchorFromHash, applyOpenIndexes, countItems, openIndexes, questionLink,
 } from './faqMath.js'
 import { MAIN_ID } from '../../shared/ui/SkipLink.jsx'
 import { copyText } from '../../shared/lib/clipboard.js'
@@ -94,7 +94,7 @@ function FaqBody() {
   const toast = useToast()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(() => new Set())
-  const sections = useMemo(() => filterFaq(FAQ_SECTIONS, query), [query])
+  const sections = useMemo(() => faqSections(query), [query])
   const total = countItems(sections)
 
   // A #question link opens that answer and scrolls to it (clearing any search

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  hasPasswordIdentity, toPasskeyList, hasPassword, signInMethods, googleDisconnectBlock,
+  hasPasswordIdentity, toPasskeyList, hasPassword, signInMethods, disconnectBlock, appleProfileName,
   linkErrorMessage, redirectError, newPasswordError, deleteAccountCheck, deletionScope, DELETE_CONFIRM_WORD,
 } from '../src/features/settings/authMethods.js'
 import en from '../src/locales/en/index.js'
@@ -29,6 +29,8 @@ const emailUser = { email: 'a@x.test', app_metadata: { providers: ['email'] } }
 const googleUser = { email: 'g@x.test', app_metadata: { providers: ['google'] } }
 const EMAIL_ID = { provider: 'email', identity_data: { email: 'a@x.test' } }
 const GOOGLE_ID = { provider: 'google', identity_data: { email: 'g@gmail.test' } }
+const appleUser = { email: 'r@privaterelay.appleid.com', app_metadata: { providers: ['apple'] } }
+const APPLE_ID = { provider: 'apple', identity_data: { email: 'r@privaterelay.appleid.com' } }
 
 test('hasPassword: an email identity, or a Google account that set one', () => {
   assert.equal(hasPassword(emailUser), true)
@@ -37,44 +39,70 @@ test('hasPassword: an email identity, or a Google account that set one', () => {
   assert.equal(hasPassword({ ...googleUser, user_metadata: { password_set: 'yes' } }), false)
 })
 
-test('signInMethods: rows for password, Google and (when supported) passkeys', () => {
+test('signInMethods: rows for password, Google, Apple and (when supported) passkeys', () => {
   const m = signInMethods({ user: emailUser, identities: [EMAIL_ID], passkeys: [{ id: 'p' }] })
   assert.deepEqual(m.map((x) => [x.key, x.connected, x.detail]), [
-    ['password', true, 'a@x.test'], ['google', false, 'Not connected'], ['passkeys', true, '1 passkey'],
+    ['password', true, 'a@x.test'], ['google', false, 'Not connected'], ['apple', false, 'Not connected'],
+    ['passkeys', true, '1 passkey'],
   ])
   const g = signInMethods({ user: googleUser, identities: [GOOGLE_ID], passkeys: null })
   assert.deepEqual(g.map((x) => [x.key, x.connected, x.detail]), [
-    ['password', false, 'No password yet'], ['google', true, 'g@gmail.test'],
+    ['password', false, 'No password yet'], ['google', true, 'g@gmail.test'], ['apple', false, 'Not connected'],
   ])
   assert.equal(g[1].identity, GOOGLE_ID)
-  assert.equal(signInMethods({ user: emailUser, identities: [], passkeys: [] })[2].detail, 'None yet')
-  assert.equal(signInMethods({ user: emailUser, identities: [], passkeys: [1, 2] })[2].detail, '2 passkeys')
+  const a = signInMethods({ user: appleUser, identities: [APPLE_ID], passkeys: null })
+  assert.deepEqual(a.map((x) => [x.key, x.connected, x.label]), [
+    ['password', false, 'Email & password'], ['google', false, 'Google'], ['apple', true, 'Apple'],
+  ])
+  assert.equal(a[2].identity, APPLE_ID)
+  assert.equal(signInMethods({ user: emailUser, identities: [], passkeys: [] })[3].detail, 'None yet')
+  assert.equal(signInMethods({ user: emailUser, identities: [], passkeys: [1, 2] })[3].detail, '2 passkeys')
 })
 
 test('signInMethods: while identities load, the providers stand in', () => {
   const both = { ...emailUser, app_metadata: { providers: ['email', 'google'] } }
   assert.equal(signInMethods({ user: both, identities: null }).find((x) => x.key === 'google').connected, true)
   assert.equal(signInMethods({ user: emailUser, identities: null }).find((x) => x.key === 'google').connected, false)
+  assert.equal(signInMethods({ user: appleUser, identities: null }).find((x) => x.key === 'apple').connected, true)
 })
 
-test('googleDisconnectBlock: never the last sign-in identity', () => {
-  assert.equal(googleDisconnectBlock({ user: emailUser, identities: [EMAIL_ID, GOOGLE_ID] }), null)
-  assert.match(googleDisconnectBlock({ user: googleUser, identities: [GOOGLE_ID] }), /only way to log in/)
-  assert.match(googleDisconnectBlock({
+test('disconnectBlock: never the last sign-in identity, for Google and Apple', () => {
+  assert.equal(disconnectBlock({ user: emailUser, identities: [EMAIL_ID, GOOGLE_ID] }), null)
+  assert.match(disconnectBlock({ user: googleUser, identities: [GOOGLE_ID] }), /Google is your only way to log in/)
+  assert.match(disconnectBlock({
     user: { ...googleUser, user_metadata: { password_set: true } }, identities: [GOOGLE_ID],
-  }), /stays connected/)
-  assert.match(googleDisconnectBlock({ user: emailUser, identities: [EMAIL_ID] }), /isn’t connected/)
-  assert.match(googleDisconnectBlock({ user: emailUser, identities: null }), /loading/)
+  }), /created with Google, so Google stays connected/)
+  assert.match(disconnectBlock({ user: emailUser, identities: [EMAIL_ID] }), /Google isn’t connected/)
+  assert.match(disconnectBlock({ user: emailUser, identities: null }), /loading/)
+  assert.equal(disconnectBlock({ user: appleUser, identities: [APPLE_ID, GOOGLE_ID], provider: 'apple' }), null)
+  assert.match(disconnectBlock({ user: appleUser, identities: [APPLE_ID], provider: 'apple' }), /Apple is your only way/)
+  assert.match(disconnectBlock({
+    user: { ...appleUser, user_metadata: { password_set: true } }, identities: [APPLE_ID], provider: 'apple',
+  }), /created with Apple/)
+  assert.match(disconnectBlock({ user: emailUser, identities: [EMAIL_ID, GOOGLE_ID], provider: 'apple' }), /Apple isn’t connected/)
 })
 
 test('linkErrorMessage: clear words for the known failures', () => {
   assert.match(linkErrorMessage({ code: 'manual_linking_disabled', message: 'Manual linking is disabled' }), /isn’t switched on/)
-  assert.match(linkErrorMessage({ code: 'identity_already_exists' }), /another Budgeer account/)
-  // Supabase's and Google's own text never shows: the fallback does.
-  assert.match(linkErrorMessage({ message: 'Boom' }), /wasn’t connected/)
+  assert.match(linkErrorMessage({ code: 'identity_already_exists' }), /Google account already belongs to another Budgeer account/)
+  assert.match(linkErrorMessage({ code: 'identity_already_exists' }, null, 'apple'), /Apple ID already belongs/)
+  // Supabase's, Google's and Apple's own text never shows: the fallback does.
+  assert.match(linkErrorMessage({ message: 'Boom' }), /Google wasn’t connected/)
+  assert.match(linkErrorMessage({ message: 'Boom' }, null, 'apple'), /Apple wasn’t connected/)
   assert.match(linkErrorMessage({ code: 'access_denied', description: 'Denied' }), /wasn’t connected/)
   assert.equal(linkErrorMessage({ message: 'Boom' }, 'Google is still connected.'), 'Google is still connected.')
   assert.match(linkErrorMessage(null), /wasn’t connected/)
+})
+
+test('appleProfileName: Apple\'s name only over the default one, cleaned', () => {
+  const email = 'x7k2@privaterelay.appleid.com'
+  assert.equal(appleProfileName({ displayName: 'x7k2', email, fullName: 'Maria Papadopoulou' }), 'Maria Papadopoulou')
+  assert.equal(appleProfileName({ displayName: null, email, fullName: '  Maria\nP ' }), 'Maria P')
+  assert.equal(appleProfileName({ displayName: 'Maria', email, fullName: 'Maria Papadopoulou' }), null)
+  assert.equal(appleProfileName({ displayName: 'x7k2', email, fullName: '   ' }), null)
+  assert.equal(appleProfileName({ displayName: 'x7k2', email, fullName: null }), null)
+  assert.equal(appleProfileName({ displayName: 'Ann', email: 'Ann@x.test', fullName: 'Ann' }), null)
+  assert.equal(appleProfileName({ displayName: 'x7k2', email, fullName: 'A'.repeat(80) }).length, 60)
 })
 
 test('newPasswordError: the sign-up rules first, then the two fields matching', () => {

@@ -1,7 +1,8 @@
 // Settings › Categories (CategoriesModel): Expenses or Income, then your
 // categories with their badges (archived ones dimmed, under the active
-// ones). Tap one to edit it; swipe to archive (or unarchive) or delete; the
-// floating Add adds one of the kind shown (the page lends it, AddSlot). Deleting asks where its entries go first
+// ones). Tap one for its page (its entries and budget; its pencil edits it);
+// swipe to archive (or unarchive) or delete; the floating Add adds one of
+// the kind shown (the page lends it, AddSlot). Deleting asks where its entries go first
 // (DeleteCategorySheet), the one confirmation here.
 import SwiftUI
 
@@ -56,7 +57,7 @@ struct CategoriesView: View {
                 Text(language.t("categories:list.empty.\(model.kind)")).foregroundStyle(.secondary)
             }
             ForEach(items) { item in
-                NavigationLink(value: AppRoute.category(item.id)) { CategoryRowView(item: item) }
+                NavigationLink(value: AppRoute.categoryPage(item.id, nil)) { CategoryRowView(item: item) }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
                             confirming = true

@@ -18,7 +18,7 @@ final class SnapshotTests: XCTestCase {
     static let variants = [("en", false), ("en", true), ("el", false)]
     private static let config = AppConfig(environment: .dev, supabaseURL: URL(string: "https://example.supabase.co")!,
                                           supabaseAnonKey: "test")
-    private static let user = AuthUser.sample.id.uuidString.lowercased()
+    static let user = AuthUser.sample.id.uuidString.lowercased()
     static let chrome = PageChrome(initials: "SM", badge: "1", onBell: {}, onProfile: {})
     /// Your circle (no photo: the initials in the accent).
     private static var avatar: Avatar? { Avatar.viewer(["display_name": "Sam Morgan"], core: .shared) }
@@ -41,7 +41,7 @@ final class SnapshotTests: XCTestCase {
     func testSignInSnapshots() async throws {
         for (lang, dark) in SnapshotTests.variants {
             let session = SessionStore(auth: FakeAuthService())
-            let signIn = SignInView(model: SignInViewModel(), session: session, site: "https://dev.budgeer.com")
+            let signIn = SignInView(model: SignInViewModel(), session: session, onSignUp: {}, onForgot: {})
             try await shots(signIn.environment(\.nativeFrozenMotion, 1), name: "signin", lang: lang, dark: dark)
             // The wordmark's intro (the website's loading ring, once), at three moments.
             for (index, moment) in [0.18, 0.42, 0.7].enumerated() {
@@ -324,7 +324,8 @@ final class SnapshotTests: XCTestCase {
             await preferences.setSalaryShift(true)
             try await shots(framed(.more) { NavigationStack { SpendingView(model: preferences) } },
                       name: "settings-spending", lang: lang, dark: dark)
-            try await shots(framed(.more) { NavigationStack { MessagesView(model: preferences) } },
+            let push = PushModel(data: store.data, system: FakePushSystem(), environment: "sandbox")
+            try await shots(framed(.more) { NavigationStack { MessagesView(model: preferences, push: push) } },
                       name: "settings-notifications", lang: lang, dark: dark)
             try await shots(framed(.more) { NavigationStack { AppearanceView() } },
                       name: "settings-appearance", lang: lang, dark: dark)
@@ -710,7 +711,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     /// Home's model over the fixture, this month, with a budget, the vouchers and the month in words.
-    private func homeModel(_ fixture: HomeFixture, lang: String) async throws -> HomeViewModel {
+    func homeModel(_ fixture: HomeFixture, lang: String) async throws -> HomeViewModel {
         _ = language(lang)
         let now = fixture.now
         let store = FakeStore(home: fixture)
@@ -745,7 +746,7 @@ final class SnapshotTests: XCTestCase {
         return language
     }
 
-    private func defaults() -> UserDefaults { UserDefaults(suiteName: "SnapshotTests")! }
+    func defaults() -> UserDefaults { UserDefaults(suiteName: "SnapshotTests")! }
 
     /// A page in the frame, with its tab picked.
     func framed<V: View>(_ tab: NativeTab, @ViewBuilder _ page: @escaping () -> V) -> some View {
