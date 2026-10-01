@@ -3,7 +3,7 @@ import { toMinor } from '../../shared/lib/currency.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 import { monthAlone, monthTitle } from '../../shared/lib/dates.js'
-import { isMonthPeriod } from '../../shared/lib/periods.js'
+import { isMonthPeriod, isPastPeriod } from '../../shared/lib/periods.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { categoryLook } from '../../shared/lib/categoryStyle.js'
 import { formatMoney } from '../../shared/lib/currency.js'
@@ -237,5 +237,18 @@ export function budgetRowParts(item, currency) {
     tone: item.tone ?? null,
     over,
     overLabel: over ? t('common:budget.over') : null,
+  }
+}
+
+// A past month whose every budget held (none over its cap), as the native
+// app's Home says it: { title, note }; null for this month (or a later
+// one), a period that isn't a month, a month without budgets, or one with a
+// budget over. `items` are budgetRowParts' rows.
+export function heldNote(items, period, todayISO) {
+  if (!isMonthPeriod(period) || !isPastPeriod(period, todayISO) || !items?.length) return null
+  if (items.some((item) => item.over)) return null
+  return {
+    title: t('budgets:held.title', { period: period.label }),
+    note: t('budgets:held.note', { count: items.length }),
   }
 }

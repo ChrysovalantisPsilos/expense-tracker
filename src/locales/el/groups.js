@@ -6,6 +6,9 @@ export default {
   whatGroups: 'τις ομάδες σου',
   whatGroup: 'αυτή την ομάδα',
   you: 'Εσύ',
+  timeline: {
+    yourShare: 'Το μερίδιό σου {{amount}}',
+  },
   expense: 'Έξοδο',
   member: 'Μέλος',
   total: 'Σύνολο',

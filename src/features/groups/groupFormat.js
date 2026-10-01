@@ -414,3 +414,48 @@ export function commentParts(cm, myUserId, now) {
     canDelete: !!myUserId && cm.author_id === myUserId,
   }
 }
+
+// A group's history as one timeline, oldest first (the native app's group
+// page, read like a chat): a day heading whenever the day changes, then
+// each expense (expenseRowParts, with whether the viewer paid it, the
+// payer's avatar and the viewer's share) or settlement (settlementRowParts),
+// each followed by its comments oldest first (commentParts, the viewer's own
+// marked `mine`, `targetId` the item they're on). `comments` maps an item's
+// id to its comment rows (group_comments_for).
+export function timelineParts({ expenses, settlements, comments, members, myMemberId, myUserId, isOwner, currency, counts, now }) {
+  const items = [
+    ...(expenses ?? []).map((row) => ({ type: 'expense', day: row.spent_at, at: row.created_at, row })),
+    ...(settlements ?? []).map((row) => ({ type: 'settlement', day: row.settled_at, at: row.created_at, row })),
+  ].sort((a, b) => String(a.day).localeCompare(String(b.day)) || String(a.at ?? '').localeCompare(String(b.at ?? '')))
+  const options = { members, myMemberId, myUserId, isOwner, currency, counts, now }
+  const out = []
+  let lastDay = null
+  for (const item of items) {
+    const day = String(item.day ?? '').slice(0, 10)
+    if (day !== lastDay) {
+      out.push({ type: 'day', id: `day-${day}`, title: shortDate(day, now) })
+      lastDay = day
+    }
+    if (item.type === 'expense') {
+      const e = item.row
+      const payer = (members ?? []).find((m) => m.id === e.paid_by)
+      const split = (e.expense_splits ?? []).find((s) => s.member_id === myMemberId)
+      out.push({
+        type: 'expense',
+        ...expenseRowParts(e, options),
+        mine: !!myMemberId && e.paid_by === myMemberId,
+        payer: payer ? memberAvatar(payer, payer.id === myMemberId) : null,
+        share: split ? t('groups:timeline.yourShare', { amount: formatMoney(Math.round(split.share_minor), currency) }) : null,
+      })
+    } else {
+      out.push({ type: 'settlement', ...settlementRowParts(item.row, options) })
+    }
+    const thread = [...(comments?.[item.row.id] ?? [])].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
+    for (const cm of thread) {
+      out.push({
+        type: 'comment', targetId: item.row.id, mine: !!myUserId && cm.author_id === myUserId, ...commentParts(cm, myUserId, now),
+      })
+    }
+  }
+  return out
+}
