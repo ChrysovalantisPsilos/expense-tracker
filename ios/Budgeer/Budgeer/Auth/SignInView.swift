@@ -1,4 +1,5 @@
-// Sign-in, the web's Login page's words and order: email and password, then
+// Sign-in, the web's Login page's words and order under the wordmark (its
+// mark drawing itself as the website's loader does): email and password, then
 // "or continue with" and the Google button (Google's own look: white, the
 // four-colour G, "Sign in with Google"). Passkeys come with their phase.
 import BudgeerCore
@@ -80,14 +81,13 @@ struct SignInView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 22) {
-                BrandMark(size: 56)
-                    .frame(width: 88, height: 88)
-                    .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.06), radius: 16, x: 0, y: 8)
-                    .padding(.top, 40)
+                // The wordmark, playing the website's loading ring once.
+                BrandIntro()
+                    .padding(.top, 48)
+                    .padding(.bottom, 10)
                 VStack(spacing: 6) {
                     Text(language.t("auth:login.title"))
-                        .font(NativeStyle.title(28, lang: language.current))
+                        .font(NativeStyle.title(24, lang: language.current))
                         .multilineTextAlignment(.center)
                     Text(language.t("auth:login.subtitle"))
                         .foregroundStyle(.secondary)

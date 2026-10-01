@@ -14,7 +14,7 @@ import { salaryShiftOf } from '../src/shared/lib/salaryShift.js'
 import { savingsIdsOf } from '../src/shared/lib/savings.js'
 import { EMPTY_FILTERS, filterTransactions, isFiltering, netBaseMinor } from '../src/features/transactions/txnFilter.js'
 import { isFirstRun, ledgerSummary, listHeading } from '../src/features/transactions/listHeading.js'
-import { dayGroups } from '../src/features/transactions/rowParts.js'
+import { dayGroups, monthPulse } from '../src/features/transactions/rowParts.js'
 import { isMonthPeriod, isPastPeriod, periodFromValue, thisMonthPeriod } from '../src/shared/lib/periods.js'
 import { isoDate, lastMonths, monthTitle } from '../src/shared/lib/dates.js'
 import { spendRows } from '../src/shared/lib/spread.js'
@@ -37,7 +37,8 @@ export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
 // Activity (the web's LedgerPage + TransactionList) for `kind`
 // ('expense' | 'income' | null for all), a period from the picker, and the
 // search text: its heading, its line, whether it's the first run, and the
-// rows by day as the native app lists them (dayGroups, as of `now`).
+// rows by day as the native app lists them (dayGroups, as of `now`), and the
+// month's header (monthPulse).
 export function ledgerFigures({ rows, profile, categories, kind = null, period, text = '', oldest = null, now, lang = 'en' }) {
   setLanguage(lang)
   const baseCurrency = profile?.base_currency || 'EUR'
@@ -52,6 +53,9 @@ export function ledgerFigures({ rows, profile, categories, kind = null, period, 
     subtitle: ledgerSummary(head.subtitle, { searching, count: shown.length, net, baseCurrency }),
     firstRun: isFirstRun({ loading: false, failed: false, count: shown.length, oldest, searching }),
     days: dayGroups(shown, { kind, baseCurrency, salaryShift, savingsIds }, isoDate(new Date(now))),
+    // The month's header: the picked month's days, none for a search.
+    pulse: monthPulse(shown, { kind, baseCurrency, savingsIds }, searching ? null : { from: period.from, to: period.to },
+      isoDate(new Date(now))),
   }
 }
 

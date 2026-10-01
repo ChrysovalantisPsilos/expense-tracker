@@ -14,7 +14,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { formatMoney } from '../src/shared/lib/currency.js'
 import {
-  activityParts, avatarStackParts, balancesFrom, balancesParts, commentCountsFrom, expenseRowParts, groupCardParts,
+  activityParts, avatarStackParts, balancesFrom, balancesParts, commentCountsFrom, expenseRowParts, galleryParts, groupCardParts,
   groupDeleteCheck, groupShareText, groupTotal, groupViewer, inviteRowParts, memberRowParts, membersWithAvatars,
   pluralise, settlementRowParts, stillInNames,
 } from '../src/features/groups/groupFormat.js'
@@ -34,16 +34,15 @@ export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
 //   summaries  { [groupId]: { members, avatars, balances } } (rows as read)
 export function groupsListFigures({ groups, summaries, invites, userId, lang = 'en' }) {
   setLanguage(lang)
-  return {
-    cards: groups.map((g) => {
-      const raw = summaries[g.id]
-      const summary = raw
-        ? { members: membersWithAvatars(raw.members, raw.avatars), balances: balancesFrom(raw.balances) }
-        : undefined
-      return groupCardParts(g, summary, userId)
-    }),
-    invites: invites.map(inviteRowParts),
-  }
+  const cards = groups.map((g) => {
+    const raw = summaries[g.id]
+    const summary = raw
+      ? { members: membersWithAvatars(raw.members, raw.avatars), balances: balancesFrom(raw.balances) }
+      : undefined
+    return groupCardParts(g, summary, userId)
+  })
+  // The gallery's paging cards and the rest (galleryParts).
+  return { cards, invites: invites.map(inviteRowParts), gallery: galleryParts(cards) }
 }
 
 // A group's page (GroupDetail: the header, the balances, the history; the

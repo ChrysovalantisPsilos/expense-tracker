@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   activityParts, avatarStackParts, deleteNameMatches, balancesFrom, balancesParts, commentCountsFrom, commentParts, expenseRowParts,
-  groupCardParts, groupShareText, groupViewer, inviteLink, inviteRowParts, inviteRefusal, memberRowParts, membersWithAvatars, settlementRowParts,
+  galleryParts, groupCardParts, groupShareText, memberAvatar, groupViewer, inviteLink, inviteRowParts, inviteRefusal, memberRowParts, membersWithAvatars, settlementRowParts,
   stillInNames,
 } from '../src/features/groups/groupFormat.js'
 import { avatarColor } from '../src/shared/ui/avatarLook.js'
@@ -35,10 +35,14 @@ test('avatarStackParts / groupCardParts: the groups list\'s card', () => {
   assert.deepEqual(stack.shown.map((a) => `${a.id}:${a.initials}:${a.highlight}`), ['m2:S:true', 'm1:A:false', 'm3:A:false'])
   assert.equal(stack.shown[1].bg, avatarColor('Alex'))
   assert.equal(stack.overflow, 0)
+  assert.deepEqual(memberAvatar(MEMBERS[1], true), { id: 'm2', ...stack.shown[0] })
   const group = { id: 'g1', name: 'Lisbon', currency: 'EUR', image_url: null, group_members: [{ count: 3 }] }
   const summary = { members: MEMBERS, balances: new Map([['m1', 2500], ['m2', -2500]]) }
   const card = groupCardParts(group, summary, 'u1')
   assert.equal(card.members, '3 members')
+  assert.equal(card.initials, 'L')
+  assert.equal(groupCardParts({ ...group, name: 'Flat 3B' }, summary, 'u1').initials, 'F3')
+  assert.equal(groupCardParts({ ...group, name: 'Lisbon trip' }, summary, 'u1').initials, 'LT')
   assert.deepEqual(card.balance, { label: 'You’re owed', amount: '€25.00', tone: 'positive' })
   assert.deepEqual(groupCardParts(group, summary, 'u2').balance, { label: 'You owe', amount: '€25.00', tone: 'negative' })
   // Without its summary: the count from the groups query, no stack or balance.
@@ -52,6 +56,9 @@ test('balancesParts: your balance, everyone\'s, the line that matters, the plan'
   assert.deepEqual(p.mine, { text: '−€10.00', tone: 'negative' })
   assert.deepEqual(p.tiles.map((b) => `${b.label}:${b.text}:${b.tone}`), ['You:−€10.00:negative', 'Alex:+€30.00:positive', 'Anna:−€20.00:negative'])
   assert.deepEqual(p.highlight, { text: 'You owe Alex', amount: '€10.00', tone: 'negative' })
+  // Each tile's avatar (the viewer's in the accent) and its bar against the biggest balance.
+  assert.deepEqual(p.tiles.map((b) => [b.avatar.id, b.avatar.initials, b.avatar.highlight, b.bar]),
+    [['m2', 'S', true, 1 / 3], ['m1', 'A', false, 1], ['m3', 'A', false, 2 / 3]])
   assert.equal(p.planSubtitle, '2 payments to settle everyone up')
   const mine = p.plan.find((x) => x.from.id === 'm2')
   assert.deepEqual([mine.from.name, mine.from.highlight, mine.from.src, mine.to.name, mine.amount, mine.tone],
@@ -61,6 +68,19 @@ test('balancesParts: your balance, everyone\'s, the line that matters, the plan'
   assert.deepEqual([alone.mine, alone.tiles, alone.plan, alone.planSubtitle],
     [{ text: '€0.00', tone: 'muted' }, [], [], null])
   assert.deepEqual(alone.highlight, { text: 'You’re all settled up', amount: null, tone: null })
+})
+
+test('galleryParts: the groups with an open balance first (three at most), else the newest; the rest after', () => {
+  const card = (id, tone) => ({ id, balance: tone ? { label: '', amount: null, tone } : null })
+  const cards = [card('a', 'muted'), card('b', 'positive'), card('c', null), card('d', 'negative'), card('e', 'positive'),
+    card('f', 'negative')]
+  const g = galleryParts(cards)
+  assert.deepEqual(g.featured.map((c) => c.id), ['b', 'd', 'e'])
+  assert.deepEqual(g.rest.map((c) => c.id), ['a', 'c', 'f'])
+  const settled = galleryParts([card('a', 'muted'), card('b', null)])
+  assert.deepEqual([settled.featured.map((c) => c.id), settled.rest.map((c) => c.id)], [['a'], ['b']])
+  assert.deepEqual(galleryParts([]), { featured: [], rest: [] })
+  assert.deepEqual(galleryParts(null), { featured: [], rest: [] })
 })
 
 test('expenseRowParts / settlementRowParts / activityParts: the history\'s rows', () => {

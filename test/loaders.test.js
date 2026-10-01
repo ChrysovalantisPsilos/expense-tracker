@@ -7,12 +7,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import {
-  LOADER_DELAY_MS, HANDOVER_MS, RING_CYCLE_MS, revealDelay, ringPhase, createLoaderClock,
+  LOADER_DELAY_MS, HANDOVER_MS, RING_CYCLE_MS, RING_MOTION, revealDelay, ringPhase, createLoaderClock, easeInOut,
+  ringFrame, ringFrames, ringIntro,
 } from '../src/shared/ui/loaderTiming.js'
 import {
   markTree, screenTree, toHtml, bootLoaderHtml, RING_LOADER_CSS, LOADING_LABEL,
 } from '../src/shared/ui/ringLoader.js'
-import { MARK, MARK_ARCS, circumference } from '../src/shared/ui/markGeometry.js'
+import { MARK, MARK_ARCS, WORDMARK, circumference } from '../src/shared/ui/markGeometry.js'
 import { colors, DARK } from '../src/shared/ui/palette.js'
 import { STORAGE_KEYS } from '../src/shared/lib/keys.js'
 
@@ -93,6 +94,55 @@ test('loader clock: counts loaders on screen, never below zero', () => {
   clock.hidden() // an extra hide (StrictMode double effects) is harmless
   at(9000)
   assert.equal(clock.revealDelay(), LOADER_DELAY_MS)
+})
+
+// ---- the ring's motion -------------------------------------------------------
+
+test('easeInOut: CSS ease-in-out, from 0 to 1, symmetric', () => {
+  assert.equal(easeInOut(0), 0)
+  assert.equal(easeInOut(1), 1)
+  assert.equal(easeInOut(-1), 0)
+  assert.ok(Math.abs(easeInOut(0.5) - 0.5) < 1e-9)
+  assert.ok(Math.abs(easeInOut(0.25) + easeInOut(0.75) - 1) < 1e-9)
+  assert.ok(easeInOut(0.1) < 0.1 && easeInOut(0.9) > 0.9) // slow in, slow out
+})
+
+test('ringFrame: amber draws first, then coral; both hold, then fade before the next draw', () => {
+  const at = (f, o) => ringFrame(f * RING_CYCLE_MS, o)
+  assert.deepEqual(at(0), { amber: 0, coral: 0, opacity: 1, stem: 1, word: RING_MOTION.pulse[0] })
+  assert.equal(at(RING_MOTION.amber.draw[1]).amber, 1)
+  assert.equal(at(RING_MOTION.coral.draw[0]).coral, 0)
+  assert.ok(at(0.2).amber > 0 && at(0.2).amber < 1)
+  assert.equal(at(RING_MOTION.coral.draw[1]).coral, 1)
+  assert.equal(at(0.5).stem, RING_MOTION.breathe)
+  assert.equal(at(0.8).opacity, 1)
+  assert.ok(at(0.9).opacity > 0 && at(0.9).opacity < 1)
+  // The wordmark brightens over one draw and dims over the next (alternate).
+  assert.ok(at(0.9).word > at(0.5).word)
+  assert.ok(at(1.9).word < at(1.5).word)
+  assert.deepEqual(at(2), at(0))
+})
+
+test('ringFrame settle: one draw that ends on the still, full mark', () => {
+  const end = { amber: 1, coral: 1, opacity: 1, stem: 1, word: 1 }
+  assert.deepEqual(ringFrame(RING_CYCLE_MS, { settle: true }), end)
+  assert.deepEqual(ringFrame(5 * RING_CYCLE_MS, { settle: true }), end)
+  assert.equal(ringFrame(0.95 * RING_CYCLE_MS, { settle: true }).opacity, 1)
+  const frames = ringFrames(60, { settle: true })
+  assert.equal(frames.length, 61)
+  assert.deepEqual(frames[0], ringFrame(0))
+  assert.deepEqual(frames[60], end)
+  const intro = ringIntro(10)
+  assert.deepEqual([intro.wordmark, intro.cycleMs, intro.frames.length], [WORDMARK, RING_CYCLE_MS, 11])
+  assert.deepEqual(intro.frames, ringFrames(10, { settle: true }))
+})
+
+test('the stylesheet’s keyframes come from RING_MOTION', () => {
+  assert.match(RING_LOADER_CSS, /@keyframes rl-amber\{0%\{stroke-dasharray:0 69\.12;opacity:1\}30%,80%\{stroke-dasharray:19\.01 50\.11;opacity:1\}100%/)
+  assert.match(RING_LOADER_CSS, /@keyframes rl-coral\{0%,25%\{stroke-dasharray:0 69\.12;opacity:1\}65%,80%\{stroke-dasharray:48\.11 21\.01;opacity:1\}100%/)
+  assert.match(RING_LOADER_CSS, /50%\{transform:scaleY\(1\.05\)\}/)
+  assert.match(RING_LOADER_CSS, /@keyframes rl-pulse\{from\{opacity:0\.55\}to\{opacity:1\}\}/)
+  assert.match(bootLoaderHtml(), new RegExp(`<span class="rl-word" aria-hidden="true">${WORDMARK}</span>`))
 })
 
 // ---- mark geometry ------------------------------------------------------------

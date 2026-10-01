@@ -1,10 +1,11 @@
-// A group's page: a balance hero at the top (the members' circles, your
-// balance, the line that matters most, Settle up in prominent glass and
-// Balances beside it), then one chat-like timeline of expenses, settlements
+// A group's page: its picture and name as a proper title with the members
+// under it, a balance card (your balance, the line that matters most,
+// Settle up in prominent glass and Balances beside it), then one chat-like
+// timeline of expenses, settlements
 // and comments, newest at the bottom like Messages, with the comment field
 // floating over its foot. Add expense and the … menu (Members, Share
-// summary, Rename, Leave, Delete) are in the bar; who owes whom is behind
-// Balances. Settling the group up bursts confetti behind the cards.
+// summary, Rename, Leave, Delete) are in the bar; who owes whom is the
+// Balances page. Settling the group up bursts confetti behind the cards.
 // Everything it shows is GroupModel's (the core's).
 import SwiftUI
 
@@ -40,7 +41,6 @@ struct GroupSheet: Identifiable {
     enum Kind {
         case expense(GroupExpenseModel)
         case settle(SettleUpModel)
-        case balances
     }
     let id = UUID()
     let kind: Kind
@@ -53,6 +53,7 @@ struct GroupPageView: View {
     @Environment(AppLanguage.self) private var language
     @State private var sheet: GroupSheet?
     @State private var showMembers = false
+    @State private var showBalances = false
     @State private var confirmLeave = false
     @State private var confirmDelete = false
     @State private var renaming = false
@@ -78,9 +79,13 @@ struct GroupPageView: View {
                 }
                 .ignoresSafeArea()
             }
+            // The name is the hero's title; the bar keeps it for Back and the app switcher.
             .navigationTitle(model.groupName)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { toolbar }
+            .toolbar {
+                ToolbarItem(placement: .principal) { Color.clear.frame(width: 1, height: 1) }
+                toolbar
+            }
             .task(id: language.current) { await model.load() }
             .onChange(of: model.figures?.balances.plan.isEmpty) { was, now in
                 if was == false, now == true {
@@ -90,6 +95,12 @@ struct GroupPageView: View {
             }
             .sheet(item: $sheet) { sheet in sheetContent(sheet).environment(language) }
             .navigationDestination(isPresented: $showMembers) { MembersView(model: model) }
+            .navigationDestination(isPresented: $showBalances) {
+                BalancesView(model: model) {
+                    showBalances = false
+                    openSettle()
+                }
+            }
             .confirmationDialog(language.t("groups:modals.leave.title", ["name": .string(model.groupName)]),
                                 isPresented: $confirmLeave, titleVisibility: .visible) {
                 Button(language.t("groups:modals.leave.confirm"), role: .destructive) { leave(silent: false) }
@@ -147,47 +158,64 @@ struct GroupPageView: View {
 
     // MARK: The hero
 
+    /// The group's picture and its name as the page's title, the members
+    /// beneath (a tap shows them), then your balance on its card: the line
+    /// that matters most, Settle up in prominent glass and Balances beside it.
     private func hero(_ figures: GroupPageFigures) -> some View {
-        VStack(spacing: 6) {
-            Button { showMembers = true } label: {
-                HStack(spacing: 8) {
-                    NativeAvatarStack(stack: figures.avatars, size: 30)
-                    Text(figures.members).font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(language.t("groups:header.showMembers", ["members": .string(figures.members)]))
-            .accessibilityIdentifier("group.members")
-            Text(language.t("groups:balances.yours"))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .padding(.top, 2)
-            NativeMoney(text: figures.balances.mine.text, value: 0, font: NativeStyle.money(42),
-                        color: NativeStyle.tone(figures.balances.mine.tone))
-                .accessibilityIdentifier("group.mine")
-            Text(highlight(figures.balances.highlight))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            HStack(spacing: 10) {
-                if figures.myMemberId != nil, !figures.balances.plan.isEmpty {
-                    Button { openSettle() } label: {
-                        Label(language.t("groups:balances.settleUp"), systemImage: "checkmark.circle.fill").lineLimit(1)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 14) {
+                GroupPicture(imageUrl: figures.imageUrl, size: 58)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(figures.name)
+                        .font(NativeStyle.title(28, lang: language.current, relativeTo: .largeTitle))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.75)
+                        .accessibilityAddTraits(.isHeader)
+                        .accessibilityIdentifier("group.title")
+                    Button { showMembers = true } label: {
+                        HStack(spacing: 6) {
+                            NativeAvatarStack(stack: figures.avatars, size: 22, ring: NativeStyle.canvas)
+                            Text(figures.members).font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+                            Image(systemName: "chevron.right").font(.caption2.weight(.bold)).foregroundStyle(.tertiary)
+                        }
                     }
-                    .nativeGlassButton(prominent: true)
-                    .accessibilityIdentifier("group.settle")
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(language.t("groups:header.showMembers", ["members": .string(figures.members)]))
+                    .accessibilityIdentifier("group.members")
                 }
-                Button { sheet = GroupSheet(kind: .balances) } label: {
-                    Label(language.t("groups:balances.title"), systemImage: "list.bullet").lineLimit(1)
-                }
-                .nativeGlassButton()
-                .accessibilityIdentifier("group.balances")
+                Spacer(minLength: 0)
             }
-            .padding(.top, 8)
+            VStack(spacing: 4) {
+                Text(language.t("groups:balances.yours"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                NativeMoney(text: figures.balances.mine.text, value: 0, font: NativeStyle.money(38),
+                            color: NativeStyle.tone(figures.balances.mine.tone))
+                    .accessibilityIdentifier("group.mine")
+                Text(highlight(figures.balances.highlight))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                HStack(spacing: 10) {
+                    if figures.myMemberId != nil, !figures.balances.plan.isEmpty {
+                        Button { openSettle() } label: {
+                            Label(language.t("groups:balances.settleUp"), systemImage: "checkmark.circle.fill").lineLimit(1)
+                        }
+                        .nativeGlassButton(prominent: true)
+                        .accessibilityIdentifier("group.settle")
+                    }
+                    Button { showBalances = true } label: {
+                        Label(language.t("groups:balances.title"), systemImage: "chart.bar.xaxis").lineLimit(1)
+                    }
+                    .nativeGlassButton()
+                    .accessibilityIdentifier("group.balances")
+                }
+                .padding(.top, 8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 14)
-        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 
     /// The line that matters most: its words, then the amount.
@@ -328,11 +356,6 @@ struct GroupPageView: View {
             SettleUpView(model: settle) {
                 model.note(language.t("groups:settle.recorded"))
                 Task { await model.load() }
-            }
-        case .balances:
-            BalancesSheet(model: model) {
-                self.sheet = nil
-                openSettle()
             }
         }
     }
@@ -483,75 +506,5 @@ struct TimelineRow: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(language.t("groups:history.comments"))
-    }
-}
-
-/// Balances (behind a tap): your balance, everyone's, the line that matters
-/// most, and who pays whom to settle everyone up.
-@MainActor
-struct BalancesSheet: View {
-    let model: GroupModel
-    let settle: () -> Void
-    @Environment(AppLanguage.self) private var language
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if let parts = model.figures?.balances {
-                    Section {
-                        HStack {
-                            Text(language.t("groups:balances.yours"))
-                            Spacer()
-                            Text(parts.mine.text).fontWeight(.semibold).foregroundStyle(NativeStyle.tone(parts.mine.tone))
-                        }
-                        ForEach(parts.tiles) { tile in
-                            HStack {
-                                Text(tile.label)
-                                Spacer()
-                                Text(tile.text).foregroundStyle(NativeStyle.tone(tile.tone)).monospacedDigit()
-                            }
-                        }
-                    } footer: {
-                        Text([parts.highlight.text, parts.highlight.amount].compactMap { $0 }.joined(separator: " "))
-                    }
-                    if !parts.plan.isEmpty {
-                        Section {
-                            ForEach(parts.plan) { row in
-                                HStack(spacing: 8) {
-                                    NativeAvatar(avatar: row.from, size: 28)
-                                    Text(row.from.name).lineLimit(1)
-                                    Image(systemName: "arrow.right").font(.caption).foregroundStyle(.secondary)
-                                    NativeAvatar(avatar: row.to, size: 28)
-                                    Text(row.to.name).lineLimit(1)
-                                    Spacer(minLength: 6)
-                                    Text(row.amount).fontWeight(.semibold).foregroundStyle(NativeStyle.tone(row.tone))
-                                }
-                            }
-                        } header: {
-                            NativeCapsHeader(title: parts.planSubtitle ?? language.t("groups:balances.whoOwes"))
-                        }
-                        if model.figures?.myMemberId != nil {
-                            Section {
-                                Button(action: settle) {
-                                    Label(language.t("groups:balances.settleUp"), systemImage: "checkmark.circle.fill")
-                                        .frame(maxWidth: .infinity)
-                                }
-                                .nativeGlassButton(prominent: true)
-                                .listRowBackground(Color.clear)
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle(language.t("groups:balances.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(language.t("common:actions.done")) { dismiss() }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
     }
 }

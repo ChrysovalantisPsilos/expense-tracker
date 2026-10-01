@@ -135,6 +135,9 @@ protocol GroupsRepository: Sendable {
     /// create_group: the new group's id.
     func createGroup(name: String, currency: String) async throws -> String
     func renameGroup(id: String, name: String) async throws
+    /// uploadGroupImage: the owner's cover into group-images/<id>/cover.<ext>,
+    /// then the group's image_url (the public URL, cache-busted): that URL.
+    func uploadGroupImage(groupId: String, data: Data, contentType: String, ext: String) async throws -> String
     /// create_group_expense_v2 (no `expenseId` in `args`) or
     /// update_group_expense_v2; `args` is groupExpenseForm.expenseSaveArgs'.
     func saveGroupExpense(_ args: JSONValue) async throws

@@ -10,9 +10,9 @@
 //   the screen, nothing moves.
 // Pure: data and strings only.
 
-import { MARK, MARK_ARCS, circumference } from './markGeometry.js'
+import { MARK, MARK_ARCS, WORDMARK, circumference } from './markGeometry.js'
 import { colors, DARK, FONTS } from './palette.js'
-import { RING_CYCLE_MS } from './loaderTiming.js'
+import { RING_CYCLE_MS, RING_MOTION } from './loaderTiming.js'
 
 const { stem, ring } = MARK
 const round = (n) => Math.round(n * 100) / 100
@@ -59,7 +59,7 @@ export const LOADING_LABEL = 'Loading…'
 export function screenTree({ caption, label = LOADING_LABEL } = {}) {
   return ['div', { class: 'rl-screen', role: 'status' }, [
     markTree(SCREEN_MARK_SIZE),
-    ['span', { class: 'rl-word', 'aria-hidden': 'true' }, ['budgeer']],
+    ['span', { class: 'rl-word', 'aria-hidden': 'true' }, [WORDMARK]],
     caption
       ? ['span', { class: 'rl-caption' }, [caption]]
       : ['span', { class: 'rl-sr' }, [label]],
@@ -89,6 +89,13 @@ const LIGHT = vars({
 const DARK_VARS = vars({ track: DARK.subtle, ink: DARK.text, muted: colors.sand[400], canvas: DARK.canvas })
 
 const ms = (n) => `${n}ms`
+const pct = (f) => `${Math.round(f * 100)}%`
+// An arc's keyframes (RING_MOTION): empty until its draw starts, drawn by its
+// end, held to the fade, gone at the end of the cycle.
+function arcKeyframes(name, { draw: [from, to], fade }, full) {
+  const start = from > 0 ? `0%,${pct(from)}` : '0%'
+  return `@keyframes ${name}{${start}{stroke-dasharray:${EMPTY};opacity:1}${pct(to)},${pct(fade)}{stroke-dasharray:${full};opacity:1}100%{stroke-dasharray:${full};opacity:0}}`
+}
 const loop = (name, easing = 'ease-in-out') => `${name} ${ms(RING_CYCLE_MS)} ${easing} var(--rl-phase,0ms) infinite`
 
 export const RING_LOADER_CSS = [
@@ -112,9 +119,9 @@ export const RING_LOADER_CSS = [
   '.rl-mono .rl-track{stroke:currentColor;stroke-opacity:0.2}',
   '.rl-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}',
   // Opaque while drawing and holding (to 80%), then a fade before the next draw.
-  `@keyframes rl-amber{0%{stroke-dasharray:${EMPTY};opacity:1}30%,80%{stroke-dasharray:${AMBER.array};opacity:1}100%{stroke-dasharray:${AMBER.array};opacity:0}}`,
-  `@keyframes rl-coral{0%,25%{stroke-dasharray:${EMPTY};opacity:1}65%,80%{stroke-dasharray:${CORAL.array};opacity:1}100%{stroke-dasharray:${CORAL.array};opacity:0}}`,
-  '@keyframes rl-breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.05)}}',
-  '@keyframes rl-pulse{from{opacity:0.55}to{opacity:1}}',
+  arcKeyframes('rl-amber', RING_MOTION.amber, AMBER.array),
+  arcKeyframes('rl-coral', RING_MOTION.coral, CORAL.array),
+  `@keyframes rl-breathe{0%,100%{transform:scaleY(1)}50%{transform:scaleY(${RING_MOTION.breathe})}}`,
+  `@keyframes rl-pulse{from{opacity:${RING_MOTION.pulse[0]}}to{opacity:${RING_MOTION.pulse[1]}}}`,
   '@media (prefers-reduced-motion:reduce){.rl-stem,.rl-amber,.rl-coral,.rl-word{animation:none}}',
 ].join('\n')

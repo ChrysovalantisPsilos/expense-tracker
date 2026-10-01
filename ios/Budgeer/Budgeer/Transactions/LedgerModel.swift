@@ -125,6 +125,7 @@ final class LedgerModel {
         let figures = try LedgerFigures.compute(rows: rows, profile: profile, categories: savings, kind: kind,
                                                 periodLabel: period?.label ?? "", text: text, filters: filters,
                                                 oldest: oldest, oldestKnown: oldestKnown, today: try core.isoDate(now()),
+                                                month: ["from": period?.from.json ?? .null, "to": period?.to.json ?? .null],
                                                 core: core)
         state = .loaded(figures)
     }

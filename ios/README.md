@@ -151,8 +151,9 @@ ios/Budgeer/
     BudgeerApp.swift     the entry: AppConfig → AppContainer → RootView
     App/                 AppContainer (the client, the data layer, the cache, the live feed, the lock), RootView
                          (sign-in, the legal gate, the frame, the lock over it), AppFrame (the tabs, each tab's
-                         stack of pages (AppRoute), the Add sheet, the bell's sheet, AppRouter), AppLock + LockView
-                         (Face ID), ShellModel (your initials, the bell's feed), LiveRefresh
+                         stack of pages (AppRoute), the Add sheet, AppRouter), NotificationsView (the bell's page),
+                         DesignOptions (the designs on trial), AppLock + LockView (Face ID), ShellModel (your
+                         initials, the bell's feed), LiveRefresh
     Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView
     Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables),
                          QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
@@ -160,16 +161,16 @@ ios/Budgeer/
     Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView (the month pager,
                          the sections, HomeCategoriesPage)
     Transactions/        EntryFormModel + AddSheet (Add/Edit/a rule: the amount, the keypad, the details),
-                         LedgerFigures + LedgerModel + ActivityView (the rows by day, the month pill, search,
-                         swipes), TransactionWords (the delete question)
+                         LedgerFigures + LedgerModel + ActivityView (the month's header, the chips, the rows by
+                         day, the month pill, search, swipes), TransactionWords (the delete question)
     Budgets/             BudgetFigures, BudgetsModel, BudgetsView
     Recurring/           RecurringFigures, RecurringModel, RecurringView
     Insights/            InsightsFigures, InsightsModel, InsightsView (Swift Charts draws, the core computes)
-    Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab, New
-                         group), GroupModel + GroupTimeline + GroupPageView (a group's page, its timeline, the
-                         Balances sheet), GroupExpenseModel + SettleUpModel + GroupForms (the expense sheet and
-                         Add's quick group form, Settle up, Members), CommentsModel, MyGroupsModel (Add's "Who's
-                         it for?")
+    Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab's
+                         gallery), NewGroupModel + NewGroupView (the new-group flow), GroupModel (+ GroupInvite) +
+                         GroupTimeline + GroupPageView (a group's page, its timeline), BalancesView,
+                         GroupExpenseModel + SettleUpModel + GroupForms (the expense sheet and Add's quick group
+                         form, Settle up, Members), CommentsModel, MyGroupsModel (Add's "Who's it for?")
     More/                MoreView (your profile, Money), SettingsView (Profile, Language, the Face ID
                          lock, Sign out, the build), LanguageView
     Theme/               Theme (the web's colour tokens), NativeStyle (the coral tint, Poppins titles and money
@@ -177,7 +178,7 @@ ios/Budgeer/
                          the standard material on iOS 17–18), NativeTabs (the floating tab bar with Add beside
                          it), NativeParts (section headers, money, bars, tiles, avatars, loading and failure
                          states, rich text), NativeChrome (the bell and initials, the confetti), NativeSwatch,
-                         NativeHaptics, CategoryBadge, BrandMark
+                         NativeHaptics, CategoryBadge, BrandMark (+ BrandIntro, the sign-in's wordmark)
     Support/             AppLanguage, ProfileLanguage (the account's language), L10n (the generated strings),
                          JSONValue, CoreHelpers, CategoryLook, ISODay
     Resources/Fonts/     Poppins and Manrope, semibold and bold (OFL, static TTFs)
@@ -195,7 +196,10 @@ ios/Budgeer/
 Every figure, label, grouping, validation and form ↔ row mapping below is
 a core call (the web's function); Swift reads, lays out and draws.
 
-- **Sign-in** with email and password, or **Google** (`signInWithOAuth`
+- **Sign-in** under the wordmark, whose mark draws itself once as the
+  website's loading ring does (loaderTiming.ringIntro: the amber arc, then
+  the coral one, the stem stretching and settling, the word brightening;
+  still under Reduce Motion), with email and password, or **Google** (`signInWithOAuth`
   through `ASWebAuthenticationSession`, back to `budgeer://auth-callback`;
   a cancelled sheet is not an error). supabase-swift is pinned to 2.49.0,
   the last release on Swift tools 5.10 (picked when CI ran Xcode 15.4; it builds on 26 too). The
@@ -213,7 +217,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   system's Liquid Glass tab bar (Add in its separate trailing slot, the bar
   shrinking while you scroll), on iOS 17–18 a bar of the same shape in the
   standard material. Every tab is a stack of pages under a large title, with
-  the bell (its unread count, the notifications in a sheet) and your
+  the bell (its unread count; the notifications as a page pushed on the
+  tab you're on, each with when it came, the new ones marked) and your
   initials (Settings) top right. The appearance follows the system.
 - **Add / Edit an entry** (Add; a row in Activity; a rule in Recurring), a
   sheet: the amount first, on a keypad, the category chips and the day; pull
@@ -230,8 +235,12 @@ a core call (the web's function); Swift reads, lays out and draws.
   confetti the first time); then Budgets, the month in plain words (when its
   AI switch is on), Coming up (or what a past month was charged), By
   category and Meal vouchers, a few rows each with See all.
-- **Activity**: the month's entries by day, each day with what it spent; a
-  floating pill for the month and the kind; search over all history.
+- **Activity**: the month at a glance (spent, income and net, a bar per
+  day or the month's running line, the biggest day; rowParts.monthPulse),
+  glass chips for the kind and the categories, then the month's entries by
+  day, each day with what it spent; a floating pill for the month; search
+  over all history. Two designs are on trial (`DesignOptions.activity`: A a
+  card per day, B one list under sticky glass day headers).
   Swipe left to Delete (after the web's question), right to Duplicate (Add
   with today's date) or Split with a group (the group's quick form; the
   personal entry goes once the group's is saved); a tap opens Edit.
@@ -242,24 +251,34 @@ a core call (the web's function); Swift reads, lays out and draws.
 - **Insights** (from More): "Where your money went" (tap a month in the
   last six), "Income vs expenses" and Spending abroad. Not yet: your
   salary, net worth, the statement.
-- **Groups**: the tab lists the invites (Accept / Decline) and a row per
-  group (picture, name, the avatars, your balance in its tone); New group
-  (a name and a currency). A group's page: the balance hero (the members,
-  your balance, the line that matters most, Settle up and Balances), then
+- **Groups**: the tab shows the invites as banner cards (Accept /
+  Decline), then the groups as a gallery, in two designs on trial
+  (`DesignOptions.groups`: A a grid of square cards, B paging cards for the
+  groups with money open, galleryParts, and a list of the rest); each card
+  the picture (or the brand's gradient with the group's letters), the name,
+  the avatars and your balance. New group is one flow: a picture (a photo
+  from the library, or an emoji on a colour, uploaded as the web's
+  `uploadGroupImage` does), the name and currency, people to invite (by
+  email, as the Members page sends them, and a share link), what happens
+  next; then how each went and the link to share. A group's page: its
+  picture and name as the title, the members under it, the balance card
+  (your balance, the line that matters most, Settle up and Balances), then
   one timeline of expenses, settlements and their comments, newest at the
   bottom, with the comment field floating over its foot (a comment goes on
   the item picked, else the newest). Settling the group up bursts confetti
   behind the cards. Add or edit an expense in any currency with every
   split mode (Equally, Amounts, Percent, Shares); delete it after a
-  confirm. Settle up opens on your biggest payment, with the suggestions,
-  the reminder bell and Pay directly (Revolut, PayPal, a bank QR drawn on
+  confirm. Balances is a page: everyone's balance with a bar from the
+  middle, then who pays whom. Settle up opens on your biggest payment
+  (from → to with both circles, the amount in big figures), with the
+  suggestions, the reminder bell and Pay directly (Revolut, PayPal, a bank QR drawn on
   the device from the core's EPC payload, the IBAN to copy). The … menu:
   Members (remove, invite by email or a share link), Share summary, Rename
   (the owner), Leave (or leave silently) and Delete (type the name; the
   web's "can't yet" while others are in it). Everything is the web's RPCs
   and tables, cached for offline and live through the groups' tables on
-  the realtime channel. Not yet: the group photo upload (the photo shows),
-  the PDF statement, joining from an invite link, the payment-details ask
+  the realtime channel. Not yet: changing an existing group's photo, the
+  PDF statement, joining from an invite link, the payment-details ask
   on Settle up.
 - **More**: your profile (to Settings), and Money: Budgets, Recurring and
   Insights. The web's Savings, Plan, Meal vouchers, Salary and
@@ -324,8 +343,9 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   refresh), `EntryFormModelTests`, `LedgerTests`, `BudgetsTests`,
   `RecurringTests`, `InsightsTests`, `HomeViewModelTests`,
   `CategoryBadgeTests` (every category icon bundled), `GroupsModelTests` (the list and invites, a
-  group's page and its actions, invites, the expense form, settle up,
-  comments, Who's it for's order), `AppLockTests` (off by default, the
+  new group with its picture, invites and link, a group's page and its
+  actions, invites, the expense form, settle up, comments, Who's it for's
+  order), `ShellModelTests` (the bell's feed, opening it), `AppLockTests` (off by default, the
   owner's check, locked on launch and after the grace, off unlocks).
 - Parity: each screen's fixture inputs through its `…Figures` (every step a
   core call) must give what the web's functions wrote into
@@ -339,12 +359,14 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   language preference. `AppLanguageTests`: the device's first language only,
   the profile's language first, the demo account left alone.
 - `SnapshotTests`: PNGs at an iPhone 17's size (402×874) inside the frame
-  (the floating tab bar, the screen's tab picked) of Sign-in, the legal
-  gate, the lock, Home (this month, a past month that held its budgets, By
-  category's See all), the Add sheet (as it comes up, Edit pulled up, Split
-  with a group), Activity, Groups (the tab, New group, a group's page,
-  settled with its confetti caught mid-fall, Balances, an expense split by
-  amounts, Settle up, Members), More, Settings, the bell, Budgets,
+  (the floating tab bar, the screen's tab picked) of Sign-in (and three
+  moments of its intro), the legal gate, the lock, Home (this month, a past
+  month that held its budgets, By category's See all), the Add sheet (as it
+  comes up, Edit pulled up, Split with a group), Activity (designs A and
+  B), Groups (the tab in designs A and B, New group empty, filled and made,
+  a group's page, settled with its confetti caught mid-fall, Balances, an
+  expense split by amounts, Settle up, Members), More, Settings, the
+  notifications, Budgets,
   Recurring and Insights, each light, dark and Greek, with the fixtures'
   data (`<name>-<variant>.png`, and `-long` for the pages worth seeing
   whole); attached to the test run and written to `SNAPSHOT_DIR` when set

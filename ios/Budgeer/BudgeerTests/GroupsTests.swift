@@ -185,15 +185,56 @@ final class GroupsModelTests: XCTestCase {
         XCTAssertEqual(store.groupWrites.last?.args["p_invite"], "i1")
     }
 
-    func testANewGroupIsNamedAndCreated() async throws {
+    func testANewGroupIsCreatedWithItsPictureInvitesAndLink() async throws {
         let store = GroupsFixture.emptyStore()
-        let model = GroupsModel(data: store.data, userId: user)
+        store.profileResult = .success(["base_currency": "CHF"])
+        let model = NewGroupModel(data: store.data, site: "https://dev.budgeer.com")
         await model.load()
-        let none = await model.create(name: "   ", currency: "EUR")
-        XCTAssertNil(none)
-        let id = await model.create(name: " Ski week ", currency: "CHF")
-        XCTAssertEqual(id, "g-new")
-        XCTAssertEqual(store.groupWrites.last?.args, ["p_name": "Ski week", "p_currency": "CHF"])
+        XCTAssertEqual(model.currency, "CHF")
+        // Nothing named: nothing sent.
+        model.name = "   "
+        let none = await model.create(cover: nil)
+        XCTAssertFalse(none)
+        XCTAssertTrue(store.groupWrites.isEmpty)
+        // An address is checked before it's added, and kept once.
+        model.emailText = "not an email"
+        XCTAssertFalse(model.addEmail())
+        XCTAssertEqual(model.emailProblem, BudgeerCore.shared.text("common:errors.emailInvalid"))
+        model.emailText = " sam@example.com "
+        XCTAssertTrue(model.addEmail())
+        model.emailText = "SAM@example.com"
+        model.addEmail()
+        XCTAssertEqual(model.emails, ["sam@example.com"])
+        XCTAssertNil(model.emailProblem)
+        XCTAssertEqual(model.nextSteps.count, 3)
+        // The group, its picture, the invite (as the Members page sends it) and a link.
+        model.name = " Ski week "
+        model.shareLink = true
+        XCTAssertEqual(model.nextSteps.count, 4)
+        let cover = NewGroupModel.CoverFile(data: Data([1, 2, 3]), contentType: "image/png", ext: "png")
+        let made = await model.create(cover: cover)
+        XCTAssertTrue(made)
+        XCTAssertEqual(store.groupWrites.map { $0.name },
+                       ["create_group", "group-images", "invite_user_to_group", "group_invites"])
+        XCTAssertEqual(store.groupWrites[0].args, ["p_name": "Ski week", "p_currency": "CHF"])
+        XCTAssertEqual(store.groupWrites[1].args, ["path": "g-new/cover.png", "contentType": "image/png", "bytes": 3])
+        XCTAssertEqual(store.groupWrites[2].args, ["p_group": "g-new", "p_email": "sam@example.com"])
+        XCTAssertEqual(model.done, NewGroupModel.Done(
+            id: "g-new", name: "Ski week", link: "https://dev.budgeer.com/join/tok-1",
+            sent: [.init(email: "sam@example.com", text: "Request sent to sam@example.com They’ll see it in Budgeer.", ok: true)],
+            photoProblem: nil))
+    }
+
+    func testANewGroupThatFailsSaysWhy() async throws {
+        let store = GroupsFixture.emptyStore()
+        store.writeError = ServerError(code: "23514", message: "Group names must be 1–60 characters.")
+        let model = NewGroupModel(data: store.data, site: "")
+        await model.load()
+        model.name = "Flat"
+        let made = await model.create(cover: nil)
+        XCTAssertFalse(made)
+        XCTAssertNil(model.done)
+        XCTAssertNotNil(model.message)
     }
 
     func testAGroupsPageAndWhatItCanDo() async throws {

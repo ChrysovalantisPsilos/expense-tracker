@@ -1,8 +1,8 @@
 // The signed-in app: four tabs in the floating bar (Home, Activity, Groups,
 // More) with Add beside them, each tab its own stack of pages under a large
 // title, the bell and your initials in every first page's top-right corner,
-// Add (and Edit, and a recurring rule) as a sheet, and the notifications in
-// a sheet. Live: each page refreshes when its tables change, and coming
+// Add (and Edit, and a recurring rule) as a sheet, and the notifications as
+// a page pushed on the tab you're on. Live: each page refreshes when its tables change, and coming
 // back to the foreground catches up on what realtime missed.
 import SwiftUI
 
@@ -16,6 +16,7 @@ enum AppRoute: Hashable {
     case language
     case group(String)
     case newGroup
+    case notifications
 }
 
 /// What the Add sheet opens on.
@@ -36,13 +37,22 @@ final class AppRouter {
     var groups = NavigationPath()
     var more = NavigationPath()
     var add: AddRequest?
-    var bell = false
 
     /// Your initials: Settings, under More.
     func openSettings() {
         tab = .more
         more = NavigationPath()
         more.append(AppRoute.settings)
+    }
+
+    /// The bell: the notifications, pushed on the tab you're on.
+    func openBell() {
+        switch tab {
+        case .home, .add: home.append(AppRoute.notifications)
+        case .activity: activity.append(AppRoute.notifications)
+        case .groups: groups.append(AppRoute.notifications)
+        case .more: more.append(AppRoute.notifications)
+        }
     }
 
     /// A web path (a notification's, bellMath.notificationPath) as a tab and page.
@@ -134,13 +144,6 @@ struct AppFrame: View {
                     AddSheet(request: request, data: container.data, userId: userId, groups: models.myGroups)
                         .environment(language)
                 }
-                .sheet(isPresented: $router.bell) {
-                    BellSheet(model: models.shell) { item in
-                        router.bell = false
-                        if let path = item.path { router.open(path: path) }
-                    }
-                    .environment(language)
-                }
                 .task(id: user.id) { await models.shell.load() }
                 .liveRefresh(container.live, tables: ["notifications", "profiles"]) { await models.shell.load() }
             } else {
@@ -181,7 +184,7 @@ struct AppFrame: View {
     private func chrome(_ models: AppModels) -> PageChrome {
         PageChrome(initials: models.shell.initials, badge: models.shell.badge,
                    onBell: {
-                       router.bell = true
+                       router.openBell()
                        Task { await models.shell.opened() }
                    },
                    onProfile: { router.openSettings() })
@@ -264,77 +267,15 @@ struct AppFrame: View {
                 Task { await models.groups.load() }
             }
         case .newGroup:
-            NewGroupView(model: models.groups) { id in
+            NewGroupHost(data: container.data, site: container.config.siteURL) { id in
                 router.groups = NavigationPath()
                 router.groups.append(AppRoute.group(id))
+                Task { await models.groups.load() }
             }
-        }
-    }
-}
-
-/// The notifications (NotificationBell's list), in a sheet: each with its
-/// icon, its title (bold while unread) and body; or the empty line. A tap
-/// goes where it leads.
-@MainActor
-struct BellSheet: View {
-    let model: ShellModel
-    let open: (BellItem) -> Void
-    @Environment(AppLanguage.self) private var language
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if let failed = model.failed, model.items.isEmpty {
-                    NativeFailed(message: failed) { await model.loadFeed() }
-                        .listRowBackground(Color.clear)
-                } else if model.items.isEmpty {
-                    Text(language.t("notifications:bell.empty"))
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .listRowBackground(Color.clear)
-                } else {
-                    ForEach(model.items) { item in
-                        Button { open(item) } label: {
-                            HStack(alignment: .top, spacing: 12) {
-                                NativeIconTile(symbol: BellSheet.symbol(item.type), color: NativeStyle.coral, size: 32)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.title).fontWeight(item.read ? .regular : .semibold)
-                                    if let body = item.body {
-                                        Text(body).font(.subheadline).foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            .foregroundStyle(Color.primary)
-                        }
-                    }
-                }
+        case .notifications:
+            NotificationsView(model: models.shell) { item in
+                if let path = item.path { router.open(path: path) }
             }
-            .navigationTitle(language.t("notifications:bell.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(language.t("common:actions.done")) { dismiss() }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-
-    /// The web's icon per notification type (NotificationBell ICON), as an SF Symbol.
-    static func symbol(_ type: String) -> String {
-        switch type {
-        case "invite": return "person.badge.plus"
-        case "expense": return "doc.text"
-        case "settlement": return "banknote"
-        case "comment": return "text.bubble"
-        case "reminder": return "calendar.badge.clock"
-        case "member_joined": return "person.crop.circle.badge.checkmark"
-        case "member_left": return "person.crop.circle.badge.minus"
-        case "budget": return "chart.pie"
-        case "digest": return "chart.bar"
-        case "nudge": return "bell.and.waves.left.and.right"
-        default: return "bell"
         }
     }
 }

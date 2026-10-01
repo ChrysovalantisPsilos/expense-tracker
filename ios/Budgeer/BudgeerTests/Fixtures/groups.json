@@ -400,6 +400,7 @@
             "name": "Lisbon trip",
             "imageUrl": null,
             "members": "4 members",
+            "initials": "LT",
             "currency": "EUR",
             "avatars": {
               "shown": [
@@ -453,6 +454,7 @@
             "name": "Flat 3B",
             "imageUrl": "https://example.com/flat.png",
             "members": "2 members",
+            "initials": "F3",
             "currency": "GBP",
             "avatars": {
               "shown": [
@@ -490,7 +492,102 @@
             "name": "Ski week",
             "text": "Marco Rossi invited you"
           }
-        ]
+        ],
+        "gallery": {
+          "featured": [
+            {
+              "id": "g-lisbon",
+              "name": "Lisbon trip",
+              "imageUrl": null,
+              "members": "4 members",
+              "initials": "LT",
+              "currency": "EUR",
+              "avatars": {
+                "shown": [
+                  {
+                    "id": "m1",
+                    "name": "Alex Morgan",
+                    "src": null,
+                    "highlight": true,
+                    "initials": "AM",
+                    "bg": null,
+                    "fg": "light"
+                  },
+                  {
+                    "id": "m2",
+                    "name": "Sofia",
+                    "src": "https://example.com/sofia.png",
+                    "highlight": false,
+                    "initials": "S",
+                    "bg": "#02a0c5",
+                    "fg": "light"
+                  },
+                  {
+                    "id": "m3",
+                    "name": "Marco Rossi",
+                    "src": null,
+                    "highlight": false,
+                    "initials": "MR",
+                    "bg": "#16e951",
+                    "fg": "dark"
+                  },
+                  {
+                    "id": "m4",
+                    "name": "Anna",
+                    "src": null,
+                    "highlight": false,
+                    "initials": "A",
+                    "bg": "#c0361f",
+                    "fg": "light"
+                  }
+                ],
+                "overflow": 0
+              },
+              "balance": {
+                "label": "You’re owed",
+                "amount": "€162.75",
+                "tone": "positive"
+              }
+            },
+            {
+              "id": "g-flat",
+              "name": "Flat 3B",
+              "imageUrl": "https://example.com/flat.png",
+              "members": "2 members",
+              "initials": "F3",
+              "currency": "GBP",
+              "avatars": {
+                "shown": [
+                  {
+                    "id": "f2",
+                    "name": "Alex Morgan",
+                    "src": null,
+                    "highlight": true,
+                    "initials": "AM",
+                    "bg": null,
+                    "fg": "light"
+                  },
+                  {
+                    "id": "f1",
+                    "name": "Sofia",
+                    "src": "https://example.com/sofia.png",
+                    "highlight": false,
+                    "initials": "S",
+                    "bg": "#02a0c5",
+                    "fg": "light"
+                  }
+                ],
+                "overflow": 0
+              },
+              "balance": {
+                "label": "You owe",
+                "amount": "£12.50",
+                "tone": "negative"
+              }
+            }
+          ],
+          "rest": []
+        }
       },
       "owner": {
         "name": "Lisbon trip",
@@ -551,25 +648,65 @@
               "id": "m1",
               "label": "You",
               "text": "+€162.75",
-              "tone": "positive"
+              "tone": "positive",
+              "avatar": {
+                "id": "m1",
+                "name": "Alex Morgan",
+                "src": null,
+                "highlight": true,
+                "initials": "AM",
+                "bg": null,
+                "fg": "light"
+              },
+              "bar": 1
             },
             {
               "id": "m2",
               "label": "Sofia",
               "text": "−€89.25",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m2",
+                "name": "Sofia",
+                "src": "https://example.com/sofia.png",
+                "highlight": false,
+                "initials": "S",
+                "bg": "#02a0c5",
+                "fg": "light"
+              },
+              "bar": 0.5483870967741935
             },
             {
               "id": "m3",
               "label": "Marco Rossi",
               "text": "−€70.65",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m3",
+                "name": "Marco Rossi",
+                "src": null,
+                "highlight": false,
+                "initials": "MR",
+                "bg": "#16e951",
+                "fg": "dark"
+              },
+              "bar": 0.43410138248847924
             },
             {
               "id": "m4",
               "label": "Anna",
               "text": "−€2.85",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m4",
+                "name": "Anna",
+                "src": null,
+                "highlight": false,
+                "initials": "A",
+                "bg": "#c0361f",
+                "fg": "light"
+              },
+              "bar": 0.017511520737327188
             }
           ],
           "highlight": {
@@ -862,25 +999,65 @@
               "id": "m2",
               "label": "You",
               "text": "−€89.25",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m2",
+                "name": "Sofia",
+                "src": "https://example.com/sofia.png",
+                "highlight": true,
+                "initials": "S",
+                "bg": null,
+                "fg": "light"
+              },
+              "bar": 0.5483870967741935
             },
             {
               "id": "m1",
               "label": "Alex Morgan",
               "text": "+€162.75",
-              "tone": "positive"
+              "tone": "positive",
+              "avatar": {
+                "id": "m1",
+                "name": "Alex Morgan",
+                "src": null,
+                "highlight": false,
+                "initials": "AM",
+                "bg": "#061218",
+                "fg": "light"
+              },
+              "bar": 1
             },
             {
               "id": "m3",
               "label": "Marco Rossi",
               "text": "−€70.65",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m3",
+                "name": "Marco Rossi",
+                "src": null,
+                "highlight": false,
+                "initials": "MR",
+                "bg": "#16e951",
+                "fg": "dark"
+              },
+              "bar": 0.43410138248847924
             },
             {
               "id": "m4",
               "label": "Anna",
               "text": "−€2.85",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m4",
+                "name": "Anna",
+                "src": null,
+                "highlight": false,
+                "initials": "A",
+                "bg": "#c0361f",
+                "fg": "light"
+              },
+              "bar": 0.017511520737327188
             }
           ],
           "highlight": {
@@ -1485,6 +1662,7 @@
             "name": "Lisbon trip",
             "imageUrl": null,
             "members": "4 μέλη",
+            "initials": "LT",
             "currency": "EUR",
             "avatars": {
               "shown": [
@@ -1538,6 +1716,7 @@
             "name": "Flat 3B",
             "imageUrl": "https://example.com/flat.png",
             "members": "2 μέλη",
+            "initials": "F3",
             "currency": "GBP",
             "avatars": {
               "shown": [
@@ -1575,7 +1754,102 @@
             "name": "Ski week",
             "text": "Σε κάλεσε: Marco Rossi"
           }
-        ]
+        ],
+        "gallery": {
+          "featured": [
+            {
+              "id": "g-lisbon",
+              "name": "Lisbon trip",
+              "imageUrl": null,
+              "members": "4 μέλη",
+              "initials": "LT",
+              "currency": "EUR",
+              "avatars": {
+                "shown": [
+                  {
+                    "id": "m1",
+                    "name": "Alex Morgan",
+                    "src": null,
+                    "highlight": true,
+                    "initials": "AM",
+                    "bg": null,
+                    "fg": "light"
+                  },
+                  {
+                    "id": "m2",
+                    "name": "Sofia",
+                    "src": "https://example.com/sofia.png",
+                    "highlight": false,
+                    "initials": "S",
+                    "bg": "#02a0c5",
+                    "fg": "light"
+                  },
+                  {
+                    "id": "m3",
+                    "name": "Marco Rossi",
+                    "src": null,
+                    "highlight": false,
+                    "initials": "MR",
+                    "bg": "#16e951",
+                    "fg": "dark"
+                  },
+                  {
+                    "id": "m4",
+                    "name": "Anna",
+                    "src": null,
+                    "highlight": false,
+                    "initials": "A",
+                    "bg": "#c0361f",
+                    "fg": "light"
+                  }
+                ],
+                "overflow": 0
+              },
+              "balance": {
+                "label": "Σου χρωστάνε",
+                "amount": "162,75 €",
+                "tone": "positive"
+              }
+            },
+            {
+              "id": "g-flat",
+              "name": "Flat 3B",
+              "imageUrl": "https://example.com/flat.png",
+              "members": "2 μέλη",
+              "initials": "F3",
+              "currency": "GBP",
+              "avatars": {
+                "shown": [
+                  {
+                    "id": "f2",
+                    "name": "Alex Morgan",
+                    "src": null,
+                    "highlight": true,
+                    "initials": "AM",
+                    "bg": null,
+                    "fg": "light"
+                  },
+                  {
+                    "id": "f1",
+                    "name": "Sofia",
+                    "src": "https://example.com/sofia.png",
+                    "highlight": false,
+                    "initials": "S",
+                    "bg": "#02a0c5",
+                    "fg": "light"
+                  }
+                ],
+                "overflow": 0
+              },
+              "balance": {
+                "label": "Χρωστάς",
+                "amount": "12,50 £",
+                "tone": "negative"
+              }
+            }
+          ],
+          "rest": []
+        }
       },
       "owner": {
         "name": "Lisbon trip",
@@ -1636,25 +1910,65 @@
               "id": "m1",
               "label": "Εσύ",
               "text": "+162,75 €",
-              "tone": "positive"
+              "tone": "positive",
+              "avatar": {
+                "id": "m1",
+                "name": "Alex Morgan",
+                "src": null,
+                "highlight": true,
+                "initials": "AM",
+                "bg": null,
+                "fg": "light"
+              },
+              "bar": 1
             },
             {
               "id": "m2",
               "label": "Sofia",
               "text": "−89,25 €",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m2",
+                "name": "Sofia",
+                "src": "https://example.com/sofia.png",
+                "highlight": false,
+                "initials": "S",
+                "bg": "#02a0c5",
+                "fg": "light"
+              },
+              "bar": 0.5483870967741935
             },
             {
               "id": "m3",
               "label": "Marco Rossi",
               "text": "−70,65 €",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m3",
+                "name": "Marco Rossi",
+                "src": null,
+                "highlight": false,
+                "initials": "MR",
+                "bg": "#16e951",
+                "fg": "dark"
+              },
+              "bar": 0.43410138248847924
             },
             {
               "id": "m4",
               "label": "Anna",
               "text": "−2,85 €",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m4",
+                "name": "Anna",
+                "src": null,
+                "highlight": false,
+                "initials": "A",
+                "bg": "#c0361f",
+                "fg": "light"
+              },
+              "bar": 0.017511520737327188
             }
           ],
           "highlight": {
@@ -1947,25 +2261,65 @@
               "id": "m2",
               "label": "Εσύ",
               "text": "−89,25 €",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m2",
+                "name": "Sofia",
+                "src": "https://example.com/sofia.png",
+                "highlight": true,
+                "initials": "S",
+                "bg": null,
+                "fg": "light"
+              },
+              "bar": 0.5483870967741935
             },
             {
               "id": "m1",
               "label": "Alex Morgan",
               "text": "+162,75 €",
-              "tone": "positive"
+              "tone": "positive",
+              "avatar": {
+                "id": "m1",
+                "name": "Alex Morgan",
+                "src": null,
+                "highlight": false,
+                "initials": "AM",
+                "bg": "#061218",
+                "fg": "light"
+              },
+              "bar": 1
             },
             {
               "id": "m3",
               "label": "Marco Rossi",
               "text": "−70,65 €",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m3",
+                "name": "Marco Rossi",
+                "src": null,
+                "highlight": false,
+                "initials": "MR",
+                "bg": "#16e951",
+                "fg": "dark"
+              },
+              "bar": 0.43410138248847924
             },
             {
               "id": "m4",
               "label": "Anna",
               "text": "−2,85 €",
-              "tone": "negative"
+              "tone": "negative",
+              "avatar": {
+                "id": "m4",
+                "name": "Anna",
+                "src": null,
+                "highlight": false,
+                "initials": "A",
+                "bg": "#c0361f",
+                "fg": "light"
+              },
+              "bar": 0.017511520737327188
             }
           ],
           "highlight": {
