@@ -1,0 +1,29 @@
+{
+  "locale": "en-US",
+  "frames": {
+    "1-home": {
+      "title": "Your month *at a glance*",
+      "sub": "What you spent, what came in and what's left."
+    },
+    "2-activity": {
+      "title": "Every entry, *day by day*",
+      "sub": "Search and filter to find any payment."
+    },
+    "3-add-split": {
+      "title": "Add it, *split it*",
+      "sub": "Pick who it's for and how to share the cost."
+    },
+    "4-group": {
+      "title": "Know *who owes what*",
+      "sub": "Groups for trips, flats and nights out."
+    },
+    "5-budgets": {
+      "title": "A budget for *each category*",
+      "sub": "See what's left before you go over."
+    },
+    "6-savings": {
+      "title": "Watch your *savings grow*",
+      "sub": "Your savings pot and goals, month by month."
+    }
+  }
+}

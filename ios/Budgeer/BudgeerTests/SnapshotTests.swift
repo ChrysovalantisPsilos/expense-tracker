@@ -642,7 +642,7 @@ final class SnapshotTests: XCTestCase {
 
     // MARK: Sample data
 
-    private static let saved: JSONValue = [
+    static let saved: JSONValue = [
         "id": "t1", "kind": "expense", "amount_minor": 4250, "currency": "EUR", "exchange_rate": 1,
         "category_id": "c-food", "description": "Market", "notes": "Weekly shop", "spent_at": "2026-09-14",
         "recurring_rule_id": .null, "account_id": .null, "savings_from_income": false, "paid_from_savings": false,
@@ -715,30 +715,31 @@ final class SnapshotTests: XCTestCase {
         return store
     }
 
-    /// Home's model over the fixture, this month, with a budget, the vouchers and the month in words.
-    func homeModel(_ fixture: HomeFixture, lang: String) async throws -> HomeViewModel {
+    /// Home's model over the fixture, this month, with a budget, the vouchers and the month in words
+    /// (the store pictures pass their sample data).
+    func homeModel(_ fixture: HomeFixture, lang: String, sample: StoreSample = .plain) async throws -> HomeViewModel {
         _ = language(lang)
         let now = fixture.now
         let store = FakeStore(home: fixture)
-        store.oldest = .success("2020-03-15")
-        store.vouchersResult = .success(HomeViewModelTests.vouchers)
+        store.oldest = .success(sample.day("2020-03-15"))
+        store.vouchersResult = .success(sample(HomeViewModelTests.vouchers))
         store.budgetsByPeriod = [
-            "2020-09-01": [HomeViewModelTests.groceriesCap],
-            "2020-08-01": [HomeViewModelTests.groceriesCap.with("period_start", "2020-08-01")],
+            sample.day("2020-09-01"): [sample(HomeViewModelTests.groceriesCap)],
+            sample.day("2020-08-01"): [sample(HomeViewModelTests.groceriesCap.with("period_start", "2020-08-01"))],
         ]
         store.profileResult = .success(fixture.input.profile.with("ai_month_summary", true))
-        store.summaryResult = .success(["summary": ["lines": [
+        store.summaryResult = .success(["summary": ["lines": sample([
             "You spent €319.30 so far, most of it on groceries.", "Eating out is close to its budget.",
-        ], "lang": .string(lang)], "stale": false, "empty": false])
+        ]), "lang": .string(lang)], "stale": false, "empty": false])
         let model = HomeViewModel(data: store.data, core: .shared, now: { now })
         await model.load()
         return model
     }
 
     /// The categories an entry picks from, a savings category, and the groups' fixture (Who's it for?).
-    private func formStore() throws -> FakeStore {
-        let store = try GroupsFixture.load().store()
-        store.categoriesResult = .success(TestData.categories)
+    func formStore(_ sample: StoreSample = .plain) throws -> FakeStore {
+        let store = try sample.fixture(GroupsFixture.self, "groups").store()
+        store.categoriesResult = .success(sample(TestData.categories))
         store.savingsResult = .success([["id": "c-sav", "kind": "income", "is_savings": true]])
         return store
     }
@@ -761,7 +762,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     /// A sheet up over Home.
-    private func overHome<V: View>(_ home: HomeViewModel, @ViewBuilder _ sheet: @escaping () -> V) -> some View {
+    func overHome<V: View>(_ home: HomeViewModel, @ViewBuilder _ sheet: @escaping () -> V) -> some View {
         framed(.home) {
             NavigationStack { HomeView(model: home, chrome: SnapshotTests.chrome) }
                 .sheet(isPresented: .constant(true)) { sheet() }

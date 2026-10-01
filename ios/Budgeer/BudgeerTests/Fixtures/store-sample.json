@@ -1,0 +1,58 @@
+{
+  "about": "The store screenshots' sample data (SnapshotTests+Store.swift): the fixtures' fake data moved from 2020 to 2026 (2020 and 2026 share their weekdays from March on), the categories that match a default one given its key (so they show in the app's language), and per language the words that are fixture text rather than app text. Fake data only.",
+  "years": 6,
+  "defaultKeys": {
+    "Groceries": "groceries",
+    "Eating out": "food",
+    "Transport": "transport",
+    "Fun": "entertainment",
+    "Salary": "salary",
+    "Savings": "savings"
+  },
+  "names": {
+    "en": {
+      "You spent €319.30 so far, most of it on groceries.": "You spent €341.28 so far, most of it on groceries.",
+      "Eating out is close to its budget.": "Two payments are still to come this month."
+    },
+    "el": {
+      "You spent €319.30 so far, most of it on groceries.": "Ξόδεψες 341,28 € μέχρι τώρα, τα περισσότερα στο σούπερ μάρκετ.",
+      "Eating out is close to its budget.": "Έρχονται ακόμα δύο πληρωμές αυτόν τον μήνα.",
+      "Groceries": "Σούπερ μάρκετ",
+      "Refunds": "Επιστροφές",
+      "Subscriptions": "Συνδρομές",
+      "Music": "Μουσική",
+      "Cloud": "Αποθήκευση",
+      "Cloud storage": "Αποθήκευση αρχείων",
+      "Bus pass": "Κάρτα λεωφορείου",
+      "Antivirus": "Προστασία υπολογιστή",
+      "Lunch club": "Μεσημεριανό γραφείου",
+      "Market": "Λαϊκή",
+      "weekly shop": "ψώνια της εβδομάδας",
+      "Weekly shop": "Ψώνια της εβδομάδας",
+      "Diner": "Ταβέρνα",
+      "New bike": "Νέο ποδήλατο",
+      "Lisbon trip": "Ταξίδι στη Λισαβόνα",
+      "Flat 3B": "Σπίτι 3Β",
+      "Ski week": "Εβδομάδα σκι",
+      "Alex Morgan": "Αλέξης Μόρφης",
+      "Sofia": "Σοφία",
+      "Marco Rossi": "Μάρκος Ρήγας",
+      "Anna": "Άννα",
+      "Dinner at the harbour": "Δείπνο στο λιμάνι",
+      "Museum tickets": "Εισιτήρια μουσείου",
+      "Sofia added “Museum tickets”": "Η Σοφία πρόσθεσε «Εισιτήρια μουσείου»",
+      "Anna joined the group": "Η Άννα μπήκε στην ομάδα",
+      "Taxi": "Ταξί",
+      "Snacks": "Σνακ",
+      "Interest": "Τόκοι",
+      "Birthday gift": "Δώρο γενεθλίων",
+      "Rent": "Ενοίκιο",
+      "Gym": "Γυμναστήριο",
+      "Summer trip": "Καλοκαιρινές διακοπές",
+      "Emergency fund": "Για ώρα ανάγκης",
+      "New laptop": "Νέος υπολογιστής",
+      "Bank savings": "Ταμιευτήριο",
+      "Current": "Τρεχούμενος"
+    }
+  }
+}
