@@ -44,4 +44,4 @@ enum NativeStyle {
     static func title(_ size: CGFloat, lang: String, relativeTo style: Font.TextStyle = .title) -> Font {
         .custom(lang == "el" ? "Manrope-Bold" : "Poppins-Bold", size: size, relativeTo: style)
     }
-
+}
