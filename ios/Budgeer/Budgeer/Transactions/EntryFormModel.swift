@@ -537,10 +537,7 @@ final class EntryFormModel {
     var deleteTitle: String { core.text("transactions:deleteDialog.title.\(kind == "income" ? "income" : "expense")") }
     var deleteBody: String {
         guard let row = transaction else { return "" }
-        let name: String = (try? core.call("categoryName", "entryName",
-                                           [row, core.text("transactions:deleteDialog.thisEntry")])) ?? ""
-        let amount = core.formatMoney(row["amount_minor"] ?? 0, row["currency"]?.stringValue ?? baseCurrency)
-        return core.text("transactions:deleteDialog.body", ["name": .string(name), "amount": .string(amount)])
+        return TransactionWords.deleteBody(row, core: core)
     }
 
     /// Delete the saved entry (after the view's confirm).

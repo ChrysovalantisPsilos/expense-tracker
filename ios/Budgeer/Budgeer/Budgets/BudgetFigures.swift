@@ -25,6 +25,15 @@ struct BudgetItem: Codable, Equatable, Identifiable, Sendable {
     let overLabel: String?
 }
 
+/// Home's Budgets card for the picked period (BudgetsCard): the subtitle,
+/// the empty state and whether it offers "Set a budget", and the rows.
+struct BudgetCardFigures: Codable, Equatable, Sendable {
+    let subtitle: String
+    let empty: String
+    let canSet: Bool
+    let items: [BudgetItem]
+}
+
 struct BudgetFigures: Codable, Equatable, Sendable {
     /// The month the caps are set for ('YYYY-MM-01').
     let periodStart: String
@@ -75,5 +84,43 @@ struct BudgetFigures: Codable, Equatable, Sendable {
             subtitle: subtitle,
             canCopy: try core.call("budgetMath", "canCopyBudgets", [carried, previous.arrayValue?.count ?? 0]),
             items: items)
+    }
+
+    // MARK: Home's card (screenFigures.mjs budgetCard)
+
+    /// budgetWindow for a picker period: { first, last, from, to }.
+    static func cardWindow(periodValue: String?, now: Date, core: BudgeerCore) throws -> JSONValue {
+        let period = try HomeFigures.period(periodValue, now: now, core: core)
+        return try core.json("budgetMath", "budgetWindow", [period, try core.isoDate(now)])
+    }
+
+    /// - sets: useBudgetSets' answer (monthSets of one month, or each month's { period, rows })
+    /// - rows: my_transactions(expense, the window, p_spread)
+    static func card(profile: JSONValue, sets: JSONValue, rows: JSONValue, periodValue: String?, now: Date,
+                     core: BudgeerCore) throws -> BudgetCardFigures {
+        let base = profile["base_currency"]?.stringValue ?? "EUR"
+        let todayISO = try core.isoDate(now)
+        let period = try HomeFigures.period(periodValue, now: now, core: core)
+        let span = try core.json("budgetMath", "budgetWindow", [period, todayISO])
+        let options: JSONValue = ["separateYearly": .bool(profile["yearly_separate"]?.boolValue ?? false)]
+        let spend = try core.json("spread", "spendRows", [rows, base, span["from"] ?? .null, span["to"] ?? .null, options])
+        let progress = try core.json("budgetMath", "periodBudgets", [[
+            "sets": sets, "span": span, "spend": spend, "baseCurrency": .string(base),
+        ] as JSONValue])
+        let month: Bool = try core.call("periods", "isMonthPeriod", [period])
+        let first = span["first"] ?? .null
+        let carried = month
+            ? try core.json("budgetMath", "carriedFrom", [try core.json("budgetMath", "capsInMonth", [sets, first]), first])
+            : JSONValue.null
+        let past: Bool = try core.call("periods", "isPastPeriod", [period, todayISO])
+        let empty = try core.json("budgetMath", "budgetsEmpty", [period, !past])
+        let subtitle: String = try core.call("budgetMath", "budgetSubtitle", [period, [
+            "months": progress["months"] ?? .int(0), "carried": carried, "periodStart": span["last"] ?? .null,
+        ] as JSONValue])
+        let items = try (progress["items"]?.arrayValue ?? []).map { item -> BudgetItem in
+            try core.call("budgetMath", "budgetRowParts", [item, base])
+        }
+        return BudgetCardFigures(subtitle: subtitle, empty: empty["text"]?.stringValue ?? "",
+                                 canSet: empty["canSet"]?.boolValue ?? false, items: items)
     }
 }

@@ -26,6 +26,8 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     // Reads.
     var profileResult: Result<JSONValue, Error> = .success(["base_currency": "EUR"])
     var vouchersResult: Result<JSONValue, Error> = .success(.null)
+    var notificationsResult: Result<JSONValue, Error> = .success([])
+    private(set) var markedRead = 0
     /// Every active category; categories(kind:) keeps the ones of that kind.
     var categoriesResult: Result<JSONValue, Error> = .success([])
     var savingsResult: Result<JSONValue, Error> = .success([])
@@ -41,6 +43,9 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     /// "USD>EUR" → the rate (fx.rate); a pair not here has no rate.
     var rates: [String: Double] = [:]
     var aiResult: Result<JSONValue, Error> = .success(.null)
+    /// my_month_summary's answer, and the months written.
+    var summaryResult: Result<JSONValue, Error> = .success(.null)
+    private(set) var summariesWritten: [String] = []
 
     // What the screens did.
     private(set) var queries: [TxnQuery] = []
@@ -66,6 +71,11 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
         savedLanguages.append(language)
     }
     func mealVouchers() async throws -> JSONValue { try vouchersResult.get() }
+    func notifications() async throws -> JSONValue { try notificationsResult.get() }
+    func markNotificationsRead() async throws {
+        if let writeError { throw writeError }
+        markedRead += 1
+    }
 
     func categories(kind: String?) async throws -> JSONValue {
         let all = try categoriesResult.get().arrayValue ?? []
@@ -132,6 +142,10 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
         return 2
     }
 
+    func budgetPeriods() async throws -> JSONValue {
+        .array(budgetsByPeriod.keys.sorted().map { JSONValue.string($0) })
+    }
+
     func rate(from: String, to: String, date: String?) async -> JSONValue? {
         if from == to { return ["rate": 1, "date": .string(date ?? "2026-09-15")] }
         guard let rate = rates["\(from)>\(to)"] else { return nil }
@@ -146,6 +160,13 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     func parseEntry(text: String, today: String, labels: JSONValue) async throws -> JSONValue {
         aiLines.append(text)
         return try aiResult.get()
+    }
+
+    func monthSummary(month: String) async throws -> JSONValue { try summaryResult.get() }
+
+    func writeMonthSummary(month: String, lang: String, labels: JSONValue) async throws {
+        if let writeError { throw writeError }
+        summariesWritten.append(month)
     }
 
     var data: DataLayer { DataLayer(self) }

@@ -17,12 +17,12 @@ import { isFirstRun, ledgerSummary, listHeading } from '../src/features/transact
 import { listParts } from '../src/features/transactions/rowParts.js'
 import { pageCount, pageSlice } from '../src/shared/lib/paginate.js'
 import { t } from '../src/shared/lib/i18n/i18n.js'
-import { thisMonthPeriod } from '../src/shared/lib/periods.js'
+import { isMonthPeriod, isPastPeriod, periodFromValue, thisMonthPeriod } from '../src/shared/lib/periods.js'
 import { isoDate, lastMonths, monthTitle } from '../src/shared/lib/dates.js'
 import { spendRows } from '../src/shared/lib/spread.js'
 import {
   budgetRowParts, budgetWindow, canCopyBudgets, capsInMonth, carriedFrom, carriedLabel, monthSets, periodBudgets,
-  previousPeriod,
+  previousPeriod, budgetSubtitle, budgetsEmpty,
 } from '../src/features/budgets/budgetMath.js'
 import {
   groupTotalParts, incomePerMonth, incomeRules, incomeTotalParts, ruleRowParts, subscriptionGroups,
@@ -84,6 +84,32 @@ export function budgetFigures({ profile, budgets, previous, rows, now, lang = 'e
     heading: monthTitle(date),
     subtitle: carried ? carriedLabel(carried, span.last) : null,
     canCopy: canCopyBudgets(carried, previous.length),
+    items: items.map((item) => budgetRowParts(item, baseCurrency)),
+  }
+}
+
+// Home's Budgets card (BudgetsCard + useBudgetProgress) for a period from
+// the picker: its subtitle (the month's carried caps, or how many months a
+// longer period had caps in), the empty state (Set a budget only while the
+// period hasn't ended) and each budget's row.
+//   sets  useBudgetSets' answer: monthSets(my_budgets(month)) for a month,
+//         else { period, rows } for each month setPeriods names
+//   rows  my_transactions(expense, the window, p_spread)
+export function budgetCard({ profile, sets, rows, periodValue, now, lang = 'en' }) {
+  setLanguage(lang)
+  const date = new Date(now)
+  const todayISO = isoDate(date)
+  const period = (periodValue && periodFromValue(periodValue, date)) || thisMonthPeriod(date)
+  const baseCurrency = profile?.base_currency || 'EUR'
+  const span = budgetWindow(period, todayISO)
+  const spend = spendRows(rows, baseCurrency, span.from, span.to, { separateYearly: !!profile?.yearly_separate })
+  const { items, months } = periodBudgets({ sets, span, spend, baseCurrency })
+  const carried = isMonthPeriod(period) ? carriedFrom(capsInMonth(sets, span.first), span.first) : null
+  const empty = budgetsEmpty(period, !isPastPeriod(period, todayISO))
+  return {
+    subtitle: budgetSubtitle(period, { months, carried, periodStart: span.last }),
+    empty: empty.text,
+    canSet: empty.canSet,
     items: items.map((item) => budgetRowParts(item, baseCurrency)),
   }
 }
@@ -225,6 +251,20 @@ export const BUDGETS_INPUT = {
       previous: [budget(GROCERIES, 35000, '2020-08-01'), budget(EATING, 12000, '2020-08-01')],
     },
   ],
+  // Home's card: this month (its own caps, then August's carried), a past
+  // month without budgets, and this year (two months of caps).
+  cards: [
+    { name: 'own', view: 'own', periodValue: null },
+    { name: 'carried', view: 'carried', periodValue: null },
+    { name: 'pastEmpty', view: 'own', periodValue: 'm:2020-5', sets: [] },
+    {
+      name: 'year', view: 'own', periodValue: 'y:2020',
+      sets: [
+        { period: '2020-08-01', rows: [budget(GROCERIES, 35000, '2020-08-01')] },
+        { period: '2020-09-01', rows: [budget(GROCERIES, 40000, '2020-09-01'), budget(EATING, 10000, '2020-09-01')] },
+      ],
+    },
+  ],
 }
 
 const rule = (id, kind, amount_minor, frequency, next_run, categories, extra = {}) => ({
@@ -286,12 +326,18 @@ export function insightsFixture() {
 
 export function budgetsFixture() {
   const expected = {}
+  const cards = {}
   for (const lang of ['en', 'el']) {
     expected[lang] = {}
     for (const view of BUDGETS_INPUT.views) expected[lang][view.name] = budgetFigures({ ...BUDGETS_INPUT, ...view, lang })
+    cards[lang] = {}
+    for (const card of BUDGETS_INPUT.cards) {
+      const view = BUDGETS_INPUT.views.find((v) => v.name === card.view)
+      cards[lang][card.name] = budgetCard({ ...BUDGETS_INPUT, sets: card.sets ?? monthSets(view.budgets), periodValue: card.periodValue, lang })
+    }
   }
   setLanguage('en')
-  return { input: BUDGETS_INPUT, expected }
+  return { input: BUDGETS_INPUT, expected, cards }
 }
 
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)

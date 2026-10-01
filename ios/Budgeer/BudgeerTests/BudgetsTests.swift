@@ -13,14 +13,23 @@ struct BudgetsFixture: Decodable {
         let budgets: JSONValue
         let previous: JSONValue
     }
+    struct CardView: Decodable {
+        let name: String
+        let view: String
+        let periodValue: String?
+        let sets: JSONValue?
+    }
     struct Input: Decodable {
         let now: String
         let profile: JSONValue
         let rows: JSONValue
         let views: [View]
+        let cards: [CardView]
     }
     let input: Input
     let expected: [String: [String: BudgetFigures]]
+    /// Home's Budgets card per language and case.
+    let cards: [String: [String: BudgetCardFigures]]
 
     static func load() throws -> BudgetsFixture {
         try JSONDecoder().decode(BudgetsFixture.self, from: fixtureData("budgets"))
@@ -57,6 +66,20 @@ final class BudgetsParityTests: XCTestCase {
                 let expected = try XCTUnwrap(fixture.expected[lang]?[view.name])
                 XCTAssertEqual(figures.items, expected.items, "\(lang) \(view.name)")
                 XCTAssertEqual(figures, expected, "\(lang) \(view.name)")
+            }
+        }
+    }
+
+    func testHomesCardEqualsTheWebsInBothLanguages() throws {
+        let fixture = try BudgetsFixture.load()
+        for lang in ["en", "el"] {
+            try BudgeerCore.shared.setLanguage(lang)
+            for card in fixture.input.cards {
+                let view = try XCTUnwrap(fixture.input.views.first { $0.name == card.view })
+                let sets = try card.sets ?? BudgeerCore.shared.json("budgetMath", "monthSets", [view.budgets])
+                let figures = try BudgetFigures.card(profile: fixture.input.profile, sets: sets, rows: fixture.input.rows,
+                                                     periodValue: card.periodValue, now: fixture.now, core: .shared)
+                XCTAssertEqual(figures, try XCTUnwrap(fixture.cards[lang]?[card.name]), "\(lang) \(card.name)")
             }
         }
     }

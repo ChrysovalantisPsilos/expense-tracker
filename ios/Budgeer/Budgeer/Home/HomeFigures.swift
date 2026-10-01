@@ -2,7 +2,8 @@
 // (the period, salaryShiftOf, savingsIdsOf, spendRows, periodTotals,
 // periodProjection over the recurring rules at today's rates,
 // projectedTotals, categoryBars, bucketLabels, formatMoney, formatSigned,
-// signTone, savingsLine) and its Recurring card's (SubscriptionsCard:
+// signTone, savingsLine, barLines, visibleBars, homeLists, listHeading,
+// rowParts.listParts, isFirstRun, homeCards) and its Recurring card's (SubscriptionsCard:
 // showsUpcoming, subscriptionGroups or chargedGroups, and each group's and
 // row's words), called one by one through BudgeerCore, each answer carried
 // to the next as the JSON it came as. Nothing is added, summed, rounded or
@@ -23,6 +24,9 @@ struct HomeInput: Equatable, Sendable {
     var rates: JSONValue = [:]
     let now: Date
     var periodValue: String?
+    /// The first transaction's date (nil: none at all), and whether it could be read.
+    var oldest: String? = nil
+    var oldestKnown = true
 }
 
 struct HomePeriod: Codable, Equatable, Sendable {
@@ -42,10 +46,30 @@ struct HomeBar: Codable, Equatable, Sendable {
     /// The bar's length relative to the largest, 0…1.
     let ratio: Double
     let amount: String
+    /// The line under the name (categoryLine: the amount, and what its groups add).
+    let meta: String
     /// A group's share of an expense (the people badge) rather than a category.
     let group: Bool
     /// The category's badge (categoryStyle.categoryLook).
     let look: CategoryLook
+}
+
+/// The categories card's "Show all" (visibleBars): how many rows show
+/// folded, how many more "Show all" adds, and the button's two words.
+struct BarFold: Codable, Equatable, Sendable {
+    let top: Int
+    let hidden: Int
+    let showAll: String
+    let showTop: String
+}
+
+/// Home's Expenses or Income card: its heading, its empty line, and every
+/// row's words (rowParts.listParts), shown ten at a time.
+struct HomeList: Codable, Equatable, Sendable {
+    let title: String
+    let subtitle: String
+    let empty: String
+    let rows: [EntryRow]
 }
 
 /// A charge on the Recurring card (nextChargeParts, chargeParts).
@@ -104,6 +128,11 @@ struct HomeFigures: Codable, Equatable, Sendable {
     /// The savings line under the overview, when there is one.
     let saved: String?
     let bars: [HomeBar]
+    let fold: BarFold
+    /// The cards in reading order (dashboardMath.homeCards: the first run's or the usual).
+    let cards: [String]
+    let expenseList: HomeList
+    let incomeList: HomeList
     let recurring: RecurringCard
 
     // categoryBars' `top`: the web passes Infinity (Home folds nothing);
@@ -154,7 +183,8 @@ struct HomeFigures: Codable, Equatable, Sendable {
         let labels: JSONValue = try core.call("txnRollup", "bucketLabels", [JSONValue.array(bucketRows)])
         let byCategory = totals["byCategory"] ?? JSONValue.array([])
         let ranked: [JSONValue] = try core.call("breakdown", "categoryBars", [byCategory, noFold])
-        let bars = try ranked.map { c -> HomeBar in
+        let lines: [String] = try core.call("dashboardMath", "barLines", [JSONValue.array(ranked), spend, baseCurrency])
+        let bars = try ranked.enumerated().map { index, c -> HomeBar in
             let name = c["name"]?.stringValue ?? ""
             let row = bucketPairs.first { $0.key.stringValue == name }?.value
             let value = c["value"]?.doubleValue ?? 0
@@ -162,6 +192,7 @@ struct HomeFigures: Codable, Equatable, Sendable {
             let amount: String = try core.call("currency", "formatMoney", [value, baseCurrency])
             return HomeBar(name: name, label: label, value: value,
                            share: c["share"]?.intValue ?? 0, ratio: c["ratio"]?.doubleValue ?? 0, amount: amount,
+                           meta: index < lines.count ? lines[index] : amount,
                            group: row?["group_expense_id"]?.stringValue != nil,
                            look: try CategoryLook.of(row?["categories"], core: core))
         }
@@ -171,6 +202,25 @@ struct HomeFigures: Codable, Equatable, Sendable {
         let fetchFrom: JSONValue = try core.call("salaryShift", "shiftFetchFrom", [from, salaryShift])
         let saved: JSONValue = try core.call("dashboardMath", "savingsLine",
                                              [totals["saved"] ?? JSONValue.int(0), figures["fromSavingsTotal"] ?? JSONValue.int(0), period, baseCurrency])
+        // "Show all": the rows shown folded and the button's words.
+        let folded = try core.json("dashboardMath", "visibleBars", [JSONValue.array(ranked), false])
+        let top = folded["rows"]?.arrayValue?.count ?? 0
+        let fold = BarFold(top: top, hidden: folded["hidden"]?.intValue ?? 0,
+                           showAll: core.text("dashboard:categories.showAll", ["n": .int(ranked.count)]),
+                           showTop: core.text("dashboard:categories.showTop", ["n": .int(top)]))
+        // The Expenses and Income cards (homeLists), and which cards show.
+        let lists = try core.json("dashboardMath", "homeLists", [input.rows, [
+            "from": from, "to": to, "savingsIds": savingsIds, "salaryShift": salaryShift,
+        ] as JSONValue])
+        let periodLabel = period["label"]?.stringValue ?? ""
+        let list = { (kind: String) throws -> HomeList in
+            try homeList(kind, lists[kind == "income" ? "income" : "expenses"] ?? [], periodLabel: periodLabel,
+                         baseCurrency: baseCurrency, salaryShift: salaryShift, savingsIds: savingsIds, core: core)
+        }
+        var run: JSONValue = ["loading": false, "failed": false, "count": .int(input.rows.arrayValue?.count ?? 0)]
+        if input.oldestKnown { run = run.with("oldest", input.oldest.json) }
+        let firstRun: Bool = try core.call("listHeading", "isFirstRun", [run])
+        let cards: [String] = try core.call("dashboardMath", "homeCards", [["firstRun": .bool(firstRun)] as JSONValue])
         let card = try recurringCard(rules: input.rules, rows: input.rows, period: period, todayISO: todayISO,
                                      baseCurrency: baseCurrency, rates: input.rates, separateYearly: separateYearly, core: core)
         return HomeFigures(
@@ -185,7 +235,25 @@ struct HomeFigures: Codable, Equatable, Sendable {
             netTone: try core.call("kitMath", "signTone", [netTotal]),
             saved: saved.stringValue,
             bars: bars,
+            fold: fold,
+            cards: cards,
+            expenseList: try list("expense"),
+            incomeList: try list("income"),
             recurring: card)
+    }
+
+    /// One list card (homeFigures.mjs homeList): listHeading over the period
+    /// and the count, the empty line, and every row's words.
+    static func homeList(_ kind: String, _ items: JSONValue, periodLabel: String, baseCurrency: String,
+                         salaryShift: JSONValue, savingsIds: JSONValue, core: BudgeerCore) throws -> HomeList {
+        let head = try core.json("listHeading", "listHeading", [[
+            "kind": .string(kind), "periodLabel": .string(periodLabel), "count": .int(items.arrayValue?.count ?? 0),
+        ] as JSONValue])
+        let options: JSONValue = ["kind": .string(kind), "baseCurrency": .string(baseCurrency), "salaryShift": salaryShift,
+                                  "savingsIds": savingsIds]
+        let rows: [EntryRow] = try core.call("rowParts", "listParts", [items, options])
+        return HomeList(title: head["title"]?.stringValue ?? "", subtitle: head["subtitle"]?.stringValue ?? "",
+                        empty: core.text(kind == "income" ? "dashboard:noIncome" : "dashboard:noExpenses"), rows: rows)
     }
 
     /// SubscriptionsCard: today's rules by frequency, or a past period's charges.

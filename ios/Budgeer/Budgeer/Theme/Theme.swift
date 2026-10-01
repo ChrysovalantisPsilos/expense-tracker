@@ -34,6 +34,11 @@ enum Theme {
         static let red200 = Color(hex: 0xF2917F)
         static let red400 = Color(hex: 0xD9503F)
         static let red500 = Color(hex: 0xC2372B)
+        static let sand800 = Color(hex: 0x3D372D)
+        static let brand200 = Color(hex: 0xFFC5B6)
+        static let brand800 = Color(hex: 0x962B17)
+        static let red100 = Color(hex: 0xFBDCD5)
+        static let red800 = Color(hex: 0x6B1E18)
     }
 
     // MARK: Semantic tokens (theme.js `semanticTokens`), light | dark
@@ -90,6 +95,9 @@ enum Theme {
         static let softColor = Color(red: 36 / 255, green: 32 / 255, blue: 25 / 255, opacity: 0.06)
         static let softRadius: CGFloat = 8
         static let softY: CGFloat = 4
+        /// `lifted` (the Panel's): 0 2px 4px at 5%, then 0 12px 32px at 10%.
+        static let liftedNear = Color(red: 36 / 255, green: 32 / 255, blue: 25 / 255, opacity: 0.05)
+        static let liftedFar = Color(red: 36 / 255, green: 32 / 255, blue: 25 / 255, opacity: 0.10)
     }
 
     // MARK: Type (palette.js FONTS: Poppins headings, Nunito Sans body; Greek

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { budgetChange, budgetPercent, budgetTone } from '../src/features/budgets/budgetMath.js'
+import { budgetChange, budgetPercent, budgetTone, setPeriods } from '../src/features/budgets/budgetMath.js'
 
 test('budgetTone: default under 80% of the cap, warning up to it, negative over it; a zero cap with no spend is neutral', () => {
   assert.equal(budgetTone(0, 10000), undefined)
@@ -235,4 +235,14 @@ test('budgetRowParts: the row\'s words, percent, tone and over', () => {
   assert.equal(over.overLabel, 'Over budget')
   assert.equal(over.valueLabel, '113%')
   assert.equal(budgetRowParts({ ...item, spent: 100, tone: undefined }, 'EUR').tone, null)
+})
+
+test('setPeriods: the months a span reads, from the one in force at its start', () => {
+  const periods = ['2026-01-01', '2026-03-01', '2026-06-01', '2026-10-01']
+  assert.deepEqual(setPeriods(periods, '2026-04-01', '2026-09-01'), ['2026-03-01', '2026-06-01'])
+  assert.deepEqual(setPeriods(periods, '2026-03-01', '2026-12-01'), ['2026-03-01', '2026-06-01', '2026-10-01'])
+  // From the start, and a start before any budget.
+  assert.deepEqual(setPeriods(periods, null, '2026-05-01'), ['2026-01-01', '2026-03-01'])
+  assert.deepEqual(setPeriods(periods, '2025-01-01', '2026-02-01'), ['2026-01-01'])
+  assert.deepEqual(setPeriods([], '2026-01-01', '2026-02-01'), [])
 })

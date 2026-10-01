@@ -1,6 +1,7 @@
 // The app's data access, one protocol per area, each after the web's data
 // module of the same area and calling the same tables and RPCs:
-//   ProfileRepository       shared/lib/profile.js, vouchers.js (the setup)
+//   ProfileRepository       shared/lib/profile.js, vouchers.js (the setup),
+//                           notifications.js (the bell)
 //   CategoriesRepository    shared/lib/categories.js
 //   TransactionsRepository  shared/lib/transactions.js
 //   RecurringRepository     features/recurring/recurring.js
@@ -23,15 +24,18 @@ struct TxnQuery: Hashable, Sendable, Codable {
     var limit: Int?
     /// Also the yearly payments before `from` that still count in the range (0067).
     var spread = false
+    /// Only the expenses paid with meal vouchers (0097; the vouchers card).
+    var paidWithVouchers = false
 
     init(kind: String? = nil, from: String? = nil, to: String? = nil, categoryId: String? = nil,
-         limit: Int? = nil, spread: Bool = false) {
+         limit: Int? = nil, spread: Bool = false, paidWithVouchers: Bool = false) {
         self.kind = kind
         self.from = from
         self.to = to
         self.categoryId = categoryId
         self.limit = limit
         self.spread = spread
+        self.paidWithVouchers = paidWithVouchers
     }
 }
 
@@ -43,6 +47,10 @@ protocol ProfileRepository: Sendable {
     func saveLanguage(_ language: String?) async throws
     /// my_meal_vouchers: the setup, or null without one.
     func mealVouchers() async throws -> JSONValue
+    /// The bell's feed (listNotifications): the newest 30 notifications.
+    func notifications() async throws -> JSONValue
+    /// markAllRead: every unread notification read now.
+    func markNotificationsRead() async throws
 }
 
 protocol CategoriesRepository: Sendable {
@@ -83,6 +91,8 @@ protocol BudgetsRepository: Sendable {
     func delete(categoryId: String, period: String) async throws
     /// copy_previous_budgets: how many were copied.
     func copyPrevious(period: String) async throws -> Int
+    /// budgetPeriods: every month with any budget ('YYYY-MM-01'), sorted.
+    func budgetPeriods() async throws -> JSONValue
 }
 
 protocol FxRepository: Sendable {
@@ -95,6 +105,10 @@ protocol FxRepository: Sendable {
 protocol AiRepository: Sendable {
     /// ai-helper parse_entry: the typed line → the entry for the form.
     func parseEntry(text: String, today: String, labels: JSONValue) async throws -> JSONValue
+    /// my_month_summary for a month ('YYYY-MM-01'): { summary, stale, empty } or null.
+    func monthSummary(month: String) async throws -> JSONValue
+    /// ai-helper month_summary: write (or rewrite) the month's summary.
+    func writeMonthSummary(month: String, lang: String, labels: JSONValue) async throws
 }
 
 protocol GroupsRepository: Sendable {

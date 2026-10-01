@@ -233,6 +233,82 @@
           }
         ]
       }
+    ],
+    "cards": [
+      {
+        "name": "own",
+        "view": "own",
+        "periodValue": null
+      },
+      {
+        "name": "carried",
+        "view": "carried",
+        "periodValue": null
+      },
+      {
+        "name": "pastEmpty",
+        "view": "own",
+        "periodValue": "m:2020-5",
+        "sets": []
+      },
+      {
+        "name": "year",
+        "view": "own",
+        "periodValue": "y:2020",
+        "sets": [
+          {
+            "period": "2020-08-01",
+            "rows": [
+              {
+                "category_id": "33333333-3333-4333-8333-333333333333",
+                "amount_minor": 35000,
+                "currency": "EUR",
+                "period_start": "2020-08-01",
+                "categories": {
+                  "id": "33333333-3333-4333-8333-333333333333",
+                  "name": "Groceries",
+                  "kind": "expense",
+                  "icon": null,
+                  "color": null,
+                  "default_key": "groceries"
+                }
+              }
+            ]
+          },
+          {
+            "period": "2020-09-01",
+            "rows": [
+              {
+                "category_id": "33333333-3333-4333-8333-333333333333",
+                "amount_minor": 40000,
+                "currency": "EUR",
+                "period_start": "2020-09-01",
+                "categories": {
+                  "id": "33333333-3333-4333-8333-333333333333",
+                  "name": "Groceries",
+                  "kind": "expense",
+                  "icon": null,
+                  "color": null,
+                  "default_key": "groceries"
+                }
+              },
+              {
+                "category_id": "44444444-4444-4444-8444-444444444444",
+                "amount_minor": 10000,
+                "currency": "EUR",
+                "period_start": "2020-09-01",
+                "categories": {
+                  "id": "44444444-4444-4444-8444-444444444444",
+                  "name": "Eating out",
+                  "kind": "expense",
+                  "icon": null,
+                  "color": "teal"
+                }
+              }
+            ]
+          }
+        ]
+      }
     ]
   },
   "expected": {
@@ -450,6 +526,308 @@
             "percent": 89,
             "valueLabel": "89%",
             "tone": "warning",
+            "over": false,
+            "overLabel": null
+          }
+        ]
+      }
+    }
+  },
+  "cards": {
+    "en": {
+      "own": {
+        "subtitle": "This month",
+        "empty": "No budgets yet. Set monthly caps per category to track them here.",
+        "canSet": true,
+        "items": [
+          {
+            "id": "44444444-4444-4444-8444-444444444444",
+            "categoryId": "44444444-4444-4444-8444-444444444444",
+            "name": "Eating out",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": "€112.81 of €100.00",
+            "percent": 113,
+            "valueLabel": "113%",
+            "tone": "negative",
+            "over": true,
+            "overLabel": "Over budget"
+          },
+          {
+            "id": "33333333-3333-4333-8333-333333333333",
+            "categoryId": "33333333-3333-4333-8333-333333333333",
+            "name": "Groceries",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": "€312.40 of €400.00",
+            "percent": 78,
+            "valueLabel": "78%",
+            "tone": null,
+            "over": false,
+            "overLabel": null
+          },
+          {
+            "id": "66666666-6666-4666-8666-666666666666",
+            "categoryId": "66666666-6666-4666-8666-666666666666",
+            "name": "Subscriptions",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": "€8.00 of €20.00",
+            "percent": 40,
+            "valueLabel": "40%",
+            "tone": null,
+            "over": false,
+            "overLabel": null
+          }
+        ]
+      },
+      "carried": {
+        "subtitle": "Carried over from August",
+        "empty": "No budgets yet. Set monthly caps per category to track them here.",
+        "canSet": true,
+        "items": [
+          {
+            "id": "44444444-4444-4444-8444-444444444444",
+            "categoryId": "44444444-4444-4444-8444-444444444444",
+            "name": "Eating out",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": "€112.81 of €120.00",
+            "percent": 94,
+            "valueLabel": "94%",
+            "tone": "warning",
+            "over": false,
+            "overLabel": null
+          },
+          {
+            "id": "33333333-3333-4333-8333-333333333333",
+            "categoryId": "33333333-3333-4333-8333-333333333333",
+            "name": "Groceries",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": "€312.40 of €350.00",
+            "percent": 89,
+            "valueLabel": "89%",
+            "tone": "warning",
+            "over": false,
+            "overLabel": null
+          }
+        ]
+      },
+      "pastEmpty": {
+        "subtitle": "May 2020",
+        "empty": "No budgets in May 2020.",
+        "canSet": false,
+        "items": []
+      },
+      "year": {
+        "subtitle": "This year · 2 months",
+        "empty": "No budgets this year. Set monthly caps per category to track them here.",
+        "canSet": true,
+        "items": [
+          {
+            "id": "44444444-4444-4444-8444-444444444444",
+            "categoryId": "44444444-4444-4444-8444-444444444444",
+            "name": "Eating out",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": "€112.81 of €100.00",
+            "percent": 113,
+            "valueLabel": "113%",
+            "tone": "negative",
+            "over": true,
+            "overLabel": "Over budget"
+          },
+          {
+            "id": "33333333-3333-4333-8333-333333333333",
+            "categoryId": "33333333-3333-4333-8333-333333333333",
+            "name": "Groceries",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": "€312.40 of €750.00",
+            "percent": 42,
+            "valueLabel": "42%",
+            "tone": null,
+            "over": false,
+            "overLabel": null
+          }
+        ]
+      }
+    },
+    "el": {
+      "own": {
+        "subtitle": "Αυτός ο μήνας",
+        "empty": "Δεν έχεις προϋπολογισμούς ακόμα. Όρισε μηνιαία όρια ανά κατηγορία για να τα βλέπεις εδώ.",
+        "canSet": true,
+        "items": [
+          {
+            "id": "44444444-4444-4444-8444-444444444444",
+            "categoryId": "44444444-4444-4444-8444-444444444444",
+            "name": "Eating out",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": "112,81 € από 100,00 €",
+            "percent": 113,
+            "valueLabel": "113%",
+            "tone": "negative",
+            "over": true,
+            "overLabel": "Υπέρβαση"
+          },
+          {
+            "id": "33333333-3333-4333-8333-333333333333",
+            "categoryId": "33333333-3333-4333-8333-333333333333",
+            "name": "Σούπερ μάρκετ",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": "312,40 € από 400,00 €",
+            "percent": 78,
+            "valueLabel": "78%",
+            "tone": null,
+            "over": false,
+            "overLabel": null
+          },
+          {
+            "id": "66666666-6666-4666-8666-666666666666",
+            "categoryId": "66666666-6666-4666-8666-666666666666",
+            "name": "Subscriptions",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": "8,00 € από 20,00 €",
+            "percent": 40,
+            "valueLabel": "40%",
+            "tone": null,
+            "over": false,
+            "overLabel": null
+          }
+        ]
+      },
+      "carried": {
+        "subtitle": "Ίδια όρια με του Αυγούστου",
+        "empty": "Δεν έχεις προϋπολογισμούς ακόμα. Όρισε μηνιαία όρια ανά κατηγορία για να τα βλέπεις εδώ.",
+        "canSet": true,
+        "items": [
+          {
+            "id": "44444444-4444-4444-8444-444444444444",
+            "categoryId": "44444444-4444-4444-8444-444444444444",
+            "name": "Eating out",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": "112,81 € από 120,00 €",
+            "percent": 94,
+            "valueLabel": "94%",
+            "tone": "warning",
+            "over": false,
+            "overLabel": null
+          },
+          {
+            "id": "33333333-3333-4333-8333-333333333333",
+            "categoryId": "33333333-3333-4333-8333-333333333333",
+            "name": "Σούπερ μάρκετ",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": "312,40 € από 350,00 €",
+            "percent": 89,
+            "valueLabel": "89%",
+            "tone": "warning",
+            "over": false,
+            "overLabel": null
+          }
+        ]
+      },
+      "pastEmpty": {
+        "subtitle": "Μάιος 2020",
+        "empty": "Χωρίς προϋπολογισμούς: Μάιος 2020.",
+        "canSet": false,
+        "items": []
+      },
+      "year": {
+        "subtitle": "Φέτος · 2 μήνες",
+        "empty": "Δεν έχεις προϋπολογισμούς φέτος. Όρισε μηνιαία όρια ανά κατηγορία για να τα βλέπεις εδώ.",
+        "canSet": true,
+        "items": [
+          {
+            "id": "44444444-4444-4444-8444-444444444444",
+            "categoryId": "44444444-4444-4444-8444-444444444444",
+            "name": "Eating out",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": "112,81 € από 100,00 €",
+            "percent": 113,
+            "valueLabel": "113%",
+            "tone": "negative",
+            "over": true,
+            "overLabel": "Υπέρβαση"
+          },
+          {
+            "id": "33333333-3333-4333-8333-333333333333",
+            "categoryId": "33333333-3333-4333-8333-333333333333",
+            "name": "Σούπερ μάρκετ",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": "312,40 € από 750,00 €",
+            "percent": 42,
+            "valueLabel": "42%",
+            "tone": null,
             "over": false,
             "overLabel": null
           }
