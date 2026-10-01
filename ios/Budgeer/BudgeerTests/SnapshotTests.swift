@@ -15,11 +15,11 @@ import BudgeerCore
 @MainActor
 final class SnapshotTests: XCTestCase {
     private static let size = CGSize(width: 402, height: 874)
-    private static let variants = [("en", false), ("en", true), ("el", false)]
+    static let variants = [("en", false), ("en", true), ("el", false)]
     private static let config = AppConfig(environment: .dev, supabaseURL: URL(string: "https://example.supabase.co")!,
                                           supabaseAnonKey: "test")
-    private static let user = AuthUser.sample.id.uuidString.lowercased()
-    private static let chrome = PageChrome(initials: "SM", badge: "1", onBell: {}, onProfile: {})
+    static let user = AuthUser.sample.id.uuidString.lowercased()
+    static let chrome = PageChrome(initials: "SM", badge: "1", onBell: {}, onProfile: {})
 
     override func tearDown() {
         try? BudgeerCore.shared.setLanguage("en")
@@ -31,7 +31,7 @@ final class SnapshotTests: XCTestCase {
     func testSignInSnapshots() async throws {
         for (lang, dark) in SnapshotTests.variants {
             let session = SessionStore(auth: FakeAuthService())
-            let signIn = SignInView(model: SignInViewModel(), session: session, site: "https://dev.budgeer.com")
+            let signIn = SignInView(model: SignInViewModel(), session: session, onSignUp: {}, onForgot: {})
             try await shots(signIn.environment(\.nativeFrozenMotion, 1), name: "signin", lang: lang, dark: dark)
             // The wordmark's intro (the website's loading ring, once), at three moments.
             for (index, moment) in [0.18, 0.42, 0.7].enumerated() {
@@ -680,7 +680,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     /// Home's model over the fixture, this month, with a budget, the vouchers and the month in words.
-    private func homeModel(_ fixture: HomeFixture, lang: String) async throws -> HomeViewModel {
+    func homeModel(_ fixture: HomeFixture, lang: String) async throws -> HomeViewModel {
         _ = language(lang)
         let now = fixture.now
         let store = FakeStore(home: fixture)
@@ -709,16 +709,16 @@ final class SnapshotTests: XCTestCase {
 
     // MARK: Helpers
 
-    private func language(_ lang: String) -> AppLanguage {
+    func language(_ lang: String) -> AppLanguage {
         let language = AppLanguage(preference: lang, defaults: defaults(), deviceLanguages: ["en"])
         NativeStyle.installAppearance(lang: language.current)
         return language
     }
 
-    private func defaults() -> UserDefaults { UserDefaults(suiteName: "SnapshotTests")! }
+    func defaults() -> UserDefaults { UserDefaults(suiteName: "SnapshotTests")! }
 
     /// A page in the frame, with its tab picked.
-    private func framed<V: View>(_ tab: NativeTab, @ViewBuilder _ page: @escaping () -> V) -> some View {
+    func framed<V: View>(_ tab: NativeTab, @ViewBuilder _ page: @escaping () -> V) -> some View {
         NativeTabs(tab: .constant(tab), onAdd: {}) { shown in
             if shown == tab { page() } else { Color.clear }
         }
@@ -733,7 +733,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     /// The phone's screen, and the whole page when `long` is given.
-    private func shots<V: View>(_ view: V, name: String, lang: String, dark: Bool, long: CGFloat? = nil,
+    func shots<V: View>(_ view: V, name: String, lang: String, dark: Bool, long: CGFloat? = nil,
                                 settle: TimeInterval = 0.8) async throws {
         let dressed = view.environment(language(lang)).tint(NativeStyle.tint)
         let variant = "\(lang)\(dark ? "-dark" : "")"

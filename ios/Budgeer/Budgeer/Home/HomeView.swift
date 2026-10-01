@@ -116,6 +116,7 @@ struct HomeView: View {
             }
         }
         .padding(.bottom, 6)
+        .tourTarget("period", "overview")
         .accessibilityElement(children: .contain)
         .accessibilityAdjustableAction { direction in
             let next = direction == .increment ? shown + 1 : shown - 1
@@ -176,11 +177,18 @@ struct HomeView: View {
                         }
                     }
                 } else {
-                    ForEach(card.items.prefix(3)) { BudgetRowView(item: $0) }
+                    ForEach(card.items.prefix(3)) { item in
+                        // The row opens its category's page for the month shown (BudgetRow's link).
+                        NavigationLink(value: AppRoute.categoryPage(item.categoryId, model.currentValue.isEmpty ? nil
+                                                                        : model.currentValue)) {
+                            BudgetRowView(item: item)
+                        }
+                    }
                 }
             } header: {
                 NativeSectionHeader(title: language.t("shell:nav.budgets"), seeAll: language.t("ios:native.seeAll"),
                                     route: .budgets)
+                    .tourTarget("budgets")
             } footer: {
                 if !card.subtitle.isEmpty { Text(card.subtitle) }
             }
@@ -229,6 +237,7 @@ struct HomeView: View {
         } header: {
             NativeSectionHeader(title: card.upcoming ? language.t("ios:native.home.comingUp") : (card.subtitle ?? ""),
                                 seeAll: language.t("ios:native.seeAll"), route: .recurring)
+                .tourTarget("subscriptions")
         }
         .listRowBackground(NativeStyle.card)
     }
@@ -241,11 +250,12 @@ struct HomeView: View {
                 NativeShareBar(shares: figures.bars.map { ($0.name, $0.share) })
                     .padding(.vertical, 6)
                 ForEach(Array(figures.bars.prefix(4).enumerated()), id: \.offset) { index, bar in
-                    CategoryShareRow(bar: bar, index: index)
+                    CategoryShareLink(bar: bar, index: index)
                 }
             } header: {
                 NativeSectionHeader(title: language.t("ios:native.home.byCategory"), seeAll: language.t("ios:native.seeAll"),
                                     route: .categories)
+                    .tourTarget("categories")
             }
             .listRowBackground(NativeStyle.card)
         }
@@ -475,6 +485,23 @@ struct CategoryShareRow: View {
     }
 }
 
+/// A share's row, opening its category's page for the period (or its
+/// group's), as the web's bars drill down (categoryLinks.linkBuckets); a
+/// folded or mixed bucket has no link.
+struct CategoryShareLink: View {
+    let bar: HomeBar
+    let index: Int
+
+    var body: some View {
+        if let route = AppPaths.route(bar.to) {
+            NavigationLink(value: route) { CategoryShareRow(bar: bar, index: index) }
+                .accessibilityHint(bar.linkLabel ?? "")
+        } else {
+            CategoryShareRow(bar: bar, index: index)
+        }
+    }
+}
+
 /// By category's "See all": every share of the shown month.
 @MainActor
 struct HomeCategoriesPage: View {
@@ -487,7 +514,7 @@ struct HomeCategoriesPage: View {
                 Section {
                     NativeShareBar(shares: figures.bars.map { ($0.name, $0.share) }).padding(.vertical, 6)
                     ForEach(Array(figures.bars.enumerated()), id: \.offset) { index, bar in
-                        CategoryShareRow(bar: bar, index: index)
+                        CategoryShareLink(bar: bar, index: index)
                     }
                 } header: {
                     NativeCapsHeader(title: figures.period.label)

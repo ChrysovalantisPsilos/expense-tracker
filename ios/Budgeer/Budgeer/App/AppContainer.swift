@@ -18,6 +18,8 @@ final class AppContainer {
     let data: DataLayer
     /// Settings › Security's sign-in methods and password.
     let security: AccountSecurity
+    /// Signing up, the confirmation again, a password reset (signed out).
+    let access: AccountAccess
     /// The Face ID lock (this device's choice).
     let lock = AppLock()
     /// An invite link the app was opened with (budgeer://join/<token>).
@@ -28,6 +30,7 @@ final class AppContainer {
         client = SupabaseClientProvider.make(config)
         session = SessionStore(auth: SupabaseAuthService(client: client))
         security = SupabaseAccountSecurity(client: client, config: config)
+        access = SupabaseAccountAccess(client: client)
         cache = QueryCache.standard()
         let live = LiveHub()
         self.live = live

@@ -1,6 +1,6 @@
 // What the window shows for each session state (SessionStore): a spinner
 // while the stored session is read or the legal check runs, the sign-in
-// screen, the legal gate, or the app's tabs (under the Face ID lock when
+// screen (with Sign up and Forgot password), the legal gate, or the app's tabs (under the Face ID lock when
 // it's on). An invite link the app is opened with waits for the tabs.
 import SwiftUI
 
@@ -17,7 +17,7 @@ struct RootView: View {
             case .loading, .checkingLegal:
                 LoadingView()
             case .signedOut:
-                SignInView(model: signIn, session: session, site: container.config.siteURL)
+                AuthFlowView(signIn: signIn, session: session, access: container.access, site: container.config.siteURL)
             case .legalRequired(_, let status):
                 LegalGateView(status: status, session: session)
             case .legalCheckFailed(_, let message):
