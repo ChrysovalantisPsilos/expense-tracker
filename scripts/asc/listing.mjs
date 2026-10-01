@@ -75,6 +75,15 @@ export function listingProblems({ config, listings }) {
 }
 
 // The URLs one app's pages point at.
+// Apple wants the texts in the app's primary language too (an app made in
+// English (U.K.) refuses a beta review without an en-GB localization): a
+// primary locale the listings don't have gets the English texts, or the
+// Greek ones for a Greek primary locale.
+export function withPrimaryLocale(listings, primaryLocale) {
+  if (!primaryLocale || listings[primaryLocale]) return listings
+  return { [primaryLocale]: primaryLocale.startsWith('el') ? listings.el : listings['en-US'], ...listings }
+}
+
 export function appUrls(config, app) {
   const site = config.apps[app].site
   return {
