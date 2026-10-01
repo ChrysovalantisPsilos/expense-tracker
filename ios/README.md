@@ -150,7 +150,8 @@ ios/Budgeer/
   Budgeer/
     BudgeerApp.swift     the entry: AppConfig → AppContainer → RootView
     App/                 AppContainer (the client, the data layer, the cache, the live feed), RootView,
-                         MainTabView (tabs, the Add sheet, More's pages), LiveRefresh
+                         MainTabView (the frame, each tab's stack of pages, the bell's list, ShellRouter),
+                         ShellModel (your initials, the bell's feed, where the floating Add shows), LiveRefresh
     Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView
     Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables),
                          QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
@@ -166,13 +167,20 @@ ios/Budgeer/
                          GroupExpenseView (add or edit an expense, the quick layout), SettleUpModel + SettleUpView,
                          MembersView, CommentsModel + CommentsView, MyGroupsModel + WhoForAdd (Add's "Who's it
                          for?"), GroupKit (avatars, GroupMark, TransferRow, HighlightPill, rich text)
-    More/                MoreView (Money pages, account, sign out, language, build)
-    Theme/               Theme (tokens), Kit (Panel, Figure, ProgressRow, buttons), FormKit (form rows, fields),
-                         CategoryBadge (the web's icons as SF Symbols, the category colour)
+    More/                MoreView (Money, Account), SettingsView (Profile, Appearance, Language, Sign out,
+                         the build), LanguageSettingsView, AppearanceSettingsView
+    Theme/               Theme (tokens), Kit (the web's kit: Panel + CardHeader, IconTile, Figure, BalanceTile,
+                         ProgressRow, ItemRow + RowActionsMenu, SectionLabel, Eyebrow, KitTag, the Chakra
+                         buttons, SegmentedControl, LineTabs, PillTabs, Paginator, skeletons, empty states,
+                         InfoButton, NavList), FormKit (FormRow, the outline field, SelectMenu, DayField,
+                         the Switch), Shell (the top bar, the bottom bar, the floating Add, PageHeader, Page,
+                         ShellChrome, the mark, AppAppearance), CategoryBadge, Lucide (generated)
     Support/             AppLanguage, ProfileLanguage (the account's language), L10n (the generated strings),
                          JSONValue, CoreHelpers, CategoryLook, ISODay
     Resources/Fonts/     Poppins, Nunito Sans, Manrope (OFL, static TTFs)
     Resources/Assets.xcassets/  AppIcon: one 1024 px opaque PNG of public/pwa-icon.svg (the apple-touch-icon art)
+    Resources/Icons.xcassets/   the web's Lucide icons as template SVGs (npm run ios:icons; committed)
+    Resources/LUCIDE-LICENSE.txt  Lucide's ISC licence
     Resources/Generated/ <lang>.lproj/Localizable.strings — generated, not committed
   BudgeerTests/          view models over FakeStore, the parity tests, the strings, snapshots
     Fixtures/*.json      the web's figures for fake inputs: home, ledger, budgets, recurring, insights,
@@ -204,21 +212,34 @@ a core call (the web's function); Swift reads, lays out and draws.
   `save_transactions` / `update_transaction` / `save_recurring_rule`,
   deleted after a confirm. A new expense asks "Who's it for?" when the
   user is in a group (below). Not yet: receipts.
-- **Transactions**: the month picker, search, the rows and their
-  "Counts for October" notes, 20 at a time. Not yet: the advanced filters.
+- **The frame**: the web's own shell, not a tab bar: the top bar (the
+  mark, the bell with its unread count and list, the theme toggle, your
+  initials to Settings), the bottom bar with the web's Lucide icons, and
+  the floating Add where the web shows it (`navMatch.showsAddExpense`).
+  Pages are pushed inside each tab with the web's back buttons; the edge
+  swipe still goes back. No system navigation bar or sheet chrome.
+- **Settings** (your initials, or More): Profile, Appearance (System,
+  Light, Dark, also the top bar's toggle) and Language, Sign out, the
+  version.
+- **Transactions**: the month picker, search, the Filters panel (type,
+  category, paid from, the web's `ledgerRead`), the rows with the ⋮ Edit
+  and Delete and their "Counts for October" notes, 20 at a time.
 - **Budgets**: this month's bars and tones, set or change a budget inline
   (the web's RPC), the carried-over label, copy last month's.
 - **Recurring** (from More): Subscriptions and Income, the totals per
   frequency, pause, tap to edit the rule. Rules are added from Add with
   Repeat on, as on the web.
 - **Insights** (from More): "Where your money went" (tap a month in the
-  last six) and "Income vs expenses". Not yet: spending abroad, net worth,
-  the statement, the other cards.
+  last six), "Income vs expenses" and Spending abroad. Not yet: your
+  salary, net worth, the statement.
 - **Home**: the period picker (months, years, all time, next month once its
   salary is in), the overview with the recurring payments still to come,
-  pending rates filled, spending by category and the Recurring card ("Show
-  all N charges"). Not yet: the categories' "Show all", the vouchers card,
-  In words.
+  pending rates filled, the ⓘ (How Net adds up), In words (the month in
+  plain words when the AI switch is on), the meal vouchers card, spending
+  by category (chart or table, "Show all"), the budgets card, the expenses
+  and income lists and the Recurring card ("Show all N charges"), in the
+  web's order (`dashboardMath.homeCards`). Not yet: the savings, plan,
+  vouchers and category pages the cards link to on the web.
 - **Groups** (phase 3): the tab lists the invites (Accept / Decline) and
   a card per group (picture, name, the avatar stack, the member count,
   your balance in its tone); New group (a name and a currency). A group's
@@ -244,8 +265,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   photo shows), the PDF statement, joining from an invite link, the
   payment-details ask on Settle up, and opening a group from a shared row
   in Transactions.
-- **More**: the Money pages, who is signed in, sign out, the language,
-  the version.
+- **More**: the Money pages (Recurring, Insights) and the Account
+  pages.
 
 ### Strings
 
@@ -278,6 +299,18 @@ static TTFs under the SIL Open Font License, with the licence texts beside
 them. Nunito Sans has no Greek, so Greek body text uses the system font (the
 web falls back to Noto Sans, which is not bundled).
 
+`Kit.swift`, `FormKit.swift` and `Shell.swift` port the web's kit
+(`src/shared/ui/kit/`) and shell piece by piece under the same names
+(Panel, CardHeader, Figure, ItemRow, SectionLabel, the Chakra buttons,
+SegmentedControl, FormRow, SelectMenu, …). Icons are the web's own Lucide
+icons: `npm run ios:icons` (`mobile-core/icons.mjs`) writes the icons the
+app uses and every category icon of `src/shared/lib/icons.jsx` as template
+SVGs into `Resources/Icons.xcassets`, the bold ones of the bottom bar, and
+`Theme/Lucide.swift`; `test/iosIcons.test.js` fails when the committed
+files no longer match. Lucide's ISC licence is in
+`Resources/LUCIDE-LICENSE.txt`. The appearance (System, Light, Dark) is
+`AppAppearance`, kept on the device.
+
 ### Tests
 
 ```bash
@@ -291,7 +324,7 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   Google: success, cancelled, failed), `DataLayerTests` (the cache, live
   refresh), `EntryFormModelTests`, `LedgerTests`, `BudgetsTests`,
   `RecurringTests`, `InsightsTests`, `HomeViewModelTests`,
-  `CategoryBadgeTests`, `GroupsModelTests` (the list and invites, a
+  `CategoryBadgeTests` (every category icon bundled), `GroupsModelTests` (the list and invites, a
   group's page and its actions, invites, the expense form, settle up,
   comments, Who's it for's order).
 - Parity: each screen's fixture inputs through its `…Figures` (every step a
@@ -305,12 +338,12 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
 - `L10nTests`: both languages bundled, the web's keys, the fallback, the
   language preference. `AppLanguageTests`: the device's first language only,
   the profile's language first, the demo account left alone.
-- `SnapshotTests`: PNGs of Sign-in, Home (with the picker and the Recurring
-  card), Add (an expense with Repeat on), Edit, Transactions, Budgets,
-  Recurring, Insights, Groups (the tab, a group's page and its activity,
+- `SnapshotTests`: PNGs inside the frame (top bar, bottom bar) of Sign-in,
+  Home (every card, and In words), Add (an expense with Repeat on), Edit,
+  Transactions, Budgets, Recurring, Insights, More, Settings, Groups (the tab, a group's page and its activity,
   an expense split by amounts, settle up, members, Add's quick group
   form), each light, dark and Greek, with the fixtures'
-  data; attached to the test run and written to `SNAPSHOT_DIR` when set
+  data, whole and as the first screen (`-top`); attached to the test run and written to `SNAPSHOT_DIR` when set
   (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
 
 CI is `.github/workflows/ios-app.yml` (macos-14, Xcode 15.4): XcodeGen, a
