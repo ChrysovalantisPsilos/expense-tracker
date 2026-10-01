@@ -1,8 +1,14 @@
-import { toBaseMinor, minorFactor, formatMoney, formatRoundedMoney } from '../../shared/lib/currency.js'
-import { isoDate, monthTitle } from '../../shared/lib/dates.js'
+import {
+  toBaseMinor, minorFactor, formatMoney, formatRoundedMoney, formatSigned, minorToInput, toMinor,
+} from '../../shared/lib/currency.js'
+import { isoDate, lastMonths, monthHeading, monthName, monthTitle, shortDate } from '../../shared/lib/dates.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
-import { rowEffect, potSign } from '../../shared/lib/savings.js'
+import { rowEffect, potSign, isSavingsRow, savingsNoteLabel } from '../../shared/lib/savings.js'
+import { entryName } from '../../shared/lib/categoryName.js'
+import { categoryLook } from '../../shared/lib/categoryStyle.js'
 import { MARK_ARCS } from '../../shared/ui/markGeometry.js'
+import { signedAmount } from '../../shared/ui/kit/kitMath.js'
+import { frequencyLabel } from '../recurring/recurringMath.js'
 
 // The Savings page's pure maths. Which entries move the pot, and which way,
 // is decided in one place only — shared/lib/savings.js (rowEffect, potSign);
@@ -86,6 +92,8 @@ export function seriesLength(moves, now = new Date(), max = 12) {
 // The history's filter: every move, only what went in, or only what came out.
 // [value, the key of its name in the savings namespace]
 export const HISTORY_FILTERS = [['all', 'history.filters.all'], ['in', 'history.filters.in'], ['out', 'history.filters.out']]
+// The filter's choices in words: [{ value, label }].
+export const historyFilters = () => HISTORY_FILTERS.map(([value, key]) => ({ value, label: t(`savings:${key}`) }))
 
 // The history, month by month, newest first: [{ key, rows, net }]. `rows` are
 // the month's moves that pass `filter` ('all' | 'in' | 'out'); `net` is the
@@ -221,4 +229,174 @@ export function savingsStacks({ sideways = false } = {}) {
   return sideways
     ? { strip: ['pot'], left: ['month', 'goals'], right: ['history'] }
     : { strip: [], left: ['pot', 'month'], right: ['goals', 'history'] }
+}
+
+// ── The page's parts ────────────────────────────────────────────────────────
+// What the Savings page shows, worked out once for the website's cards and
+// the native app alike: every figure and word; the components only lay out.
+
+// The pot's month-end line, from the month of the oldest move (seriesLength)
+// to this month, moved onto the savings accounts' total when they are the
+// source (anchoredSeries), and this month's flow (zeros with no moves).
+export function potLine(moves, savingsIds, baseCurrency, total, now = new Date()) {
+  const n = seriesLength(moves, now)
+  const series = n ? potSeries(moves, savingsIds, baseCurrency, lastMonths(n, now)) : []
+  return {
+    line: anchoredSeries(series, total),
+    month: series[series.length - 1] ?? { fromIncome: 0, received: 0, fromSavings: 0, net: 0 },
+  }
+}
+
+// The pot's card: the total (signed, red below zero), where it comes from,
+// this month's chip ("+€X this month", what was spent from it, or no change),
+// how long the line runs ("since May · 5 months"), and the line's points in
+// major units with their amounts (`chart` says them all, for a screen reader).
+export function potCardParts(total, line, month, currency) {
+  const chip = changeChip(month)
+  const amount = wholeMoney(chip.minor, currency)
+  const points = line.map((s) => ({ label: s.label, value: s.pot / minorFactor(currency), text: formatMoney(s.pot, currency) }))
+  return {
+    total: formatSigned(total.minor, currency),
+    tone: total.minor < 0 ? 'negative' : 'default',
+    note: totalSourceNote(total.source),
+    chip: {
+      kind: chip.kind,
+      text: chip.kind === 'up' ? t('savings:chip.up', { amount })
+        : chip.kind === 'spent' ? t('savings:chip.spent', { amount }) : t('savings:chip.none'),
+    },
+    since: line.length ? t('savings:pot.since', { month: line[0].label, count: line.length }) : null,
+    points,
+    chart: t('savings:pot.chart', { points: points.map((p) => `${p.label}: ${p.text}`).join(', ') }),
+  }
+}
+
+// "This month": the month's name, what went in from income, what was
+// received and what was paid from savings (growth in green, money taken out
+// plainly, nothing muted; never red), the net change, and the savings that
+// repeat (active rules in a savings category) with their next date.
+export function monthCardParts(month, rules, savingsIds, currency, now = new Date()) {
+  const signed = (minor) => signedAmount(minor, (x) => formatMoney(x, currency)).text
+  const tile = (key, minor, tone) => ({ key, label: t(`savings:month.${key}`), text: signed(minor), tone })
+  return {
+    subtitle: monthName(now),
+    tiles: [
+      tile('fromIncome', month.fromIncome, month.fromIncome ? 'positive' : 'muted'),
+      tile('received', month.received, month.received ? 'positive' : 'muted'),
+      tile('fromSavings', -month.fromSavings, month.fromSavings ? 'default' : 'muted'),
+    ],
+    net: { text: signed(month.net), tone: month.net > 0 ? 'positive' : 'default' },
+    repeating: (rules ?? []).filter((r) => r.is_active && isSavingsRow(r, savingsIds)).map((r) => ({
+      id: r.id,
+      title: `${formatMoney(r.amount_minor, r.currency)} ${frequencyLabel(r)}`,
+      meta: t('savings:month.next', { name: entryName(r, t('savings:fallbackName')), date: shortDate(r.next_run, now) }),
+    })),
+  }
+}
+
+// The page as a whole: the first-run explainer before anything was ever
+// saved (no moves, no savings account), the pot's card and this month's.
+export function savingsPage({ moves, total, savingsIds, baseCurrency, rules, now = new Date() }) {
+  const { line, month } = potLine(moves, savingsIds, baseCurrency, total, now)
+  return {
+    first: moves.length === 0 && total.source === 'entries',
+    pot: potCardParts(total, line, month, baseCurrency),
+    month: monthCardParts(month, rules, savingsIds, baseCurrency, now),
+  }
+}
+
+// One history row: the entry's name, its date, where the money came from or
+// went ("from income", "received", "from savings"), whether a rule adds it,
+// its badge, and the amount signed by what it did to the pot (in: green,
+// with its plus; out: plain). `row` is the entry itself, to open or delete.
+export function savingsRowParts(row, savingsIds, now = new Date()) {
+  const out = moveDirection(row, savingsIds) === 'out'
+  return {
+    id: row.id,
+    row,
+    look: categoryLook(row.categories, row.kind),
+    title: entryName(row, t('savings:fallbackName')),
+    date: shortDate(row.spent_at, now),
+    note: savingsNoteLabel(row, savingsIds),
+    out,
+    repeats: !!row.recurring_rule_id,
+    amount: formatSigned(out ? -row.amount_minor : row.amount_minor, row.currency, { plus: true }),
+    tone: out ? 'default' : 'positive',
+  }
+}
+
+// "Savings history" for a filter: the months (monthGroups), each with its
+// heading, its whole net change (green when the pot grew, else muted) and
+// its rows; `empty` says why there is nothing (null when there is).
+export function savingsHistory(moves, savingsIds, baseCurrency, filter = 'all', now = new Date()) {
+  const groups = monthGroups(moves, savingsIds, baseCurrency, filter).map((g) => {
+    const net = signedAmount(g.net, (m) => formatMoney(m, baseCurrency))
+    return {
+      key: g.key,
+      heading: monthHeading(g.key, now),
+      net: { text: net.text, tone: net.tone === 'positive' ? 'positive' : 'muted' },
+      rows: g.rows.map((r) => savingsRowParts(r, savingsIds, now)),
+    }
+  })
+  return {
+    groups,
+    empty: groups.length ? null : t(filter === 'out' ? 'savings:history.emptyOut' : 'savings:history.emptyIn'),
+  }
+}
+
+// A month-by-month history of `count` months with `months` asked for (the
+// first HISTORY_MONTHS until "Show older"; null asks for those): how many
+// show, whether there are older ones, and how many "Show older" asks for.
+export function historyWindow(count, months = HISTORY_MONTHS) {
+  const asked = months ?? HISTORY_MONTHS
+  return { shown: Math.min(count, asked), more: count > asked, next: asked + HISTORY_MORE }
+}
+
+// A goal as its card shows it: the ring (`pct`, its arcs), the name, "€X of
+// €Y", the status line (goalStatus), and the quick buttons' words with their
+// step: "+ €X" until it's reached, "− €X" once something is saved.
+export function goalParts(goal, now = new Date()) {
+  const { pct, done, step } = goalProgress(goal)
+  const money = (minor) => formatMoney(minor, goal.currency)
+  return {
+    id: goal.id,
+    name: goal.name,
+    pct,
+    done,
+    step,
+    of: t('savings:goals.of', { saved: money(goal.saved_minor), target: money(goal.target_minor) }),
+    status: goalStatus(goal, now),
+    plus: done ? null : `+ ${money(step)}`,
+    minus: !done && goal.saved_minor > 0 ? `− ${money(step)}` : null,
+    arcs: goalRingArcs(pct),
+  }
+}
+
+// A goal's page: the form's fields as it opens (the goal's own, or a new one
+// in the base currency with nothing saved yet).
+export function goalDraft(goal, baseCurrency) {
+  if (!goal) return { name: '', target: '', saved: '0', currency: baseCurrency, targetDate: '' }
+  return {
+    name: goal.name,
+    target: minorToInput(goal.target_minor, goal.currency),
+    saved: minorToInput(goal.saved_minor, goal.currency),
+    currency: goal.currency,
+    targetDate: goal.target_date ?? '',
+  }
+}
+
+// The form ready to save: { error } (what's missing first, worded) or
+// { goal } as saveGoal takes it (`id` null for a new one).
+export function goalToSave(draft, id = null) {
+  if (!draft.name.trim()) return { error: t('savings:goal.nameIt') }
+  if (!draft.target || Number(draft.target) <= 0) return { error: t('savings:goal.setTarget') }
+  return {
+    goal: {
+      id: id ?? null,
+      name: draft.name.trim(),
+      target_minor: toMinor(draft.target, draft.currency),
+      saved_minor: toMinor(draft.saved || '0', draft.currency),
+      currency: draft.currency,
+      target_date: draft.targetDate || null,
+    },
+  }
 }

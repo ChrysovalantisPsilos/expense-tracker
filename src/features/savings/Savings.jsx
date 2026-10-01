@@ -14,27 +14,20 @@ import Figure from '../../shared/ui/kit/Figure.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
-import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import EmptyState from '../../shared/ui/EmptyState.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { SkeletonBlock, SkeletonFigure, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { NARROW_STACKS } from '../../shared/ui/narrowStacks.js'
-import { formatMoney, minorFactor, formatSigned } from '../../shared/lib/currency.js'
-import { lastMonths, monthName as nameOfMonth, shortDate } from '../../shared/lib/dates.js'
-import { isSavingsRow } from '../../shared/lib/savings.js'
+import { formatMoney, minorFactor } from '../../shared/lib/currency.js'
 import { useCategories } from '../../shared/lib/categories.js'
 import { useRecurring } from '../recurring/recurring.js'
-import { frequencyLabel } from '../recurring/recurringMath.js'
 import { useGoals, useSavingsBalance } from './savings.js'
-import {
-  anchoredSeries, changeChip, potSeries, savingsCategoryOf, savingsStacks, seriesLength, totalSourceNote, wholeMoney,
-} from './savingsMath.js'
+import { savingsCategoryOf, savingsPage, savingsStacks } from './savingsMath.js'
 import GoalsCard from './GoalsCard.jsx'
 import SavingsHistory from './SavingsHistory.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { entryName } from '../../shared/lib/categoryName.js'
 import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
 
 // The Savings page: the pot (its all-time total and month-end line), this
@@ -57,23 +50,18 @@ export default function Savings() {
   const addLink = (repeat) => addEntryLink({ kind: 'income', category: savingsCategory, repeat })
   const add = () => navigate(addLink(false))
 
-  const series = useMemo(() => {
-    const n = seriesLength(moves)
-    return n ? potSeries(moves, savingsIds, baseCurrency, lastMonths(n)) : []
-  }, [moves, savingsIds, baseCurrency])
-  const line = useMemo(() => anchoredSeries(series, total), [series, total])
-  const month = series[series.length - 1] ?? { fromIncome: 0, received: 0, fromSavings: 0, net: 0 }
-  const savingRules = useMemo(
-    () => rules.filter((r) => r.is_active && isSavingsRow(r, savingsIds)), [rules, savingsIds])
+  // Every figure and word of the pot's card and this month's (savingsPage).
+  const page = useMemo(
+    () => savingsPage({ moves, total, savingsIds, baseCurrency, rules }), [moves, total, savingsIds, baseCurrency, rules])
 
   let body
   if (error) body = <Panel><QueryError error={error} onRetry={reload} what={t('what')} /></Panel>
   else if (loading) body = <SavingsSkeleton />
-  else if (moves.length === 0 && total.source === 'entries') body = <FirstSavings add={add} auto={addLink(true)} goals={goals} />
+  else if (page.first) body = <FirstSavings add={add} auto={addLink(true)} goals={goals} />
   else {
     const card = {
-      pot: <PotCard total={total} month={month} series={line} currency={baseCurrency} add={add} strip={sideways} />,
-      month: <MonthCard month={month} rules={savingRules} currency={baseCurrency} />,
+      pot: <PotCard pot={page.pot} currency={baseCurrency} add={add} strip={sideways} />,
+      month: <MonthCard month={page.month} />,
       goals: <GoalsCard {...goals} />,
       history: <SavingsHistory moves={moves} savingsIds={savingsIds} baseCurrency={baseCurrency} reload={reload} />,
     }
@@ -106,21 +94,18 @@ function AddButton({ add, ...props }) {
 }
 
 // ── The pot ─────────────────────────────────────────────────────────────────
-// Its total, this month's chip, the month-end line and "Add to savings".
-// `strip` (a phone held sideways): the figures and the button beside the
-// chart rather than over it.
-function PotCard({ total, month, series, currency, add, strip }) {
+// Its total, this month's chip, the month-end line and "Add to savings"
+// (potCardParts). `strip` (a phone held sideways): the figures and the
+// button beside the chart rather than over it.
+function PotCard({ pot, currency, add, strip }) {
   const t = useT('savings')
-  const pot = total.minor
-  const since = series.length ? t('pot.since', { month: series[0].label, count: series.length }) : null
   const figures = (
     <Box minW={0}>
-      <Figure label={t('pot.label')} size="hero"
-        value={formatSigned(pot, currency)} tone={pot < 0 ? 'negative' : 'default'} />
-      <Text fontSize="xs" color="text.muted" mt={1}>{totalSourceNote(total.source)}</Text>
+      <Figure label={t('pot.label')} size="hero" value={pot.total} tone={pot.tone} />
+      <Text fontSize="xs" color="text.muted" mt={1}>{pot.note}</Text>
       <HStack justify="space-between" mt={2} spacing={2} flexWrap="wrap" rowGap={1}>
-        <MonthChip flow={month} currency={currency} small={strip} />
-        {since && <Text fontSize="xs" color="text.muted">{since}</Text>}
+        <MonthChip chip={pot.chip} small={strip} />
+        {pot.since && <Text fontSize="xs" color="text.muted">{pot.since}</Text>}
       </HStack>
     </Box>
   )
@@ -132,7 +117,7 @@ function PotCard({ total, month, series, currency, add, strip }) {
             {figures}
             <AddButton add={add} size="sm" w="full" />
           </Stack>
-          {series.length > 0 && <PotArea series={series} currency={currency} h="120px" />}
+          {pot.points.length > 0 && <PotArea pot={pot} currency={currency} h="120px" />}
         </SimpleGrid>
       </Panel>
     )
@@ -140,7 +125,7 @@ function PotCard({ total, month, series, currency, add, strip }) {
   return (
     <Panel>
       {figures}
-      {series.length > 0 && <PotArea series={series} currency={currency} h="150px" />}
+      {pot.points.length > 0 && <PotArea pot={pot} currency={currency} h="150px" />}
       <AddButton add={add} w="full" mt={3} />
     </Panel>
   )
@@ -149,16 +134,14 @@ function PotCard({ total, month, series, currency, add, strip }) {
 // This month's change: green "+€X this month" when the pot grew, otherwise a
 // muted, neutral chip (what was spent from it, or no change). Never red.
 // `small` (the sideways strip) steps the text down so it stays on one line.
-function MonthChip({ flow, currency, small }) {
-  const t = useT('savings')
+function MonthChip({ chip, small }) {
   const fontSize = small ? 'xs' : 'sm'
-  const chip = changeChip(flow)
   if (chip.kind === 'up') {
     return (
       <HStack spacing={1} px={2} py={0.5} borderRadius="full" bg="green.50" _dark={{ bg: 'whiteAlpha.100' }}
         color="status.positive" fontSize={fontSize} fontWeight="700">
         <ArrowUpRight size={15} aria-hidden />
-        <Text>{t('chip.up', { amount: wholeMoney(chip.minor, currency) })}</Text>
+        <Text>{chip.text}</Text>
       </HStack>
     )
   }
@@ -166,23 +149,20 @@ function MonthChip({ flow, currency, small }) {
     <HStack spacing={1.5} px={2} py={0.5} borderRadius="full" bg="bg.subtle" color="text.muted"
       fontSize={fontSize} fontWeight="600" minW={0}>
       <ShoppingBag size={14} aria-hidden />
-      <Text>
-        {chip.kind === 'spent' ? t('chip.spent', { amount: wholeMoney(chip.minor, currency) }) : t('chip.none')}
-      </Text>
+      <Text>{chip.text}</Text>
     </HStack>
   )
 }
 
 // The pot's month-end totals as a soft coral area (the brand's chart colour).
-function PotArea({ series, currency, h }) {
+function PotArea({ pot, currency, h }) {
   const t = useT('savings')
   const chart = useChartTheme()
   const [coral] = useToken('colors', ['brand.500'])
   const factor = minorFactor(currency)
-  const data = series.map((s) => ({ label: s.label, pot: s.pot / factor }))
+  const data = pot.points.map((p) => ({ label: p.label, pot: p.value }))
   return (
-    <Box h={h} mx={-1} minW={0} role="img"
-      aria-label={t('pot.chart', { points: series.map((s) => `${s.label}: ${formatMoney(s.pot, currency)}`).join(', ') })}>
+    <Box h={h} mx={-1} minW={0} role="img" aria-label={pot.chart}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
           <defs>
@@ -205,31 +185,24 @@ function PotArea({ series, currency, h }) {
 
 // ── This month ──────────────────────────────────────────────────────────────
 // Where this month's savings came from and went, the net change, and the
-// savings that repeat (active rules in a savings category).
-function MonthCard({ month, rules, currency }) {
+// savings that repeat (monthCardParts).
+function MonthCard({ month }) {
   const navigate = useNavigate()
   const t = useT('savings')
-  const signed = (m) => signedAmount(m, (x) => formatMoney(x, currency))
-  const net = signed(month.net)
-  const monthName = nameOfMonth()
   return (
-    <Panel title={t('month.title')} subtitle={monthName}>
+    <Panel title={t('month.title')} subtitle={month.subtitle}>
       <BalanceGrid columns={3}>
-        <BalanceTile label={t('month.fromIncome')} value={signed(month.fromIncome).text} tone={month.fromIncome ? 'positive' : 'muted'} />
-        <BalanceTile label={t('month.received')} value={signed(month.received).text} tone={month.received ? 'positive' : 'muted'} />
-        <BalanceTile label={t('month.fromSavings')} value={signed(-month.fromSavings).text}
-          tone={month.fromSavings ? 'default' : 'muted'} />
+        {month.tiles.map((tile) => <BalanceTile key={tile.key} label={tile.label} value={tile.text} tone={tile.tone} />)}
       </BalanceGrid>
       {/* No red on a savings page: money taken out is shown plainly, only growth in green. */}
-      <Figure layout="inline" label={t('month.net')} value={net.text} tone={month.net > 0 ? 'positive' : 'default'} mt={3} />
-      {rules.length > 0 && (
+      <Figure layout="inline" label={t('month.net')} value={month.net.text} tone={month.net.tone} mt={3} />
+      {month.repeating.length > 0 && (
         <>
           <Divider borderColor="border.default" my={3} />
           <SectionLabel mb={1}>{t('month.repeating')}</SectionLabel>
-          {rules.map((r) => (
+          {month.repeating.map((r) => (
             <ItemRow key={r.id} icon={Repeat} chevron onClick={() => navigate(`/recurring/${r.id}`)}
-              title={`${formatMoney(r.amount_minor, r.currency)} ${frequencyLabel(r)}`}
-              meta={t('month.next', { name: entryName(r, t('fallbackName')), date: shortDate(r.next_run) })} />
+              title={r.title} meta={r.meta} />
           ))}
         </>
       )}

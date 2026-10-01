@@ -1,0 +1,2845 @@
+{
+  "input": {
+    "now": "2020-09-15T10:00:00.000Z",
+    "profile": {
+      "base_currency": "EUR",
+      "yearly_separate": false,
+      "salary_shift_from_day": 25,
+      "salary_category_id": "11111111-1111-4111-8111-111111111111"
+    },
+    "categories": [
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "kind": "income",
+        "is_savings": true
+      }
+    ],
+    "income": [
+      {
+        "id": "s1",
+        "spent_at": "2020-09-02",
+        "kind": "income",
+        "amount_minor": 30000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "is_savings": true
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": true,
+        "spread_months": null,
+        "recurring_rule_id": "r8",
+        "created_at": "2020-09-02T08:00:00Z"
+      },
+      {
+        "id": "s2",
+        "spent_at": "2020-08-27",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "s3",
+        "spent_at": "2020-08-20",
+        "kind": "income",
+        "amount_minor": 4500,
+        "currency": "GBP",
+        "exchange_rate": 1.1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "is_savings": true
+        },
+        "description": "Interest",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "s4",
+        "spent_at": "2020-08-02",
+        "kind": "income",
+        "amount_minor": 30000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "is_savings": true
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": true,
+        "spread_months": null,
+        "recurring_rule_id": "r8"
+      },
+      {
+        "id": "s5",
+        "spent_at": "2020-06-02",
+        "kind": "income",
+        "amount_minor": 30000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "is_savings": true
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": true,
+        "spread_months": null
+      },
+      {
+        "id": "s6",
+        "spent_at": "2020-05-14",
+        "kind": "income",
+        "amount_minor": 20000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "is_savings": true
+        },
+        "description": "Birthday gift",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      }
+    ],
+    "fromSavings": [
+      {
+        "id": "s7",
+        "spent_at": "2020-09-03",
+        "kind": "expense",
+        "amount_minor": 12000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": null,
+        "categories": null,
+        "description": "New bike",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": true,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      }
+    ],
+    "rules": [
+      {
+        "id": "r1",
+        "kind": "expense",
+        "amount_minor": 1299,
+        "currency": "EUR",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-05",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": 3,
+        "description": "Music",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r2",
+        "kind": "expense",
+        "amount_minor": 90000,
+        "currency": "EUR",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-01",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Rent",
+        "category_id": null,
+        "categories": null,
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r3",
+        "kind": "expense",
+        "amount_minor": 999,
+        "currency": "USD",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-12",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Cloud",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r4",
+        "kind": "expense",
+        "amount_minor": 9600,
+        "currency": "EUR",
+        "frequency": "yearly",
+        "interval_n": 1,
+        "next_run": "2021-03-15",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Antivirus",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r5",
+        "kind": "expense",
+        "amount_minor": 1500,
+        "currency": "EUR",
+        "frequency": "weekly",
+        "interval_n": 1,
+        "next_run": "2020-09-21",
+        "end_date": null,
+        "is_active": false,
+        "remind_days_before": null,
+        "description": "Lunch club",
+        "category_id": "44444444-4444-4444-8444-444444444444",
+        "categories": {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "name": "Eating out",
+          "kind": "expense",
+          "icon": null,
+          "color": "teal"
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r6",
+        "kind": "expense",
+        "amount_minor": 2999,
+        "currency": "PLN",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-20",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": "Gym",
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r7",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-09-28",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": null,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "savings_from_income": false,
+        "paid_from_savings": false
+      },
+      {
+        "id": "r8",
+        "kind": "income",
+        "amount_minor": 30000,
+        "currency": "EUR",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2020-10-01",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": null,
+        "description": null,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null
+        },
+        "savings_from_income": true,
+        "paid_from_savings": false
+      }
+    ],
+    "goals": [
+      {
+        "id": "g1",
+        "name": "Summer trip",
+        "saved_minor": 115000,
+        "target_minor": 300000,
+        "currency": "EUR",
+        "target_date": "2021-06-30"
+      },
+      {
+        "id": "g2",
+        "name": "Emergency fund",
+        "saved_minor": 600000,
+        "target_minor": 600000,
+        "currency": "EUR",
+        "target_date": null
+      },
+      {
+        "id": "g3",
+        "name": "New laptop",
+        "saved_minor": 0,
+        "target_minor": 150000,
+        "currency": "EUR",
+        "target_date": null
+      }
+    ],
+    "views": [
+      {
+        "name": "entries",
+        "accounts": [],
+        "filter": "all"
+      },
+      {
+        "name": "out",
+        "accounts": [],
+        "filter": "out"
+      },
+      {
+        "name": "accounts",
+        "filter": "all",
+        "accounts": [
+          {
+            "id": "a1",
+            "name": "Bank savings",
+            "type": "savings",
+            "balance_minor": 420000,
+            "currency": "EUR"
+          },
+          {
+            "id": "a2",
+            "name": "Current",
+            "type": "checking",
+            "balance_minor": 90000,
+            "currency": "EUR"
+          }
+        ]
+      },
+      {
+        "name": "first",
+        "filter": "all",
+        "accounts": [],
+        "empty": true
+      }
+    ]
+  },
+  "expected": {
+    "en": {
+      "entries": {
+        "first": false,
+        "pot": {
+          "total": "€1,029.50",
+          "tone": "default",
+          "note": "From your savings entries",
+          "chip": {
+            "kind": "up",
+            "text": "+€180 this month"
+          },
+          "since": "since May · 5 months",
+          "points": [
+            {
+              "label": "May",
+              "value": 200,
+              "text": "€200.00"
+            },
+            {
+              "label": "Jun",
+              "value": 500,
+              "text": "€500.00"
+            },
+            {
+              "label": "Jul",
+              "value": 500,
+              "text": "€500.00"
+            },
+            {
+              "label": "Aug",
+              "value": 849.5,
+              "text": "€849.50"
+            },
+            {
+              "label": "Sep",
+              "value": 1029.5,
+              "text": "€1,029.50"
+            }
+          ],
+          "chart": "Your savings pot at the end of each month, May: €200.00, Jun: €500.00, Jul: €500.00, Aug: €849.50, Sep: €1,029.50"
+        },
+        "month": {
+          "subtitle": "September",
+          "tiles": [
+            {
+              "key": "fromIncome",
+              "label": "From income",
+              "text": "+€300.00",
+              "tone": "positive"
+            },
+            {
+              "key": "received",
+              "label": "Received",
+              "text": "€0.00",
+              "tone": "muted"
+            },
+            {
+              "key": "fromSavings",
+              "label": "From savings",
+              "text": "−€120.00",
+              "tone": "default"
+            }
+          ],
+          "net": {
+            "text": "+€180.00",
+            "tone": "positive"
+          },
+          "repeating": [
+            {
+              "id": "r8",
+              "title": "€300.00 every month",
+              "meta": "Savings · next on 1 Oct"
+            }
+          ]
+        },
+        "history": {
+          "groups": [
+            {
+              "key": "2020-09",
+              "heading": "September",
+              "net": {
+                "text": "+€180.00",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s7",
+                  "row": {
+                    "id": "s7",
+                    "spent_at": "2020-09-03",
+                    "kind": "expense",
+                    "amount_minor": 12000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": null,
+                    "categories": null,
+                    "description": "New bike",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": true,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "other",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "title": "New bike",
+                  "date": "3 Sep",
+                  "note": "from savings",
+                  "out": true,
+                  "repeats": false,
+                  "amount": "−€120.00",
+                  "tone": "default"
+                },
+                {
+                  "id": "s1",
+                  "row": {
+                    "id": "s1",
+                    "spent_at": "2020-09-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null,
+                    "recurring_rule_id": "r8",
+                    "created_at": "2020-09-02T08:00:00Z"
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Sep",
+                  "note": "from income",
+                  "out": false,
+                  "repeats": true,
+                  "amount": "+€300.00",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-08",
+              "heading": "August",
+              "net": {
+                "text": "+€349.50",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s3",
+                  "row": {
+                    "id": "s3",
+                    "spent_at": "2020-08-20",
+                    "kind": "income",
+                    "amount_minor": 4500,
+                    "currency": "GBP",
+                    "exchange_rate": 1.1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": "Interest",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Interest",
+                  "date": "20 Aug",
+                  "note": "received",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+£45.00",
+                  "tone": "positive"
+                },
+                {
+                  "id": "s4",
+                  "row": {
+                    "id": "s4",
+                    "spent_at": "2020-08-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null,
+                    "recurring_rule_id": "r8"
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Aug",
+                  "note": "from income",
+                  "out": false,
+                  "repeats": true,
+                  "amount": "+€300.00",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-06",
+              "heading": "June",
+              "net": {
+                "text": "+€300.00",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s5",
+                  "row": {
+                    "id": "s5",
+                    "spent_at": "2020-06-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Jun",
+                  "note": "from income",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+€300.00",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-05",
+              "heading": "May",
+              "net": {
+                "text": "+€200.00",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s6",
+                  "row": {
+                    "id": "s6",
+                    "spent_at": "2020-05-14",
+                    "kind": "income",
+                    "amount_minor": 20000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": "Birthday gift",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Birthday gift",
+                  "date": "14 May",
+                  "note": "received",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+€200.00",
+                  "tone": "positive"
+                }
+              ]
+            }
+          ],
+          "empty": null
+        },
+        "goals": [
+          {
+            "id": "g1",
+            "name": "Summer trip",
+            "pct": 38,
+            "done": false,
+            "step": 30000,
+            "of": "€1,150.00 of €3,000.00",
+            "status": {
+              "text": "€205.56/mo to reach it by June 2021",
+              "strong": true
+            },
+            "plus": "+ €300.00",
+            "minus": "− €300.00",
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.07600000000000001
+              ]
+            }
+          },
+          {
+            "id": "g2",
+            "name": "Emergency fund",
+            "pct": 100,
+            "done": true,
+            "step": 60000,
+            "of": "€6,000.00 of €6,000.00",
+            "status": {
+              "text": "Reached 🎉",
+              "strong": true
+            },
+            "plus": null,
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.696
+              ]
+            }
+          },
+          {
+            "id": "g3",
+            "name": "New laptop",
+            "pct": 0,
+            "done": false,
+            "step": 15000,
+            "of": "€0.00 of €1,500.00",
+            "status": {
+              "text": "No deadline",
+              "strong": false
+            },
+            "plus": "+ €150.00",
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0
+              ],
+              "coral": [
+                0.304,
+                0
+              ]
+            }
+          }
+        ]
+      },
+      "out": {
+        "first": false,
+        "pot": {
+          "total": "€1,029.50",
+          "tone": "default",
+          "note": "From your savings entries",
+          "chip": {
+            "kind": "up",
+            "text": "+€180 this month"
+          },
+          "since": "since May · 5 months",
+          "points": [
+            {
+              "label": "May",
+              "value": 200,
+              "text": "€200.00"
+            },
+            {
+              "label": "Jun",
+              "value": 500,
+              "text": "€500.00"
+            },
+            {
+              "label": "Jul",
+              "value": 500,
+              "text": "€500.00"
+            },
+            {
+              "label": "Aug",
+              "value": 849.5,
+              "text": "€849.50"
+            },
+            {
+              "label": "Sep",
+              "value": 1029.5,
+              "text": "€1,029.50"
+            }
+          ],
+          "chart": "Your savings pot at the end of each month, May: €200.00, Jun: €500.00, Jul: €500.00, Aug: €849.50, Sep: €1,029.50"
+        },
+        "month": {
+          "subtitle": "September",
+          "tiles": [
+            {
+              "key": "fromIncome",
+              "label": "From income",
+              "text": "+€300.00",
+              "tone": "positive"
+            },
+            {
+              "key": "received",
+              "label": "Received",
+              "text": "€0.00",
+              "tone": "muted"
+            },
+            {
+              "key": "fromSavings",
+              "label": "From savings",
+              "text": "−€120.00",
+              "tone": "default"
+            }
+          ],
+          "net": {
+            "text": "+€180.00",
+            "tone": "positive"
+          },
+          "repeating": [
+            {
+              "id": "r8",
+              "title": "€300.00 every month",
+              "meta": "Savings · next on 1 Oct"
+            }
+          ]
+        },
+        "history": {
+          "groups": [
+            {
+              "key": "2020-09",
+              "heading": "September",
+              "net": {
+                "text": "+€180.00",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s7",
+                  "row": {
+                    "id": "s7",
+                    "spent_at": "2020-09-03",
+                    "kind": "expense",
+                    "amount_minor": 12000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": null,
+                    "categories": null,
+                    "description": "New bike",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": true,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "other",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "title": "New bike",
+                  "date": "3 Sep",
+                  "note": "from savings",
+                  "out": true,
+                  "repeats": false,
+                  "amount": "−€120.00",
+                  "tone": "default"
+                }
+              ]
+            }
+          ],
+          "empty": null
+        },
+        "goals": [
+          {
+            "id": "g1",
+            "name": "Summer trip",
+            "pct": 38,
+            "done": false,
+            "step": 30000,
+            "of": "€1,150.00 of €3,000.00",
+            "status": {
+              "text": "€205.56/mo to reach it by June 2021",
+              "strong": true
+            },
+            "plus": "+ €300.00",
+            "minus": "− €300.00",
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.07600000000000001
+              ]
+            }
+          },
+          {
+            "id": "g2",
+            "name": "Emergency fund",
+            "pct": 100,
+            "done": true,
+            "step": 60000,
+            "of": "€6,000.00 of €6,000.00",
+            "status": {
+              "text": "Reached 🎉",
+              "strong": true
+            },
+            "plus": null,
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.696
+              ]
+            }
+          },
+          {
+            "id": "g3",
+            "name": "New laptop",
+            "pct": 0,
+            "done": false,
+            "step": 15000,
+            "of": "€0.00 of €1,500.00",
+            "status": {
+              "text": "No deadline",
+              "strong": false
+            },
+            "plus": "+ €150.00",
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0
+              ],
+              "coral": [
+                0.304,
+                0
+              ]
+            }
+          }
+        ]
+      },
+      "accounts": {
+        "first": false,
+        "pot": {
+          "total": "€4,200.00",
+          "tone": "default",
+          "note": "From your savings accounts",
+          "chip": {
+            "kind": "up",
+            "text": "+€180 this month"
+          },
+          "since": "since May · 5 months",
+          "points": [
+            {
+              "label": "May",
+              "value": 3370.5,
+              "text": "€3,370.50"
+            },
+            {
+              "label": "Jun",
+              "value": 3670.5,
+              "text": "€3,670.50"
+            },
+            {
+              "label": "Jul",
+              "value": 3670.5,
+              "text": "€3,670.50"
+            },
+            {
+              "label": "Aug",
+              "value": 4020,
+              "text": "€4,020.00"
+            },
+            {
+              "label": "Sep",
+              "value": 4200,
+              "text": "€4,200.00"
+            }
+          ],
+          "chart": "Your savings pot at the end of each month, May: €3,370.50, Jun: €3,670.50, Jul: €3,670.50, Aug: €4,020.00, Sep: €4,200.00"
+        },
+        "month": {
+          "subtitle": "September",
+          "tiles": [
+            {
+              "key": "fromIncome",
+              "label": "From income",
+              "text": "+€300.00",
+              "tone": "positive"
+            },
+            {
+              "key": "received",
+              "label": "Received",
+              "text": "€0.00",
+              "tone": "muted"
+            },
+            {
+              "key": "fromSavings",
+              "label": "From savings",
+              "text": "−€120.00",
+              "tone": "default"
+            }
+          ],
+          "net": {
+            "text": "+€180.00",
+            "tone": "positive"
+          },
+          "repeating": [
+            {
+              "id": "r8",
+              "title": "€300.00 every month",
+              "meta": "Savings · next on 1 Oct"
+            }
+          ]
+        },
+        "history": {
+          "groups": [
+            {
+              "key": "2020-09",
+              "heading": "September",
+              "net": {
+                "text": "+€180.00",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s7",
+                  "row": {
+                    "id": "s7",
+                    "spent_at": "2020-09-03",
+                    "kind": "expense",
+                    "amount_minor": 12000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": null,
+                    "categories": null,
+                    "description": "New bike",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": true,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "other",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "title": "New bike",
+                  "date": "3 Sep",
+                  "note": "from savings",
+                  "out": true,
+                  "repeats": false,
+                  "amount": "−€120.00",
+                  "tone": "default"
+                },
+                {
+                  "id": "s1",
+                  "row": {
+                    "id": "s1",
+                    "spent_at": "2020-09-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null,
+                    "recurring_rule_id": "r8",
+                    "created_at": "2020-09-02T08:00:00Z"
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Sep",
+                  "note": "from income",
+                  "out": false,
+                  "repeats": true,
+                  "amount": "+€300.00",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-08",
+              "heading": "August",
+              "net": {
+                "text": "+€349.50",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s3",
+                  "row": {
+                    "id": "s3",
+                    "spent_at": "2020-08-20",
+                    "kind": "income",
+                    "amount_minor": 4500,
+                    "currency": "GBP",
+                    "exchange_rate": 1.1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": "Interest",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Interest",
+                  "date": "20 Aug",
+                  "note": "received",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+£45.00",
+                  "tone": "positive"
+                },
+                {
+                  "id": "s4",
+                  "row": {
+                    "id": "s4",
+                    "spent_at": "2020-08-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null,
+                    "recurring_rule_id": "r8"
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Aug",
+                  "note": "from income",
+                  "out": false,
+                  "repeats": true,
+                  "amount": "+€300.00",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-06",
+              "heading": "June",
+              "net": {
+                "text": "+€300.00",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s5",
+                  "row": {
+                    "id": "s5",
+                    "spent_at": "2020-06-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Jun",
+                  "note": "from income",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+€300.00",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-05",
+              "heading": "May",
+              "net": {
+                "text": "+€200.00",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s6",
+                  "row": {
+                    "id": "s6",
+                    "spent_at": "2020-05-14",
+                    "kind": "income",
+                    "amount_minor": 20000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": "Birthday gift",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Birthday gift",
+                  "date": "14 May",
+                  "note": "received",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+€200.00",
+                  "tone": "positive"
+                }
+              ]
+            }
+          ],
+          "empty": null
+        },
+        "goals": [
+          {
+            "id": "g1",
+            "name": "Summer trip",
+            "pct": 38,
+            "done": false,
+            "step": 30000,
+            "of": "€1,150.00 of €3,000.00",
+            "status": {
+              "text": "€205.56/mo to reach it by June 2021",
+              "strong": true
+            },
+            "plus": "+ €300.00",
+            "minus": "− €300.00",
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.07600000000000001
+              ]
+            }
+          },
+          {
+            "id": "g2",
+            "name": "Emergency fund",
+            "pct": 100,
+            "done": true,
+            "step": 60000,
+            "of": "€6,000.00 of €6,000.00",
+            "status": {
+              "text": "Reached 🎉",
+              "strong": true
+            },
+            "plus": null,
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.696
+              ]
+            }
+          },
+          {
+            "id": "g3",
+            "name": "New laptop",
+            "pct": 0,
+            "done": false,
+            "step": 15000,
+            "of": "€0.00 of €1,500.00",
+            "status": {
+              "text": "No deadline",
+              "strong": false
+            },
+            "plus": "+ €150.00",
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0
+              ],
+              "coral": [
+                0.304,
+                0
+              ]
+            }
+          }
+        ]
+      },
+      "first": {
+        "first": true,
+        "pot": {
+          "total": "€0.00",
+          "tone": "default",
+          "note": "From your savings entries",
+          "chip": {
+            "kind": "none",
+            "text": "No change this month"
+          },
+          "since": null,
+          "points": [],
+          "chart": "Your savings pot at the end of each month, "
+        },
+        "month": {
+          "subtitle": "September",
+          "tiles": [
+            {
+              "key": "fromIncome",
+              "label": "From income",
+              "text": "€0.00",
+              "tone": "muted"
+            },
+            {
+              "key": "received",
+              "label": "Received",
+              "text": "€0.00",
+              "tone": "muted"
+            },
+            {
+              "key": "fromSavings",
+              "label": "From savings",
+              "text": "€0.00",
+              "tone": "muted"
+            }
+          ],
+          "net": {
+            "text": "€0.00",
+            "tone": "default"
+          },
+          "repeating": [
+            {
+              "id": "r8",
+              "title": "€300.00 every month",
+              "meta": "Savings · next on 1 Oct"
+            }
+          ]
+        },
+        "history": {
+          "groups": [],
+          "empty": "Nothing put into savings yet."
+        },
+        "goals": [
+          {
+            "id": "g1",
+            "name": "Summer trip",
+            "pct": 38,
+            "done": false,
+            "step": 30000,
+            "of": "€1,150.00 of €3,000.00",
+            "status": {
+              "text": "€205.56/mo to reach it by June 2021",
+              "strong": true
+            },
+            "plus": "+ €300.00",
+            "minus": "− €300.00",
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.07600000000000001
+              ]
+            }
+          },
+          {
+            "id": "g2",
+            "name": "Emergency fund",
+            "pct": 100,
+            "done": true,
+            "step": 60000,
+            "of": "€6,000.00 of €6,000.00",
+            "status": {
+              "text": "Reached 🎉",
+              "strong": true
+            },
+            "plus": null,
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.696
+              ]
+            }
+          },
+          {
+            "id": "g3",
+            "name": "New laptop",
+            "pct": 0,
+            "done": false,
+            "step": 15000,
+            "of": "€0.00 of €1,500.00",
+            "status": {
+              "text": "No deadline",
+              "strong": false
+            },
+            "plus": "+ €150.00",
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0
+              ],
+              "coral": [
+                0.304,
+                0
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "el": {
+      "entries": {
+        "first": false,
+        "pot": {
+          "total": "1.029,50 €",
+          "tone": "default",
+          "note": "Από τις καταχωρίσεις αποταμίευσης",
+          "chip": {
+            "kind": "up",
+            "text": "+180 € αυτόν τον μήνα"
+          },
+          "since": "από Μαΐ · 5 μήνες",
+          "points": [
+            {
+              "label": "Μαΐ",
+              "value": 200,
+              "text": "200,00 €"
+            },
+            {
+              "label": "Ιουν",
+              "value": 500,
+              "text": "500,00 €"
+            },
+            {
+              "label": "Ιουλ",
+              "value": 500,
+              "text": "500,00 €"
+            },
+            {
+              "label": "Αυγ",
+              "value": 849.5,
+              "text": "849,50 €"
+            },
+            {
+              "label": "Σεπ",
+              "value": 1029.5,
+              "text": "1.029,50 €"
+            }
+          ],
+          "chart": "Ο κουμπαράς σου στο τέλος κάθε μήνα, Μαΐ: 200,00 €, Ιουν: 500,00 €, Ιουλ: 500,00 €, Αυγ: 849,50 €, Σεπ: 1.029,50 €"
+        },
+        "month": {
+          "subtitle": "Σεπτέμβριος",
+          "tiles": [
+            {
+              "key": "fromIncome",
+              "label": "Από έσοδα",
+              "text": "+300,00 €",
+              "tone": "positive"
+            },
+            {
+              "key": "received",
+              "label": "Εισπράξεις",
+              "text": "0,00 €",
+              "tone": "muted"
+            },
+            {
+              "key": "fromSavings",
+              "label": "Αναλήψεις",
+              "text": "−120,00 €",
+              "tone": "default"
+            }
+          ],
+          "net": {
+            "text": "+180,00 €",
+            "tone": "positive"
+          },
+          "repeating": [
+            {
+              "id": "r8",
+              "title": "300,00 € κάθε μήνα",
+              "meta": "Savings · επόμενη: 1 Οκτ"
+            }
+          ]
+        },
+        "history": {
+          "groups": [
+            {
+              "key": "2020-09",
+              "heading": "Σεπτέμβριος",
+              "net": {
+                "text": "+180,00 €",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s7",
+                  "row": {
+                    "id": "s7",
+                    "spent_at": "2020-09-03",
+                    "kind": "expense",
+                    "amount_minor": 12000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": null,
+                    "categories": null,
+                    "description": "New bike",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": true,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "other",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "title": "New bike",
+                  "date": "3 Σεπ",
+                  "note": "από αποταμιεύσεις",
+                  "out": true,
+                  "repeats": false,
+                  "amount": "−120,00 €",
+                  "tone": "default"
+                },
+                {
+                  "id": "s1",
+                  "row": {
+                    "id": "s1",
+                    "spent_at": "2020-09-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null,
+                    "recurring_rule_id": "r8",
+                    "created_at": "2020-09-02T08:00:00Z"
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Σεπ",
+                  "note": "από το εισόδημα",
+                  "out": false,
+                  "repeats": true,
+                  "amount": "+300,00 €",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-08",
+              "heading": "Αύγουστος",
+              "net": {
+                "text": "+349,50 €",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s3",
+                  "row": {
+                    "id": "s3",
+                    "spent_at": "2020-08-20",
+                    "kind": "income",
+                    "amount_minor": 4500,
+                    "currency": "GBP",
+                    "exchange_rate": 1.1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": "Interest",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Interest",
+                  "date": "20 Αυγ",
+                  "note": "που πήρες",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+45,00 £",
+                  "tone": "positive"
+                },
+                {
+                  "id": "s4",
+                  "row": {
+                    "id": "s4",
+                    "spent_at": "2020-08-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null,
+                    "recurring_rule_id": "r8"
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Αυγ",
+                  "note": "από το εισόδημα",
+                  "out": false,
+                  "repeats": true,
+                  "amount": "+300,00 €",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-06",
+              "heading": "Ιούνιος",
+              "net": {
+                "text": "+300,00 €",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s5",
+                  "row": {
+                    "id": "s5",
+                    "spent_at": "2020-06-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Ιουν",
+                  "note": "από το εισόδημα",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+300,00 €",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-05",
+              "heading": "Μάιος",
+              "net": {
+                "text": "+200,00 €",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s6",
+                  "row": {
+                    "id": "s6",
+                    "spent_at": "2020-05-14",
+                    "kind": "income",
+                    "amount_minor": 20000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": "Birthday gift",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Birthday gift",
+                  "date": "14 Μαΐ",
+                  "note": "που πήρες",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+200,00 €",
+                  "tone": "positive"
+                }
+              ]
+            }
+          ],
+          "empty": null
+        },
+        "goals": [
+          {
+            "id": "g1",
+            "name": "Summer trip",
+            "pct": 38,
+            "done": false,
+            "step": 30000,
+            "of": "1.150,00 € από 3.000,00 €",
+            "status": {
+              "text": "205,56 €/μήνα για να τον πιάσεις · Ιούνιος 2021",
+              "strong": true
+            },
+            "plus": "+ 300,00 €",
+            "minus": "− 300,00 €",
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.07600000000000001
+              ]
+            }
+          },
+          {
+            "id": "g2",
+            "name": "Emergency fund",
+            "pct": 100,
+            "done": true,
+            "step": 60000,
+            "of": "6.000,00 € από 6.000,00 €",
+            "status": {
+              "text": "Τον έπιασες 🎉",
+              "strong": true
+            },
+            "plus": null,
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.696
+              ]
+            }
+          },
+          {
+            "id": "g3",
+            "name": "New laptop",
+            "pct": 0,
+            "done": false,
+            "step": 15000,
+            "of": "0,00 € από 1.500,00 €",
+            "status": {
+              "text": "Χωρίς προθεσμία",
+              "strong": false
+            },
+            "plus": "+ 150,00 €",
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0
+              ],
+              "coral": [
+                0.304,
+                0
+              ]
+            }
+          }
+        ]
+      },
+      "out": {
+        "first": false,
+        "pot": {
+          "total": "1.029,50 €",
+          "tone": "default",
+          "note": "Από τις καταχωρίσεις αποταμίευσης",
+          "chip": {
+            "kind": "up",
+            "text": "+180 € αυτόν τον μήνα"
+          },
+          "since": "από Μαΐ · 5 μήνες",
+          "points": [
+            {
+              "label": "Μαΐ",
+              "value": 200,
+              "text": "200,00 €"
+            },
+            {
+              "label": "Ιουν",
+              "value": 500,
+              "text": "500,00 €"
+            },
+            {
+              "label": "Ιουλ",
+              "value": 500,
+              "text": "500,00 €"
+            },
+            {
+              "label": "Αυγ",
+              "value": 849.5,
+              "text": "849,50 €"
+            },
+            {
+              "label": "Σεπ",
+              "value": 1029.5,
+              "text": "1.029,50 €"
+            }
+          ],
+          "chart": "Ο κουμπαράς σου στο τέλος κάθε μήνα, Μαΐ: 200,00 €, Ιουν: 500,00 €, Ιουλ: 500,00 €, Αυγ: 849,50 €, Σεπ: 1.029,50 €"
+        },
+        "month": {
+          "subtitle": "Σεπτέμβριος",
+          "tiles": [
+            {
+              "key": "fromIncome",
+              "label": "Από έσοδα",
+              "text": "+300,00 €",
+              "tone": "positive"
+            },
+            {
+              "key": "received",
+              "label": "Εισπράξεις",
+              "text": "0,00 €",
+              "tone": "muted"
+            },
+            {
+              "key": "fromSavings",
+              "label": "Αναλήψεις",
+              "text": "−120,00 €",
+              "tone": "default"
+            }
+          ],
+          "net": {
+            "text": "+180,00 €",
+            "tone": "positive"
+          },
+          "repeating": [
+            {
+              "id": "r8",
+              "title": "300,00 € κάθε μήνα",
+              "meta": "Savings · επόμενη: 1 Οκτ"
+            }
+          ]
+        },
+        "history": {
+          "groups": [
+            {
+              "key": "2020-09",
+              "heading": "Σεπτέμβριος",
+              "net": {
+                "text": "+180,00 €",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s7",
+                  "row": {
+                    "id": "s7",
+                    "spent_at": "2020-09-03",
+                    "kind": "expense",
+                    "amount_minor": 12000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": null,
+                    "categories": null,
+                    "description": "New bike",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": true,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "other",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "title": "New bike",
+                  "date": "3 Σεπ",
+                  "note": "από αποταμιεύσεις",
+                  "out": true,
+                  "repeats": false,
+                  "amount": "−120,00 €",
+                  "tone": "default"
+                }
+              ]
+            }
+          ],
+          "empty": null
+        },
+        "goals": [
+          {
+            "id": "g1",
+            "name": "Summer trip",
+            "pct": 38,
+            "done": false,
+            "step": 30000,
+            "of": "1.150,00 € από 3.000,00 €",
+            "status": {
+              "text": "205,56 €/μήνα για να τον πιάσεις · Ιούνιος 2021",
+              "strong": true
+            },
+            "plus": "+ 300,00 €",
+            "minus": "− 300,00 €",
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.07600000000000001
+              ]
+            }
+          },
+          {
+            "id": "g2",
+            "name": "Emergency fund",
+            "pct": 100,
+            "done": true,
+            "step": 60000,
+            "of": "6.000,00 € από 6.000,00 €",
+            "status": {
+              "text": "Τον έπιασες 🎉",
+              "strong": true
+            },
+            "plus": null,
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.696
+              ]
+            }
+          },
+          {
+            "id": "g3",
+            "name": "New laptop",
+            "pct": 0,
+            "done": false,
+            "step": 15000,
+            "of": "0,00 € από 1.500,00 €",
+            "status": {
+              "text": "Χωρίς προθεσμία",
+              "strong": false
+            },
+            "plus": "+ 150,00 €",
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0
+              ],
+              "coral": [
+                0.304,
+                0
+              ]
+            }
+          }
+        ]
+      },
+      "accounts": {
+        "first": false,
+        "pot": {
+          "total": "4.200,00 €",
+          "tone": "default",
+          "note": "Από τους αποταμιευτικούς λογαριασμούς σου",
+          "chip": {
+            "kind": "up",
+            "text": "+180 € αυτόν τον μήνα"
+          },
+          "since": "από Μαΐ · 5 μήνες",
+          "points": [
+            {
+              "label": "Μαΐ",
+              "value": 3370.5,
+              "text": "3.370,50 €"
+            },
+            {
+              "label": "Ιουν",
+              "value": 3670.5,
+              "text": "3.670,50 €"
+            },
+            {
+              "label": "Ιουλ",
+              "value": 3670.5,
+              "text": "3.670,50 €"
+            },
+            {
+              "label": "Αυγ",
+              "value": 4020,
+              "text": "4.020,00 €"
+            },
+            {
+              "label": "Σεπ",
+              "value": 4200,
+              "text": "4.200,00 €"
+            }
+          ],
+          "chart": "Ο κουμπαράς σου στο τέλος κάθε μήνα, Μαΐ: 3.370,50 €, Ιουν: 3.670,50 €, Ιουλ: 3.670,50 €, Αυγ: 4.020,00 €, Σεπ: 4.200,00 €"
+        },
+        "month": {
+          "subtitle": "Σεπτέμβριος",
+          "tiles": [
+            {
+              "key": "fromIncome",
+              "label": "Από έσοδα",
+              "text": "+300,00 €",
+              "tone": "positive"
+            },
+            {
+              "key": "received",
+              "label": "Εισπράξεις",
+              "text": "0,00 €",
+              "tone": "muted"
+            },
+            {
+              "key": "fromSavings",
+              "label": "Αναλήψεις",
+              "text": "−120,00 €",
+              "tone": "default"
+            }
+          ],
+          "net": {
+            "text": "+180,00 €",
+            "tone": "positive"
+          },
+          "repeating": [
+            {
+              "id": "r8",
+              "title": "300,00 € κάθε μήνα",
+              "meta": "Savings · επόμενη: 1 Οκτ"
+            }
+          ]
+        },
+        "history": {
+          "groups": [
+            {
+              "key": "2020-09",
+              "heading": "Σεπτέμβριος",
+              "net": {
+                "text": "+180,00 €",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s7",
+                  "row": {
+                    "id": "s7",
+                    "spent_at": "2020-09-03",
+                    "kind": "expense",
+                    "amount_minor": 12000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": null,
+                    "categories": null,
+                    "description": "New bike",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": true,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "other",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "title": "New bike",
+                  "date": "3 Σεπ",
+                  "note": "από αποταμιεύσεις",
+                  "out": true,
+                  "repeats": false,
+                  "amount": "−120,00 €",
+                  "tone": "default"
+                },
+                {
+                  "id": "s1",
+                  "row": {
+                    "id": "s1",
+                    "spent_at": "2020-09-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null,
+                    "recurring_rule_id": "r8",
+                    "created_at": "2020-09-02T08:00:00Z"
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Σεπ",
+                  "note": "από το εισόδημα",
+                  "out": false,
+                  "repeats": true,
+                  "amount": "+300,00 €",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-08",
+              "heading": "Αύγουστος",
+              "net": {
+                "text": "+349,50 €",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s3",
+                  "row": {
+                    "id": "s3",
+                    "spent_at": "2020-08-20",
+                    "kind": "income",
+                    "amount_minor": 4500,
+                    "currency": "GBP",
+                    "exchange_rate": 1.1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": "Interest",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Interest",
+                  "date": "20 Αυγ",
+                  "note": "που πήρες",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+45,00 £",
+                  "tone": "positive"
+                },
+                {
+                  "id": "s4",
+                  "row": {
+                    "id": "s4",
+                    "spent_at": "2020-08-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null,
+                    "recurring_rule_id": "r8"
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Αυγ",
+                  "note": "από το εισόδημα",
+                  "out": false,
+                  "repeats": true,
+                  "amount": "+300,00 €",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-06",
+              "heading": "Ιούνιος",
+              "net": {
+                "text": "+300,00 €",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s5",
+                  "row": {
+                    "id": "s5",
+                    "spent_at": "2020-06-02",
+                    "kind": "income",
+                    "amount_minor": 30000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": null,
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": true,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Savings",
+                  "date": "2 Ιουν",
+                  "note": "από το εισόδημα",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+300,00 €",
+                  "tone": "positive"
+                }
+              ]
+            },
+            {
+              "key": "2020-05",
+              "heading": "Μάιος",
+              "net": {
+                "text": "+200,00 €",
+                "tone": "positive"
+              },
+              "rows": [
+                {
+                  "id": "s6",
+                  "row": {
+                    "id": "s6",
+                    "spent_at": "2020-05-14",
+                    "kind": "income",
+                    "amount_minor": 20000,
+                    "currency": "EUR",
+                    "exchange_rate": 1,
+                    "category_id": "22222222-2222-4222-8222-222222222222",
+                    "categories": {
+                      "id": "22222222-2222-4222-8222-222222222222",
+                      "name": "Savings",
+                      "kind": "income",
+                      "icon": null,
+                      "color": null,
+                      "is_savings": true
+                    },
+                    "description": "Birthday gift",
+                    "notes": null,
+                    "group_expense_id": null,
+                    "group_expenses": null,
+                    "recurring": null,
+                    "paid_from_savings": false,
+                    "paid_with_vouchers": false,
+                    "savings_from_income": null,
+                    "spread_months": null
+                  },
+                  "look": {
+                    "key": "savings",
+                    "tone": "positive",
+                    "tint": null
+                  },
+                  "title": "Birthday gift",
+                  "date": "14 Μαΐ",
+                  "note": "που πήρες",
+                  "out": false,
+                  "repeats": false,
+                  "amount": "+200,00 €",
+                  "tone": "positive"
+                }
+              ]
+            }
+          ],
+          "empty": null
+        },
+        "goals": [
+          {
+            "id": "g1",
+            "name": "Summer trip",
+            "pct": 38,
+            "done": false,
+            "step": 30000,
+            "of": "1.150,00 € από 3.000,00 €",
+            "status": {
+              "text": "205,56 €/μήνα για να τον πιάσεις · Ιούνιος 2021",
+              "strong": true
+            },
+            "plus": "+ 300,00 €",
+            "minus": "− 300,00 €",
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.07600000000000001
+              ]
+            }
+          },
+          {
+            "id": "g2",
+            "name": "Emergency fund",
+            "pct": 100,
+            "done": true,
+            "step": 60000,
+            "of": "6.000,00 € από 6.000,00 €",
+            "status": {
+              "text": "Τον έπιασες 🎉",
+              "strong": true
+            },
+            "plus": null,
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.696
+              ]
+            }
+          },
+          {
+            "id": "g3",
+            "name": "New laptop",
+            "pct": 0,
+            "done": false,
+            "step": 15000,
+            "of": "0,00 € από 1.500,00 €",
+            "status": {
+              "text": "Χωρίς προθεσμία",
+              "strong": false
+            },
+            "plus": "+ 150,00 €",
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0
+              ],
+              "coral": [
+                0.304,
+                0
+              ]
+            }
+          }
+        ]
+      },
+      "first": {
+        "first": true,
+        "pot": {
+          "total": "0,00 €",
+          "tone": "default",
+          "note": "Από τις καταχωρίσεις αποταμίευσης",
+          "chip": {
+            "kind": "none",
+            "text": "Καμία αλλαγή αυτόν τον μήνα"
+          },
+          "since": null,
+          "points": [],
+          "chart": "Ο κουμπαράς σου στο τέλος κάθε μήνα, "
+        },
+        "month": {
+          "subtitle": "Σεπτέμβριος",
+          "tiles": [
+            {
+              "key": "fromIncome",
+              "label": "Από έσοδα",
+              "text": "0,00 €",
+              "tone": "muted"
+            },
+            {
+              "key": "received",
+              "label": "Εισπράξεις",
+              "text": "0,00 €",
+              "tone": "muted"
+            },
+            {
+              "key": "fromSavings",
+              "label": "Αναλήψεις",
+              "text": "0,00 €",
+              "tone": "muted"
+            }
+          ],
+          "net": {
+            "text": "0,00 €",
+            "tone": "default"
+          },
+          "repeating": [
+            {
+              "id": "r8",
+              "title": "300,00 € κάθε μήνα",
+              "meta": "Savings · επόμενη: 1 Οκτ"
+            }
+          ]
+        },
+        "history": {
+          "groups": [],
+          "empty": "Δεν έχεις βάλει τίποτα στην αποταμίευση ακόμα."
+        },
+        "goals": [
+          {
+            "id": "g1",
+            "name": "Summer trip",
+            "pct": 38,
+            "done": false,
+            "step": 30000,
+            "of": "1.150,00 € από 3.000,00 €",
+            "status": {
+              "text": "205,56 €/μήνα για να τον πιάσεις · Ιούνιος 2021",
+              "strong": true
+            },
+            "plus": "+ 300,00 €",
+            "minus": "− 300,00 €",
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.07600000000000001
+              ]
+            }
+          },
+          {
+            "id": "g2",
+            "name": "Emergency fund",
+            "pct": 100,
+            "done": true,
+            "step": 60000,
+            "of": "6.000,00 € από 6.000,00 €",
+            "status": {
+              "text": "Τον έπιασες 🎉",
+              "strong": true
+            },
+            "plus": null,
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0.275
+              ],
+              "coral": [
+                0.304,
+                0.696
+              ]
+            }
+          },
+          {
+            "id": "g3",
+            "name": "New laptop",
+            "pct": 0,
+            "done": false,
+            "step": 15000,
+            "of": "0,00 € από 1.500,00 €",
+            "status": {
+              "text": "Χωρίς προθεσμία",
+              "strong": false
+            },
+            "plus": "+ 150,00 €",
+            "minus": null,
+            "arcs": {
+              "amber": [
+                0,
+                0
+              ],
+              "coral": [
+                0.304,
+                0
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

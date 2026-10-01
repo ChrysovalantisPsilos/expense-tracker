@@ -32,6 +32,9 @@ export default {
     group: {
       commentOn: 'Σχόλιο για: {{name}}',
     },
+    savings: {
+      deleteGoal: 'Να διαγραφεί ο στόχος «{{name}}»;',
+    },
     balances: {
       everyone: 'Όλοι',
       owes: 'Χρωστά',

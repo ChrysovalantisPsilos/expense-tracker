@@ -16,17 +16,14 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import EmptyState from '../../shared/ui/EmptyState.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
-import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
-import { monthHeading, shortDate } from '../../shared/lib/dates.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName, entryName } from '../../shared/lib/categoryName.js'
-import { HISTORY_MONTHS, HISTORY_MORE } from '../savings/savingsMath.js'
+import { HISTORY_MONTHS, historyWindow } from '../savings/savingsMath.js'
 import { daysFor, withDays } from './voucherMath.js'
 import { saveMealVouchers, useMealVouchers, useVoucherCard } from './vouchers.js'
 import { NextTopUp } from './VoucherParts.jsx'
-import { monthOfKey } from './voucherText.js'
+import { daysFixParts, voucherHistoryParts, voucherPageParts } from './voucherText.js'
 import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
 
 export default function Vouchers() {
@@ -54,17 +51,14 @@ function Card({ settings }) {
   const t = useT('vouchers')
   const { card, error, reload } = useVoucherCard(settings)
   const { summary, next } = card
-  const cur = settings.currency
+  const parts = voucherPageParts(settings, summary)
   return (
     <>
       <Panel>
-        <Figure label={t('balance')} size="hero" value={formatSigned(summary.balance, cur)}
-          tone={summary.balance < 0 ? 'negative' : 'default'} />
+        <Figure label={t('balance')} size="hero" value={parts.balance} tone={parts.tone} />
         <BalanceGrid mt={3}>
-          <BalanceTile label={t('month.topUps')} value={`+${formatMoney(summary.monthTopUps, cur)}`}
-            tone={summary.monthTopUps ? 'positive' : 'muted'} />
-          <BalanceTile label={t('month.spent')} value={formatSigned(-summary.monthSpent, cur)}
-            tone={summary.monthSpent ? 'default' : 'muted'} />
+          <BalanceTile label={t('month.topUps')} value={parts.topUps.text} tone={parts.topUps.tone} />
+          <BalanceTile label={t('month.spent')} value={parts.spent.text} tone={parts.spent.tone} />
         </BalanceGrid>
       </Panel>
       <NextCard settings={settings} next={next} />
@@ -98,10 +92,9 @@ function DaysFix({ settings, month, onClose }) {
   const t = useT('vouchers')
   const toast = useToast()
   const { user } = useAuth()
-  const { days: start, auto } = daysFor(settings, month)
-  const [days, setDays] = useState(start)
+  const [days, setDays] = useState(() => daysFor(settings, month).days)
   const [busy, setBusy] = useState(false)
-  const cur = settings.currency
+  const parts = daysFixParts(settings, month, days)
 
   async function save() {
     setBusy(true)
@@ -117,22 +110,20 @@ function DaysFix({ settings, month, onClose }) {
 
   return (
     <Box mt={3} bg="bg.subtle" borderRadius="lg" p={3}>
-      <Text fontSize="sm" fontWeight="600">{t('fix.label', { month: monthOfKey(month) })}</Text>
+      <Text fontSize="sm" fontWeight="600">{parts.label}</Text>
       <HStack mt={2} spacing={3} flexWrap="wrap">
         <IconButton aria-label={t('fix.fewer')} icon={<Minus size={16} />} variant="outline"
-          isDisabled={days <= 0} onClick={() => setDays(days - 1)} />
+          isDisabled={!parts.fewer} onClick={() => setDays(days - 1)} />
         <Text fontFamily="heading" fontWeight="700" fontSize="xl" minW="32px" textAlign="center" aria-live="polite">
           {days}
         </Text>
         <IconButton aria-label={t('fix.more')} icon={<Plus size={16} />} variant="outline"
-          isDisabled={days >= 31} onClick={() => setDays(days + 1)} />
+          isDisabled={!parts.more} onClick={() => setDays(days + 1)} />
         <Text fontSize="sm" color="text.muted">
-          <Trans t={t} k="fix.total" values={{
-            perDay: formatMoney(settings.per_day_minor, cur), amount: formatMoney(days * settings.per_day_minor, cur),
-          }} components={{ b: <Text as="b" color="text.primary" /> }} />
+          <Trans t={t} k="fix.total" values={parts.total} components={{ b: <Text as="b" color="text.primary" /> }} />
         </Text>
       </HStack>
-      <Text fontSize="xs" color="text.muted" mt={2}>{t('fix.hint', { count: auto })}</Text>
+      <Text fontSize="xs" color="text.muted" mt={2}>{parts.hint}</Text>
       <HStack mt={3} spacing={2}>
         <Button size="sm" onClick={save} isLoading={busy}>{t('fix.save')}</Button>
         <Button size="sm" variant="ghost" onClick={onClose} isDisabled={busy}>{t('fix.cancel')}</Button>
@@ -147,28 +138,28 @@ function History({ settings, groups }) {
   const t = useT('vouchers')
   const navigate = useNavigate()
   const [months, setMonths] = useState(HISTORY_MONTHS)
-  const cur = settings.currency
-  const shown = groups.slice(0, months)
+  const page = historyWindow(groups.length, months)
+  const shown = voucherHistoryParts(settings, groups.slice(0, page.shown))
   return (
     <Panel title={t('history.title')} divider>
       <Stack spacing={4}>
         {shown.map((g) => (
-          <Box key={g.month} as="section" aria-label={monthHeading(g.month)}>
+          <Box key={g.month} as="section" aria-label={g.heading}>
             <HStack justify="space-between" mb={1}>
-              <Text as="h3" fontFamily="heading" fontWeight="700" fontSize="sm">{monthHeading(g.month)}</Text>
-              <Text fontSize="sm" fontWeight="700" color={g.net > 0 ? 'status.positive' : 'text.muted'}>
-                {formatSigned(g.net, cur, { plus: true })}
+              <Text as="h3" fontFamily="heading" fontWeight="700" fontSize="sm">{g.heading}</Text>
+              <Text fontSize="sm" fontWeight="700" color={g.net.tone === 'positive' ? 'status.positive' : 'text.muted'}>
+                {g.net.text}
               </Text>
             </HStack>
             <Stack spacing={0}>
-              {g.items.map((item) => <HistoryRow key={`${item.type}-${item.row?.id ?? item.on}`} item={item}
-                currency={cur} open={(r) => navigate(`/transactions/${r.id}`, { state: { row: r } })} />)}
+              {g.items.map((item) => <HistoryRow key={item.key} item={item}
+                open={(r) => navigate(`/transactions/${r.id}`, { state: { row: r } })} />)}
             </Stack>
           </Box>
         ))}
       </Stack>
-      {groups.length > months && (
-        <Button variant="outline" w="full" mt={3} size="sm" onClick={() => setMonths(months + HISTORY_MORE)}>
+      {page.more && (
+        <Button variant="outline" w="full" mt={3} size="sm" onClick={() => setMonths(page.next)}>
           {t('savings:history.older')}
         </Button>
       )}
@@ -176,28 +167,18 @@ function History({ settings, groups }) {
   )
 }
 
-function HistoryRow({ item, currency, open }) {
-  const t = useT('vouchers')
+// A history line (voucherHistoryParts): an expense opens its entry.
+function HistoryRow({ item, open }) {
   if (item.type === 'spend') {
     const r = item.row
     return (
       <ItemRow py={1.5} onClick={() => open(r)}
         media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-        title={entryName(r, t('history.noCategory'))}
-        meta={`${shortDate(r.spent_at)} · ${categoryDisplayName(r.categories) || t('history.noCategory')}`}
-        amount={formatSigned(item.minor, currency)} />
-    )
-  }
-  if (item.type === 'topup') {
-    return (
-      <ItemRow py={1.5} icon={Ticket} title={t('history.topUp')}
-        meta={t('history.topUpMeta', { date: shortDate(item.on), month: monthOfKey(item.month), count: item.days })}
-        amount={`+${formatMoney(item.minor, currency)}`} amountTone="positive" />
+        title={item.title} meta={item.meta} amount={item.amount} />
     )
   }
   return (
-    <ItemRow py={1.5} icon={Wallet} title={t('history.start')}
-      meta={t('history.startMeta', { date: shortDate(item.on) })}
-      amount={formatMoney(item.minor, currency)} amountTone="muted" />
+    <ItemRow py={1.5} icon={item.type === 'topup' ? Ticket : Wallet} title={item.title} meta={item.meta}
+      amount={item.amount} amountTone={item.tone} />
   )
 }

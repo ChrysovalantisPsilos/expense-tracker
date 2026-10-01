@@ -10,8 +10,8 @@ import RingLoader from '../../shared/ui/RingLoader.jsx'
 import useGoBack from '../../shared/ui/useGoBack.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { minorToInput, toMinor } from '../../shared/lib/currency.js'
 import { useGoals, saveGoal } from './savings.js'
+import { goalDraft, goalToSave } from './savingsMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // A savings goal's page:
@@ -47,22 +47,19 @@ function GoalForm({ goal, baseCurrency }) {
   const t = useT('savings')
   const back = useGoBack('/savings')
   const isEdit = !!goal
-  const [name, setName] = useState(goal?.name ?? '')
-  const [target, setTarget] = useState(goal ? minorToInput(goal.target_minor, goal.currency) : '')
-  const [saved, setSaved] = useState(goal ? minorToInput(goal.saved_minor, goal.currency) : '0')
-  const [currency] = useState(goal?.currency ?? baseCurrency)
-  const [targetDate, setTargetDate] = useState(goal?.target_date ?? '')
+  const [start] = useState(() => goalDraft(goal, baseCurrency))
+  const [name, setName] = useState(start.name)
+  const [target, setTarget] = useState(start.target)
+  const [saved, setSaved] = useState(start.saved)
+  const { currency } = start
+  const [targetDate, setTargetDate] = useState(start.targetDate)
   const { busy, run } = useAsyncSubmit()
 
   async function submit() {
-    if (!name.trim()) return toast({ title: t('goal.nameIt'), status: 'warning' })
-    if (!target || Number(target) <= 0) return toast({ title: t('goal.setTarget'), status: 'warning' })
+    const ready = goalToSave({ name, target, saved, currency, targetDate }, goal?.id)
+    if (ready.error) return toast({ title: ready.error, status: 'warning' })
     await run(async () => {
-      await saveGoal({
-        id: goal?.id, name: name.trim(),
-        target_minor: toMinor(target, currency), saved_minor: toMinor(saved || '0', currency),
-        currency, target_date: targetDate || null,
-      })
+      await saveGoal(ready.goal)
       back()
     })
   }

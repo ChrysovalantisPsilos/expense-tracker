@@ -5,10 +5,9 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import RowActions from '../../shared/ui/RowActions.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { SkeletonBlock, SkeletonRegion } from '../../shared/ui/Skeleton.jsx'
-import { formatMoney } from '../../shared/lib/currency.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { saveGoal, deleteGoal } from './savings.js'
-import { goalProgress, goalRingArcs, goalSavedAfter, goalStatus } from './savingsMath.js'
+import { goalParts, goalSavedAfter } from './savingsMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const RING = { size: 48, stroke: 6 }
@@ -16,12 +15,12 @@ const RING = { size: 48, stroke: 6 }
 const TEXT_INSET = `${RING.size + 12}px`
 
 // A goal's progress as a small ring in the logo's colours: amber, the gap,
-// then coral (goalRingArcs), on a sand track, with the percentage inside.
-function GoalRing({ pct }) {
+// then coral (goalParts' arcs), on a sand track, with the percentage inside.
+function GoalRing({ pct, arcs }) {
   const { size, stroke } = RING
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
-  const { amber, coral } = goalRingArcs(pct)
+  const { amber, coral } = arcs
   const arc = ([from, len], color) => len > 0 && (
     <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke}
       transform={`rotate(-90 ${size / 2} ${size / 2})`} strokeDasharray={`${len * c} ${c}`}
@@ -88,17 +87,15 @@ export default function GoalsCard({ goals, loading, error, reload }) {
       ) : (
         <Stack spacing={4}>
           {goals.map((g) => {
-            const { pct, done, step } = goalProgress(g)
-            const pace = goalStatus(g)
+            const parts = goalParts(g)
+            const pace = parts.status
             return (
               <Box key={g.id}>
                 <HStack spacing={3} align="center">
-                  <GoalRing pct={pct} />
+                  <GoalRing pct={parts.pct} arcs={parts.arcs} />
                   <Box flex="1" minW={0}>
                     <Text fontSize="sm" fontWeight="600" noOfLines={1}>{g.name}</Text>
-                    <Text fontSize="xs" color="text.muted" noOfLines={1}>
-                      {t('goals.of', { saved: formatMoney(g.saved_minor, g.currency), target: formatMoney(g.target_minor, g.currency) })}
-                    </Text>
+                    <Text fontSize="xs" color="text.muted" noOfLines={1}>{parts.of}</Text>
                     <Text fontSize="xs" noOfLines={2} color={pace.strong ? 'text.primary' : 'text.muted'}
                       fontWeight={pace.strong ? 600 : 400}>
                       {pace.text}
@@ -109,15 +106,11 @@ export default function GoalsCard({ goals, loading, error, reload }) {
                     { label: t('common:actions.delete'), icon: Trash2, onClick: () => remove(g), danger: true },
                   ]} />
                 </HStack>
-                {!done && (
+                {parts.plus && (
                   <HStack mt={2} spacing={2} pl={TEXT_INSET}>
-                    <Button size="xs" variant="outline" onClick={() => addTo(g, step)}>
-                      + {formatMoney(step, g.currency)}
-                    </Button>
-                    {g.saved_minor > 0 && (
-                      <Button size="xs" variant="ghost" onClick={() => addTo(g, -step)}>
-                        − {formatMoney(step, g.currency)}
-                      </Button>
+                    <Button size="xs" variant="outline" onClick={() => addTo(g, parts.step)}>{parts.plus}</Button>
+                    {parts.minus && (
+                      <Button size="xs" variant="ghost" onClick={() => addTo(g, -parts.step)}>{parts.minus}</Button>
                     )}
                   </HStack>
                 )}

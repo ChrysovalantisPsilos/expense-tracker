@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   westernEaster, orthodoxEaster, publicHolidays, workingDays, addMonths, daysFor, topUpsSince, nextTopUp,
-  voucherSummary, voucherHistory, newSettings, withDays, normaliseSettings, firstTopUpDate,
+  voucherSummary, voucherHistory, newSettings, withDays, normaliseSettings, firstTopUpDate, setupDraft, setupToSave,
 } from '../src/features/vouchers/voucherMath.js'
 
 const day = (d) => d.toISOString().slice(0, 10)
@@ -121,4 +121,23 @@ test('a top-up day past a month\'s end lands on its last day', () => {
 test('the setup form\'s top-up date: the next top-up, or the 1st of next month', () => {
   assert.equal(firstTopUpDate(S, '2026-09-29'), '2026-10-05')
   assert.equal(firstTopUpDate(null, '2026-12-10'), '2027-01-01')
+})
+
+test('the setup form: as it opens, with or without a setup', () => {
+  assert.deepEqual(setupDraft(S, 5625, 'GBP', '2026-09-29'),
+    { on: true, perDay: '8.00', country: 'BE', topUpOn: '2026-10-05', onCard: '56.25', currency: 'EUR' })
+  assert.deepEqual(setupDraft(null, -300, 'EUR', '2026-12-10'),
+    { on: false, perDay: '', country: 'BE', topUpOn: '2027-01-01', onCard: '0.00', currency: 'EUR' })
+})
+
+test('the setup form ready to save: off, missing its amount, or a setup counted on from today', () => {
+  const form = { on: true, perDay: '9.50', country: 'GR', topUpOn: '2026-10-07', onCard: '12', currency: 'EUR' }
+  assert.deepEqual(setupToSave({ ...form, on: false }, S, '2026-09-29'), { settings: null })
+  assert.deepEqual(setupToSave({ ...form, perDay: '' }, S, '2026-09-29'), { missing: true })
+  assert.deepEqual(setupToSave({ ...form, perDay: '0' }, S, '2026-09-29'), { missing: true })
+  assert.deepEqual(setupToSave(form, S, '2026-09-29').settings, {
+    v: 1, country: 'GR', per_day_minor: 950, currency: 'EUR', topup_day: 7,
+    start_on: '2026-09-29', start_balance_minor: 1200, days: {},
+  })
+  assert.equal(setupToSave({ ...form, onCard: '' }, S, '2026-09-29').settings.start_balance_minor, 0)
 })

@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
-  FIXTURES_DIR, budgetsFixture, insightsFixture, ledgerFixture, recurringFixture,
+  FIXTURES_DIR, budgetsFixture, insightsFixture, ledgerFixture, recurringFixture, savingsFixture, vouchersFixture,
 } from '../mobile-core/screenFigures.mjs'
 
 const committed = (name) => JSON.parse(readFileSync(resolve(FIXTURES_DIR, `${name}.json`), 'utf8'))
@@ -85,4 +85,35 @@ test('ios insights fixture: the six months, the picked month\'s shares, this mon
   assert.equal(thisMonth.shares.reduce((s, c) => s + c.share, 0), 100)
   // The late-August salary counts in September.
   assert.equal(thisMonth.income.income, '€2,500.00')
+})
+
+test('ios savings fixture: the committed file is what the web\'s functions give', () => {
+  assert.deepEqual(committed('savings'), fresh(savingsFixture()))
+})
+
+test('ios savings fixture: the pot from the entries or the savings accounts, the history, the goals', () => {
+  const { entries, out, accounts, first } = committed('savings').expected.en
+  assert.equal(first.first, true)
+  assert.equal(entries.first, false)
+  assert.equal(entries.pot.note, 'From your savings entries')
+  assert.equal(accounts.pot.total, '€4,200.00')
+  assert.equal(accounts.pot.points.at(-1).value, 4200)
+  // The salary never moves the pot; the bike paid from savings does.
+  assert.deepEqual(entries.history.groups[0].rows.map((r) => r.id), ['s7', 's1'])
+  assert.deepEqual(out.history.groups.map((g) => g.rows.map((r) => r.id)), [['s7']])
+  assert.deepEqual(entries.month.repeating.map((r) => r.id), ['r8'])
+  assert.deepEqual(entries.goals.map((g) => g.pct), [38, 100, 0])
+})
+
+test('ios vouchers fixture: the committed file is what the web\'s functions give', () => {
+  assert.deepEqual(committed('vouchers'), fresh(vouchersFixture()))
+})
+
+test('ios vouchers fixture: the card, the fixed days, the history and the form', () => {
+  const { en } = committed('vouchers').expected
+  assert.match(en.next.amount, /^\+€160\.00 on 5 Oct/)
+  assert.match(en.next.why, /your days$/)
+  assert.equal(en.fix.days, 20)
+  assert.equal(en.history.at(-1).items.at(-1).type, 'start')
+  assert.equal(en.setup.topUpOn, '2020-10-05')
 })

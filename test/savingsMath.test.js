@@ -13,7 +13,8 @@ import {
   touchesSavings, moveDirection, savingsMoves, savingsFlow, potSeries, seriesLength,
   HISTORY_FILTERS, monthGroups, wholeMoney, changeChip,
   goalProgress, goalSavedAfter, goalPace, goalStatus, goalRingArcs, savingsCategoryOf, savingsStacks,
-  anchoredSeries, totalSourceNote,
+  anchoredSeries, totalSourceNote, potLine, potCardParts, monthCardParts, savingsPage, savingsRowParts, savingsHistory,
+  historyWindow, historyFilters, goalParts, goalDraft, goalToSave, HISTORY_MONTHS, HISTORY_MORE,
 } from '../src/features/savings/savingsMath.js'
 
 const SAV = 'cat-savings'
@@ -230,4 +231,122 @@ test('anchoredSeries: from savings accounts, the line ends on their total; from 
   assert.deepEqual(moved.map((s) => s.label), ['Jul', 'Aug', 'Sep'])
   assert.deepEqual(series.map((s) => s.pot), [10000, 25000, 42000]) // not mutated
   assert.deepEqual(anchoredSeries([], { source: 'accounts', minor: 5 }), [])
+})
+
+// ── The page's parts ──
+const NOW = new Date(2026, 8, 20)
+const ENTRIES = { minor: -17900, source: 'entries', accounts: [] }
+
+test('potLine: the line since the oldest move, anchored on savings accounts, and this month\'s flow', () => {
+  const moves = savingsMoves(rows, IDS)
+  const { line, month } = potLine(moves, IDS, 'EUR', ENTRIES, NOW)
+  assert.deepEqual(line.map((s) => [s.key, s.pot]), [['2026-07', 20000], ['2026-08', 52000], ['2026-09', -17900]])
+  assert.equal(month.fromSavings, 89900)
+  const accounts = potLine(moves, IDS, 'EUR', { minor: 100000, source: 'accounts', accounts: [] }, NOW)
+  assert.equal(accounts.line.at(-1).pot, 100000)
+  assert.deepEqual(potLine([], IDS, 'EUR', ENTRIES, NOW),
+    { line: [], month: { fromIncome: 0, received: 0, fromSavings: 0, net: 0 } })
+})
+
+test('potCardParts: the total, its source, the chip, how long the line runs and its points', () => {
+  const moves = savingsMoves(rows, IDS)
+  const { line, month } = potLine(moves, IDS, 'EUR', ENTRIES, NOW)
+  const pot = potCardParts(ENTRIES, line, month, 'EUR')
+  assert.equal(pot.total, '−€179.00')
+  assert.equal(pot.tone, 'negative')
+  assert.equal(pot.note, 'From your savings entries')
+  assert.deepEqual(pot.chip, { kind: 'spent', text: '€899 spent from savings this month' })
+  assert.equal(pot.since, 'since Jul · 3 months')
+  assert.deepEqual(pot.points[1], { label: 'Aug', value: 520, text: '€520.00' })
+  assert.match(pot.chart, /Jul: €200\.00, Aug: €520\.00, Sep: -€179\.00/)
+  const up = potCardParts({ minor: 5000, source: 'entries' }, [], { fromSavings: 0, net: 5000 }, 'EUR')
+  assert.deepEqual([up.chip.text, up.since, up.points], ['+€50 this month', null, []])
+  assert.equal(potCardParts({ minor: 0, source: 'accounts' }, [], { fromSavings: 0, net: 0 }, 'EUR').chip.text,
+    'No change this month')
+})
+
+test('monthCardParts: the tiles, the net change and the savings that repeat', () => {
+  const rules = [
+    { id: 'r1', kind: 'income', category_id: SAV, is_active: true, amount_minor: 20000, currency: 'EUR',
+      frequency: 'monthly', interval_n: 1, next_run: '2026-10-02', description: null, categories: { name: 'Savings' } },
+    { id: 'r2', kind: 'income', category_id: SAV, is_active: false, amount_minor: 5000, currency: 'EUR',
+      frequency: 'monthly', interval_n: 1, next_run: '2026-10-02' },
+    { id: 'r3', kind: 'expense', category_id: 'cat-food', is_active: true, amount_minor: 5000, currency: 'EUR',
+      frequency: 'weekly', interval_n: 1, next_run: '2026-09-25' },
+  ]
+  const parts = monthCardParts({ fromIncome: 20000, received: 0, fromSavings: 89900, net: -69900 }, rules, IDS, 'EUR', NOW)
+  assert.equal(parts.subtitle, 'September')
+  assert.deepEqual(parts.tiles.map((x) => [x.key, x.label, x.text, x.tone]), [
+    ['fromIncome', 'From income', '+€200.00', 'positive'],
+    ['received', 'Received', '€0.00', 'muted'],
+    ['fromSavings', 'From savings', '−€899.00', 'default'],
+  ])
+  assert.deepEqual(parts.net, { text: '−€699.00', tone: 'default' })
+  assert.deepEqual(parts.repeating, [{ id: 'r1', title: '€200.00 every month', meta: 'Savings · next on 2 Oct' }])
+})
+
+test('savingsPage: the first-run explainer only before anything was ever saved', () => {
+  const moves = savingsMoves(rows, IDS)
+  const page = savingsPage({ moves, total: ENTRIES, savingsIds: IDS, baseCurrency: 'EUR', rules: [], now: NOW })
+  assert.equal(page.first, false)
+  assert.equal(page.pot.since, 'since Jul · 3 months')
+  assert.equal(page.month.tiles[0].text, '+€200.00')
+  const empty = { moves: [], savingsIds: IDS, baseCurrency: 'EUR', rules: [], now: NOW }
+  assert.equal(savingsPage({ ...empty, total: { minor: 0, source: 'entries', accounts: [] } }).first, true)
+  assert.equal(savingsPage({ ...empty, total: { minor: 50000, source: 'accounts', accounts: [] } }).first, false)
+})
+
+test('savingsRowParts / savingsHistory: each row as listed, the months headed by their net', () => {
+  const laptop = savingsRowParts({ ...byId('laptop'), description: 'Laptop' }, IDS, NOW)
+  assert.deepEqual([laptop.title, laptop.date, laptop.note, laptop.out, laptop.amount, laptop.tone, laptop.repeats],
+    ['Laptop', '14 Sep', 'from savings', true, '−€899.00', 'default', false])
+  const sep = savingsRowParts({ ...byId('sep'), recurring_rule_id: 'r1' }, IDS, NOW)
+  assert.deepEqual([sep.title, sep.note, sep.amount, sep.tone, sep.repeats],
+    ['Savings', 'from income', '+€200.00', 'positive', true])
+  assert.equal(sep.look.tone, 'positive')
+  const moves = savingsMoves(rows, IDS)
+  const all = savingsHistory(moves, IDS, 'EUR', 'all', NOW)
+  assert.equal(all.empty, null)
+  assert.deepEqual(all.groups.map((g) => [g.heading, g.net.text, g.net.tone, g.rows.map((r) => r.id)]), [
+    ['September', '−€699.00', 'muted', ['laptop', 'sep']],
+    ['August', '+€320.00', 'positive', ['int', 'aug']],
+    ['July', '+€200.00', 'positive', ['jul']],
+  ])
+  assert.equal(savingsHistory([], IDS, 'EUR', 'out', NOW).empty, 'Nothing paid from savings yet.')
+  assert.equal(savingsHistory([], IDS, 'EUR', 'in', NOW).empty, 'Nothing put into savings yet.')
+})
+
+test('historyFilters: All, In and Out in words', () => {
+  assert.deepEqual(historyFilters(), [{ value: 'all', label: 'All' }, { value: 'in', label: 'In' }, { value: 'out', label: 'Out' }])
+})
+
+test('historyWindow: the first months, then more with each Show older', () => {
+  assert.deepEqual(historyWindow(7), { shown: HISTORY_MONTHS, more: true, next: HISTORY_MONTHS + HISTORY_MORE })
+  assert.deepEqual(historyWindow(7, null), historyWindow(7))
+  assert.deepEqual(historyWindow(7, 5), { shown: 5, more: true, next: 8 })
+  assert.deepEqual(historyWindow(1), { shown: 1, more: false, next: HISTORY_MONTHS + HISTORY_MORE })
+})
+
+test('goalParts: the ring, the amounts, the status and the quick buttons', () => {
+  const goal = { id: 'g1', name: 'Holiday', saved_minor: 50000, target_minor: 200000, currency: 'EUR', target_date: null }
+  const parts = goalParts(goal, NOW)
+  assert.deepEqual([parts.pct, parts.done, parts.step, parts.of, parts.plus, parts.minus],
+    [25, false, 20000, '€500.00 of €2,000.00', '+ €200.00', '− €200.00'])
+  assert.deepEqual(parts.status, { text: 'No deadline', strong: false })
+  assert.deepEqual(parts.arcs, goalRingArcs(25))
+  assert.equal(goalParts({ ...goal, saved_minor: 0 }, NOW).minus, null)
+  const done = goalParts({ ...goal, saved_minor: 200000 }, NOW)
+  assert.deepEqual([done.done, done.plus, done.minus], [true, null, null])
+})
+
+test('goalDraft / goalToSave: the form as it opens, and ready to save or what is missing', () => {
+  assert.deepEqual(goalDraft(null, 'GBP'), { name: '', target: '', saved: '0', currency: 'GBP', targetDate: '' })
+  const goal = { id: 'g1', name: 'Holiday', saved_minor: 50000, target_minor: 200000, currency: 'EUR', target_date: '2027-05-01' }
+  const draft = goalDraft(goal, 'GBP')
+  assert.deepEqual(draft, { name: 'Holiday', target: '2000.00', saved: '500.00', currency: 'EUR', targetDate: '2027-05-01' })
+  assert.deepEqual(goalToSave({ ...draft, name: ' ' }), { error: 'Name it' })
+  assert.deepEqual(goalToSave({ ...draft, target: '0' }), { error: 'Set a target' })
+  assert.deepEqual(goalToSave({ ...draft, name: ' Trip ', saved: '', targetDate: '' }, 'g1').goal,
+    { id: 'g1', name: 'Trip', target_minor: 200000, saved_minor: 0, currency: 'EUR', target_date: null })
+  assert.equal(goalToSave(draft).goal.id, null)
 })
