@@ -72,6 +72,9 @@ import * as entryForm from '../src/features/transactions/entryForm.js'
 import * as txnFilter from '../src/features/transactions/txnFilter.js'
 import * as rowParts from '../src/features/transactions/rowParts.js'
 import * as listHeading from '../src/features/transactions/listHeading.js'
+import * as navMatch from '../src/app/navMatch.js'
+import * as bellMath from '../src/features/notifications/bellMath.js'
+import * as voucherText from '../src/features/vouchers/voucherText.js'
 
 // The language every wording function answers in. English is the default and
 // always at hand; Greek is bundled here too (the web app fetches it lazily).
@@ -143,6 +146,9 @@ export const modules = {
   txnFilter,
   rowParts,
   listHeading,
+  navMatch,
+  bellMath,
+  voucherText,
 }
 
 // The paths each namespace comes from, for the guard test and the docs.

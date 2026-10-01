@@ -40,6 +40,10 @@ export const APP_ICONS = [
   'User', 'UserCheck', 'UserMinus', 'UserPlus', 'UserRound', 'Users', 'Wallet', 'Wand2', 'WifiOff', 'X',
 ]
 
+// The lit tab's icon and the floating Add are drawn heavier on the web
+// (strokeWidth 2.4): "lucide-<name>-bold".
+export const BOLD_ICONS = ['LayoutDashboard', 'ReceiptText', 'Users', 'Target', 'MoreHorizontal', 'Plus']
+
 // 'MoreHorizontal' → 'more-horizontal', 'Trash2' → 'trash-2', 'Link2' → 'link-2'.
 export const kebab = (name) => name
   .replace(/([a-z])([A-Z0-9])/g, '$1-$2')
@@ -63,10 +67,10 @@ export async function categoryIcons() {
 
 // One icon's SVG exactly as the web renders it (lucide-react), in black so
 // the template image takes its tint from SwiftUI.
-export function svgFor(component) {
+export function svgFor(component, strokeWidth = 2) {
   const Icon = lucide[component]
   if (!Icon) throw new Error(`lucide-react has no icon ${component}`)
-  return renderToStaticMarkup(createElement(Icon, { size: 24, strokeWidth: 2, color: '#000000' }))
+  return renderToStaticMarkup(createElement(Icon, { size: 24, strokeWidth, color: '#000000' }))
     .replace(/ class="[^"]*"/g, '')
     + '\n'
 }
@@ -84,13 +88,14 @@ export async function iconFiles() {
   files[`${CATALOG}/Contents.json`] = json({ info: { author: 'xcode', version: 1 } })
   const license = await readFile(resolve(ROOT, 'node_modules/lucide-react/LICENSE'), 'utf8')
   files['ios/Budgeer/Budgeer/Resources/LUCIDE-LICENSE.txt'] = license
-  const add = (asset, component) => {
+  const add = (asset, component, strokeWidth) => {
     const dir = `${CATALOG}/${asset}.imageset`
     files[`${dir}/Contents.json`] = imageSet(`${asset}.svg`)
-    files[`${dir}/${asset}.svg`] = svgFor(component)
+    files[`${dir}/${asset}.svg`] = svgFor(component, strokeWidth)
   }
   const names = [...new Set(APP_ICONS)].sort()
   for (const name of names) add(`lucide-${kebab(name)}`, name)
+  for (const name of BOLD_ICONS) add(`lucide-${kebab(name)}-bold`, name, 2.4)
   const categories = await categoryIcons()
   for (const [key, component] of Object.entries(categories)) add(`category-${key}`, component)
   const cases = names.map((n) => `    case ${camel(kebab(n))} = "lucide-${kebab(n)}"`).join('\n')

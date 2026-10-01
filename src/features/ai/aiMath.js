@@ -5,6 +5,8 @@
 import { MERCHANTS_MAX } from '../../../supabase/functions/_shared/aiHelper.ts'
 import { minorToInput } from '../../shared/lib/currency.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { monthName } from '../../shared/lib/dates.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // The four helpers: the profile switch (0103, 0105) behind each.
 export const AI_SWITCHES = {
@@ -123,6 +125,12 @@ export function summaryState({ data, error, writing, writeFailed, lang }) {
 export function overviewWords({ state, thisMonth, tab }) {
   const offered = thisMonth && state !== 'hidden'
   return { offered, words: offered && tab === 'words' }
+}
+
+// The words' header: "September in short" for the summary's month ('YYYY-MM-01').
+export function summaryTitle(month) {
+  const [y, m] = month.split('-').map(Number)
+  return t('ai:summary.title', { month: monthName(new Date(y, m - 1, 1)) })
 }
 
 // Write the month's first summary without being asked: once per month and

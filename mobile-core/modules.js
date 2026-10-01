@@ -84,6 +84,9 @@ export const CORE_MODULES = {
   txnFilter: 'src/features/transactions/txnFilter.js',
   rowParts: 'src/features/transactions/rowParts.js',
   listHeading: 'src/features/transactions/listHeading.js',
+  bellMath: 'src/features/notifications/bellMath.js',
+  navMatch: 'src/app/navMatch.js',
+  voucherText: 'src/features/vouchers/voucherText.js',
 }
 
 // Where the bundle goes (the Swift package's resource) and where the recorded

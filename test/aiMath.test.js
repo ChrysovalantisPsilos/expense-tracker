@@ -3,7 +3,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   AI_SWITCHES, aiErrorKey, applySuggestions, categoryLabels, fillPlan, helpersOn, isSuggested, monthStartOf,
-  overviewWords, settlePendingCategory, shouldAutoWrite, suggestionRequest, summaryState,
+  overviewWords, settlePendingCategory, shouldAutoWrite, suggestionRequest, summaryState, summaryTitle,
 } from '../src/features/ai/aiMath.js'
 import { MERCHANTS_MAX } from '../supabase/functions/_shared/aiHelper.ts'
 import en from '../src/locales/en/ai.js'
@@ -135,4 +135,9 @@ test('every ai-helper error code has words', () => {
   // that code only.
   assert.equal(aiErrorKey('unreadable', 'plan:typeIt.unreadable'), 'plan:typeIt.unreadable')
   assert.equal(aiErrorKey('busy', 'plan:typeIt.unreadable'), 'ai:errors.busy')
+})
+
+test('In words: the header names the summary’s month', () => {
+  assert.equal(summaryTitle('2026-09-01'), 'September in short')
+  assert.equal(summaryTitle('2027-01-01'), 'January in short')
 })
