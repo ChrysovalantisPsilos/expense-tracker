@@ -30,10 +30,10 @@ test('keeps a branch just made from develop (same tip) and anything younger than
   assert.deepEqual(branchesToDelete([b('day-old', { committedAt: now - MIN_AGE_MS })], { developSha: 'dev', now }), ['day-old'])
 })
 
-test('the workflow runs the script with write access, on develop pushes, daily and by hand', () => {
+test('the workflow runs the script with write access, daily and by hand (not on every push)', () => {
   const wf = readFileSync(new URL('../.github/workflows/branch-cleanup.yml', import.meta.url), 'utf8')
   assert.match(wf, /contents: write/)
-  assert.match(wf, /branches: \[develop\]/)
+  assert.doesNotMatch(wf, /^\s+push:/m)
   assert.match(wf, /schedule:/)
   assert.match(wf, /workflow_dispatch:/)
   assert.match(wf, /node scripts\/branch-cleanup\.mjs/)
