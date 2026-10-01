@@ -2,7 +2,8 @@
 // and Net beneath it, on pages you swipe sideways between months. Below it,
 // iOS inset-grouped sections: Budgets, the month in plain words (when its
 // helper is on), Coming up (or what a past month was charged), By category
-// and Meal vouchers, a few rows each and "See all" for the whole list.
+// and Meal vouchers, a few rows each and "See all" for the whole list (Meal
+// vouchers' opens their page; the savings line under the figures, Savings).
 // Every figure and word is HomeViewModel's (the core's); the digits roll
 // and the bars ease when the month changes, a pull to refresh taps, and a
 // past month that kept every budget says so with a burst of confetti.
@@ -274,7 +275,8 @@ struct HomeView: View {
                         .monospacedDigit()
                 }
             } header: {
-                NativeSectionHeader(title: language.t("shell:nav.vouchers"))
+                NativeSectionHeader(title: language.t("shell:nav.vouchers"), seeAll: language.t("ios:native.seeAll"),
+                                    route: .vouchers)
             }
             .listRowBackground(NativeStyle.card)
         }
@@ -355,7 +357,19 @@ struct HomeHero: View {
             }
             .padding(.top, 8)
             if let saved = figures?.saved {
-                Text(saved).font(.footnote).foregroundStyle(.secondary).padding(.top, 2)
+                // What was put aside, opening Savings (Dashboard's savings row).
+                NavigationLink(value: AppRoute.savings) {
+                    HStack(spacing: 6) {
+                        Text(saved).foregroundStyle(.secondary)
+                        Text(language.t("insights:netWorth.seeSavings")).fontWeight(.semibold).foregroundStyle(NativeStyle.tint)
+                    }
+                    .font(.footnote)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
+                .accessibilityIdentifier("home.savings")
             }
         }
         .padding(.horizontal, 4)

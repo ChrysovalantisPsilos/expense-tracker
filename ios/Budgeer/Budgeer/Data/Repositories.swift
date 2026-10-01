@@ -2,7 +2,9 @@
 // module of the same area and calling the same tables and RPCs:
 //   ProfileRepository       shared/lib/profile.js (Settings' profile, the
 //                           payment details, the photo), vouchers.js (the
-//                           setup), notifications.js (the bell)
+//                           setup, saving it), notifications.js (the bell)
+//   SavingsRepository       shared/lib/accounts.js (net-worth accounts),
+//                           features/savings/savings.js (the goals)
 //   CategoriesRepository    shared/lib/categories.js
 //   PrivacyRepository       features/privacy/privacyData.js, profile.js deleteMyAccount
 //   TransactionsRepository  shared/lib/transactions.js
@@ -28,9 +30,11 @@ struct TxnQuery: Hashable, Sendable, Codable {
     var spread = false
     /// Only the expenses paid with meal vouchers (0097; the vouchers card).
     var paidWithVouchers = false
+    /// Only the expenses paid from savings (0085; the Savings page).
+    var paidFromSavings = false
 
     init(kind: String? = nil, from: String? = nil, to: String? = nil, categoryId: String? = nil,
-         limit: Int? = nil, spread: Bool = false, paidWithVouchers: Bool = false) {
+         limit: Int? = nil, spread: Bool = false, paidWithVouchers: Bool = false, paidFromSavings: Bool = false) {
         self.kind = kind
         self.from = from
         self.to = to
@@ -38,6 +42,7 @@ struct TxnQuery: Hashable, Sendable, Codable {
         self.limit = limit
         self.spread = spread
         self.paidWithVouchers = paidWithVouchers
+        self.paidFromSavings = paidFromSavings
     }
 }
 
@@ -49,6 +54,8 @@ protocol ProfileRepository: Sendable {
     func saveLanguage(_ language: String?) async throws
     /// my_meal_vouchers: the setup, or null without one.
     func mealVouchers() async throws -> JSONValue
+    /// save_meal_vouchers: the setup (voucherMath.newSettings / withDays), or null to turn vouchers off.
+    func saveMealVouchers(_ settings: JSONValue) async throws
     /// The bell's feed (listNotifications): the newest 30 notifications.
     func notifications() async throws -> JSONValue
     /// markAllRead: every unread notification read now.
@@ -83,6 +90,16 @@ protocol CategoriesRepository: Sendable {
     /// deleteCategory (delete_category): its entries moved to `moveTo` first
     /// (nil: left uncategorised); how many moved.
     func deleteCategory(id: String, moveTo: String?) async throws -> Int
+}
+
+protocol SavingsRepository: Sendable {
+    /// my_accounts: the net-worth accounts, balances decrypted (savings ones make the Savings total).
+    func accounts() async throws -> JSONValue
+    /// my_goals: the savings goals, amounts decrypted.
+    func goals() async throws -> JSONValue
+    /// save_goal: a new goal (`id` null) or every field of one (savingsMath.goalToSave's goal).
+    func saveGoal(_ goal: JSONValue) async throws
+    func deleteGoal(id: String) async throws
 }
 
 protocol PrivacyRepository: Sendable {
@@ -209,10 +226,12 @@ struct DataLayer: Sendable {
     let ai: AiRepository
     let groups: GroupsRepository
     let privacy: PrivacyRepository
+    let savings: SavingsRepository
 
     /// One object that is every repository (the Supabase store, a test's fake).
     init<Store: ProfileRepository & CategoriesRepository & TransactionsRepository & RecurringRepository
-            & BudgetsRepository & FxRepository & AiRepository & GroupsRepository & PrivacyRepository>(_ store: Store) {
+            & BudgetsRepository & FxRepository & AiRepository & GroupsRepository & PrivacyRepository
+            & SavingsRepository>(_ store: Store) {
         profile = store
         categories = store
         transactions = store
@@ -222,6 +241,7 @@ struct DataLayer: Sendable {
         ai = store
         groups = store
         privacy = store
+        savings = store
     }
 }
 

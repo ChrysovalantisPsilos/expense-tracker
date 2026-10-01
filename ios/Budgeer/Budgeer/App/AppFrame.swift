@@ -32,6 +32,13 @@ enum AppRoute: Hashable {
     case categoryList
     case category(String)
     case newCategory(String)
+    /// Savings, a goal's page, a new goal.
+    case savings
+    case goal(String)
+    case newGoal
+    /// Meal vouchers, and Settings › Meal vouchers.
+    case vouchers
+    case voucherSetup
 }
 
 /// What the Add sheet opens on.
@@ -129,6 +136,8 @@ final class AppModels {
     let security: SecurityModel
     let privacy: PrivacyModel
     let categories: CategoriesModel
+    let savings: SavingsModel
+    let vouchers: VouchersModel
 
     init(data: DataLayer, userId: String, security accountSecurity: AccountSecurity,
          signOut: @escaping @MainActor () async -> Void) {
@@ -145,6 +154,8 @@ final class AppModels {
         security = SecurityModel(data: data, security: accountSecurity, signOut: signOut)
         privacy = PrivacyModel(data: data)
         categories = CategoriesModel(data: data)
+        savings = SavingsModel(data: data)
+        vouchers = VouchersModel(data: data)
     }
 }
 
@@ -172,7 +183,9 @@ struct AppFrame: View {
                         .environment(language)
                 }
                 .task(id: user.id) { await models.shell.load() }
-                .liveRefresh(container.live, tables: ["notifications", "profiles"]) { await models.shell.load() }
+                .liveRefresh(container.live, tables: ["notifications", "profiles", "meal_vouchers"]) {
+                    await models.shell.load()
+                }
             } else {
                 NativeLoading()
             }
@@ -228,7 +241,8 @@ struct AppFrame: View {
         case .home, .add:
             NavigationStack(path: $router.home) {
                 HomeView(model: models.home, chrome: chrome(models))
-                    .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "budgets", "recurring_rules"]) {
+                    .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "budgets", "recurring_rules",
+                                                          "meal_vouchers"]) {
                         await models.home.refresh()
                     }
                     .navigationDestination(for: AppRoute.self) { destination($0, models) }
@@ -257,7 +271,7 @@ struct AppFrame: View {
         case .more:
             NavigationStack(path: $router.more) {
                 MoreView(name: models.shell.name, email: user.email ?? "", initials: models.shell.initials,
-                         chrome: chrome(models))
+                         vouchers: models.shell.vouchersOn, chrome: chrome(models))
                     .navigationDestination(for: AppRoute.self) { destination($0, models) }
             }
         }
@@ -322,6 +336,33 @@ struct AppFrame: View {
             CategoryEditHost(categories: models.categories, id: id, kind: "expense")
         case .newCategory(let kind):
             CategoryEditHost(categories: models.categories, id: nil, kind: kind)
+        case .savings:
+            SavingsView(model: models.savings,
+                        add: { category, repeats in
+                            router.add = AddRequest(model: EntryFormModel(mode: .add, kind: "income", repeats: repeats,
+                                                                          preset: category, data: container.data))
+                        },
+                        open: { row in router.add = AddRequest(model: EntryFormModel(mode: .edit, transaction: row,
+                                                                                    data: container.data)) },
+                        openRule: { rule in router.add = AddRequest(model: EntryFormModel(mode: .rule, rule: rule,
+                                                                                         data: container.data)) })
+                .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "accounts", "savings_goals",
+                                                      "recurring_rules"]) {
+                    await models.savings.load()
+                }
+        case .goal(let id):
+            GoalEditHost(savings: models.savings, id: id, data: container.data)
+        case .newGoal:
+            GoalEditHost(savings: models.savings, id: nil, data: container.data)
+        case .vouchers:
+            VouchersView(model: models.vouchers,
+                         open: { row in router.add = AddRequest(model: EntryFormModel(mode: .edit, transaction: row,
+                                                                                     data: container.data)) })
+                .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "meal_vouchers"]) {
+                    await models.vouchers.load()
+                }
+        case .voucherSetup:
+            VoucherSetupHost(data: container.data)
         case .group(let id):
             GroupPageHost(groupId: id, userId: userId, data: container.data, live: container.live,
                           site: container.config.siteURL) {

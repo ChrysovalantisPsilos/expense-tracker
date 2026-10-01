@@ -2,7 +2,8 @@
 // picture (avatarLook.avatarInitials over the profile's name), the bell's
 // feed with its unread count and badge (bellMath), when each came
 // (dates.shortDateTime), and where a notification leads
-// (bellMath.notificationPath). Every rule is the web's, through
+// (bellMath.notificationPath), and whether the user gets meal vouchers
+// (More lists their page once set up). Every rule is the web's, through
 // the core; the feed is the web's table, read through the data layer.
 import Foundation
 import Observation
@@ -27,6 +28,8 @@ final class ShellModel {
     private(set) var initials = ""
     /// The profile's name (Settings' Profile row).
     private(set) var name = ""
+    /// A meal vouchers setup exists (my_meal_vouchers).
+    private(set) var vouchersOn = false
     private(set) var items: [BellItem] = []
     private(set) var unreadCount = 0
     /// The badge's words ("3", "9+"), nil with nothing unread.
@@ -45,8 +48,9 @@ final class ShellModel {
         self.now = now
     }
 
-    /// The profile's initials and the feed.
+    /// The profile's initials, the vouchers' setup and the feed.
     func load() async {
+        if let setup = try? await data.profile.mealVouchers() { vouchersOn = !setup.isNull }
         if let profile = try? await data.profile.profile() {
             let display = profile["display_name"] ?? .null
             name = display.stringValue ?? ""

@@ -1,13 +1,13 @@
 // Settings, as iOS's own Settings: you at the top (your picture, name and
 // email; Account), then the web's groups in its order. Preferences:
-// Categories, Monthly spending, Notifications, Appearance, Language, AI
+// Categories, Monthly spending, Meal vouchers, Notifications, Appearance, Language, AI
 // helpers and this phone's Face ID lock. Privacy & security: Security,
 // Privacy, and the Privacy Notice and Terms of Use (the website's pages in
 // Safari). Help: Help & FAQ and the status page (in Safari), What's new,
-// Contact support (Mail). Then Sign out and the version. The web's Meal
-// vouchers, Import rules and Your data rows join when their pages are built
-// here (vouchers; import with its rules and backups); the tour and the
-// live/test site switch are the website's own.
+// Contact support (Mail). Then Sign out and the version. Meal vouchers sits
+// after Monthly spending, as on the web. The web's Import rules and Your
+// data rows join when their pages are built here (import with its rules and
+// backups); the tour and the live/test site switch are the website's own.
 import SwiftUI
 
 @MainActor
@@ -53,6 +53,8 @@ struct SettingsView: View {
                             title: language.t("settings:rows.categories.label"), id: "settings.categories")
                 SettingsRow(route: .spending, symbol: "calendar", color: SettingsRow.amber,
                             title: language.t("settings:rows.spending.label"), id: "settings.spending")
+                SettingsRow(route: .voucherSetup, symbol: "ticket.fill", color: SettingsRow.teal,
+                            title: language.t("settings:rows.vouchers.label"), id: "settings.vouchers")
                 SettingsRow(route: .messages, symbol: "bell.badge.fill", color: SettingsRow.pink,
                             title: language.t("settings:rows.notifications.label"), id: "settings.notifications")
                 SettingsRow(route: .appearance, symbol: "circle.lefthalf.filled", color: SettingsRow.slate,

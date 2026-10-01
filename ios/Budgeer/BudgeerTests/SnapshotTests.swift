@@ -366,6 +366,77 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    func testSavingsSnapshots() async throws {
+        let fixture = try SavingsFixture.load()
+        let now = fixture.now
+        for (lang, dark) in SnapshotTests.variants {
+            _ = language(lang)
+            let store = fixture.store()
+            let model = SavingsModel(data: store.data, core: .shared, now: { now })
+            await model.load()
+            try await shots(framed(.more) {
+                NavigationStack { SavingsView(model: model, add: { _, _ in }, open: { _ in }, openRule: { _ in }) }
+            }, name: "savings", lang: lang, dark: dark, long: 2600)
+            // From savings accounts.
+            let accounts = SavingsModel(data: fixture.store("accounts").data, core: .shared, now: { now })
+            await accounts.load()
+            try await shots(framed(.more) {
+                NavigationStack { SavingsView(model: accounts, add: { _, _ in }, open: { _ in }, openRule: { _ in }) }
+            }, name: "savings-accounts", lang: lang, dark: dark)
+            // Nothing saved yet.
+            let first = SavingsModel(data: fixture.store("first").data, core: .shared, now: { now })
+            await first.load()
+            try await shots(framed(.more) {
+                NavigationStack { SavingsView(model: first, add: { _, _ in }, open: { _ in }, openRule: { _ in }) }
+            }, name: "savings-first", lang: lang, dark: dark, long: 1600)
+            // A goal's page, and a new one missing its name.
+            let goal = GoalEditorModel(goal: fixture.input.goals.arrayValue?.first, data: store.data, core: .shared,
+                                       now: { now })
+            await goal.load()
+            try await shots(framed(.more) { NavigationStack { GoalEditView(model: goal) } },
+                      name: "savings-goal", lang: lang, dark: dark)
+            let fresh = GoalEditorModel(goal: nil, data: store.data, core: .shared, now: { now })
+            await fresh.load()
+            _ = await fresh.save()
+            try await shots(framed(.more) { NavigationStack { GoalEditView(model: fresh) } },
+                      name: "savings-goal-new", lang: lang, dark: dark)
+        }
+    }
+
+    func testVouchersSnapshots() async throws {
+        let fixture = try VouchersFixture.load()
+        let now = fixture.now
+        for (lang, dark) in SnapshotTests.variants {
+            _ = language(lang)
+            let model = VouchersModel(data: fixture.store().data, core: .shared, now: { now })
+            await model.load()
+            try await shots(framed(.home) { NavigationStack { VouchersView(model: model) { _ in } } },
+                      name: "vouchers", lang: lang, dark: dark, long: 1900)
+            // Fix days, open in place.
+            model.startFix()
+            model.step(-1)
+            try await shots(framed(.home) { NavigationStack { VouchersView(model: model) { _ in } } },
+                      name: "vouchers-fix", lang: lang, dark: dark)
+            // No setup yet.
+            let none = VouchersModel(data: FakeStore().data, core: .shared, now: { now })
+            await none.load()
+            try await shots(framed(.home) { NavigationStack { VouchersView(model: none) { _ in } } },
+                      name: "vouchers-none", lang: lang, dark: dark)
+            // Settings › Meal vouchers, set up.
+            let setup = VoucherSetupModel(data: fixture.store().data, core: .shared, now: { now })
+            await setup.load()
+            try await shots(framed(.more) { NavigationStack { VoucherSetupView(model: setup) } },
+                      name: "vouchers-setup", lang: lang, dark: dark, long: 1500)
+            // More with the vouchers' page in Money.
+            try await shots(framed(.more) {
+                NavigationStack {
+                    MoreView(name: "Sam Morgan", email: "sam@example.com", initials: "SM", vouchers: true,
+                             chrome: SnapshotTests.chrome)
+                }
+            }, name: "more-vouchers", lang: lang, dark: dark, long: 1200)
+        }
+    }
+
     // MARK: Sample data
 
     private static let saved: JSONValue = [

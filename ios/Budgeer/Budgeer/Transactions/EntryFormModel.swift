@@ -44,6 +44,8 @@ final class EntryFormModel {
     private(set) var rule: JSONValue?
     private let startKind: String
     private let startRepeat: Bool
+    /// The category Add opens on (Savings' "Add to savings"; addLinks' `category`), if it fits the kind.
+    private let preset: String?
     /// What a group's form carried over on Add ({ amount, currency, currencyPicked, description, spentAt }).
     private let initial: JSONValue
     private let data: DataLayer
@@ -96,9 +98,10 @@ final class EntryFormModel {
     private(set) var repeatWarning: String?
 
     init(mode: Mode, kind: String = "expense", repeats: Bool = false, transaction: JSONValue? = nil,
-         rule: JSONValue? = nil, initial: JSONValue = .null, data: DataLayer, core: BudgeerCore = .shared,
-         now: @escaping @Sendable () -> Date = { Date() }) {
+         rule: JSONValue? = nil, initial: JSONValue = .null, preset: String? = nil, data: DataLayer,
+         core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() }) {
         self.mode = mode
+        self.preset = preset
         self.initial = initial
         self.transaction = transaction
         self.rule = rule
@@ -133,6 +136,11 @@ final class EntryFormModel {
             }
             try start()
             categories = try await data.categories.categories(kind: kind)
+            // useEntryFields: a preset category, kept only when it is an active one of this kind.
+            if mode == .add, transaction == nil, let preset {
+                categoryId = try core.call("categoryName", "presetCategoryId", [JSONValue.string(preset), categories,
+                                                                                JSONValue.string(kind)])
+            }
             if quickOn { bothKinds = try await data.categories.categories(kind: nil) }
             ready = true
             loadError = nil

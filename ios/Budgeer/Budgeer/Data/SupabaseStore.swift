@@ -125,6 +125,7 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
         ]
         // Sent only when set, as the web's listTransactions does.
         if query.paidWithVouchers { params["p_paid_with_vouchers"] = .bool(true) }
+        if query.paidFromSavings { params["p_paid_from_savings"] = .bool(true) }
         return try await cached("transactions", SupabaseStore.keyOf(query)) {
             try await client.rpc("my_transactions", params: params).execute().value
         }
