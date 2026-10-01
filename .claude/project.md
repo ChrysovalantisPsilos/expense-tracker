@@ -165,6 +165,11 @@ npm run dev       # Vite
   `profiles_whats_new_seen_check`). If today's id is taken, use the next day.
 - **Test:** `test/whatsNew.test.js` pins the newest release, so update it.
 - **Dev pushes** get no entry.
+- **Architecture page:** each release also refreshes the owner's private
+  architecture explainer (https://claude.ai/artifact/7C3kqraCdWXE8KpkaKRBHF):
+  re-check it against the code (tables, functions, jobs, routes, workflows),
+  update its "As of" date and develop sha, and republish to the same link.
+  Never put keys, passwords, user data or row counts on it.
 - **Inflation table:** each release refreshes the HICP figures in
   `src/features/salary/salaryMath.js` (`INFLATION`, `INFLATION_LATEST`) from
   Eurostat's API (`prc_hicp_ainr` RCH_A_AVG and `prc_hicp_minr` RCH_A,
