@@ -97,7 +97,12 @@ struct SecurityView: View {
                         Text(method.detail).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 8)
+                    // A small one-line pill, as the web's sm buttons: never
+                    // taller than the row's text.
                     action(method)
+                        .controlSize(.small)
+                        .lineLimit(1)
+                        .fixedSize()
                 }
                 .padding(.vertical, 2)
             }
