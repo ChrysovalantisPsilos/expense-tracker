@@ -47,12 +47,7 @@ final class AccountModel {
     var savedName: String { profile["display_name"]?.stringValue ?? "" }
 
     /// Your circle: the photo, or your initials in the accent (avatarLook, highlighted).
-    var avatar: Avatar? {
-        let options: JSONValue = ["src": profile["avatar_url"] ?? .null, "highlight": true]
-        let name: JSONValue = profile["display_name"] ?? .null
-        guard let look: Avatar = try? core.call("avatarLook", "avatarLook", [name, options]) else { return nil }
-        return look
-    }
+    var avatar: Avatar? { Avatar.viewer(profile, core: core) }
 
     /// The currency picker's codes (CurrencySelect: currency.currencyCodes).
     var currencyOptions: [String] {

@@ -20,6 +20,16 @@ final class SnapshotTests: XCTestCase {
                                           supabaseAnonKey: "test")
     static let user = AuthUser.sample.id.uuidString.lowercased()
     static let chrome = PageChrome(initials: "SM", badge: "1", onBell: {}, onProfile: {})
+    /// Your circle (no photo: the initials in the accent).
+    private static var avatar: Avatar? { Avatar.viewer(["display_name": "Sam Morgan"], core: .shared) }
+
+    /// A lock whose app PIN lives in memory.
+    private static func lock(_ suite: String, owner: FakeOwner, pin: String? = nil) -> AppLock {
+        let defaults = UserDefaults(suiteName: suite)!
+        let lock = AppLock(defaults: defaults, owner: owner, pin: AppPin(vault: MemoryPinVault(), hasher: PlainPinHasher()))
+        if let pin { lock.setPin(pin) }
+        return lock
+    }
 
     override func tearDown() {
         try? BudgeerCore.shared.setLanguage("en")
@@ -44,12 +54,18 @@ final class SnapshotTests: XCTestCase {
 
     func testLockSnapshots() async throws {
         for (lang, dark) in SnapshotTests.variants {
-            let defaults = UserDefaults(suiteName: "SnapshotTests.lock")!
-            defaults.set(true, forKey: AppLock.key)
+            UserDefaults(suiteName: "SnapshotTests.lock")!.set(true, forKey: AppLock.key)
             let owner = FakeOwner()
             owner.answer = false
-            let lock = AppLock(defaults: defaults, owner: owner)
+            let lock = SnapshotTests.lock("SnapshotTests.lock", owner: owner)
             try await shots(LockView(lock: lock), name: "lock", lang: lang, dark: dark)
+            // With an app PIN: "Use PIN" under Unlock; on a phone that can't check its owner, the pad itself.
+            let withPin = SnapshotTests.lock("SnapshotTests.lock", owner: owner, pin: "2580")
+            try await shots(LockView(lock: withPin), name: "lock-pin-offer", lang: lang, dark: dark)
+            let noFaceID = FakeOwner()
+            noFaceID.available = false
+            let padOnly = SnapshotTests.lock("SnapshotTests.lock", owner: noFaceID, pin: "2580")
+            try await shots(LockView(lock: padOnly), name: "lock-pin", lang: lang, dark: dark)
         }
     }
 
@@ -225,6 +241,13 @@ final class SnapshotTests: XCTestCase {
             try await shots(framed(.groups) {
                 NavigationStack { EditGroupView(model: group, emoji: "🎉", colour: "teal") }
             }, name: "group-edit", lang: lang, dark: dark)
+            // Delete (the owner): the name typed on its sheet.
+            try await shots(framed(.groups) {
+                NavigationStack { GroupPageView(model: group) }
+                    .sheet(isPresented: .constant(true)) {
+                        DeleteGroupSheet(model: group, typed: .constant("Lisb")) {}
+                    }
+            }, name: "group-delete", lang: lang, dark: dark, settle: 1.6)
             // Members, with a share link made.
             await group.makeInviteLink()
             try await shots(framed(.groups) { NavigationStack { MembersView(model: group) } },
@@ -254,20 +277,27 @@ final class SnapshotTests: XCTestCase {
             _ = language(lang)
             let session = SessionStore(auth: FakeAuthService(user: .sample))
             let owner = FakeOwner()
-            let lock = AppLock(defaults: UserDefaults(suiteName: "SnapshotTests.settings")!, owner: owner)
+            let lock = SnapshotTests.lock("SnapshotTests.settings", owner: owner)
             try await shots(framed(.more) {
                 NavigationStack {
-                    MoreView(name: "Sam Morgan", email: "sam@example.com", initials: "SM", chrome: SnapshotTests.chrome)
+                    MoreView(name: "Sam Morgan", email: "sam@example.com", avatar: SnapshotTests.avatar,
+                             chrome: SnapshotTests.chrome)
                 }
             }, name: "more", lang: lang, dark: dark)
             let account = AccountModel(data: SnapshotTests.settingsStore().data)
             await account.load()
             try await shots(framed(.more) {
                 NavigationStack {
-                    SettingsView(config: SnapshotTests.config, session: session, lock: lock, account: account,
+                    SettingsView(config: SnapshotTests.config, session: session, account: account,
                                  email: "sam@example.com")
                 }
             }, name: "settings", lang: lang, dark: dark, long: 1700)
+            // Settings › Face ID lock: the switch, then the app PIN (none yet, and set).
+            try await shots(framed(.more) { NavigationStack { LockSettingsView(lock: lock) } },
+                      name: "settings-lock", lang: lang, dark: dark)
+            lock.setPin("2580")
+            try await shots(framed(.more) { NavigationStack { LockSettingsView(lock: lock) } },
+                      name: "settings-lock-pin", lang: lang, dark: dark)
             // The bell's page, pushed on More (the new one still marked).
             let store = FakeStore()
             store.notificationsResult = .success(SnapshotTests.notifications)
@@ -597,7 +627,7 @@ final class SnapshotTests: XCTestCase {
             // More with the vouchers' page in Money.
             try await shots(framed(.more) {
                 NavigationStack {
-                    MoreView(name: "Sam Morgan", email: "sam@example.com", initials: "SM", vouchers: true,
+                    MoreView(name: "Sam Morgan", email: "sam@example.com", avatar: SnapshotTests.avatar, vouchers: true,
                              chrome: SnapshotTests.chrome)
                 }
             }, name: "more-vouchers", lang: lang, dark: dark, long: 1300)

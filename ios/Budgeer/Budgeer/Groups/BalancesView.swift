@@ -53,6 +53,7 @@ struct BalancesView: View {
                 .monospacedDigit()
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
+                .nativeFigure(parts.mine.text)
             Text([parts.highlight.text, parts.highlight.amount].compactMap { $0 }.joined(separator: " "))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -60,11 +61,7 @@ struct BalancesView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 18)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(LinearGradient(colors: [Theme.Colors.accentSubtle, NativeStyle.card],
-                                     startPoint: .top, endPoint: .bottom))
-        }
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 

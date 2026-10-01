@@ -133,6 +133,13 @@ final class SavingsModel {
         (try? core.json("savingsMath", "savingsCategoryOf", [incomeCategories]))?.stringValue
     }
 
+    /// A repeating saving's badge: the savings category's own (categoryLook),
+    /// or the savings icon its name suggests when there is none yet.
+    var savingsLook: CategoryLook? {
+        let row = savingsCategory.flatMap { id in incomeCategories.arrayValue?.first { $0["id"]?.stringValue == id } }
+        return try? CategoryLook.of(row ?? .string("savings"), kind: "income", core: core)
+    }
+
     /// A repeating saving's rule, to edit.
     func rule(id: String) -> JSONValue? {
         rules.arrayValue?.first { $0["id"]?.stringValue == id }

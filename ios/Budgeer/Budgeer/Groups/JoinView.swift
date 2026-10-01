@@ -73,7 +73,7 @@ struct JoinView: View {
     private var entering: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                NativeIconTile(symbol: "link", color: NativeStyle.coral, size: 34)
+                NativeIconTile(symbol: "link", color: NativeTone.coral, size: 34)
                 Text(language.t("ios:native.join.lead")).font(.subheadline)
             }
             HStack(spacing: 8) {

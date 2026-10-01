@@ -33,9 +33,6 @@ enum GroupCoverArt {
     static let choices: CoverChoices = (try? BudgeerCore.shared.call("groupCover", "coverChoices", [Encodable]()))
         ?? CoverChoices(emoji: [], colours: [], image: nil)
 
-    /// The brand's colour (the first), for tiles that aren't a group's.
-    static var brand: LinearGradient { (choices.colours.first ?? CoverColour.coral).gradient }
-
     /// A colour by its key, else the brand's.
     static func colour(_ key: String) -> CoverColour {
         choices.colours.first { $0.key == key } ?? choices.colours.first ?? CoverColour.coral
@@ -280,7 +277,7 @@ struct NewGroupView: View {
     private var details: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                NativeIconTile(symbol: "character.cursor.ibeam", color: NativeStyle.coral, size: 30)
+                NativeIconTile(symbol: "character.cursor.ibeam", color: NativeTone.coral, size: 30)
                 TextField(language.t("groups:create.nameHint"), text: $model.name)
                     .font(.body.weight(.semibold))
                     .submitLabel(.done)
@@ -290,7 +287,7 @@ struct NewGroupView: View {
             .frame(minHeight: 52)
             Divider().padding(.leading, 42)
             HStack(spacing: 12) {
-                NativeIconTile(symbol: "dollarsign.arrow.circlepath", color: Color(hex: 0x2E9B62), size: 30)
+                NativeIconTile(symbol: "dollarsign.arrow.circlepath", color: NativeTone.green, size: 30)
                 // Outside a Form a menu picker drops its label: the label is its own text.
                 Text(language.t("groups:create.currency"))
                 Spacer(minLength: 12)
@@ -343,7 +340,7 @@ struct NewGroupView: View {
             }
             ForEach(model.emails, id: \.self) { address in
                 HStack(spacing: 10) {
-                    NativeIconTile(symbol: "envelope.fill", color: NativeStyle.coral, size: 30)
+                    NativeIconTile(symbol: "envelope.fill", color: NativeTone.coral, size: 30)
                     Text(verbatim: address).font(.subheadline).lineLimit(1).truncationMode(.middle)
                     Spacer(minLength: 4)
                     Button { model.removeEmail(address) } label: {

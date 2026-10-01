@@ -1,5 +1,6 @@
 // The signed-in app: four tabs in the floating bar (Home, Activity, Groups,
-// More) with Add beside them, each tab its own stack of pages under a large
+// More) with Add beside them (the one add button: a page lends it its own
+// add, AddSlot), each tab its own stack of pages under a large
 // title, the bell and your initials in every first page's top-right corner,
 // Add (and Edit, and a recurring rule) as a sheet, and the notifications as
 // a page pushed on the tab you're on. Live: each page refreshes when its tables change, and coming
@@ -26,6 +27,8 @@ enum AppRoute: Hashable {
     case messages
     case appearance
     case aiHelpers
+    /// Settings › Face ID lock: the switch and the app PIN.
+    case faceLock
     case security
     case privacy
     case privacyRequest
@@ -70,6 +73,21 @@ final class AppRouter {
     var groups = NavigationPath()
     var more = NavigationPath()
     var add: AddRequest?
+    /// Each tab's Add slot: what Add does while a page there lends it (AddSlot).
+    let slots: [NativeTab: AddSlot] = [.home: AddSlot(), .activity: AddSlot(), .groups: AddSlot(), .more: AddSlot()]
+
+    /// The current tab's Add slot.
+    var slot: AddSlot? { slots[tab == .add ? .home : tab] }
+
+    /// Push a page on the current tab.
+    func push(_ route: AppRoute) {
+        switch tab {
+        case .home, .add: home.append(route)
+        case .activity: activity.append(route)
+        case .groups: groups.append(route)
+        case .more: more.append(route)
+        }
+    }
 
     /// Your initials: Settings, under More.
     func openSettings() {
@@ -114,6 +132,8 @@ final class AppRouter {
 /// What every tab's first page shows in its top-right corner.
 struct PageChrome {
     let initials: String
+    /// Your picture (the photo, or the initials in the accent).
+    var avatar: Avatar? = nil
     /// The bell's badge words (bellMath.badgeText), nil with nothing unread.
     let badge: String?
     let onBell: () -> Void
@@ -123,7 +143,7 @@ struct PageChrome {
 extension View {
     func pageChrome(_ chrome: PageChrome) -> some View {
         toolbar {
-            NativeAccountItems(initials: chrome.initials, badge: chrome.badge, onBell: chrome.onBell,
+            NativeAccountItems(initials: chrome.initials, avatar: chrome.avatar, badge: chrome.badge, onBell: chrome.onBell,
                                onProfile: chrome.onProfile)
         }
     }
@@ -150,11 +170,13 @@ final class AppModels {
     let vouchers: VouchersModel
     let plan: PlanModel
     let salary: SalaryModel
+    /// The account's language, lined up with this device's (Settings › Language saves through it).
+    let profileLanguage: ProfileLanguage
     /// The wizard, What's new and the tour.
     let welcome: WelcomeModel
     let tour: TourModel
 
-    init(data: DataLayer, userId: String, security accountSecurity: AccountSecurity,
+    init(data: DataLayer, userId: String, language: AppLanguage, security accountSecurity: AccountSecurity,
          signOut: @escaping @MainActor () async -> Void) {
         shell = ShellModel(data: data)
         home = HomeViewModel(data: data)
@@ -173,6 +195,7 @@ final class AppModels {
         vouchers = VouchersModel(data: data)
         plan = PlanModel(data: data)
         salary = SalaryModel(data: data)
+        profileLanguage = ProfileLanguage(language: language, profiles: data.profile)
         welcome = WelcomeModel(data: data)
         tour = TourModel(data: data)
     }
@@ -214,17 +237,16 @@ struct AppFrame: View {
         .onAppear {
             if models == nil {
                 let session = container.session
-                models = AppModels(data: container.data, userId: userId, security: container.security,
+                models = AppModels(data: container.data, userId: userId, language: language, security: container.security,
                                    signOut: { await session.signOut() })
             }
         }
         // The account's language: the profile's wins (ProfileLanguage), on
         // sign-in and whenever the profile changes (another device).
-        .task(id: user.id) { await ProfileLanguage.sync(language, profiles: container.data.profile) }
-        .liveRefresh(container.live, tables: ["profiles"]) {
-            await ProfileLanguage.sync(language, profiles: container.data.profile)
-        }
-        .onChange(of: language.current) { _, lang in NativeStyle.installAppearance(lang: lang) }
+        // (Keyed on the models: a task may start before onAppear makes them.)
+        .task(id: models != nil) { await models?.profileLanguage.sync() }
+        .liveRefresh(container.live, tables: ["profiles"]) { await models?.profileLanguage.sync() }
+        .onChange(of: language.current) { _, lang in NativeStyle.installAppearance(lang: lang, refresh: true) }
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.
         .task(id: user.id) { await container.feed.start(userId: user.id) }
@@ -247,12 +269,20 @@ struct AppFrame: View {
         }
     }
 
+    /// The floating Add: what the page on top lends it (AddSlot), else a new entry.
     private func add(_ models: AppModels) {
-        router.add = AddRequest(model: EntryFormModel(mode: .add, data: container.data))
+        switch router.slot?.action {
+        case .some(.run(let action)):
+            action()
+        case .some(.push(let route)):
+            router.push(route())
+        case .none:
+            router.add = AddRequest(model: EntryFormModel(mode: .add, data: container.data))
+        }
     }
 
     private func chrome(_ models: AppModels) -> PageChrome {
-        PageChrome(initials: models.shell.initials, badge: models.shell.badge,
+        PageChrome(initials: models.shell.initials, avatar: models.shell.avatar, badge: models.shell.badge,
                    onBell: {
                        router.openBell()
                        Task { await models.shell.opened() }
@@ -273,6 +303,7 @@ struct AppFrame: View {
                     }
                     .navigationDestination(for: AppRoute.self) { destination($0, models) }
             }
+            .environment(\.addSlot, router.slots[.home])
         case .activity:
             NavigationStack(path: $router.activity) {
                 ActivityView(model: models.ledger, chrome: chrome(models),
@@ -288,18 +319,21 @@ struct AppFrame: View {
                     }
                     .navigationDestination(for: AppRoute.self) { destination($0, models) }
             }
+            .environment(\.addSlot, router.slots[.activity])
         case .groups:
             NavigationStack(path: $router.groups) {
                 GroupsView(model: models.groups, chrome: chrome(models))
                     .liveRefresh(container.live, tables: LiveHub.shared.union(["profiles"])) { await models.groups.load() }
                     .navigationDestination(for: AppRoute.self) { destination($0, models) }
             }
+            .environment(\.addSlot, router.slots[.groups])
         case .more:
             NavigationStack(path: $router.more) {
-                MoreView(name: models.shell.name, email: user.email ?? "", initials: models.shell.initials,
+                MoreView(name: models.shell.name, email: user.email ?? "", avatar: models.shell.avatar,
                          vouchers: models.shell.vouchersOn, chrome: chrome(models))
                     .navigationDestination(for: AppRoute.self) { destination($0, models) }
             }
+            .environment(\.addSlot, router.slots[.more])
         }
     }
 
@@ -316,6 +350,10 @@ struct AppFrame: View {
                                                                                        data: container.data)) },
                           add: { kind in router.add = AddRequest(model: EntryFormModel(mode: .add, kind: kind, repeats: true,
                                                                                       data: container.data)) })
+                .lendsAdd(.run {
+                    router.add = AddRequest(model: EntryFormModel(mode: .add, kind: models.recurring.tab, repeats: true,
+                                                                  data: container.data))
+                })
                 .liveRefresh(container.live, tables: ["recurring_rules", "categories", "profiles"]) {
                     await models.recurring.load()
                 }
@@ -349,12 +387,12 @@ struct AppFrame: View {
         case .categories:
             HomeCategoriesPage(model: models.home)
         case .settings:
-            SettingsView(config: container.config, session: container.session, lock: lock, account: models.account,
+            SettingsView(config: container.config, session: container.session, account: models.account,
                          email: user.email ?? "",
                          startTour: { Task { await models.tour.start(returnTo: "/settings") } })
                 .liveRefresh(container.live, tables: ["profiles"]) { await models.account.refreshProfile() }
         case .language:
-            LanguageView(profiles: container.data.profile)
+            LanguageView(profileLanguage: models.profileLanguage)
         case .account:
             AccountView(model: models.account, email: user.email ?? "")
         case .spending:
@@ -368,6 +406,8 @@ struct AppFrame: View {
         case .aiHelpers:
             AiHelpersView(model: models.preferences)
                 .liveRefresh(container.live, tables: ["profiles"]) { await models.preferences.load() }
+        case .faceLock:
+            LockSettingsView(lock: lock)
         case .security:
             SecurityView(model: models.security)
         case .privacy:

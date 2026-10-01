@@ -15,7 +15,7 @@ struct LegalGateView: View {
     var body: some View {
         VStack(spacing: 22) {
             Spacer()
-            NativeIconTile(symbol: "checkmark.shield.fill", color: NativeStyle.coral, size: 64)
+            NativeIconTile(symbol: "checkmark.shield.fill", color: NativeTone.coral, size: 64)
             VStack(spacing: 10) {
                 Text(language.t(status.isFirstAcceptance ? "privacy:gate.firstTitle" : "privacy:gate.updateTitle"))
                     .font(NativeStyle.title(24, lang: language.current))
@@ -72,7 +72,7 @@ struct LegalCheckErrorView: View {
     var body: some View {
         VStack(spacing: 20) {
             Spacer()
-            NativeIconTile(symbol: "wifi.slash", color: NativeStyle.warning, size: 64)
+            NativeIconTile(symbol: "wifi.slash", color: NativeTone.amber, size: 64)
             Text(language.t("common:errors.connection")).multilineTextAlignment(.center)
             Text(message)
                 .font(.system(size: 12, design: .monospaced))

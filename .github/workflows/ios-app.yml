@@ -10,6 +10,12 @@
 # → Run workflow, picking the branch) for a feature branch. A newer push to
 # the same branch cancels the run in progress. The Linux replay of the core
 # (test/mobileCore.test.js in ci) checks every push.
+#
+# The snapshot tests (every screen in light, dark and Greek) take most of the
+# run (~20 of ~27 minutes), so they run only when pictures are wanted: a run
+# by hand with "snapshots" ticked (the default for runs by hand). Pushes to
+# develop and pull requests run the build, the core replay and every other
+# test, in a few minutes.
 name: ios-app
 on:
   push:
@@ -18,6 +24,11 @@ on:
   pull_request:
     paths: ['ios/**', 'mobile-core/**', 'src/locales/**', 'package.json', 'package-lock.json', '.github/workflows/ios-app.yml']
   workflow_dispatch:
+    inputs:
+      snapshots:
+        description: Also take the snapshot pictures (slow, ~20 min)
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -76,11 +87,13 @@ jobs:
         env:
           TEST_RUNNER_SNAPSHOT_DIR: ${{ github.workspace }}/snapshots
           TEST_RUNNER_TZ: UTC
+          SKIP: ${{ (github.event_name == 'workflow_dispatch' && inputs.snapshots) && '' || '-skip-testing:BudgeerTests/SnapshotTests' }}
         run: >
           set -o pipefail &&
           xcodebuild test-without-building
           -project "$PROJECT" -scheme "$SCHEME" -destination "$DESTINATION"
           -derivedDataPath "$DERIVED" -resultBundlePath TestResults.xcresult
+          $SKIP
           | tee test.log | grep -E "error:|Test Case|Test Suite|Executed|\*\*"
       - name: Snapshots
         if: always()

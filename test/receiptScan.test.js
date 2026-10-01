@@ -93,7 +93,10 @@ test('receiptText: Vision\'s boxes as printed lines, top to bottom, each left to
 test('receiptFields / receiptResult: the check\'s strings, and back to the scan a form takes', () => {
   const read = { merchant: 'Café', date: '2026-09-14', total: 13.3, currency: 'EUR' }
   const fields = receiptFields(read)
-  assert.deepEqual(fields, { merchant: 'Café', date: '2026-09-14', total: '13.3', currency: 'EUR' })
+  assert.deepEqual(fields, { merchant: 'Café', date: '2026-09-14', total: '13.30', currency: 'EUR' })
+  assert.equal(receiptFields({ total: 1300, currency: 'JPY' }).total, '1300')
+  assert.equal(receiptFields({ total: 12, currency: null }, 'JPY').total, '12')
+  assert.equal(receiptFields({ total: 12, currency: null }).total, '12.00')
   assert.deepEqual(receiptResult(fields), read)
   const none = receiptFields({ merchant: null, date: null, total: null, currency: null })
   assert.deepEqual(none, { merchant: '', date: '', total: '', currency: '' })

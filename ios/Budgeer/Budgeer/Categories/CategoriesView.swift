@@ -1,8 +1,8 @@
 // Settings › Categories (CategoriesModel): Expenses or Income, then your
 // categories with their badges (archived ones dimmed, under the active
 // ones). Tap one for its page (its entries and budget; its pencil edits it);
-// swipe to archive (or unarchive) or delete; +
-// adds one of the kind shown. Deleting asks where its entries go first
+// swipe to archive (or unarchive) or delete; the floating Add adds one of
+// the kind shown (the page lends it, AddSlot). Deleting asks where its entries go first
 // (DeleteCategorySheet), the one confirmation here.
 import SwiftUI
 
@@ -42,13 +42,7 @@ struct CategoriesView: View {
         .background(NativeStyle.canvas)
         .nativeTabBarRoom()
         .navigationTitle(language.t("categories:list.title"))
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                NavigationLink(value: AppRoute.newCategory(model.kind)) { Image(systemName: "plus") }
-                    .accessibilityLabel(language.t("categories:actions.add"))
-                    .accessibilityIdentifier("categories.add")
-            }
-        }
+        .lendsAdd(.push { AppRoute.newCategory(model.kind) })
         .refreshable { await model.load() }
         .task { await model.load() }
         .sheet(isPresented: $confirming) {
@@ -77,7 +71,7 @@ struct CategoriesView: View {
                             Label(language.t(item.archived ? "categories:actions.unarchive" : "categories:actions.archive"),
                                   systemImage: item.archived ? "tray.and.arrow.up" : "archivebox")
                         }
-                        .tint(SettingsRow.slate)
+                        .tint(NativeTone.sand)
                     }
                     .accessibilityIdentifier("categories.row.\(item.id)")
             }
