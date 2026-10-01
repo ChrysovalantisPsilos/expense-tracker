@@ -51,7 +51,7 @@ struct PlanView: View {
             PlanApplySheet(model: model).environment(language)
         }
         .confirmationDialog(language.t("plan:clear.title"), isPresented: $confirmClear, titleVisibility: .visible) {
-            Button(language.t("plan:clear.confirm"), role: .destructive) { withAnimation(.snappy) { model.clear() } }
+            Button(language.t("plan:clear.confirm"), role: .destructive) { withAnimation(NativeMotion.expand) { model.clear() } }
             Button(language.t("plan:clear.keep"), role: .cancel) {}
         } message: {
             Text(language.t("plan:clear.body"))
@@ -135,17 +135,7 @@ struct PlanView: View {
                 HStack(alignment: .center, spacing: 8) {
                     HStack(spacing: 4) {
                         Text(header.label).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                        if header.hasInfo {
-                            Button {
-                                withAnimation(.snappy) { info.toggle() }
-                            } label: {
-                                Image(systemName: info ? "info.circle.fill" : "info.circle")
-                            }
-                            .buttonStyle(.borderless)
-                            .foregroundStyle(NativeStyle.tint)
-                            .accessibilityLabel(Text(language.t("common:info")))
-                            .accessibilityIdentifier("plan.info")
-                        }
+                        if header.hasInfo { NativeInfoButton(shown: $info, id: "plan.info") }
                     }
                     Spacer(minLength: 8)
                     Picker(language.t("plan:view.label"), selection: Binding(get: { model.view }, set: { model.setView($0) })) {
@@ -162,8 +152,7 @@ struct PlanView: View {
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                        .contentTransition(.numericText())
-                        .animation(.snappy, value: header.figure)
+                        .nativeFigure(header.figure)
                         .accessibilityIdentifier("plan.figure")
                     Spacer(minLength: 4)
                     PlanDeltaChip(chip: header.delta)
@@ -175,17 +164,6 @@ struct PlanView: View {
                     Label(saved, systemImage: "banknote")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                }
-                if info {
-                    VStack(alignment: .leading, spacing: 6) {
-                        if let steps = header.steps { PlanSumSteps(steps: steps) }
-                        if let converted = header.converted {
-                            Text(converted).font(.footnote).foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding(12)
-                    .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .transition(.opacity.combined(with: .move(edge: .top)))
                 }
                 if let missing = header.missing {
                     Text(missing).font(.footnote).foregroundStyle(.secondary)
@@ -209,6 +187,17 @@ struct PlanView: View {
                 }
             }
             .padding(.vertical, 6)
+            // How it adds up: its own row, so the list makes room for it smoothly
+            // (the same ⓘ as everywhere else: NativeInfoButton, NativeInfoNote).
+            if info {
+                NativeInfoNote {
+                    if let steps = header.steps { PlanSumSteps(steps: steps) }
+                    if let converted = header.converted {
+                        Text(converted).foregroundStyle(.secondary)
+                    }
+                }
+                .listRowSeparator(.hidden)
+            }
         } header: {
             if page.saved || model.saveStatus == .error { savedNote }
         }
@@ -244,7 +233,7 @@ struct PlanView: View {
         Section {
             if applied.canUndo {
                 HStack(alignment: .top, spacing: 12) {
-                    NativeIconTile(symbol: "checkmark", color: NativeStyle.positive, size: 36)
+                    NativeIconTile(symbol: "checkmark", color: NativeTone.green, size: 36)
                     VStack(alignment: .leading, spacing: 6) {
                         Text(applied.title ?? "").font(.headline)
                         Text(applied.body ?? "").font(.subheadline).foregroundStyle(.secondary)
@@ -280,7 +269,7 @@ struct PlanView: View {
                 ForEach(reality.lines) { line in
                     Text(verbatim: "• " + line.text).font(.footnote)
                 }
-                Button(language.t("plan:reality.ok")) { withAnimation(.snappy) { model.acknowledge() } }
+                Button(language.t("plan:reality.ok")) { withAnimation(NativeMotion.expand) { model.acknowledge() } }
                     .buttonStyle(.bordered)
                     .tint(NativeStyle.tint)
                     .controlSize(.small)
@@ -299,8 +288,8 @@ struct PlanView: View {
                 HStack(alignment: .top, spacing: 12) {
                     ForEach(ideas.cards) { card in
                         PlanIdeaCardView(card: card, picking: model.open == card.id,
-                                         onTry: { withAnimation(.snappy) { model.tryIdea(card) } },
-                                         onDismiss: { withAnimation(.snappy) { model.dismiss(card) } })
+                                         onTry: { withAnimation(NativeMotion.expand) { model.tryIdea(card) } },
+                                         onDismiss: { withAnimation(NativeMotion.expand) { model.dismiss(card) } })
                     }
                 }
                 .padding(.horizontal, 20)
@@ -327,8 +316,8 @@ struct PlanView: View {
         Section {
             ForEach(group.rows) { row in
                 PlanRowView(row: row, open: model.open == row.id,
-                            onOpen: { withAnimation(.snappy) { model.toggleOpen(row.id) } },
-                            onToggle: { withAnimation(.snappy) { model.toggle(row.id) } })
+                            onOpen: { withAnimation(NativeMotion.expand) { model.toggleOpen(row.id) } },
+                            onToggle: { withAnimation(NativeMotion.expand) { model.toggle(row.id) } })
                 if let stale = row.stale {
                     NativeRich.text(model.rich(stale))
                         .font(.footnote)
@@ -367,7 +356,7 @@ struct PlanView: View {
     private var whatIfAddSection: some View {
         Section {
             Button {
-                withAnimation(.snappy) { model.toggleOpen("new") }
+                withAnimation(NativeMotion.expand) { model.toggleOpen("new") }
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "plus.circle.fill")
@@ -398,7 +387,7 @@ struct PlanView: View {
             ForEach(changes.rows) { row in
                 VStack(alignment: .leading, spacing: 6) {
                     Button {
-                        withAnimation(.snappy) { model.toggleOpen("changes-\(row.id)") }
+                        withAnimation(NativeMotion.expand) { model.toggleOpen("changes-\(row.id)") }
                     } label: {
                         HStack(alignment: .top, spacing: 12) {
                             CategoryBadge(look: row.look, size: 32)
@@ -421,7 +410,7 @@ struct PlanView: View {
                     .accessibilityLabel(Text(row.editLabel))
                     HStack(spacing: 16) {
                         Button {
-                            withAnimation(.snappy) { model.drop(row.id) }
+                            withAnimation(NativeMotion.expand) { model.drop(row.id) }
                         } label: {
                             Label(row.drop, systemImage: row.remove ? "xmark" : "arrow.uturn.backward")
                         }
@@ -544,15 +533,16 @@ struct PlanTagView: View {
         Text(tag.text)
             .font(.caption2.weight(.bold))
             .foregroundStyle(color)
-            .lineLimit(1)
+            .lineLimit(2)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .overlay(Capsule().stroke(color.opacity(0.6), lineWidth: 1))
+            .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var color: Color {
         switch tag.kind {
-        case "overlap": return SettingsRow.purple
+        case "overlap": return NativeTone.amber
         case "overBudget": return NativeStyle.negative
         default: return NativeStyle.warning
         }
@@ -573,24 +563,29 @@ struct PlanRowView: View {
             Button(action: onOpen) {
                 HStack(alignment: .center, spacing: 12) {
                     CategoryBadge(look: row.look, size: 34).opacity(row.cancelled ? 0.5 : 1)
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack(spacing: 6) {
-                            Text(row.name)
-                                .font(.body.weight(.semibold))
-                                .foregroundStyle(row.cancelled ? Color.secondary : Color.primary)
-                                .lineLimit(1)
-                            if let state = row.state {
-                                Text(state.text)
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(Color.white)
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 2)
-                                    .background(stateColor(state.tone), in: Capsule())
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(row.name)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(row.cancelled ? Color.secondary : Color.primary)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(row.meta).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
+                        if row.state != nil || row.tag != nil {
+                            NativeFlow(spacing: 6, lineSpacing: 4) {
+                                if let state = row.state {
+                                    Text(state.text)
+                                        .font(.caption2.weight(.bold))
+                                        .foregroundStyle(Color.white)
+                                        .lineLimit(1)
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 2)
+                                        .background(stateColor(state.tone), in: Capsule())
+                                }
+                                if let tag = row.tag { PlanTagView(tag: tag) }
                             }
                         }
-                        Text(row.meta).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
-                        if let tag = row.tag { PlanTagView(tag: tag) }
                     }
+                    .layoutPriority(1)
                     Spacer(minLength: 6)
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(row.amount.text)

@@ -5,7 +5,8 @@
 // over, the change from last month, and the six months side by side), Your
 // salary (its page), Net worth (the accounts, each edited on its page,
 // removed after a question; the savings pot or the savings accounts) and the
-// statement (PDF or Excel for a date range, handed to the share sheet).
+// statement as one compact row (the dates, then Export: PDF or Excel, handed
+// to the share sheet). Picking a month springs the bars and the split to it.
 // Every figure and word is the model's (the core's); Swift Charts only draws.
 import BudgeerCore
 import Charts
@@ -131,7 +132,7 @@ struct InsightsView: View {
                     if let pot = card.pot {
                         NavigationLink(value: AppRoute.savings) {
                             HStack(spacing: 12) {
-                                NativeIconTile(symbol: "banknote.fill", color: SettingsRow.green)
+                                NativeIconTile(symbol: "banknote.fill", color: NativeTone.green)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(language.t("insights:netWorth.savings")).font(.body.weight(.semibold))
                                     Text((pot.overdrawn ?? "") + language.t("insights:netWorth.seeSavings"))
@@ -213,9 +214,9 @@ struct InsightsView: View {
 
     static func accountColor(_ kind: String) -> Color {
         switch kind {
-        case "debt": return SettingsRow.coral
-        case "savings": return SettingsRow.green
-        default: return SettingsRow.blue
+        case "debt": return NativeTone.coral
+        case "savings": return NativeTone.green
+        default: return NativeTone.sand
         }
     }
 
@@ -223,61 +224,71 @@ struct InsightsView: View {
 
     private var statementSection: some View {
         Section {
-            Text(language.t("insights:reports.lead")).font(.subheadline).foregroundStyle(.secondary)
-            DatePicker(language.t("insights:reports.from"),
-                       selection: Binding(get: { ISODay.date(model.statementFrom) ?? Date() },
-                                          set: { model.setStatementFrom(ISODay.string($0)) }),
-                       displayedComponents: .date)
-            DatePicker(language.t("insights:reports.to"),
-                       selection: Binding(get: { ISODay.date(model.statementTo) ?? Date() },
-                                          set: { model.setStatementTo(ISODay.string($0)) }),
-                       displayedComponents: .date)
-            VStack(spacing: 10) {
-                Button {
-                    export("pdf")
-                } label: {
-                    Label(language.t(model.exporting == "pdf" ? "insights:reports.building" : "insights:reports.pdf"),
-                          systemImage: "doc.richtext")
-                        .frame(maxWidth: .infinity)
+            HStack(spacing: 12) {
+                NativeIconTile(symbol: "doc.text.fill")
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(language.t("insights:reports.title")).font(.body.weight(.semibold)).lineLimit(1)
+                    HStack(spacing: 4) {
+                        DatePicker(language.t("insights:reports.from"),
+                                   selection: Binding(get: { ISODay.date(model.statementFrom) ?? Date() },
+                                                      set: { model.setStatementFrom(ISODay.string($0)) }),
+                                   displayedComponents: .date)
+                        Text(verbatim: "–").foregroundStyle(.secondary)
+                        DatePicker(language.t("insights:reports.to"),
+                                   selection: Binding(get: { ISODay.date(model.statementTo) ?? Date() },
+                                                      set: { model.setStatementTo(ISODay.string($0)) }),
+                                   displayedComponents: .date)
+                    }
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                    .controlSize(.small)
                 }
-                .nativeGlassButton(prominent: true)
-                .accessibilityIdentifier("insights.pdf")
-                Button {
-                    export("xlsx")
+                Spacer(minLength: 4)
+                Menu {
+                    Button { export("pdf") } label: {
+                        Label(language.t("insights:reports.pdf"), systemImage: "doc.richtext")
+                    }
+                    .accessibilityIdentifier("insights.pdf")
+                    Button { export("xlsx") } label: {
+                        Label(language.t("insights:reports.excel"), systemImage: "tablecells")
+                    }
+                    .accessibilityIdentifier("insights.excel")
                 } label: {
-                    Label(language.t(model.exporting == "xlsx" ? "insights:reports.building" : "insights:reports.excel"),
-                          systemImage: "tablecells")
-                        .frame(maxWidth: .infinity)
+                    Group {
+                        if model.exporting != nil {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "square.and.arrow.up").font(.body.weight(.semibold))
+                        }
+                    }
+                    .frame(width: 40, height: 40)
+                    .background(Theme.Colors.accentSubtle, in: Circle())
+                    .foregroundStyle(NativeStyle.tint)
                 }
-                .nativeGlassButton()
-                .accessibilityIdentifier("insights.excel")
+                .disabled(model.exporting != nil || model.noEntries)
+                .accessibilityLabel(language.t("insights:reports.title"))
+                .accessibilityIdentifier("insights.export")
             }
-            .disabled(model.exporting != nil || model.noEntries)
             .padding(.vertical, 4)
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
             if model.noEntries {
                 Text(language.t("insights:reports.noEntries")).font(.footnote).foregroundStyle(.secondary)
             }
             if let format = model.exporting {
-                HStack(spacing: 8) {
-                    ProgressView()
-                    Text(language.t(format == "xlsx" ? "insights:reports.preparingExcel" : "insights:reports.preparingPdf"))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
+                Text(language.t(format == "xlsx" ? "insights:reports.preparingExcel" : "insights:reports.preparingPdf"))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
             if let error = model.statementError {
                 NativeNotice(text: error, warning: true)
             }
             if let file = model.statementFile {
                 ShareLink(item: file) {
-                    Label(file.lastPathComponent, systemImage: "square.and.arrow.up")
+                    Label(file.lastPathComponent, systemImage: "square.and.arrow.up").font(.subheadline)
                 }
                 .accessibilityIdentifier("insights.share")
             }
-        } header: {
-            NativeSectionHeader(title: language.t("insights:reports.title"))
+        } footer: {
+            Text(language.t("insights:reports.lead"))
         }
         .listRowBackground(NativeStyle.card)
     }
@@ -298,12 +309,15 @@ struct InsightsView: View {
                 Text(language.t("insights:spending.empty")).foregroundStyle(.secondary)
             } else {
                 NativeShareBar(shares: figures.shares.map { ($0.name, $0.share) }).padding(.vertical, 6)
-                ForEach(Array(figures.shares.enumerated()), id: \.offset) { index, item in
+                ForEach(Array(figures.shares.enumerated()), id: \.element.name) { index, item in
                     HStack(spacing: 10) {
                         Circle().fill(NativeSwatch.color(index, item.name)).frame(width: 10, height: 10)
                         Text(item.label).lineLimit(1)
                         Spacer()
-                        Text(verbatim: "\(item.share)%").fontWeight(.semibold).monospacedDigit()
+                        Text(verbatim: "\(item.share)%")
+                            .fontWeight(.semibold)
+                            .monospacedDigit()
+                            .nativeFigure(Double(item.share))
                     }
                     .accessibilityElement(children: .combine)
                 }
@@ -332,13 +346,13 @@ struct InsightsView: View {
                                     let x = tap.location.x - geometry[plot].origin.x
                                     if let label: String = proxy.value(atX: x),
                                        let index = figures.bars.bars.firstIndex(where: { $0.label == label }) {
-                                        model.pick(index)
+                                        withAnimation(NativeMotion.pick) { model.pick(index) }
                                     }
                                 })
                         }
                     }
                     .frame(height: 120)
-                    .animation(.snappy, value: figures.picked)
+                    .animation(NativeMotion.pick, value: figures.picked)
                     .accessibilityIdentifier("insights.months")
                 }
                 .padding(.vertical, 6)
@@ -453,6 +467,7 @@ struct InsightsView: View {
         VStack(spacing: 2) {
             Text(label).font(.footnote).foregroundStyle(.secondary)
             Text(value).font(.headline).foregroundStyle(color).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                .nativeFigure(value)
         }
         .frame(maxWidth: .infinity, minHeight: 58)
         .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
