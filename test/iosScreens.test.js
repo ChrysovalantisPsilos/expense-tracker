@@ -9,7 +9,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import {
-  FIXTURES_DIR, budgetsFixture, insightsFixture, ledgerFixture, recurringFixture, savingsFixture, vouchersFixture,
+  FIXTURES_DIR, budgetsFixture, insightsFixture, ledgerFixture, netWorthFixture, planFixture, recurringFixture,
+  salaryFixture, savingsFixture, vouchersFixture,
 } from '../mobile-core/screenFigures.mjs'
 
 const committed = (name) => JSON.parse(readFileSync(resolve(FIXTURES_DIR, `${name}.json`), 'utf8'))
@@ -116,4 +117,54 @@ test('ios vouchers fixture: the card, the fixed days, the history and the form',
   assert.equal(en.fix.days, 20)
   assert.equal(en.history.at(-1).items.at(-1).type, 'start')
   assert.equal(en.setup.topUpOn, '2020-10-05')
+})
+
+test('ios plan fixture: the committed file is what the web\'s functions give', () => {
+  assert.deepEqual(committed('plan'), fresh(planFixture()))
+})
+
+test('ios plan fixture: the reads, the header, the rows, the changes, the derived salary, the payments', () => {
+  const { start, changes, derived, payments } = committed('plan').expected.en
+  assert.deepEqual(start.reads, {
+    // The salary shift (from the 25th) reaches back for June's salary.
+    income: { from: '2020-05-25', to: '2020-08-31' }, charges: { from: '2020-04-01', to: '2020-09-30' },
+    budgetMonths: ['2020-07-01', '2020-08-01', '2020-09-01'],
+  })
+  assert.deepEqual(start.parts.ideas.cards.map((c) => c.kind), ['overlap', 'priceUp', 'biggest'])
+  assert.equal(start.parts.header.delta.text, 'No changes yet')
+  assert.equal(changes.parts.changes.rows.length, 3)
+  assert.equal(changes.apply.submit, 'Apply 3 changes')
+  assert.equal(derived.parts.groups[0].rows[0].name, 'Salary')
+  assert.equal(derived.parts.changes.rows[0].note, 'Only in your plan')
+  assert.equal(derived.parts.changes.canApply, false)
+  assert.equal(payments.parts.header.incomeHint, true)
+  assert.equal(start.pick.summary.label, 'Cancel 1 of 2')
+  assert.equal(start.add.ready, true)
+  assert.deepEqual(changes.whatIf.rows.map((r) => r.name), ['Apple Music', 'Gym'])
+})
+
+test('ios salary fixture: the committed file is what the web\'s functions give', () => {
+  assert.deepEqual(committed('salary'), fresh(salaryFixture()))
+})
+
+test('ios salary fixture: the pay, the raise, the extras, the country by language, no pay yet', () => {
+  const { en, el } = committed('salary').expected
+  assert.deepEqual(en.page.page.headline, { level: '€2,600.00', raise: '+4.0% in Jan 2020' })
+  assert.deepEqual([en.page.country, el.page.country], ['BE', 'GR'])
+  assert.deepEqual(en.page.page.extras.map((y) => y.year), [2019])
+  assert.deepEqual(en.page.bonus.map((b) => b.label), ['Bonus', 'Side job', 'Savings'])
+  assert.deepEqual([en.empty.page, en.empty.card, en.empty.country], [null, null, 'GR'])
+})
+
+test('ios net worth fixture: the committed file is what the web\'s functions give', () => {
+  assert.deepEqual(committed('networth'), fresh(netWorthFixture()))
+})
+
+test('ios net worth fixture: the pot line, the savings accounts instead, nothing yet', () => {
+  const { accounts, savings, empty } = committed('networth').expected.en
+  assert.equal(accounts.card.pot.amount, '€1,029.50')
+  assert.equal(savings.card.pot, null)
+  assert.deepEqual(savings.card.savings.map((r) => r.title), ['Bank savings'])
+  assert.equal(empty.card.empty, true)
+  assert.equal(accounts.draft.name, 'Current')
 })

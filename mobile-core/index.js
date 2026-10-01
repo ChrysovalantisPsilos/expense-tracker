@@ -62,7 +62,9 @@ import * as planMath from '../src/features/plan/planMath.js'
 import * as planText from '../src/features/plan/planText.js'
 import * as planCatalog from '../src/features/plan/planCatalog.js'
 import * as whatIfMath from '../src/features/plan/whatIfMath.js'
+import * as planPage from '../src/features/plan/planPage.js'
 import * as salaryMath from '../src/features/salary/salaryMath.js'
+import * as salaryText from '../src/features/salary/salaryText.js'
 import * as voucherMath from '../src/features/vouchers/voucherMath.js'
 import * as savingsMath from '../src/features/savings/savingsMath.js'
 import * as budgetMath from '../src/features/budgets/budgetMath.js'
@@ -80,6 +82,7 @@ import * as voucherText from '../src/features/vouchers/voucherText.js'
 import * as themePref from '../src/shared/lib/themePref.js'
 import * as contact from '../src/shared/lib/contact.js'
 import * as reauth from '../supabase/functions/_shared/reauth.ts'
+import * as reportFiles from '../supabase/functions/_shared/files.ts'
 import * as spendingPrefs from '../src/features/settings/spendingPrefs.js'
 import * as authMethods from '../src/features/settings/authMethods.js'
 import * as legal from '../src/features/privacy/legal.js'
@@ -145,7 +148,9 @@ export const modules = {
   planText,
   planCatalog,
   whatIfMath,
+  planPage,
   salaryMath,
+  salaryText,
   voucherMath,
   savingsMath,
   budgetMath,
@@ -163,6 +168,7 @@ export const modules = {
   themePref,
   contact,
   reauth,
+  reportFiles,
   spendingPrefs,
   authMethods,
   legal,

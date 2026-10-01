@@ -9,7 +9,6 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { InfoBox, InfoButton, useInfoToggle } from '../../shared/ui/InfoToggle.jsx'
 import { BusyNote, RingSpinner } from '../../shared/ui/RingLoader.jsx'
-import { minorToInput, toMinor } from '../../shared/lib/currency.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { LINE_MAX } from '../../../supabase/functions/_shared/aiHelper.ts'
 import SuggestedMark from '../ai/SuggestedMark.jsx'
@@ -17,10 +16,10 @@ import DemoAiNote from '../ai/DemoAiNote.jsx'
 import { aiErrorKey } from '../ai/aiMath.js'
 import { planWhatIf } from '../ai/ai.js'
 import { NAME_MAX, savingsCategories } from './planMath.js'
-import { applyWhatIf, editRow, rowReady, undoWhatIf, whatIfRows } from './whatIfMath.js'
-import { itemName, whatIfLine } from './planText.js'
+import { applyWhatIf, editRow, undoWhatIf, whatIfRows } from './whatIfMath.js'
+import { amountEdit, badgeKind, whatIfEditorParts, whatIfEmpty, whatIfParts } from './planPage.js'
 import { AmountField, FrequencySelect, newId } from './PlanEditors.jsx'
-import { SCROLL_CLEAR, badgeKind, editorId, openerId } from './PlanParts.jsx'
+import { SCROLL_CLEAR, editorId, openerId } from './PlanParts.jsx'
 
 // The key Plan.jsx's one open editor uses for this preview.
 export const WHAT_IF_KEY = 'whatif'
@@ -38,7 +37,7 @@ export default function PlanWhatIf({ open, onOpen, onClose, plan, setPlan, items
   const inputRef = useRef(null)
   const [text, setText] = useState('')
   const [state, setState] = useState('idle') // idle | working | preview | added | error
-  const [error, setError] = useState(null)   // { key, values }
+  const [error, setError] = useState(null)   // the words
   const [rows, setRows] = useState([])
   const [picked, setPicked] = useState(() => new Set())
   const [notFound, setNotFound] = useState([])
@@ -56,10 +55,9 @@ export default function PlanWhatIf({ open, onOpen, onClose, plan, setPlan, items
       const whatif = await planWhatIf(text.trim(), categories)
       const next = whatIfRows(whatif, items, savingsCategoryId)
       const missing = whatif?.notFound ?? []
-      if (!next.length) {
-        setError(missing.length
-          ? { key: 'typeIt.notFound', values: { names: missing.join(', ') } }
-          : { key: 'typeIt.unreadable' })
+      const empty = whatIfEmpty(next, missing)
+      if (empty) {
+        setError(empty)
         setState('error')
         return
       }
@@ -70,16 +68,16 @@ export default function PlanWhatIf({ open, onOpen, onClose, plan, setPlan, items
       setState('preview')
       onOpen()
     } catch (e) {
-      setError({ key: aiErrorKey(e.code, 'plan:typeIt.unreadable') })
+      setError(t(aiErrorKey(e.code, 'plan:typeIt.unreadable')))
       setState('error')
     }
   }
 
-  const ready = rows.filter((r) => picked.has(r.id) && rowReady(r))
+  const preview = whatIfParts(rows, [...picked], notFound)
   function addToPlan() {
     const res = applyWhatIf(plan, rows, picked, { rules, todayISO, newId, savingsCategoryId })
     setPlan(res.plan)
-    setAdded({ count: ready.length, undo: res.added })
+    setAdded({ count: preview.ready, undo: res.added })
     setState('added')
     setText('')
     onClose()
@@ -129,7 +127,7 @@ export default function PlanWhatIf({ open, onOpen, onClose, plan, setPlan, items
       {state === 'error' && (
         <HStack role="alert" align="start" spacing={2} mt={2} fontSize="sm" color="status.warning">
           <Box pt="2px" flexShrink={0}><CircleAlert size={16} aria-hidden /></Box>
-          <Text>{t(error.key, error.values)}</Text>
+          <Text>{error}</Text>
         </HStack>
       )}
       {state === 'added' && added && (
@@ -143,20 +141,18 @@ export default function PlanWhatIf({ open, onOpen, onClose, plan, setPlan, items
           onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); cancel() } }}>
           <Text fontSize="xs" color="text.muted" mb={1}>{t('typeIt.check')}</Text>
           <Box as="ul" listStyleType="none">
-            {rows.map((row) => (
-              <PreviewRow key={row.id} row={row} picked={picked.has(row.id)} onToggle={() => toggle(row.id)}
+            {rows.map((row, n) => (
+              <PreviewRow key={row.id} row={row} parts={preview.rows[n]} onToggle={() => toggle(row.id)}
                 editing={editing === row.id} onEdit={() => setEditing(editing === row.id ? null : row.id)}
                 onChange={(patch) => edit(row.id, patch)} />
             ))}
           </Box>
-          {notFound.length > 0 && (
-            <Text fontSize="xs" color="text.muted" mt={2}>{t('typeIt.notFoundToo', { names: notFound.join(', ') })}</Text>
+          {preview.notFound && (
+            <Text fontSize="xs" color="text.muted" mt={2}>{preview.notFound}</Text>
           )}
           <HStack spacing={2} justify="flex-end" mt={3}>
             <Button variant="ghost" onClick={cancel}>{t('common:actions.cancel')}</Button>
-            <Button isDisabled={!ready.length} onClick={addToPlan}>
-              {ready.length ? t('typeIt.addToPlan', { count: ready.length }) : t('typeIt.addNone')}
-            </Button>
+            <Button isDisabled={!preview.ready} onClick={addToPlan}>{preview.add}</Button>
           </HStack>
         </Box>
       )}
@@ -164,27 +160,28 @@ export default function PlanWhatIf({ open, onOpen, onClose, plan, setPlan, items
   )
 }
 
-// One proposal: ticked to go into the plan, its name with the Suggested mark
-// until it's edited, what it does in a line, and Edit to change it in place.
-function PreviewRow({ row, picked, onToggle, editing, onEdit, onChange }) {
+// One proposal (planPage.whatIfParts' row): ticked to go into the plan, its
+// name with the Suggested mark until it's edited, what it does in a line, and
+// Edit to change it in place.
+function PreviewRow({ row, parts, onToggle, editing, onEdit, onChange }) {
   const t = useT('plan')
-  const name = row.item ? itemName(row.item) : row.name
+  const { picked } = parts
   return (
     <Box as="li" py={2} borderBottomWidth="1px" borderColor="border.default">
       <HStack spacing={3} align="start">
-        <Checkbox size="lg" mt={1.5} isChecked={picked} onChange={onToggle} aria-label={t('typeIt.pick', { name })} />
+        <Checkbox size="lg" mt={1.5} isChecked={picked} onChange={onToggle} aria-label={parts.pickLabel} />
         <Box pt={0.5} flexShrink={0} opacity={picked ? 1 : 0.5}>
           <CategoryBadge category={row.item?.category ?? null} kind={badgeKind(row.kind)} size={32} />
         </Box>
         <Box flex="1" minW={0} opacity={picked ? 1 : 0.6}>
           <HStack spacing={2} flexWrap="wrap" rowGap={0}>
-            <Text fontSize="sm" fontWeight="600" noOfLines={1}>{name || t('typeIt.noName')}</Text>
-            {!row.edited && <SuggestedMark />}
+            <Text fontSize="sm" fontWeight="600" noOfLines={1}>{parts.name}</Text>
+            {parts.suggested && <SuggestedMark />}
           </HStack>
-          <Text fontSize="xs" color="text.muted">{whatIfLine(row, t)}</Text>
+          <Text fontSize="xs" color="text.muted">{parts.line}</Text>
         </Box>
         <Button variant="link" size="sm" minH="44px" color="accent.fg" flexShrink={0} onClick={onEdit}
-          aria-expanded={editing} aria-label={t('typeIt.editLabel', { name })}>
+          aria-expanded={editing} aria-label={parts.editLabel}>
           {editing ? t('edit.done') : t('typeIt.edit')}
         </Button>
       </HStack>
@@ -198,30 +195,31 @@ function PreviewRow({ row, picked, onToggle, editing, onEdit, onChange }) {
 function RowEditor({ row, onChange }) {
   const t = useT('plan')
   const fields = row.after ?? row.kept ?? row.before
-  const [text, setText] = useState(() => minorToInput(fields.amount_minor, fields.currency))
-  const cancelled = row.type === 'cancel'
+  const parts = whatIfEditorParts(row)
+  const [text, setText] = useState(parts.text)
+  const { cancelled } = parts
   function onText(v) {
     setText(v)
-    const minor = toMinor(v || '0', fields.currency)
-    if (minor > 0) onChange({ amount_minor: minor })
+    const patch = amountEdit(v, parts.currency)
+    if (patch) onChange(patch)
   }
   return (
     <Stack spacing={3} mt={2} ml={{ base: 0, sm: '76px' }} p={3} borderWidth="1px" borderColor="border.default"
       borderRadius="xl" bg="bg.surface">
-      {row.type === 'add' ? (
+      {parts.add ? (
         <FormControl>
           <FormLabel htmlFor={`plan-type-it-name-${row.id}`}>{t('add.name')}</FormLabel>
           <Input id={`plan-type-it-name-${row.id}`} value={row.name} maxLength={NAME_MAX}
             onChange={(e) => onChange({ name: e.target.value })} />
         </FormControl>
       ) : (
-        <SegmentedControl label={t('edit.inPlan')} size="sm" isFitted value={cancelled ? 'cancel' : 'change'}
+        <SegmentedControl label={t('edit.inPlan')} size="sm" isFitted value={parts.choice}
           onChange={(v) => onChange({ cancel: v === 'cancel' })}
-          options={[['change', t('typeIt.changeIt')], ['cancel', t(row.kind === 'expense' ? 'edit.cancel' : 'edit.stop')]]} />
+          options={parts.choices.map((o) => [o.value, o.label])} />
       )}
       <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3} alignItems="start">
         <AmountField id={`plan-type-it-amount-${row.id}`} label={t('edit.amount')} text={text} onText={onText}
-          currency={fields.currency} addon={fields.currency} isDisabled={cancelled} />
+          currency={parts.currency} addon={parts.currency} isDisabled={cancelled} />
         <FrequencySelect id={`plan-type-it-frequency-${row.id}`} fields={fields} isDisabled={cancelled}
           onChange={(f) => onChange(f)} />
       </SimpleGrid>

@@ -3,8 +3,9 @@
 // The server-side FALLBACK for the personal financial statement. The app
 // builds the statement on the device (src/features/insights/deviceStatement.js)
 // and only calls this when that fails (an old browser, say).
-// TODO(release after next): delete this function and the app's fallback to it
-// (see docs/TESTING.md, "Statements on the device").
+// TODO(release after next): delete the web app's fallback to it (see
+// docs/TESTING.md, "Statements on the device"), but keep this function while
+// the native iOS app makes its statement here (Insights › Export statement).
 //
 //   POST /functions/v1/generate-report
 //   body: { from: "2026-01-01", to: "2026-01-31", format: "xlsx" | "pdf" }

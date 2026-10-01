@@ -1,0 +1,649 @@
+{
+  "input": {
+    "profile": {
+      "base_currency": "EUR",
+      "yearly_separate": false,
+      "salary_shift_from_day": 25,
+      "salary_category_id": "11111111-1111-4111-8111-111111111111"
+    },
+    "categories": [
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "kind": "income",
+        "is_savings": true
+      }
+    ],
+    "income": [
+      {
+        "id": "s1",
+        "spent_at": "2020-09-02",
+        "kind": "income",
+        "amount_minor": 30000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "is_savings": true
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": true,
+        "spread_months": null,
+        "recurring_rule_id": "r8",
+        "created_at": "2020-09-02T08:00:00Z"
+      },
+      {
+        "id": "s2",
+        "spent_at": "2020-08-27",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "s3",
+        "spent_at": "2020-08-20",
+        "kind": "income",
+        "amount_minor": 4500,
+        "currency": "GBP",
+        "exchange_rate": 1.1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "is_savings": true
+        },
+        "description": "Interest",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "s4",
+        "spent_at": "2020-08-02",
+        "kind": "income",
+        "amount_minor": 30000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "is_savings": true
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": true,
+        "spread_months": null,
+        "recurring_rule_id": "r8"
+      },
+      {
+        "id": "s5",
+        "spent_at": "2020-06-02",
+        "kind": "income",
+        "amount_minor": 30000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "is_savings": true
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": true,
+        "spread_months": null
+      },
+      {
+        "id": "s6",
+        "spent_at": "2020-05-14",
+        "kind": "income",
+        "amount_minor": 20000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "is_savings": true
+        },
+        "description": "Birthday gift",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      }
+    ],
+    "fromSavings": [
+      {
+        "id": "s7",
+        "spent_at": "2020-09-03",
+        "kind": "expense",
+        "amount_minor": 12000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": null,
+        "categories": null,
+        "description": "New bike",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": true,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      }
+    ],
+    "views": [
+      {
+        "name": "accounts",
+        "accounts": [
+          {
+            "id": "n1",
+            "name": "Current",
+            "type": "asset",
+            "balance_minor": 245000,
+            "currency": "EUR"
+          },
+          {
+            "id": "n2",
+            "name": "Visa",
+            "type": "liability",
+            "balance_minor": 32050,
+            "currency": "EUR"
+          },
+          {
+            "id": "n3",
+            "name": "Dollar account",
+            "type": "asset",
+            "balance_minor": 50000,
+            "currency": "USD"
+          }
+        ]
+      },
+      {
+        "name": "savings",
+        "accounts": [
+          {
+            "id": "n4",
+            "name": "Bank savings",
+            "type": "savings",
+            "balance_minor": 420000,
+            "currency": "EUR"
+          },
+          {
+            "id": "n2",
+            "name": "Visa",
+            "type": "liability",
+            "balance_minor": 32050,
+            "currency": "EUR"
+          }
+        ]
+      },
+      {
+        "name": "empty",
+        "accounts": [],
+        "empty": true
+      }
+    ]
+  },
+  "expected": {
+    "en": {
+      "accounts": {
+        "pot": 102950,
+        "card": {
+          "assets": "€3,979.50",
+          "debts": {
+            "text": "€320.50",
+            "tone": "negative"
+          },
+          "empty": false,
+          "savings": [],
+          "pot": {
+            "amount": "€1,029.50",
+            "tone": "default",
+            "overdrawn": null
+          },
+          "accounts": [
+            {
+              "id": "n1",
+              "kind": "asset",
+              "title": "Current",
+              "meta": "Asset",
+              "amount": "€2,450.00",
+              "tone": "default",
+              "account": {
+                "id": "n1",
+                "name": "Current",
+                "type": "asset",
+                "balance_minor": 245000,
+                "currency": "EUR"
+              }
+            },
+            {
+              "id": "n2",
+              "kind": "debt",
+              "title": "Visa",
+              "meta": "Debt",
+              "amount": "−€320.50",
+              "tone": "negative",
+              "account": {
+                "id": "n2",
+                "name": "Visa",
+                "type": "liability",
+                "balance_minor": 32050,
+                "currency": "EUR"
+              }
+            },
+            {
+              "id": "n3",
+              "kind": "asset",
+              "title": "Dollar account",
+              "meta": "Asset",
+              "amount": "$500.00",
+              "tone": "default",
+              "account": {
+                "id": "n3",
+                "name": "Dollar account",
+                "type": "asset",
+                "balance_minor": 50000,
+                "currency": "USD"
+              }
+            }
+          ],
+          "net": {
+            "text": "€3,659.00",
+            "tone": "default"
+          }
+        },
+        "types": [
+          {
+            "value": "asset",
+            "label": "Asset (what you own)"
+          },
+          {
+            "value": "liability",
+            "label": "Debt (what you owe)"
+          },
+          {
+            "value": "savings",
+            "label": "Savings (what you’ve saved)"
+          }
+        ],
+        "draft": {
+          "name": "Current",
+          "type": "asset",
+          "balance": "2450.00",
+          "currency": "EUR"
+        }
+      },
+      "savings": {
+        "pot": 102950,
+        "card": {
+          "assets": "€4,200.00",
+          "debts": {
+            "text": "€320.50",
+            "tone": "negative"
+          },
+          "empty": false,
+          "savings": [
+            {
+              "id": "n4",
+              "kind": "savings",
+              "title": "Bank savings",
+              "meta": "Savings account",
+              "amount": "€4,200.00",
+              "tone": "default",
+              "account": {
+                "id": "n4",
+                "name": "Bank savings",
+                "type": "savings",
+                "balance_minor": 420000,
+                "currency": "EUR"
+              }
+            }
+          ],
+          "pot": null,
+          "accounts": [
+            {
+              "id": "n2",
+              "kind": "debt",
+              "title": "Visa",
+              "meta": "Debt",
+              "amount": "−€320.50",
+              "tone": "negative",
+              "account": {
+                "id": "n2",
+                "name": "Visa",
+                "type": "liability",
+                "balance_minor": 32050,
+                "currency": "EUR"
+              }
+            }
+          ],
+          "net": {
+            "text": "€3,879.50",
+            "tone": "default"
+          }
+        },
+        "types": [
+          {
+            "value": "asset",
+            "label": "Asset (what you own)"
+          },
+          {
+            "value": "liability",
+            "label": "Debt (what you owe)"
+          },
+          {
+            "value": "savings",
+            "label": "Savings (what you’ve saved)"
+          }
+        ],
+        "draft": {
+          "name": "Bank savings",
+          "type": "savings",
+          "balance": "4200.00",
+          "currency": "EUR"
+        }
+      },
+      "empty": {
+        "pot": 0,
+        "card": {
+          "assets": "€0.00",
+          "debts": {
+            "text": "€0.00",
+            "tone": "muted"
+          },
+          "empty": true,
+          "savings": [],
+          "pot": null,
+          "accounts": [],
+          "net": {
+            "text": "€0.00",
+            "tone": "default"
+          }
+        },
+        "types": [
+          {
+            "value": "asset",
+            "label": "Asset (what you own)"
+          },
+          {
+            "value": "liability",
+            "label": "Debt (what you owe)"
+          },
+          {
+            "value": "savings",
+            "label": "Savings (what you’ve saved)"
+          }
+        ],
+        "draft": {
+          "name": "",
+          "type": "asset",
+          "balance": "",
+          "currency": "EUR"
+        }
+      }
+    },
+    "el": {
+      "accounts": {
+        "pot": 102950,
+        "card": {
+          "assets": "3.979,50 €",
+          "debts": {
+            "text": "320,50 €",
+            "tone": "negative"
+          },
+          "empty": false,
+          "savings": [],
+          "pot": {
+            "amount": "1.029,50 €",
+            "tone": "default",
+            "overdrawn": null
+          },
+          "accounts": [
+            {
+              "id": "n1",
+              "kind": "asset",
+              "title": "Current",
+              "meta": "Περιουσιακό στοιχείο",
+              "amount": "2.450,00 €",
+              "tone": "default",
+              "account": {
+                "id": "n1",
+                "name": "Current",
+                "type": "asset",
+                "balance_minor": 245000,
+                "currency": "EUR"
+              }
+            },
+            {
+              "id": "n2",
+              "kind": "debt",
+              "title": "Visa",
+              "meta": "Χρέος",
+              "amount": "−320,50 €",
+              "tone": "negative",
+              "account": {
+                "id": "n2",
+                "name": "Visa",
+                "type": "liability",
+                "balance_minor": 32050,
+                "currency": "EUR"
+              }
+            },
+            {
+              "id": "n3",
+              "kind": "asset",
+              "title": "Dollar account",
+              "meta": "Περιουσιακό στοιχείο",
+              "amount": "500,00 $",
+              "tone": "default",
+              "account": {
+                "id": "n3",
+                "name": "Dollar account",
+                "type": "asset",
+                "balance_minor": 50000,
+                "currency": "USD"
+              }
+            }
+          ],
+          "net": {
+            "text": "3.659,00 €",
+            "tone": "default"
+          }
+        },
+        "types": [
+          {
+            "value": "asset",
+            "label": "Περιουσιακό στοιχείο (ό,τι έχεις)"
+          },
+          {
+            "value": "liability",
+            "label": "Χρέος (ό,τι χρωστάς)"
+          },
+          {
+            "value": "savings",
+            "label": "Αποταμίευση (ό,τι έχεις βάλει στην άκρη)"
+          }
+        ],
+        "draft": {
+          "name": "Current",
+          "type": "asset",
+          "balance": "2450.00",
+          "currency": "EUR"
+        }
+      },
+      "savings": {
+        "pot": 102950,
+        "card": {
+          "assets": "4.200,00 €",
+          "debts": {
+            "text": "320,50 €",
+            "tone": "negative"
+          },
+          "empty": false,
+          "savings": [
+            {
+              "id": "n4",
+              "kind": "savings",
+              "title": "Bank savings",
+              "meta": "Αποταμιευτικός λογαριασμός",
+              "amount": "4.200,00 €",
+              "tone": "default",
+              "account": {
+                "id": "n4",
+                "name": "Bank savings",
+                "type": "savings",
+                "balance_minor": 420000,
+                "currency": "EUR"
+              }
+            }
+          ],
+          "pot": null,
+          "accounts": [
+            {
+              "id": "n2",
+              "kind": "debt",
+              "title": "Visa",
+              "meta": "Χρέος",
+              "amount": "−320,50 €",
+              "tone": "negative",
+              "account": {
+                "id": "n2",
+                "name": "Visa",
+                "type": "liability",
+                "balance_minor": 32050,
+                "currency": "EUR"
+              }
+            }
+          ],
+          "net": {
+            "text": "3.879,50 €",
+            "tone": "default"
+          }
+        },
+        "types": [
+          {
+            "value": "asset",
+            "label": "Περιουσιακό στοιχείο (ό,τι έχεις)"
+          },
+          {
+            "value": "liability",
+            "label": "Χρέος (ό,τι χρωστάς)"
+          },
+          {
+            "value": "savings",
+            "label": "Αποταμίευση (ό,τι έχεις βάλει στην άκρη)"
+          }
+        ],
+        "draft": {
+          "name": "Bank savings",
+          "type": "savings",
+          "balance": "4200.00",
+          "currency": "EUR"
+        }
+      },
+      "empty": {
+        "pot": 0,
+        "card": {
+          "assets": "0,00 €",
+          "debts": {
+            "text": "0,00 €",
+            "tone": "muted"
+          },
+          "empty": true,
+          "savings": [],
+          "pot": null,
+          "accounts": [],
+          "net": {
+            "text": "0,00 €",
+            "tone": "default"
+          }
+        },
+        "types": [
+          {
+            "value": "asset",
+            "label": "Περιουσιακό στοιχείο (ό,τι έχεις)"
+          },
+          {
+            "value": "liability",
+            "label": "Χρέος (ό,τι χρωστάς)"
+          },
+          {
+            "value": "savings",
+            "label": "Αποταμίευση (ό,τι έχεις βάλει στην άκρη)"
+          }
+        ],
+        "draft": {
+          "name": "",
+          "type": "asset",
+          "balance": "",
+          "currency": "EUR"
+        }
+      }
+    }
+  }
+}
