@@ -59,6 +59,7 @@ export const CORE_MODULES = {
   splitMath: 'src/features/groups/splitMath.js',
   quickAddMath: 'src/features/groups/quickAddMath.js',
   groupFormat: 'src/features/groups/groupFormat.js',
+  groupCover: 'src/features/groups/groupCover.js',
   groupExpenseForm: 'src/features/groups/groupExpenseForm.js',
   settleForm: 'src/features/groups/settleForm.js',
   importMath: 'src/features/import/importMath.js',

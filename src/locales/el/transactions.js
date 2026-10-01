@@ -36,6 +36,7 @@ export default {
       income: 'Έσοδα',
       all: 'Όλα',
     },
+    sharedOnly: 'Μόνο τα μερίδιά μου σε έξοδα ομάδων',
     typeLabel: 'Είδος κινήσεων',
     add: {
       expense: 'Νέο έξοδο',

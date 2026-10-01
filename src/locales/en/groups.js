@@ -315,6 +315,21 @@ export default {
     renamed: 'Group renamed',
     name: 'Group name',
   },
+  cover: {
+    title: 'Group picture',
+    photo: 'Choose a photo',
+    reset: 'Keep the picture as it was',
+    emoji: 'Or pick an emoji and a colour',
+    emojiLabel: 'Emoji {{emoji}}',
+    colours: {
+      coral: 'Coral',
+      sunset: 'Sunset',
+      teal: 'Teal',
+      blue: 'Blue',
+      green: 'Green',
+      purple: 'Purple',
+    },
+  },
   create: {
     title: 'New group',
     submit: 'Create group',

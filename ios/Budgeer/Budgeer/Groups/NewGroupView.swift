@@ -5,6 +5,7 @@
 // invite, the link to share) and opens the group. Everything it says and
 // checks is NewGroupModel's (the core's); this file draws, and turns the
 // picture into an image to upload.
+import BudgeerCore
 import PhotosUI
 import SwiftUI
 import UIKit
@@ -26,40 +27,68 @@ struct NewGroupHost: View {
     }
 }
 
-/// The emoji and colours a cover can be made of.
+/// The emoji and colours a cover can be made of, and how its image is drawn:
+/// groupCover.coverChoices, the website's picker's too.
 enum GroupCoverArt {
-    static let emoji = ["✈️", "🏠", "❤️", "🍕", "🎉", "🏖️", "⛷️", "🎓", "⚽️", "🎸"]
-    /// Each a gradient, top-left to bottom-right: the brand's coral and
-    /// amber first, then the confetti's green and blue, plum, and ink.
-    static let colours: [[Color]] = [
-        [Theme.Palette.brand500, Theme.Palette.amber400],
-        [Color(hex: 0xE2431F), Theme.Palette.brand300],
-        [Color(hex: 0x3A78D4), Color(hex: 0x7FB3F5)],
-        [Color(hex: 0x2E9B62), Color(hex: 0x86C98A)],
-        [Color(hex: 0x7B4FC9), Color(hex: 0xC4A2F5)],
-        [Color(hex: 0x242019), Color(hex: 0x6F634F)],
-    ]
+    static let choices: CoverChoices = (try? BudgeerCore.shared.call("groupCover", "coverChoices", [Encodable]()))
+        ?? CoverChoices(emoji: [], colours: [], image: nil)
 
-    static func gradient(_ index: Int) -> LinearGradient {
-        LinearGradient(colors: colours[index % colours.count], startPoint: .topLeading, endPoint: .bottomTrailing)
+    /// The brand's colour (the first), for tiles that aren't a group's.
+    static var brand: LinearGradient { (choices.colours.first ?? CoverColour.coral).gradient }
+
+    /// A colour by its key, else the brand's.
+    static func colour(_ key: String) -> CoverColour {
+        choices.colours.first { $0.key == key } ?? choices.colours.first ?? CoverColour.coral
     }
 }
 
-/// A cover: the photo, or the emoji (or the people symbol) on its colour.
+/// The picker's choices (groupCover.coverChoices).
+struct CoverChoices: Codable, Sendable {
+    /// COVER_IMAGE: the image's side in px, the emoji's share of it, its type.
+    struct Drawing: Codable, Sendable {
+        let size: Double
+        let emoji: Double
+        let type: String
+        let ext: String
+    }
+    let emoji: [String]
+    let colours: [CoverColour]
+    let image: Drawing?
+}
+
+/// A cover colour (groupCover.js): its key and the gradient's two ends.
+struct CoverColour: Codable, Equatable, Sendable {
+    let key: String
+    let from: String
+    let to: String
+
+    /// The brand's own, when the core can't be asked.
+    static let coral = CoverColour(key: "coral", from: "", to: "")
+
+    /// Top-left to bottom-right.
+    var gradient: LinearGradient {
+        LinearGradient(colors: [Color(hexString: from) ?? Theme.Palette.brand500, Color(hexString: to) ?? Theme.Palette.amber400],
+                       startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+}
+
+/// A cover: the photo, or the emoji (or the people symbol) on its colour;
+/// square-cornered for the image to upload.
 struct GroupCoverView: View {
     var photo: UIImage? = nil
     var emoji: String? = nil
-    var colour = 0
+    var colour: CoverColour = GroupCoverArt.colour("")
     var size: CGFloat = 132
+    var rounded = true
 
     var body: some View {
         ZStack {
             if let photo {
                 Image(uiImage: photo).resizable().scaledToFill()
             } else {
-                GroupCoverArt.gradient(colour)
+                colour.gradient
                 if let emoji {
-                    Text(verbatim: emoji).font(.system(size: size * 0.46))
+                    Text(verbatim: emoji).font(.system(size: size * (GroupCoverArt.choices.image?.emoji ?? 0.46)))
                 } else {
                     Image(systemName: "person.2.fill")
                         .font(.system(size: size * 0.32, weight: .semibold))
@@ -68,7 +97,7 @@ struct GroupCoverView: View {
             }
         }
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: size * 0.26, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: rounded ? size * 0.26 : 0, style: .continuous))
     }
 }
 
@@ -80,11 +109,11 @@ struct NewGroupView: View {
     @State private var pick: PhotosPickerItem?
     @State private var photo: UIImage?
     @State private var emoji: String?
-    @State private var colour = 0
+    @State private var colour: String
     @FocusState private var typing: Bool
 
     init(model: NewGroupModel, onCreated: @escaping (String) -> Void, photo: UIImage? = nil, emoji: String? = nil,
-         colour: Int = 0) {
+         colour: String = "") {
         self.model = model
         self.onCreated = onCreated
         _photo = State(initialValue: photo)
@@ -134,12 +163,12 @@ struct NewGroupView: View {
 
     private var cover: some View {
         VStack(spacing: 14) {
-            GroupCoverView(photo: photo, emoji: emoji, colour: colour)
+            GroupCoverView(photo: photo, emoji: emoji, colour: GroupCoverArt.colour(colour))
                 .shadow(color: Color.black.opacity(0.12), radius: 18, x: 0, y: 10)
-                .accessibilityLabel(language.t("ios:native.newGroup.cover"))
+                .accessibilityLabel(language.t("groups:cover.title"))
             HStack(spacing: 10) {
                 PhotosPicker(selection: $pick, matching: .images) {
-                    Label(language.t("ios:native.newGroup.photo"), systemImage: "photo.on.rectangle")
+                    Label(language.t("groups:cover.photo"), systemImage: "photo.on.rectangle")
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 16)
                         .frame(minHeight: 40)
@@ -152,7 +181,7 @@ struct NewGroupView: View {
                         photo = nil
                         pick = nil
                     } label: {
-                        Label(language.t("ios:native.newGroup.removePhoto"), systemImage: "xmark")
+                        Label(language.t("groups:cover.reset"), systemImage: "xmark")
                             .labelStyle(.iconOnly)
                             .font(.subheadline.weight(.semibold))
                             .frame(width: 40, height: 40)
@@ -162,13 +191,13 @@ struct NewGroupView: View {
                 }
             }
             VStack(alignment: .leading, spacing: 10) {
-                Text(language.t("ios:native.newGroup.emoji"))
+                Text(language.t("groups:cover.emoji"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        ForEach(GroupCoverArt.emoji, id: \.self) { symbol in
+                        ForEach(GroupCoverArt.choices.emoji, id: \.self) { symbol in
                             Button {
                                 emoji = emoji == symbol ? nil : symbol
                                 photo = nil
@@ -192,22 +221,24 @@ struct NewGroupView: View {
                 }
                 .scrollClipDisabled()
                 HStack(spacing: 12) {
-                    ForEach(GroupCoverArt.colours.indices, id: \.self) { index in
+                    ForEach(GroupCoverArt.choices.colours, id: \.key) { choice in
+                        let picked = GroupCoverArt.colour(colour).key == choice.key
                         Button {
-                            colour = index
+                            colour = choice.key
                             photo = nil
                         } label: {
                             Circle()
-                                .fill(GroupCoverArt.gradient(index))
+                                .fill(choice.gradient)
                                 .frame(width: 32, height: 32)
-                                .overlay { Circle().stroke(NativeStyle.card, lineWidth: colour == index ? 3 : 0) }
+                                .overlay { Circle().stroke(NativeStyle.card, lineWidth: picked ? 3 : 0) }
                                 .overlay {
-                                    Circle().stroke(colour == index ? NativeStyle.tint : Color.clear, lineWidth: 2)
+                                    Circle().stroke(picked ? NativeStyle.tint : Color.clear, lineWidth: 2)
                                         .padding(-3)
                                 }
                         }
                         .buttonStyle(.plain)
-                        .accessibilityAddTraits(colour == index ? .isSelected : [])
+                        .accessibilityLabel(language.t("groups:cover.colours.\(choice.key)"))
+                        .accessibilityAddTraits(picked ? .isSelected : [])
                     }
                 }
                 .padding(.horizontal, 6)
@@ -356,7 +387,7 @@ struct NewGroupView: View {
     private func doneView(_ done: NewGroupModel.Done) -> some View {
         ScrollView {
             VStack(spacing: 18) {
-                GroupCoverView(photo: photo, emoji: emoji, colour: colour, size: 112)
+                GroupCoverView(photo: photo, emoji: emoji, colour: GroupCoverArt.colour(colour), size: 112)
                     .overlay(alignment: .bottomTrailing) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 34))
@@ -411,8 +442,8 @@ struct NewGroupView: View {
     // MARK: The picture as an image
 
     /// The cover to upload: the photo as a JPEG at most 1600 px across (the
-    /// bucket takes 5 MB), or the emoji on its colour as a 600 px PNG; none
-    /// when neither was picked.
+    /// bucket takes 5 MB), or the emoji on its colour as the website draws it
+    /// (groupCover.COVER_IMAGE: a 600 px PNG); none when neither was picked.
     private func coverFile() -> NewGroupModel.CoverFile? {
         if let photo {
             let side = max(photo.size.width, photo.size.height)
@@ -426,12 +457,12 @@ struct NewGroupView: View {
             guard let data = resized.jpegData(compressionQuality: 0.85) else { return nil }
             return NewGroupModel.CoverFile(data: data, contentType: "image/jpeg", ext: "jpg")
         }
-        guard let emoji else { return nil }
-        let renderer = ImageRenderer(content: GroupCoverView(emoji: emoji, colour: colour, size: 600)
-            .clipShape(Rectangle()))
+        guard let emoji, let image = GroupCoverArt.choices.image else { return nil }
+        let renderer = ImageRenderer(content: GroupCoverView(emoji: emoji, colour: GroupCoverArt.colour(colour),
+                                                             size: image.size, rounded: false))
         renderer.scale = 1
         guard let data = renderer.uiImage?.pngData() else { return nil }
-        return NewGroupModel.CoverFile(data: data, contentType: "image/png", ext: "png")
+        return NewGroupModel.CoverFile(data: data, contentType: image.type, ext: image.ext)
     }
 }
 

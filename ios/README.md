@@ -236,7 +236,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   category and Meal vouchers, a few rows each with See all.
 - **Activity**: the month at a glance (spent, income and net, a bar per
   day, the biggest day; rowParts.monthPulse), chips for the kind and the
-  categories, then the month's entries by day, each day in its own card
+  categories (and Groups: only your shares of group expenses, txnFilter's
+  shared filter), then the month's entries by day, each day in its own card
   with what it spent; a floating glass pill for the month; search over all
   history.
   Swipe left to Delete (after the web's question), right to Duplicate (Add
@@ -251,8 +252,9 @@ a core call (the web's function); Swift reads, lays out and draws.
   salary, net worth, the statement.
 - **Groups**: the tab shows the invites as banner cards (Accept /
   Decline), then the groups as a grid of square cards: the picture (or the
-  brand's gradient with the group's letters), the name, the avatars and
-  your balance as a chip in the corner; New group last. New group is one flow: a picture (a photo
+  group's own colour with its letters; groupCover.groupColour, as on the
+  website), the name, the avatars and your balance as a chip in the
+  corner; New group last. New group is one flow: a picture (a photo
   from the library, or an emoji on a colour, uploaded as the web's
   `uploadGroupImage` does), the name and currency, people to invite (by
   email, as the Members page sends them, and a share link), what happens

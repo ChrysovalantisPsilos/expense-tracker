@@ -58,7 +58,10 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Expenses split equally, by exact amounts, percentages, or shares
 - Add a group expense straight from the main Add form ("Who's it for?")
 - Balances, "simplify debts" settlement plan, recorded settlements
-- Your share auto-mirrored into your personal expenses
+- Your share auto-mirrored into your personal expenses; Transactions' filter
+  "Only my shares of group expenses" (and the app's Groups chip) lists just those
+- A group picture: a photo, or an emoji on a colour (uploaded as an image, the
+  same choices in the app); without one, each group keeps its own colour
 - Comments on expenses & settlements; immutable audit log
 - Leave with settled-up guard (+ silent leave); rejoin reclaims your history
 - Settle-up shortcuts: Revolut link, SEPA QR with exact amount, copy IBAN, debt nudges
@@ -160,6 +163,10 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
     it live; A's bell rings; A's personal expenses gain the mirrored share
     tagged with the group name.
 16. Unequal split: totals must equal the amount or the form blocks saving.
+16a. New group with an emoji cover → the group shows that picture on the list,
+    the group page and the app; Edit group → pick another emoji or a photo →
+    it replaces the old one. A group without a picture keeps the same colour
+    on every page and in the app.
 17. Comments: open an expense's comment thread on both accounts → messages
     appear live on the other screen.
 18. Settle up: use a "Suggested" transfer → if the payee saved payment

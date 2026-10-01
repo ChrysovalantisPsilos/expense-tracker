@@ -1,18 +1,18 @@
-import { parseTxnType, EMPTY_FILTERS } from './txnFilter.js'
+import { parseTxnType, EMPTY_FILTERS, SHARED_ONLY } from './txnFilter.js'
 import { NO_CATEGORY } from '../../shared/lib/categoryName.js'
 
 // The Transactions page's URL contract. Pure (no React/supabase) so it's
 // unit-testable. (Breakdown drill-downs open a category's own page instead —
 // see shared/lib/categoryLinks.js.)
 //
-//   /transactions?type=expense&category=<id|none>&from=YYYY-MM-DD&to=YYYY-MM-DD
+//   /transactions?type=expense&category=<id|none>&from=YYYY-MM-DD&to=YYYY-MM-DD&shared=1
 //
 // `type` and `q` (search text) as before, plus every advanced filter, so a
 // filtered ledger survives refresh, back/forward and shared links.
 // `category=none` is NO_CATEGORY (see txnFilter.js).
 
 // Filter key → URL param name.
-const PARAM = { categoryId: 'category', from: 'from', to: 'to', min: 'min', max: 'max' }
+const PARAM = { categoryId: 'category', from: 'from', to: 'to', min: 'min', max: 'max', shared: 'shared' }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const isIsoDate = (v) => {
@@ -28,7 +28,7 @@ const isAmount = (v) => /^\d*\.?\d*$/.test(v) && v !== '.'
 // (an invalid date would make the server reject the whole request).
 const VALID = {
   categoryId: (v) => v === NO_CATEGORY || UUID.test(v),
-  from: isIsoDate, to: isIsoDate, min: isAmount, max: isAmount,
+  from: isIsoDate, to: isIsoDate, min: isAmount, max: isAmount, shared: (v) => v === SHARED_ONLY,
 }
 
 // URLSearchParams → { type, text, filters } (filters shaped like EMPTY_FILTERS).

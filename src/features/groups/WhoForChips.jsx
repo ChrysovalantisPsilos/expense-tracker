@@ -95,7 +95,7 @@ export default function WhoForChips({ groups, value, onChange, memory }) {
         )} />
         {groups.map((g) => (
           <Chip key={g.id} {...getRadioProps({ value: g.id })} label={g.name}
-            icon={<GroupMark name={g.name} src={g.image_url} size={28} />} />
+            icon={<GroupMark name={g.name} src={g.image_url} colourKey={g.id} size={28} />} />
         ))}
       </Flex>
     </Box>

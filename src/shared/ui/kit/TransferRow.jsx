@@ -26,10 +26,12 @@ export default function TransferRow({ from, to, amount, amountTone = 'accent', a
   )
 }
 
-function Person({ name, src, highlight }) {
+// `avatarName` draws the circle when the name shown isn't the person's own
+// ("You" shows your initials).
+function Person({ name, avatarName, src, highlight }) {
   return (
     <HStack spacing={2} minW={0} maxW="100%">
-      <UserAvatar name={name} src={src} highlight={highlight} size="xs" />
+      <UserAvatar name={avatarName ?? name} src={src} highlight={highlight} size="xs" />
       <Text fontSize="sm" fontWeight="600" minW={0} overflowWrap="anywhere">{name}</Text>
     </HStack>
   )

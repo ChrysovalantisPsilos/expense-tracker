@@ -38,10 +38,6 @@ export default {
       getsBack: 'Παίρνει πίσω',
     },
     newGroup: {
-      cover: 'Εικόνα ομάδας',
-      photo: 'Διάλεξε φωτογραφία',
-      removePhoto: 'Αφαίρεση φωτογραφίας',
-      emoji: 'Ή διάλεξε ένα emoji και ένα χρώμα',
       shareLink: 'Φτιάξε και σύνδεσμο κοινοποίησης',
       next: {
         title: 'Τι γίνεται μετά',

@@ -9,6 +9,7 @@ import {
   stillInNames,
 } from '../src/features/groups/groupFormat.js'
 import { avatarColor } from '../src/shared/ui/avatarLook.js'
+import { groupColour } from '../src/features/groups/groupCover.js'
 
 const NOW = new Date('2026-09-20T12:00:00Z')
 const MEMBERS = [
@@ -41,6 +42,7 @@ test('avatarStackParts / groupCardParts: the groups list\'s card', () => {
   const card = groupCardParts(group, summary, 'u1')
   assert.equal(card.members, '3 members')
   assert.equal(card.initials, 'L')
+  assert.deepEqual(card.colour, groupColour('g1'))
   assert.equal(groupCardParts({ ...group, name: 'Flat 3B' }, summary, 'u1').initials, 'F3')
   assert.equal(groupCardParts({ ...group, name: 'Lisbon trip' }, summary, 'u1').initials, 'LT')
   assert.deepEqual(card.balance, { label: 'You’re owed', amount: '€25.00', tone: 'positive' })
@@ -63,6 +65,8 @@ test('balancesParts: your balance, everyone\'s, the line that matters, the plan'
   const mine = p.plan.find((x) => x.from.id === 'm2')
   assert.deepEqual([mine.from.name, mine.from.highlight, mine.from.src, mine.to.name, mine.amount, mine.tone],
     ['You', true, 'https://x/s.png', 'Alex', '€10.00', 'negative'])
+  // "You" in words, your own initials in the circle.
+  assert.deepEqual([mine.from.initials, mine.from.avatarName, mine.to.initials], ['S', 'Sofia', 'A'])
   // Settled, or alone in the group: no tiles, no plan.
   const alone = balancesParts({ balances: new Map(), members: MEMBERS.slice(0, 1), myMember: MEMBERS[0], myUserId: 'u1', currency: 'EUR' })
   assert.deepEqual([alone.mine, alone.tiles, alone.plan, alone.planSubtitle],
@@ -124,6 +128,6 @@ test('groupShareText / inviteRowParts: the shared summary in the group currency,
   })
   assert.equal(text.split('\n')[0], 'Lisbon: €30.00 spent in total')
   assert.match(text, /• Sofia owes Alex €10\.00/)
-  assert.deepEqual(inviteRowParts({ invite_id: 'i1', group_name: 'Flat 3B', invited_by: 'Sam' }),
-    { id: 'i1', name: 'Flat 3B', text: 'Sam invited you' })
+  assert.deepEqual(inviteRowParts({ invite_id: 'i1', group_id: 'g1', group_name: 'Flat 3B', invited_by: 'Sam' }),
+    { id: 'i1', groupId: 'g1', name: 'Flat 3B', text: 'Sam invited you' })
 })

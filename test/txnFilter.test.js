@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  parseTxnType, isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS, ledgerRead,
+  parseTxnType, isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS, ledgerRead, SHARED_ONLY, isSharedOnly,
+  withSharedOnly,
 } from '../src/features/transactions/txnFilter.js'
 import { NO_CATEGORY } from '../src/shared/lib/categoryName.js'
 
@@ -44,6 +45,17 @@ test('amount range compares in the base currency', () => {
   assert.deepEqual(filterTransactions(rows, { min: '10' }, 'EUR').map((r) => r.id), [2, 4])
   assert.deepEqual(filterTransactions(rows, { max: '5' }, 'EUR').map((r) => r.id), [1, 3])
   assert.deepEqual(filterTransactions(rows, { min: '6', max: '16' }, 'EUR').map((r) => r.id), [4])
+})
+
+test('shared keeps only your shares of group expenses, and counts as a filter', () => {
+  const rows = [row({ id: 1 }), row({ id: 2, group_expense_id: 'ge1' }), row({ id: 3, group_expense_id: 'ge2', description: 'Taxi' })]
+  assert.deepEqual(filterTransactions(rows, { shared: SHARED_ONLY }, 'EUR').map((r) => r.id), [2, 3])
+  assert.deepEqual(filterTransactions(rows, { shared: SHARED_ONLY, text: 'taxi' }, 'EUR').map((r) => r.id), [3])
+  assert.equal(filterTransactions(rows, { shared: '' }, 'EUR').length, 3)
+  assert.equal(isFiltering('', { ...EMPTY_FILTERS, shared: SHARED_ONLY }), true)
+  const on = withSharedOnly(EMPTY_FILTERS, true)
+  assert.deepEqual([on.shared, isSharedOnly(on), isSharedOnly(withSharedOnly(on, false)), isSharedOnly(null)],
+    [SHARED_ONLY, true, false, false])
 })
 
 test('netBaseMinor adds income and subtracts expenses', () => {

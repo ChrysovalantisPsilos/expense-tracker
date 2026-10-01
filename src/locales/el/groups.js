@@ -309,6 +309,21 @@ export default {
     renamed: 'Η ομάδα μετονομάστηκε',
     name: 'Όνομα ομάδας',
   },
+  cover: {
+    title: 'Εικόνα ομάδας',
+    photo: 'Διάλεξε φωτογραφία',
+    reset: 'Κράτα την εικόνα όπως ήταν',
+    emoji: 'Ή διάλεξε ένα emoji και ένα χρώμα',
+    emojiLabel: 'Emoji {{emoji}}',
+    colours: {
+      coral: 'Κοραλί',
+      sunset: 'Ηλιοβασίλεμα',
+      teal: 'Πετρόλ',
+      blue: 'Μπλε',
+      green: 'Πράσινο',
+      purple: 'Μωβ',
+    },
+  },
   create: {
     title: 'Νέα ομάδα',
     submit: 'Δημιουργία ομάδας',

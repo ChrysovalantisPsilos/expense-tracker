@@ -81,7 +81,7 @@ struct LedgerFigures: Codable, Equatable, Sendable {
     let pulse: MonthPulse
 
     /// The advanced filters, all empty (txnFilter.EMPTY_FILTERS): the app searches by text.
-    static let noFilters: JSONValue = ["categoryId": "", "from": "", "to": "", "min": "", "max": ""]
+    static let noFilters: JSONValue = ["categoryId": "", "from": "", "to": "", "min": "", "max": "", "shared": ""]
 
     /// - rows: my_transactions' answer for the view (the period's, or all history for a search)
     /// - kind: 'expense', 'income', or nil for all

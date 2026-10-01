@@ -91,7 +91,7 @@ struct InviteBanner: View {
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(Color.white)
                     .frame(width: 46, height: 46)
-                    .background(GroupCoverArt.gradient(0), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .background(GroupCoverArt.brand, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(invite.name).font(.headline)
                     Text(invite.text).font(.subheadline).foregroundStyle(.secondary)
@@ -125,8 +125,8 @@ struct InviteBanner: View {
     }
 }
 
-/// A group's picture filling its shape: the photo, or the brand's gradient
-/// with the group's letters, raised by `lift`.
+/// A group's picture filling its shape: the photo, or the group's own colour
+/// (groupCover.groupColour) with its letters, raised by `lift`.
 struct GroupCover: View {
     let card: GroupCard
     let letters: CGFloat
@@ -134,7 +134,7 @@ struct GroupCover: View {
 
     var body: some View {
         ZStack {
-            GroupCoverArt.gradient(0)
+            card.colour.gradient
             Text(verbatim: card.initials)
                 .font(.custom("Poppins-Bold", size: letters))
                 .foregroundStyle(Color.white.opacity(0.95))
@@ -239,15 +239,16 @@ struct NewGroupTile: View {
     }
 }
 
-/// A group's picture as a tile: the owner's photo, or the brand's gradient
-/// with people.
+/// A group's picture as a tile: the owner's photo, or people on the group's
+/// own colour.
 struct GroupPicture: View {
-    var imageUrl: String? = nil
-    var size: CGFloat = 40
+    let imageUrl: String?
+    let colour: CoverColour
+    let size: CGFloat
 
     var body: some View {
         ZStack {
-            GroupCoverArt.gradient(0)
+            colour.gradient
             Image(systemName: "person.2.fill")
                 .font(.system(size: size * 0.4, weight: .semibold))
                 .foregroundStyle(Color.white)
