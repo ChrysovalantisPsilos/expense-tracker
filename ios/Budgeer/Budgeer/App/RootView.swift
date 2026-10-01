@@ -1,7 +1,10 @@
 // What the window shows for each session state (SessionStore): a spinner
 // while the stored session is read or the legal check runs, the sign-in
-// screen (with Sign up and Forgot password), the legal gate, or the app's tabs (under the Face ID lock when
-// it's on). An invite link the app is opened with waits for the tabs.
+// screen (with Sign up and Forgot password), the legal gate, the new password
+// a reset link asks for, or the app's tabs (under the Face ID lock when it's
+// on). A link the app is opened with (the website's Universal Links, or
+// budgeer://) goes where it leads (AppContainer.open): an invite or a page
+// waits for the tabs, an auth email's link signs in.
 import SwiftUI
 
 @MainActor
@@ -22,6 +25,8 @@ struct RootView: View {
                 LegalGateView(status: status, session: session, site: container.config.siteURL)
             case .legalCheckFailed(_, let message):
                 LegalCheckErrorView(message: message, session: session)
+            case .recovering:
+                ResetPasswordHost(session: session)
             case .ready(let user):
                 ZStack {
                     AppFrame(container: container, user: user, lock: container.lock)
@@ -33,13 +38,31 @@ struct RootView: View {
             }
         }
         .task { await session.start() }
-        // budgeer://join/<token>: shown on the Groups tab once signed in.
-        .onOpenURL { url in _ = container.joinInbox.open(url) }
+        // budgeer://join/<token>, and the website's links (Universal Links
+        // reach SwiftUI as an opened URL or as a browsing activity).
+        .onOpenURL { url in container.open(url) }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+            if let url = activity.webpageURL { container.open(url) }
+        }
         // Settings › Appearance: this device's light, dark or the phone's.
         .onChange(of: appearance, initial: true) { _, pref in AppAppearance.apply(pref) }
         .onChange(of: session.state) { _, state in
             if state == .signedOut { Task { await container.signedOut() } }
         }
+    }
+}
+
+/// The new password a reset link asks for (ResetPasswordModel).
+@MainActor
+private struct ResetPasswordHost: View {
+    let session: SessionStore
+    @State private var model: ResetPasswordModel?
+
+    var body: some View {
+        Group {
+            if let model { ResetPasswordView(model: model) } else { LoadingView() }
+        }
+        .onAppear { if model == nil { model = ResetPasswordModel(session: session) } }
     }
 }
 

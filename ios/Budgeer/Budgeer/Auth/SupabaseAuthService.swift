@@ -11,9 +11,11 @@ import Supabase
 
 final class SupabaseAuthService: AuthService {
     private let client: SupabaseClient
+    private let passkeys: PasskeyServer
 
-    init(client: SupabaseClient) {
+    init(client: SupabaseClient, config: AppConfig) {
         self.client = client
+        passkeys = PasskeyServer(config: config)
     }
 
     func currentUser() async -> AuthUser? {
@@ -56,8 +58,51 @@ final class SupabaseAuthService: AuthService {
             return try await signInWithGoogle()
         case .apple(let credential):
             return try await signInWithApple(credential)
-        case .passkey:
-            throw SignInError.unsupported(method)
+        case .passkey(let answer):
+            return try await signInWithPasskey(answer)
+        }
+    }
+
+    func passkeyChallenge() async throws -> PasskeyChallenge {
+        try await rejecting { try await passkeys.signInChallenge() }
+    }
+
+    /// The sheet's answer checked by Supabase Auth, and its session kept as
+    /// any other sign-in's (the Keychain, refreshed by the client).
+    private func signInWithPasskey(_ answer: PasskeyCredential) async throws -> AuthUser {
+        try await rejecting {
+            let tokens = try await passkeys.signIn(answer)
+            let session = try await client.auth.setSession(accessToken: tokens.accessToken, refreshToken: tokens.refreshToken)
+            return AuthUser(session.user)
+        }
+    }
+
+    func verifyEmailLink(_ link: EmailLink) async throws -> AuthUser {
+        guard let type = EmailOTPType(rawValue: link.type) else {
+            throw SignInError.rejected(code: "otp_expired", message: "Not an email link this app knows")
+        }
+        return try await rejecting {
+            AuthUser(try await client.auth.verifyOTP(tokenHash: link.tokenHash, type: type).user)
+        }
+    }
+
+    func setNewPassword(_ password: String) async throws {
+        _ = try await rejecting { try await client.auth.update(user: UserAttributes(password: password)) }
+    }
+
+    /// Supabase Auth's refusals as SignInError (its code and message), a
+    /// request that never got an answer as a network error.
+    private func rejecting<T>(_ work: () async throws -> T) async throws -> T {
+        do {
+            return try await work()
+        } catch let error as AuthError {
+            throw SignInError.rejected(code: error.errorCode.rawValue, message: error.message)
+        } catch let error as ServerError {
+            throw SignInError.rejected(code: error.code, message: error.message)
+        } catch let error as SignInError {
+            throw error
+        } catch {
+            throw SignInError.network(error.localizedDescription)
         }
     }
 

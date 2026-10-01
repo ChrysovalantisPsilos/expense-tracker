@@ -116,11 +116,6 @@ final class AppleAuthorizer: NSObject, ASAuthorizationControllerDelegate, ASAuth
     }
 
     nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        MainActor.assumeIsolated {
-            UIApplication.shared.connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .flatMap(\.windows)
-                .first { $0.isKeyWindow } ?? ASPresentationAnchor()
-        }
+        MainActor.assumeIsolated { keyWindowAnchor() }
     }
 }

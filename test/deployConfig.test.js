@@ -38,7 +38,7 @@ test('vercel.json: cache rules (hashed assets immutable; shell, worker and manif
   assert.equal(header(rule('/(sw\\.js|theme-boot\\.js)'), 'Cache-Control'), 'no-cache, max-age=0, must-revalidate')
   assert.match(header(rule('/(index\\.html|manifest\\.webmanifest)'), 'Cache-Control'), /max-age=0, must-revalidate/)
   // SPA routes (rewritten to index.html) use the rewrite's own source.
-  const spa = vercel.rewrites[0].source
+  const spa = vercel.rewrites.find((r) => r.destination === '/index.html').source
   assert.match(header(rule(spa), 'Cache-Control'), /max-age=0, must-revalidate/)
   // No two Cache-Control rules share a source.
   const sources = vercel.headers.filter((r) => header(r, 'Cache-Control')).map((r) => r.source)

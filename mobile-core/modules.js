@@ -120,11 +120,13 @@ export const CORE_MODULES = {
   legal: 'src/features/privacy/legal.js',
   whatsNewMath: 'src/features/whatsnew/whatsNewMath.js',
   // A category page's links (Home's bars, the budgets), the sign-up and reset
-  // forms' checks, the "Check your inbox" wait, the setup wizard and the
-  // tour's stops, and Help & FAQ.
+  // forms' checks, the "Check your inbox" wait, an auth email's link (opened
+  // in the app as a Universal Link) and its expired page, the setup wizard
+  // and the tour's stops, and Help & FAQ.
   categoryLinks: 'src/shared/lib/categoryLinks.js',
   authChecks: 'src/features/auth/authChecks.js',
   confirmWait: 'src/features/auth/confirmWait.js',
+  confirmLink: 'src/features/auth/confirmLink.js',
   onboardingMath: 'src/features/onboarding/onboardingMath.js',
   tourSteps: 'src/features/onboarding/tourSteps.js',
   faqContent: 'src/features/help/faqContent.js',

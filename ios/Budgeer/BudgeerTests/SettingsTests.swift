@@ -165,9 +165,9 @@ final class SettingsModelTests: XCTestCase {
         let fake = FakeSecurity()
         let model = security(store(), fake)
         await model.load()
-        XCTAssertEqual(model.methods.map(\.key), ["password", "google", "apple"])
+        XCTAssertEqual(model.methods.map(\.key), ["password", "google", "apple", "passkeys"])
         XCTAssertEqual(model.methods.first?.detail, "sam@example.com")
-        XCTAssertEqual(model.methods.map(\.connected), [true, false, false])
+        XCTAssertEqual(model.methods.map(\.connected), [true, false, false, false])
         XCTAssertTrue(model.hasPassword)
         XCTAssertNil(model.reauthText) // signed in a minute ago
         XCTAssertNotNil(model.blocks["google"]) // nothing to disconnect
@@ -229,7 +229,7 @@ final class SettingsModelTests: XCTestCase {
         let mayConnect = await model.mayConnect()
         XCTAssertTrue(mayConnect)
         await model.connectApple(AppleCredential(idToken: "tok", nonce: "n"))
-        XCTAssertEqual(model.methods.map(\.connected), [true, false, true])
+        XCTAssertEqual(model.methods.map(\.connected), [true, false, true, false])
         XCTAssertEqual(model.methods[2].detail, "x7k2@privaterelay.appleid.com")
         XCTAssertEqual(model.message, BudgeerCore.shared.text("settings:signIn.apple.linkedBody"))
         XCTAssertNil(model.blocks["apple"])

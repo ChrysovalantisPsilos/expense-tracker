@@ -1,8 +1,10 @@
 // Sign-in, the session and the legal check, behind one protocol so the view
 // models can be tested with a fake. Email and password, Google (through the
-// system's web sheet, as the web's OAuth redirect) and Apple (the system's
-// Sign in with Apple sheet, its identity token exchanged for a session) are
-// wired; passkeys are a case the service refuses (they stay the website's).
+// system's web sheet, as the web's OAuth redirect), Apple (the system's
+// Sign in with Apple sheet, its identity token exchanged for a session) and
+// a passkey (the server's challenge answered by the system's passkey sheet,
+// Passkeys.swift), and an auth email's link opened in the app (its token
+// verified, as the web's /auth/confirm page does).
 import Foundation
 
 /// What Sign in with Apple answered: its identity token, the nonce whose
@@ -19,7 +21,15 @@ enum SignInMethod: Sendable, Equatable {
     case password(email: String, password: String)
     case google
     case apple(AppleCredential)
-    case passkey
+    /// The passkey sheet's answer to the server's sign-in challenge.
+    case passkey(PasskeyCredential)
+}
+
+/// An auth email's link (confirmLink.parseConfirmLink): its token hash and
+/// type (signup, email, magiclink, recovery, email_change).
+struct EmailLink: Decodable, Equatable, Sendable {
+    let tokenHash: String
+    let type: String
 }
 
 struct AuthUser: Equatable, Sendable {
@@ -65,6 +75,13 @@ protocol AuthService: Sendable {
     /// The user after each sign-in and sign-out, nil when signed out.
     var userChanges: AsyncStream<AuthUser?> { get }
     func signIn(_ method: SignInMethod) async throws -> AuthUser
+    /// A passkey sign-in's first half: the server's challenge for the sheet.
+    func passkeyChallenge() async throws -> PasskeyChallenge
+    /// An auth email's link: its token verified for a session (verifyOtp, as
+    /// the web's ConfirmLink); a reset link's session then sets a new password.
+    func verifyEmailLink(_ link: EmailLink) async throws -> AuthUser
+    /// The new password of a reset (the recovery session's updateUser).
+    func setNewPassword(_ password: String) async throws
     func signOut() async throws
     /// my_legal_status for the signed-in user.
     func legalStatus() async throws -> LegalStatus

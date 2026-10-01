@@ -1,9 +1,10 @@
 // Sign-in, the web's Login page's words and order under the wordmark (its
 // mark drawing itself as the website's loader does): email and password, then
 // "or continue with", the Google button (Google's own look: white, the
-// four-colour G, "Sign in with Google") and Apple's (its own button: black,
-// or white in dark mode); Forgot password and Sign up open their own pages
-// (AuthFlowView). Passkeys stay the website's.
+// four-colour G, "Sign in with Google"), Apple's (its own button: black,
+// or white in dark mode) and "Log in with a passkey" (the system's passkey
+// sheet over the website's passkeys); Forgot password and Sign up open their
+// own pages (AuthFlowView).
 import BudgeerCore
 import SwiftUI
 
@@ -17,8 +18,10 @@ final class SignInViewModel {
     private(set) var googleBusy = false
     /// Apple's answer is being exchanged for a session.
     private(set) var appleBusy = false
+    /// The passkey sheet is open (or its answer is being checked).
+    private(set) var passkeyBusy = false
 
-    private var busy: Bool { submitting || googleBusy || appleBusy }
+    var busy: Bool { submitting || googleBusy || appleBusy || passkeyBusy }
     /// A "ns:key" of the message to show, or nil.
     private(set) var errorKey: String?
 
@@ -68,6 +71,24 @@ final class SignInViewModel {
         }
     }
 
+    /// "Log in with a passkey": the server's challenge, the system's sheet
+    /// (any passkey this site has on the phone or a nearby device), then the
+    /// session; the legal check follows as for the others. Closing the
+    /// sheet is no error; anything else is the web's "Passkey sign-in failed".
+    func signInWithPasskey(session: SessionStore, sheet: PasskeySheet) async {
+        guard !busy else { return }
+        passkeyBusy = true
+        errorKey = nil
+        defer { passkeyBusy = false }
+        do {
+            let challenge = try await session.passkeyChallenge()
+            let answer = try await sheet.usePasskey(challenge.options)
+            try await session.signIn(with: .passkey(PasskeyCredential(challengeId: challenge.id, credential: answer)))
+        } catch {
+            if !isPasskeyCancel(error) { errorKey = "auth:login.passkeyFailed" }
+        }
+    }
+
     /// Apple's sheet failed (not closed by the person: that's no error).
     func appleFailed() {
         errorKey = "common:errors.generic"
@@ -100,6 +121,7 @@ struct SignInView: View {
     var onForgot: (() -> Void)? = nil
     @Environment(AppLanguage.self) private var language
     @State private var showPassword = false
+    @State private var passkeys = PasskeyAuthorizer()
     @FocusState private var focus: Field?
 
     private enum Field { case email, password }
@@ -137,7 +159,7 @@ struct SignInView: View {
                 }
                 .nativeGlassButton(prominent: true)
                 // As on the web, Log in stays live; an empty form simply isn't sent.
-                .disabled(model.submitting || model.googleBusy || model.appleBusy)
+                .disabled(model.busy)
                 .accessibilityIdentifier("signin.submit")
                 AuthDivider()
                 Button {
@@ -149,16 +171,28 @@ struct SignInView: View {
                     }
                 }
                 .buttonStyle(GoogleButtonStyle())
-                .disabled(model.submitting || model.googleBusy || model.appleBusy)
+                .disabled(model.busy)
                 .accessibilityIdentifier("signin.google")
                 AppleSignInButton { credential in
                     Task { await model.signInWithApple(credential, session: session) }
                 } onFailure: { error in
                     if !isAppleCancel(error) { model.appleFailed() }
                 }
-                .disabled(model.submitting || model.googleBusy || model.appleBusy)
+                .disabled(model.busy)
                 .overlay { if model.appleBusy { ProgressView() } }
                 .accessibilityIdentifier("signin.apple")
+                Button {
+                    Task { await model.signInWithPasskey(session: session, sheet: passkeys) }
+                } label: {
+                    HStack(spacing: 8) {
+                        if model.passkeyBusy { ProgressView() } else { Image(systemName: "person.badge.key.fill") }
+                        Text(language.t("auth:login.passkey"))
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .nativeGlassButton()
+                .disabled(model.busy)
+                .accessibilityIdentifier("signin.passkey")
                 if let onSignUp {
                     Button(action: onSignUp) {
                         SwitchLine(nodes: (try? BudgeerCore.shared.json("translate", "parseRich", [language.t("auth:login.switch")]))

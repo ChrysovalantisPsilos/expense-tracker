@@ -1,8 +1,9 @@
 // Everything the app makes once from its configuration: the Supabase
 // client, the auth service behind the session store (and Settings › Security's
 // account calls), the offline cache, the live-refresh hub and its realtime
-// feed, the Face ID lock, a join link waiting to be shown, and the data
-// layer every screen reads through (SupabaseStore). Views get what they
+// feed, the Face ID lock, a join link waiting to be shown, where an opened
+// link leads (AppLinks), and the data layer every screen reads through
+// (SupabaseStore). Views get what they
 // need from here; nothing else makes a client.
 import Foundation
 import Supabase
@@ -22,7 +23,7 @@ final class AppContainer {
     let access: AccountAccess
     /// The Face ID lock (this device's choice).
     let lock = AppLock()
-    /// An invite link the app was opened with (budgeer://join/<token>).
+    /// An invite link the app was opened with (budgeer://join/<token>, or the website's /join/<token>).
     let joinInbox = JoinInbox()
     /// Push on this iPhone (the permission, the device token on the server).
     let push: PushModel
@@ -30,7 +31,7 @@ final class AppContainer {
     init(config: AppConfig) {
         self.config = config
         client = SupabaseClientProvider.make(config)
-        session = SessionStore(auth: SupabaseAuthService(client: client))
+        session = SessionStore(auth: SupabaseAuthService(client: client, config: config))
         security = SupabaseAccountSecurity(client: client, config: config)
         access = SupabaseAccountAccess(client: client)
         cache = QueryCache.standard()
@@ -46,6 +47,18 @@ final class AppContainer {
         self.push = push
         // Signing out forgets this iPhone's token while the session still can.
         session.beforeSignOut = { await push.forget() }
+    }
+
+    /// A link the app was opened with (the website's, or budgeer://): an
+    /// invite waits for the Groups tab, a page for the signed-in frame (as a
+    /// tapped notification's), an auth email's link signs in.
+    func open(_ url: URL) {
+        switch AppLink.of(url, hosts: config.linkHosts) {
+        case .join(let token): joinInbox.token = token
+        case .page(let path): PushInbox.shared.path = path
+        case .email(let link): Task { await session.openEmailLink(link) }
+        case nil: break
+        }
     }
 
     /// Signed out: stop the realtime feed and forget the offline copies, so

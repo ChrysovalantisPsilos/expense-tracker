@@ -3,7 +3,16 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/((?!\\.well-known/).*)",
+      "has": [{ "type": "host", "value": "budgeer.com" }],
+      "destination": "https://www.budgeer.com/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
+    { "source": "/apple-app-site-association", "destination": "/.well-known/apple-app-site-association" },
     { "source": "/((?!assets/|.*\\..*).*)", "destination": "/index.html" }
   ],
   "headers": [
@@ -34,6 +43,20 @@
       "source": "/(sw\\.js|theme-boot\\.js)",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
+      "source": "/apple-app-site-association",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
       ]
     },
     {

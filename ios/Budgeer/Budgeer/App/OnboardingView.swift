@@ -1,8 +1,8 @@
 // The setup wizard (WelcomeModel), as the web's OnboardingWizard: a new
 // account's four steps under the mark and a progress bar. Welcome (your
 // name and currency), Split costs with friends (a first group, optional),
-// Stay in the loop (notifications, as Settings' push switch; the web's
-// passkey offer is left out, passkeys being the website's), and the tour (Start tour or Skip tour). Every step can be
+// Stay in the loop (notifications, as Settings' push switch, and Add a
+// passkey, as Settings › Security's Add), and the tour (Start tour or Skip tour). Every step can be
 // skipped, and closing it at any point stamps it done so it never asks again.
 import SwiftUI
 
@@ -109,6 +109,18 @@ struct OnboardingView: View {
             .nativeGlassButton()
             .disabled(model.pushDone || model.pushOptIn == nil)
             .accessibilityIdentifier("onboarding.push")
+            if model.passkeyKit != nil {
+                Button {
+                    Task { await model.addPasskey() }
+                } label: {
+                    Label(language.t(model.passkeyDone ? "settings:passkeys.added" : "onboarding:wizard.loop.addPasskey"),
+                          systemImage: "person.badge.key")
+                        .frame(maxWidth: .infinity)
+                }
+                .nativeGlassButton()
+                .disabled(model.passkeyDone || model.busy)
+                .accessibilityIdentifier("onboarding.passkey")
+            }
             Text(language.t("onboarding:wizard.loop.later")).font(.footnote).foregroundStyle(.secondary)
         default:
             heading("safari.fill", "onboarding:wizard.tour.title", "onboarding:wizard.tour.lead")

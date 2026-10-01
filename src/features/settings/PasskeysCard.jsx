@@ -5,12 +5,8 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
-import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-
-// The day a passkey was added: 2026-09-26 in English (as before), 26/09/2026 in Greek.
-const addedDay = (ts) => new Date(ts).toLocaleDateString(intlLocale('en-CA'),
-  { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'UTC' })
+import { passkeyRows } from './authMethods.js'
 
 // List / add / remove passkeys. `passkeys` is SecuritySettings' usePasskeys()
 // (shared with the sign-in methods list). Renders nothing when this browser
@@ -57,9 +53,8 @@ export default function PasskeysCard({ passkeys: query }) {
       {passkeys.length === 0 ? (
         <Text fontSize="sm" color="text.muted">{t('passkeys.empty')}</Text>
       ) : (
-        passkeys.map((pk) => (
-          <ItemRow key={pk.id} icon={KeyRound} title={pk.friendly_name || t('passkeys.fallbackName')}
-            meta={pk.created_at ? t('passkeys.addedOn', { date: addedDay(pk.created_at) }) : undefined}
+        passkeyRows(passkeys).map((pk) => (
+          <ItemRow key={pk.id} icon={KeyRound} title={pk.name} meta={pk.meta ?? undefined}
             actions={[{ label: t('passkeys.remove'), icon: Trash2, onClick: () => removePasskey(pk.id), danger: true }]} />
         ))
       )}

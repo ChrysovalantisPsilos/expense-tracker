@@ -3,9 +3,12 @@
 // setup wizard for a new account (OnboardingWizard: profiles.onboarded_at),
 // the app tour picking up when it was never finished (profiles.tour_done),
 // or else the once-per-release What's new story (WhatsNewPrompt:
-// profiles.whats_new_seen, marked seen when it opens). Every rule and word
-// is the core's (onboardingMath, whatsNewMath); the writes are the web's
-// (updateProfile, create_group, seed_default_categories).
+// profiles.whats_new_seen, marked seen when it opens), then the ask to add a
+// passkey for an account without one (PasskeyPrompt: once per session, not
+// once "Don't remind me again" is set, profiles.passkey_reminder_off; never on
+// the demo login). The wizard offers a passkey too. Every rule and word is
+// the core's (onboardingMath, whatsNewMath, authMethods); the writes are the
+// web's (updateProfile, create_group, seed_default_categories).
 import Foundation
 import Observation
 import BudgeerCore
@@ -37,6 +40,12 @@ struct WhatsNewStory: Decodable, Equatable, Identifiable {
 /// web's enablePush answers): PushModel.optIn, as Settings' push switch.
 typealias PushOptIn = @MainActor () async -> String
 
+/// What the welcome adds a passkey with: the account's calls and the system's sheet.
+struct PasskeyKit {
+    let security: AccountSecurity
+    let sheet: PasskeySheet
+}
+
 @MainActor
 @Observable
 final class WelcomeModel {
@@ -66,6 +75,18 @@ final class WelcomeModel {
     /// The push opt-in, when this build has one (nil: the button is off, as
     /// on a browser without push).
     var pushOptIn: PushOptIn?
+    /// Passkeys, when this build offers them (nil: no passkey button or ask,
+    /// as on a browser without WebAuthn).
+    var passkeyKit: PasskeyKit?
+    /// The wizard's "Add a passkey": done (it shows "Passkey added").
+    private(set) var passkeyDone = false
+
+    /// The ask to add a passkey is up (after What's new, if that showed).
+    var passkeyAsk = false
+    /// Its "Don't remind me again".
+    var passkeyNever = false
+    /// Why the ask's passkey wasn't made.
+    private(set) var passkeyAskProblem: String?
 
     private var profile: JSONValue = [:]
     private var greeted = false
@@ -108,6 +129,40 @@ final class WelcomeModel {
             return
         }
         await whatsNew()
+        await offerPasskey()
+    }
+
+    /// The web's PasskeyPrompt: an account without a passkey, reminders on,
+    /// not the shared demo login, and the list readable (passkeys are on).
+    private func offerPasskey() async {
+        guard let kit = passkeyKit, profile["passkey_reminder_off"]?.boolValue != true,
+              (try? core.call("demoAccount", "isDemoAccount", [profile]) as Bool) != true,
+              let list = try? await kit.security.passkeys() else { return }
+        let items: [JSONValue]? = try? core.call("authMethods", "toPasskeyList", [list])
+        if items?.isEmpty == true { passkeyAsk = true }
+    }
+
+    /// The ask's "Create passkey": made, the ask closes; else why, in place.
+    func createAskedPasskey() async {
+        guard let kit = passkeyKit else { return }
+        busy = true
+        defer { busy = false }
+        switch await kit.security.addPasskey(sheet: kit.sheet, core: core, now: now()) {
+        case .added:
+            passkeyAskProblem = nil
+            await closePasskeyAsk()
+        case .cancelled:
+            break
+        case .failed(let why):
+            passkeyAskProblem = "\(core.text("settings:passkeyPrompt.createFailed")) · \(why)"
+        }
+    }
+
+    /// "Not now" (or the ask swiped away): with "Don't remind me again", the
+    /// account's reminder off (best effort, as on the web).
+    func closePasskeyAsk() async {
+        passkeyAsk = false
+        if passkeyNever { try? await data.profile.updateProfile(["passkey_reminder_off": true]) }
     }
 
     /// whatsNewMath.storyFor over the profile's seen id (absent: unknown, so
@@ -183,6 +238,23 @@ final class WelcomeModel {
         case "unsupported": message = core.text("onboarding:wizard.loop.iphone")
         case "subscribed": message = core.text("onboarding:wizard.loop.on")
         default: message = nil
+        }
+    }
+
+    /// The loop step's "Add a passkey" (the web's wizard: the same as Settings › Security's Add).
+    func addPasskey() async {
+        guard let kit = passkeyKit else { return }
+        busy = true
+        defer { busy = false }
+        switch await kit.security.addPasskey(sheet: kit.sheet, core: core, now: now()) {
+        case .added:
+            passkeyDone = true
+            warning = false
+            message = core.text("settings:passkeys.added")
+        case .cancelled:
+            break
+        case .failed(let why):
+            fail(why)
         }
     }
 

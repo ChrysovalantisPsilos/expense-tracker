@@ -947,3 +947,21 @@ app) on the project under test.
    secrets it stops at once naming the missing ones; with them the build
    shows in App Store Connect › TestFlight with the run number as its build
    number and no export-compliance question.
+7. Universal Links (an installed TestFlight or Xcode build; Associated
+   Domains on the App ID): `curl -sI https://dev.budgeer.com/.well-known/apple-app-site-association`
+   → 200, `application/json`, no redirect (and on www.budgeer.com). In
+   Notes or Mail on the iPhone, tap `https://dev.budgeer.com/join/<token>`
+   → Budgeer Dev opens on the join page; `https://dev.budgeer.com/budgets`
+   → Budgets; `/privacy` → Safari. Sign up in the app, open the
+   confirmation email on the iPhone → the app signs in by itself. Forgot
+   password → the email's link opens the app's new password page → Update
+   password → the app. A used link → "Link expired or invalid" with Request a new
+   link. Budgeer (PROD) opens only www.budgeer.com's links, Budgeer Dev only
+   dev's.
+8. Passkeys across web and app: make a passkey on the website (Settings ›
+   Security) → in the app, Log in with a passkey offers it and signs in. In
+   the app, Settings › Security › Add (after a fresh sign-in) → the row
+   appears there and on the website's list; Remove works on either. A new
+   app account sees the passkey ask after signing in (Not now; "Don't
+   remind me again" stops it on the website too); the wizard's Add a
+   passkey works.

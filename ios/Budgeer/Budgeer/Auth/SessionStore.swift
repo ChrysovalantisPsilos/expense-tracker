@@ -3,7 +3,10 @@
 // no screen of the app renders until the server says the Privacy Notice
 // and Terms in force are accepted. The gate records an acceptance itself
 // (accept_legal_documents), as the web's prompt does for an account made
-// with Google or Apple.
+// with Google or Apple. An auth email's link opened in the app (a Universal
+// Link) signs in as the web's /auth/confirm does; a reset link's session
+// asks for the new password before anything else, as the web's
+// ResetPassword does while `recovering`.
 import Foundation
 import Observation
 
@@ -19,11 +22,14 @@ enum SessionState: Equatable {
     case legalCheckFailed(AuthUser, String)
     /// Signed in and cleared: the app.
     case ready(AuthUser)
+    /// Signed in by a password-reset link: the new password first.
+    case recovering(AuthUser)
 
     var user: AuthUser? {
         switch self {
         case .loading, .signedOut: return nil
-        case .checkingLegal(let user), .legalRequired(let user, _), .legalCheckFailed(let user, _), .ready(let user): return user
+        case .checkingLegal(let user), .legalRequired(let user, _), .legalCheckFailed(let user, _), .ready(let user),
+             .recovering(let user): return user
         }
     }
 }
@@ -37,6 +43,14 @@ final class SessionStore {
     /// Runs while still signed in, just before a sign-out (the app forgets
     /// this phone's push registration on the server).
     var beforeSignOut: (@MainActor () async -> Void)?
+    /// The type of an auth email's link that couldn't be used (expired, used
+    /// already): the sign-in screen shows what to do (confirmLink.expiredLinkHelp).
+    private(set) var linkProblem: String?
+    /// A reset link was opened: its session goes to the new password first.
+    private var recovering = false
+    /// The email links' tokens already sent (each is single-use; a link can
+    /// reach the app twice, as a URL and as a browsing activity).
+    private var verified: Set<String> = []
 
     init(auth: AuthService) {
         self.auth = auth
@@ -69,7 +83,47 @@ final class SessionStore {
         await settle(user)
     }
 
+    /// A passkey sign-in's first half: the server's challenge for the system's sheet.
+    func passkeyChallenge() async throws -> PasskeyChallenge {
+        try await auth.passkeyChallenge()
+    }
+
+    /// An auth email's link opened in the app. Signed in already, it is left
+    /// alone (the web's signed-in app sends /auth/confirm Home); otherwise its
+    /// token signs in, a reset link to the new password first, and a link that
+    /// can't be used says so on the sign-in screen.
+    func openEmailLink(_ link: EmailLink) async {
+        guard !verified.contains(link.tokenHash) else { return }
+        verified.insert(link.tokenHash)
+        if state.user != nil { return }
+        if state == .loading, await auth.currentUser() != nil { return }
+        linkProblem = nil
+        recovering = link.type == "recovery"
+        do {
+            await settle(try await auth.verifyEmailLink(link))
+        } catch {
+            recovering = false
+            linkProblem = link.type
+            if state.user == nil { state = .signedOut }
+        }
+    }
+
+    /// The expired-link page was shown.
+    func dismissLinkProblem() {
+        linkProblem = nil
+    }
+
+    /// The reset's new password saved: on into the app (the legal check first).
+    /// Throws the server's refusal; the page says it.
+    func finishRecovery(password: String) async throws {
+        guard case .recovering(let user) = state else { return }
+        try await auth.setNewPassword(password)
+        recovering = false
+        await settle(user)
+    }
+
     func signOut() async {
+        recovering = false
         if state.user != nil, let beforeSignOut { await beforeSignOut() }
         try? await auth.signOut()
         state = .signedOut
@@ -92,7 +146,12 @@ final class SessionStore {
     }
 
     private func settle(_ user: AuthUser?) async {
-        guard let user else { state = .signedOut; return }
+        guard let user else {
+            recovering = false
+            state = .signedOut
+            return
+        }
+        if recovering { state = .recovering(user); return }
         state = .checkingLegal(user)
         do {
             let status = try await auth.legalStatus()

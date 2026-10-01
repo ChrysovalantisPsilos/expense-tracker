@@ -2,8 +2,10 @@
 // VerifyEmail and ForgotPassword: the sign-up form's checks and the consent
 // the web records (authChecks, legal.signupConsentMetadata), Check your inbox
 // signing in by itself once the link is opened (confirmWait's schedule),
-// and the reset link's request (canSendReset). The words of a refusal are
-// the core's errors.userMessage over Supabase Auth's codes.
+// the reset link's request (canSendReset), the new password a reset link
+// leads to (ResetPassword), and what an unusable email link offers
+// (confirmLink.expiredLinkHelp). The words of a refusal are the core's
+// errors.userMessage over Supabase Auth's codes.
 import Foundation
 import Observation
 import BudgeerCore
@@ -252,12 +254,69 @@ final class ForgotPasswordModel {
 
     /// Send reset link: fire and forget, as on the web (Supabase answers the
     /// same either way, so nobody learns which addresses have accounts). The
-    /// link opens the website's reset page (AuthProvider's redirect).
+    /// email's link opens this app's new-password page where it is installed
+    /// (a Universal Link to /auth/confirm), else the website's.
     func send() async {
         guard canSend, let redirect = SiteLink.url(site, "/reset-password") else { return }
         busy = true
         try? await access.sendPasswordReset(email: address, redirect: redirect)
         busy = false
         sent = true
+    }
+}
+
+/// The web's ResetPassword: a reset link's session sets a new password
+/// (the sign-up rules, then the two fields matching: authMethods.newPasswordError),
+/// then the app goes on.
+@MainActor
+@Observable
+final class ResetPasswordModel {
+    var password = ""
+    var confirm = ""
+    private(set) var busy = false
+    /// Why the password wasn't set, under the fields.
+    private(set) var problem: String?
+
+    private let session: SessionStore
+    private let core: BudgeerCore
+
+    init(session: SessionStore, core: BudgeerCore = .shared) {
+        self.session = session
+        self.core = core
+    }
+
+    var canSubmit: Bool { !busy && !password.isEmpty && !confirm.isEmpty }
+
+    func submit() async {
+        guard canSubmit else { return }
+        let args: [JSONValue] = [.string(password), .string(confirm), "auth:password.mismatch"]
+        if let rule = (try? core.json("authMethods", "newPasswordError", args))?.stringValue {
+            problem = rule
+            return
+        }
+        busy = true
+        defer { busy = false }
+        do {
+            try await session.finishRecovery(password: password)
+            problem = nil
+        } catch {
+            problem = AuthWords.message(error, fallbackKey: "auth:reset.failed", core: core)
+        }
+    }
+}
+
+/// An email link that can't be used (confirmLink.expiredLinkHelp): what
+/// happened, and the ways on (a new reset link; log in or sign up again).
+struct ExpiredLinkHelp: Decodable, Equatable {
+    struct Action: Decodable, Equatable, Hashable {
+        let label: String
+        /// The web's page: /forgot-password, /login or /login?signup=1.
+        let to: String
+    }
+    let text: String
+    let actions: [Action]
+
+    static func of(_ type: String, core: BudgeerCore = .shared) -> ExpiredLinkHelp? {
+        try? core.call("confirmLink", "expiredLinkHelp", [type])
     }
 }

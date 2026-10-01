@@ -30,6 +30,23 @@ test('parseConfirmLink: anything incomplete or odd is no link', () => {
   assert.equal(parseConfirmLink(undefined), null)
 })
 
+test('parseConfirmLink: reads a query as URLSearchParams does (the app has none to lean on)', () => {
+  const viaParams = (q) => {
+    const p = new URLSearchParams(q)
+    return { tokenHash: p.get('token_hash'), type: p.get('type') }
+  }
+  for (const q of [
+    `?token_hash=${HASH}&type=signup`, `token_hash=${HASH}&type=recovery`, `?token%5Fhash=${HASH}&type=email`,
+    `?token_hash=${HASH}&type=re%63overy`, `?type=signup&type=recovery&token_hash=${HASH}`,
+    `?token_hash=${HASH}+&type=signup`, `?token_hash=${HASH}%zz&type=signup`, `?&&token_hash=${HASH}&type&type=email`,
+  ]) {
+    const want = viaParams(q)
+    const valid = want.tokenHash && /^[A-Za-z0-9_-]{8,512}$/.test(want.tokenHash) &&
+      ['signup', 'email', 'magiclink', 'recovery', 'email_change'].includes(want.type)
+    assert.deepEqual(parseConfirmLink(q), valid ? want : null, q)
+  }
+})
+
 test('confirmDestination: a reset goes to the new-password screen; the rest sign in', () => {
   assert.equal(confirmDestination('recovery'), '/reset-password')
   for (const type of ['signup', 'email', 'magiclink', 'email_change']) assert.equal(confirmDestination(type), null)
