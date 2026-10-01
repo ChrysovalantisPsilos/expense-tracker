@@ -87,6 +87,7 @@ private struct OverviewPanel: View {
     let model: HomeViewModel
     let figures: HomeFigures
     @Environment(AppLanguage.self) private var language
+    @State private var info = false
 
     var body: some View {
         Panel {
@@ -121,7 +122,8 @@ private struct OverviewPanel: View {
 
     private var numbers: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s4) {
-            Figure(label: language.t("dashboard:overview.spent"), value: figures.spent, size: .hero)
+            Figure(label: language.t("dashboard:overview.spent"), value: figures.spent, size: .hero,
+                   labelAccessory: AnyView(InfoButton(open: $info, label: language.t("common:info"))))
                 .accessibilityIdentifier("home.spent")
             VStack(spacing: Theme.Space.s2) {
                 HStack(spacing: Theme.Space.s2) {
@@ -137,6 +139,43 @@ private struct OverviewPanel: View {
                     }
                     .accessibilityIdentifier("home.saved")
                 }
+            }
+            if info {
+                // What Spent, Income and Net fold in (the ⓘ's box).
+                VStack(alignment: .leading, spacing: Theme.Space.s2) {
+                    SumStepsView(sum: figures.sum)
+                    ForEach(figures.notes, id: \.self) { Text($0).kitText(12, color: Theme.Colors.textMuted) }
+                }
+                .padding(.horizontal, Theme.Space.s3)
+                .padding(.vertical, Theme.Space.s2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.Colors.subtle)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+            }
+        }
+    }
+}
+
+/// SumSteps: the title, each step with its signed amount, then the total
+/// over a hairline in its tone.
+private struct SumStepsView: View {
+    let sum: NetSum
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s1) {
+            Text(sum.title).kitText(14, .bold)
+            ForEach(sum.steps, id: \.key) { step in
+                HStack(spacing: Theme.Space.s3) {
+                    Text(step.label).kitText(14, color: Theme.Colors.textMuted)
+                    Spacer(minLength: 0)
+                    Text(step.value).kitText(14, .semibold).fixedSize()
+                }
+            }
+            Rectangle().fill(Theme.Colors.border).frame(height: 1).padding(.top, Theme.Space.s1)
+            HStack {
+                Text(sum.total.label).kitText(14, .bold)
+                Spacer()
+                Text(sum.total.value).kitText(14, .bold, color: Tone(name: sum.total.tone).color)
             }
         }
     }

@@ -162,6 +162,7 @@ struct DayField: View {
             .tint(Theme.Colors.accentFg)
             .environment(\.locale, locale)
             .scaleEffect(x: 4, y: 1.2)
+            .colorMultiply(.clear)
             .opacity(0.02)
             .accessibilityLabel(label)
         }

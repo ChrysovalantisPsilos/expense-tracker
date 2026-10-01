@@ -24,6 +24,7 @@ struct InsightsView: View {
                 Panel { LoadErrorBlock(message: message) { await model.load() } }
             case .loaded(let figures):
                 spending(figures)
+                if let abroad = figures.abroad { AbroadPanel(card: abroad) }
                 income(figures)
             }
         }
@@ -144,6 +145,45 @@ struct InsightsView: View {
     /// A y-axis tick in major units, worded by the core as the web's money charts word it.
     static func axisTick(_ amount: Double) -> String {
         (try? BudgeerCore.shared.call("chartAxis", "axisTick", [amount]) as String) ?? ""
+    }
+}
+
+/// "Spending abroad" (AbroadCard): each payment as a ConversionRow (its
+/// name and rate over "US$24.00 → €20.46"), how many more, the total.
+private struct AbroadPanel: View {
+    let card: InsightsFigures.Abroad
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        Panel(title: language.t("insights:abroad.title"), subtitle: card.subtitle) {
+            VStack(alignment: .leading, spacing: Theme.Space.s3) {
+                ForEach(card.rows) { row in
+                    Tile {
+                        HStack(spacing: Theme.Space.s2) {
+                            Text(row.label).kitText(14, .semibold)
+                            Spacer(minLength: 0)
+                            Text("@ " + row.rate).kitText(12, color: Theme.Colors.textMuted)
+                        }
+                        HStack(spacing: Theme.Space.s2) {
+                            Text(row.from).kitText(14, color: Theme.Colors.textMuted)
+                            LucideIcon(icon: .arrowRight, size: 14).foregroundStyle(Theme.Colors.textMuted)
+                            Text(row.to).kitText(14, .bold, color: Theme.Colors.accentFg)
+                        }
+                        .padding(.top, Theme.Space.s1)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
+                if let more = card.more { Text(more).kitText(12, color: Theme.Colors.textMuted) }
+                Rectangle().fill(Theme.Colors.border).frame(height: 1)
+                HStack {
+                    Text(language.t("insights:total")).kitText(14, color: Theme.Colors.textMuted)
+                    Spacer()
+                    Text(card.total).kitHeading(16, tracking: 0)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
+        .accessibilityIdentifier("insights.abroad")
     }
 }
 

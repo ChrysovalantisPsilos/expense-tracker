@@ -77,12 +77,10 @@ final class HomeViewModel {
     /// The categories card: all rows ("Show all"), and chart or table.
     var showAllBars = false
     var view: String = "chart" {
-        didSet { defaults.set(view, forKey: HomeViewModel.viewKey) }
+        didSet { saveView() }
     }
     /// Numbers or In words (the viewer's saved choice).
-    private(set) var tab: String? = nil {
-        didSet { defaults.set(tab, forKey: HomeViewModel.tabKey) }
-    }
+    private(set) var tab: String?
 
     /// The rows as read (a row opens Edit with its saved row).
     private var rows: JSONValue = []
@@ -312,9 +310,12 @@ final class HomeViewModel {
                               title: try core.call("aiMath", "summaryTitle", [month]), lines: lines)
     }
 
+    private func saveView() { defaults.set(view, forKey: HomeViewModel.viewKey) }
+
     /// Numbers | In words picked: shown at once, kept for next time.
     func pickTab(_ value: String) {
         tab = value
+        defaults.set(value, forKey: HomeViewModel.tabKey)
         if let summary { try? shape(summary.data, month: summary.month) }
     }
 

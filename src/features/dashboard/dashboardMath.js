@@ -1,6 +1,7 @@
 // Pure maths behind the Overview page's headline figures. Money is integer
 // minor units in the user's base currency.
-import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
+import { formatMoney, formatSigned, toBaseMinor } from '../../shared/lib/currency.js'
+import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { bucketOf, groupLabel, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { EFFECTS, isSavingsRow, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { paidInWindow } from '../../shared/lib/spread.js'
@@ -169,6 +170,19 @@ export function groupSharesByCategory(rows, baseCurrency) {
     out.set(r.categories.name, byGroup)
   }
   return out
+}
+
+// The overview's "How Net adds up" (SumSteps) as words: the title, each
+// step's label and signed amount, and the Net with its tone.
+export function netSum(figures, currency) {
+  const net = signedAmount(figures.netTotal, (m) => formatMoney(m, currency))
+  return {
+    title: t('dashboard:info.sumTitle'),
+    steps: netSteps(figures).map((s) => ({
+      key: s.key, label: t(`dashboard:info.steps.${s.key}`), value: formatSigned(s.minor, currency, { plus: true }),
+    })),
+    total: { label: t('dashboard:info.net'), value: net.text, tone: net.tone },
+  }
 }
 
 // Each bar's line under its name (categoryLine), over the period's group

@@ -300,7 +300,7 @@ struct ChoiceButton: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
+                .font(Theme.Fonts.body(16, weight: .semibold, lang: language.current))
                 .foregroundStyle(on ? Theme.Colors.onAccent : Theme.Colors.textPrimary)
                 .frame(maxWidth: .infinity, minHeight: 40)
                 .padding(.horizontal, Theme.Space.s2)

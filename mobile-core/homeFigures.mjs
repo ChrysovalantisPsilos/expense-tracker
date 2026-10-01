@@ -20,7 +20,8 @@ import { savingsIdsOf } from '../src/shared/lib/savings.js'
 import { paidInWindow, spendRows } from '../src/shared/lib/spread.js'
 import { rulesInBase } from '../src/shared/lib/ruleFx.js'
 import {
-  periodTotals, periodProjection, projectedTotals, savingsLine, barLines, homeLists, visibleBars, homeCards,
+  periodTotals, periodProjection, projectedTotals, savingsLine, barLines, homeLists, visibleBars, homeCards, netSum,
+  overviewNotes,
 } from '../src/features/dashboard/dashboardMath.js'
 import { isFirstRun, listHeading } from '../src/features/transactions/listHeading.js'
 import { listParts } from '../src/features/transactions/rowParts.js'
@@ -146,6 +147,9 @@ export function homeFigures({ rows, profile, categories, rules = [], rates = {},
     net: formatSigned(figures.netTotal, baseCurrency, { plus: true }),
     netTone: signTone(figures.netTotal),
     saved: savingsLine(totals.saved, figures.fromSavingsTotal, period, baseCurrency),
+    // The overview's ⓘ: How Net adds up, and what's still to come.
+    sum: netSum(figures, baseCurrency),
+    notes: overviewNotes({ proj }, baseCurrency),
     bars,
     fold,
     cards: homeCards({ firstRun }),

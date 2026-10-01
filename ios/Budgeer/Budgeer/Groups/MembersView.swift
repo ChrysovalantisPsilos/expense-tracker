@@ -59,8 +59,9 @@ struct MembersView: View {
             }
             Spacer(minLength: Theme.Space.s2)
             if row.canRemove {
-                KitIconButton(icon: .userMinus, label: row.removeLabel, size: .sm, iconSize: 16) { removing = row }
-                    .foregroundStyle(Theme.Colors.accentFg)
+                KitIconButton(icon: .userMinus, label: row.removeLabel, size: .sm, iconSize: 16, tint: Theme.Colors.accentFg) {
+                    removing = row
+                }
             }
         }
         .frame(minHeight: 56)

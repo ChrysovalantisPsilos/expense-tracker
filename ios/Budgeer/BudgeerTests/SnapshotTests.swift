@@ -46,6 +46,7 @@ final class SnapshotTests: XCTestCase {
             ], "lang": .string(lang)], "stale": false, "empty": false])
             let model = HomeViewModel(data: store.data, core: .shared, now: { now }, defaults: defaults())
             await model.load()
+            model.pickTab("numbers")
             let view = ShellChrome(tab: .home, badge: "1", unreadCount: 1, initials: "SM", fab: true) {
                 NavigationStack { HomeView(model: model) }
             }

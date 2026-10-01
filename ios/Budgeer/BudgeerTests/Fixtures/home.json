@@ -458,6 +458,39 @@
         "net": "+€2,028.72",
         "netTone": "positive",
         "saved": "+€300.00 in · −€120.00 out",
+        "sum": {
+          "title": "How Net adds up",
+          "steps": [
+            {
+              "key": "income",
+              "label": "Income",
+              "value": "+€2,550.00"
+            },
+            {
+              "key": "spent",
+              "label": "Spent",
+              "value": "−€341.28"
+            },
+            {
+              "key": "fromSavings",
+              "label": "Paid from savings (not from income)",
+              "value": "+€120.00"
+            },
+            {
+              "key": "toSavings",
+              "label": "Put into savings",
+              "value": "−€300.00"
+            }
+          ],
+          "total": {
+            "label": "Net",
+            "value": "+€2,028.72",
+            "tone": "positive"
+          }
+        },
+        "notes": [
+          "Spent includes €21.98 of recurring payments still to come."
+        ],
         "bars": [
           {
             "name": "Uncategorized",
@@ -967,6 +1000,27 @@
         "net": "−€20.99",
         "netTone": "negative",
         "saved": null,
+        "sum": {
+          "title": "How Net adds up",
+          "steps": [
+            {
+              "key": "income",
+              "label": "Income",
+              "value": "€0.00"
+            },
+            {
+              "key": "spent",
+              "label": "Spent",
+              "value": "−€20.99"
+            }
+          ],
+          "total": {
+            "label": "Net",
+            "value": "−€20.99",
+            "tone": "negative"
+          }
+        },
+        "notes": [],
         "bars": [
           {
             "name": "Subscriptions",
@@ -1102,6 +1156,39 @@
         "net": "+2.028,72 €",
         "netTone": "positive",
         "saved": "+300,00 € μέσα · −120,00 € έξω",
+        "sum": {
+          "title": "Πώς βγαίνει το Καθαρό",
+          "steps": [
+            {
+              "key": "income",
+              "label": "Έσοδα",
+              "value": "+2.550,00 €"
+            },
+            {
+              "key": "spent",
+              "label": "Έξοδα",
+              "value": "−341,28 €"
+            },
+            {
+              "key": "fromSavings",
+              "label": "Από αποταμιεύσεις (όχι από έσοδα)",
+              "value": "+120,00 €"
+            },
+            {
+              "key": "toSavings",
+              "label": "Στις αποταμιεύσεις",
+              "value": "−300,00 €"
+            }
+          ],
+          "total": {
+            "label": "Καθαρό",
+            "value": "+2.028,72 €",
+            "tone": "positive"
+          }
+        },
+        "notes": [
+          "Τα έξοδα περιλαμβάνουν 21,98 € από επαναλαμβανόμενες πληρωμές που έρχονται."
+        ],
         "bars": [
           {
             "name": "Χωρίς κατηγορία",
@@ -1611,6 +1698,27 @@
         "net": "−20,99 €",
         "netTone": "negative",
         "saved": null,
+        "sum": {
+          "title": "Πώς βγαίνει το Καθαρό",
+          "steps": [
+            {
+              "key": "income",
+              "label": "Έσοδα",
+              "value": "0,00 €"
+            },
+            {
+              "key": "spent",
+              "label": "Έξοδα",
+              "value": "−20,99 €"
+            }
+          ],
+          "total": {
+            "label": "Καθαρό",
+            "value": "−20,99 €",
+            "tone": "negative"
+          }
+        },
+        "notes": [],
         "bars": [
           {
             "name": "Subscriptions",

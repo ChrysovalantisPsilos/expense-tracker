@@ -596,7 +596,21 @@
             "income": 2500,
             "expense": 283.29
           }
-        ]
+        ],
+        "abroad": {
+          "subtitle": "This month, in EUR",
+          "rows": [
+            {
+              "id": "a4",
+              "label": "Diner",
+              "rate": "0.9123",
+              "from": "$25.00",
+              "to": "€22.81"
+            }
+          ],
+          "more": null,
+          "total": "€22.81"
+        }
       },
       "august": {
         "fetchFrom": "2020-04-01",
@@ -691,7 +705,21 @@
             "income": 2500,
             "expense": 283.29
           }
-        ]
+        ],
+        "abroad": {
+          "subtitle": "This month, in EUR",
+          "rows": [
+            {
+              "id": "a4",
+              "label": "Diner",
+              "rate": "0.9123",
+              "from": "$25.00",
+              "to": "€22.81"
+            }
+          ],
+          "more": null,
+          "total": "€22.81"
+        }
       }
     },
     "el": {
@@ -803,7 +831,21 @@
             "income": 2500,
             "expense": 283.29
           }
-        ]
+        ],
+        "abroad": {
+          "subtitle": "Αυτόν τον μήνα, σε EUR",
+          "rows": [
+            {
+              "id": "a4",
+              "label": "Diner",
+              "rate": "0,9123",
+              "from": "25,00 $",
+              "to": "22,81 €"
+            }
+          ],
+          "more": null,
+          "total": "22,81 €"
+        }
       },
       "august": {
         "fetchFrom": "2020-04-01",
@@ -898,7 +940,21 @@
             "income": 2500,
             "expense": 283.29
           }
-        ]
+        ],
+        "abroad": {
+          "subtitle": "Αυτόν τον μήνα, σε EUR",
+          "rows": [
+            {
+              "id": "a4",
+              "label": "Diner",
+              "rate": "0,9123",
+              "from": "25,00 $",
+              "to": "22,81 €"
+            }
+          ],
+          "more": null,
+          "total": "22,81 €"
+        }
       }
     }
   }

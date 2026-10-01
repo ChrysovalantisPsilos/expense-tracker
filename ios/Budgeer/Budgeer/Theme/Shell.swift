@@ -58,15 +58,16 @@ struct BrandMark: View {
             let radius = 11 * unit
             let circumference = 2 * Double.pi * 11
             // The SVG's dashes (19 then 48.2 from 21) as turns from the top, clockwise.
-            func arc(_ from: Double, _ length: Double, _ color: Color) {
+            let arcs: [(from: Double, length: Double, color: Color)] = [
+                (0, 19, Theme.Palette.amber400), (21, 48.2, Theme.Palette.brand500),
+            ]
+            for arc in arcs {
                 var path = Path()
-                let start = -Double.pi / 2 + from / circumference * 2 * Double.pi
-                let end = start + length / circumference * 2 * Double.pi
+                let start = -Double.pi / 2 + arc.from / circumference * 2 * Double.pi
+                let end = start + arc.length / circumference * 2 * Double.pi
                 path.addArc(center: center, radius: radius, startAngle: .radians(start), endAngle: .radians(end), clockwise: false)
-                context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 7.5 * unit))
+                context.stroke(path, with: .color(arc.color), style: StrokeStyle(lineWidth: 7.5 * unit))
             }
-            arc(0, 19, Theme.Palette.amber400)
-            arc(21, 48.2, Theme.Palette.brand500)
         }
         .frame(width: size, height: size)
         .accessibilityLabel("Budgeer")
@@ -195,27 +196,30 @@ struct BottomNav: View {
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
+        // justify-content: space-around: each tab as wide as its word (at
+        // least 60 pt), the room left shared around them.
         HStack(spacing: 0) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 let on = tab == selected
+                Spacer(minLength: 0)
                 Button { select(tab) } label: {
                     VStack(spacing: 2) {
                         LucideIcon(icon: tab.icon, size: 22, bold: on)
                         Text(language.t("shell:nav.\(tab.rawValue)"))
                             .font(Theme.Fonts.body(10, weight: on ? .semibold : .regular, lang: language.current))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .fixedSize()
                     }
                     .foregroundStyle(on ? Theme.Colors.accentFg : Theme.Colors.textMuted)
                     .padding(.horizontal, Theme.Space.s2)
                     .padding(.vertical, Theme.Space.s1)
                     .frame(minWidth: 60)
-                    .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(on ? .isSelected : [])
                 .accessibilityIdentifier("tab.\(tab.rawValue)")
+                Spacer(minLength: 0)
             }
         }
         .padding(.horizontal, Theme.Space.s2)

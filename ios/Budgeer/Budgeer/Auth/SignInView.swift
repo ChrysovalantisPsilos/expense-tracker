@@ -196,7 +196,8 @@ struct SignInView: View {
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(!model.canSubmit)
+            // As on the web, Log in stays live; an empty form simply isn't sent.
+            .disabled(model.submitting || model.googleBusy)
             .accessibilityIdentifier("signin.submit")
             divider
             Button {

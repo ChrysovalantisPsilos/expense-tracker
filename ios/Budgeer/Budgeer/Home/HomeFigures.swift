@@ -54,6 +54,23 @@ struct HomeBar: Codable, Equatable, Sendable {
     let look: CategoryLook
 }
 
+/// The overview's ⓘ, part one (netSum): How Net adds up.
+struct NetSum: Codable, Equatable, Sendable {
+    struct Step: Codable, Equatable, Sendable {
+        let key: String
+        let label: String
+        let value: String
+    }
+    struct Total: Codable, Equatable, Sendable {
+        let label: String
+        let value: String
+        let tone: String
+    }
+    let title: String
+    let steps: [Step]
+    let total: Total
+}
+
 /// The categories card's "Show all" (visibleBars): how many rows show
 /// folded, how many more "Show all" adds, and the button's two words.
 struct BarFold: Codable, Equatable, Sendable {
@@ -127,6 +144,9 @@ struct HomeFigures: Codable, Equatable, Sendable {
     let netTone: String
     /// The savings line under the overview, when there is one.
     let saved: String?
+    /// The overview's ⓘ: How Net adds up, and the still-to-come notes (overviewNotes).
+    let sum: NetSum
+    let notes: [String]
     let bars: [HomeBar]
     let fold: BarFold
     /// The cards in reading order (dashboardMath.homeCards: the first run's or the usual).
@@ -234,6 +254,8 @@ struct HomeFigures: Codable, Equatable, Sendable {
             net: try core.call("currency", "formatSigned", [netTotal, baseCurrency, JSONValue.object(["plus": .bool(true)])]),
             netTone: try core.call("kitMath", "signTone", [netTotal]),
             saved: saved.stringValue,
+            sum: try core.call("dashboardMath", "netSum", [figures, baseCurrency]),
+            notes: try core.call("dashboardMath", "overviewNotes", [["proj": proj] as JSONValue, baseCurrency]),
             bars: bars,
             fold: fold,
             cards: cards,

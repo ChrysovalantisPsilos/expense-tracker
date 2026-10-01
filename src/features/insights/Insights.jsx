@@ -33,7 +33,7 @@ import { useAccounts, deleteAccount } from '../../shared/lib/accounts.js'
 import { useSavingsMoves } from '../savings/savings.js'
 import {
   buildTrend, hasTrendData, netWorth, accountSections, spendingShares, foreignSpending, trendMoney, pickedMonthLabel,
-  spendingBars, incomeFigures,
+  spendingBars, incomeFigures, abroadCard,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
 import SalaryCard from '../salary/SalaryCard.jsx'
@@ -41,9 +41,6 @@ import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
-
-// How many foreign-currency rows "Spending abroad" lists (the total covers all).
-const ABROAD_ROWS = 5
 
 export default function Insights() {
   const t = useT('insights')
@@ -203,21 +200,16 @@ function SpendingCard({ loading, failed, shares, trend, baseCurrency, picked, on
 // added, and what they came to in the base currency.
 function AbroadCard({ abroad, baseCurrency }) {
   const t = useT('insights')
-  const more = abroad.items.length - ABROAD_ROWS
+  const card = abroadCard(abroad, baseCurrency)
   return (
-    <Panel title={t('abroad.title')} subtitle={t('abroad.subtitle', { currency: baseCurrency })}>
+    <Panel title={t('abroad.title')} subtitle={card.subtitle}>
       <Stack spacing={3}>
-        {abroad.items.slice(0, ABROAD_ROWS).map((i) => (
-          <ConversionRow key={i.id} label={i.label} rate={i.rate}
-            from={formatMoney(i.minor, i.currency)} to={formatMoney(i.baseMinor, baseCurrency)} />
+        {card.rows.map((i) => (
+          <ConversionRow key={i.id} label={i.label} rate={i.rate} from={i.from} to={i.to} />
         ))}
-        {more > 0 && (
-          <Text fontSize="xs" color="text.muted">
-            {t('abroad.more', { count: more })}
-          </Text>
-        )}
+        {card.more && <Text fontSize="xs" color="text.muted">{card.more}</Text>}
         <Divider borderColor="border.default" />
-        <Figure layout="inline" label={t('total')} value={formatMoney(abroad.totalBaseMinor, baseCurrency)} />
+        <Figure layout="inline" label={t('total')} value={card.total} />
       </Stack>
     </Panel>
   )

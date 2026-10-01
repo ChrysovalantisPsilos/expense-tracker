@@ -122,6 +122,7 @@ struct GroupCardView: View {
                     Text(card.name)
                         .kitHeading(18)
                         .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: Theme.Space.s2) {
                         if let avatars = card.avatars { AvatarStackView(stack: avatars) }
                         // As on a phone: the currency only when there's no avatar stack.
@@ -140,6 +141,7 @@ struct GroupCardView: View {
                         }
                     }
                     .lineLimit(1)
+                    .fixedSize()
                 }
                 LucideIcon(icon: .chevronRight, size: 18).foregroundStyle(Theme.Colors.textMuted)
             }

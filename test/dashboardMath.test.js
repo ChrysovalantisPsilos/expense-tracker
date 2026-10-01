@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  periodTotals, periodProjection, projectedTotals, visibleBars, TOP_CATEGORIES, homeCards, homeStacks, homeLists, barLines,
+  periodTotals, periodProjection, projectedTotals, visibleBars, TOP_CATEGORIES, homeCards, homeStacks, homeLists, barLines, netSum,
 } from '../src/features/dashboard/dashboardMath.js'
 
 const rows = [
@@ -116,4 +116,13 @@ test('barLines: each bar’s line, with what its groups add', () => {
   const shared = [{ kind: 'expense', amount_minor: 3140, currency: 'EUR', exchange_rate: 1, group_expense_id: 'g',
     group_expenses: { groups: { name: 'Lisbon trip' } }, categories: { name: 'Food' } }]
   assert.deepEqual(barLines([{ name: 'Food', value: 1500 }], shared, 'EUR'), ['€15.00 · +€31.40 in Lisbon trip = €46.40'])
+})
+
+test('netSum: How Net adds up, worded', () => {
+  const sum = netSum({ earnedTotal: 343000, spentTotal: 320751, fromSavingsTotal: 89900, netTotal: 112149 }, 'EUR')
+  assert.equal(sum.title, 'How Net adds up')
+  assert.deepEqual(sum.steps.map((s) => s.key), ['income', 'spent', 'fromSavings'])
+  assert.equal(sum.steps[0].value, '+€3,430.00')
+  assert.equal(sum.steps[1].value, '−€3,207.51')
+  assert.deepEqual(sum.total, { label: 'Net', value: '+€1,121.49', tone: 'positive' })
 })

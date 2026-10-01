@@ -28,7 +28,7 @@ import {
   groupTotalParts, incomePerMonth, incomeRules, incomeTotalParts, ruleRowParts, subscriptionGroups,
 } from '../src/features/recurring/recurringMath.js'
 import {
-  buildTrend, hasTrendData, incomeFigures, pickedMonthLabel, spendingBars, spendingShares,
+  buildTrend, hasTrendData, incomeFigures, pickedMonthLabel, spendingBars, spendingShares, foreignSpending, abroadCard,
 } from '../src/features/insights/insightsMath.js'
 import { setLanguage } from './index.js'
 
@@ -159,6 +159,9 @@ export function insightsFigures({ profile, categories, rows, now, picked = null,
     bars: spendingBars(trend, index, baseCurrency),
     income: incomeFigures(trend, baseCurrency),
     chart: trend.map((m) => ({ label: m.label, income: m.income, expense: m.expense })),
+    // "Spending abroad": this month's foreign payments (the actual rows, not shares).
+    abroad: ((a) => (a.items.length ? abroadCard(a, baseCurrency) : null))(
+      foreignSpending(rows, months[months.length - 1].key, baseCurrency)),
   }
 }
 

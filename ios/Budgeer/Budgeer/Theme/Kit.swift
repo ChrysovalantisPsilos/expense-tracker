@@ -712,13 +712,15 @@ struct KitIconButton: View {
     var size: KitButtonStyle.Size = .sm
     var iconSize: CGFloat = 18
     var bold = false
+    /// The icon's colour for a ghost or outline button (muted / primary by default).
+    var tint: Color? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             LucideIcon(icon: icon, size: iconSize, bold: bold)
                 .foregroundStyle(variant == .solid ? Theme.Colors.onAccent
-                                 : variant == .outline ? Theme.Colors.textPrimary : Theme.Colors.textMuted)
+                                 : tint ?? (variant == .outline ? Theme.Colors.textPrimary : Theme.Colors.textMuted))
                 .frame(width: side, height: side)
                 .background(variant == .solid ? Theme.Colors.accentSolid : Color.clear)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
@@ -1030,7 +1032,7 @@ struct NavList<Rows: View>: View {
 private struct DividedRows: _VariadicView_MultiViewRoot {
     func body(children: _VariadicView.Children) -> some View {
         let last = children.last?.id
-        ForEach(children) { child in
+        return ForEach(children) { child in
             child
             if child.id != last { Rectangle().fill(Theme.Colors.border).frame(height: 1) }
         }
