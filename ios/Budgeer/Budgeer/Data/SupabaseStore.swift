@@ -24,7 +24,7 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
     /// the setup wizard's, the tour's and What's new's marks).
     static let profileColumns = "id, base_currency, yearly_separate, salary_shift_from_day, salary_category_id, "
         + "ai_quick_entry, ai_import_categories, ai_month_summary, ai_plan_whatif, language, is_demo, display_name, avatar_url, "
-        + "notify_email, notify_digest, onboarded_at, tour_done, whats_new_seen"
+        + "notify_email, notify_push, notify_digest, onboarded_at, tour_done, whats_new_seen"
     /// shared/lib/categories.js CATEGORY_COLUMNS.
     static let categoryColumns = "id, name, kind, icon, color, is_archived, is_savings, default_key"
 

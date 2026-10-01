@@ -116,8 +116,10 @@ suite is for.
 
 ## The app
 
-`ios/Budgeer` is a SwiftUI app for iOS 17, bundle id `com.budgeer.app`. Its
-Xcode project is generated, never committed:
+`ios/Budgeer` is a SwiftUI app for iOS 17, built as two apps that install
+side by side: **Budgeer Dev** (`com.budgeer.app.dev`, the Dev scheme, the
+TEST project) and **Budgeer** (`com.budgeer.app`, the Prod scheme, PROD).
+Its Xcode project is generated, never committed:
 
 ```bash
 brew install xcodegen
@@ -137,8 +139,28 @@ fails with a clear message when they are missing.
 public anon key (the same key the website ships; Row Level Security is the
 guard, and no secret key ever goes here). They reach Swift through Info.plist
 (`AppConfig.load()`); a build without them shows what is missing instead of
-talking to nowhere. A developer's own settings (`DEVELOPMENT_TEAM` for a
-device build) go in `Config/Local.xcconfig`, which is not tracked.
+talking to nowhere. Each also names its app (`BUDGEER_BUNDLE_ID`,
+`BUDGEER_DISPLAY_NAME`). A developer's own settings (`DEVELOPMENT_TEAM` for
+a device build) go in `Config/Local.xcconfig`, which is not tracked.
+
+Capabilities: **Push Notifications** and **Sign in with Apple**, from
+`Config/Budgeer-Debug.entitlements` (the development APNs: a build run from
+Xcode) and `Config/Budgeer-Release.entitlements` (production: TestFlight and
+the App Store); `APNS_ENVIRONMENT` tells the app which (Info.plist
+`APNSEnvironment`), and the server sends each token to its own host.
+Signing is automatic. `ITSAppUsesNonExemptEncryption` is NO: the app uses
+only the system's TLS and Keychain and a SHA-256 hash (Apple's nonce).
+
+### TestFlight
+
+`.github/workflows/ios-testflight.yml`, by hand (Actions → ios-testflight →
+Run workflow, app = dev or prod): `xcodebuild archive` of the scheme's
+Release configuration, then `xcodebuild -exportArchive` with
+`method = app-store-connect`, `destination = upload`, both with
+`-allowProvisioningUpdates` and the App Store Connect API key (cloud-managed
+signing; the key needs the Admin role). The build number is the run number.
+Repository secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`,
+`APPLE_TEAM_ID`; the run stops at once, naming any that is missing.
 
 ### Layout
 
@@ -160,11 +182,14 @@ ios/Budgeer/
                          WelcomeLayer (the default categories, the setup wizard or What's new, once per session) +
                          OnboardingView + WhatsNewStoryView, TourModel + TourOverlay (the tour's coach marks,
                          tourTarget)
-    Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView,
-                         AccountSecurity (Settings › Security's calls: identities, the token's claims, the
-                         password, linking Google), AccountAccess + SupabaseAccountAccess (sign up, the
-                         confirmation again, a reset link), AccountForms (their models), AccountPages
-                         (AuthFlowView: Sign up, Check your inbox, Forgot password)
+    Auth/                AuthService + SupabaseAuthService (email, Google, Apple), SessionStore, SignInView,
+                         LegalGateView (the documents, Accept), AppleSignIn (the nonce, Apple's button,
+                         AppleAuthorizer), AccountSecurity (Settings › Security's calls: identities, the token's
+                         claims, the password, linking Google and Apple), AccountAccess + SupabaseAccountAccess
+                         (sign up, the confirmation again, a reset link), AccountForms (their models),
+                         AccountPages (AuthFlowView: Sign up, Check your inbox, Forgot password)
+    Push/                PushModel (the permission, asking at the right moment, the token to the server, forgetting
+                         it on sign-out), ApplePush (UserNotifications, the app delegate's token and taps, PushInbox)
     Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables;
                          +Groups, +Settings: the profile, the payment details, the photo, categories, privacy;
                          +Savings: the net-worth accounts, the goals, the meal vouchers' setup; +Plan: the
@@ -252,7 +277,13 @@ a core call (the web's function); Swift reads, lays out and draws.
   through `ASWebAuthenticationSession`, back to `budgeer://auth-callback`;
   a cancelled sheet is not an error). supabase-swift is pinned to 2.49.0,
   the last release on Swift tools 5.10 (picked when CI ran Xcode 15.4; it builds on 26 too). The
-  session lives in the Keychain. Apple and passkeys are still refused.
+  session lives in the Keychain. **Sign in with Apple**: Apple's own button
+  (black, white in dark mode), the system's sheet asking for the name and
+  email with a SHA-256-hashed nonce, then `signInWithIdToken` (Supabase
+  checks the token against the raw nonce). Apple gives the name only the
+  first time: it goes to `user_metadata.full_name` and, while the profile
+  still has the sign-up's default name, to the profile
+  (`authMethods.appleProfileName`). Passkeys stay the website's.
   **Sign up** is its own page, as the web's sign-up mode: email and
   password with the password's rules (`authChecks.authErrors`, shown from
   the first try), the "I'm 16 or older and I accept…" tick with the Terms
@@ -271,16 +302,30 @@ a core call (the web's function); Swift reads, lays out and draws.
   no Universal Links yet (Associated Domains need a paid developer
   account), so the new password is chosen there.
 - **The legal gate**: `my_legal_status` after every sign-in, failing
-  closed; the app cannot record consent yet (the gate says to accept on the
-  website, then "Retry").
+  closed; a new account (made with Google or Apple) or a version bump shows
+  the web's prompt: the two documents (the website's pages in Safari),
+  Accept and continue (`accept_legal_documents`, consent source `prompt`),
+  or I don't agree (sign out; deleting the account is the website's).
+- **Push** (`Push/`): never asked on launch. Settings › Notifications' push
+  switch is the account's (`notify_push`, as on the web) and, turned on,
+  asks iOS (once) and registers this iPhone; otherwise the question comes
+  once, after the first entry is saved (not on the demo login). The token
+  goes to `save_apns_token` with the build's APNs environment, again on
+  every sign-in when iOS allows it, and is deleted (`delete_apns_token`)
+  just before signing out. `notify-user` sends the same notifications as web
+  push; a tap opens the notification's page (`AppRouter.open(path:)`: a
+  group, Budgets, Recurring, Groups or Home), banners show while the app is
+  open.
 - **What greets an account** (`WelcomeModel`, once per signed-in
   session): the default categories when it has none (`seed_default_categories`,
   as the web's ensureSeeded); then for a new account (`profiles.onboarded_at`
   empty, `onboardingMath.needsOnboarding`) the **setup wizard** full screen,
   the web's four steps: Welcome (your name and currency), Split costs with
   friends (a first group, optional), Stay in the loop (Enable notifications:
-  the `WelcomeModel.pushOptIn` hook, off until the app's APNs push lands;
-  the web's passkey offer waits for the app's passkeys), and the tour
+  `WelcomeModel.pushOptIn` is `PushModel.optIn`, what Settings ›
+  Notifications' push switch does turned on: `notify_push` on, iOS asked
+  once, this iPhone registered; not on the demo login; the web's passkey
+  offer is left out, passkeys being the website's), and the tour
   (Start tour or Skip tour); closing it stamps it done
   (`onboardingMath.finishFields`, the tour marked seen unless it follows);
   a group made on the way is where it ends up. Then the **app tour**
@@ -558,10 +603,9 @@ a core call (the web's function); Swift reads, lays out and draws.
     uncategorised bucket ("none") reads the period's expenses.
   - **Monthly spending**: yearly subscriptions in monthly spending, the
     salary shift with its day and category (`spendingPrefs`).
-  - **Notifications**: the email and weekly-summary messages (off on the
-    demo account). The web's push switch is not here: it is about the
-    browsers allowed on the website, and this app has no push yet (that
-    needs APNs and a paid developer account).
+  - **Notifications**: push (the account's switch; when iOS doesn't allow
+    Budgeer, how to allow it and Open Settings), the email and
+    weekly-summary messages (off on the demo account).
   - **Appearance**: light, dark or the phone's, on this device (as the
     web keeps it per browser). **Language** and the **Face ID lock**, its
     own page (off by default; turning it on asks for Face ID or the passcode
@@ -577,10 +621,12 @@ a core call (the web's function); Swift reads, lays out and draws.
     removing the PIN there turns the lock off.
   - **AI helpers**: the four switches, what each sends, the privacy note;
     the demo note on the demo account.
-  - **Security**: the sign-in methods (email & password, Google; passkeys
-    stay the website's, so they are not listed, as on a browser without
-    them), Connect Google (the system's web sheet, then the session) and
-    Disconnect (never the last way in), Set a password (Google-only) or
+  - **Security**: the sign-in methods (email & password, Google, Apple;
+    passkeys stay the website's, so they are not listed, as on a browser
+    without them), Connect Google (the system's web sheet, then the session)
+    or Apple (Apple's sheet, its token linked: `linkIdentityWithIdToken`)
+    and Disconnect (never the last way in: `disconnectBlock`), Set a
+    password (Google- or Apple-only) or
     Change password (the current one checked, then GoTrue's PUT /user with
     it), and Delete account (the password, or a sign-in in the last ten
     minutes and DELETE typed; the delete-account edge function). Connecting,
@@ -666,8 +712,12 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
 ```
 
 - View models over fakes (`FakeStore` behind every repository,
-  `FakeAuthService`): `SessionStoreTests`, `SignInViewModelTests` (email and
-  Google: success, cancelled, failed), `DataLayerTests` (the cache, live
+  `FakeAuthService`): `SessionStoreTests` (incl. the gate's acceptance and
+  the sign-out hook), `SignInViewModelTests` (email, Google and Apple:
+  success, cancelled, failed), `PushModelTests` (asked only from Settings or
+  after the first entry, never on the demo; the wizard's opt-in as the
+  switch; the token with its environment;
+  forgotten on sign-out), `DataLayerTests` (the cache, live
   refresh), `EntryFormModelTests`, `LedgerTests`, `BudgetsTests`,
   `RecurringTests`, `InsightsTests`, `HomeViewModelTests`,
   `CategoryBadgeTests` (every category icon bundled), `GroupsModelTests` (the list and invites, a
@@ -753,5 +803,8 @@ on develop and pull requests; a feature branch runs it by hand (Actions → ios-
 ### Running on a device
 
 A simulator build needs no signing. For a device, put `DEVELOPMENT_TEAM =
-<your team id>` in `ios/Budgeer/Config/Local.xcconfig` and let Xcode manage
-the profile.
+<your team id>` in `ios/Budgeer/Config/Local.xcconfig` (gitignored) and let
+Xcode manage the profiles; the App IDs need Push Notifications and Sign in
+with Apple (Xcode adds them with automatic signing). Push on a device run
+from Xcode uses the development APNs (sandbox); TestFlight builds use
+production.

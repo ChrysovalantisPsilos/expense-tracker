@@ -1,8 +1,8 @@
 // The setup wizard (WelcomeModel), as the web's OnboardingWizard: a new
 // account's four steps under the mark and a progress bar. Welcome (your
 // name and currency), Split costs with friends (a first group, optional),
-// Stay in the loop (notifications; the web's passkey offer waits for the
-// app's passkeys), and the tour (Start tour or Skip tour). Every step can be
+// Stay in the loop (notifications, as Settings' push switch; the web's
+// passkey offer is left out, passkeys being the website's), and the tour (Start tour or Skip tour). Every step can be
 // skipped, and closing it at any point stamps it done so it never asks again.
 import SwiftUI
 

@@ -228,9 +228,21 @@ npm run dev       # Vite
 
 ## Sign in with Apple
 
-- **Dropped by the owner (28 Sep 2026):** it needs the paid Apple Developer
-  Program ($99/yr) plus a secret rotated every 6 months, and a website doesn't
-  require it. Sign-in stays email/password, Google and passkeys.
+- **On the website and the iOS app (Oct 2026, the owner's paid Apple
+  Developer account).** Web: `signInWithOAuth({ provider: 'apple' })` next to
+  Google on Login/Sign up, Connect/Disconnect in Settings › Security (the
+  same consent marker and legal prompt as Google). iOS: the system's sheet
+  (`Auth/AppleSignIn.swift`, a hashed nonce) → `signInWithIdToken`; Connect
+  in Security is `linkIdentityWithIdToken`; the name Apple gives once is
+  saved (`authMethods.appleProfileName`).
+- **Supabase Auth → Apple provider, both projects:** Client IDs = the
+  Services ID (web) plus the app's bundle id (`com.budgeer.app.dev` on TEST,
+  `com.budgeer.app` on PROD); the secret key is a JWT signed with the Sign in
+  with Apple key, which **expires after 6 months**: regenerate and paste it
+  into both projects before then (calendar it). Only the web flow uses it.
+- **Emails to "Hide My Email" addresses** reach the user only from senders
+  registered in Apple's private email relay (budgeer.com and each From
+  address: Supabase Auth's SMTP sender, INVITE_FROM, privacy@, no-reply@).
 
 ## iOS app
 
@@ -243,13 +255,40 @@ npm run dev       # Vite
   macOS). Maths is never re-implemented in Swift: a figure the app needs goes
   in a pure web module first (ios/README.md "Adding a module"). UI, storage,
   auth and push are Swift.
+- **Two apps, side by side:** "Budgeer Dev" (`com.budgeer.app.dev`, the Dev
+  scheme, TEST) and "Budgeer" (`com.budgeer.app`, the Prod scheme, PROD); the
+  bundle id and name come from `Config/Dev.xcconfig` / `Prod.xcconfig`, the
+  icons from the ios-polish work. Capabilities: Push Notifications and Sign
+  in with Apple (`Config/Budgeer-Debug.entitlements` = development APNs,
+  `Budgeer-Release.entitlements` = production; TestFlight and the App Store
+  are Release builds). Automatic signing; `DEVELOPMENT_TEAM` lives only in
+  `Config/Local.xcconfig` (gitignored) or CI's command line.
+- **TestFlight:** `.github/workflows/ios-testflight.yml`, by hand (Run
+  workflow, app = dev | prod; default dev). macos-26 / Xcode 26.5,
+  `xcodebuild archive` + `-exportArchive` (ExportOptions: app-store-connect,
+  destination upload) with `-allowProvisioningUpdates` and the App Store
+  Connect API key (cloud signing: the key needs the **Admin** role). Build
+  number = the workflow's run number. GitHub secrets (names only):
+  `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `APPLE_TEAM_ID`. It fails at
+  once, naming what's missing, without them. `ITSAppUsesNonExemptEncryption`
+  is NO (only the OS's TLS/Keychain and a SHA-256 nonce hash).
+- **Push (APNs):** the app asks only from Settings › Notifications or once
+  after the first entry saved (`Push/PushModel.swift`), stores the token with
+  `save_apns_token` (0108: `apns_devices`, demo refused, 20/hour, 10 installs
+  max, deleted on sign-out, with the account, exported without the token).
+  `notify-user` sends to APNs (`_shared/apns.ts`: ES256 provider token kept
+  50 min, host by the token's env, topic by project: PROD → `com.budgeer.app`,
+  else `.dev`; dead tokens deleted). Function secrets (names): `APNS_KEY_ID`,
+  `APNS_TEAM_ID`, `APNS_KEY_P8`; without them APNs is skipped. A tap opens
+  the notification's web path (`AppRouter.open(path:)`).
 - **The app (phase 2, `ios/Budgeer`):** XcodeGen project (`project.yml`;
   never commit the .xcodeproj), Dev scheme = TEST project, Prod scheme =
   PROD, from `Config/*.xcconfig` (public anon keys only). `npm run
   ios:prepare` builds the core, the strings and the project. Sign-in is
   email/password or Google (`budgeer://auth-callback`) via supabase-swift
-  2.49.0 (chosen when CI ran Xcode 15.4; CI now pins Xcode 26.5 on macos-26);
-  the legal gate sends the user to the web to accept. Real: Home (period
+  2.49.0 (chosen when CI ran Xcode 15.4; CI now pins Xcode 26.5 on macos-26),
+  or Apple; the legal gate records the acceptance in the app
+  (`accept_legal_documents`), as the web's prompt. Real: Home (period
   picker, projection, Recurring card), Add/Edit, Transactions, Budgets,
   Recurring and Insights (from More), and (phase 3) Groups with Add's
   "Who's it for?", over a cached, realtime data layer (ios/README.md lists
@@ -279,8 +318,8 @@ npm run dev       # Vite
   (widgets, Siri, Face ID lock, push on iOS) are fine. A release to PROD
   ships both: budgeer.com and the two TestFlight apps (Budgeer on PROD,
   Budgeer Dev on TEST).
-- **The owner builds and runs the app with Xcode 27** on their Mac (and a
-  free Apple ID for now), while CI builds with Xcode 26.5 (macos-26, iPhone 17
+- **The owner builds and runs the app with Xcode 27** on their Mac (with the
+  paid developer team in `Config/Local.xcconfig`), while CI builds with Xcode 26.5 (macos-26, iPhone 17
   on iOS 26.5; moved from 15.4 for Liquid Glass). Every package pin
   and Swift change must work on both: check a dependency's newest releases
   (what Xcode 27 resolves) as well as the oldest CI accepts. Package pins

@@ -1,6 +1,7 @@
 // Settings › Security, after the web's SecuritySettings: how this account
-// signs in (email & password, Google; authMethods.signInMethods), Connect or
-// Disconnect Google (never the last way in: googleDisconnectBlock), change
+// signs in (email & password, Google, Apple; authMethods.signInMethods),
+// Connect or Disconnect Google and Apple (never the last way in:
+// disconnectBlock), change
 // the password or set a first one (newPasswordError), then deleting the
 // account (deleteAccountCheck: the password, or a recent sign-in and
 // DELETE typed; the delete-account edge function). Connecting, disconnecting
@@ -42,8 +43,9 @@ final class SecurityModel {
     private(set) var state: State = .loading
     private(set) var isDemo = false
     private(set) var methods: [SignInMethodRow] = []
-    /// Why Google can't be disconnected now (googleDisconnectBlock), nil when it can.
-    private(set) var googleBlock: String?
+    /// Why each provider ('google', 'apple') can't be disconnected now
+    /// (disconnectBlock); a provider missing here can be.
+    private(set) var blocks: [String: String] = [:]
     /// Whether the account has a password to change (authMethods.hasPassword).
     private(set) var hasPassword = false
     /// Whether this session signed in within the last few minutes.
@@ -56,7 +58,7 @@ final class SecurityModel {
     var current = ""
     var next = ""
     var confirm = ""
-    /// "Set a password" was tapped on a Google-only account.
+    /// "Set a password" was tapped on a Google- or Apple-only account.
     var settingFirst = false
     /// Delete account: the password or DELETE, as typed.
     var deleteValue = ""
@@ -167,61 +169,82 @@ final class SecurityModel {
                                                              JSONValue.string(mismatchKey)]))?.stringValue
     }
 
-    // MARK: Google
+    // MARK: Google and Apple
 
-    /// Connect's first half: where Google's consent starts, nil (with the
-    /// reason said) when a fresh sign-in is needed first or it can't start.
-    func googleLinkURL() async -> URL? {
+    /// Whether a provider may be connected now: a sign-in in the last few
+    /// minutes (else the reason is said and nothing opens).
+    func mayConnect() async -> Bool {
         await checkRecent()
-        guard recent else {
-            say(reauthText ?? "", warning: true)
-            return nil
-        }
+        if !recent { say(reauthText ?? "", warning: true) }
+        return recent
+    }
+
+    /// Google's first half: where its consent starts, nil (with the reason
+    /// said) when a fresh sign-in is needed first or it can't start.
+    func googleLinkURL() async -> URL? {
+        guard await mayConnect() else { return nil }
         do {
             return try await security.googleLinkURL()
         } catch {
-            say(linkMessage(error, fallback: nil), warning: true)
+            say(linkMessage(error, fallback: nil, provider: "google"), warning: true)
             return nil
         }
     }
 
-    /// Google's sheet failed (not closed by you): nothing was connected.
-    func linkFailed() {
-        say(core.text("settings:signIn.google.notLinked"), warning: true)
+    /// The provider's sheet failed (not closed by you): nothing was connected.
+    func linkFailed(_ provider: String) {
+        say(core.text("settings:signIn.\(provider).notLinked"), warning: true)
     }
 
-    /// Connect's second half: Google's answer, then how it went.
+    /// Google's second half: its answer, then how it went.
     func finishLink(_ callback: URL) async {
         do {
             try await security.finishLink(callback)
-            await reloadUser()
-            let linked = (identities.arrayValue ?? []).contains { $0["provider"]?.stringValue == "google" }
-            say(core.text(linked ? "settings:signIn.google.linkedBody" : "settings:signIn.google.notLinked"), warning: !linked)
+            await linked("google")
         } catch {
-            say(linkMessage(error, fallback: nil), warning: true)
+            say(linkMessage(error, fallback: nil, provider: "google"), warning: true)
         }
     }
 
-    func disconnectGoogle() async {
+    /// Apple's sheet answered: its token linked to this account, then how it went.
+    func connectApple(_ credential: AppleCredential) async {
+        busy = true
+        defer { busy = false }
+        do {
+            try await security.linkApple(credential)
+            await linked("apple")
+        } catch {
+            say(linkMessage(error, fallback: nil, provider: "apple"), warning: true)
+        }
+    }
+
+    private func linked(_ provider: String) async {
+        await reloadUser()
+        let done = (identities.arrayValue ?? []).contains { $0["provider"]?.stringValue == provider }
+        say(core.text("settings:signIn.\(provider).\(done ? "linkedBody" : "notLinked")"), warning: !done)
+    }
+
+    func disconnect(_ provider: String) async {
         await checkRecent()
         guard recent else { return say(reauthText ?? "", warning: true) }
         busy = true
         defer { busy = false }
         do {
-            try await security.unlinkGoogle()
-            say(core.text("settings:signIn.google.disconnected"))
+            try await security.unlink(provider: provider)
+            say(core.text("settings:signIn.\(provider).disconnected"))
             await reloadUser()
         } catch {
-            say(linkMessage(error, fallback: core.text("settings:signIn.google.stillConnected")), warning: true)
+            say(linkMessage(error, fallback: core.text("settings:signIn.\(provider).stillConnected"), provider: provider),
+                warning: true)
         }
     }
 
-    /// authMethods.linkErrorMessage: our words for a failed link, never Google's.
-    private func linkMessage(_ error: Error, fallback: String?) -> String {
+    /// authMethods.linkErrorMessage: our words for a failed link, never Google's or Apple's.
+    private func linkMessage(_ error: Error, fallback: String?, provider: String) -> String {
         var shape: JSONValue = ["message": .string(String(describing: error))]
         if let server = error as? ServerError { shape = ["code": server.code.json, "message": .string(server.message)] }
-        let args: [Encodable] = fallback.map { [shape, JSONValue.string($0)] } ?? [shape]
-        return (try? core.call("authMethods", "linkErrorMessage", args)) ?? core.text("settings:signIn.linkError.fallback")
+        return (try? core.call("authMethods", "linkErrorMessage", [shape, fallback.json, JSONValue.string(provider)]))
+            ?? core.text("settings:signIn.\(provider).linkFallback")
     }
 
     // MARK: Deleting the account
@@ -266,12 +289,16 @@ final class SecurityModel {
         figure()
     }
 
-    /// The methods, the Google block and the password, from the user and its identities.
+    /// The methods, the providers' blocks and the password, from the user and its identities.
     private func figure() {
         let args: JSONValue = ["user": user, "identities": identities, "passkeys": .null]
         methods = (try? core.call("authMethods", "signInMethods", [args])) ?? []
-        googleBlock = (try? core.json("authMethods", "googleDisconnectBlock", [["user": user, "identities": identities] as JSONValue]))?
-            .stringValue
+        blocks = [:]
+        // The providers' rows sit between the password's and the passkeys' (authMethods.PROVIDERS).
+        for provider in methods.map(\.key) where provider != "password" && provider != "passkeys" {
+            let input: JSONValue = ["user": user, "identities": identities, "provider": .string(provider)]
+            if let block = (try? core.json("authMethods", "disconnectBlock", [input]))?.stringValue { blocks[provider] = block }
+        }
         hasPassword = (try? core.call("authMethods", "hasPassword", [user])) ?? false
     }
 

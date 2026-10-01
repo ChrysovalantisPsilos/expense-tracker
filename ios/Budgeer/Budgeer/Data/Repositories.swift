@@ -76,6 +76,11 @@ protocol ProfileRepository: Sendable {
     /// uploadAvatar: the picture into avatars/<uid>/avatar.<ext>, then the
     /// profile's avatar_url (the public URL, cache-busted): that URL.
     func uploadAvatar(data: Data, contentType: String, ext: String) async throws -> String
+    /// save_apns_token: this install's APNs device token (hex) and its
+    /// environment ('sandbox' or 'production'), for push (0108).
+    func saveDeviceToken(_ token: String, environment: String) async throws
+    /// delete_apns_token: this install stops getting the account's pushes.
+    func deleteDeviceToken(_ token: String) async throws
 }
 
 protocol CategoriesRepository: Sendable {

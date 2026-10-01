@@ -34,7 +34,7 @@ struct WhatsNewStory: Decodable, Equatable, Identifiable {
 
 /// The push opt-in the wizard's "Stay in the loop" step offers: what turning
 /// it on did ('subscribed', 'denied', 'unsupported' or 'error', as the
-/// web's enablePush answers). The app's APNs registration plugs in here.
+/// web's enablePush answers): PushModel.optIn, as Settings' push switch.
 typealias PushOptIn = @MainActor () async -> String
 
 @MainActor

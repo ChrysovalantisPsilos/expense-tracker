@@ -1,63 +1,118 @@
 // The legal gate: the server says the Privacy Notice and Terms in force are
-// not accepted by this account (a new account, or a version bump). The web's
-// words for a first acceptance or an update, then — until the app can record
-// consent itself — the way out: accept on the website, then check again.
-// Sign out is the other way out, as on the web.
+// not accepted by this account (a new account made with Google or Apple, or
+// a version bump). The web's prompt (LegalGate): its words for a first
+// acceptance or an update, the two documents to read (the website's pages in
+// Safari), and "Accept and continue", which records the acceptance
+// (accept_legal_documents, consent source 'prompt'). "I don't agree" says
+// what's left: signing out, or deleting the account on the website.
 import SwiftUI
 
 @MainActor
 struct LegalGateView: View {
     let status: LegalStatus
     let session: SessionStore
+    /// This build's website, whose /privacy and /terms are the documents.
+    var site: String = "https://www.budgeer.com"
     @Environment(AppLanguage.self) private var language
-    @State private var checking = false
+    @State private var accepting = false
+    @State private var declined = false
+    @State private var failed = false
+    @State private var page: WebPage?
 
     var body: some View {
-        VStack(spacing: 22) {
-            Spacer()
-            NativeIconTile(symbol: "checkmark.shield.fill", color: NativeTone.coral, size: 64)
-            VStack(spacing: 10) {
-                Text(language.t(status.isFirstAcceptance ? "privacy:gate.firstTitle" : "privacy:gate.updateTitle"))
-                    .font(NativeStyle.title(24, lang: language.current))
-                    .multilineTextAlignment(.center)
-                Text(language.t(status.isFirstAcceptance ? "privacy:gate.firstBody" : "privacy:gate.updateBody"))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                Text(language.t("ios:gate.acceptOnWeb"))
-                    .fontWeight(.semibold)
-                    .multilineTextAlignment(.center)
-                if let version = status.privacyVersion {
-                    Text(language.t("privacy:gate.version", ["date": .string(version)]))
-                        .font(.caption)
+        ScrollView {
+            VStack(spacing: 22) {
+                NativeIconTile(symbol: "checkmark.shield.fill", color: NativeTone.coral, size: 64)
+                    .padding(.top, 48)
+                VStack(spacing: 10) {
+                    Text(language.t(status.isFirstAcceptance ? "privacy:gate.firstTitle" : "privacy:gate.updateTitle"))
+                        .font(NativeStyle.title(24, lang: language.current))
+                        .multilineTextAlignment(.center)
+                    Text(language.t(status.isFirstAcceptance ? "privacy:gate.firstBody" : "privacy:gate.updateBody"))
                         .foregroundStyle(.secondary)
-                }
-            }
-            VStack(spacing: 12) {
-                Link(destination: URL(string: "https://www.budgeer.com/")!) {
-                    Text(verbatim: "budgeer.com").frame(maxWidth: .infinity)
-                }
-                .nativeGlassButton(prominent: true)
-                Button {
-                    checking = true
-                    Task {
-                        await session.recheckLegal()
-                        checking = false
+                        .multilineTextAlignment(.center)
+                    if let version = status.privacyVersion {
+                        Text(language.t("privacy:gate.version", ["date": .string(version)]))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
-                } label: {
-                    Text(language.t("common:actions.retry")).frame(maxWidth: .infinity)
                 }
-                .nativeGlassButton()
-                .disabled(checking)
-                Button(language.t("privacy:gate.signOut")) { Task { await session.signOut() } }
-                    .fontWeight(.semibold)
-                    .foregroundStyle(NativeStyle.tint)
-                    .frame(minHeight: 44)
+                VStack(spacing: 0) {
+                    documentRow("/privacy", title: language.t("settings:rows.privacyNotice.label"))
+                    Divider().padding(.leading, 16)
+                    documentRow("/terms", title: language.t("settings:rows.terms.label"))
+                }
+                .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                if failed {
+                    Text(language.t("privacy:gate.acceptFailed"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NativeStyle.negative)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("gate.failed")
+                }
+                if declined {
+                    Text(language.t("ios:gate.declined"))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                VStack(spacing: 12) {
+                    Button {
+                        Task { await accept() }
+                    } label: {
+                        Group {
+                            if accepting { ProgressView().tint(Color.white) } else { Text(language.t("privacy:gate.accept")) }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .nativeGlassButton(prominent: true)
+                    .disabled(accepting)
+                    .accessibilityIdentifier("gate.accept")
+                    if declined {
+                        Button(language.t("privacy:gate.signOut")) { Task { await session.signOut() } }
+                            .fontWeight(.semibold)
+                            .foregroundStyle(NativeStyle.tint)
+                            .frame(minHeight: 44)
+                    } else {
+                        Button(language.t("privacy:gate.disagree")) { declined = true }
+                            .fontWeight(.semibold)
+                            .foregroundStyle(NativeStyle.tint)
+                            .frame(minHeight: 44)
+                            .accessibilityIdentifier("gate.disagree")
+                    }
+                }
             }
-            Spacer()
+            .padding(24)
         }
-        .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(NativeStyle.canvas.ignoresSafeArea())
+        .sheet(item: $page) { page in SafariView(url: page.url).ignoresSafeArea() }
+    }
+
+    private func documentRow(_ path: String, title: String) -> some View {
+        Button {
+            page = WebPage(path, site: site)
+        } label: {
+            HStack {
+                Text(title).foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "arrow.up.right.square").foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .frame(minHeight: 48)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func accept() async {
+        accepting = true
+        failed = false
+        defer { accepting = false }
+        do {
+            try await session.acceptLegal()
+        } catch {
+            failed = true
+        }
     }
 }
 

@@ -112,8 +112,15 @@ final class FakeSecurity: AccountSecurity, @unchecked Sendable {
         ])
     }
 
-    func unlinkGoogle() async throws {
-        calls.append("unlink")
-        identityRows = .array((identityRows.arrayValue ?? []).filter { $0["provider"]?.stringValue != "google" })
+    func linkApple(_ credential: AppleCredential) async throws {
+        calls.append("linkApple:\(credential.idToken)")
+        identityRows = .array((identityRows.arrayValue ?? []) + [
+            ["provider": "apple", "identity_id": "i-apple", "identity_data": ["email": "x7k2@privaterelay.appleid.com"]],
+        ])
+    }
+
+    func unlink(provider: String) async throws {
+        calls.append("unlink:\(provider)")
+        identityRows = .array((identityRows.arrayValue ?? []).filter { $0["provider"]?.stringValue != provider })
     }
 }

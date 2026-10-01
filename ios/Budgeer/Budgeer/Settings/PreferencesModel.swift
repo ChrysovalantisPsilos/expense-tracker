@@ -1,7 +1,7 @@
 // The switches Settings keeps on the profile, after the web's
 // SpendingSettings (yearly subscriptions in monthly spending, the salary
-// shift with its day and category), NotificationSettings (the email and
-// weekly-summary messages; off on the shared demo account) and AiSettings
+// shift with its day and category), NotificationSettings (push, the email
+// and weekly-summary messages; off on the shared demo account) and AiSettings
 // (the four helpers). A switch moves at once and the profile is written;
 // a refused write puts it back and says so. Every rule is the core's
 // (spendingPrefs, aiMath, demoAccount).
@@ -103,9 +103,13 @@ final class PreferencesModel {
 
     // MARK: Notifications
 
+    /// The account's push switch (profiles.notify_push; on unless turned off,
+    /// as on the web): the server sends to every device allowed.
+    var pushOn: Bool { profile["notify_push"]?.boolValue != false }
     var emailOn: Bool { profile["notify_email"]?.boolValue == true }
     var digestOn: Bool { profile["notify_digest"]?.boolValue == true }
 
+    func setPush(_ on: Bool) async { await save(["notify_push": .bool(on)]) }
     func setEmail(_ on: Bool) async { await save(["notify_email": .bool(on)]) }
     func setDigest(_ on: Bool) async { await save(["notify_digest": .bool(on)]) }
 

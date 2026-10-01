@@ -221,8 +221,11 @@ struct AppFrame: View {
                     page(tab, models)
                 }
                 .sheet(item: $router.add) { request in
-                    AddSheet(request: request, data: container.data, userId: userId, groups: models.myGroups)
-                        .environment(language)
+                    AddSheet(request: request, data: container.data, userId: userId, groups: models.myGroups) {
+                        // The first entry saved is the moment to ask about notifications (once).
+                        Task { await container.push.askAfterFirstAction() }
+                    }
+                    .environment(language)
                 }
                 .welcomeLayer(welcome: models.welcome, tour: models.tour, router: router)
                 .task(id: user.id) { await models.shell.load() }
@@ -237,8 +240,12 @@ struct AppFrame: View {
         .onAppear {
             if models == nil {
                 let session = container.session
-                models = AppModels(data: container.data, userId: userId, language: language, security: container.security,
-                                   signOut: { await session.signOut() })
+                let push = container.push
+                let built = AppModels(data: container.data, userId: userId, language: language, security: container.security,
+                                      signOut: { await session.signOut() })
+                // The wizard's "Enable notifications" is Settings' push switch turned on.
+                built.welcome.pushOptIn = { await push.optIn() }
+                models = built
             }
         }
         // The account's language: the profile's wins (ProfileLanguage), on
@@ -250,6 +257,14 @@ struct AppFrame: View {
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.
         .task(id: user.id) { await container.feed.start(userId: user.id) }
+        // Push: re-register when iOS already allows it (never asks here).
+        .task(id: user.id) { await container.push.refresh() }
+        // A tapped notification opens its page, as the bell's rows do.
+        .onChange(of: PushInbox.shared.path, initial: true) { _, path in
+            guard let path else { return }
+            PushInbox.shared.path = nil
+            router.open(path: path)
+        }
         // A budgeer://join link (RootView keeps it until the frame is up).
         .onChange(of: container.joinInbox.token, initial: true) { _, token in
             guard let token else { return }
@@ -399,7 +414,7 @@ struct AppFrame: View {
             SpendingView(model: models.preferences)
                 .liveRefresh(container.live, tables: ["profiles", "categories"]) { await models.preferences.load() }
         case .messages:
-            MessagesView(model: models.preferences)
+            MessagesView(model: models.preferences, push: container.push)
                 .liveRefresh(container.live, tables: ["profiles"]) { await models.preferences.load() }
         case .appearance:
             AppearanceView()
