@@ -8,6 +8,7 @@ import WhatsNewPrompt from '../features/whatsnew/WhatsNewPrompt.jsx'
 import { useProfile } from '../shared/lib/ProfileProvider.jsx'
 import { useEnsureDefaultCategories } from '../shared/lib/categories.js'
 import { useTour } from '../features/onboarding/tour.js'
+import { needsOnboarding as isNewAccount, tourPending } from '../features/onboarding/onboardingMath.js'
 import { useLegalGate } from '../features/privacy/useLegalGate.js'
 import { GATE_VIEW } from '../features/privacy/legalGateMath.js'
 // Not lazy: it's the screen shown when the network is down.
@@ -147,12 +148,12 @@ function AuthedRoutes() {
   // A brand-new account (no onboarded_at) gets the setup wizard, which also
   // folds in the passkey + notification asks — so the standalone prompts wait
   // until onboarding is done to avoid stacking.
-  const needsOnboarding = !profileLoading && profile && !profile.onboarded_at
+  const needsOnboarding = !profileLoading && isNewAccount(profile)
   // The app tour follows the wizard (its last step starts it) and can be
   // replayed from Settings. If it was never finished or skipped (the app
   // closed mid-tour), it picks up again once per session. (=== false: a
   // profile without the 0069 column never auto-starts it.)
-  const { tour, endTour } = useTour(!profileLoading && !!profile?.onboarded_at && profile.tour_done === false)
+  const { tour, endTour } = useTour(!profileLoading && tourPending(profile))
 
   // First-login default-category seed (a data hook owned by transactions, so
   // the shared profile code never reaches into a feature).

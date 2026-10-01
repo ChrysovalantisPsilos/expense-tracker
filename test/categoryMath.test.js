@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs'
 import {
   CATEGORY_NAME_MAX, categoryNameError, sortCategories, moveTargets, sameKindOthers,
   categoryPatch, categoryPeriod, NEW_DEFAULT_CATEGORIES, NEW_TAG_MS, isNewCategory, categoryDraft,
+  categoryPageHead, categoryBudget,
 } from '../src/features/categories/categoryMath.js'
 import { NO_CATEGORY, presetCategoryId, newCategoryRow, categoryUpdateRow } from '../src/shared/lib/categoryName.js'
 import { latestSql } from './migrations.js'
@@ -280,4 +281,34 @@ test('presetCategoryId: a category from a link counts only if it is one of the u
   assert.equal(presetCategoryId('', cats, 'income'), '')
   assert.equal(presetCategoryId(null, cats, 'income'), '')
   assert.equal(presetCategoryId('sav', undefined, 'income'), '')
+})
+
+test('categoryPageHead: the name, the eyebrow and the total by kind (savings saved, never earned)', () => {
+  const head = (c, none) => { const h = categoryPageHead(c, none); return [h.kind, h.name, h.eyebrow, h.totalLabel] }
+  assert.deepEqual(head({ id: 'a', name: 'Pets', kind: 'expense' }), ['expense', 'Pets', 'Category', 'Spent'])
+  assert.deepEqual(head({ id: 'b', name: 'Tips', kind: 'income' }), ['income', 'Tips', 'Income category', 'Earned'])
+  assert.deepEqual(head({ id: 'c', name: 'Pot', kind: 'income', is_savings: true }),
+    ['income', 'Pot', 'Savings category', 'Saved'])
+  assert.deepEqual(head({ id: 'd', name: 'Old', kind: 'expense', is_archived: true }),
+    ['expense', 'Old', 'Archived category', 'Spent'])
+  assert.deepEqual(head(null, true), ['expense', 'Uncategorized', 'Category', 'Spent'])
+})
+
+test('categoryBudget: monthly only, the bar with a carried cap, set this month, none in the past', () => {
+  const period = { value: 'm:2026-9', from: '2026-09-01', to: '2026-09-30', label: 'This month' }
+  const base = { spent: 9000, month: true, canEdit: true, period, baseCurrency: 'EUR' }
+  assert.deepEqual(categoryBudget({ ...base, month: false, budget: null }),
+    { state: 'monthly', text: 'Budgets are monthly — pick a month to see one.' })
+  assert.deepEqual(categoryBudget({ ...base, budget: { amount_minor: 10000, period_start: '2026-08-01' } }), {
+    state: 'bar', title: 'Budget', meta: '€90.00 of €100.00', percent: 90, tone: 'warning', over: false,
+    carried: 'Carried over from August',
+  })
+  const over = categoryBudget({ ...base, spent: 12000, budget: { amount_minor: 10000, period_start: '2026-09-01' } })
+  assert.equal(over.tone, 'negative')
+  assert.equal(over.over, true)
+  assert.equal(over.carried, null)
+  assert.equal(categoryBudget({ ...base, spent: 100, budget: { amount_minor: 10000, period_start: '2026-09-01' } }).tone, null)
+  assert.deepEqual(categoryBudget({ ...base, budget: null }), { state: 'set', text: 'Set a budget' })
+  assert.deepEqual(categoryBudget({ ...base, canEdit: false, budget: null, period: { ...period, label: 'August 2026' } }),
+    { state: 'none', text: 'No budget in August 2026.' })
 })

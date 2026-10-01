@@ -52,6 +52,10 @@ struct HomeBar: Codable, Equatable, Sendable {
     let group: Bool
     /// The category's badge (categoryStyle.categoryLook).
     let look: CategoryLook
+    /// Where the bar drills down to (categoryLinks.linkBuckets: its category's
+    /// page for the period, or its group's), and that link's spoken name.
+    let to: String?
+    let linkLabel: String?
 }
 
 /// The overview's ⓘ, part one (netSum): How Net adds up.
@@ -204,6 +208,7 @@ struct HomeFigures: Codable, Equatable, Sendable {
         let byCategory = totals["byCategory"] ?? JSONValue.array([])
         let ranked: [JSONValue] = try core.call("breakdown", "categoryBars", [byCategory, noFold])
         let lines: [String] = try core.call("dashboardMath", "barLines", [JSONValue.array(ranked), spend, baseCurrency])
+        let linked = try core.json("categoryLinks", "linkBuckets", [JSONValue.array(ranked), spend, period]).arrayValue ?? []
         let bars = try ranked.enumerated().map { index, c -> HomeBar in
             let name = c["name"]?.stringValue ?? ""
             let row = bucketPairs.first { $0.key.stringValue == name }?.value
@@ -214,7 +219,9 @@ struct HomeFigures: Codable, Equatable, Sendable {
                            share: c["share"]?.intValue ?? 0, ratio: c["ratio"]?.doubleValue ?? 0, amount: amount,
                            meta: index < lines.count ? lines[index] : amount,
                            group: row?["group_expense_id"]?.stringValue != nil,
-                           look: try CategoryLook.of(row?["categories"], core: core))
+                           look: try CategoryLook.of(row?["categories"], core: core),
+                           to: index < linked.count ? linked[index]["to"]?.stringValue : nil,
+                           linkLabel: index < linked.count ? linked[index]["linkLabel"]?.stringValue : nil)
         }
         let spentTotal = figures["spentTotal"]?.doubleValue ?? 0
         let earnedTotal = figures["earnedTotal"]?.doubleValue ?? 0

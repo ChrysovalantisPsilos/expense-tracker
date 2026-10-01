@@ -1,0 +1,1348 @@
+{
+  "input": {
+    "now": "2020-09-15T10:00:00.000Z",
+    "profile": {
+      "base_currency": "EUR",
+      "yearly_separate": false,
+      "salary_shift_from_day": 25,
+      "salary_category_id": "11111111-1111-4111-8111-111111111111"
+    },
+    "categories": [
+      {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "name": "Groceries",
+        "kind": "expense",
+        "icon": null,
+        "color": "teal",
+        "is_archived": false,
+        "is_savings": false,
+        "default_key": "groceries"
+      },
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "name": "Salary",
+        "kind": "income",
+        "icon": null,
+        "color": null,
+        "is_archived": false,
+        "is_savings": false,
+        "default_key": "salary"
+      },
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "name": "Savings",
+        "kind": "income",
+        "icon": null,
+        "color": null,
+        "is_archived": false,
+        "is_savings": true,
+        "default_key": "savings"
+      },
+      {
+        "id": "77777777-7777-4777-8777-777777777777",
+        "name": "Gym",
+        "kind": "expense",
+        "icon": null,
+        "color": null,
+        "is_archived": true,
+        "is_savings": false,
+        "default_key": null
+      }
+    ],
+    "views": [
+      {
+        "name": "groceries",
+        "categoryId": "33333333-3333-4333-8333-333333333333",
+        "periodValue": null,
+        "rows": [
+          {
+            "id": "g1",
+            "spent_at": "2020-09-14",
+            "kind": "expense",
+            "amount_minor": 4250,
+            "currency": "EUR",
+            "exchange_rate": 1,
+            "category_id": "33333333-3333-4333-8333-333333333333",
+            "categories": {
+              "id": "33333333-3333-4333-8333-333333333333",
+              "name": "Groceries",
+              "kind": "expense",
+              "icon": null,
+              "color": "teal",
+              "is_archived": false,
+              "is_savings": false,
+              "default_key": "groceries"
+            },
+            "description": "Market",
+            "notes": "weekly shop",
+            "group_expense_id": null,
+            "group_expenses": null,
+            "recurring": null,
+            "paid_from_savings": false,
+            "paid_with_vouchers": false,
+            "savings_from_income": null,
+            "spread_months": null
+          },
+          {
+            "id": "g2",
+            "spent_at": "2020-09-10",
+            "kind": "expense",
+            "amount_minor": 1899,
+            "currency": "EUR",
+            "exchange_rate": 1,
+            "category_id": "33333333-3333-4333-8333-333333333333",
+            "categories": {
+              "id": "33333333-3333-4333-8333-333333333333",
+              "name": "Groceries",
+              "kind": "expense",
+              "icon": null,
+              "color": "teal",
+              "is_archived": false,
+              "is_savings": false,
+              "default_key": "groceries"
+            },
+            "description": null,
+            "notes": null,
+            "group_expense_id": null,
+            "group_expenses": null,
+            "recurring": null,
+            "paid_from_savings": false,
+            "paid_with_vouchers": false,
+            "savings_from_income": null,
+            "spread_months": null
+          },
+          {
+            "id": "g3",
+            "spent_at": "2020-09-02",
+            "kind": "expense",
+            "amount_minor": 2500,
+            "currency": "USD",
+            "exchange_rate": 0.9123,
+            "category_id": "33333333-3333-4333-8333-333333333333",
+            "categories": {
+              "id": "33333333-3333-4333-8333-333333333333",
+              "name": "Groceries",
+              "kind": "expense",
+              "icon": null,
+              "color": "teal",
+              "is_archived": false,
+              "is_savings": false,
+              "default_key": "groceries"
+            },
+            "description": null,
+            "notes": null,
+            "group_expense_id": null,
+            "group_expenses": null,
+            "recurring": null,
+            "paid_from_savings": false,
+            "paid_with_vouchers": false,
+            "savings_from_income": null,
+            "spread_months": null
+          }
+        ],
+        "budgets": [
+          {
+            "category_id": "33333333-3333-4333-8333-333333333333",
+            "amount_minor": 10000,
+            "currency": "EUR",
+            "period_start": "2020-08-01"
+          }
+        ]
+      },
+      {
+        "name": "pastMonth",
+        "categoryId": "33333333-3333-4333-8333-333333333333",
+        "periodValue": "m:2020-8",
+        "rows": [
+          {
+            "id": "g4",
+            "spent_at": "2020-08-20",
+            "kind": "expense",
+            "amount_minor": 6400,
+            "currency": "EUR",
+            "exchange_rate": 1,
+            "category_id": "33333333-3333-4333-8333-333333333333",
+            "categories": {
+              "id": "33333333-3333-4333-8333-333333333333",
+              "name": "Groceries",
+              "kind": "expense",
+              "icon": null,
+              "color": "teal",
+              "is_archived": false,
+              "is_savings": false,
+              "default_key": "groceries"
+            },
+            "description": null,
+            "notes": null,
+            "group_expense_id": null,
+            "group_expenses": null,
+            "recurring": null,
+            "paid_from_savings": false,
+            "paid_with_vouchers": false,
+            "savings_from_income": null,
+            "spread_months": null
+          }
+        ],
+        "budgets": []
+      },
+      {
+        "name": "year",
+        "categoryId": "33333333-3333-4333-8333-333333333333",
+        "periodValue": "y:2020",
+        "rows": [
+          {
+            "id": "g1",
+            "spent_at": "2020-09-14",
+            "kind": "expense",
+            "amount_minor": 4250,
+            "currency": "EUR",
+            "exchange_rate": 1,
+            "category_id": "33333333-3333-4333-8333-333333333333",
+            "categories": {
+              "id": "33333333-3333-4333-8333-333333333333",
+              "name": "Groceries",
+              "kind": "expense",
+              "icon": null,
+              "color": "teal",
+              "is_archived": false,
+              "is_savings": false,
+              "default_key": "groceries"
+            },
+            "description": null,
+            "notes": null,
+            "group_expense_id": null,
+            "group_expenses": null,
+            "recurring": null,
+            "paid_from_savings": false,
+            "paid_with_vouchers": false,
+            "savings_from_income": null,
+            "spread_months": null
+          },
+          {
+            "id": "g4",
+            "spent_at": "2020-08-20",
+            "kind": "expense",
+            "amount_minor": 6400,
+            "currency": "EUR",
+            "exchange_rate": 1,
+            "category_id": "33333333-3333-4333-8333-333333333333",
+            "categories": {
+              "id": "33333333-3333-4333-8333-333333333333",
+              "name": "Groceries",
+              "kind": "expense",
+              "icon": null,
+              "color": "teal",
+              "is_archived": false,
+              "is_savings": false,
+              "default_key": "groceries"
+            },
+            "description": null,
+            "notes": null,
+            "group_expense_id": null,
+            "group_expenses": null,
+            "recurring": null,
+            "paid_from_savings": false,
+            "paid_with_vouchers": false,
+            "savings_from_income": null,
+            "spread_months": null
+          }
+        ],
+        "budgets": []
+      },
+      {
+        "name": "salary",
+        "categoryId": "11111111-1111-4111-8111-111111111111",
+        "periodValue": null,
+        "rows": [
+          {
+            "id": "p1",
+            "spent_at": "2020-09-01",
+            "kind": "income",
+            "amount_minor": 250000,
+            "currency": "EUR",
+            "exchange_rate": 1,
+            "category_id": "11111111-1111-4111-8111-111111111111",
+            "categories": {
+              "id": "11111111-1111-4111-8111-111111111111",
+              "name": "Salary",
+              "kind": "income",
+              "icon": null,
+              "color": null,
+              "is_archived": false,
+              "is_savings": false,
+              "default_key": "salary"
+            },
+            "description": null,
+            "notes": null,
+            "group_expense_id": null,
+            "group_expenses": null,
+            "recurring": null,
+            "paid_from_savings": false,
+            "paid_with_vouchers": false,
+            "savings_from_income": null,
+            "spread_months": null
+          }
+        ],
+        "budgets": []
+      },
+      {
+        "name": "savings",
+        "categoryId": "22222222-2222-4222-8222-222222222222",
+        "periodValue": null,
+        "rows": [
+          {
+            "id": "s1",
+            "spent_at": "2020-09-02",
+            "kind": "income",
+            "amount_minor": 30000,
+            "currency": "EUR",
+            "exchange_rate": 1,
+            "category_id": "22222222-2222-4222-8222-222222222222",
+            "categories": {
+              "id": "22222222-2222-4222-8222-222222222222",
+              "name": "Savings",
+              "kind": "income",
+              "icon": null,
+              "color": null,
+              "is_archived": false,
+              "is_savings": true,
+              "default_key": "savings"
+            },
+            "description": null,
+            "notes": null,
+            "group_expense_id": null,
+            "group_expenses": null,
+            "recurring": null,
+            "paid_from_savings": false,
+            "paid_with_vouchers": false,
+            "savings_from_income": true,
+            "spread_months": null
+          }
+        ],
+        "budgets": []
+      },
+      {
+        "name": "none",
+        "categoryId": "none",
+        "periodValue": null,
+        "rows": [
+          {
+            "id": "n1",
+            "spent_at": "2020-09-11",
+            "kind": "expense",
+            "amount_minor": 90000,
+            "currency": "EUR",
+            "exchange_rate": 1,
+            "category_id": null,
+            "categories": null,
+            "description": "Rent",
+            "notes": null,
+            "group_expense_id": null,
+            "group_expenses": null,
+            "recurring": null,
+            "paid_from_savings": false,
+            "paid_with_vouchers": false,
+            "savings_from_income": null,
+            "spread_months": null
+          },
+          {
+            "id": "n2",
+            "spent_at": "2020-09-08",
+            "kind": "expense",
+            "amount_minor": 2200,
+            "currency": "EUR",
+            "exchange_rate": 1,
+            "category_id": null,
+            "categories": null,
+            "description": null,
+            "notes": null,
+            "group_expense_id": "ge1",
+            "group_expenses": {
+              "groups": {
+                "name": "Lisbon trip"
+              }
+            },
+            "recurring": null,
+            "paid_from_savings": false,
+            "paid_with_vouchers": false,
+            "savings_from_income": null,
+            "spread_months": null
+          }
+        ],
+        "budgets": []
+      },
+      {
+        "name": "archived",
+        "categoryId": "77777777-7777-4777-8777-777777777777",
+        "periodValue": null,
+        "rows": [],
+        "budgets": []
+      },
+      {
+        "name": "missing",
+        "categoryId": "99999999-9999-4999-8999-999999999999",
+        "periodValue": null,
+        "rows": [],
+        "budgets": []
+      }
+    ]
+  },
+  "expected": {
+    "en": {
+      "groceries": {
+        "found": true,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "This month"
+        },
+        "kind": "expense",
+        "name": "Groceries",
+        "eyebrow": "Category",
+        "look": {
+          "key": "groceries",
+          "tone": "accent",
+          "tint": {
+            "fg": "#16939A",
+            "bg": "#16939A29"
+          }
+        },
+        "editable": true,
+        "archived": false,
+        "totalLabel": "Spent",
+        "total": "€84.30",
+        "budget": {
+          "state": "bar",
+          "title": "Budget",
+          "meta": "€84.30 of €100.00",
+          "percent": 84,
+          "tone": "warning",
+          "over": false,
+          "carried": "Carried over from August"
+        },
+        "canEditBudget": true,
+        "budgetMinor": 10000,
+        "budgetInput": "100.00",
+        "budgetHelp": "Changes this month’s cap and the months after it. Clear it to remove the budget.",
+        "listTitle": "Expenses",
+        "listSubtitle": "This month · 3 entries",
+        "rows": [
+          {
+            "id": "g1",
+            "title": "Market",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "14 Sep 2020",
+              "Groceries"
+            ],
+            "notes": "weekly shop",
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€42.50",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "g2",
+            "title": "Groceries",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "10 Sep 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€18.99",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "g3",
+            "title": "Groceries",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "2 Sep 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "$25.00",
+            "tone": "default",
+            "approx": "≈ €22.81",
+            "rate": "0.9123",
+            "estimated": null
+          }
+        ]
+      },
+      "pastMonth": {
+        "found": true,
+        "period": {
+          "value": "m:2020-8",
+          "from": "2020-08-01",
+          "to": "2020-08-31",
+          "label": "August 2020"
+        },
+        "kind": "expense",
+        "name": "Groceries",
+        "eyebrow": "Category",
+        "look": {
+          "key": "groceries",
+          "tone": "accent",
+          "tint": {
+            "fg": "#16939A",
+            "bg": "#16939A29"
+          }
+        },
+        "editable": true,
+        "archived": false,
+        "totalLabel": "Spent",
+        "total": "€64.00",
+        "budget": {
+          "state": "none",
+          "text": "No budget in August 2020."
+        },
+        "canEditBudget": false,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "A monthly cap for this category, from this month on.",
+        "listTitle": "Expenses",
+        "listSubtitle": "August 2020 · 1 entry",
+        "rows": [
+          {
+            "id": "g4",
+            "title": "Groceries",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "20 Aug 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€64.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "year": {
+        "found": true,
+        "period": {
+          "value": "y:2020",
+          "from": "2020-01-01",
+          "to": "2020-12-31",
+          "label": "This year"
+        },
+        "kind": "expense",
+        "name": "Groceries",
+        "eyebrow": "Category",
+        "look": {
+          "key": "groceries",
+          "tone": "accent",
+          "tint": {
+            "fg": "#16939A",
+            "bg": "#16939A29"
+          }
+        },
+        "editable": true,
+        "archived": false,
+        "totalLabel": "Spent",
+        "total": "€106.50",
+        "budget": {
+          "state": "monthly",
+          "text": "Budgets are monthly — pick a month to see one."
+        },
+        "canEditBudget": false,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "A monthly cap for this category, from this month on.",
+        "listTitle": "Expenses",
+        "listSubtitle": "This year · 2 entries",
+        "rows": [
+          {
+            "id": "g1",
+            "title": "Groceries",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "14 Sep 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€42.50",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "g4",
+            "title": "Groceries",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "20 Aug 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€64.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "salary": {
+        "found": true,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "This month"
+        },
+        "kind": "income",
+        "name": "Salary",
+        "eyebrow": "Income category",
+        "look": {
+          "key": "salary",
+          "tone": "positive",
+          "tint": null
+        },
+        "editable": true,
+        "archived": false,
+        "totalLabel": "Earned",
+        "total": "€2,500.00",
+        "budget": null,
+        "canEditBudget": false,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "A monthly cap for this category, from this month on.",
+        "listTitle": "Income",
+        "listSubtitle": "This month · 1 entry",
+        "rows": [
+          {
+            "id": "p1",
+            "title": "Salary",
+            "shared": false,
+            "kind": "income",
+            "look": {
+              "key": "salary",
+              "tone": "positive",
+              "tint": null
+            },
+            "meta": [
+              "1 Sep 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "+€2,500.00",
+            "tone": "positive",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "savings": {
+        "found": true,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "This month"
+        },
+        "kind": "income",
+        "name": "Savings",
+        "eyebrow": "Savings category",
+        "look": {
+          "key": "savings",
+          "tone": "positive",
+          "tint": null
+        },
+        "editable": true,
+        "archived": false,
+        "totalLabel": "Saved",
+        "total": "€300.00",
+        "budget": null,
+        "canEditBudget": false,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "A monthly cap for this category, from this month on.",
+        "listTitle": "Savings",
+        "listSubtitle": "This month · 1 entry",
+        "rows": [
+          {
+            "id": "s1",
+            "title": "Savings",
+            "shared": false,
+            "kind": "income",
+            "look": {
+              "key": "savings",
+              "tone": "positive",
+              "tint": null
+            },
+            "meta": [
+              "2 Sep 2020",
+              "from income"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "+€300.00",
+            "tone": "positive",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "none": {
+        "found": true,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "This month"
+        },
+        "kind": "expense",
+        "name": "Uncategorized",
+        "eyebrow": "Category",
+        "look": {
+          "key": "other",
+          "tone": "accent",
+          "tint": null
+        },
+        "editable": false,
+        "archived": false,
+        "totalLabel": "Spent",
+        "total": "€900.00",
+        "budget": null,
+        "canEditBudget": false,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "A monthly cap for this category, from this month on.",
+        "listTitle": "Expenses",
+        "listSubtitle": "This month · 1 entry",
+        "rows": [
+          {
+            "id": "n1",
+            "title": "Rent",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "11 Sep 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€900.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "archived": {
+        "found": true,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "This month"
+        },
+        "kind": "expense",
+        "name": "Gym",
+        "eyebrow": "Archived category",
+        "look": {
+          "key": "fitness",
+          "tone": "accent",
+          "tint": null
+        },
+        "editable": true,
+        "archived": true,
+        "totalLabel": "Spent",
+        "total": "€0.00",
+        "budget": {
+          "state": "set",
+          "text": "Set a budget"
+        },
+        "canEditBudget": true,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "A monthly cap for this category, from this month on.",
+        "listTitle": "Expenses",
+        "listSubtitle": "This month · 0 entries",
+        "rows": []
+      },
+      "missing": {
+        "found": false,
+        "title": "Category not found",
+        "text": "This category doesn’t exist or was deleted."
+      }
+    },
+    "el": {
+      "groceries": {
+        "found": true,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "Αυτός ο μήνας"
+        },
+        "kind": "expense",
+        "name": "Σούπερ μάρκετ",
+        "eyebrow": "Κατηγορία",
+        "look": {
+          "key": "groceries",
+          "tone": "accent",
+          "tint": {
+            "fg": "#16939A",
+            "bg": "#16939A29"
+          }
+        },
+        "editable": true,
+        "archived": false,
+        "totalLabel": "Έξοδα",
+        "total": "84,30 €",
+        "budget": {
+          "state": "bar",
+          "title": "Προϋπολογισμός",
+          "meta": "84,30 € από 100,00 €",
+          "percent": 84,
+          "tone": "warning",
+          "over": false,
+          "carried": "Ίδια όρια με του Αυγούστου"
+        },
+        "canEditBudget": true,
+        "budgetMinor": 10000,
+        "budgetInput": "100.00",
+        "budgetHelp": "Αλλάζει το όριο αυτού του μήνα και των επόμενων. Άδειασέ το για να αφαιρέσεις τον προϋπολογισμό.",
+        "listTitle": "Έξοδα",
+        "listSubtitle": "Αυτός ο μήνας · 3 καταχωρίσεις",
+        "rows": [
+          {
+            "id": "g1",
+            "title": "Market",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "14 Σεπ 2020",
+              "Σούπερ μάρκετ"
+            ],
+            "notes": "weekly shop",
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "42,50 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "g2",
+            "title": "Σούπερ μάρκετ",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "10 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "18,99 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "g3",
+            "title": "Σούπερ μάρκετ",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "2 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "25,00 $",
+            "tone": "default",
+            "approx": "≈ 22,81 €",
+            "rate": "0,9123",
+            "estimated": null
+          }
+        ]
+      },
+      "pastMonth": {
+        "found": true,
+        "period": {
+          "value": "m:2020-8",
+          "from": "2020-08-01",
+          "to": "2020-08-31",
+          "label": "Αύγουστος 2020"
+        },
+        "kind": "expense",
+        "name": "Σούπερ μάρκετ",
+        "eyebrow": "Κατηγορία",
+        "look": {
+          "key": "groceries",
+          "tone": "accent",
+          "tint": {
+            "fg": "#16939A",
+            "bg": "#16939A29"
+          }
+        },
+        "editable": true,
+        "archived": false,
+        "totalLabel": "Έξοδα",
+        "total": "64,00 €",
+        "budget": {
+          "state": "none",
+          "text": "Χωρίς προϋπολογισμό (Αύγουστος 2020)."
+        },
+        "canEditBudget": false,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "Ένα μηνιαίο όριο για αυτή την κατηγορία, από αυτόν τον μήνα και μετά.",
+        "listTitle": "Έξοδα",
+        "listSubtitle": "Αύγουστος 2020 · 1 καταχώριση",
+        "rows": [
+          {
+            "id": "g4",
+            "title": "Σούπερ μάρκετ",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "20 Αυγ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "64,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "year": {
+        "found": true,
+        "period": {
+          "value": "y:2020",
+          "from": "2020-01-01",
+          "to": "2020-12-31",
+          "label": "Φέτος"
+        },
+        "kind": "expense",
+        "name": "Σούπερ μάρκετ",
+        "eyebrow": "Κατηγορία",
+        "look": {
+          "key": "groceries",
+          "tone": "accent",
+          "tint": {
+            "fg": "#16939A",
+            "bg": "#16939A29"
+          }
+        },
+        "editable": true,
+        "archived": false,
+        "totalLabel": "Έξοδα",
+        "total": "106,50 €",
+        "budget": {
+          "state": "monthly",
+          "text": "Οι προϋπολογισμοί είναι μηνιαίοι — διάλεξε έναν μήνα για να δεις."
+        },
+        "canEditBudget": false,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "Ένα μηνιαίο όριο για αυτή την κατηγορία, από αυτόν τον μήνα και μετά.",
+        "listTitle": "Έξοδα",
+        "listSubtitle": "Φέτος · 2 καταχωρίσεις",
+        "rows": [
+          {
+            "id": "g1",
+            "title": "Σούπερ μάρκετ",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "14 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "42,50 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "g4",
+            "title": "Σούπερ μάρκετ",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "20 Αυγ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "64,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "salary": {
+        "found": true,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "Αυτός ο μήνας"
+        },
+        "kind": "income",
+        "name": "Μισθός",
+        "eyebrow": "Κατηγορία εσόδων",
+        "look": {
+          "key": "salary",
+          "tone": "positive",
+          "tint": null
+        },
+        "editable": true,
+        "archived": false,
+        "totalLabel": "Έσοδα",
+        "total": "2.500,00 €",
+        "budget": null,
+        "canEditBudget": false,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "Ένα μηνιαίο όριο για αυτή την κατηγορία, από αυτόν τον μήνα και μετά.",
+        "listTitle": "Έσοδα",
+        "listSubtitle": "Αυτός ο μήνας · 1 καταχώριση",
+        "rows": [
+          {
+            "id": "p1",
+            "title": "Μισθός",
+            "shared": false,
+            "kind": "income",
+            "look": {
+              "key": "salary",
+              "tone": "positive",
+              "tint": null
+            },
+            "meta": [
+              "1 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "+2.500,00 €",
+            "tone": "positive",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "savings": {
+        "found": true,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "Αυτός ο μήνας"
+        },
+        "kind": "income",
+        "name": "Αποταμιεύσεις",
+        "eyebrow": "Κατηγορία αποταμίευσης",
+        "look": {
+          "key": "savings",
+          "tone": "positive",
+          "tint": null
+        },
+        "editable": true,
+        "archived": false,
+        "totalLabel": "Αποταμιεύσεις",
+        "total": "300,00 €",
+        "budget": null,
+        "canEditBudget": false,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "Ένα μηνιαίο όριο για αυτή την κατηγορία, από αυτόν τον μήνα και μετά.",
+        "listTitle": "Αποταμιεύσεις",
+        "listSubtitle": "Αυτός ο μήνας · 1 καταχώριση",
+        "rows": [
+          {
+            "id": "s1",
+            "title": "Αποταμιεύσεις",
+            "shared": false,
+            "kind": "income",
+            "look": {
+              "key": "savings",
+              "tone": "positive",
+              "tint": null
+            },
+            "meta": [
+              "2 Σεπ 2020",
+              "από το εισόδημα"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "+300,00 €",
+            "tone": "positive",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "none": {
+        "found": true,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "Αυτός ο μήνας"
+        },
+        "kind": "expense",
+        "name": "Χωρίς κατηγορία",
+        "eyebrow": "Κατηγορία",
+        "look": {
+          "key": "other",
+          "tone": "accent",
+          "tint": null
+        },
+        "editable": false,
+        "archived": false,
+        "totalLabel": "Έξοδα",
+        "total": "900,00 €",
+        "budget": null,
+        "canEditBudget": false,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "Ένα μηνιαίο όριο για αυτή την κατηγορία, από αυτόν τον μήνα και μετά.",
+        "listTitle": "Έξοδα",
+        "listSubtitle": "Αυτός ο μήνας · 1 καταχώριση",
+        "rows": [
+          {
+            "id": "n1",
+            "title": "Rent",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "11 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "900,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "archived": {
+        "found": true,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "Αυτός ο μήνας"
+        },
+        "kind": "expense",
+        "name": "Gym",
+        "eyebrow": "Αρχειοθετημένη κατηγορία",
+        "look": {
+          "key": "fitness",
+          "tone": "accent",
+          "tint": null
+        },
+        "editable": true,
+        "archived": true,
+        "totalLabel": "Έξοδα",
+        "total": "0,00 €",
+        "budget": {
+          "state": "set",
+          "text": "Όρισε προϋπολογισμό"
+        },
+        "canEditBudget": true,
+        "budgetMinor": null,
+        "budgetInput": "",
+        "budgetHelp": "Ένα μηνιαίο όριο για αυτή την κατηγορία, από αυτόν τον μήνα και μετά.",
+        "listTitle": "Έξοδα",
+        "listSubtitle": "Αυτός ο μήνας · 0 καταχωρίσεις",
+        "rows": []
+      },
+      "missing": {
+        "found": false,
+        "title": "Η κατηγορία δεν βρέθηκε",
+        "text": "Αυτή η κατηγορία δεν υπάρχει ή διαγράφηκε."
+      }
+    }
+  }
+}

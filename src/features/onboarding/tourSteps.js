@@ -8,6 +8,8 @@
 // nav stops sit beside the desktop sidebar, and fall back to above/below the
 // phone's bars, where there's no room at the side. `title` and `body` are
 // keys in the onboarding namespace (tour.*); ProductTour translates them.
+import { t } from '../../shared/lib/i18n/i18n.js'
+
 const NAV = ['right', 'bottom', 'top']
 const copy = (key) => ({ title: `tour.${key}.title`, body: `tour.${key}.body` })
 
@@ -27,3 +29,13 @@ export const TOUR_STEPS = [
   { id: 'privacy', route: '/settings', target: 'settings-privacy', ...copy('privacy') },
   { id: 'done', ...copy('done') },
 ]
+
+// The stops for one kind of screen ('mobile' or 'desktop'), in order, each
+// with its title and body in the app's language: what the native app's tour
+// (a phone) shows, stop by stop.
+export function tourStops(media) {
+  return TOUR_STEPS.filter((s) => !s.media || s.media === media).map((s) => ({
+    id: s.id, route: s.route ?? null, target: s.target ?? null,
+    title: t(`onboarding:${s.title}`), body: t(`onboarding:${s.body}`),
+  }))
+}

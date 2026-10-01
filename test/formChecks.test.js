@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import {
   emailError, amountError, requiredError, fieldErrors, firstInvalid,
 } from '../src/shared/lib/formChecks.js'
-import { authErrors, AUTH_FIELDS, consentError } from '../src/features/auth/authChecks.js'
+import { authErrors, AUTH_FIELDS, canSendReset, consentError } from '../src/features/auth/authChecks.js'
 import { validatePassword } from '../src/shared/lib/password.js'
 
 test('emailError: empty, malformed and fine', () => {
@@ -66,4 +66,12 @@ test('consentError: signing up (by email or Google) needs the tick; logging in d
   assert.equal(consentError({ mode: 'signup', accepted: false }), 'Please accept the Terms of Use and Privacy Notice')
   assert.equal(consentError({ mode: 'signup', accepted: true }), null)
   assert.equal(consentError({ mode: 'signin', accepted: false }), null)
+})
+
+test('canSendReset: Forgot password sends once the address looks like one', () => {
+  assert.equal(canSendReset(''), false)
+  assert.equal(canSendReset('sam@'), false)
+  assert.equal(canSendReset('sam@example'), false)
+  assert.equal(canSendReset(' sam@example.com '), true)
+  assert.equal(canSendReset(null), false)
 })

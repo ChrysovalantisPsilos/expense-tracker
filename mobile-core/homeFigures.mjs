@@ -31,6 +31,7 @@ import { formatMoney, formatSigned } from '../src/shared/lib/currency.js'
 import { signTone } from '../src/shared/ui/kit/kitMath.js'
 import { isoDate } from '../src/shared/lib/dates.js'
 import { categoryLook } from '../src/shared/lib/categoryStyle.js'
+import { linkBuckets } from '../src/shared/lib/categoryLinks.js'
 import { t } from '../src/shared/lib/i18n/i18n.js'
 import {
   chargeParts, chargedGroups, chargedHeadline, chargedWording, groupNote, groupTotalParts, nextChargeParts,
@@ -116,12 +117,15 @@ export function homeFigures({ rows, profile, categories, rules = [], rates = {},
   // wears the people icon, anything else its category's look.
   const ranked = categoryBars(totals.byCategory, NO_FOLD)
   const lines = barLines(ranked, spend, baseCurrency)
+  // Each bar's drill-down (linkBuckets): its category's page for the period, or its group's.
+  const linked = linkBuckets(ranked, spend, period)
   const bars = ranked.map((c, i) => {
     const row = totals.bucketRow.get(c.name)
     return {
       name: c.name, label: bucketLabel(c, labels), value: c.value, share: c.share, ratio: c.ratio,
       amount: formatMoney(c.value, baseCurrency), meta: lines[i],
       group: !!row?.group_expense_id, look: categoryLook(row?.categories),
+      to: linked[i].to ?? null, linkLabel: linked[i].linkLabel ?? null,
     }
   })
   // "Show all": the top rows first (visibleBars), the button's two words.

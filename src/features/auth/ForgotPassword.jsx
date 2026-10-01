@@ -7,8 +7,7 @@ import { MailCheck, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import AuthLayout from './AuthLayout.jsx'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+import { canSendReset } from './authChecks.js'
 
 export default function ForgotPassword() {
   const t = useT('auth')
@@ -20,7 +19,7 @@ export default function ForgotPassword() {
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!EMAIL_RE.test(email.trim())) return
+    if (!canSendReset(email)) return
     setBusy(true)
     // Fire and forget: Supabase returns success whether or not the address is
     // registered, and we always show the same confirmation, so a submitter can
@@ -52,7 +51,7 @@ export default function ForgotPassword() {
               onChange={(e) => setEmail(e.target.value)} />
           </FormControl>
           <Button type="submit" isLoading={busy} w="full"
-            isDisabled={!EMAIL_RE.test(email.trim())}>
+            isDisabled={!canSendReset(email)}>
             {t('forgot.send')}
           </Button>
         </Stack>

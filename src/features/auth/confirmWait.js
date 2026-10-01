@@ -24,6 +24,11 @@ export function nextDelay(elapsed) {
   return elapsed < FAST_PHASE_MS ? FAST_MS : SLOW_MS
 }
 
+// Has the wait gone on long enough (`elapsed` ms) to stop trying?
+export function shouldGiveUp(elapsed) {
+  return elapsed >= GIVE_UP_MS
+}
+
 // A sign-in result → 'done' (signed in), 'wait' (not confirmed yet; try
 // again) or 'stop' (anything else: rate limit, offline, a changed password).
 export function attemptOutcome(result) {
@@ -66,7 +71,7 @@ export function createConfirmWait({
 
   async function tryOnce() {
     if (status !== 'waiting' || inFlight) return
-    if (now() - startedAt >= GIVE_UP_MS) { end('timedOut'); return }
+    if (shouldGiveUp(now() - startedAt)) { end('timedOut'); return }
     inFlight = true
     lastTry = now()
     let result

@@ -108,6 +108,16 @@ export const CORE_MODULES = {
   authMethods: 'src/features/settings/authMethods.js',
   legal: 'src/features/privacy/legal.js',
   whatsNewMath: 'src/features/whatsnew/whatsNewMath.js',
+  // A category page's links (Home's bars, the budgets), the sign-up and reset
+  // forms' checks, the "Check your inbox" wait, the setup wizard and the
+  // tour's stops, and Help & FAQ.
+  categoryLinks: 'src/shared/lib/categoryLinks.js',
+  authChecks: 'src/features/auth/authChecks.js',
+  confirmWait: 'src/features/auth/confirmWait.js',
+  onboardingMath: 'src/features/onboarding/onboardingMath.js',
+  tourSteps: 'src/features/onboarding/tourSteps.js',
+  faqContent: 'src/features/help/faqContent.js',
+  faqMath: 'src/features/help/faqMath.js',
 }
 
 // Where the bundle goes (the Swift package's resource) and where the recorded
