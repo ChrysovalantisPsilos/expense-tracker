@@ -5,7 +5,7 @@
 // over, the change from last month, and the six months side by side), Your
 // salary (its page), Net worth (the accounts, each edited on its page,
 // removed after a question; the savings pot or the savings accounts) and the
-// statement as one compact row (the dates, then Export: PDF or Excel, handed
+// statement as one compact row (the dates, then a small Export button: PDF or Excel, handed
 // to the share sheet). Picking a month springs the bars and the split to it.
 // Every figure and word is the model's (the core's); Swift Charts only draws.
 import BudgeerCore
@@ -254,19 +254,24 @@ struct InsightsView: View {
                     }
                     .accessibilityIdentifier("insights.excel")
                 } label: {
-                    Group {
+                    HStack(spacing: 5) {
                         if model.exporting != nil {
-                            ProgressView()
+                            ProgressView().controlSize(.small)
+                            Text(language.t("insights:reports.building"))
                         } else {
-                            Image(systemName: "square.and.arrow.up").font(.body.weight(.semibold))
+                            Image(systemName: "square.and.arrow.up")
+                            Text(language.t("ios:native.insights.export"))
                         }
                     }
-                    .frame(width: 40, height: 40)
-                    .background(Theme.Colors.accentSubtle, in: Circle())
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 12)
+                    .frame(minHeight: 36)
+                    .background(Theme.Colors.accentSubtle, in: Capsule())
                     .foregroundStyle(NativeStyle.tint)
                 }
+                .fixedSize()
                 .disabled(model.exporting != nil || model.noEntries)
-                .accessibilityLabel(language.t("insights:reports.title"))
                 .accessibilityIdentifier("insights.export")
             }
             .padding(.vertical, 4)

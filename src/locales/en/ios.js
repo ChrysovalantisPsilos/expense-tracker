@@ -18,6 +18,10 @@ export default {
       // More's first row: the way in to Settings.
       accountSettings: 'Account & settings',
     },
+    insights: {
+      // The statement row's button (it opens PDF or Excel).
+      export: 'Export',
+    },
     tabs: {
       activity: 'Activity',
       add: 'Add',

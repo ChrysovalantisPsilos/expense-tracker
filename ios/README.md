@@ -325,7 +325,7 @@ a core call (the web's function); Swift reads, lays out and draws.
   asset, a debt, savings, with the savings note), its balance in its own
   currency, Add account / Save changes, Delete; a delete asks first, from
   the page or a swipe, as on the web) and **Export statement**, one
-  compact row (From and To, this month by default; the export button
+  compact row (From and To, this month by default; a small Export button
   offers PDF or Excel, off before anything
   was logged; the file comes from the `generate-report` edge function, the
   same builder (`statementFile.ts`) the website runs on the device, named as

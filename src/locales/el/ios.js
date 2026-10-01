@@ -12,6 +12,9 @@ export default {
     more: {
       accountSettings: 'Λογαριασμός και ρυθμίσεις',
     },
+    insights: {
+      export: 'Εξαγωγή',
+    },
     tabs: {
       activity: 'Κινήσεις',
       add: 'Προσθήκη',
