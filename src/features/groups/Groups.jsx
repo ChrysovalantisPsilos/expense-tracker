@@ -2,7 +2,7 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { Box, Stack, HStack, Text, Button, Icon, useToast } from '@chakra-ui/react'
 import { Plus, ChevronRight, Check, X } from 'lucide-react'
 import { listGroups, listGroupSummaries, listMyInvites, respondToInvite } from './groups.js'
-import { groupCardParts } from './groupFormat.js'
+import { groupCardParts, inviteRowParts } from './groupFormat.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useLiveQuery } from '../../shared/lib/db.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
@@ -66,24 +66,24 @@ export default function Groups() {
 
       {invites.length > 0 && (
         <Stack spacing={2}>
-          {invites.map((inv) => (
-            <Panel key={inv.invite_id} elevation="soft" borderColor="brand.200" _dark={{ borderColor: 'brand.700' }}>
+          {invites.map(inviteRowParts).map((inv) => (
+            <Panel key={inv.id} elevation="soft" borderColor="brand.200" _dark={{ borderColor: 'brand.700' }}>
               {/* On phones the actions go under the name, so they never
                   squeeze it into a letter-per-line column. */}
               <Stack direction={{ base: 'column', sm: 'row' }} spacing={3} align={{ sm: 'center' }}>
                 <HStack spacing={3} flex="1" minW={0}>
-                  <GroupMark name={inv.group_name} size={40} />
+                  <GroupMark name={inv.name} size={40} />
                   <Stack spacing={0} flex="1" minW={0}>
-                    <Text fontWeight="600" noOfLines={2} wordBreak="break-word">{inv.group_name}</Text>
-                    <Text fontSize="xs" color="text.muted" noOfLines={2} wordBreak="break-word">{t('list.invitedYou', { name: inv.invited_by })}</Text>
+                    <Text fontWeight="600" noOfLines={2} wordBreak="break-word">{inv.name}</Text>
+                    <Text fontSize="xs" color="text.muted" noOfLines={2} wordBreak="break-word">{inv.text}</Text>
                   </Stack>
                 </HStack>
                 <HStack spacing={2} justify="flex-end" flexShrink={0}>
-                  <Button size="sm" leftIcon={<Check size={16} />} onClick={() => respond(inv.invite_id, true)}>
+                  <Button size="sm" leftIcon={<Check size={16} />} onClick={() => respond(inv.id, true)}>
                     {t('actions.accept')}
                   </Button>
                   <Button size="sm" variant="ghost" leftIcon={<X size={16} />}
-                    onClick={() => respond(inv.invite_id, false)}>
+                    onClick={() => respond(inv.id, false)}>
                     {t('actions.decline')}
                   </Button>
                 </HStack>

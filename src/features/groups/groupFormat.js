@@ -217,6 +217,21 @@ export function groupSummaryText({ name, total, balances, members, format }) {
   return lines.join('\n')
 }
 
+// The "Share summary" text for a group's page: groupSummaryText with the
+// group's total, its amounts in the group's currency.
+export function groupShareText({ group, expenses, balances, members }) {
+  const format = (minor) => formatMoney(minor, group.currency)
+  return groupSummaryText({
+    name: group.name, total: groupTotal(expenses, group.currency), balances, members, format,
+  })
+}
+
+// An invite on the groups list (list_my_group_invites' row): the group and
+// who invited you.
+export const inviteRowParts = (inv) => ({
+  id: inv.invite_id, name: inv.group_name, text: t('groups:list.invitedYou', { name: inv.invited_by }),
+})
+
 // ---- The rows the server sends, as the pages read them ---------------------
 
 // group_balances rows → Map<memberId, net minor>.

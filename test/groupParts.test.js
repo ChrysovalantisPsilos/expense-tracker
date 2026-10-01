@@ -5,7 +5,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   activityParts, avatarStackParts, balancesFrom, balancesParts, commentCountsFrom, commentParts, expenseRowParts,
-  groupCardParts, groupViewer, inviteLink, inviteRefusal, memberRowParts, membersWithAvatars, settlementRowParts,
+  groupCardParts, groupShareText, groupViewer, inviteLink, inviteRowParts, inviteRefusal, memberRowParts, membersWithAvatars, settlementRowParts,
   stillInNames,
 } from '../src/features/groups/groupFormat.js'
 import { avatarColor } from '../src/shared/ui/avatarLook.js'
@@ -106,4 +106,15 @@ test('commentParts: who, when, the text, and only your own can go', () => {
   assert.deepEqual([parts.author, parts.initials, parts.body, parts.canDelete], ['Sofia', 'S', 'Thanks!', true])
   assert.equal(commentParts(cm, 'u1', NOW).canDelete, false)
   assert.equal(commentParts({ ...cm, author: null }, null, NOW).author, 'Member')
+})
+
+test('groupShareText / inviteRowParts: the shared summary in the group currency, an invite on the list', () => {
+  const text = groupShareText({
+    group: { name: 'Lisbon', currency: 'EUR' }, members: MEMBERS,
+    expenses: [{ amount_minor: 3000, currency: 'EUR' }], balances: new Map([['m1', 1000], ['m2', -1000]]),
+  })
+  assert.equal(text.split('\n')[0], 'Lisbon: €30.00 spent in total')
+  assert.match(text, /• Sofia owes Alex €10\.00/)
+  assert.deepEqual(inviteRowParts({ invite_id: 'i1', group_name: 'Flat 3B', invited_by: 'Sam' }),
+    { id: 'i1', name: 'Flat 3B', text: 'Sam invited you' })
 })

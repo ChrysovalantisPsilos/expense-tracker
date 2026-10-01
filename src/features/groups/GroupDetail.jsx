@@ -10,7 +10,7 @@ import BackButton from '../../shared/ui/BackButton.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useGroup, removeMember, deleteGroup, downloadGroupReport } from './groups.js'
 import { commentCounts } from './comments.js'
-import { groupDeleteCheck, groupTotal, groupSummaryText, groupViewer } from './groupFormat.js'
+import { groupDeleteCheck, groupShareText, groupTotal, groupViewer } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import GroupHeader from './GroupHeader.jsx'
 import GroupBalances from './GroupBalances.jsx'
@@ -60,10 +60,7 @@ export default function GroupDetail() {
   // else the clipboard. Text only — total and who owes whom.
   async function shareSummary() {
     const { group, members, expenses } = data
-    const text = groupSummaryText({
-      name: group.name, total: groupTotal(expenses, group.currency), balances, members,
-      format: (m) => formatMoney(m, group.currency),
-    })
+    const text = groupShareText({ group, expenses, balances, members })
     if (navigator.share) {
       try {
         await navigator.share({ title: group.name, text })
