@@ -176,7 +176,10 @@ final class AppPathsTests: XCTestCase {
         XCTAssertEqual(AppPaths.place("/settings/vouchers"), AppPaths.Place(tab: .more, routes: [.settings, .voucherSetup]))
         XCTAssertEqual(AppPaths.place("/help"), AppPaths.Place(tab: .more, routes: [.settings, .help(nil)]))
         XCTAssertEqual(AppPaths.route("/help#bank-import"), .help("bank-import"))
-        XCTAssertNil(AppPaths.place("/import"))
+        XCTAssertEqual(AppPaths.place("/import"), AppPaths.Place(tab: .activity, routes: [.importStatement]))
+        XCTAssertEqual(AppPaths.place("/settings/import-rules"), AppPaths.Place(tab: .more, routes: [.settings, .importRules]))
+        XCTAssertEqual(AppPaths.place("/settings/data/restore"),
+                       AppPaths.Place(tab: .more, routes: [.settings, .yourData, .restoreBackup]))
         XCTAssertNil(AppPaths.place("/settings/nowhere"))
     }
 

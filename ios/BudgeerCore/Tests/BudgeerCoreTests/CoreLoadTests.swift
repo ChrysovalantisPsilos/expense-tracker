@@ -38,6 +38,29 @@ final class CoreLoadTests: XCTestCase {
         XCTAssertEqual(back, "Monthly")
     }
 
+    /// A statement's bytes go in as a Uint8Array; the engine has no
+    /// TextDecoder, so the core's own reads a Greek Windows (cp1253) export.
+    func testReadsAStatementFromItsBytes() throws {
+        struct Table: Decodable {
+            let ok: Bool
+            let headers: [String]
+            let rows: [[String]]
+            let lines: [Int]
+        }
+        let core = try BudgeerCore()
+        let text = "Date;Περιγραφή;Ποσό\n01/09/2026;Καφές Αθήνα;-3,50\n"
+        let bytes = try XCTUnwrap(text.data(using: .windowsCP1253))
+        let table: Table = try core.callBytes("sheetRead", "readStatement", bytes: bytes)
+        XCTAssertTrue(table.ok)
+        XCTAssertEqual(table.headers, ["Date", "Περιγραφή", "Ποσό"])
+        XCTAssertEqual(table.rows, [["01/09/2026", "Καφές Αθήνα", "-3,50"]])
+        XCTAssertEqual(table.lines, [2])
+        XCTAssertThrowsError(try core.callBytes("sheetRead", "nope", bytes: bytes) as Table) { error in
+            guard case BudgeerCoreError.noSuchFunction(let name) = error else { return XCTFail("\(error)") }
+            XCTAssertEqual(name, "sheetRead.nope")
+        }
+    }
+
     func testDateAndUndefinedArgumentsTravel() throws {
         let core = try BudgeerCore()
         // periods.thisMonthPeriod(now): the month of a Date (2026-09-21 in UTC).

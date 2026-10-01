@@ -17,6 +17,8 @@
 //   FxRepository            shared/lib/fx.js (Frankfurter, the ECB's rates)
 //   AiRepository            features/ai/ai.js (the ai-helper edge function)
 //   GroupsRepository        features/groups/groups.js, comments.js (the split groups)
+//   ImportRepository        features/import (the rules, the save), ai.js suggestCategories
+//   BackupRepository        features/backup/backup.js (the reads and writes only a backup makes)
 // Rows travel as plain JSON (JSONValue), exactly as the server returns them:
 // the core's functions read their columns; the app never types a table.
 // SupabaseStore implements them all over the one client (with the offline
@@ -258,6 +260,37 @@ protocol GroupsRepository: Sendable {
     func deleteComment(id: String) async throws
 }
 
+protocol ImportRepository: Sendable {
+    /// category_rules (importRules.js useImportRules): every rule with its id,
+    /// pattern, category_id and created_at.
+    func importRules() async throws -> JSONValue
+    /// importExpenses.js saveRule: "descriptions containing `pattern` → the
+    /// category", upserted on (user, pattern).
+    func saveImportRule(pattern: String, categoryId: String) async throws
+    /// importRules.js updateRule: the text (already cleanPattern'd) and the
+    /// category; the same text as another rule is ServerError code 23505.
+    func updateImportRule(id: String, pattern: String, categoryId: String) async throws
+    func deleteImportRule(id: String) async throws
+    /// save_transactions with p_ignore_duplicates (importTransactions' one
+    /// chunk): how many rows were new.
+    func saveTransactions(_ rows: JSONValue) async throws -> Int
+    /// ai-helper suggest_categories (ai.js suggestCategories): the merchants'
+    /// [{ index, category_id }].
+    func suggestCategories(merchants: JSONValue, labels: JSONValue) async throws -> JSONValue
+}
+
+protocol BackupRepository: Sendable {
+    /// profile.js fetchProfile with backup.js PROFILE_FIELDS, from the server
+    /// (never the offline copy: a backup's settings must be the real ones).
+    func backupProfile() async throws -> JSONValue
+    /// transactions.js countTransactions: the head count a backup is checked against.
+    func countTransactions() async throws -> Int
+    /// categories.js createCategories: the backup's missing categories, owned by the user.
+    func createCategories(_ rows: JSONValue) async throws
+    /// budgets.js saveBudget (save_budget): exactly one month's cap for a category.
+    func saveBudget(categoryId: String, amountMinor: Int, currency: String, period: String) async throws
+}
+
 /// Everything a screen may read or write, handed to the view models.
 struct DataLayer: Sendable {
     let profile: ProfileRepository
@@ -272,11 +305,13 @@ struct DataLayer: Sendable {
     let savings: SavingsRepository
     let plan: PlanRepository
     let insights: InsightsRepository
+    let imports: ImportRepository
+    let backup: BackupRepository
 
     /// One object that is every repository (the Supabase store, a test's fake).
     init<Store: ProfileRepository & CategoriesRepository & TransactionsRepository & RecurringRepository
             & BudgetsRepository & FxRepository & AiRepository & GroupsRepository & PrivacyRepository
-            & SavingsRepository & PlanRepository & InsightsRepository>(_ store: Store) {
+            & SavingsRepository & PlanRepository & InsightsRepository & ImportRepository & BackupRepository>(_ store: Store) {
         profile = store
         categories = store
         transactions = store
@@ -289,6 +324,8 @@ struct DataLayer: Sendable {
         savings = store
         plan = store
         insights = store
+        imports = store
+        backup = store
     }
 }
 

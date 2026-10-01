@@ -11,16 +11,18 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'esbuild'
-import { CORE_BUNDLE, FORBIDDEN_FILES, FORBIDDEN_PACKAGES } from './modules.js'
+import { CORE_BUNDLE, CORE_PACKAGES, FORBIDDEN_FILES, FORBIDDEN_PACKAGES } from './modules.js'
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-// The inputs (repo-relative paths) of a metafile that the core must not have.
+// The inputs (repo-relative paths) of a metafile that the core must not have:
+// a forbidden file or package, any package not in CORE_PACKAGES, UI code.
 export function forbiddenInputs(metafile) {
   const inputs = Object.keys(metafile.inputs)
   return inputs.filter((p) =>
     FORBIDDEN_FILES.includes(p) ||
     p.startsWith('node_modules/') && FORBIDDEN_PACKAGES.some((pkg) => p.startsWith(`node_modules/${pkg}/`) || p.startsWith(`node_modules/${pkg}@`)) ||
+    p.startsWith('node_modules/') && !CORE_PACKAGES.some((pkg) => p.startsWith(`node_modules/${pkg}/`)) ||
     /\.(jsx|tsx|css)$/.test(p))
 }
 

@@ -25,9 +25,16 @@ export const IMPORT_FIELDS = [
   { key: 'baseAmount', hint: true },
 ]
 
+// How a file can write its dates and decimals, in the mapping step's order
+// (each option's label is import:mapping.dateOrders.<value> /
+// import:mapping.decimals.<id>).
+export const DATE_ORDERS = ['dmy', 'mdy', 'ymd']
+export const DECIMALS = [{ value: ',', id: 'comma' }, { value: '.', id: 'point' }]
+
 // At or above this, the detected mapping is used as-is (the user can still
 // open it); below it, the mapping step is shown for confirmation.
 export const CONFIDENCE_THRESHOLD = 0.8
+export const mappingUnsure = (detection) => detection.confidence < CONFIDENCE_THRESHOLD
 
 // Generic header words per field, normalized (see normHeader), EN/FR/NL/EL/DE.
 // Order matters: earlier words are better matches.
@@ -266,6 +273,33 @@ export function detectMapping(headers, rows) {
 }
 
 const round = (n) => Math.round(n * 100) / 100
+
+// A file's layout: the mapping the user confirmed before for these headers
+// (`remembered`: header signature → mapping, this device's), else what
+// detectMapping finds. A remembered one is certain; it still gets the
+// detected holder column when it was saved before that field existed, so
+// own-account transfers are recognised.
+export function detectStatement(headers, rows, remembered) {
+  const detected = detectMapping(headers, rows)
+  const saved = savedMappingFor(remembered, headers)
+  return saved
+    ? { ...detected, mapping: { holder: detected.mapping.holder, ...saved }, confidence: 1, remembered: true }
+    : detected
+}
+
+// The remembered mappings with `mapping` kept for these headers: newest last,
+// at most `max`, the typed holder's name left out (it's kept on its own, not
+// per layout). `remembered` is what was stored (untrusted: anything that
+// isn't an object of mappings starts afresh).
+export function rememberedWith(remembered, headers, mapping, max = 20) {
+  const all = remembered && typeof remembered === 'object' && !Array.isArray(remembered) ? { ...remembered } : {}
+  const sig = headerSignature(headers)
+  delete all[sig]
+  const kept = Object.entries(all).slice(-(max - 1))
+  const columns = { ...mapping }
+  delete columns.holderName
+  return Object.fromEntries([...kept, [sig, columns]])
+}
 
 // The names of the presets, for the upload step's "works with" line.
 export const PRESET_NAMES = PRESETS.map((p) => p.name)

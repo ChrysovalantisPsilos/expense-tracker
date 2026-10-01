@@ -1,0 +1,266 @@
+{
+  "input": {
+    "now": "2026-09-15T10:00:00.000Z",
+    "userId": "99999999-9999-4999-8999-999999999999",
+    "name": "statement.csv",
+    "csv": "Date;Description;Amount;Currency\n01/09/2026;LIDL LEUVEN 1234;-23,40;EUR\n02/09/2026;CAFE ROMA;-4,50;EUR\n02/09/2026;CAFE ROMA;-4,50;EUR\n03/09/2026;ACME PAYROLL;2.500,00;EUR\n04/09/2026;CARD PAYMENT TAXI;;EUR\n",
+    "profile": {
+      "base_currency": "EUR",
+      "display_name": "Sam Morgan",
+      "ai_import_categories": false
+    },
+    "categories": [
+      {
+        "id": "44444444-4444-4444-8444-444444444444",
+        "name": "Eating out",
+        "kind": "expense",
+        "icon": null,
+        "color": "teal",
+        "is_archived": false
+      },
+      {
+        "id": "33333333-3333-4333-8333-333333333333",
+        "name": "Groceries",
+        "kind": "expense",
+        "icon": null,
+        "color": null,
+        "is_archived": false,
+        "default_key": "groceries"
+      },
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "name": "Salary",
+        "kind": "income",
+        "icon": null,
+        "color": null,
+        "is_archived": false,
+        "default_key": "salary"
+      }
+    ],
+    "rules": [
+      {
+        "id": "r1",
+        "pattern": "LIDL",
+        "category_id": "33333333-3333-4333-8333-333333333333",
+        "created_at": "2026-08-01T09:00:00.000Z"
+      }
+    ],
+    "existing": [
+      {
+        "id": "t1",
+        "kind": "expense",
+        "spent_at": "2026-09-02",
+        "amount_minor": 450,
+        "currency": "EUR",
+        "description": "Cafe Roma"
+      }
+    ],
+    "assign": {
+      "expense|CAFE ROMA": "44444444-4444-4444-8444-444444444444"
+    }
+  },
+  "expected": {
+    "en": {
+      "headers": [
+        "Date",
+        "Description",
+        "Amount",
+        "Currency"
+      ],
+      "rowsLabel": "5 rows",
+      "detection": "We couldn’t be sure which column is which — please check the mapping below. Check the preview before importing.",
+      "ready": 4,
+      "preview": [
+        {
+          "title": "LIDL LEUVEN 1234",
+          "meta": "1 Sep · Groceries",
+          "amount": "€23.40",
+          "income": false
+        },
+        {
+          "title": "CAFE ROMA",
+          "meta": "2 Sep",
+          "amount": "€4.50",
+          "income": false
+        },
+        {
+          "title": "CAFE ROMA",
+          "meta": "2 Sep",
+          "amount": "€4.50",
+          "income": false
+        },
+        {
+          "title": "ACME PAYROLL",
+          "meta": "3 Sep",
+          "amount": "+€2,500.00",
+          "income": true
+        }
+      ],
+      "note": "1 row can’t be read (e.g. row 6: missing/invalid amount).",
+      "merchants": [
+        {
+          "id": "expense|CAFE ROMA",
+          "pattern": "CAFE ROMA",
+          "kind": "expense",
+          "meta": "2 rows · money out"
+        },
+        {
+          "id": "income|ACME PAYROLL",
+          "pattern": "ACME PAYROLL",
+          "kind": "income",
+          "meta": "1 row · money in"
+        }
+      ],
+      "rules": [
+        {
+          "pattern": "CAFE ROMA",
+          "category_id": "44444444-4444-4444-8444-444444444444"
+        }
+      ],
+      "saved": [
+        {
+          "user_id": "99999999-9999-4999-8999-999999999999",
+          "kind": "expense",
+          "category_id": "33333333-3333-4333-8333-333333333333",
+          "amount_minor": 2340,
+          "currency": "EUR",
+          "exchange_rate": 1,
+          "description": "LIDL LEUVEN 1234",
+          "spent_at": "2026-09-01",
+          "client_uuid": "3c3c8810-9cff-4cef-a229-811ad6f8b6ce"
+        },
+        {
+          "user_id": "99999999-9999-4999-8999-999999999999",
+          "kind": "expense",
+          "category_id": "44444444-4444-4444-8444-444444444444",
+          "amount_minor": 450,
+          "currency": "EUR",
+          "exchange_rate": 1,
+          "description": "CAFE ROMA",
+          "spent_at": "2026-09-02",
+          "client_uuid": "6fb9f8c6-473d-418c-88e6-53b32d7702a4"
+        },
+        {
+          "user_id": "99999999-9999-4999-8999-999999999999",
+          "kind": "income",
+          "category_id": null,
+          "amount_minor": 250000,
+          "currency": "EUR",
+          "exchange_rate": 1,
+          "description": "ACME PAYROLL",
+          "spent_at": "2026-09-03",
+          "client_uuid": "077c439b-6773-4cd7-af8c-2959d0ab7c12"
+        }
+      ],
+      "done": {
+        "title": "Imported 3 transactions",
+        "dated": "Dated 1 Sep – 3 Sep. “View transactions” opens those dates.",
+        "notes": [
+          "1 row was already imported before and got skipped — re-importing never duplicates.",
+          "Skipped 1 row with a missing/invalid date or amount (e.g. row 6: missing/invalid amount)."
+        ]
+      }
+    },
+    "el": {
+      "headers": [
+        "Date",
+        "Description",
+        "Amount",
+        "Currency"
+      ],
+      "rowsLabel": "5 γραμμές",
+      "detection": "Δεν είμαστε σίγουροι ποια στήλη είναι ποια — έλεγξε την αντιστοίχιση παρακάτω. Δες την προεπισκόπηση πριν την εισαγωγή.",
+      "ready": 4,
+      "preview": [
+        {
+          "title": "LIDL LEUVEN 1234",
+          "meta": "1 Σεπ · Σούπερ μάρκετ",
+          "amount": "23,40 €",
+          "income": false
+        },
+        {
+          "title": "CAFE ROMA",
+          "meta": "2 Σεπ",
+          "amount": "4,50 €",
+          "income": false
+        },
+        {
+          "title": "CAFE ROMA",
+          "meta": "2 Σεπ",
+          "amount": "4,50 €",
+          "income": false
+        },
+        {
+          "title": "ACME PAYROLL",
+          "meta": "3 Σεπ",
+          "amount": "+2.500,00 €",
+          "income": true
+        }
+      ],
+      "note": "1 γραμμή δεν διαβάζεται (π.χ. γραμμή 6: λείπει ή δεν ισχύει το ποσό).",
+      "merchants": [
+        {
+          "id": "expense|CAFE ROMA",
+          "pattern": "CAFE ROMA",
+          "kind": "expense",
+          "meta": "2 γραμμές · έξοδα"
+        },
+        {
+          "id": "income|ACME PAYROLL",
+          "pattern": "ACME PAYROLL",
+          "kind": "income",
+          "meta": "1 γραμμή · έσοδα"
+        }
+      ],
+      "rules": [
+        {
+          "pattern": "CAFE ROMA",
+          "category_id": "44444444-4444-4444-8444-444444444444"
+        }
+      ],
+      "saved": [
+        {
+          "user_id": "99999999-9999-4999-8999-999999999999",
+          "kind": "expense",
+          "category_id": "33333333-3333-4333-8333-333333333333",
+          "amount_minor": 2340,
+          "currency": "EUR",
+          "exchange_rate": 1,
+          "description": "LIDL LEUVEN 1234",
+          "spent_at": "2026-09-01",
+          "client_uuid": "3c3c8810-9cff-4cef-a229-811ad6f8b6ce"
+        },
+        {
+          "user_id": "99999999-9999-4999-8999-999999999999",
+          "kind": "expense",
+          "category_id": "44444444-4444-4444-8444-444444444444",
+          "amount_minor": 450,
+          "currency": "EUR",
+          "exchange_rate": 1,
+          "description": "CAFE ROMA",
+          "spent_at": "2026-09-02",
+          "client_uuid": "6fb9f8c6-473d-418c-88e6-53b32d7702a4"
+        },
+        {
+          "user_id": "99999999-9999-4999-8999-999999999999",
+          "kind": "income",
+          "category_id": null,
+          "amount_minor": 250000,
+          "currency": "EUR",
+          "exchange_rate": 1,
+          "description": "ACME PAYROLL",
+          "spent_at": "2026-09-03",
+          "client_uuid": "077c439b-6773-4cd7-af8c-2959d0ab7c12"
+        }
+      ],
+      "done": {
+        "title": "Εισήχθησαν 3 κινήσεις",
+        "dated": "Με ημερομηνίες 1 Σεπ – 3 Σεπ. Το «Δες τις κινήσεις» ανοίγει αυτό το διάστημα.",
+        "notes": [
+          "1 γραμμή είχε ήδη εισαχθεί και παραλείφθηκε — η επανεισαγωγή δεν δημιουργεί ποτέ διπλές.",
+          "Παραλείφθηκε 1 γραμμή χωρίς έγκυρη ημερομηνία ή ποσό (π.χ. γραμμή 6: λείπει ή δεν ισχύει το ποσό)."
+        ]
+      }
+    }
+  }
+}

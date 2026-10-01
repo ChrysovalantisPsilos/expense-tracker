@@ -291,8 +291,11 @@ npm run dev       # Vite
   (`accept_legal_documents`), as the web's prompt. Real: Home (period
   picker, projection, Recurring card), Add/Edit, Transactions, Budgets,
   Recurring and Insights (from More), and (phase 3) Groups with Add's
-  "Who's it for?", over a cached, realtime data layer (ios/README.md lists
-  what is not yet there).
+  "Who's it for?", and (step 6) the statement import with its rules and
+  Your data's backup and restore, over a cached, realtime data layer
+  (ios/README.md lists what is not yet there). A backup file is the same
+  on both: the app seals with CryptoKit what the web seals with WebCrypto
+  (backupMath.SEAL); SheetJS is the one package the core bundles.
   Strings come from `src/locales` (`mobile-core/strings.mjs`), never written
   in Swift; the app's own few words are the `ios` namespace. Each screen's
   figures are checked against the web's through `Fixtures/*.json`

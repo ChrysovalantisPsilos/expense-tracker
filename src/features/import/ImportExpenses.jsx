@@ -15,19 +15,17 @@ import Tile from '../../shared/ui/kit/Tile.jsx'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useCategories } from '../../shared/lib/categories.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { parseManualRate, formatSigned } from '../../shared/lib/currency.js'
+import { parseManualRate } from '../../shared/lib/currency.js'
 import {
   parseWorkbook, buildTransactions, importNewTransactions, listRules, saveRule, rememberMapping,
   rememberedHolder, rememberHolder,
 } from './importExpenses.js'
-import {
-  previewDrafts, merchantGroups, groupIdOf, suggestedHolder, fileHolder, importedRange, categoryMatcher,
-} from './importMath.js'
+import { merchantGroups, suggestedHolder, fileHolder } from './importMath.js'
+import { applyReview, importSummary, mappingComplete, statementPreview } from './statementRows.js'
+import { detectionText, doneText, previewNote, previewRow, uploadMore } from './importText.js'
 import { useImportRules } from './importRules.js'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
-import { shortDate } from '../../shared/lib/dates.js'
-import { CONFIDENCE_THRESHOLD, PRESET_NAMES } from './statementDetect.js'
-import { displayDescription } from './kbcLabels.js'
+import { mappingUnsure } from './statementDetect.js'
 import MappingFields from './MappingFields.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { userMessage } from '../../shared/lib/errors.js'
@@ -39,15 +37,6 @@ import { useAiHelpers, useCategoryIdeas } from '../ai/ai.js'
 import { isSuggested } from '../ai/aiMath.js'
 import CategoryIdeasNote from '../ai/CategoryIdeasNote.jsx'
 import SuggestedMark from '../ai/SuggestedMark.jsx'
-
-// A row's error code (importMath.rowToDraft) in words: import:reasons.*.
-function reasonText(t, reason) {
-  if (reason === 'missing/invalid date') return t('reasons.date')
-  if (reason === 'missing/invalid amount') return t('reasons.amount')
-  const currency = /^unsupported currency (.*)$/.exec(reason)
-  return currency ? t('reasons.currency', { code: currency[1] }) : reason
-}
-const mappingComplete = (m) => Boolean(m.date && (m.amount || (m.debit && m.credit)))
 
 export default function ImportExpenses() {
   const t = useT('import')
@@ -99,7 +88,7 @@ export default function ImportExpenses() {
       setMapping({ ...parsed.detection.mapping, holderName: suggestedHolder(rememberedHolder(), profile?.display_name) })
       setDetection(parsed.detection)
       // Sure enough → straight to the preview; otherwise ask for the columns.
-      setShowMapping(parsed.detection.confidence < CONFIDENCE_THRESHOLD)
+      setShowMapping(mappingUnsure(parsed.detection))
       setStep('map')
     } catch (err) {
       console.error('[import] file not read:', err)
@@ -115,10 +104,11 @@ export default function ImportExpenses() {
   // Each row shows the category it will get (the file's column or a saved
   // rule), from the same matcher the import uses.
   const rules = useImportRules()
-  const categoryOf = useMemo(() => categoryMatcher(categories, rules.rows), [categories, rules.rows])
   const categoryById = useMemo(() => new Map((categories || []).map((c) => [c.id, c])), [categories])
-  const preview = useMemo(() => previewDrafts(rows, mapping, baseCurrency, { categoryOf }),
-    [rows, mapping, baseCurrency, categoryOf])
+  const preview = useMemo(() => statementPreview(rows, mapping, baseCurrency, { categories, rules: rules.rows }),
+    [rows, mapping, baseCurrency, categories, rules.rows])
+  const note = previewNote(preview, lines)
+  const done = result && doneText(result)
 
   // Build rows (saved rules pre-categorize known merchants), then either go
   // straight to import or stop at the review step for unknown merchants.
@@ -162,22 +152,12 @@ export default function ImportExpenses() {
   // (importNewTransactions), and a re-import is skipped server-side too.
   async function finishImport(valid, merchants, errors, skipped, assignments, groups) {
     await run(async () => {
-      const chosen = new Map(Object.entries(assignments).filter(([, catId]) => catId))
-      for (const g of groups) {
-        const catId = chosen.get(g.id)
-        if (catId) await saveRule(user.id, g.pattern, catId).catch(() => {}) // rule is a bonus, not a blocker
+      const review = applyReview(valid, merchants, groups, assignments)
+      for (const r of review.rules) {
+        await saveRule(user.id, r.pattern, r.category_id).catch(() => {}) // rule is a bonus, not a blocker
       }
-      const withCats = valid.map((t) => {
-        if (t.category_id || !t.description) return t
-        const catId = chosen.get(groupIdOf(t, merchants))
-        return catId ? { ...t, category_id: catId } : t
-      })
-      const { inserted, duplicates } = await importNewTransactions(withCats)
-      const own = skipped.filter((s) => s.reason === 'own transfer').length
-      setResult({
-        inserted, duplicates, failed: errors.length, errors: errors.slice(0, 10),
-        ownTransfers: own, ignored: skipped.length - own, range: importedRange(withCats),
-      })
+      const saved = await importNewTransactions(review.rows)
+      setResult(importSummary(saved, { errors, skipped, rows: review.rows }))
       setStep('done')
       setPending(null)
     }, { errorTitle: t('toasts.failed') })
@@ -195,7 +175,7 @@ export default function ImportExpenses() {
           <Stack spacing={4} align="center" py={8} textAlign="center">
             <IconTile icon={UploadCloud} size={64} radius="2xl" />
             <Text fontWeight="600">{t('upload.title')}</Text>
-            <InfoNote maxW="sm" more={t('upload.more', { banks: PRESET_NAMES.join(', ') })}>
+            <InfoNote maxW="sm" more={uploadMore()}>
               {t('upload.text')}
             </InfoNote>
             <input ref={fileInput} type="file" accept=".csv,.txt,.tsv,.xlsx,.xls,text/csv" hidden
@@ -216,14 +196,7 @@ export default function ImportExpenses() {
           <Panel icon={FileSpreadsheet} title={fileName} subtitle={t('map.rows', { count: rows.length })}
             action={<Button size="xs" variant="ghost" onClick={() => setStep('upload')}>{t('map.changeFile')}</Button>}>
             <HStack align="start" spacing={3}>
-              <Text fontSize="sm" color="text.muted" flex="1">
-                {detection.remembered
-                  ? t('map.remembered')
-                  : detection.preset
-                    ? t('map.recognised', { bank: detection.preset.name })
-                    : t(detection.confidence >= CONFIDENCE_THRESHOLD ? 'map.detected' : 'map.unsure')}
-                {' '}{t('map.checkPreview')}
-              </Text>
+              <Text fontSize="sm" color="text.muted" flex="1">{detectionText(detection)}</Text>
               <Button size="xs" variant="outline" leftIcon={<SlidersHorizontal size={14} />}
                 aria-expanded={showMapping} onClick={() => setShowMapping((v) => !v)}>
                 {t(showMapping ? 'map.hideColumns' : 'map.adjustColumns')}
@@ -256,25 +229,15 @@ export default function ImportExpenses() {
             ) : (
               preview.rows.map((d, i) => {
                 const category = categoryById.get(d.category_id)
+                const row = previewRow(d, category ?? null)
                 return (
-                  <ItemRow key={i} title={displayDescription(d) || '—'}
+                  <ItemRow key={i} title={row.title}
                     media={<CategoryBadge category={category} kind={d.kind} size={32} />}
-                    meta={category ? `${shortDate(d.spent_at)} · ${categoryDisplayName(category)}` : shortDate(d.spent_at)}
-                    amount={formatSigned(d.amount_minor, d.currency, { plus: d.kind === 'income' })}
-                    amountTone={d.kind === 'income' ? 'positive' : 'default'} />
+                    meta={row.meta} amount={row.amount} amountTone={row.income ? 'positive' : 'default'} />
                 )
               })
             )}
-            {(preview.skipped > 0 || preview.ownTransfers > 0 || preview.errors > 0) && (
-              <Text fontSize="xs" color="text.muted" mt={3}>
-                {preview.ownTransfers > 0 && `${t('preview.ownTransfers', { count: preview.ownTransfers })} `}
-                {preview.skipped > 0 && `${t('preview.skipped', { count: preview.skipped })} `}
-                {preview.errors > 0 && t('preview.errors', {
-                  count: preview.errors, line: lines[preview.firstError.index],
-                  reason: reasonText(t, preview.firstError.reason),
-                })}
-              </Text>
-            )}
+            {note && <Text fontSize="xs" color="text.muted" mt={3}>{note}</Text>}
             <HStack mt={4}>
               {busy && <BusyNote>{t('preview.importing', { count: preview.ready })}</BusyNote>}
               <Spacer />
@@ -361,29 +324,9 @@ export default function ImportExpenses() {
         <Panel>
           <Stack spacing={3} align="center" py={6} textAlign="center">
             <IconTile icon={Check} size={64} radius="2xl" tone="positive" />
-            <Heading size="md">{t('done.title', { count: result.inserted })}</Heading>
-            {result.range && (
-              <Text fontSize="sm">{t('done.dated', {
-                from: shortDate(result.range.from), to: shortDate(result.range.to) })}</Text>
-            )}
-            {result.duplicates > 0 && (
-              <Text fontSize="sm" color="text.muted">{t('done.duplicates', { count: result.duplicates })}</Text>
-            )}
-            {result.failed > 0 && (
-              <Text fontSize="sm" color="text.muted">
-                {result.errors.length
-                  ? t('done.failedExample', {
-                    count: result.failed, line: result.errors[0].row, reason: reasonText(t, result.errors[0].reason),
-                  })
-                  : t('done.failed', { count: result.failed })}
-              </Text>
-            )}
-            {result.ownTransfers > 0 && (
-              <Text fontSize="sm" color="text.muted">{t('done.ownTransfers', { count: result.ownTransfers })}</Text>
-            )}
-            {result.ignored > 0 && (
-              <Text fontSize="sm" color="text.muted">{t('done.ignored', { count: result.ignored })}</Text>
-            )}
+            <Heading size="md">{done.title}</Heading>
+            {done.dated && <Text fontSize="sm">{done.dated}</Text>}
+            {done.notes.map((line) => <Text key={line} fontSize="sm" color="text.muted">{line}</Text>)}
             <HStack pt={2}>
               <Button variant="ghost" onClick={() => { setStep('upload'); setResult(null) }}>{t('done.another')}</Button>
               <Button onClick={() => navigate(`/transactions?${new URLSearchParams({

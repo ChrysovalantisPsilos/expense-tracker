@@ -1,10 +1,7 @@
 import { FormControl, FormLabel, Select, SimpleGrid, Text } from '@chakra-ui/react'
-import { IMPORT_FIELDS } from './statementDetect.js'
+import { DATE_ORDERS, DECIMALS, IMPORT_FIELDS } from './statementDetect.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
-// Each option's label is import:mapping.dateOrders.<value> / .decimals.<id>.
-const DATE_ORDERS = ['dmy', 'mdy', 'ymd']
-const DECIMALS = [{ value: ',', id: 'comma' }, { value: '.', id: 'point' }]
 // A required field's asterisk, after its label.
 const REQUIRED_MARK = ' *'
 

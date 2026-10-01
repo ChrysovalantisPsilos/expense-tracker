@@ -49,6 +49,14 @@ enum AppRoute: Hashable {
     case salary
     case netWorthAccount(String)
     case newNetWorthAccount
+    /// Import a bank statement; Settings › Import rules and a rule's page.
+    case importStatement
+    case importRules
+    case importRule(String)
+    /// Settings › Your data, its Export backup and Restore from backup.
+    case yourData
+    case exportBackup
+    case restoreBackup
     /// A category's page (an id, or "none" for the uncategorised), for a period value (nil: this month).
     case categoryPage(String, String?)
     /// Help & FAQ, opened at a question when one is named (the web's #anchor).
@@ -170,6 +178,7 @@ final class AppModels {
     let vouchers: VouchersModel
     let plan: PlanModel
     let salary: SalaryModel
+    let importRules: ImportRulesModel
     /// The account's language, lined up with this device's (Settings › Language saves through it).
     let profileLanguage: ProfileLanguage
     /// The wizard, What's new and the tour.
@@ -195,6 +204,7 @@ final class AppModels {
         vouchers = VouchersModel(data: data)
         plan = PlanModel(data: data)
         salary = SalaryModel(data: data)
+        importRules = ImportRulesModel(data: data)
         profileLanguage = ProfileLanguage(language: language, profiles: data.profile)
         welcome = WelcomeModel(data: data)
         tour = TourModel(data: data)
@@ -284,6 +294,24 @@ struct AppFrame: View {
         }
     }
 
+    /// An import's "View transactions": Activity over the imported entries' days
+    /// (the web's /transactions?type=all&from&to).
+    private func viewImported(from: String?, to: String?, _ models: AppModels) {
+        router.tab = .activity
+        router.activity = NavigationPath()
+        Task {
+            await models.ledger.clearAll()
+            await models.ledger.setType("all")
+            if let from { await models.ledger.setFilter("from", from) }
+            if let to { await models.ledger.setFilter("to", to) }
+        }
+    }
+
+    /// Nothing logged yet: Add your first expense (the web's /transactions/new).
+    private func addFirstEntry() {
+        router.add = AddRequest(model: EntryFormModel(mode: .add, data: container.data))
+    }
+
     /// The floating Add: what the page on top lends it (AddSlot), else a new entry.
     private func add(_ models: AppModels) {
         switch router.slot?.action {
@@ -311,7 +339,7 @@ struct AppFrame: View {
         switch tab {
         case .home, .add:
             NavigationStack(path: $router.home) {
-                HomeView(model: models.home, chrome: chrome(models))
+                HomeView(model: models.home, chrome: chrome(models)) { addFirstEntry() }
                     .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "budgets", "recurring_rules",
                                                           "meal_vouchers"]) {
                         await models.home.refresh()
@@ -328,7 +356,24 @@ struct AppFrame: View {
                                                                                               data: container.data)) },
                              split: { row in router.add = AddRequest(model: EntryFormModel(mode: .add, transaction: row,
                                                                                           data: container.data),
-                                                                    splitting: row) })
+                                                                    splitting: row) },
+                             addFirst: { addFirstEntry() })
+                    // The web's ⋯ menu: Import a file (a bank statement).
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Menu {
+                                Button {
+                                    router.activity.append(AppRoute.importStatement)
+                                } label: {
+                                    Label(language.t("transactions:ledger.importFile"), systemImage: "tablecells")
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis.circle")
+                            }
+                            .accessibilityLabel(language.t("transactions:ledger.moreActions"))
+                            .accessibilityIdentifier("activity.more")
+                        }
+                    }
                     .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
                         await models.ledger.reloadRows()
                     }
@@ -433,6 +478,19 @@ struct AppFrame: View {
             PrivacyRequestView(model: models.privacy)
         case .whatsNew:
             WhatsNewView()
+        case .importStatement:
+            ImportHost(data: container.data, userId: userId) { from, to in viewImported(from: from, to: to, models) }
+        case .importRules:
+            ImportRulesView(model: models.importRules)
+                .liveRefresh(container.live, tables: ["category_rules", "categories"]) { await models.importRules.load() }
+        case .importRule(let id):
+            ImportRuleHost(rules: models.importRules, id: id)
+        case .yourData:
+            YourDataView()
+        case .exportBackup:
+            BackupHost(page: .export, data: container.data, userId: userId, email: user.email)
+        case .restoreBackup:
+            BackupHost(page: .restore, data: container.data, userId: userId, email: user.email)
         case .categoryList:
             CategoriesView(model: models.categories)
                 .liveRefresh(container.live, tables: ["categories"]) { await models.categories.load() }

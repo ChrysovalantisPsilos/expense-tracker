@@ -6,6 +6,8 @@
 // Every namespace is a source module the web app runs as it is; modules.js
 // is the list. Nothing here touches React, Supabase, window, document,
 // storage, fetch or the service worker: the build refuses such a graph.
+// First: the engine's missing TextDecoder, before any module runs.
+import './textDecoder.js'
 import el from '../src/locales/el/index.js'
 import { setLanguage as activate, getLanguage } from '../src/shared/lib/i18n/i18n.js'
 import { CORE_MODULES } from './modules.js'
@@ -57,6 +59,10 @@ import * as statementDetect from '../src/features/import/statementDetect.js'
 import * as statementText from '../src/features/import/statementText.js'
 import * as kbcLabels from '../src/features/import/kbcLabels.js'
 import * as sheetParse from '../src/features/import/sheetParse.js'
+import * as sheetRead from '../src/features/import/sheetRead.js'
+import * as statementRows from '../src/features/import/statementRows.js'
+import * as importText from '../src/features/import/importText.js'
+import * as backupMath from '../src/features/backup/backupMath.js'
 import * as recurringMath from '../src/features/recurring/recurringMath.js'
 import * as ruleForm from '../src/features/recurring/ruleForm.js'
 import * as planMath from '../src/features/plan/planMath.js'
@@ -82,6 +88,7 @@ import * as bellMath from '../src/features/notifications/bellMath.js'
 import * as voucherText from '../src/features/vouchers/voucherText.js'
 import * as themePref from '../src/shared/lib/themePref.js'
 import * as contact from '../src/shared/lib/contact.js'
+import * as password from '../src/shared/lib/password.js'
 import * as reauth from '../supabase/functions/_shared/reauth.ts'
 import * as reportFiles from '../supabase/functions/_shared/files.ts'
 import * as spendingPrefs from '../src/features/settings/spendingPrefs.js'
@@ -151,6 +158,10 @@ export const modules = {
   statementText,
   kbcLabels,
   sheetParse,
+  sheetRead,
+  statementRows,
+  importText,
+  backupMath,
   recurringMath,
   ruleForm,
   planMath,
@@ -176,6 +187,7 @@ export const modules = {
   voucherText,
   themePref,
   contact,
+  password,
   reauth,
   reportFiles,
   spendingPrefs,
@@ -205,7 +217,19 @@ export const vectors = {
     const ns = modules[module]
     if (!ns) throw new Error(`BudgeerCore: no module "${module}"`)
     const f = ns[fn]
+    const args = JSON.parse(argsJson)
+    // A module's constant (a list of fields, a limit) answers its value when
+    // asked with no arguments, so the app never copies one.
+    if (typeof f !== 'function' && f !== undefined && args.length === 0) return JSON.stringify(encode(f))
     if (typeof f !== 'function') throw new Error(`BudgeerCore: no function "${module}.${fn}"`)
-    return JSON.stringify(runEncoded(f, JSON.parse(argsJson)))
+    return JSON.stringify(runEncoded(f, args))
+  },
+  // The same, with a file's bytes (a Uint8Array the app hands over as it is,
+  // never as JSON) as the first argument: sheetRead.readStatement.
+  callBytes(module, fn, bytes, argsJson) {
+    const ns = modules[module]
+    const f = ns?.[fn]
+    if (typeof f !== 'function') throw new Error(`BudgeerCore: no function "${module}.${fn}"`)
+    return JSON.stringify(runEncoded((...args) => f(bytes, ...args), JSON.parse(argsJson)))
   },
 }

@@ -49,12 +49,20 @@ ios/BudgeerCore/    the Swift package (iOS 17 / macOS 14, no dependencies)
 npm run core:build      # → ios/BudgeerCore/Sources/BudgeerCore/Resources/core.js
 ```
 
-An ES2020 bundle (about 1.3 MB, unminified so stack traces name the web
+An ES2020 bundle (about 2.5 MB, unminified so stack traces name the web
 function) that sets `globalThis.BudgeerCore`. It contains no React, Supabase
-or browser code: the build fails on any such module in the graph, and
-`test/mobileCore.test.js` loads it in a bare context with only the engine's
-globals. Run it before opening the Swift package in Xcode (the package
-declares the file as a resource); CI runs it in `.github/workflows/ios-app.yml`.
+or browser code: the build fails on any such module in the graph, and on
+any package but `CORE_PACKAGES` (`modules.js`): SheetJS (`xlsx`, pure
+JavaScript, Apache-2.0, its licence shipped beside the bundle as
+`SHEETJS-LICENSE.txt`), which reads .xlsx/.xls statements on the phone as
+the web's parsing worker does. `test/mobileCore.test.js` loads it in a bare
+context with only the engine's globals. JavaScriptCore has no
+`TextDecoder`, so the core brings its own (`mobile-core/textDecoder.js`:
+UTF-8, UTF-16 and the two Windows code pages bank exports use, held byte
+for byte to the browser's by `test/mobileCoreText.test.js`), installed
+before any module runs. Run it before opening the Swift package in Xcode
+(the package declares the file as a resource); CI runs it in
+`.github/workflows/ios-app.yml`.
 
 From Swift:
 
@@ -66,7 +74,12 @@ let label = try core.money.format(123_456)                                   // 
 ```
 
 `call` takes any `Encodable` arguments and decodes any `Decodable` result;
-`JSDate` and `JSUndefined` pass a Date or `undefined`. A missing function, a
+`JSDate` and `JSUndefined` pass a Date or `undefined`. A module's constant
+(a list of fields, a limit) answers its value when called with no
+arguments (`core.call("statementDetect", "IMPORT_FIELDS", [])`), so the app
+never copies one. `callBytes` hands a file's bytes over as a `Uint8Array`
+(never as JSON) before the other arguments:
+`core.callBytes("sheetRead", "readStatement", bytes: data)`. A missing function, a
 JavaScript exception and an error the web's code throws on purpose each
 come back as a `BudgeerCoreError`. The context is shared and every call is
 serialised on one queue. Dates format in the process time zone; English
@@ -194,7 +207,9 @@ ios/Budgeer/
                          +Groups, +Settings: the profile, the payment details, the photo, categories, privacy;
                          +Savings: the net-worth accounts, the goals, the meal vouchers' setup; +Plan: the
                          plan, apply and undo, the what-if helper, the salary's corrections, saving and removing
-                         a net-worth account, the statement),
+                         a net-worth account, the statement; +Import: the import rules, the chunked save, the
+                         category ideas; +Backup: the backed-up profile, the head count, the restore's
+                         categories and budgets),
                          QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
                          refetch), FxRates (ECB rates as fx.js), PeriodSource (the period pickers' options)
     Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView (the month pager,
@@ -241,6 +256,11 @@ ios/Budgeer/
     Categories/          CategoriesModel (+ CategoryEditorModel), CategoriesView (+ DeleteCategorySheet),
                          CategoryEditView (+ CategoryEditHost), CategoryPageFigures + CategoryPageModel +
                          CategoryPageView (a category's page, + CategoryPageHost)
+    Import/              ImportModel + ImportView (+ ImportHost: the statement import, step by step),
+                         ImportRulesModel (+ ImportRuleEditor) + ImportRulesView (+ ImportRuleView, ImportRuleHost)
+    Backup/              BackupData (backup.js's reads, the document, the restore), BackupSeal (the password:
+                         PBKDF2 and AES-GCM with CommonCrypto and CryptoKit), BackupModels (Export and Restore),
+                         BackupViews (Your data, Export backup, Restore from backup; BackupHost)
     Theme/               Theme (the web's colour tokens), NativeStyle (the coral tint, Poppins titles and money
                          figures), NativeAppearance (the bars' title faces), NativeGlass (Liquid Glass on iOS 26,
                          the standard material on iOS 17–18), NativeTabs (the floating tab bar with Add beside
@@ -262,7 +282,9 @@ ios/Budgeer/
     Resources/Generated/ <lang>.lproj/Localizable.strings and InfoPlist.strings — generated, not committed
   BudgeerTests/          view models over FakeStore, the parity tests, the strings, snapshots
     Fixtures/*.json      the web's figures for fake inputs: home, ledger, budgets, recurring, insights,
-                         savings, vouchers, groups, plan, salary, networth (npm run ios:fixture)
+                         savings, vouchers, groups, plan, salary, networth, import (npm run ios:fixture);
+                         backup-plain.json and backup-sealed.json (backups the web's code made, the second
+                         sealed by its WebCrypto) and statement.xlsx (a fake workbook)
 ```
 
 ### What is real and what is not
@@ -652,9 +674,61 @@ a core call (the web's function); Swift reads, lays out and draws.
     support** opens Mail. Then Sign out and the version.
   - **Meal vouchers**: the setup (above), after Monthly spending as on
     the web.
-  - Not yet, and not offered: Import rules (they only act on an import),
-    Your data's backup and restore (with import), and the live/test
-    switch (the website's own).
+  - **Import rules** (after Language, as on the web) and **Your data**
+    (after Security; also from Privacy's "Back up your data"): below.
+  - Not offered: the live/test switch (the website's own).
+- **Import a bank statement** (Activity's ⋯ menu, "Import file", as the
+  web's Transactions menu; Import rules' "Import a statement"; and, with
+  nothing logged yet, Home's and Activity's first-run card, the web's
+  FirstEntry: Add your first expense or Import a bank statement), one step at
+  a time as on the web: pick a CSV, TSV, TXT, XLSX or XLS file in Files; it
+  is read on the phone and never uploaded (the size and Numbers checks
+  first, `importText.fileProblem`; the bytes go to the core as they are,
+  `sheetRead.readStatement`: the web's parser, SheetJS for workbooks, the
+  core's TextDecoder for Greek and Western Windows code pages). The layout
+  is detected (`statementDetect.detectStatement`: a bank recognised, a
+  layout confirmed before on this phone, or the columns guessed, worded by
+  `importText.detectionText`); an unsure one opens the columns (a picker
+  per field, how dates and decimals are written), your name for transfers
+  between your own accounts when the file has no holder column, and the
+  live preview (`statementRows.statementPreview`, `importText.previewRow`,
+  the rules' categories shown, what's left out and why). Import builds the
+  rows (`statementRows.statementRows`: the rules, the statement's own rate
+  or the ECB's for the day, the deterministic ids, the merchants), asks for
+  a rate the ECB couldn't give (never 1:1), then the new merchants'
+  categories (the AI's ideas when that helper is on: `ai-helper`
+  `suggest_categories`, marked Suggested until changed), each remembered
+  as an import rule; rows the ledger already holds are left out
+  (`importMath.dropKnownRows`) and the rest saved 500 at a time with
+  `save_transactions` (the server skips any id it knows). Done says what
+  was imported, skipped and left out (`importText.doneText`); View
+  transactions opens Activity on those days (the Filters' From and To,
+  as the web's link sets them);
+  Import another. The confirmed layout and your name stay on this phone
+  under the web's own storage keys.
+- **Settings › Import rules**, as the web's page: what a rule does, your
+  rules with their category, direction and day added
+  (`importRulesMath.ruleRows`), search, Money out / Money in, 15 to a page;
+  a rule's page (its text with the web's checks, `patternProblem`; its
+  category by direction, `ruleTargets`; "only future imports" once the text
+  changes; Save, Delete), swipe to delete, each delete asked first; with
+  none yet, how they're made and Import a statement.
+- **Settings › Your data**: **Export backup** (an optional password with
+  the web's checks and warnings, the note about groups; everything read as
+  backup.js reads it, the document `backupMath.buildBackup` makes, sealed
+  when there's a password as the website seals it (`backupMath.SEAL`:
+  PBKDF2-SHA256 over 600,000 iterations into AES-GCM-256, with CommonCrypto
+  and CryptoKit on the phone), named `budgeer-backup-YYYY-MM-DD.json`, then
+  the share sheet: Save to Files, AirDrop, Mail) and **Restore from
+  backup** (pick a file in Files; `readBackup`; the password for a sealed
+  one, its parameters checked by the core first (`envelopeParams`); what's
+  in it, when it was made and what happens to the main currency; the
+  restore, step by step with its progress, adding only what's missing, as
+  backup.js does with backupMath's plans; then what it added, skipped and
+  kept, `restoreSummary`; a stop says why and keeps what was added). The
+  file is the web's own: a backup made on the website restores here and
+  the other way round (`BackupTests` opens a file the website's WebCrypto
+  sealed).
 
 ### Strings
 
@@ -746,15 +820,22 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   push step's hook, a tour never finished, What's new once and marked seen, none for a new
   account), `TourModelTests` (a phone's stops, Back and Next, seen once), `AccountFormsTests`
   (sign-up's checks and consent, a refusal's words, Google's tick, Check your inbox signing in by
-  itself and giving up, resend's minute, the reset link).
+  itself and giving up, resend's minute, the reset link), `ImportModelTests` (a workbook read on the phone, the
+  file's problems, a rate asked for, the AI's ideas, a remembered layout and name),
+  `ImportRulesTests` (the list, search, filter and pages, a rule's page, the taken refusal,
+  delete, none yet), `BackupTests` (the web's document under the web's name, a short read
+  refused, the password's checks, what's in a backup and the restore with its summary, not a
+  backup; on a Mac, a file the website sealed opened and a file sealed here opened again).
 - Parity: each screen's fixture inputs through its `…Figures` (every step a
   core call) must give what the web's functions wrote into
   `Fixtures/{home,ledger,budgets,recurring,insights,savings,vouchers,groups,plan,salary,networth,category}.json`, in
-  English and Greek. `npm run ios:fixture` (`mobile-core/homeFigures.mjs`,
+  English and Greek; `ImportParityTests` walks `Fixtures/import.json`'s fake export through
+  `ImportModel` (the words, the preview, the merchants, the saved rows with their ids, the
+  summary). `npm run ios:fixture` (`mobile-core/homeFigures.mjs`,
   `mobile-core/screenFigures.mjs`, `mobile-core/groupFigures.mjs`,
-  `mobile-core/categoryFigures.mjs`) rewrites
+  `mobile-core/categoryFigures.mjs`, `mobile-core/importFigures.mjs`) rewrites
   them from the web's source; `test/iosHome.test.js`,
-  `test/iosScreens.test.js`, `test/iosGroups.test.js` and `test/iosCategory.test.js` (in `npm test`)
+  `test/iosScreens.test.js`, `test/iosGroups.test.js`, `test/iosCategory.test.js` and `test/iosImport.test.js` (in `npm test`)
   fail when a committed file no longer matches the web.
 - `L10nTests`: both languages bundled, the web's keys, the fallback, the
   language preference. `AppLanguageTests`: the device's first language only,
@@ -791,7 +872,11 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   applied, the salary from the entries, no income, nothing to plan), Your
   salary (the page, an extra being fixed, before any pay), Insights' net
   worth (accounts with the pot line, a savings account) and an account's
-  page (and a new one), each light, dark and Greek, with the fixtures'
+  page (and a new one), Import (the file to pick, the layout and preview,
+  the new merchants with the AI's ideas, done, a rate to type), Import
+  rules (the list, a rule's page, none yet), Your data, Export backup (as
+  it opens, the file ready) and Restore (the file to pick, a sealed one's
+  password, what's in one, done, not a backup), each light, dark and Greek, with the fixtures'
   data (`<name>-<variant>.png`, and `-long` for the pages worth seeing
   whole); attached to the test run and written to `SNAPSHOT_DIR` when set
   (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).

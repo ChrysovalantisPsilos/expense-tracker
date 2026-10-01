@@ -12,16 +12,15 @@ import useGoBack from '../../shared/ui/useGoBack.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import IconTile from '../../shared/ui/kit/IconTile.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
-import { readBackup, unlockBackup, backupContents, restoreSummary } from './backupMath.js'
+import {
+  CONTENT_ROWS, MAX_BACKUP_BYTES, readBackup, backupContents, currencyLine, madeLine, restoreSummary,
+} from './backupMath.js'
+import { unlockBackup } from './backupCrypto.js'
 import { restoreBackup, restoreCurrencyPlan } from './backup.js'
 import Note from './Note.jsx'
 import { UserError, userMessage } from '../../shared/lib/errors.js'
 import { RingMark, RingSpinner } from '../../shared/ui/RingLoader.jsx'
-import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-
-// Hard ceiling on what we'll read into memory; real backups are far smaller.
-const MAX_FILE_BYTES = 50 * 1024 * 1024
 
 // /settings/data/restore — pick a file → (password) → review → progress →
 // summary, one step at a time on this page. A restore only ever adds:
@@ -59,7 +58,7 @@ function ChooseStep({ setFlow }) {
     e.target.value = ''
     if (!file) return
     try {
-      if (file.size > MAX_FILE_BYTES) throw new UserError(t('errors.tooLarge'))
+      if (file.size > MAX_BACKUP_BYTES) throw new UserError(t('errors.tooLarge'))
       const read = readBackup(await file.text())
       setFlow(read.encrypted ? { step: 'password', envelope: read.envelope } : { step: 'review', backup: read.backup })
     } catch (err) {
@@ -124,17 +123,15 @@ function PasswordStep({ envelope, setFlow }) {
   )
 }
 
-// What the backup holds, in this order (labels: backup:restore.contents.<id>).
-const CONTENT_ROWS = ['expenses', 'income', 'categories', 'rules', 'budgets', 'recurring', 'accounts', 'goals', 'groups']
-
 function ReviewStep({ backup, setFlow, running }) {
   const t = useT('backup')
   const { user } = useAuth()
   const toast = useToast()
   const [progress, setProgress] = useState(() => ({ label: t('restore.progressSteps.starting'), done: 0, total: 0 }))
   const contents = backupContents(backup)
-  const made = backup.exportedAt ? new Date(backup.exportedAt) : null
+  const made = madeLine(backup.exportedAt)
   const [currency, setCurrency] = useState(null) // { change, from, to }
+  const currencyNote = currencyLine(currency)
 
   useEffect(() => {
     let live = true
@@ -179,12 +176,9 @@ function ReviewStep({ backup, setFlow, running }) {
                 aria-label={t('restore.progress')} />
             </Box>
           )}
-          {made && !isNaN(made) && (
-            <Text fontSize="sm" color="text.muted">
-              {t('restore.made', { date: made.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) })}
-            </Text>
-          )}
-          <CurrencyLine plan={currency} />
+          {made && <Text fontSize="sm" color="text.muted">{made}</Text>}
+          {/* What happens to the main currency; nothing when the backup's matches the account's. */}
+          {currencyNote && <Text fontSize="sm" color="text.muted">{currencyNote}</Text>}
           <BalanceGrid columns={{ base: 2, sm: 3 }}>
             {CONTENT_ROWS.map((k) => (
               <BalanceTile key={k} label={t(`restore.contents.${k}`)} value={contents[k]}
@@ -202,19 +196,6 @@ function ReviewStep({ backup, setFlow, running }) {
         {t('restore.restore')}
       </Button>
     </>
-  )
-}
-
-// One quiet line on what happens to the main currency (backupMath.js
-// currencyChange); nothing when the backup's matches the account's.
-function CurrencyLine({ plan }) {
-  const t = useT('backup')
-  if (!plan?.change) return null
-  const { change, from, to } = plan
-  return (
-    <Text fontSize="sm" color="text.muted">
-      {t(change === 'adopt' ? 'restore.currencyAdopt' : 'restore.currencyConvert', { from, to })}
-    </Text>
   )
 }
 

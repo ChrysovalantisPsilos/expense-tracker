@@ -1,13 +1,12 @@
 // Settings, as iOS's own Settings: you at the top (your picture, name and
 // email; Account), then the web's groups in its order. Preferences:
-// Categories, Monthly spending, Meal vouchers, Notifications, Appearance, Language, AI
-// helpers and this phone's Face ID lock (its page: the switch and the app PIN). Privacy & security: Security,
+// Categories, Monthly spending, Meal vouchers, Notifications, Appearance, Language, Import rules, AI
+// helpers and this phone's Face ID lock (its page: the switch and the app PIN). Privacy & security:
+// Security, Your data,
 // Privacy, and the Privacy Notice and Terms of Use (the website's pages in
 // Safari). Help: Help & FAQ (native), What's new, Take the tour again, the
 // status page (in Safari), Contact support (Mail). Then Sign out and the version. Meal vouchers sits
-// after Monthly spending, as on the web. The web's Import rules and Your
-// data rows join when their pages are built here (import with its rules and
-// backups); the live/test site switch is the website's own.
+// after Monthly spending, as on the web. The live/test site switch is the website's own.
 import SwiftUI
 
 @MainActor
@@ -63,6 +62,8 @@ struct SettingsView: View {
                             value: language.t("settings:appearance.\(appearance)"), id: "settings.appearance")
                 SettingsRow(route: .language, symbol: "globe", color: NativeTone.coral,
                             title: language.t("settings:rows.language.label"), value: languageValue, id: "settings.language")
+                SettingsRow(route: .importRules, symbol: "wand.and.stars", color: NativeTone.coral,
+                            title: language.t("settings:rows.importRules.label"), id: "settings.importRules")
                 SettingsRow(route: .aiHelpers, symbol: "sparkles", color: NativeTone.coral,
                             title: language.t("settings:rows.ai.label"), id: "settings.ai")
                 SettingsRow(route: .faceLock, symbol: "faceid", color: NativeTone.coral,
@@ -75,6 +76,8 @@ struct SettingsView: View {
             Section {
                 SettingsRow(route: .security, symbol: "lock.shield.fill", color: NativeTone.sand,
                             title: language.t("settings:rows.security.label"), id: "settings.security")
+                SettingsRow(route: .yourData, symbol: "externaldrive.fill", color: NativeTone.sand,
+                            title: language.t("settings:rows.data.label"), id: "settings.data")
                 SettingsRow(route: .privacy, symbol: "hand.raised.fill", color: NativeTone.sand,
                             title: language.t("settings:rows.privacy.label"), id: "settings.privacy")
                     .tourTarget("settings-privacy")

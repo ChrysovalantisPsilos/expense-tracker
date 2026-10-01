@@ -11,18 +11,23 @@ enum FxRates {
     static func fillPending(_ rows: JSONValue, base: String, today: String, fx: FxRepository,
                             core: BudgeerCore) async throws -> JSONValue {
         let spans: JSONValue = try core.call("currency", "pendingRateSpans", [rows, base])
-        let pairs = JSONValue.mapPairs(spans)
-        if pairs.isEmpty { return rows }
+        if JSONValue.mapPairs(spans).isEmpty { return rows }
+        let byCurrency = await seriesMap(spans, to: base, fx: fx)
+        return try core.call("currency", "withEstimatedRates", [rows, base, byCurrency, today])
+    }
+
+    /// fx.js getRateSeriesMap: one ECB series per currency of `spans` (the
+    /// core's Map of currency → { first, last }) into `base`, as the Map the
+    /// core reads: {"$":"map","v":[[currency, [[date, rate]]], …]}.
+    static func seriesMap(_ spans: JSONValue, to base: String, fx: FxRepository) async -> JSONValue {
         var series: [JSONValue] = []
-        for pair in pairs {
+        for pair in JSONValue.mapPairs(spans) {
             guard let currency = pair.key.stringValue, let first = pair.value["first"]?.stringValue,
                   let last = pair.value["last"]?.stringValue else { continue }
             let rates = await fx.series(from: currency, to: base, first: first, last: last)
             series.append([pair.key, rates])
         }
-        // A Map for the core: {"$":"map","v":[[currency, [[date, rate]]], …]}.
-        let byCurrency: JSONValue = ["$": "map", "v": .array(series)]
-        return try core.call("currency", "withEstimatedRates", [rows, base, byCurrency, today])
+        return ["$": "map", "v": .array(series)]
     }
 
     /// fx.js useLatestRates for recurring rules: today's rate of each foreign

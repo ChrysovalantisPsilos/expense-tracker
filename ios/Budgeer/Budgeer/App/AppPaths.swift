@@ -15,6 +15,7 @@ enum AppPaths {
         "account": .account, "notifications": .messages, "appearance": .appearance, "language": .language,
         "spending": .spending, "vouchers": .voucherSetup, "ai": .aiHelpers, "categories": .categoryList,
         "security": .security, "privacy": .privacy, "whats-new": .whatsNew,
+        "import-rules": .importRules, "data": .yourData,
     ]
 
     /// The tabs' first pages and the pages under More, by their web address.
@@ -22,6 +23,7 @@ enum AppPaths {
         "": Place(tab: .home, routes: []),
         "budgets": Place(tab: .home, routes: [.budgets]),
         "transactions": Place(tab: .activity, routes: []),
+        "import": Place(tab: .activity, routes: [.importStatement]),
         "groups": Place(tab: .groups, routes: []),
         "more": Place(tab: .more, routes: []),
         "recurring": Place(tab: .more, routes: [.recurring]),
@@ -57,6 +59,10 @@ enum AppPaths {
             }
         case 3 where parts == ["settings", "privacy", "request"]:
             return Place(tab: .more, routes: [.settings, .privacy, .privacyRequest])
+        case 3 where parts == ["settings", "data", "export"]:
+            return Place(tab: .more, routes: [.settings, .yourData, .exportBackup])
+        case 3 where parts == ["settings", "data", "restore"]:
+            return Place(tab: .more, routes: [.settings, .yourData, .restoreBackup])
         default:
             return nil
         }

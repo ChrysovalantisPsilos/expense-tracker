@@ -3,11 +3,14 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   BACKUP_FORMAT, BACKUP_VERSION, BackupError, backupFileName, normText, txnKey, groupShareNote,
-  buildBackup, serializeBackup, readBackup, unlockBackup, backupContents, mapCategories,
+  buildBackup, readBackup, backupContents, mapCategories, envelopeParams, openedBackup, backupText, sealedText,
+  CONTENT_ROWS, MAX_BACKUP_BYTES, currencyLine, madeLine, emailName, targetCurrency, categoryRows, wantsSalary, settingsTally,
+  FETCH_ROW_CAP, realDay,
   matchByName, planRules, planTransactions, planBudgets, planRecurring, planProfile, planSalaryShift, planPayment,
   currencyChange, restorePlan, restoreSalary,
   restoreSummary, splitDateRange, rebaseRateSpans, rebaseBackupData,
 } from '../src/features/backup/backupMath.js'
+import { serializeBackup, unlockBackup } from '../src/features/backup/backupCrypto.js'
 import { UserError } from '../src/shared/lib/errors.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 
@@ -212,6 +215,78 @@ test('password: a damaged envelope or a swapped header fails the same way', asyn
     const read = readBackup(JSON.stringify(c))
     await assert.rejects(unlockBackup(read.envelope, 'pw-12345678'), /Wrong password or damaged file/)
   }
+})
+
+test('sealing, pure: the envelope\'s checked parameters, the texts around a seal', async () => {
+  const doc = sourceDoc()
+  assert.equal(backupText(doc), JSON.stringify(doc, null, 2))
+  const env = JSON.parse(await serializeBackup(doc, 'pw-12345678'))
+  const read = readBackup(JSON.stringify(env))
+  const params = envelopeParams(read.envelope)
+  assert.deepEqual(params, {
+    iterations: 600000, salt: env.kdf.salt, iv: env.iv, ciphertext: env.ciphertext, aad: `${BACKUP_FORMAT}/${BACKUP_VERSION}`,
+  })
+  assert.deepEqual(JSON.parse(sealedText({ kdf: env.kdf, iv: env.iv, ciphertext: env.ciphertext })), env)
+  for (const bad of [{ ...read.envelope, iv: 'AAAA' }, { ...read.envelope, kdf: { ...env.kdf, salt: 'AAAA' } },
+    { ...read.envelope, kdf: { ...env.kdf, hash: 'SHA-1' } }, { ...read.envelope, ciphertext: 'A' }, {}]) {
+    assert.throws(() => envelopeParams(bad), /Wrong password or damaged file/)
+  }
+  assert.deepEqual(openedBackup(backupText(doc)).data, doc.data)
+  assert.throws(() => openedBackup(JSON.stringify(env)), /isn’t a Budgeer backup/)
+})
+
+// An impossible day is refused by arithmetic, whatever the engine's Date
+// parser makes of it (V8 rolls 30 February over; JavaScriptCore gives an
+// Invalid Date, whose toISOString throws).
+test('realDay: real calendar days only, leap years included', () => {
+  for (const day of ['2026-02-28', '2024-02-29', '2000-02-29', '2026-12-31', '0050-01-01']) assert.equal(realDay(day), true, day)
+  for (const day of ['2026-02-30', '2026-02-29', '1900-02-29', '2026-13-01', '2026-00-10', '2026-04-31', '2026-01-00']) {
+    assert.equal(realDay(day), false, day)
+  }
+  const doc = sourceDoc()
+  doc.data.transactions[0].spent_at = '2026-02-31'
+  assert.throws(() => readBackup(JSON.stringify(doc)), (err) => err instanceof BackupError && /entry #1: date/.test(err.message))
+})
+
+test('confirm step: when the backup was made, and what happens to the main currency', () => {
+  assert.match(madeLine('2026-09-22T12:00:00.000Z'), /^Backup made .*2026\.$/)
+  assert.equal(madeLine(undefined), null)
+  assert.equal(madeLine('not a date'), null)
+  assert.equal(currencyLine(null), null)
+  assert.equal(currencyLine({ change: null, from: 'EUR', to: 'EUR' }), null)
+  assert.equal(currencyLine({ change: 'adopt', from: 'USD', to: 'EUR' }), 'Your main currency will be set to USD to match this backup.')
+  assert.match(currencyLine({ change: 'convert', from: 'USD', to: 'EUR' }), /^This backup is in USD and your account uses EUR/)
+  assert.deepEqual(CONTENT_ROWS.filter((k) => !(k in backupContents({ ...fresh(), groupCount: 0 }))), [])
+  assert.equal(MAX_BACKUP_BYTES, 50 * 1024 * 1024)
+})
+
+test('restore steps: the email\'s name, the currency the amounts land in, rows, salary, settings', () => {
+  assert.equal(emailName('sam.morgan@example.com'), 'sam.morgan')
+  assert.equal(emailName(null), '')
+  assert.equal(targetCurrency({ patch: { base_currency: 'USD' } }, { base_currency: 'EUR' }), 'USD')
+  assert.equal(targetCurrency({ patch: {} }, { base_currency: 'GBP' }), 'GBP')
+  assert.equal(targetCurrency({ patch: {} }, null), 'EUR')
+  const { backup } = readBackup(JSON.stringify(sourceDoc()))
+  const { missing } = mapCategories(backup.data.categories, [])
+  assert.deepEqual(categoryRows(missing)[2], {
+    name: 'Salary', kind: 'income', icon: 'salary', color: 'green', is_archived: false, is_savings: false, default_key: 'salary',
+  })
+  assert.equal(wantsSalary(backup.data), false)
+  assert.equal(wantsSalary({ ...backup.data, salary: { country: 'BE' } }), true)
+  assert.equal(wantsSalary({ ...backup.data, transactions: [{ salary_extra: 'bonus' }] }), true)
+  assert.deepEqual(settingsTally({ patch: { display_name: 'A', base_currency: 'EUR' }, kept: ['iban'] },
+    { patch: { salary_category_id: 'c' }, kept: [] }, { patch: null, kept: ['paypal'] }), { settings: 3, kept: ['iban', 'paypal'] })
+  assert.equal(FETCH_ROW_CAP, 1000)
+})
+
+// The sealed file the native app's tests open (BackupTests): made here, with
+// WebCrypto, so the app proves it opens the website's files.
+test('password: the native app\'s fixture opens with its password', async () => {
+  const text = readFileSync(new URL('../ios/Budgeer/BudgeerTests/Fixtures/backup-sealed.json', import.meta.url), 'utf8')
+  const read = readBackup(text)
+  assert.equal(read.encrypted, true)
+  const backup = await unlockBackup(read.envelope, 'correct horse 42')
+  assert.equal(backup.data.transactions.length > 0, true)
 })
 
 // ---- Restore planning --------------------------------------------------------------
