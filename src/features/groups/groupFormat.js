@@ -395,6 +395,9 @@ const INVITE_REFUSED = {
 }
 export const inviteRefusal = (status) => t(INVITE_REFUSED[status] ?? 'groups:members.sendFailed')
 
+// The delete dialog's type-to-confirm: the group's name, typed exactly.
+export const deleteNameMatches = (typed, name) => String(typed ?? '').trim() === name
+
 // Who is still in the way of deleting the group (groupDeleteCheck's
 // `others`), as the blocked dialog names them: "Anna, Sam".
 export const stillInNames = (others) => (others ?? []).map((m) => m.display_name).join(', ')

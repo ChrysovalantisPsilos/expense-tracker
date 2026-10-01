@@ -32,6 +32,8 @@ export const CORE_MODULES = {
   formChecks: 'src/shared/lib/formChecks.js',
   fxPreview: 'src/shared/lib/fxPreview.js',
   payLinks: 'src/shared/lib/payLinks.js',
+  // Which error text a user sees (userMessage over the web's error shape).
+  errors: 'src/shared/lib/errors.js',
   // The design kit's pure rules (a signed amount's tone, a bar's width).
   kitMath: 'src/shared/ui/kit/kitMath.js',
   // The money charts' y-axis tick labels ("1.6k", "1,6 χιλ.").

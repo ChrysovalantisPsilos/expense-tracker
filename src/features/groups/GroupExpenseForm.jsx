@@ -10,8 +10,8 @@ import { today } from '../../shared/lib/dates.js'
 import { evenPercents } from './splitMath.js'
 import { viewerName } from './groupFormat.js'
 import {
-  EXPENSE_FIELDS, SPLIT_MODES, expenseFieldErrors, expenseFormStart, expenseSaveArgs, expenseSaveProblem,
-  expenseSavedToast, includedIds, paidMinorOf, shareUnit, splitCardParts, splitPreview, splitTotal,
+  EXPENSE_FIELDS, expenseFieldErrors, expenseFormStart, expenseSaveArgs, expenseSaveProblem,
+  expenseSavedToast, includedIds, paidMinorOf, shareUnit, splitCardParts, splitModes, splitPreview, splitTotal,
 } from './groupExpenseForm.js'
 import { addSharedExpense, updateSharedExpense } from './groups.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
@@ -194,7 +194,7 @@ export default function GroupExpenseForm({
     <>
       <ButtonGroup size="sm" isAttached variant="outline" mb={3} flexWrap="wrap"
         aria-label={quick ? t('form.split') : undefined}>
-        {SPLIT_MODES.map((m) => (
+        {splitModes().map((m) => (
           <Button key={m}
             onClick={() => pickMode(m)}
             variant={mode === m ? 'solid' : 'outline'}

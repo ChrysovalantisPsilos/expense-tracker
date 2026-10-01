@@ -12,7 +12,8 @@ import { splitCountLabel } from './quickAddMath.js'
 
 // The split modes, in the buttons' order; each one's words are
 // groups:form.modes.<mode>.
-export const SPLIT_MODES = ['equal', 'exact', 'percent', 'shares']
+const SPLIT_MODES = ['equal', 'exact', 'percent', 'shares']
+export const splitModes = () => SPLIT_MODES
 
 // The required fields, in the order a failed save focuses them.
 export const EXPENSE_FIELDS = ['description', 'amount', 'paidBy']

@@ -29,6 +29,7 @@ import * as savings from '../src/shared/lib/savings.js'
 import * as formChecks from '../src/shared/lib/formChecks.js'
 import * as fxPreview from '../src/shared/lib/fxPreview.js'
 import * as payLinks from '../src/shared/lib/payLinks.js'
+import * as errors from '../src/shared/lib/errors.js'
 import * as kitMath from '../src/shared/ui/kit/kitMath.js'
 import * as chartAxis from '../src/shared/ui/chartAxis.js'
 import * as avatarLook from '../src/shared/ui/avatarLook.js'
@@ -98,6 +99,7 @@ export const modules = {
   formChecks,
   fxPreview,
   payLinks,
+  errors,
   kitMath,
   chartAxis,
   avatarLook,

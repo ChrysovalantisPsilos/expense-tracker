@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  activityParts, avatarStackParts, balancesFrom, balancesParts, commentCountsFrom, commentParts, expenseRowParts,
+  activityParts, avatarStackParts, deleteNameMatches, balancesFrom, balancesParts, commentCountsFrom, commentParts, expenseRowParts,
   groupCardParts, groupShareText, groupViewer, inviteLink, inviteRowParts, inviteRefusal, memberRowParts, membersWithAvatars, settlementRowParts,
   stillInNames,
 } from '../src/features/groups/groupFormat.js'
@@ -98,6 +98,8 @@ test('memberRowParts / inviteRefusal / stillInNames: the Members page', () => {
   assert.equal(inviteRefusal('already_invited'), 'They already have a pending invite to this group.')
   assert.equal(inviteRefusal('rate_limited'), 'Couldn’t send the invite.')
   assert.equal(stillInNames(MEMBERS.slice(1)), 'Sofia, Anna')
+  assert.equal(deleteNameMatches(' Lisbon ', 'Lisbon'), true)
+  assert.equal(deleteNameMatches('lisbon', 'Lisbon'), false)
 })
 
 test('commentParts: who, when, the text, and only your own can go', () => {

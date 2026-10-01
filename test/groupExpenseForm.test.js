@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   expenseFieldErrors, expenseFormStart, expenseSaveArgs, expenseSaveProblem, expenseSavedToast, includedIds,
-  initialSplitMode, paidMinorOf, shareUnit, splitCardParts, splitPreview, splitTotal,
+  initialSplitMode, paidMinorOf, shareUnit, splitCardParts, splitModes, splitPreview, splitTotal,
 } from '../src/features/groups/groupExpenseForm.js'
 import {
   payShortcutParts, settleFormStart, settleOtherLine, settleOthers, settleParties, settleProblem,
@@ -68,6 +68,7 @@ test('splitPreview: the shares, the line under the split and whether it\'s compl
   assert.equal(splitPreview({ ...base, ids: [], mode: 'equal' }).summary, 'Pick at least one person.')
   assert.equal(splitPreview({ ...base, totalMinor: 0, needsFx: true, rate: null, mode: 'equal' }).summary, 'The split needs the exchange rate.')
   assert.equal(splitPreview({ ...base, totalMinor: 0, paidMinor: 0, mode: 'equal' }).summary, 'Enter an amount to see the split.')
+  assert.deepEqual(splitModes(), ['equal', 'exact', 'percent', 'shares'])
   assert.deepEqual([shareUnit('percent', 'EUR'), shareUnit('shares', 'EUR'), shareUnit('exact', 'EUR')], ['%', '×', 'EUR'])
   assert.deepEqual(splitCardParts({ mode: 'equal', included: 3, total: 3, summary: '€3.34 each' }),
     { title: 'Split equally', line: 'All 3 · €3.34 each' })
