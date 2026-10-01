@@ -4,7 +4,7 @@ import Foundation
 @testable import Budgeer
 
 final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepository, RecurringRepository,
-    BudgetsRepository, FxRepository, AiRepository, GroupsRepository, @unchecked Sendable {
+    BudgetsRepository, FxRepository, AiRepository, GroupsRepository, PrivacyRepository, @unchecked Sendable {
     // The groups' reads (GroupsRepository, in FakeStore+Groups.swift).
     var groupsResult: Result<JSONValue, Error> = .success([])
     var invitesResult: Result<JSONValue, Error> = .success([])
@@ -62,6 +62,19 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     private(set) var savedLanguages: [String?] = []
     /// Set to make every write fail.
     var writeError: Error?
+
+    // Settings (FakeStore+Settings.swift).
+    /// What the settings' writes did, in order: "updateProfile", "createCategory", … plus its arguments.
+    var settingsWrites: [(name: String, args: JSONValue)] = []
+    var currencyLocked = false
+    var myPayment: JSONValue = [:]
+    /// Every category (archived included, with created_at).
+    var allCategoriesResult: Result<JSONValue, Error> = .success([])
+    var categoryUse = 0
+    var movedOnDelete = 0
+    var consentRows: JSONValue = []
+    var exported: JSONValue = ["profile": ["display_name": "Sam Morgan"]]
+    var deleteAccountError: Error?
 
     init() {}
 

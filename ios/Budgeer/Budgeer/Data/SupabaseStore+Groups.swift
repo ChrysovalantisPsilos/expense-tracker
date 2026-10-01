@@ -238,7 +238,7 @@ extension SupabaseStore {
     }
 
     /// The request, its refusal in the web's shape (errors.js dbError, edgeFunctionError).
-    private func refusal<T>(_ work: () async throws -> T) async throws -> T {
+    func refusal<T>(_ work: () async throws -> T) async throws -> T {
         do {
             return try await work()
         } catch let error as PostgrestError {

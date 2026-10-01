@@ -214,12 +214,14 @@ final class SnapshotTests: XCTestCase {
                     MoreView(name: "Sam Morgan", email: "sam@example.com", initials: "SM", chrome: SnapshotTests.chrome)
                 }
             }, name: "more", lang: lang, dark: dark)
+            let account = AccountModel(data: SnapshotTests.settingsStore().data)
+            await account.load()
             try await shots(framed(.more) {
                 NavigationStack {
-                    SettingsView(config: SnapshotTests.config, session: session, lock: lock, name: "Sam Morgan",
-                                 email: "sam@example.com", initials: "SM")
+                    SettingsView(config: SnapshotTests.config, session: session, lock: lock, account: account,
+                                 email: "sam@example.com")
                 }
-            }, name: "settings", lang: lang, dark: dark, long: 1300)
+            }, name: "settings", lang: lang, dark: dark, long: 1700)
             // The bell's page, pushed on More (the new one still marked).
             let store = FakeStore()
             store.notificationsResult = .success(SnapshotTests.notifications)
@@ -228,6 +230,104 @@ final class SnapshotTests: XCTestCase {
             await shell.opened()
             try await shots(framed(.more) { NavigationStack { NotificationsView(model: shell) { _ in } } },
                       name: "notifications", lang: lang, dark: dark)
+        }
+    }
+
+    // MARK: Settings' pages
+
+    func testSettingsPagesSnapshots() async throws {
+        for (lang, dark) in SnapshotTests.variants {
+            _ = language(lang)
+            let store = SnapshotTests.settingsStore()
+            let account = AccountModel(data: store.data)
+            await account.load()
+            try await shots(framed(.more) { NavigationStack { AccountView(model: account, email: "sam@example.com") } },
+                      name: "settings-account", lang: lang, dark: dark, long: 1300)
+            let preferences = PreferencesModel(data: store.data)
+            await preferences.load()
+            await preferences.setSalaryShift(true)
+            try await shots(framed(.more) { NavigationStack { SpendingView(model: preferences) } },
+                      name: "settings-spending", lang: lang, dark: dark)
+            try await shots(framed(.more) { NavigationStack { MessagesView(model: preferences) } },
+                      name: "settings-notifications", lang: lang, dark: dark)
+            try await shots(framed(.more) { NavigationStack { AppearanceView() } },
+                      name: "settings-appearance", lang: lang, dark: dark)
+            try await shots(framed(.more) { NavigationStack { AiHelpersView(model: preferences) } },
+                      name: "settings-ai", lang: lang, dark: dark, long: 1500)
+            try await shots(framed(.more) { NavigationStack { WhatsNewView() } },
+                      name: "settings-whatsnew", lang: lang, dark: dark, long: 2000)
+        }
+    }
+
+    func testSecurityAndPrivacySnapshots() async throws {
+        for (lang, dark) in SnapshotTests.variants {
+            _ = language(lang)
+            let store = SnapshotTests.settingsStore()
+            let now = TestData.now
+            let fake = FakeSecurity()
+            let security = SecurityModel(data: store.data, security: fake, signOut: {}, core: .shared, now: { now })
+            await security.load()
+            try await shots(framed(.more) { NavigationStack { SecurityView(model: security) } },
+                      name: "settings-security", lang: lang, dark: dark, long: 1300)
+            // Delete account, asking for the password.
+            try await shots(framed(.more) {
+                NavigationStack { SecurityView(model: security) }
+                    .sheet(isPresented: .constant(true)) { DeleteAccountSheet(model: security) }
+            }, name: "settings-delete-account", lang: lang, dark: dark, settle: 1.6)
+            // A Google-only account whose sign-in is an hour old: Log in again, Set a password.
+            let google = FakeSecurity()
+            google.user = ["email": "sam@example.com", "app_metadata": ["providers": ["google"]], "user_metadata": [:]]
+            google.identityRows = [["provider": "google", "identity_id": "i-g", "identity_data": ["email": "sam@gmail.com"]]]
+            google.claims = ["iat": .int(Int(now.timeIntervalSince1970) - 3600)]
+            let googleOnly = SecurityModel(data: store.data, security: google, signOut: {}, core: .shared, now: { now })
+            await googleOnly.load()
+            googleOnly.settingFirst = true
+            try await shots(framed(.more) { NavigationStack { SecurityView(model: googleOnly) } },
+                      name: "settings-security-google", lang: lang, dark: dark, long: 1300)
+
+            let preferences = PreferencesModel(data: store.data)
+            await preferences.load()
+            let privacy = PrivacyModel(data: store.data, core: .shared, now: { now })
+            await privacy.load()
+            try await shots(framed(.more) {
+                NavigationStack { PrivacyView(model: privacy, preferences: preferences) {} }
+            }, name: "settings-privacy", lang: lang, dark: dark, long: 3000)
+            privacy.requestText = "Please stop using my data for the weekly summary."
+            try await shots(framed(.more) { NavigationStack { PrivacyRequestView(model: privacy) } },
+                      name: "settings-privacy-request", lang: lang, dark: dark, long: 1300)
+        }
+    }
+
+    func testCategoriesSnapshots() async throws {
+        for (lang, dark) in SnapshotTests.variants {
+            _ = language(lang)
+            let store = CategoriesModelTests.store()
+            store.categoryUse = 3
+            let list = CategoriesModelTests.model(store)
+            await list.load()
+            try await shots(framed(.more) { NavigationStack { CategoriesView(model: list) } },
+                      name: "categories", lang: lang, dark: dark)
+            list.kind = "income"
+            try await shots(framed(.more) { NavigationStack { CategoriesView(model: list) } },
+                      name: "categories-income", lang: lang, dark: dark)
+            list.kind = "expense"
+            // A category's page, and a new one with a name taken.
+            let edit = list.editor(id: "c-fun", kind: "expense")
+            try await shots(framed(.more) { NavigationStack { CategoryEditView(model: edit, categories: list) } },
+                      name: "category-edit", lang: lang, dark: dark, long: 2000)
+            let fresh = list.editor(id: nil, kind: "income")
+            fresh.name = "Salary"
+            fresh.touched = true
+            try await shots(framed(.more) { NavigationStack { CategoryEditView(model: fresh, categories: list) } },
+                      name: "category-new", lang: lang, dark: dark)
+            // Delete, choosing where its entries go.
+            let fun = try XCTUnwrap(list.items.first { $0.id == "c-fun" })
+            await list.startDelete(fun)
+            try await shots(framed(.more) {
+                NavigationStack { CategoriesView(model: list) }
+                    .sheet(isPresented: .constant(true)) { DeleteCategorySheet(model: list) }
+            }, name: "category-delete", lang: lang, dark: dark, settle: 1.6)
+            list.deleting = nil
         }
     }
 
@@ -289,6 +389,29 @@ final class SnapshotTests: XCTestCase {
         ["id": "n5", "type": "digest", "title": "Your week: €182.40 spent", "body": "Groceries led the way.",
          "read_at": "2026-09-15T09:00:00Z", "created_at": "2026-09-15T06:00:00Z"],
     ]
+
+    /// Settings' fake account: a profile, its payment details, its categories and a consent history.
+    private static func settingsStore() -> FakeStore {
+        let store = FakeStore()
+        store.profileResult = .success([
+            "id": "u1", "display_name": "Sam Morgan", "base_currency": "EUR", "avatar_url": .null, "is_demo": false,
+            "yearly_separate": false, "salary_shift_from_day": .null, "salary_category_id": .null,
+            "notify_email": true, "notify_digest": false, "ai_quick_entry": true, "ai_import_categories": false,
+            "ai_month_summary": true, "ai_plan_whatif": false,
+        ])
+        store.categoriesResult = .success(TestData.categories)
+        store.currencyLocked = true
+        store.myPayment = ["payment_iban": "BE68539007547034", "payment_revolut": "sammorgan", "payment_paypal": .null]
+        store.consentRows = [
+            ["id": "k3", "purpose": "ai_month_summary", "version": .null, "granted": true, "source": "settings",
+             "created_at": "2026-09-14T08:05:00Z"],
+            ["id": "k2", "purpose": "weekly_digest", "version": .null, "granted": false, "source": "settings",
+             "created_at": "2026-09-02T18:40:00Z"],
+            ["id": "k1", "purpose": "privacy_notice", "version": "2026-08-01", "granted": true, "source": "signup",
+             "created_at": "2026-08-03T09:12:00Z"],
+        ]
+        return store
+    }
 
     /// The groups' fixture with two more groups (one settled, one just made),
     /// so the gallery has a full page.
