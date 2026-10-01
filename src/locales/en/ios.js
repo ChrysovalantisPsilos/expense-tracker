@@ -59,10 +59,6 @@ export default {
       done: '{{name}} is ready',
       open: 'Open the group',
     },
-    // Insights' net worth: removing an account asks first.
-    netWorth: {
-      remove: 'Remove “{{name}}” from your net worth?',
-    },
     lock: {
       setting: 'Face ID lock',
       settingNote: 'Ask for Face ID (or your passcode) when Budgeer opens, and after a minute away.',

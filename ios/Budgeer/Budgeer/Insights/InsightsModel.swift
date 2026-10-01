@@ -139,7 +139,7 @@ final class InsightsModel {
 
     /// The question before an account leaves the net worth.
     func removeQuestion(_ id: String) -> String {
-        core.text("ios:native.netWorth.remove", ["name": account(id)?["name"] ?? ""])
+        core.text("insights:netWorth.removeQuestion", ["name": account(id)?["name"] ?? ""])
     }
 
     /// Remove an account (after the question); a failure says so.

@@ -35,6 +35,7 @@ import {
   spendingBars, incomeFigures, abroadCard,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
 import SalaryCard from '../salary/SalaryCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
@@ -290,19 +291,26 @@ function NetWorthCard({ baseCurrency }) {
   const toast = useToast()
   const navigate = useNavigate()
   const t = useT('insights')
+  // The account whose Delete was tapped: it goes only once the question is answered.
+  const [removing, setRemoving] = useState(null)
+  const [busy, setBusy] = useState(false)
 
   const parts = useMemo(() => netWorthParts(accounts, savings, baseCurrency), [accounts, savings, baseCurrency])
-  const accountRow = (row) => <AccountRow key={row.id} row={row} remove={remove} />
+  const accountRow = (row) => <AccountRow key={row.id} row={row} remove={setRemoving} />
   const seeSavings = (
     <Text as="span" color="accent.fg" fontWeight="600" whiteSpace="nowrap">{t('netWorth.seeSavings')}</Text>
   )
   const loading = accountsLoading || savingsLoading
 
-  async function remove(acc) {
-    try { await deleteAccount(acc.id); reload() }
+  async function remove() {
+    setBusy(true)
+    try { await deleteAccount(removing.id); reload() }
     catch (e) {
       console.error('[insights] account delete failed:', e)
       toast({ title: userMessage(e, t('netWorth.removeFailed')), status: 'error' })
+    } finally {
+      setBusy(false)
+      setRemoving(null)
     }
   }
 
@@ -361,6 +369,8 @@ function NetWorthCard({ baseCurrency }) {
           <Figure layout="inline" label={t('netWorth.title')} value={parts.net.text} tone={parts.net.tone} />
         </Stack>
       )}
+      <ConfirmDialog isOpen={!!removing} onClose={() => setRemoving(null)} onConfirm={remove} busy={busy} danger
+        title={t('netWorth.removeQuestion', { name: removing?.name ?? '' })} confirmLabel={t('common:actions.delete')} />
     </Panel>
   )
 }

@@ -33,6 +33,7 @@ export default {
     add: 'Account',
     what: 'your accounts',
     removeFailed: 'Couldn’t remove it from your net worth. Please try again.',
+    removeQuestion: 'Remove “{{name}}” from your net worth?',
     assets: 'Assets',
     debts: 'Debts',
     empty: 'Add your account balances (bank, savings, card, loan) to track net worth.',

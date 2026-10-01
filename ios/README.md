@@ -284,7 +284,7 @@ a core call (the web's function); Swift reads, lays out and draws.
   "+ Account" and a tap open an account's page: its name, what it is (an
   asset, a debt, savings, with the savings note), its balance in its own
   currency, Add account / Save changes, Delete; a delete asks first, from
-  the page or a swipe, which the web doesn't) and **Export statement** (From
+  the page or a swipe, as on the web) and **Export statement** (From
   and To, this month by default; Export PDF or Excel, off before anything
   was logged; the file comes from the `generate-report` edge function, the
   same builder (`statementFile.ts`) the website runs on the device, named as

@@ -51,9 +51,6 @@ export default {
       done: 'Η ομάδα {{name}} είναι έτοιμη',
       open: 'Άνοιξε την ομάδα',
     },
-    netWorth: {
-      remove: 'Να αφαιρεθεί το «{{name}}» από την καθαρή σου περιουσία;',
-    },
     lock: {
       setting: 'Κλείδωμα με Face ID',
       settingNote: 'Ζήτα Face ID (ή τον κωδικό σου) όταν ανοίγει το Budgeer και μετά από ένα λεπτό εκτός.',

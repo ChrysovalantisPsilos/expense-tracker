@@ -91,7 +91,7 @@ struct AccountEditView: View {
         .navigationTitle(language.t(model.isNew ? "insights:account.titleNew" : "insights:account.titleEdit"))
         .task { await model.load() }
         .sensoryFeedback(.success, trigger: done)
-        .confirmationDialog(language.t("ios:native.netWorth.remove", ["name": .string(model.name)]),
+        .confirmationDialog(language.t("insights:netWorth.removeQuestion", ["name": .string(model.name)]),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(language.t("common:actions.delete"), role: .destructive) {
                 Task { if await model.delete() { dismiss() } }
