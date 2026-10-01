@@ -234,7 +234,7 @@ npm run dev       # Vite
 - **iOS: native SwiftUI; the maths is the web's JS via JavaScriptCore**
   (`mobile-core/`, `ios/BudgeerCore`), proven by recorded vectors
   (`npm run core:vectors` → `vectors.json`, replayed by `test/mobileCore.test.js`
-  on Linux and by the Swift tests in `.github/workflows/ios-core.yml` on
+  on Linux and by the Swift tests in `.github/workflows/ios-app.yml` on
   macOS). Maths is never re-implemented in Swift: a figure the app needs goes
   in a pure web module first (ios/README.md "Adding a module"). UI, storage,
   auth and push are Swift.
@@ -258,6 +258,14 @@ npm run dev       # Vite
   Fonts: Poppins, Nunito Sans and Manrope are bundled (OFL, static TTFs);
   Greek body text uses the system font. CI: `.github/workflows/ios-app.yml`
   (snapshots of every screen as the `snapshots` artifact).
+- **CI minutes are scarce** (macOS minutes cost 10x). The iOS checks are one
+  macOS job (`ios-app.yml`: the core's Swift replay, build, tests,
+  snapshots) that runs on its own only for pushes to develop touching the
+  app, and on pull requests; a feature branch gets it by hand (Actions → Run
+  workflow, or the API's workflow_dispatch) once its batch is ready. Newer
+  pushes cancel older runs. Helpers commit locally and push checked batches,
+  never WIP. A commit that can't change a check (notes, workflow-only edits
+  already checked) may carry `[skip ci]`.
 - **The owner builds and runs the app with Xcode 27** on their Mac (and a
   free Apple ID for now), while CI builds with Xcode 26.5 (macos-26, iPhone 17
   on iOS 26.5; moved from 15.4 for Liquid Glass). Every package pin

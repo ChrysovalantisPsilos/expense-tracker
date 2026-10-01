@@ -1,12 +1,11 @@
 # Deletes remote branches whose work is already in develop
 # (scripts/branch-cleanup.mjs has the rules: never main, develop or keep/…;
 # only branches fully contained in develop, not sitting on develop's tip,
-# last commit at least a day old). Runs after every push to develop, daily,
-# and by hand from the Actions tab, where "dry run" only lists the branches.
+# last commit at least a day old). Runs daily and by hand from the Actions
+# tab, where "dry run" only lists the branches. (Not on every push: a branch
+# must be a day old anyway.)
 name: branch-cleanup
 on:
-  push:
-    branches: [develop]
   schedule:
     - cron: '17 4 * * *'
   workflow_dispatch:

@@ -54,7 +54,7 @@ function) that sets `globalThis.BudgeerCore`. It contains no React, Supabase
 or browser code: the build fails on any such module in the graph, and
 `test/mobileCore.test.js` loads it in a bare context with only the engine's
 globals. Run it before opening the Swift package in Xcode (the package
-declares the file as a resource); CI runs it in `.github/workflows/ios-core.yml`.
+declares the file as a resource); CI runs it in `.github/workflows/ios-app.yml`.
 
 From Swift:
 
@@ -111,7 +111,7 @@ suite is for.
    `import * as name` plus a `modules` entry in `mobile-core/index.js`.
 3. `npm run core:build` (the guard says if it reaches something it mustn't),
    then `npm run core:vectors` and commit the new `vectors.json`.
-4. `npm test` replays it on Linux; the `ios-core` workflow replays it on a
+4. `npm test` replays it on Linux; the `ios-app` workflow replays it on a
    Mac.
 
 ## The app
