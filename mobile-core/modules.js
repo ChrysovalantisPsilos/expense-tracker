@@ -60,6 +60,9 @@ export const CORE_MODULES = {
   // The recent-sign-in rule for the dangerous account actions (the app reads
   // its token's claims itself: jwtClaims needs atob, which JavaScriptCore lacks).
   reauth: 'supabase/functions/_shared/reauth.ts',
+  // The statement's file name and types (the native app shares the file the
+  // generate-report function makes).
+  reportFiles: 'supabase/functions/_shared/files.ts',
 
   // Feature maths.
   splitMath: 'src/features/groups/splitMath.js',
@@ -81,7 +84,9 @@ export const CORE_MODULES = {
   planText: 'src/features/plan/planText.js',
   planCatalog: 'src/features/plan/planCatalog.js',
   whatIfMath: 'src/features/plan/whatIfMath.js',
+  planPage: 'src/features/plan/planPage.js',
   salaryMath: 'src/features/salary/salaryMath.js',
+  salaryText: 'src/features/salary/salaryText.js',
   voucherMath: 'src/features/vouchers/voucherMath.js',
   savingsMath: 'src/features/savings/savingsMath.js',
   budgetMath: 'src/features/budgets/budgetMath.js',

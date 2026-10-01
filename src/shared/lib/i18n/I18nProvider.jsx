@@ -105,3 +105,9 @@ function renderRich(nodes, components, path = '') {
 export function Trans({ t, k, values, components = {} }) {
   return <>{renderRich(parseRich(t(k, values)), components)}</>
 }
+
+// The same for words already translated (a page part's string with its tags,
+// worked out by a pure module): <Rich text={parts.gap} components={{ b: <b /> }} />
+export function Rich({ text, components = {} }) {
+  return <>{renderRich(parseRich(text), components)}</>
+}

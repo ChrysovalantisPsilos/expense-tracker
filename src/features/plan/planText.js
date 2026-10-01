@@ -38,21 +38,21 @@ export function monthList(months) {
   return new Intl.ListFormat(intlLocale('en-GB'), { type: 'conjunction' }).format(names)
 }
 
-// The muted line under a row's name.
-export function rowMeta(item, view, t) {
+// The muted line under a row's name (dates worded as of `now`).
+export function rowMeta(item, view, t, now = new Date()) {
   const f = item.after ?? item.before
   if (item.salary) return t('row.salary')
   if (item.derived) return t('row.savings', { count: item.months })
-  if (item.added) return t('row.from', { frequency: freqLabel(f), date: shortDate(item.next) })
+  if (item.added) return t('row.from', { frequency: freqLabel(f), date: shortDate(item.next, now) })
   const b = item.before
   if (view === 'month' && b.frequency === 'yearly' && Number(b.interval_n) === 1 && !item.changed) {
     return t('row.yearShare', { amount: formatMoney(b.amount_minor, b.currency) })
   }
-  return t('row.next', { frequency: freqLabel(f), date: shortDate(item.next) })
+  return t('row.next', { frequency: freqLabel(f), date: shortDate(item.next, now) })
 }
 
-// An idea's headline and short line, in the app's language.
-export function ideaText(idea, currency, t) {
+// An idea's headline and short line, in the app's language (dates as of `now`).
+export function ideaText(idea, currency, t, now = new Date()) {
   const year = formatMoney(idea.year, currency)
   switch (idea.kind) {
     case 'overlap': {
@@ -69,7 +69,7 @@ export function ideaText(idea, currency, t) {
         title: t('ideas.compare.title', { name: idea.name, pct: idea.rise.pct }),
         body: t('ideas.compare.body', {
           from: formatMoney(idea.rise.from, idea.rise.currency), to: formatMoney(idea.rise.to, idea.rise.currency),
-          date: shortDate(idea.rise.since),
+          date: shortDate(idea.rise.since, now),
         }),
       }
     case 'priceUp':
@@ -77,7 +77,7 @@ export function ideaText(idea, currency, t) {
         title: t('ideas.priceUp.title', { name: idea.name, pct: idea.rise.pct, amount: year }),
         body: t('ideas.priceUp.body', {
           from: formatMoney(idea.rise.from, idea.rise.currency), to: formatMoney(idea.rise.to, idea.rise.currency),
-          date: shortDate(idea.rise.since),
+          date: shortDate(idea.rise.since, now),
         }),
       }
     case 'overBudget':

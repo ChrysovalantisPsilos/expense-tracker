@@ -1,4 +1,6 @@
-import { toBaseMinor, minorFactor, baseEquivalent, formatMoney, rateText } from '../../shared/lib/currency.js'
+import {
+  toBaseMinor, minorFactor, baseEquivalent, formatMoney, formatSigned, minorToInput, rateText, toMinor,
+} from '../../shared/lib/currency.js'
 import { monthHeading } from '../../shared/lib/dates.js'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { bucketLabel, bucketLabels, bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
@@ -72,6 +74,70 @@ export function accountSections(accounts) {
   return {
     savings: accounts.filter(isSavingsAccount),
     other: accounts.filter((a) => !isSavingsAccount(a)),
+  }
+}
+
+// The net-worth card as it shows (netWorth, accountSections): the assets,
+// the debts (red once there are any), whether there's nothing to list yet,
+// the savings accounts, the savings pot's line (its signed amount, red and
+// "More paid from savings than saved" below zero; null when it's hidden),
+// the other accounts, and the net worth (red below zero). Each account row:
+// its kind ('asset' | 'debt' | 'savings'), name, what it is, the balance in
+// its own currency (a debt with a minus, red), and the account itself (to
+// edit or delete).
+export function netWorthParts(accounts, savings, currency) {
+  const { assets, liabilities, net, showPot } = netWorth(accounts, savings)
+  const sections = accountSections(accounts)
+  const row = (acc) => {
+    const kind = acc.type === 'liability' ? 'debt' : acc.type === 'savings' ? 'savings' : 'asset'
+    return {
+      id: acc.id,
+      kind,
+      title: acc.name,
+      meta: t(`insights:netWorth.${kind === 'savings' ? 'savingsAccount' : kind}`),
+      amount: `${kind === 'debt' ? '−' : ''}${formatMoney(acc.balance_minor, acc.currency)}`,
+      tone: kind === 'debt' ? 'negative' : 'default',
+      account: acc,
+    }
+  }
+  return {
+    assets: formatMoney(assets, currency),
+    debts: { text: formatMoney(liabilities, currency), tone: liabilities > 0 ? 'negative' : 'muted' },
+    empty: accounts.length === 0 && savings === 0,
+    savings: sections.savings.map(row),
+    pot: showPot ? {
+      amount: formatSigned(savings, currency),
+      tone: savings < 0 ? 'negative' : 'default',
+      overdrawn: savings < 0 ? t('insights:netWorth.overdrawn') : null,
+    } : null,
+    accounts: sections.other.map(row),
+    net: { text: formatMoney(net, currency), tone: net < 0 ? 'negative' : 'default' },
+  }
+}
+
+// An account's page: its kinds, worded ([{ value, label }]).
+export const ACCOUNT_TYPES = ['asset', 'liability', 'savings']
+export const accountTypes = () => ACCOUNT_TYPES.map((value) => ({ value, label: t(`insights:account.${value}`) }))
+
+// The form's fields as it opens: the account's own, or a new asset in the
+// base currency with no balance yet.
+export function accountDraft(account, baseCurrency) {
+  if (!account) return { name: '', type: 'asset', balance: '', currency: baseCurrency }
+  return {
+    name: account.name, type: account.type,
+    balance: minorToInput(account.balance_minor, account.currency), currency: account.currency,
+  }
+}
+
+// The form ready to save: { error } (the name is missing, worded) or
+// { account } as save_account takes it (`id` null for a new one).
+export function accountToSave(draft, id = null) {
+  if (!draft.name.trim()) return { error: t('insights:account.nameIt') }
+  return {
+    account: {
+      id: id ?? null, name: draft.name.trim(), type: draft.type,
+      balance_minor: toMinor(Number(draft.balance) || 0, draft.currency), currency: draft.currency,
+    },
   }
 }
 

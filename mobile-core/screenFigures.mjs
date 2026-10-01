@@ -32,7 +32,24 @@ import {
 } from '../src/features/recurring/recurringMath.js'
 import {
   buildTrend, hasTrendData, incomeFigures, pickedMonthLabel, spendingBars, spendingShares, foreignSpending, abroadCard,
+  accountDraft, accountTypes, netWorthParts,
 } from '../src/features/insights/insightsMath.js'
+import { setPeriods } from '../src/features/budgets/budgetMath.js'
+import {
+  derivedSalary, derivedSavings, normalisePlan, rateNeeds, salaryCategoryId, setChange, upsertAdd, emptyPlan,
+} from '../src/features/plan/planMath.js'
+import {
+  addDraft, addFormParts, applySheetParts, editorParts, pickParts, planPageParts, planReads, planState, whatIfParts,
+} from '../src/features/plan/planPage.js'
+import { whatIfRows } from '../src/features/plan/whatIfMath.js'
+import { foreignCurrencies } from '../src/shared/lib/ruleFx.js'
+import {
+  bonusCategoryId, defaultCountry, monthOf, normaliseNotes, salaryReport,
+} from '../src/features/salary/salaryMath.js'
+import {
+  bonusChoices, extrasParts, inflationParts, payChartParts, payHeadline, projectionParts, raisesParts, salaryCardParts,
+  yearsParts,
+} from '../src/features/salary/salaryText.js'
 import { setLanguage } from './index.js'
 
 export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
@@ -204,6 +221,95 @@ export function voucherFigures({ settings, spends, profile, now, lang = 'en' }) 
     history: voucherHistoryParts(settings, voucherHistory(settings, spends, day), date),
     setup: setupDraft(settings, summary.balance, profile?.base_currency || 'EUR', day),
     countries: countryOptions(),
+  }
+}
+
+// Plan mode (Plan.jsx with plan.js's reads) for a plan and the Month/Year
+// view: what it reads (planReads), the page's parts, and the Apply sheet with
+// every change ticked. `budgets` are my_budgets per month ('YYYY-MM-01'),
+// `rates` today's rate of each foreign currency (fx.js useLatestRates), only
+// those the rules and the plan need.
+export function planFigures({
+  profile, rules, plan, undo = null, categories, savingsCategories, income, charges, budgets, rates, view = 'month', now,
+  lang = 'en',
+}) {
+  setLanguage(lang)
+  const date = new Date(now)
+  const base = profile?.base_currency || 'EUR'
+  const todayISO = isoDate(date)
+  const shift = salaryShiftOf(profile)
+  const reads = planReads(todayISO, shift)
+  const savingsIds = savingsIdsOf(savingsCategories)
+  const salary = derivedSalary({
+    rules, savingsIds, categoryId: salaryCategoryId(profile, categories), entries: income, todayISO, baseCurrency: base,
+    salaryShift: shift,
+  })
+  const savings = derivedSavings({ rules, savingsIds, entries: income, todayISO, baseCurrency: base, salaryShift: shift })
+  const doc = normalisePlan(plan)
+  const needed = foreignCurrencies(rateNeeds(rules, doc), base)
+  const budgetSets = setPeriods(Object.keys(budgets).sort(), reads.budgetMonths[0], reads.budgetMonths.at(-1))
+    .map((period) => ({ period, rows: budgets[period] }))
+  const state = planState({
+    rules, plan: doc, savingsIds, baseCurrency: base,
+    rates: Object.fromEntries(needed.filter((c) => rates[c]).map((c) => [c, rates[c]])),
+    categories, salary, savings, charges, budgetSets, budgetMonths: reads.budgetMonths,
+    separateYearly: !!profile?.yearly_separate,
+  })
+  return {
+    reads,
+    parts: planPageParts(state, { view, currency: base, undo, categories, now: date }),
+    apply: applySheetParts(state.sum, base, [], date),
+    state,
+  }
+}
+
+// The salary page (SalaryPage.jsx with salary.js's reads) and Insights'
+// card: the categories it uses, the country prices are compared with, and
+// every card's parts (the projection five years ahead at 2% a year, prices
+// from the first year offered), or only the card's when there's no pay yet.
+export function salaryFigures({ profile, categories, income, notes, vouchers = null, now, lang = 'en' }) {
+  setLanguage(lang)
+  const date = new Date(now)
+  const base = profile?.base_currency || 'EUR'
+  const nowKey = monthOf(isoDate(date))
+  const kept = normaliseNotes(notes)
+  const salaryId = salaryCategoryId(profile, categories)
+  const bonusId = bonusCategoryId(categories, kept)
+  const country = defaultCountry({ picked: kept.country, voucherCountry: vouchers?.country, language: lang })
+  const report = salaryReport(income, { salaryId, bonusId, currency: base, notes: kept, shift: salaryShiftOf(profile), nowKey })
+  return {
+    salaryId,
+    bonusId,
+    country,
+    nowKey,
+    bonus: bonusChoices(categories, salaryId),
+    card: salaryCardParts(report, base),
+    page: report && {
+      headline: payHeadline(report, base),
+      chart: payChartParts(report, base),
+      raises: raisesParts(report, base, country),
+      years: yearsParts(report, base, nowKey),
+      extras: extrasParts(report, base, date),
+      projection: projectionParts(report, { country, years: 5, whatIf: 2, nowKey, currency: base }),
+      inflation: inflationParts(report, country, null, base),
+      paidMonths: report.paidMonths,
+    },
+  }
+}
+
+// Insights' net worth (NetWorthCard with useSavingsMoves): the savings pot
+// from every income entry and every expense paid from savings, then the
+// card's parts for the accounts; and an account's page as it opens.
+export function netWorthFigures({ profile, categories, income, fromSavings, accounts, lang = 'en' }) {
+  setLanguage(lang)
+  const base = profile?.base_currency || 'EUR'
+  const ids = savingsIdsOf(categories)
+  const pot = savingsPotMinor(savingsMoves([...income, ...fromSavings], ids), ids, base)
+  return {
+    pot,
+    card: netWorthParts(accounts, pot, base),
+    types: accountTypes(),
+    draft: accountDraft(accounts[0] ?? null, base),
   }
 }
 
@@ -455,6 +561,169 @@ export function vouchersFixture() {
   return { input: VOUCHERS_INPUT, expected }
 }
 
+// ---- Plan -------------------------------------------------------------------
+const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+const ENT = cat(uuid(901), 'Entertainment', 'expense', { default_key: 'entertainment' })
+const HOUSING = cat(uuid(902), 'Housing', 'expense', { default_key: 'housing' })
+const POT = cat(SAVINGS, 'Savings', 'income', { default_key: 'savings', is_savings: true })
+const planRule = (n, description, amount_minor, categories, extra = {}) => ({
+  id: uuid(n), kind: 'expense', description, amount_minor, currency: 'EUR', frequency: 'monthly', interval_n: 1,
+  next_run: '2020-10-01', end_date: null, is_active: true, category_id: categories?.id ?? null, categories,
+  savings_from_income: false, paid_from_savings: false, remind_days_before: null, ...extra,
+})
+const PLAN_SALARY = planRule(1, 'Salary', 280000, PAY, { kind: 'income', next_run: '2020-09-28' })
+const PLAN_RULES = [
+  planRule(2, 'Rent', 95000, HOUSING),
+  planRule(3, 'Netflix', 1399, ENT),
+  planRule(4, 'Spotify', 1099, ENT, { next_run: '2020-09-20' }),
+  planRule(5, 'Apple Music', 1099, ENT),
+  planRule(6, 'Cloud', 999, SUBS, { currency: 'USD' }),
+  planRule(7, 'Car insurance', 48000, null, { frequency: 'yearly', next_run: '2021-03-01' }),
+  planRule(8, 'Monthly savings', 20000, POT, { kind: 'income', savings_from_income: true }),
+]
+const PLAN_CATEGORIES = [ENT, HOUSING, SUBS, PAY, POT, GROCERIES]
+const charge = (n, ruleN, spent_at, amount_minor) => txn(`p${n}`, spent_at, 'expense', amount_minor, ENT, { recurring_rule_id: uuid(ruleN) })
+// Netflix went up from €12.99 in July.
+const PLAN_CHARGES = [charge(1, 3, '2020-05-03', 1299), charge(2, 3, '2020-06-03', 1299), charge(3, 3, '2020-07-03', 1399),
+  charge(4, 3, '2020-08-03', 1399), charge(5, 3, '2020-09-03', 1399)]
+const CHANGED_PLAN = (() => {
+  let plan = setChange(emptyPlan(), PLAN_RULES[1], { cancel: true })
+  plan = setChange(plan, PLAN_RULES[2], { amount_minor: 899 })
+  return upsertAdd(plan, {
+    id: 'add-gym', kind: 'expense', name: 'Gym', amount_minor: 3990, currency: 'EUR', frequency: 'monthly', interval_n: 1,
+    start: '2020-10-01', category_id: null,
+  })
+})()
+export const PLAN_INPUT = {
+  now: '2020-09-15T10:00:00.000Z',
+  profile: PROFILE,
+  categories: PLAN_CATEGORIES,
+  savingsCategories: SAVINGS_CATEGORIES,
+  income: [],
+  charges: PLAN_CHARGES,
+  budgets: {},
+  rates: { USD: 0.9 },
+  views: [
+    { name: 'start', rules: [PLAN_SALARY, ...PLAN_RULES], plan: null, view: 'month' },
+    { name: 'changes', rules: [PLAN_SALARY, ...PLAN_RULES], plan: CHANGED_PLAN, view: 'year' },
+    // No recurring salary: the Salary row from the entries, with a plan-only edit.
+    { name: 'derived', rules: PLAN_RULES, plan: { v: 1, changes: [], adds: [], dismissed: [], salary: { amount_minor: 290000 } },
+      view: 'month', income: [
+        txn('i1', '2020-06-26', 'income', 270000, PAY), txn('i2', '2020-07-27', 'income', 270000, PAY),
+        txn('i3', '2020-08-26', 'income', 280000, PAY),
+      ] },
+    // No income at all: the payments.
+    { name: 'payments', rules: PLAN_RULES.slice(0, 4), plan: null, view: 'month' },
+  ],
+}
+
+// The plan fixture: each view in both languages; for 'start' also a row's
+// editor, the overlap picker with one ticked and a savings item's form; for
+// 'changes' the what-if preview of a typed line.
+export function planFixture() {
+  const expected = {}
+  for (const lang of ['en', 'el']) {
+    expected[lang] = {}
+    for (const view of PLAN_INPUT.views) {
+      const { state, ...figures } = planFigures({ ...PLAN_INPUT, ...view, lang })
+      const date = new Date(PLAN_INPUT.now)
+      if (view.name === 'start') {
+        const spotify = state.items.find((i) => i.name === 'Spotify')
+        const overlap = state.ideas.find((i) => i.kind === 'overlap')
+        const draft = { ...addDraft(null, 'EUR', '2020-09-15'), kind: 'savings', name: 'Holiday', text: '50', categoryId: SAVINGS }
+        figures.editor = editorParts(spotify, state.signals.get(spotify.id) ?? null, 'EUR', date)
+        figures.pick = pickParts(state.items, overlap, [overlap.ruleIds.at(-1)], 'EUR')
+        figures.add = addFormParts(draft, { categories: PLAN_CATEGORIES, currency: 'EUR', rates: PLAN_INPUT.rates })
+      }
+      if (view.name === 'changes') {
+        const rows = whatIfRows(PLAN_WHATIF, state.items, SAVINGS)
+        figures.whatIf = whatIfParts(rows, rows.map((r) => r.id), PLAN_WHATIF.notFound)
+      }
+      expected[lang][view.name] = figures
+    }
+  }
+  setLanguage('en')
+  return { input: { ...PLAN_INPUT, whatif: PLAN_WHATIF }, expected }
+}
+const PLAN_WHATIF = {
+  changes: [{ rule_id: uuid(5), cancel: true }],
+  adds: [{ kind: 'expense', name: 'Gym', amount_minor: 4000, currency: 'EUR', repeat: 'monthly' }],
+  notFound: ['Hulu'],
+}
+
+// ---- Your salary ------------------------------------------------------------
+const BONUS = cat('77777777-7777-4777-8777-777777777777', 'Bonus', 'income', { default_key: 'bonus' })
+const SIDE = cat('88888888-8888-4888-8888-888888888888', 'Side job', 'income')
+const payslip = (n, spent_at, amount_minor, extra = {}) =>
+  txn(`00000000-0000-4000-8000-${String(n).padStart(12, '0')}`, spent_at, 'income', amount_minor, PAY, { description: 'Salary', ...extra })
+const SALARY_INCOME = (() => {
+  const rows = []
+  let n = 100
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(Date.UTC(2018, 9 + i, 20))
+    const key = d.toISOString().slice(0, 10)
+    rows.push(payslip(n++, key, key >= '2020-01-01' ? 260000 : 250000))
+  }
+  rows.push(payslip(n++, '2019-06-10', 180000, { description: 'Holiday pay' }))
+  rows.push(txn(`00000000-0000-4000-8000-${String(n++).padStart(12, '0')}`, '2019-12-15', 'income', 50000, BONUS,
+    { description: 'Year-end bonus' }))
+  return rows
+})()
+export const SALARY_INPUT = {
+  now: '2020-09-15T10:00:00.000Z',
+  profile: { base_currency: 'EUR', yearly_separate: false, salary_shift_from_day: null, salary_category_id: SALARY },
+  categories: [PAY, BONUS, SIDE, POT],
+  income: SALARY_INCOME,
+  notes: null,
+  vouchers: null,
+}
+
+export function salaryFixture() {
+  const expected = {}
+  for (const lang of ['en', 'el']) {
+    expected[lang] = {
+      page: salaryFigures({ ...SALARY_INPUT, lang }),
+      // Before any pay, with the vouchers' country.
+      empty: salaryFigures({ ...SALARY_INPUT, income: [], vouchers: { country: 'GR' }, lang }),
+    }
+  }
+  setLanguage('en')
+  return { input: SALARY_INPUT, expected }
+}
+
+// ---- Net worth --------------------------------------------------------------
+export const NETWORTH_INPUT = {
+  profile: PROFILE,
+  categories: SAVINGS_CATEGORIES,
+  income: SAVINGS_INPUT.income,
+  fromSavings: SAVINGS_INPUT.fromSavings,
+  views: [
+    { name: 'accounts', accounts: [
+      { id: 'n1', name: 'Current', type: 'asset', balance_minor: 245000, currency: 'EUR' },
+      { id: 'n2', name: 'Visa', type: 'liability', balance_minor: 32050, currency: 'EUR' },
+      { id: 'n3', name: 'Dollar account', type: 'asset', balance_minor: 50000, currency: 'USD' },
+    ] },
+    { name: 'savings', accounts: [
+      { id: 'n4', name: 'Bank savings', type: 'savings', balance_minor: 420000, currency: 'EUR' },
+      { id: 'n2', name: 'Visa', type: 'liability', balance_minor: 32050, currency: 'EUR' },
+    ] },
+    { name: 'empty', accounts: [], empty: true },
+  ],
+}
+
+export function netWorthFixture() {
+  const expected = {}
+  for (const lang of ['en', 'el']) {
+    expected[lang] = {}
+    for (const view of NETWORTH_INPUT.views) {
+      const reads = view.empty ? { income: [], fromSavings: [] } : {}
+      expected[lang][view.name] = netWorthFigures({ ...NETWORTH_INPUT, ...reads, ...view, lang })
+    }
+  }
+  setLanguage('en')
+  return { input: NETWORTH_INPUT, expected }
+}
+
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
   const root = fileURLToPath(new URL('..', import.meta.url))
@@ -471,4 +740,8 @@ if (isMain) {
   console.log(`savings fixture: ${FIXTURES_DIR}/savings.json`)
   await writeFile(resolve(root, FIXTURES_DIR, 'vouchers.json'), JSON.stringify(vouchersFixture(), null, 2) + '\n')
   console.log(`vouchers fixture: ${FIXTURES_DIR}/vouchers.json`)
+  for (const [name, make] of [['plan', planFixture], ['salary', salaryFixture], ['networth', netWorthFixture]]) {
+    await writeFile(resolve(root, FIXTURES_DIR, `${name}.json`), JSON.stringify(make(), null, 2) + '\n')
+    console.log(`${name} fixture: ${FIXTURES_DIR}/${name}.json`)
+  }
 }

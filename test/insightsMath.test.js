@@ -1,7 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  buildTrend, hasTrendData, spendDelta, netWorth, spendingShares, foreignSpending, abroadCard,
+  buildTrend, hasTrendData, spendDelta, netWorth, spendingShares, foreignSpending, abroadCard, netWorthParts,
+  accountTypes, accountDraft, accountToSave,
 } from '../src/features/insights/insightsMath.js'
 import { axisTick } from '../src/shared/ui/chartAxis.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
@@ -170,4 +171,36 @@ test('abroadCard: the first five payments worded, how many more, the total', () 
   const seven = abroadCard({ items: [1, 2, 3, 4, 5, 6, 7].map(item), totalBaseMinor: 7 * 2046 }, 'EUR')
   assert.equal(seven.rows.length, 5)
   assert.equal(seven.more, 'and 2 more, included in the total')
+})
+
+test('net worth as the card shows it: tiles, sections, the pot line, each account', () => {
+  const accounts = [
+    { id: 'a', name: 'Current', type: 'asset', balance_minor: 250000, currency: 'EUR' },
+    { id: 'b', name: 'Visa', type: 'liability', balance_minor: 40000, currency: 'EUR' },
+  ]
+  const parts = netWorthParts(accounts, -5000, 'EUR')
+  assert.equal(parts.assets, '€2,500.00')
+  assert.deepEqual(parts.debts, { text: '€450.00', tone: 'negative' })
+  assert.equal(parts.empty, false)
+  assert.deepEqual(parts.pot, { amount: '−€50.00', tone: 'negative', overdrawn: 'More paid from savings than saved · ' })
+  assert.deepEqual(parts.accounts.map((r) => [r.kind, r.meta, r.amount, r.tone]),
+    [['asset', 'Asset', '€2,500.00', 'default'], ['debt', 'Debt', '−€400.00', 'negative']])
+  assert.deepEqual(parts.net, { text: '€2,050.00', tone: 'default' })
+  // A savings account is the savings: no pot line.
+  const withSavings = netWorthParts([...accounts, { id: 'c', name: 'Bank savings', type: 'savings', balance_minor: 100000, currency: 'EUR' }], 5000, 'EUR')
+  assert.equal(withSavings.pot, null)
+  assert.deepEqual(withSavings.savings.map((r) => [r.kind, r.meta]), [['savings', 'Savings account']])
+  const empty = netWorthParts([], 0, 'EUR')
+  assert.deepEqual([empty.empty, empty.debts.tone, empty.pot], [true, 'muted', null])
+})
+
+test('an account\'s page: its kinds, the draft, what is saved', () => {
+  assert.deepEqual(accountTypes().map((o) => o.value), ['asset', 'liability', 'savings'])
+  assert.deepEqual(accountDraft(null, 'EUR'), { name: '', type: 'asset', balance: '', currency: 'EUR' })
+  const acc = { id: 'a', name: 'Visa', type: 'liability', balance_minor: 40000, currency: 'USD' }
+  assert.deepEqual(accountDraft(acc, 'EUR'), { name: 'Visa', type: 'liability', balance: '400.00', currency: 'USD' })
+  assert.deepEqual(accountToSave({ name: '  ', type: 'asset', balance: '1', currency: 'EUR' }), { error: 'Name it' })
+  assert.deepEqual(accountToSave({ name: ' Visa ', type: 'liability', balance: '-12.5', currency: 'EUR' }, 'a'),
+    { account: { id: 'a', name: 'Visa', type: 'liability', balance_minor: -1250, currency: 'EUR' } })
+  assert.equal(accountToSave({ name: 'X', type: 'asset', balance: '', currency: 'EUR' }).account.balance_minor, 0)
 })

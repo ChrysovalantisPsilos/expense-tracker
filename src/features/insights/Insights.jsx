@@ -27,15 +27,15 @@ import { linkBuckets } from '../../shared/lib/categoryLinks.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
 import { lastMonths, monthHeading } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
 import { spendRows } from '../../shared/lib/spread.js'
 import { useAccounts, deleteAccount } from '../../shared/lib/accounts.js'
 import { useSavingsMoves } from '../savings/savings.js'
 import {
-  buildTrend, hasTrendData, netWorth, accountSections, spendingShares, foreignSpending, trendMoney, pickedMonthLabel,
+  buildTrend, hasTrendData, netWorthParts, spendingShares, foreignSpending, trendMoney, pickedMonthLabel,
   spendingBars, incomeFigures, abroadCard,
 } from './insightsMath.js'
 import ReportsCard from './ReportsCard.jsx'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
 import SalaryCard from '../salary/SalaryCard.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
@@ -291,20 +291,26 @@ function NetWorthCard({ baseCurrency }) {
   const toast = useToast()
   const navigate = useNavigate()
   const t = useT('insights')
+  // The account whose Delete was tapped: it goes only once the question is answered.
+  const [removing, setRemoving] = useState(null)
+  const [busy, setBusy] = useState(false)
 
-  const { assets, liabilities, net, showPot } = useMemo(() => netWorth(accounts, savings), [accounts, savings])
-  const sections = useMemo(() => accountSections(accounts), [accounts])
-  const accountRow = (acc) => <AccountRow key={acc.id} account={acc} remove={remove} />
+  const parts = useMemo(() => netWorthParts(accounts, savings, baseCurrency), [accounts, savings, baseCurrency])
+  const accountRow = (row) => <AccountRow key={row.id} row={row} remove={setRemoving} />
   const seeSavings = (
     <Text as="span" color="accent.fg" fontWeight="600" whiteSpace="nowrap">{t('netWorth.seeSavings')}</Text>
   )
   const loading = accountsLoading || savingsLoading
 
-  async function remove(acc) {
-    try { await deleteAccount(acc.id); reload() }
+  async function remove() {
+    setBusy(true)
+    try { await deleteAccount(removing.id); reload() }
     catch (e) {
       console.error('[insights] account delete failed:', e)
       toast({ title: userMessage(e, t('netWorth.removeFailed')), status: 'error' })
+    } finally {
+      setBusy(false)
+      setRemoving(null)
     }
   }
 
@@ -316,18 +322,17 @@ function NetWorthCard({ baseCurrency }) {
       {error ? <QueryError error={error} onRetry={reload} what={t('netWorth.what')} /> : loading ? <NetWorthSkeleton /> : (
         <Stack spacing={4}>
           <BalanceGrid>
-            <BalanceTile label={t('netWorth.assets')} value={formatMoney(assets, baseCurrency)} tone="positive" />
-            <BalanceTile label={t('netWorth.debts')} value={formatMoney(liabilities, baseCurrency)}
-              tone={liabilities > 0 ? 'negative' : 'muted'} />
+            <BalanceTile label={t('netWorth.assets')} value={parts.assets} tone="positive" />
+            <BalanceTile label={t('netWorth.debts')} value={parts.debts.text} tone={parts.debts.tone} />
           </BalanceGrid>
 
-          {accounts.length === 0 && savings === 0 ? (
+          {parts.empty ? (
             <Text color="text.muted" fontSize="sm">
               {t('netWorth.empty')}
             </Text>
           ) : (
             <Stack spacing={3}>
-              {sections.savings.length > 0 && (
+              {parts.savings.length > 0 && (
                 // Savings accounts are the savings (0092): listed under "Savings",
                 // with the link to the Savings page, instead of the pot line.
                 <Box>
@@ -335,52 +340,50 @@ function NetWorthCard({ baseCurrency }) {
                     <SectionLabel>{t('netWorth.savings')}</SectionLabel>
                     <Text as={RouterLink} to="/savings" fontSize="xs">{seeSavings}</Text>
                   </HStack>
-                  {sections.savings.map(accountRow)}
+                  {parts.savings.map(accountRow)}
                 </Box>
               )}
-              {(showPot || sections.other.length > 0) && (
+              {(parts.pot || parts.accounts.length > 0) && (
                 <Box>
                   <SectionLabel mb={1}>{t('netWorth.accounts')}</SectionLabel>
-                  {showPot && (
+                  {parts.pot && (
                     <ItemRow icon={PiggyBank} title={t('netWorth.savings')} onClick={() => navigate('/savings')}
                       meta={
                         <Text fontSize="xs" color="text.muted" overflowWrap="anywhere">
-                          {savings < 0 && t('netWorth.overdrawn')}
+                          {parts.pot.overdrawn}
                           {seeSavings}
                         </Text>
                       }
-                      amount={formatSigned(savings, baseCurrency)}
-                      amountTone={savings < 0 ? 'negative' : 'default'}
+                      amount={parts.pot.amount}
+                      amountTone={parts.pot.tone}
                       // No actions of its own; the empty slot lines its amount up with the accounts'.
                       actions={[]} actionSlots={2} />
                   )}
-                  {sections.other.map(accountRow)}
+                  {parts.accounts.map(accountRow)}
                 </Box>
               )}
             </Stack>
           )}
 
           <Divider borderColor="border.default" />
-          <Figure layout="inline" label={t('netWorth.title')} value={formatMoney(net, baseCurrency)}
-            tone={net < 0 ? 'negative' : 'default'} />
+          <Figure layout="inline" label={t('netWorth.title')} value={parts.net.text} tone={parts.net.tone} />
         </Stack>
       )}
+      <ConfirmDialog isOpen={!!removing} onClose={() => setRemoving(null)} onConfirm={remove} busy={busy} danger
+        title={t('netWorth.removeQuestion', { name: removing?.name ?? '' })} confirmLabel={t('common:actions.delete')} />
     </Panel>
   )
 }
 
-// One net-worth account: a debt (minus, red), a savings account or an asset,
-// with Edit and Delete.
-function AccountRow({ account: acc, remove }) {
+// One net-worth account (insightsMath.netWorthParts' row): a debt (minus,
+// red), a savings account or an asset, with Edit and Delete.
+const ACCOUNT_ICON = { debt: CreditCard, savings: PiggyBank, asset: Landmark }
+function AccountRow({ row, remove }) {
   const navigate = useNavigate()
   const t = useT('insights')
-  const debt = acc.type === 'liability'
-  const saving = acc.type === 'savings'
+  const acc = row.account
   return (
-    <ItemRow icon={debt ? CreditCard : saving ? PiggyBank : Landmark} title={acc.name}
-      meta={t(saving ? 'netWorth.savingsAccount' : debt ? 'netWorth.debt' : 'netWorth.asset')}
-      amount={`${debt ? '−' : ''}${formatMoney(acc.balance_minor, acc.currency)}`}
-      amountTone={debt ? 'negative' : 'default'}
+    <ItemRow icon={ACCOUNT_ICON[row.kind]} title={row.title} meta={row.meta} amount={row.amount} amountTone={row.tone}
       actions={[
         { label: t('common:actions.edit'), icon: Pencil, onClick: () => navigate(`/insights/accounts/${acc.id}`, { state: { account: acc } }) },
         { label: t('common:actions.delete'), icon: Trash2, onClick: () => remove(acc), danger: true },

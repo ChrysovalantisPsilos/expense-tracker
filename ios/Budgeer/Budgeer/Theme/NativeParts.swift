@@ -234,14 +234,16 @@ struct NativeNotice: View {
     }
 }
 
-/// Words with <b> as rich text (translate.parseRich's nodes): one Text, <b> in bold.
+/// Words with tags as rich text (translate.parseRich's nodes): one Text,
+/// <b> and <strong> in bold, <s> struck through.
 enum NativeRich {
-    static func text(_ nodes: JSONValue, bold: Bool = false) -> Text {
+    static func text(_ nodes: JSONValue, bold: Bool = false, struck: Bool = false) -> Text {
         (nodes.arrayValue ?? []).reduce(Text(verbatim: "")) { line, node in
             if let plain = node.stringValue {
-                return line + Text(plain).fontWeight(bold ? .bold : .regular)
+                return line + Text(plain).fontWeight(bold ? .bold : .regular).strikethrough(struck)
             }
-            return line + text(node["children"] ?? [], bold: bold || node["tag"]?.stringValue == "b")
+            let tag = node["tag"]?.stringValue
+            return line + text(node["children"] ?? [], bold: bold || tag == "b" || tag == "strong", struck: struck || tag == "s")
         }
     }
 }

@@ -1,8 +1,9 @@
 // A savings goal's page (the web's GoalPage): the name, the target and what's
 // saved so far in the goal's currency (the base one for a new goal), and an
 // optional target date. The form opens from savingsMath.goalDraft and saves
-// what goalToSave answers (or says what's missing first) through save_goal;
-// an existing goal can be deleted (the view asks first).
+// what goalToSave answers (or says what's missing first: only once Save is
+// tapped, and gone again as soon as the form is edited, as the web's toast
+// is) through save_goal; an existing goal can be deleted (the view asks first).
 import Foundation
 import Observation
 import BudgeerCore
@@ -12,16 +13,16 @@ import BudgeerCore
 final class GoalEditorModel {
     /// The goal's id, nil for a new one.
     let id: String?
-    var name = ""
+    private(set) var name = ""
     private(set) var target = ""
     private(set) var saved = ""
     private(set) var currency = "EUR"
     /// The target date's switch (OptionalDate): off saves no date.
     private(set) var dated = false
     /// The target date, 'YYYY-MM-DD'.
-    var targetDate = ""
+    private(set) var targetDate = ""
     private(set) var ready = false
-    /// What's missing (goalToSave's words), or why a save failed.
+    /// What's missing (goalToSave's words) once Save was tapped, or why a save failed.
     private(set) var error: String?
     private(set) var busy = false
 
@@ -63,13 +64,31 @@ final class GoalEditorModel {
         (try? core.json("moneyParse", "amountFieldHints", [currency]))?["placeholder"]?.stringValue ?? ""
     }
 
-    func setTarget(_ text: String) { target = clean(text) }
-    func setSaved(_ text: String) { saved = clean(text) }
+    func setName(_ text: String) {
+        name = text
+        error = nil
+    }
+
+    func setTarget(_ text: String) {
+        target = clean(text)
+        error = nil
+    }
+
+    func setSaved(_ text: String) {
+        saved = clean(text)
+        error = nil
+    }
 
     /// The date's switch: on starts at today, off clears it.
     func setDated(_ on: Bool) {
         dated = on
         targetDate = on ? ((try? core.isoDate(now())) ?? "") : ""
+        error = nil
+    }
+
+    func setTargetDate(_ day: String) {
+        targetDate = day
+        error = nil
     }
 
     /// An amount as typed, cleaned as the web's MoneyInput cleans it.

@@ -126,6 +126,16 @@ export function bonusCategoryId(categories, notes) {
   return (own.find((c) => !c.is_archived) ?? own[0])?.id ?? null
 }
 
+// The income categories that can hold the bonuses (the Bonus picker's
+// choices): the active ones that aren't the salary's.
+export const bonusCandidates = (categories, salaryId) =>
+  categories.filter((c) => c.kind === 'income' && !c.is_archived && c.id !== salaryId)
+
+// The ids of the salary and bonus entries (a correction is kept only while
+// its entry exists: withFix).
+export const salaryEntryIds = (entries, salaryId, bonusId) =>
+  entries.filter((r) => r.category_id === salaryId || r.category_id === bonusId).map((r) => r.id)
+
 // ── Regular pay and extras ───────────────────────────────────────────────────
 // Each month's regular pay and the extras, from the entries. The month is the
 // one a payment counts for (the salary shift moves a late salary to the next).

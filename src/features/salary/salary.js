@@ -15,8 +15,9 @@ import { useAllCategories } from '../../shared/lib/categories.js'
 import { salaryCategoryId } from '../plan/planMath.js'
 import { useMealVouchers } from '../vouchers/vouchers.js'
 import {
-  bonusCategoryId, defaultCountry, monthOf, normaliseNotes, salaryReport, withFix,
+  bonusCategoryId, defaultCountry, monthOf, normaliseNotes, salaryEntryIds, salaryReport, withFix,
 } from './salaryMath.js'
+import { bonusChoices } from './salaryText.js'
 
 // The signed-in user's corrections, or null when they have none.
 export async function readSalaryNotes() {
@@ -43,7 +44,7 @@ function useSalaryNotes() {
 //   report      salaryReport's answer (null: no salary entries yet)
 //   salaryId    the salary category (null: none — the page says how to set one)
 //   bonusId     the Bonus category (null: none — the page offers a picker)
-//   income      the income categories (the picker's choices)
+//   income      the Bonus picker's choices ([{ id, label }]: salaryText.bonusChoices)
 //   country     prices compared against (picked, vouchers, language)
 //   setFix(id, kind), setCountry(c), setBonusCategory(id): save a correction;
 //   each resolves once saved and throws when it couldn't be (the caller
@@ -64,8 +65,7 @@ export function useSalary() {
   const report = useMemo(() => salaryReport(income.rows, {
     salaryId, bonusId, currency: baseCurrency, notes, shift: salaryShift, nowKey,
   }), [income.rows, salaryId, bonusId, baseCurrency, notes, salaryShift, nowKey])
-  const entryIds = useMemo(() => income.rows.filter((r) => r.category_id === salaryId || r.category_id === bonusId)
-    .map((r) => r.id), [income.rows, salaryId, bonusId])
+  const entryIds = useMemo(() => salaryEntryIds(income.rows, salaryId, bonusId), [income.rows, salaryId, bonusId])
 
   async function save(next) {
     const before = notesQ.data
@@ -75,7 +75,7 @@ export function useSalary() {
 
   return {
     report, salaryId, bonusId, country, nowKey, currency: baseCurrency,
-    income: categories.filter((c) => c.kind === 'income' && !c.is_archived && c.id !== salaryId),
+    income: bonusChoices(categories, salaryId),
     loading: income.loading || catsLoading || notesQ.loading,
     error: income.error ?? catsError ?? notesQ.error,
     reload: () => Promise.all([income.reload(), reloadCats(), notesQ.reload()]),

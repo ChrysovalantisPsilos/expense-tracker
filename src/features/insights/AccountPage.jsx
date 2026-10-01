@@ -9,9 +9,9 @@ import RingLoader from '../../shared/ui/RingLoader.jsx'
 import useGoBack from '../../shared/ui/useGoBack.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { minorToInput, toMinor } from '../../shared/lib/currency.js'
 import { useAccounts, saveAccount } from '../../shared/lib/accounts.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { accountDraft, accountToSave, accountTypes } from './insightsMath.js'
 
 // A net-worth account's page (a balance you keep up to date by hand):
 //   /insights/accounts/new   a new account
@@ -45,19 +45,16 @@ function AccountForm({ account, baseCurrency }) {
   const t = useT('insights')
   const back = useGoBack('/insights')
   const isEdit = !!account
-  const [name, setName] = useState(account?.name ?? '')
-  const [type, setType] = useState(account?.type ?? 'asset')
-  const [balance, setBalance] = useState(account ? minorToInput(account.balance_minor, account.currency) : '')
-  const [currency] = useState(account?.currency ?? baseCurrency)
+  const [draft, setDraft] = useState(() => accountDraft(account, baseCurrency))
+  const { name, type, balance, currency } = draft
+  const set = (key) => (value) => setDraft((d) => ({ ...d, [key]: value }))
   const { busy, run } = useAsyncSubmit()
 
   async function submit() {
-    if (!name.trim()) return toast({ title: t('account.nameIt'), status: 'warning' })
+    const ready = accountToSave(draft, account?.id)
+    if (ready.error) return toast({ title: ready.error, status: 'warning' })
     await run(async () => {
-      await saveAccount({
-        id: account?.id, name: name.trim(), type,
-        balance_minor: toMinor(Number(balance) || 0, currency), currency,
-      })
+      await saveAccount(ready.account)
       back()
     })
   }
@@ -67,14 +64,12 @@ function AccountForm({ account, baseCurrency }) {
       <Stack spacing={4}>
         <FormControl isRequired>
           <FormLabel>{t('account.name')}</FormLabel>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('account.nameHint')} />
+          <Input value={name} onChange={(e) => set('name')(e.target.value)} placeholder={t('account.nameHint')} />
         </FormControl>
         <FormControl>
           <FormLabel>{t('account.type')}</FormLabel>
-          <Select value={type} onChange={(e) => setType(e.target.value)}>
-            <option value="asset">{t('account.asset')}</option>
-            <option value="liability">{t('account.liability')}</option>
-            <option value="savings">{t('account.savings')}</option>
+          <Select value={type} onChange={(e) => set('type')(e.target.value)}>
+            {accountTypes().map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </Select>
           {type === 'savings' && (
             <FormHelperText>{t('account.savingsHint')}</FormHelperText>
@@ -82,7 +77,7 @@ function AccountForm({ account, baseCurrency }) {
         </FormControl>
         <FormControl isRequired>
           <FormLabel>{t('account.balance', { currency })}</FormLabel>
-          <MoneyInput allowNegative currency={currency} value={balance} onChange={setBalance} placeholder="0" />
+          <MoneyInput allowNegative currency={currency} value={balance} onChange={set('balance')} placeholder="0" />
         </FormControl>
       </Stack>
     </PageForm>

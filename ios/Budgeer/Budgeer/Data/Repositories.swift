@@ -5,6 +5,10 @@
 //                           setup, saving it), notifications.js (the bell)
 //   SavingsRepository       shared/lib/accounts.js (net-worth accounts),
 //                           features/savings/savings.js (the goals)
+//   PlanRepository          features/plan/plan.js (the plan, apply and undo),
+//                           ai.js planWhatIf
+//   InsightsRepository      features/salary/salary.js (the corrections),
+//                           features/insights/reports.js (the statement)
 //   CategoriesRepository    shared/lib/categories.js
 //   PrivacyRepository       features/privacy/privacyData.js, profile.js deleteMyAccount
 //   TransactionsRepository  shared/lib/transactions.js
@@ -100,6 +104,32 @@ protocol SavingsRepository: Sendable {
     /// save_goal: a new goal (`id` null) or every field of one (savingsMath.goalToSave's goal).
     func saveGoal(_ goal: JSONValue) async throws
     func deleteGoal(id: String) async throws
+    /// save_account: a new account (`id` null) or every field of one (insightsMath.accountToSave's account).
+    func saveNetWorthAccount(_ account: JSONValue) async throws
+    /// deleteAccount (accounts.js): a net-worth account.
+    func deleteNetWorthAccount(id: String) async throws
+}
+
+protocol PlanRepository: Sendable {
+    /// my_recurring_plan: { plan, undo } (the saved plan or null; the last apply or null).
+    func recurringPlan() async throws -> JSONValue
+    /// save_recurring_plan, or clear_recurring_plan when the plan is empty (planMath.isEmptyPlan).
+    func saveRecurringPlan(_ plan: JSONValue, empty: Bool) async throws
+    /// apply_recurring_plan: applySelection's `apply`, and the plan left (nil when it's empty).
+    func applyRecurringPlan(apply: JSONValue, remaining: JSONValue?) async throws
+    /// undo_recurring_plan: how many changes went back.
+    func undoRecurringPlan() async throws -> Int
+    /// ai-helper plan_whatif: the typed line → { changes, adds, notFound }.
+    func planWhatIf(text: String, labels: JSONValue) async throws -> JSONValue
+}
+
+protocol InsightsRepository: Sendable {
+    /// my_salary_history: the salary page's corrections, or null.
+    func salaryHistory() async throws -> JSONValue
+    /// save_salary_history.
+    func saveSalaryHistory(_ notes: JSONValue) async throws
+    /// generate-report: the statement for from…to as a file ('pdf' or 'xlsx'), its bytes.
+    func statement(from: String, to: String, format: String) async throws -> Data
 }
 
 protocol PrivacyRepository: Sendable {
@@ -227,11 +257,13 @@ struct DataLayer: Sendable {
     let groups: GroupsRepository
     let privacy: PrivacyRepository
     let savings: SavingsRepository
+    let plan: PlanRepository
+    let insights: InsightsRepository
 
     /// One object that is every repository (the Supabase store, a test's fake).
     init<Store: ProfileRepository & CategoriesRepository & TransactionsRepository & RecurringRepository
             & BudgetsRepository & FxRepository & AiRepository & GroupsRepository & PrivacyRepository
-            & SavingsRepository>(_ store: Store) {
+            & SavingsRepository & PlanRepository & InsightsRepository>(_ store: Store) {
         profile = store
         categories = store
         transactions = store
@@ -242,6 +274,8 @@ struct DataLayer: Sendable {
         groups = store
         privacy = store
         savings = store
+        plan = store
+        insights = store
     }
 }
 

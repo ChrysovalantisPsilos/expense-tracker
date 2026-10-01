@@ -9,16 +9,15 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useLatestRates } from '../../shared/lib/fx.js'
 import { foreignCurrencies } from '../../shared/lib/ruleFx.js'
-import { shiftFetchFrom } from '../../shared/lib/salaryShift.js'
-import { monthRange, today } from '../../shared/lib/dates.js'
+import { today } from '../../shared/lib/dates.js'
 import { useRecurring } from '../recurring/recurring.js'
 import { useAllCategories, useSavingsIds } from '../../shared/lib/categories.js'
 import { listTransactions, useTransactions } from '../../shared/lib/transactions.js'
 import { useBudgetSets } from '../budgets/budgets.js'
 import {
-  OVER_BUDGET_MONTHS, PRICE_MONTHS, derivedSalary, derivedSavings, isEmptyPlan, normalisePlan, rateNeeds, recentMonths,
-  salaryCategoryId, salaryWindow,
+  derivedSalary, derivedSavings, isEmptyPlan, normalisePlan, rateNeeds, salaryCategoryId,
 } from './planMath.js'
+import { planReads } from './planPage.js'
 
 // How long the plan waits after the last edit before it's saved.
 const SAVE_DELAY_MS = 800
@@ -130,16 +129,14 @@ function useSavedPlan() {
 // The entries behind the derived Salary and Savings rows
 // (planMath.derivedSalary, derivedSavings): the income over the last full
 // months (the salary and savings taken from income are income entries), from
-// the same decrypting read as every list (my_transactions), live. With the
-// salary shift on it reaches back for the salary that counts in the first
-// month.
-function useIncomeEntries(todayISO) {
-  const { baseCurrency, salaryShift } = useProfile()
-  const win = salaryWindow(todayISO)
-  const from = shiftFetchFrom(win.from, salaryShift)
+// the same decrypting read as every list (my_transactions), live, over
+// planReads' `income` span (with the salary shift on it reaches back for the
+// salary that counts in the first month).
+function useIncomeEntries({ from, to }) {
+  const { baseCurrency } = useProfile()
   return useOwnedQuery('transactions', {
-    fetch: () => listTransactions({ kind: 'income', from, to: win.to, baseCurrency }),
-    deps: [from, win.to, baseCurrency],
+    fetch: () => listTransactions({ kind: 'income', from, to, baseCurrency }),
+    deps: [from, to, baseCurrency],
   })
 }
 
@@ -157,17 +154,17 @@ export function usePlanData() {
   const { rows: categories, loading: categoriesLoading } = useAllCategories()
 
   const todayISO = today()
+  const reads = useMemo(() => planReads(todayISO, salaryShift), [todayISO, salaryShift])
   const salaryCat = salaryCategoryId(profile, categories)
-  const entries = useIncomeEntries(todayISO)
+  const entries = useIncomeEntries(reads.income)
   const salary = useMemo(() => (entries.error ? null : derivedSalary({
     rules, savingsIds, categoryId: salaryCat, entries: entries.rows, todayISO, baseCurrency, salaryShift,
   })), [entries.error, entries.rows, rules, savingsIds, salaryCat, todayISO, baseCurrency, salaryShift])
   const savings = useMemo(() => (entries.error ? null : derivedSavings({
     rules, savingsIds, entries: entries.rows, todayISO, baseCurrency, salaryShift,
   })), [entries.error, entries.rows, rules, savingsIds, todayISO, baseCurrency, salaryShift])
-  const months = useMemo(() => recentMonths(todayISO, PRICE_MONTHS), [todayISO])
-  const charges = useTransactions({ kind: 'expense', from: months[0], to: monthRange().to, spread: true })
-  const budgetMonths = months.slice(-OVER_BUDGET_MONTHS)
+  const charges = useTransactions({ kind: 'expense', from: reads.charges.from, to: reads.charges.to, spread: true })
+  const { budgetMonths } = reads
   const budgets = useBudgetSets(budgetMonths[0], budgetMonths[budgetMonths.length - 1])
 
   const needs = useMemo(() => rateNeeds(rules, saved.plan ?? { changes: [], adds: [] }), [rules, saved.plan])

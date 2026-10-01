@@ -180,10 +180,14 @@ final class SavingsModelTests: XCTestCase {
         await editor.load()
         XCTAssertEqual(editor.currency, "EUR")
         XCTAssertEqual(editor.saved, "0")
+        // Nothing is said before Save is tapped; once it is, what's missing,
+        // until the form is edited again.
+        XCTAssertNil(editor.error)
         let missing = await editor.save()
         XCTAssertFalse(missing)
         XCTAssertEqual(editor.error, "Name it")
-        editor.name = " Bike "
+        editor.setName(" Bike ")
+        XCTAssertNil(editor.error)
         editor.setTarget("1200")
         editor.setDated(true)
         XCTAssertEqual(editor.targetDate, "2020-09-15")

@@ -12,6 +12,7 @@ import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { useSalary } from './salary.js'
 import { PayHeadline } from './SalaryParts.jsx'
+import { salaryCardParts } from './salaryText.js'
 
 const PAGE = '/insights/salary'
 
@@ -21,7 +22,7 @@ export default function SalaryCard() {
   const { report, currency, loading, error } = useSalary()
   // A failed read shows on the page itself; the card just stays out of the way.
   if (error) return null
-  const data = report?.steps.map((s) => ({ v: s.level })) ?? []
+  const data = salaryCardParts(report, currency)?.steps.map((v) => ({ v })) ?? []
   return (
     <Panel title={t('title')} icon={Wallet} action={
       <IconButton as={RouterLink} to={PAGE} size="sm" variant="ghost" aria-label={t('open')} icon={<ChevronRight size={18} />} />

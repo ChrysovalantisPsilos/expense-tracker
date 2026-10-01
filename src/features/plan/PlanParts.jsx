@@ -1,8 +1,8 @@
 // Plan mode's building blocks: the impact card, a plan row, the ideas strip,
 // "Your changes" (with Apply and Clear plan), the hint, and the ids that tie
 // an editor to its opener. The editors that open in place under a row, a
-// change or the ideas are in PlanEditors.jsx. The wording is planText.js, the
-// maths behind every figure planMath.js.
+// change or the ideas are in PlanEditors.jsx. Every figure and word is
+// planPage.js's (its parts); these only lay them out.
 import { Link as RouterLink } from 'react-router-dom'
 import { addEntryLink } from '../../shared/lib/addLinks.js'
 import {
@@ -15,12 +15,9 @@ import SumSteps from '../../shared/ui/SumSteps.jsx'
 import { InfoBox, InfoButton, useInfoToggle } from '../../shared/ui/InfoToggle.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
-import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
 import { signTone, textColor } from '../../shared/ui/kit/kitMath.js'
-import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { RatesNote } from '../recurring/SubscriptionGroups.jsx'
-import { applicable, asShown, effectOf, effectTone, headline, inView, monthOf, planSteps } from './planMath.js'
-import { changeLine, ideaText, itemName, perUnit, rowMeta } from './planText.js'
+import { Rich, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { badgeKind } from './planPage.js'
 
 // The ids that tie an inline editor (PlanEditors) to what opens it. `key`
 // names the opener: a row's id, 'changes-<id>' for its entry in "Your
@@ -32,10 +29,6 @@ export const changeKey = (id) => `changes-${id}`
 export const SCROLL_CLEAR = { scrollMarginTop: '80px', scrollMarginBottom: '96px' }
 export const openerId = (key) => `plan-open-${key}`
 export const editorId = (key) => `plan-editor-${key}`
-
-// The badge's tone for a row's kind: savings are money kept (positive), like
-// income.
-export const badgeKind = (kind) => (kind === 'expense' ? 'expense' : 'income')
 
 // A quiet line: this change stays in the plan (a derived row).
 export function PlanOnlyNote({ text }) {
@@ -78,12 +71,8 @@ export function SavedNote({ status, onRetry }) {
 
 // The move in the header's figure: "+€15.00" for the net; for the payments,
 // "€385.09 less" (green) or "€20.00 more" (red). `good` > 0 is green.
-function DeltaChip({ change, good, mode, view, currency }) {
-  const t = useT('plan')
-  const amount = mode === 'payments'
-    ? t(change < 0 ? 'impact.less' : 'impact.more', { amount: formatMoney(Math.abs(change), currency) })
-    : formatSigned(change, currency, { plus: true })
-  const text = change === 0 ? t('impact.noChanges') : t(`impact.per.${view}`, { amount })
+function DeltaChip({ delta }) {
+  const { text, good } = delta
   return (
     <Tag size="md" borderRadius="full" px={3} py={1} fontWeight="800" flexShrink={0} whiteSpace="nowrap"
       bg={good > 0 ? 'status.positiveSubtle' : good < 0 ? 'status.negativeSubtle' : 'bg.subtle'}
@@ -97,23 +86,18 @@ function DeltaChip({ change, good, mode, view, currency }) {
 // recurring income the recurring payments), "was" struck through when it
 // moved, the move in that same unit (only that one: the Month/Year switch
 // gives the other), and what goes into savings. How the figure adds up
-// (PlanSum) sits behind the ⓘ beside its label and opens in place; a rate
+// (SumSteps) sits behind the ⓘ beside its label and opens in place; a rate
 // that's missing stays in view, since it changes the figure (payments: a
-// nudge to add the salary as recurring income).
-export function ImpactHeader({ sum, items, view, onView, currency, rates }) {
-  const t = useT('plan')
+// nudge to add the salary as recurring income). `parts`: planPage.impactParts.
+export function ImpactHeader({ parts, view, onView }) {
   const tc = useT()
   const info = useInfoToggle()
-  const h = headline(sum)
-  const after = inView(h.after, view)
-  const hasSum = h.mode !== 'payments' || sum.saved > 0
-  const hasInfo = hasSum || rates.converted
   return (
     <Panel p={4}>
       <Flex justify="space-between" align="center" gap={2} flexWrap="wrap" mt={-1}>
         <HStack spacing={0.5}>
-          <Text fontSize="xs" color="text.muted" fontWeight="600">{t(`impact.${h.mode}.${view}`)}</Text>
-          {hasInfo && (
+          <Text fontSize="xs" color="text.muted" fontWeight="600">{parts.label}</Text>
+          {parts.hasInfo && (
             <InfoButton info={info} label={tc('info')} />
           )}
         </HStack>
@@ -121,51 +105,37 @@ export function ImpactHeader({ sum, items, view, onView, currency, rates }) {
       </Flex>
       <Flex align="center" gap={2} mt={1} flexWrap="wrap">
         <Text fontFamily="heading" fontWeight="700" fontSize="2xl" lineHeight="1.15" whiteSpace="nowrap" flex="1">
-          {formatMoney(after, currency)}
+          {parts.figure}
         </Text>
-        <DeltaChip change={inView(h.change, view)} good={h.good} mode={h.mode} view={view} currency={currency} />
+        <DeltaChip delta={parts.delta} />
       </Flex>
-      {h.change !== 0 && (
+      {parts.was && (
         <Text color="text.muted" mt={0.5} fontSize="sm">
-          <Trans t={t} k="impact.was" values={{ amount: formatMoney(inView(h.before, view), currency) }}
-            components={{ s: <Text as="s" /> }} />
+          <Rich text={parts.was} components={{ s: <Text as="s" /> }} />
         </Text>
       )}
-      {sum.saved > 0 && (
+      {parts.saved && (
         <HStack spacing={1.5} mt={1} fontSize="sm" color="text.muted">
           <Box color="accent.fg" flexShrink={0}><PiggyBank size={16} /></Box>
-          <Text>{t(`impact.saved.${h.mode}.${view}`, { amount: formatMoney(inView(sum.saved, view), currency) })}</Text>
+          <Text>{parts.saved}</Text>
         </HStack>
       )}
-      {hasInfo && (
+      {parts.hasInfo && (
         <InfoBox info={info}>
-          {hasSum && <PlanSum items={items} sum={sum} view={view} currency={currency} />}
-          <RatesNote converted={rates.converted} missing={[]} mt={hasSum ? 2 : 0} />
+          {parts.steps && <SumSteps title={parts.steps.title} steps={parts.steps.steps} total={parts.steps.total} />}
+          {parts.converted && <RatesLine text={parts.converted} mt={parts.steps ? 2 : 0} />}
         </InfoBox>
       )}
-      {h.mode === 'payments' && <IncomeHint />}
-      <RatesNote converted={false} missing={rates.missing} mt={1} />
+      {parts.incomeHint && <IncomeHint />}
+      {parts.missing && <RatesLine text={parts.missing} mt={1} />}
     </Panel>
   )
 }
 
-// "How it adds up" in the header's ⓘ (planMath.planSteps, shown with Home's
-// SumSteps): Income, − Recurring payments, − Put into savings, then what's
-// left over (the header's figure), in the view's unit. With changes in the
-// plan each step shows its planned figure, today's struck through beside it
-// where they differ. With no recurring income: the payments and savings,
-// then their total.
-function PlanSum({ items, sum, view, currency }) {
-  const t = useT('plan')
-  const { steps, now, planned } = planSteps(items, view, sum.mode)
-  const net = sum.mode === 'net'
-  const money = (v) => (net ? formatSigned(v, currency, { plus: true }) : formatMoney(v, currency))
-  const was = (a, b) => (a !== b ? money(a) : undefined)
-  return (
-    <SumSteps title={t(`impact.sum.title.${sum.mode}`)}
-      steps={steps.map((s) => ({ key: s.key, label: t(`impact.sum.${s.key}`), value: money(s.planned), was: was(s.now, s.planned) }))}
-      total={{ label: t(`impact.sum.total.${sum.mode}`), value: money(planned), was: was(now, planned), tone: net ? signTone(planned) : 'muted' }} />
-  )
+// A rates note under a figure built from rules (as recurring's RatesNote
+// lays one out): foreign ones converted at today's rate, or left out.
+function RatesLine({ text, ...props }) {
+  return <Box fontSize="xs" color="text.muted" {...props}><Text>{text}</Text></Box>
 }
 
 // No recurring income: the net would only be minus the payments, so the card
@@ -191,89 +161,68 @@ function IncomeHint() {
 // ---- Rows --------------------------------------------------------------------------
 
 const TAG_TONES = { priceUp: 'orange', overlap: 'purple', overBudget: 'red', biggest: 'orange' }
+const STATE_TONES = { positive: 'green', negative: 'red', accent: 'brand' }
 
-function StateTag({ item }) {
-  const t = useT('plan')
-  if (!item.changed) return null
-  const [key, scheme] = item.added ? ['new', 'green']
-    : item.cancelled ? [item.kind === 'expense' ? 'cancelled' : 'stopped', 'red'] : ['changed', 'brand']
-  return <Tag size="sm" colorScheme={scheme} borderRadius="full" px={2} flexShrink={0}>{t(`tags.${key}`)}</Tag>
-}
-
+// A signal's tag ({ kind, text }: planPage's).
 export function SignalTag({ tag, ...props }) {
-  const t = useT('plan')
   return (
     <Tag size="sm" variant="outline" colorScheme={TAG_TONES[tag.kind]} borderRadius="full" px={2} flexShrink={0} {...props}>
-      {t(`tags.${tag.kind}`, { pct: tag.pct })}
+      {tag.text}
     </Tag>
   )
 }
 
-// One row: tap it to open its editor in place (`editor`, while `open`); the
-// switch keeps it (on) or cancels it in the plan (off). A changed row shows
-// its old amount struck through.
-export function PlanRow({ item, view, currency, tag, open, editor, onOpen, onToggle }) {
-  const t = useT('plan')
-  const name = itemName(item)
-  const now = inView(item.afterYear, view)
-  const was = inView(item.beforeYear, view)
-  const own = (fields) => formatMoney(fields.amount_minor, fields.currency)
+// One row (planPage.rowParts): tap it to open its editor in place
+// (`editor`, while `open`); the switch keeps it (on) or cancels it in the
+// plan (off). A changed row shows its old amount struck through.
+const AMOUNT_COLOR = { muted: 'text.muted', positive: 'status.positive', default: undefined }
+export function PlanRow({ row, open, editor, onOpen, onToggle }) {
+  const { item } = row
   return (
     <Box as="li" listStyleType="none" data-plan-item="" sx={SCROLL_CLEAR}>
       <HStack spacing={1} minH="56px">
-        <HStack as="button" type="button" id={openerId(item.id)} onClick={onOpen} spacing={3} flex="1" minW={0} py={2} px={1}
-          mx={-1} textAlign="left" borderRadius="lg" _hover={{ bg: 'bg.subtle' }} aria-label={t('row.open', { name })}
-          aria-expanded={!!open} aria-controls={open ? editorId(item.id) : undefined}>
-          <Box opacity={item.cancelled ? 0.5 : 1} flexShrink={0}>
+        <HStack as="button" type="button" id={openerId(row.id)} onClick={onOpen} spacing={3} flex="1" minW={0} py={2} px={1}
+          mx={-1} textAlign="left" borderRadius="lg" _hover={{ bg: 'bg.subtle' }} aria-label={row.openLabel}
+          aria-expanded={!!open} aria-controls={open ? editorId(row.id) : undefined}>
+          <Box opacity={row.cancelled ? 0.5 : 1} flexShrink={0}>
             <CategoryBadge category={item.category} kind={badgeKind(item.kind)} size={32} />
           </Box>
           <Box flex="1" minW={0}>
             <Flex columnGap={1.5} rowGap={0.5} minW={0} flexWrap="wrap" align="center">
-              <Text fontSize="sm" fontWeight="600" noOfLines={1} color={item.cancelled ? 'text.muted' : undefined}>{name}</Text>
-              <StateTag item={item} />
+              <Text fontSize="sm" fontWeight="600" noOfLines={1} color={row.cancelled ? 'text.muted' : undefined}>{row.name}</Text>
+              {row.state && (
+                <Tag size="sm" colorScheme={STATE_TONES[row.state.tone]} borderRadius="full" px={2} flexShrink={0}>{row.state.text}</Tag>
+              )}
             </Flex>
-            <Text fontSize="xs" color="text.muted" noOfLines={2}>{rowMeta(item, view, t)}</Text>
-            {tag && <SignalTag tag={tag} mt={1} />}
+            <Text fontSize="xs" color="text.muted" noOfLines={2}>{row.meta}</Text>
+            {row.tag && <SignalTag tag={row.tag} mt={1} />}
           </Box>
           <Stack spacing={0} align="flex-end" flexShrink={0}>
-            {item.missing ? (
-              <Text fontSize="sm" fontWeight="700" color="text.muted">{own(item.after ?? item.before)}</Text>
-            ) : item.cancelled ? (
-              <Text fontSize="sm" fontWeight="700" color="text.muted" as="s">{formatMoney(was, currency)}</Text>
-            ) : (
-              <Text fontSize="sm" fontWeight="700" color={item.kind === 'income' ? 'status.positive' : undefined}>
-                {formatMoney(now, currency)}
-              </Text>
-            )}
-            {item.changed && !item.cancelled && !item.added && !item.missing && (
-              <Text fontSize="xs" color="text.muted" as="s">{formatMoney(was, currency)}</Text>
+            <Text fontSize="sm" fontWeight="700" color={AMOUNT_COLOR[row.amount.tone]} as={row.amount.struck ? 's' : undefined}>
+              {row.amount.text}
+            </Text>
+            {row.was && (
+              <Text fontSize="xs" color="text.muted" as="s">{row.was}</Text>
             )}
           </Stack>
         </HStack>
         <Flex as="label" w="52px" minH="48px" align="center" justify="center" flexShrink={0} cursor="pointer">
-          <Switch isChecked={!item.cancelled} onChange={onToggle}
-            aria-label={t(item.cancelled ? 'row.keep' : item.kind === 'expense' ? 'row.cancel' : 'row.stop', { name })} />
+          <Switch isChecked={!row.cancelled} onChange={onToggle} aria-label={row.toggleLabel} />
         </Flex>
       </HStack>
-      {item.stale && <UpdatedNote item={item} />}
+      {row.stale && <UpdatedNote text={row.stale} />}
       {open && editor}
     </Box>
   )
 }
 
 // Under a row whose real payment changed since it was planned.
-function UpdatedNote({ item }) {
-  const t = useT('plan')
-  const values = {
-    now: perUnit(item.before), was: perUnit(item.snap),
-    plan: item.after ? perUnit(item.after) : '',
-  }
+function UpdatedNote({ text }) {
   return (
     <HStack align="start" spacing={2} bg="status.warningSubtle" borderRadius="lg" px={3} py={2} ml="44px" mb={2}>
       <Box color="status.warning" mt="1px" flexShrink={0}><RotateCcw size={14} /></Box>
       <Text fontSize="xs">
-        <Trans t={t} k={item.cancelled ? 'row.updatedCancel' : 'row.updatedEdit'} values={values}
-          components={{ strong: <Text as="span" fontWeight="700" /> }} />
+        <Rich text={text} components={{ strong: <Text as="span" fontWeight="700" /> }} />
       </Text>
     </HStack>
   )
@@ -301,54 +250,45 @@ export function WhatIfRow({ open, form, onClick }) {
 
 // ---- Ideas ---------------------------------------------------------------------
 
-// The "Ideas to save" strip: each idea tried in one tap or dismissed with ×.
-// An overlap's "Try it" opens its picker (`picking`: that idea's id) and a
-// price rise on an essential opens the payment, to try a lower price; neither
-// cancels anything by itself.
-export function IdeasStrip({ ideas, view, currency, picking, onTry, onDismiss }) {
+// The "Ideas to save" strip (planPage.ideasParts): each idea tried in one tap
+// or dismissed with ×. An overlap's "Try it" opens its picker (`picking`:
+// that idea's id) and a price rise on an essential opens the payment, to try
+// a lower price; neither cancels anything by itself.
+export function IdeasStrip({ ideas, picking, onTry, onDismiss }) {
   const t = useT('plan')
-  if (!ideas.length) return null
+  if (!ideas.cards.length) return null
   return (
     <Box as="section" aria-label={t('ideas.title')}>
-      <SectionLabel mb={2} px={1} aside={<Text as="span" fontSize="xs" color="text.muted" fontWeight="600">{t('ideas.count', { count: ideas.length })}</Text>}>
+      <SectionLabel mb={2} px={1} aside={<Text as="span" fontSize="xs" color="text.muted" fontWeight="600">{ideas.count}</Text>}>
         {t('ideas.title')}
       </SectionLabel>
       {/* Keyed by the ideas, so a new set starts from the first card (the
           browser would otherwise stay snapped to the card it was on). */}
-      <HStack key={ideas.map((i) => i.id).join()} spacing={3} overflowX="auto" mx={-4} px={4} pb={3} align="stretch"
+      <HStack key={ideas.cards.map((i) => i.id).join()} spacing={3} overflowX="auto" mx={-4} px={4} pb={3} align="stretch"
         sx={{ scrollSnapType: 'x mandatory', scrollPaddingInline: '16px', scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
-        {ideas.map((idea) => {
-          const text = ideaText(idea, currency, t)
-          return (
-            <Panel key={idea.id} elevation="soft" p={4} w={{ base: '272px', md: '288px' }} flexShrink={0}
-              display="flex" flexDir="column" sx={{ scrollSnapAlign: 'start' }}>
-              <HStack justify="space-between" align="start" mb={1}>
-                <SignalTag tag={{ kind: idea.kind === 'compare' ? 'priceUp' : idea.kind, pct: idea.rise?.pct }} />
-                <IconButton aria-label={t('ideas.dismiss', { title: text.title })} icon={<X size={16} />} size="sm"
-                  variant="ghost" mt={-1.5} mr={-2} onClick={() => onDismiss(idea)} />
-              </HStack>
-              <Text fontFamily="heading" fontWeight="700" fontSize="md" lineHeight="1.25">{text.title}</Text>
-              <Text fontSize="xs" color="text.muted" mt={1} flex="1">{text.body}</Text>
-              <Flex mt={3} justify="space-between" align="center" columnGap={2} rowGap={2} flexWrap="wrap">
-                {idea.kind === 'compare' ? (
-                  <Text fontSize="sm" fontWeight="700" color="status.negative" whiteSpace="nowrap">
-                    {t(`ideas.upBy.${view}`, { amount: formatMoney(inView(idea.riseYear, view), currency) })}
-                  </Text>
-                ) : (
-                  <Text fontSize="sm" fontWeight="700" color="status.positive" whiteSpace="nowrap">
-                    {t(`ideas.save.${view}`, { amount: formatMoney(inView(idea.saves, view), currency) })}
-                  </Text>
-                )}
-                <Button size="sm" flexShrink={0} ml="auto" id={openerId(idea.id)} onClick={() => onTry(idea)}
-                  {...(idea.kind === 'overlap' && {
-                    'aria-expanded': picking === idea.id, 'aria-controls': picking === idea.id ? editorId(idea.id) : undefined,
-                  })}>
-                  {t(idea.kind === 'compare' ? 'ideas.compare.try' : 'ideas.try')}
-                </Button>
-              </Flex>
-            </Panel>
-          )
-        })}
+        {ideas.cards.map((card) => (
+          <Panel key={card.id} elevation="soft" p={4} w={{ base: '272px', md: '288px' }} flexShrink={0}
+            display="flex" flexDir="column" sx={{ scrollSnapAlign: 'start' }}>
+            <HStack justify="space-between" align="start" mb={1}>
+              <SignalTag tag={card.tag} />
+              <IconButton aria-label={card.dismissLabel} icon={<X size={16} />} size="sm"
+                variant="ghost" mt={-1.5} mr={-2} onClick={() => onDismiss(card.idea)} />
+            </HStack>
+            <Text fontFamily="heading" fontWeight="700" fontSize="md" lineHeight="1.25">{card.title}</Text>
+            <Text fontSize="xs" color="text.muted" mt={1} flex="1">{card.body}</Text>
+            <Flex mt={3} justify="space-between" align="center" columnGap={2} rowGap={2} flexWrap="wrap">
+              <Text fontSize="sm" fontWeight="700" color={textColor(card.figure.tone)} whiteSpace="nowrap">
+                {card.figure.text}
+              </Text>
+              <Button size="sm" flexShrink={0} ml="auto" id={openerId(card.id)} onClick={() => onTry(card.idea)}
+                {...(card.action === 'pick' && {
+                  'aria-expanded': picking === card.id, 'aria-controls': picking === card.id ? editorId(card.id) : undefined,
+                })}>
+                {card.tryLabel}
+              </Button>
+            </Flex>
+          </Panel>
+        ))}
       </HStack>
     </Box>
   )
@@ -356,53 +296,49 @@ export function IdeasStrip({ ideas, view, currency, picking, onTry, onDismiss })
 
 // ---- Your changes -----------------------------------------------
 
-// "Your changes": each with what it does to the figure the header shows (the
-// net, or the payments), the total, then Apply (when anything can be applied:
-// the salary change is only in the plan) and Clear plan. Tap a change to edit
-// it in place (`editor(item)` while `isOpen(item)`: the same editor as its
-// row); "Undo this change" (or "Remove", for an added one) drops just it.
-export function ChangesPanel({ sum, currency, isOpen, editor, onOpen, onDrop, onApply, onClear }) {
+// "Your changes" (planPage.changesParts): each with what it does to the
+// figure the header shows (the net, or the payments), the total, then Apply
+// (when anything can be applied: the salary change is only in the plan) and
+// Clear plan. Tap a change to edit it in place (`editor(item)` while
+// `isOpen(item)`: the same editor as its row); "Undo this change" (or
+// "Remove", for an added one) drops just it.
+export function ChangesPanel({ parts, isOpen, editor, onOpen, onDrop, onApply, onClear }) {
   const t = useT('plan')
-  const h = headline(sum)
-  const canApply = applicable(sum.changes).length > 0
   return (
-    <Panel p={4} as="section" aria-label={t('changes.title', { count: sum.changes.length })}>
+    <Panel p={4} as="section" aria-label={parts.title}>
       <Box mb={1}>
-        <SectionLabel>{t('changes.title', { count: sum.changes.length })}</SectionLabel>
+        <SectionLabel>{parts.title}</SectionLabel>
       </Box>
       <Box as="ul" listStyleType="none">
-        {sum.changes.map((it) => {
-          const eff = effectOf(it)
-          const shown = asShown(eff, sum.mode)
-          const tone = signTone(effectTone(it, eff))
+        {parts.rows.map((row) => {
+          const it = row.item
           const open = isOpen(it)
-          const name = itemName(it)
-          const key = changeKey(it.id)
+          const key = changeKey(row.id)
           return (
-            <Box as="li" key={it.id} data-plan-item="" sx={SCROLL_CLEAR} py={1.5} borderBottomWidth="1px" borderColor="border.default">
+            <Box as="li" key={row.id} data-plan-item="" sx={SCROLL_CLEAR} py={1.5} borderBottomWidth="1px" borderColor="border.default">
               <HStack as="button" type="button" id={openerId(key)} onClick={() => onOpen(it)} w="full" spacing={3} py={1.5}
                 px={1} mx={-1} align="start" textAlign="left" borderRadius="lg" _hover={{ bg: 'bg.subtle' }}
-                aria-label={t('changes.edit', { name })} aria-expanded={open} aria-controls={open ? editorId(key) : undefined}>
+                aria-label={row.editLabel} aria-expanded={open} aria-controls={open ? editorId(key) : undefined}>
                 <Box pt={0.5}><CategoryBadge category={it.category} kind={badgeKind(it.kind)} size={32} /></Box>
                 <Box flex="1" minW={0}>
-                  <Text fontSize="sm" fontWeight="600" noOfLines={1}>{name}</Text>
-                  <Text fontSize="xs" color="text.muted">{changeLine(it, t)}</Text>
-                  {(it.added || it.derived) && (
-                    <Text fontSize="xs" color="text.muted" mt={1}>{t(it.derived ? 'changes.planOnly' : 'changes.notYet')}</Text>
+                  <Text fontSize="sm" fontWeight="600" noOfLines={1}>{row.name}</Text>
+                  <Text fontSize="xs" color="text.muted">{row.line}</Text>
+                  {row.note && (
+                    <Text fontSize="xs" color="text.muted" mt={1}>{row.note}</Text>
                   )}
                 </Box>
                 <Box textAlign="right" flexShrink={0}>
-                  <Text fontSize="sm" fontWeight="700" color={textColor(tone)}>{t('changes.perMonth', { amount: formatSigned(monthOf(shown), currency, { plus: true }) })}</Text>
-                  <Text fontSize="xs" color="text.muted">{t('changes.perYear', { amount: formatSigned(shown, currency, { plus: true }) })}</Text>
+                  <Text fontSize="sm" fontWeight="700" color={textColor(row.perMonth.tone)}>{row.perMonth.text}</Text>
+                  <Text fontSize="xs" color="text.muted">{row.perYear}</Text>
                 </Box>
               </HStack>
               <Flex columnGap={4} rowGap={0} pl="44px" pb={1} flexWrap="wrap" align="center">
-                <Button variant="link" size="sm" minH="44px" color="accent.fg" leftIcon={it.added ? <X size={14} /> : <RotateCcw size={14} />}
-                  aria-label={t(it.added ? 'changes.removeLabel' : 'changes.undoLabel', { name })} onClick={() => onDrop(it)}>
-                  {t(it.added ? 'changes.remove' : 'changes.undo')}
+                <Button variant="link" size="sm" minH="44px" color="accent.fg" leftIcon={row.remove ? <X size={14} /> : <RotateCcw size={14} />}
+                  aria-label={row.dropLabel} onClick={() => onDrop(it)}>
+                  {row.drop}
                 </Button>
-                {!it.added && !it.derived && (
-                  <Button as={RouterLink} to={`/recurring/${it.id}`} variant="link" size="sm" minH="44px" color="text.muted"
+                {row.rule && (
+                  <Button as={RouterLink} to={`/recurring/${row.rule}`} variant="link" size="sm" minH="44px" color="text.muted"
                     rightIcon={<ExternalLink size={12} />}>{t('changes.open')}</Button>
                 )}
               </Flex>
@@ -412,19 +348,19 @@ export function ChangesPanel({ sum, currency, isOpen, editor, onOpen, onDrop, on
         })}
       </Box>
       <HStack pt={3} justify="space-between" align="baseline">
-        <Text fontSize="sm" fontWeight="700">{t(`changes.total.${h.mode}`)}</Text>
+        <Text fontSize="sm" fontWeight="700">{parts.total.label}</Text>
         <Box textAlign="right">
-          <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={textColor(signTone(h.good))}>
-            {t('changes.perMonth', { amount: formatSigned(monthOf(h.change), currency, { plus: true }) })}
+          <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={textColor(parts.total.tone)}>
+            {parts.total.perMonth}
           </Text>
-          <Text fontSize="xs" color="text.muted" fontWeight="600">{t('changes.perYear', { amount: formatSigned(h.change, currency, { plus: true }) })}</Text>
+          <Text fontSize="xs" color="text.muted" fontWeight="600">{parts.total.perYear}</Text>
         </Box>
       </HStack>
       <Stack direction={{ base: 'column', sm: 'row' }} spacing={2} pt={4}>
-        {canApply && (
+        {parts.canApply && (
           <Button flex="1" minH="48px" h="auto" py={2} whiteSpace="normal" onClick={onApply}>{t('changes.apply')}</Button>
         )}
-        <Button flex={canApply ? { sm: '0 0 auto' } : '1'} minH="48px" variant="outline" leftIcon={<RotateCcw size={16} />} onClick={onClear}>
+        <Button flex={parts.canApply ? { sm: '0 0 auto' } : '1'} minH="48px" variant="outline" leftIcon={<RotateCcw size={16} />} onClick={onClear}>
           {t('changes.clear')}
         </Button>
       </Stack>

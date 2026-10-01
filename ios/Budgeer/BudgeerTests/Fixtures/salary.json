@@ -1,0 +1,3295 @@
+{
+  "input": {
+    "now": "2020-09-15T10:00:00.000Z",
+    "profile": {
+      "base_currency": "EUR",
+      "yearly_separate": false,
+      "salary_shift_from_day": null,
+      "salary_category_id": "11111111-1111-4111-8111-111111111111"
+    },
+    "categories": [
+      {
+        "id": "11111111-1111-4111-8111-111111111111",
+        "name": "Salary",
+        "kind": "income",
+        "icon": null,
+        "color": null,
+        "default_key": "salary"
+      },
+      {
+        "id": "77777777-7777-4777-8777-777777777777",
+        "name": "Bonus",
+        "kind": "income",
+        "icon": null,
+        "color": null,
+        "default_key": "bonus"
+      },
+      {
+        "id": "88888888-8888-4888-8888-888888888888",
+        "name": "Side job",
+        "kind": "income",
+        "icon": null,
+        "color": null
+      },
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "name": "Savings",
+        "kind": "income",
+        "icon": null,
+        "color": null,
+        "default_key": "savings",
+        "is_savings": true
+      }
+    ],
+    "income": [
+      {
+        "id": "00000000-0000-4000-8000-000000000100",
+        "spent_at": "2018-10-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000101",
+        "spent_at": "2018-11-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000102",
+        "spent_at": "2018-12-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000103",
+        "spent_at": "2019-01-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000104",
+        "spent_at": "2019-02-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000105",
+        "spent_at": "2019-03-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000106",
+        "spent_at": "2019-04-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000107",
+        "spent_at": "2019-05-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000108",
+        "spent_at": "2019-06-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000109",
+        "spent_at": "2019-07-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000110",
+        "spent_at": "2019-08-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000111",
+        "spent_at": "2019-09-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000112",
+        "spent_at": "2019-10-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000113",
+        "spent_at": "2019-11-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000114",
+        "spent_at": "2019-12-20",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000115",
+        "spent_at": "2020-01-20",
+        "kind": "income",
+        "amount_minor": 260000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000116",
+        "spent_at": "2020-02-20",
+        "kind": "income",
+        "amount_minor": 260000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000117",
+        "spent_at": "2020-03-20",
+        "kind": "income",
+        "amount_minor": 260000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000118",
+        "spent_at": "2020-04-20",
+        "kind": "income",
+        "amount_minor": 260000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000119",
+        "spent_at": "2020-05-20",
+        "kind": "income",
+        "amount_minor": 260000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000120",
+        "spent_at": "2020-06-20",
+        "kind": "income",
+        "amount_minor": 260000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000121",
+        "spent_at": "2020-07-20",
+        "kind": "income",
+        "amount_minor": 260000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000122",
+        "spent_at": "2020-08-20",
+        "kind": "income",
+        "amount_minor": 260000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000123",
+        "spent_at": "2020-09-20",
+        "kind": "income",
+        "amount_minor": 260000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Salary",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000124",
+        "spent_at": "2019-06-10",
+        "kind": "income",
+        "amount_minor": 180000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": "Holiday pay",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000125",
+        "spent_at": "2019-12-15",
+        "kind": "income",
+        "amount_minor": 50000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "77777777-7777-4777-8777-777777777777",
+        "categories": {
+          "id": "77777777-7777-4777-8777-777777777777",
+          "name": "Bonus",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "bonus"
+        },
+        "description": "Year-end bonus",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      }
+    ],
+    "notes": null,
+    "vouchers": null
+  },
+  "expected": {
+    "en": {
+      "page": {
+        "salaryId": "11111111-1111-4111-8111-111111111111",
+        "bonusId": "77777777-7777-4777-8777-777777777777",
+        "country": "BE",
+        "nowKey": "2020-09",
+        "bonus": [
+          {
+            "id": "77777777-7777-4777-8777-777777777777",
+            "label": "Bonus"
+          },
+          {
+            "id": "88888888-8888-4888-8888-888888888888",
+            "label": "Side job"
+          },
+          {
+            "id": "22222222-2222-4222-8222-222222222222",
+            "label": "Savings"
+          }
+        ],
+        "card": {
+          "level": "€2,600.00",
+          "raise": "+4.0% in Jan 2020",
+          "steps": [
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            260000,
+            260000,
+            260000,
+            260000,
+            260000,
+            260000,
+            260000,
+            260000,
+            260000
+          ]
+        },
+        "page": {
+          "headline": {
+            "level": "€2,600.00",
+            "raise": "+4.0% in Jan 2020"
+          },
+          "chart": {
+            "rows": [
+              {
+                "key": "2018-10",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2018-11",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2018-12",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-01",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-02",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-03",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-04",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-05",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-06",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 1800,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-07",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-08",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-09",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-10",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-11",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-12",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 500
+              },
+              {
+                "key": "2020-01",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-02",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-03",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-04",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-05",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-06",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-07",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-08",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-09",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              }
+            ],
+            "ticks": [
+              {
+                "key": "2018-10",
+                "label": "2018"
+              },
+              {
+                "key": "2019-01",
+                "label": "2019"
+              },
+              {
+                "key": "2020-01",
+                "label": "2020"
+              }
+            ],
+            "axis": {
+              "domain": [
+                2400,
+                2700
+              ],
+              "ticks": [
+                2400,
+                2500,
+                2600,
+                2700
+              ],
+              "labels": [
+                "2.4k",
+                "2.5k",
+                "2.6k",
+                "2.7k"
+              ]
+            },
+            "hasExtras": true,
+            "hasOff": false,
+            "aria": "Your pay each month from Oct 2018 to Sep 2020, a dot a month, with your regular pay as a line (each raise a step up) and the extras under it."
+          },
+          "raises": {
+            "since": "8 months",
+            "average": {
+              "text": "+2.1%",
+              "tone": "positive",
+              "note": null
+            },
+            "rows": [
+              {
+                "key": "2020-01",
+                "up": true,
+                "title": "Raise",
+                "meta": "Jan 2020 · €2,500.00 → €2,600.00",
+                "amount": "+4.0%"
+              }
+            ],
+            "all": null
+          },
+          "years": [
+            {
+              "year": 2020,
+              "title": "2020 so far",
+              "meta": "Regular €23,400 · extras €0",
+              "amount": "€23,400"
+            },
+            {
+              "year": 2019,
+              "title": "2019",
+              "meta": "Regular €30,000 · extras €2,300",
+              "amount": "€32,300"
+            },
+            {
+              "year": 2018,
+              "title": "2018",
+              "meta": "Regular €7,500 · extras €0",
+              "amount": "€7,500"
+            }
+          ],
+          "extras": [
+            {
+              "year": 2019,
+              "total": "€2,300.00",
+              "rows": [
+                {
+                  "id": "00000000-0000-4000-8000-000000000125",
+                  "key": "00000000-0000-4000-8000-000000000125:bonus",
+                  "kind": "bonus",
+                  "title": "Bonus",
+                  "meta": "15 Dec 2019 · Year-end bonus",
+                  "guess": false,
+                  "fixed": false,
+                  "amount": "€500.00",
+                  "regular": false,
+                  "fixLabel": "Fix Bonus of 15 Dec 2019"
+                },
+                {
+                  "id": "00000000-0000-4000-8000-000000000124",
+                  "key": "00000000-0000-4000-8000-000000000124:holiday",
+                  "kind": "holiday",
+                  "title": "Holiday pay",
+                  "meta": "10 Jun 2019 · Holiday pay",
+                  "guess": true,
+                  "fixed": false,
+                  "amount": "€1,800.00",
+                  "regular": false,
+                  "fixLabel": "Fix Holiday pay of 10 Jun 2019"
+                }
+              ]
+            }
+          ],
+          "projection": {
+            "horizons": [
+              {
+                "value": 1,
+                "label": "1 year"
+              },
+              {
+                "value": 3,
+                "label": "3 years"
+              },
+              {
+                "value": 5,
+                "label": "5 years"
+              },
+              {
+                "value": 10,
+                "label": "10 years"
+              }
+            ],
+            "ways": [
+              {
+                "id": "trend",
+                "title": "My trend · +2.1%",
+                "meta": "€2,880 a month by Sep 2025",
+                "total": "€175,062",
+                "series": [
+                  {
+                    "key": "2020-09",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-10",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-11",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-12",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2021-01",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-02",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-03",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-04",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-05",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-06",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-07",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-08",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-09",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-10",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-11",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-12",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2022-01",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-02",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-03",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-04",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-05",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-06",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-07",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-08",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-09",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-10",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-11",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-12",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2023-01",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-02",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-03",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-04",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-05",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-06",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-07",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-08",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-09",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-10",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-11",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-12",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2024-01",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-02",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-03",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-04",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-05",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-06",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-07",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-08",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-09",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-10",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-11",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-12",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2025-01",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-02",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-03",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-04",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-05",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-06",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-07",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-08",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-09",
+                    "value": 2880.1
+                  }
+                ]
+              },
+              {
+                "id": "index",
+                "title": "Indexation only · ≈ +1.0% net",
+                "meta": "+1.9% gross · €2,728 a month by Sep 2025",
+                "total": "€169,833",
+                "series": [
+                  {
+                    "key": "2020-09",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-10",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-11",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-12",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2021-01",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-02",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-03",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-04",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-05",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-06",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-07",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-08",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-09",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-10",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-11",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2021-12",
+                    "value": 2625.13
+                  },
+                  {
+                    "key": "2022-01",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-02",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-03",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-04",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-05",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-06",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-07",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-08",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-09",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-10",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-11",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2022-12",
+                    "value": 2650.51
+                  },
+                  {
+                    "key": "2023-01",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-02",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-03",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-04",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-05",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-06",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-07",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-08",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-09",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-10",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-11",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2023-12",
+                    "value": 2676.13
+                  },
+                  {
+                    "key": "2024-01",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-02",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-03",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-04",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-05",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-06",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-07",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-08",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-09",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-10",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-11",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2024-12",
+                    "value": 2702
+                  },
+                  {
+                    "key": "2025-01",
+                    "value": 2728.12
+                  },
+                  {
+                    "key": "2025-02",
+                    "value": 2728.12
+                  },
+                  {
+                    "key": "2025-03",
+                    "value": 2728.12
+                  },
+                  {
+                    "key": "2025-04",
+                    "value": 2728.12
+                  },
+                  {
+                    "key": "2025-05",
+                    "value": 2728.12
+                  },
+                  {
+                    "key": "2025-06",
+                    "value": 2728.12
+                  },
+                  {
+                    "key": "2025-07",
+                    "value": 2728.12
+                  },
+                  {
+                    "key": "2025-08",
+                    "value": 2728.12
+                  },
+                  {
+                    "key": "2025-09",
+                    "value": 2728.12
+                  }
+                ]
+              },
+              {
+                "id": "whatIf",
+                "title": "What if · ≈ +1.0% net",
+                "meta": "+2.0% gross · €2,733 a month by Sep 2025",
+                "total": "€169,990",
+                "series": [
+                  {
+                    "key": "2020-09",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-10",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-11",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-12",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2021-01",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-02",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-03",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-04",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-05",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-06",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-07",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-08",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-09",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-10",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-11",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2021-12",
+                    "value": 2626
+                  },
+                  {
+                    "key": "2022-01",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-02",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-03",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-04",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-05",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-06",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-07",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-08",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-09",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-10",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-11",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2022-12",
+                    "value": 2652.26
+                  },
+                  {
+                    "key": "2023-01",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-02",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-03",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-04",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-05",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-06",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-07",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-08",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-09",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-10",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-11",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2023-12",
+                    "value": 2678.78
+                  },
+                  {
+                    "key": "2024-01",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-02",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-03",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-04",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-05",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-06",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-07",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-08",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-09",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-10",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-11",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2024-12",
+                    "value": 2705.57
+                  },
+                  {
+                    "key": "2025-01",
+                    "value": 2732.63
+                  },
+                  {
+                    "key": "2025-02",
+                    "value": 2732.63
+                  },
+                  {
+                    "key": "2025-03",
+                    "value": 2732.63
+                  },
+                  {
+                    "key": "2025-04",
+                    "value": 2732.63
+                  },
+                  {
+                    "key": "2025-05",
+                    "value": 2732.63
+                  },
+                  {
+                    "key": "2025-06",
+                    "value": 2732.63
+                  },
+                  {
+                    "key": "2025-07",
+                    "value": 2732.63
+                  },
+                  {
+                    "key": "2025-08",
+                    "value": 2732.63
+                  },
+                  {
+                    "key": "2025-09",
+                    "value": 2732.63
+                  }
+                ]
+              }
+            ],
+            "ticks": [
+              {
+                "key": "2021-01",
+                "label": "2021"
+              },
+              {
+                "key": "2022-01",
+                "label": "2022"
+              },
+              {
+                "key": "2023-01",
+                "label": "2023"
+              },
+              {
+                "key": "2024-01",
+                "label": "2024"
+              },
+              {
+                "key": "2025-01",
+                "label": "2025"
+              }
+            ],
+            "axis": {
+              "domain": [
+                2500,
+                3000
+              ],
+              "ticks": [
+                2500,
+                2600,
+                2700,
+                2800,
+                2900,
+                3000
+              ],
+              "labels": [
+                "2.5k",
+                "2.6k",
+                "2.7k",
+                "2.8k",
+                "2.9k",
+                "3k"
+              ]
+            },
+            "slider": {
+              "min": 0,
+              "max": 10,
+              "step": 0.5,
+              "start": 2,
+              "value": "2.0%"
+            },
+            "total": "Earned in 5 years",
+            "trendLater": null
+          },
+          "inflation": {
+            "countries": [
+              {
+                "value": "BE",
+                "label": "Belgium"
+              },
+              {
+                "value": "GR",
+                "label": "Greece"
+              }
+            ],
+            "choices": [
+              {
+                "value": 2018,
+                "label": "2018"
+              },
+              {
+                "value": 2019,
+                "label": "2019"
+              }
+            ],
+            "from": 2018,
+            "empty": null,
+            "headline": "Since Oct 2018: your pay +4.0%, prices +2.1%.",
+            "tiles": [
+              {
+                "key": "pay",
+                "label": "Your pay",
+                "text": "+4.0%",
+                "tone": "default"
+              },
+              {
+                "key": "prices",
+                "label": "Prices",
+                "text": "+2.1%",
+                "tone": "default"
+              },
+              {
+                "key": "real",
+                "label": "Real change",
+                "text": "+1.8%",
+                "tone": "positive"
+              }
+            ],
+            "gap": "That’s <b>€46 a month</b> more than keeping up.",
+            "info": "Your regular pay in Oct 2018 against now. Prices: yearly inflation in Belgium (Eurostat, the HICP), this year’s latest 12-month rate for the months so far."
+          },
+          "paidMonths": 24
+        }
+      },
+      "empty": {
+        "salaryId": "11111111-1111-4111-8111-111111111111",
+        "bonusId": "77777777-7777-4777-8777-777777777777",
+        "country": "GR",
+        "nowKey": "2020-09",
+        "bonus": [
+          {
+            "id": "77777777-7777-4777-8777-777777777777",
+            "label": "Bonus"
+          },
+          {
+            "id": "88888888-8888-4888-8888-888888888888",
+            "label": "Side job"
+          },
+          {
+            "id": "22222222-2222-4222-8222-222222222222",
+            "label": "Savings"
+          }
+        ],
+        "card": null,
+        "page": null
+      }
+    },
+    "el": {
+      "page": {
+        "salaryId": "11111111-1111-4111-8111-111111111111",
+        "bonusId": "77777777-7777-4777-8777-777777777777",
+        "country": "GR",
+        "nowKey": "2020-09",
+        "bonus": [
+          {
+            "id": "77777777-7777-4777-8777-777777777777",
+            "label": "Μπόνους"
+          },
+          {
+            "id": "88888888-8888-4888-8888-888888888888",
+            "label": "Side job"
+          },
+          {
+            "id": "22222222-2222-4222-8222-222222222222",
+            "label": "Αποταμιεύσεις"
+          }
+        ],
+        "card": {
+          "level": "2.600,00 €",
+          "raise": "+4,0% τον Ιαν 2020",
+          "steps": [
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            250000,
+            260000,
+            260000,
+            260000,
+            260000,
+            260000,
+            260000,
+            260000,
+            260000,
+            260000
+          ]
+        },
+        "page": {
+          "headline": {
+            "level": "2.600,00 €",
+            "raise": "+4,0% τον Ιαν 2020"
+          },
+          "chart": {
+            "rows": [
+              {
+                "key": "2018-10",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2018-11",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2018-12",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-01",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-02",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-03",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-04",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-05",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-06",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 1800,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-07",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-08",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-09",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-10",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-11",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2019-12",
+                "off": false,
+                "level": 2500,
+                "pay": 2500,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 500
+              },
+              {
+                "key": "2020-01",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-02",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-03",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-04",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-05",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-06",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-07",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-08",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              },
+              {
+                "key": "2020-09",
+                "off": false,
+                "level": 2600,
+                "pay": 2600,
+                "holiday": 0,
+                "thirteenth": 0,
+                "bonus": 0
+              }
+            ],
+            "ticks": [
+              {
+                "key": "2018-10",
+                "label": "2018"
+              },
+              {
+                "key": "2019-01",
+                "label": "2019"
+              },
+              {
+                "key": "2020-01",
+                "label": "2020"
+              }
+            ],
+            "axis": {
+              "domain": [
+                2400,
+                2700
+              ],
+              "ticks": [
+                2400,
+                2500,
+                2600,
+                2700
+              ],
+              "labels": [
+                "2,4 χιλ.",
+                "2,5 χιλ.",
+                "2,6 χιλ.",
+                "2,7 χιλ."
+              ]
+            },
+            "hasExtras": true,
+            "hasOff": false,
+            "aria": "Ο μισθός σου κάθε μήνα από Οκτ 2018 έως Σεπ 2020, μία κουκκίδα τον μήνα, με τον τακτικό μισθό ως γραμμή (κάθε αύξηση ένα σκαλί) και τα έκτακτα από κάτω."
+          },
+          "raises": {
+            "since": "8 μήνες",
+            "average": {
+              "text": "+2,1%",
+              "tone": "positive",
+              "note": null
+            },
+            "rows": [
+              {
+                "key": "2020-01",
+                "up": true,
+                "title": "Αύξηση",
+                "meta": "Ιαν 2020 · 2.500,00 € → 2.600,00 €",
+                "amount": "+4,0%"
+              }
+            ],
+            "all": null
+          },
+          "years": [
+            {
+              "year": 2020,
+              "title": "2020 ως τώρα",
+              "meta": "Τακτικός 23.400 € · έκτακτα 0 €",
+              "amount": "23.400 €"
+            },
+            {
+              "year": 2019,
+              "title": "2019",
+              "meta": "Τακτικός 30.000 € · έκτακτα 2.300 €",
+              "amount": "32.300 €"
+            },
+            {
+              "year": 2018,
+              "title": "2018",
+              "meta": "Τακτικός 7.500 € · έκτακτα 0 €",
+              "amount": "7.500 €"
+            }
+          ],
+          "extras": [
+            {
+              "year": 2019,
+              "total": "2.300,00 €",
+              "rows": [
+                {
+                  "id": "00000000-0000-4000-8000-000000000125",
+                  "key": "00000000-0000-4000-8000-000000000125:bonus",
+                  "kind": "bonus",
+                  "title": "Μπόνους",
+                  "meta": "15 Δεκ 2019 · Year-end bonus",
+                  "guess": false,
+                  "fixed": false,
+                  "amount": "500,00 €",
+                  "regular": false,
+                  "fixLabel": "Άλλαξε: Μπόνους, 15 Δεκ 2019"
+                },
+                {
+                  "id": "00000000-0000-4000-8000-000000000124",
+                  "key": "00000000-0000-4000-8000-000000000124:holiday",
+                  "kind": "holiday",
+                  "title": "Επίδομα αδείας",
+                  "meta": "10 Ιουν 2019 · Holiday pay",
+                  "guess": true,
+                  "fixed": false,
+                  "amount": "1.800,00 €",
+                  "regular": false,
+                  "fixLabel": "Άλλαξε: Επίδομα αδείας, 10 Ιουν 2019"
+                }
+              ]
+            }
+          ],
+          "projection": {
+            "horizons": [
+              {
+                "value": 1,
+                "label": "1 χρόνος"
+              },
+              {
+                "value": 3,
+                "label": "3 χρόνια"
+              },
+              {
+                "value": 5,
+                "label": "5 χρόνια"
+              },
+              {
+                "value": 10,
+                "label": "10 χρόνια"
+              }
+            ],
+            "ways": [
+              {
+                "id": "trend",
+                "title": "Η τάση μου · +2,1%",
+                "meta": "2.880 € τον μήνα ως Σεπ 2025",
+                "total": "175.062 €",
+                "series": [
+                  {
+                    "key": "2020-09",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-10",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-11",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-12",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2021-01",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-02",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-03",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-04",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-05",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-06",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-07",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-08",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-09",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-10",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-11",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2021-12",
+                    "value": 2653.75
+                  },
+                  {
+                    "key": "2022-01",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-02",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-03",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-04",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-05",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-06",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-07",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-08",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-09",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-10",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-11",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2022-12",
+                    "value": 2708.61
+                  },
+                  {
+                    "key": "2023-01",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-02",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-03",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-04",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-05",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-06",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-07",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-08",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-09",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-10",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-11",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2023-12",
+                    "value": 2764.61
+                  },
+                  {
+                    "key": "2024-01",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-02",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-03",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-04",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-05",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-06",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-07",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-08",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-09",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-10",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-11",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2024-12",
+                    "value": 2821.76
+                  },
+                  {
+                    "key": "2025-01",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-02",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-03",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-04",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-05",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-06",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-07",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-08",
+                    "value": 2880.1
+                  },
+                  {
+                    "key": "2025-09",
+                    "value": 2880.1
+                  }
+                ]
+              },
+              {
+                "id": "index",
+                "title": "Μόνο τιμαριθμική · ≈ +0,4% καθαρά",
+                "meta": "+0,8% μικτά · 2.658 € τον μήνα ως Σεπ 2025",
+                "total": "167.382 €",
+                "series": [
+                  {
+                    "key": "2020-09",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-10",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-11",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-12",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2021-01",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-02",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-03",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-04",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-05",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-06",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-07",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-08",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-09",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-10",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-11",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2021-12",
+                    "value": 2611.44
+                  },
+                  {
+                    "key": "2022-01",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-02",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-03",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-04",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-05",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-06",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-07",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-08",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-09",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-10",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-11",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2022-12",
+                    "value": 2622.93
+                  },
+                  {
+                    "key": "2023-01",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-02",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-03",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-04",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-05",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-06",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-07",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-08",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-09",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-10",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-11",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2023-12",
+                    "value": 2634.47
+                  },
+                  {
+                    "key": "2024-01",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-02",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-03",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-04",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-05",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-06",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-07",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-08",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-09",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-10",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-11",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2024-12",
+                    "value": 2646.06
+                  },
+                  {
+                    "key": "2025-01",
+                    "value": 2657.7
+                  },
+                  {
+                    "key": "2025-02",
+                    "value": 2657.7
+                  },
+                  {
+                    "key": "2025-03",
+                    "value": 2657.7
+                  },
+                  {
+                    "key": "2025-04",
+                    "value": 2657.7
+                  },
+                  {
+                    "key": "2025-05",
+                    "value": 2657.7
+                  },
+                  {
+                    "key": "2025-06",
+                    "value": 2657.7
+                  },
+                  {
+                    "key": "2025-07",
+                    "value": 2657.7
+                  },
+                  {
+                    "key": "2025-08",
+                    "value": 2657.7
+                  },
+                  {
+                    "key": "2025-09",
+                    "value": 2657.7
+                  }
+                ]
+              },
+              {
+                "id": "whatIf",
+                "title": "Κι αν · ≈ +1,1% καθαρά",
+                "meta": "+2,0% μικτά · 2.746 € τον μήνα ως Σεπ 2025",
+                "total": "170.459 €",
+                "series": [
+                  {
+                    "key": "2020-09",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-10",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-11",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2020-12",
+                    "value": 2600
+                  },
+                  {
+                    "key": "2021-01",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-02",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-03",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-04",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-05",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-06",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-07",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-08",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-09",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-10",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-11",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2021-12",
+                    "value": 2628.6
+                  },
+                  {
+                    "key": "2022-01",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-02",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-03",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-04",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-05",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-06",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-07",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-08",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-09",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-10",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-11",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2022-12",
+                    "value": 2657.51
+                  },
+                  {
+                    "key": "2023-01",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-02",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-03",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-04",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-05",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-06",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-07",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-08",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-09",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-10",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-11",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2023-12",
+                    "value": 2686.74
+                  },
+                  {
+                    "key": "2024-01",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-02",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-03",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-04",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-05",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-06",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-07",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-08",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-09",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-10",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-11",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2024-12",
+                    "value": 2716.29
+                  },
+                  {
+                    "key": "2025-01",
+                    "value": 2746.17
+                  },
+                  {
+                    "key": "2025-02",
+                    "value": 2746.17
+                  },
+                  {
+                    "key": "2025-03",
+                    "value": 2746.17
+                  },
+                  {
+                    "key": "2025-04",
+                    "value": 2746.17
+                  },
+                  {
+                    "key": "2025-05",
+                    "value": 2746.17
+                  },
+                  {
+                    "key": "2025-06",
+                    "value": 2746.17
+                  },
+                  {
+                    "key": "2025-07",
+                    "value": 2746.17
+                  },
+                  {
+                    "key": "2025-08",
+                    "value": 2746.17
+                  },
+                  {
+                    "key": "2025-09",
+                    "value": 2746.17
+                  }
+                ]
+              }
+            ],
+            "ticks": [
+              {
+                "key": "2021-01",
+                "label": "2021"
+              },
+              {
+                "key": "2022-01",
+                "label": "2022"
+              },
+              {
+                "key": "2023-01",
+                "label": "2023"
+              },
+              {
+                "key": "2024-01",
+                "label": "2024"
+              },
+              {
+                "key": "2025-01",
+                "label": "2025"
+              }
+            ],
+            "axis": {
+              "domain": [
+                2500,
+                3000
+              ],
+              "ticks": [
+                2500,
+                2600,
+                2700,
+                2800,
+                2900,
+                3000
+              ],
+              "labels": [
+                "2,5 χιλ.",
+                "2,6 χιλ.",
+                "2,7 χιλ.",
+                "2,8 χιλ.",
+                "2,9 χιλ.",
+                "3 χιλ."
+              ]
+            },
+            "slider": {
+              "min": 0,
+              "max": 10,
+              "step": 0.5,
+              "start": 2,
+              "value": "2,0%"
+            },
+            "total": "Συνολικά σε 5 χρόνια",
+            "trendLater": null
+          },
+          "inflation": {
+            "countries": [
+              {
+                "value": "BE",
+                "label": "Βέλγιο"
+              },
+              {
+                "value": "GR",
+                "label": "Ελλάδα"
+              }
+            ],
+            "choices": [
+              {
+                "value": 2018,
+                "label": "2018"
+              },
+              {
+                "value": 2019,
+                "label": "2019"
+              }
+            ],
+            "from": 2018,
+            "empty": null,
+            "headline": "Από Οκτ 2018: ο μισθός σου +4,0%, οι τιμές −0,2%.",
+            "tiles": [
+              {
+                "key": "pay",
+                "label": "Ο μισθός σου",
+                "text": "+4,0%",
+                "tone": "default"
+              },
+              {
+                "key": "prices",
+                "label": "Τιμές",
+                "text": "−0,2%",
+                "tone": "default"
+              },
+              {
+                "key": "real",
+                "label": "Πραγματική αλλαγή",
+                "text": "+4,2%",
+                "tone": "positive"
+              }
+            ],
+            "gap": "Δηλαδή <b>104 € τον μήνα</b> πάνω από τις τιμές.",
+            "info": "Ο τακτικός μισθός σου τον Οκτ 2018 σε σχέση με τώρα. Τιμές: ο ετήσιος πληθωρισμός σε Ελλάδα (Eurostat, ΕνΔΤΚ), για φέτος ο πιο πρόσφατος 12μηνος ρυθμός για τους μήνες ως τώρα."
+          },
+          "paidMonths": 24
+        }
+      },
+      "empty": {
+        "salaryId": "11111111-1111-4111-8111-111111111111",
+        "bonusId": "77777777-7777-4777-8777-777777777777",
+        "country": "GR",
+        "nowKey": "2020-09",
+        "bonus": [
+          {
+            "id": "77777777-7777-4777-8777-777777777777",
+            "label": "Μπόνους"
+          },
+          {
+            "id": "88888888-8888-4888-8888-888888888888",
+            "label": "Side job"
+          },
+          {
+            "id": "22222222-2222-4222-8222-222222222222",
+            "label": "Αποταμιεύσεις"
+          }
+        ],
+        "card": null,
+        "page": null
+      }
+    }
+  }
+}

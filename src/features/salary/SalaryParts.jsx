@@ -11,27 +11,16 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import { BalanceGrid, BalanceTile } from '../../shared/ui/kit/Balances.jsx'
 import { useChartTheme } from '../../shared/ui/useChartTheme.jsx'
-import { formatMoney, formatRoundedMoney, minorFactor } from '../../shared/lib/currency.js'
-import { shortMonth } from '../../shared/lib/dates.js'
-import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { minorFactor } from '../../shared/lib/currency.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { axisTick } from '../../shared/ui/chartAxis.js'
-import { EXTRA_KINDS, monthNum, offMonths, payChartAxis, payChartRows, raiseKind, yearOf } from './salaryMath.js'
+import { EXTRA_KINDS, yearOf } from './salaryMath.js'
+import {
+  RAISE_ROWS, money, monthLabel, payChartParts, payHeadline, raisesParts, yearsParts,
+} from './salaryText.js'
 
-// ── Formatting ──────────────────────────────────────────────────────────────
-// A rate as "+3.2%" (signed: a true minus for a fall) or "3.2%".
-export function pctText(x, signed = true) {
-  const s = new Intl.NumberFormat(intlLocale('en-GB'), {
-    style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1,
-  }).format(Math.abs(x))
-  if (!signed) return s
-  return `${x < 0 ? '−' : '+'}${s}`
-}
-export const monthLabel = (key) => `${shortMonth(monthNum(key) - 1)} ${yearOf(key)}`
-export const money = (minor, currency) => formatMoney(minor, currency)
-export const rounded = (minor, currency) => formatRoundedMoney(minor, currency)
-
-// The chip under the pay: "+3.2% in Jan 2026", or "No raise yet".
+// The chip under the pay: "+3.2% in Jan 2026" (salaryText.payHeadline's
+// `raise`), or "No raise yet".
 export function RaiseChip({ raise, small }) {
   const t = useT('salary')
   if (!raise) return <Text fontSize={small ? 'xs' : 'sm'} color="text.muted">{t('noRaise')}</Text>
@@ -39,7 +28,7 @@ export function RaiseChip({ raise, small }) {
     <HStack spacing={1} px={2} py={0.5} borderRadius="full" bg="status.positiveSubtle" color="status.positive"
       fontSize={small ? 'xs' : 'sm'} fontWeight="700" w="fit-content">
       <ArrowUpRight size={15} aria-hidden />
-      <Text>{t('lastRaise', { pct: pctText(raise.pct), month: monthLabel(raise.key) })}</Text>
+      <Text>{raise}</Text>
     </HStack>
   )
 }
@@ -47,15 +36,16 @@ export function RaiseChip({ raise, small }) {
 // The regular pay a month, big, with the last raise under it.
 export function PayHeadline({ report, currency, size = 'hero' }) {
   const t = useT('salary')
+  const head = payHeadline(report, currency)
   return (
     <Box minW={0}>
       <Text fontSize="xs" color="text.muted">{t('regular')}</Text>
       <HStack align="baseline" spacing={1.5} flexWrap="wrap">
         <Text fontFamily="heading" fontWeight="700" lineHeight="1.15" whiteSpace="nowrap"
-          fontSize={size === 'hero' ? { base: '3xl', lg: '4xl' } : '2xl'}>{money(report.level, currency)}</Text>
+          fontSize={size === 'hero' ? { base: '3xl', lg: '4xl' } : '2xl'}>{head.level}</Text>
         <Text fontSize="sm" color="text.muted">{t('perMonth')}</Text>
       </HStack>
-      <Box mt={2}><RaiseChip raise={report.lastRaise} small={size !== 'hero'} /></Box>
+      <Box mt={2}><RaiseChip raise={head.raise} small={size !== 'hero'} /></Box>
     </Box>
   )
 }
@@ -82,37 +72,19 @@ function PayDot({ cx, cy, payload, r, color, surface }) {
     : <circle cx={cx} cy={cy} r={r} fill={color} />
 }
 
-// The chart's text alternative: the span, and the months off the regular pay.
-function chartAria(t, rows, currency) {
-  const base = t('chart.aria', { from: monthLabel(rows[0].key), to: monthLabel(rows[rows.length - 1].key) })
-  const { months, more } = offMonths(rows)
-  if (!months.length) return base
-  const list = months.map((m) => t('chart.offItem', { month: monthLabel(m.key), pay: money(m.pay, currency), level: money(m.level, currency) })).join('; ')
-  return [base, t('chart.offAria', { list }), more ? t('chart.offMore', { count: more }) : ''].filter(Boolean).join(' ')
-}
-
 export function PayChart({ report, currency, h = 170, extrasH = 64 }) {
   const t = useT('salary')
   const chart = useChartTheme()
   const f = minorFactor(currency)
-  const rows = useMemo(() => payChartRows(report), [report])
-  const data = useMemo(() => rows.map((r) => ({
-    key: r.key, off: r.off, level: r.level / f, pay: r.pay == null ? null : r.pay / f,
-    holiday: r.holiday / f, thirteenth: r.thirteenth / f, bonus: r.bonus / f,
-  })), [rows, f])
-  const hasExtras = data.some((d) => d.holiday || d.thirteenth || d.bonus)
-  const hasOff = data.some((d) => d.off)
-  // One tick a year (January, or the first month); every other year past eight.
-  const januaries = data.filter((d, i) => i === 0 || monthNum(d.key) === 1).map((d) => d.key)
-  const every = Math.ceil(januaries.length / 8)
-  const ticks = januaries.filter((_, i) => i % every === 0)
+  const parts = useMemo(() => payChartParts(report, currency), [report, currency])
+  const { rows: data, hasExtras, hasOff, axis: yAxis } = parts
+  const ticks = parts.ticks.map((tick) => tick.key)
   const fmt = (v) => money(Math.round(v * f), currency)
-  const yAxis = useMemo(() => payChartAxis(rows, f), [rows, f])
   const axis = { tickLine: false, axisLine: false, fontSize: 11, tick: chart.tick }
   const color = chart.series[0]
   const r = dotRadius(data.length)
   return (
-    <Box role="img" aria-label={chartAria(t, rows, currency)}>
+    <Box role="img" aria-label={parts.aria}>
       <Box h={`${h}px`} mx={-1} aria-hidden>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={hasExtras ? MARGIN_NO_X : MARGIN}>
@@ -201,42 +173,35 @@ export function PayCard({ report, currency, sideways }) {
 }
 
 // ── Raises ──────────────────────────────────────────────────────────────────
-const RAISE_ROWS = 5
-
-function RaiseRow({ raise, currency, country }) {
-  const t = useT('salary')
-  const up = raise.pct > 0
+function RaiseRow({ row }) {
   return (
-    <ItemRow icon={up ? TrendingUp : TrendingDown} title={t(`raises.${raiseKind(raise, country)}`)} py={1.5}
-      meta={t('raises.fromTo', { month: monthLabel(raise.key), from: money(raise.from, currency), to: money(raise.to, currency) })}
-      amount={pctText(raise.pct)} amountTone={up ? 'positive' : 'negative'} />
+    <ItemRow icon={row.up ? TrendingUp : TrendingDown} title={row.title} py={1.5}
+      meta={row.meta} amount={row.amount} amountTone={row.up ? 'positive' : 'negative'} />
   )
 }
 
 export function RaisesCard({ report, currency, country }) {
   const t = useT('salary')
   const [all, setAll] = useState(false)
-  const list = [...report.raises].reverse()
-  const shown = all ? list : list.slice(0, RAISE_ROWS)
+  const parts = raisesParts(report, currency, country)
+  const shown = all ? parts.rows : parts.rows.slice(0, RAISE_ROWS)
   return (
     <Panel title={t('raises.title')} icon={TrendingUp}>
       <BalanceGrid>
-        <BalanceTile label={t('raises.sinceLabel')}
-          value={report.since == null ? '—' : t('raises.since', { count: report.since })} />
-        <BalanceTile label={t('raises.average')} value={report.average == null ? '—' : pctText(report.average)}
-          tone={report.average == null ? 'muted' : report.average >= 0 ? 'positive' : 'negative'}
-          note={report.average == null ? t('raises.averageLater') : undefined} />
+        <BalanceTile label={t('raises.sinceLabel')} value={parts.since} />
+        <BalanceTile label={t('raises.average')} value={parts.average.text} tone={parts.average.tone}
+          note={parts.average.note ?? undefined} />
       </BalanceGrid>
-      {list.length === 0 ? (
+      {parts.rows.length === 0 ? (
         <Text mt={3} fontSize="sm" color="text.muted">{t('raises.none')}</Text>
       ) : (
         <Stack spacing={0} mt={3}>
-          {shown.map((r) => <RaiseRow key={r.key} raise={r} currency={currency} country={country} />)}
+          {shown.map((r) => <RaiseRow key={r.key} row={r} />)}
         </Stack>
       )}
-      {list.length > RAISE_ROWS && (
+      {parts.all && (
         <Button mt={2} size="sm" variant="ghost" w="full" onClick={() => setAll((v) => !v)}>
-          {all ? t('raises.fewer') : t('raises.all', { count: list.length })}
+          {all ? t('raises.fewer') : parts.all}
         </Button>
       )}
     </Panel>
@@ -246,14 +211,11 @@ export function RaisesCard({ report, currency, country }) {
 // ── Year by year ────────────────────────────────────────────────────────────
 export function YearsCard({ report, currency, nowKey }) {
   const t = useT('salary')
-  const nowYear = yearOf(nowKey)
   return (
     <Panel title={t('years.title')} icon={CalendarDays}>
       <Stack spacing={0}>
-        {[...report.years].reverse().map((y) => (
-          <ItemRow key={y.year} py={1.5} title={y.year === nowYear ? t('years.soFar', { year: y.year }) : String(y.year)}
-            meta={t('years.split', { regular: rounded(y.regular, currency), extras: rounded(y.extras, currency) })}
-            amount={rounded(y.total, currency)} />
+        {yearsParts(report, currency, nowKey).map((y) => (
+          <ItemRow key={y.year} py={1.5} title={y.title} meta={y.meta} amount={y.amount} />
         ))}
       </Stack>
     </Panel>

@@ -5,7 +5,7 @@
 // PlanWhatIf.jsx, counts as one and reuses the fields here). Opening one scrolls it into
 // view and moves focus into it; Escape (or Done / Cancel) closes it and gives
 // focus back to what opened it.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Box, Button, Checkbox, FormControl, FormHelperText, FormLabel, HStack, Input, InputGroup, InputLeftAddon, Select, SimpleGrid,
   Stack, Text,
@@ -15,18 +15,14 @@ import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import Tile from '../../shared/ui/kit/Tile.jsx'
-import { formatMoney, formatSigned, minorToInput, toMinor } from '../../shared/lib/currency.js'
-import { signTone, textColor } from '../../shared/ui/kit/kitMath.js'
-import { shortDate } from '../../shared/lib/dates.js'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
-import { ruleInBase } from '../../shared/lib/ruleFx.js'
+import { textColor } from '../../shared/ui/kit/kitMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { REPEAT_CHOICES, choiceToRule, frequencyLabel, ruleToChoice } from '../recurring/recurringMath.js'
-import { NAME_MAX, effectOf, effectTone, monthOf, overlapPick, savingsCategories, yearMinor } from './planMath.js'
+import { NAME_MAX } from './planMath.js'
 import {
-  PlanOnlyNote, SCROLL_CLEAR, SignalTag, badgeKind, editorId, openerId,
-} from './PlanParts.jsx'
-import { ideaText, itemName, monthList, perUnit, serviceCount } from './planText.js'
+  addDraft, addFormParts, addKind, addToSave, amountEdit, badgeKind, editorParts, frequencyOptions, frequencyPick, pickParts,
+} from './planPage.js'
+import { PlanOnlyNote, SCROLL_CLEAR, SignalTag, editorId, openerId } from './PlanParts.jsx'
+import { itemName } from './planText.js'
 import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
 
 // Scroll the editor's item (the row or change with its editor, marked
@@ -66,40 +62,30 @@ function InlineBox({ boxRef, onKeyDown, label, children, ...props }) {
   )
 }
 
-// What a change does, a month and a year: "You'd save +€15.00 a month". For
-// savings the move in what's left is the other way round: setting more
-// aside leaves less (never red: it's money kept).
-const WORDS = { income: ['get', 'getLess'], expense: ['save', 'spend'], savings: ['setAsideLess', 'setAsideMore'] }
-function DeltaTile({ effect, kind, currency }) {
-  const t = useT('plan')
-  const word = effect === 0 ? 'none' : WORDS[kind][effect > 0 ? 0 : 1]
-  // Savings say how much more or less goes aside (the words carry the way).
-  const money = (v) => (kind === 'savings' ? formatMoney(Math.abs(v), currency) : formatSigned(v, currency, { plus: true }))
+// What a change does, a month and a year: "You'd save +€15.00 a month"
+// (planPage.deltaParts).
+function DeltaTile({ delta }) {
   return (
     <Tile py={3} aria-live="polite">
       <HStack justify="space-between" align="baseline" flexWrap="wrap" columnGap={3}>
-        <Text fontSize="sm" fontWeight="600">{t(`delta.${word}`)}</Text>
-        <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={textColor(signTone(effectTone({ kind }, effect)))}>
-          {t('delta.perMonth', { amount: money(monthOf(effect)) })}
-        </Text>
+        <Text fontSize="sm" fontWeight="600">{delta.word}</Text>
+        <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={textColor(delta.tone)}>{delta.perMonth}</Text>
       </HStack>
-      <Text fontSize="xs" color="text.muted" textAlign="right">{t('delta.perYear', { amount: money(effect) })}</Text>
+      <Text fontSize="xs" color="text.muted" textAlign="right">{delta.perYear}</Text>
     </Tile>
   )
 }
 
-// How often: the Repeat choices, plus the rule's own "every N" if it has one.
+// How often: the Repeat choices, plus the rule's own "every N" if it has one
+// (planPage.frequencyOptions).
 export function FrequencySelect({ fields, onChange, isDisabled, id }) {
   const t = useT('plan')
-  const { choice, n } = ruleToChoice(fields)
-  const custom = n > 1
+  const freq = frequencyOptions(fields)
   return (
     <FormControl isDisabled={isDisabled}>
       <FormLabel htmlFor={id}>{t('edit.howOften')}</FormLabel>
-      <Select id={id} value={custom ? 'custom' : choice}
-        onChange={(e) => e.target.value !== 'custom' && onChange(choiceToRule(e.target.value, 1))}>
-        {custom && <option value="custom">{frequencyLabel(fields)}</option>}
-        {REPEAT_CHOICES.map(([v, key]) => <option key={v} value={v}>{t(key)}</option>)}
+      <Select id={id} value={freq.value} onChange={(e) => { const f = frequencyPick(e.target.value); if (f) onChange(f) }}>
+        {freq.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </Select>
     </FormControl>
   )
@@ -118,74 +104,59 @@ export function AmountField({ id, label, text, onText, currency, inputRef, isDis
   )
 }
 
-// Why a row carries a tag, in a line.
-function SignalDetail({ signal }) {
-  const t = useT('plan')
-  const shown = signal.priceUp ? 'priceUp' : signal.overlap ? 'overlap' : signal.overBudget ? 'overBudget' : null
-  if (!shown) return null
-  const text = shown === 'priceUp'
-    ? t('edit.detail.priceUp', {
-      from: formatMoney(signal.priceUp.from, signal.priceUp.currency),
-      to: formatMoney(signal.priceUp.to, signal.priceUp.currency), date: shortDate(signal.priceUp.since),
-    })
-    : shown === 'overlap' ? t('edit.detail.overlap', { services: serviceCount(signal.overlap.type, signal.overlap.count, t) })
-      : t('edit.detail.overBudget', { months: monthList(signal.overBudget.months) })
-  return (
-    <HStack spacing={2} align="start">
-      <SignalTag tag={{ kind: shown, pct: signal.priceUp?.pct }} />
-      <Text fontSize="xs" color="text.muted">{text}</Text>
-    </HStack>
-  )
-}
-
 // One real row, opened in place under its row or its entry in "Your changes"
-// (`opener`, see PlanParts.openerId): amount (with the live delta), how
-// often, keep or cancel (stop, for income and savings), Reset and Done. A
-// derived row (Salary, Savings) stays monthly (no "how often") and says its
-// change is only in the plan.
+// (`opener`, see PlanParts.openerId): why it's tagged, amount (with the live
+// delta), how often, keep or cancel (stop, for income and savings), Reset and
+// Done. A derived row (Salary, Savings) stays monthly (no "how often") and
+// says its change is only in the plan. The words: planPage.editorParts.
 export function EditForm({ item, opener, signal, currency, onChange, onReset, onClose }) {
   const t = useT('plan')
   const amountRef = useRef(null)
   const { boxRef, close, onKeyDown } = useInline({ onClose, focusRef: amountRef, opener })
-  const fields = item.after ?? item.before
-  const [text, setText] = useState(() => minorToInput(fields.amount_minor, fields.currency))
+  const parts = editorParts(item, signal, currency)
+  const [text, setText] = useState(parts.text)
   const name = itemName(item)
 
   function onText(v) {
     setText(v)
-    const minor = toMinor(v, fields.currency)
-    if (minor > 0) onChange({ amount_minor: minor })
+    const patch = amountEdit(v, parts.currency)
+    if (patch) onChange(patch)
   }
   function reset() {
     onReset()
-    setText(minorToInput(item.before.amount_minor, item.before.currency))
+    setText(parts.resetText)
   }
 
+  const delta = <DeltaTile delta={parts.delta} />
   return (
     <InlineBox id={editorId(opener)} boxRef={boxRef} onKeyDown={onKeyDown} label={name} mb={2}>
       <Stack spacing={3}>
-        {signal && <SignalDetail signal={signal} />}
-        {item.derived && <PlanOnlyNote text={t(item.salary ? 'edit.salaryNote' : 'edit.savingsNote')} />}
+        {parts.signal && (
+          <HStack spacing={2} align="start">
+            <SignalTag tag={parts.signal.tag} />
+            <Text fontSize="xs" color="text.muted">{parts.signal.text}</Text>
+          </HStack>
+        )}
+        {parts.note && <PlanOnlyNote text={parts.note} />}
         <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3} alignItems="start">
           <AmountField id={`plan-amount-${opener}`} label={t('edit.amount')} text={text} onText={onText} inputRef={amountRef}
-            currency={fields.currency} addon={fields.currency} isDisabled={item.cancelled}
-            help={t(item.derived ? 'edit.average' : 'edit.now', { amount: perUnit(item.before) })} />
-          {item.derived ? <DeltaTile effect={effectOf(item)} kind={item.kind} currency={currency} /> : (
-            <FrequencySelect id={`plan-frequency-${opener}`} fields={fields} isDisabled={item.cancelled}
+            currency={parts.currency} addon={parts.currency} isDisabled={parts.cancelled} help={parts.help} />
+          {parts.frequency ? (
+            <FrequencySelect id={`plan-frequency-${opener}`} fields={item.after ?? item.before} isDisabled={parts.cancelled}
               onChange={(f) => onChange(f)} />
-          )}
+          ) : delta}
         </SimpleGrid>
         <SimpleGrid columns={{ base: 1, sm: 2 }} spacing={3} alignItems="end">
-          {!item.derived && <DeltaTile effect={effectOf(item)} kind={item.kind} currency={currency} />}
+          {parts.frequency && delta}
           <Box>
             <Text fontSize="sm" fontWeight="600" mb={1.5}>{t('edit.inPlan')}</Text>
-            <SegmentedControl label={t('edit.inPlan')} size="sm" isFitted value={item.cancelled ? 'cancel' : 'keep'}
+            <SegmentedControl label={t('edit.inPlan')} size="sm" isFitted value={parts.cancelled ? 'cancel' : 'keep'}
               onChange={(v) => onChange({ cancel: v === 'cancel' })}
-              options={[['keep', t('edit.keep')], ['cancel', t(item.kind === 'expense' ? 'edit.cancel' : 'edit.stop')]]} />
+              options={parts.keep.map((o) => [o.value, o.label])} />
           </Box>
         </SimpleGrid>
         <HStack justify="space-between">
-          <Button variant="ghost" color="accent.fg" onClick={reset} isDisabled={!item.changed}>{t('edit.reset')}</Button>
+          <Button variant="ghost" color="accent.fg" onClick={reset} isDisabled={!parts.canReset}>{t('edit.reset')}</Button>
           <Button minW="96px" onClick={close}>{t('edit.done')}</Button>
         </HStack>
       </Stack>
@@ -206,32 +177,14 @@ export function AddForm({ add, opener, categories, todayISO, currency, rates, on
   const t = useT('plan')
   const nameRef = useRef(null)
   const { boxRef, close, onKeyDown } = useInline({ onClose, focusRef: nameRef, opener })
-  const [kind, setKind] = useState(add?.kind ?? 'expense')
-  const [name, setName] = useState(add?.name ?? '')
-  const [cur, setCur] = useState(add?.currency ?? currency)
-  const [text, setText] = useState(add ? minorToInput(add.amount_minor, add.currency) : '')
-  const [freq, setFreq] = useState(add ? { frequency: add.frequency, interval_n: add.interval_n } : choiceToRule('monthly'))
-  const [start, setStart] = useState(add?.start ?? todayISO)
-  const [categoryId, setCategoryId] = useState(add?.category_id ?? '')
-  const amount = toMinor(text || '0', cur)
-  const pots = useMemo(() => savingsCategories(categories), [categories])
-  const choices = useMemo(() => (kind === 'savings' ? pots
-    : categories.filter((c) => c.kind === kind && !c.is_archived && !(c.is_savings && kind === 'income'))),
-  [categories, kind, pots])
-  const kinds = [['expense', t('add.cost')], ['income', t('add.income')], ...(pots.length ? [['savings', t('add.savings')]] : [])]
-  const ready = amount > 0 && name.trim() && /^\d{4}-\d{2}-\d{2}$/.test(start) && (kind !== 'savings' || !!categoryId)
-  // The live delta in the base currency, at today's rate (none yet for a
-  // currency whose rate hasn't arrived: it's fetched once the add is saved).
-  const inBase = ruleInBase({ amount_minor: amount, currency: cur, ...freq }, currency, rates)
-  const effect = inBase ? (kind === 'income' ? 1 : -1) * yearMinor(inBase) : 0
+  const [draft, setDraft] = useState(() => addDraft(add, currency, todayISO))
+  const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
+  const parts = addFormParts(draft, { categories, currency, rates, editing: !!add })
 
-  function pickKind(k) { setKind(k); setCategoryId(k === 'savings' ? pots[0]?.id ?? '' : '') }
   function save() {
+    const ready = addToSave(draft, add?.id ?? newId())
     if (!ready) return
-    onSave({
-      id: add?.id ?? newId(), kind, name: name.trim(), amount_minor: amount, currency: cur,
-      ...freq, start, category_id: categoryId || null,
-    })
+    onSave(ready)
     close()
   }
 
@@ -239,41 +192,44 @@ export function AddForm({ add, opener, categories, todayISO, currency, rates, on
     <InlineBox id={editorId(opener)} boxRef={boxRef} onKeyDown={onKeyDown} label={add?.name || t('whatIf.title')}
       mt={add ? 0 : 2} mb={add ? 2 : 0}>
       <Stack as="form" spacing={4} onSubmit={(e) => { e.preventDefault(); save() }}>
-        <SegmentedControl label={t('add.kind')} size="sm" isFitted value={kind} onChange={pickKind} options={kinds} />
+        <SegmentedControl label={t('add.kind')} size="sm" isFitted value={draft.kind}
+          onChange={(k) => setDraft((d) => addKind(d, k, categories))} options={parts.kinds.map((o) => [o.value, o.label])} />
         <FormControl isRequired>
           <FormLabel htmlFor={`plan-name-${opener}`}>{t('add.name')}</FormLabel>
-          <Input ref={nameRef} id={`plan-name-${opener}`} value={name} maxLength={NAME_MAX} onChange={(e) => setName(e.target.value)}
-            placeholder={t(`add.placeholder.${kind}`)} />
+          <Input ref={nameRef} id={`plan-name-${opener}`} value={draft.name} maxLength={NAME_MAX}
+            onChange={(e) => set({ name: e.target.value })} placeholder={parts.placeholder} />
         </FormControl>
         <HStack align="end" spacing={3}>
           <Box flex="1" minW={0}>
-            <AmountField id={`plan-amount-${opener}`} label={t('add.amount')} text={text} onText={setText} currency={cur} />
+            <AmountField id={`plan-amount-${opener}`} label={t('add.amount')} text={draft.text}
+              onText={(v) => set({ text: v })} currency={draft.currency} />
           </Box>
           <FormControl w="112px" flexShrink={0}>
             <FormLabel htmlFor={`plan-currency-${opener}`}>{t('add.currency')}</FormLabel>
-            <CurrencySelect id={`plan-currency-${opener}`} value={cur} onChange={setCur} />
+            <CurrencySelect id={`plan-currency-${opener}`} value={draft.currency} onChange={(c) => set({ currency: c })} />
           </FormControl>
         </HStack>
         <HStack align="end" spacing={3}>
           <Box flex="1" minW={0}>
-            <FrequencySelect id={`plan-frequency-${opener}`} fields={freq} onChange={setFreq} />
+            <FrequencySelect id={`plan-frequency-${opener}`} fields={draft} onChange={set} />
           </Box>
           <FormControl flex="1" minW={0}>
             <FormLabel htmlFor={`plan-start-${opener}`}>{t('add.starts')}</FormLabel>
-            <Input id={`plan-start-${opener}`} type="date" value={start} min={todayISO} onChange={(e) => setStart(e.target.value)} />
+            <Input id={`plan-start-${opener}`} type="date" value={draft.start} min={todayISO}
+              onChange={(e) => set({ start: e.target.value })} />
           </FormControl>
         </HStack>
         <FormControl>
-          <FormLabel htmlFor={`plan-category-${opener}`}>{t(kind === 'savings' ? 'add.savingsCategory' : 'add.category')}</FormLabel>
-          <Select id={`plan-category-${opener}`} value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-            {kind !== 'savings' && <option value="">{t('add.noCategory')}</option>}
-            {choices.map((c) => <option key={c.id} value={c.id}>{categoryDisplayName(c)}</option>)}
+          <FormLabel htmlFor={`plan-category-${opener}`}>{parts.categoryLabel}</FormLabel>
+          <Select id={`plan-category-${opener}`} value={draft.categoryId} onChange={(e) => set({ categoryId: e.target.value })}>
+            {parts.noCategory && <option value="">{parts.noCategory}</option>}
+            {parts.categories.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
           </Select>
         </FormControl>
-        <DeltaTile effect={effect} kind={kind} currency={currency} />
+        <DeltaTile delta={parts.delta} />
         <HStack spacing={2} justify="flex-end">
           <Button variant="ghost" onClick={close}>{t('common:actions.cancel')}</Button>
-          <Button type="submit" isDisabled={!ready}>{t(add ? 'add.update' : 'add.submit')}</Button>
+          <Button type="submit" isDisabled={!parts.ready}>{parts.submit}</Button>
         </HStack>
       </Stack>
     </InlineBox>
@@ -286,55 +242,46 @@ export function PickPanel({ idea, items, currency, onAdd, onClose }) {
   const t = useT('plan')
   const firstRef = useRef(null)
   const { boxRef, close, onKeyDown } = useInline({ onClose, focusRef: firstRef, opener: idea.id })
-  const [picked, setPicked] = useState(() => new Set())
-  const { rows, saves } = overlapPick(items, idea, picked)
-  const toggle = (id) => setPicked((s) => {
-    const next = new Set(s)
-    if (!next.delete(id)) next.add(id)
-    return next
-  })
-  const title = ideaText(idea, currency, t).name
+  const [picked, setPicked] = useState([])
+  const parts = pickParts(items, idea, picked, currency)
+  const byId = new Map(items.map((i) => [i.id, i]))
+  const toggle = (id) => setPicked((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]))
   return (
-    <Panel id={editorId(idea.id)} ref={boxRef} role="group" aria-label={title} onKeyDown={onKeyDown} p={4}
+    <Panel id={editorId(idea.id)} ref={boxRef} role="group" aria-label={parts.title} onKeyDown={onKeyDown} p={4}
       sx={SCROLL_CLEAR}>
-      <Text fontFamily="heading" fontWeight="700" fontSize="md" lineHeight="1.25">{title}</Text>
+      <Text fontFamily="heading" fontWeight="700" fontSize="md" lineHeight="1.25">{parts.title}</Text>
       <Text fontSize="xs" color="text.muted" mt={0.5}>{t('pick.sub')}</Text>
       <Box mt={1}>
-        {rows.map((it, n) => (
-          <Checkbox key={it.id} ref={n === 0 ? firstRef : undefined} size="lg" isChecked={picked.has(it.id)} w="full" py={2.5}
-            borderBottomWidth="1px" borderColor="border.default" onChange={() => toggle(it.id)}
-            sx={{ '.chakra-checkbox__label': { flex: 1, ml: 3, minW: 0 } }}>
-            <HStack spacing={3} w="full">
-              <CategoryBadge category={it.category} kind={badgeKind(it.kind)} size={32} />
-              <Box flex="1" minW={0}>
-                <Text fontSize="sm" fontWeight="600" noOfLines={1}>{itemName(it)}</Text>
-                <Text fontSize="xs" color="text.muted">{t('pick.perYear', { amount: formatMoney(it.beforeYear, currency) })}</Text>
-              </Box>
-              <Text fontSize="sm" fontWeight="700" whiteSpace="nowrap">
-                {t('changes.perMonth', { amount: formatMoney(monthOf(it.beforeYear), currency) })}
-              </Text>
-            </HStack>
-          </Checkbox>
-        ))}
+        {parts.rows.map((row, n) => {
+          const it = byId.get(row.id)
+          return (
+            <Checkbox key={row.id} ref={n === 0 ? firstRef : undefined} size="lg" isChecked={row.picked} w="full" py={2.5}
+              borderBottomWidth="1px" borderColor="border.default" onChange={() => toggle(row.id)}
+              sx={{ '.chakra-checkbox__label': { flex: 1, ml: 3, minW: 0 } }}>
+              <HStack spacing={3} w="full">
+                <CategoryBadge category={it.category} kind={badgeKind(it.kind)} size={32} />
+                <Box flex="1" minW={0}>
+                  <Text fontSize="sm" fontWeight="600" noOfLines={1}>{row.name}</Text>
+                  <Text fontSize="xs" color="text.muted">{row.perYear}</Text>
+                </Box>
+                <Text fontSize="sm" fontWeight="700" whiteSpace="nowrap">{row.perMonth}</Text>
+              </HStack>
+            </Checkbox>
+          )
+        })}
       </Box>
       <Tile py={3} mt={4} aria-live="polite">
         <HStack justify="space-between" align="baseline" flexWrap="wrap" columnGap={3}>
-          <Text fontSize="sm" fontWeight="600">
-            {picked.size ? t('pick.cancelOf', { picked: picked.size, count: rows.length }) : t('pick.none')}
-          </Text>
-          <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={textColor(signTone(saves))}>
-            {t('delta.perMonth', { amount: formatSigned(monthOf(saves), currency, { plus: true }) })}
+          <Text fontSize="sm" fontWeight="600">{parts.summary.label}</Text>
+          <Text fontFamily="heading" fontWeight="700" fontSize="lg" color={textColor(parts.summary.tone)}>
+            {parts.summary.amount}
           </Text>
         </HStack>
-        <Text fontSize="xs" color="text.muted" textAlign="right">
-          {saves ? t('pick.saveYear', { amount: formatSigned(saves, currency, { plus: true }) }) : t('pick.hint')}
-        </Text>
+        <Text fontSize="xs" color="text.muted" textAlign="right">{parts.summary.sub}</Text>
       </Tile>
       <HStack spacing={2} justify="flex-end" mt={4}>
         <Button variant="ghost" onClick={close}>{t('common:actions.cancel')}</Button>
-        <Button isDisabled={!picked.size} onClick={() => { onAdd(rows.filter((r) => picked.has(r.id))); close() }}>
-          {picked.size ? t('pick.add', { count: picked.size }) : t('pick.addNone')}
-        </Button>
+        <Button isDisabled={!parts.picked.length} onClick={() => { onAdd(parts.picked); close() }}>{parts.add}</Button>
       </HStack>
     </Panel>
   )
