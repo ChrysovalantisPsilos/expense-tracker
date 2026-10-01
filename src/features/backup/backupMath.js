@@ -351,6 +351,16 @@ export function readBackup(text) {
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
 
+// A 'YYYY-MM-DD' that names a real calendar day ('2026-02-30' doesn't). By
+// arithmetic, not by parsing: engines differ on an impossible day (V8 rolls
+// it over, JavaScriptCore makes an Invalid Date), and the answer must not.
+export function realDay(v) {
+  const [y, m, d] = v.split('-').map(Number)
+  const t = new Date(0)
+  t.setUTCFullYear(y, m - 1, d)
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d
+}
+
 function checker(where) {
   const bad = (field) => damaged(where, field)
   return {
@@ -376,8 +386,7 @@ function checker(where) {
     },
     date(v, field, { optional = false } = {}) {
       if (v == null && optional) return null
-      if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)
-        || new Date(`${v}T00:00:00Z`).toISOString().slice(0, 10) !== v) bad(field)
+      if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v) || !realDay(v)) bad(field)
       return v
     },
     currency(v, field) { if (typeof v !== 'string' || !/^[A-Z]{3}$/.test(v)) bad(field); return v },

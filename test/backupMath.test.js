@@ -5,7 +5,7 @@ import {
   BACKUP_FORMAT, BACKUP_VERSION, BackupError, backupFileName, normText, txnKey, groupShareNote,
   buildBackup, readBackup, backupContents, mapCategories, envelopeParams, openedBackup, backupText, sealedText,
   CONTENT_ROWS, MAX_BACKUP_BYTES, currencyLine, madeLine, emailName, targetCurrency, categoryRows, wantsSalary, settingsTally,
-  FETCH_ROW_CAP,
+  FETCH_ROW_CAP, realDay,
   matchByName, planRules, planTransactions, planBudgets, planRecurring, planProfile, planSalaryShift, planPayment,
   currencyChange, restorePlan, restoreSalary,
   restoreSummary, splitDateRange, rebaseRateSpans, rebaseBackupData,
@@ -233,6 +233,19 @@ test('sealing, pure: the envelope\'s checked parameters, the texts around a seal
   }
   assert.deepEqual(openedBackup(backupText(doc)).data, doc.data)
   assert.throws(() => openedBackup(JSON.stringify(env)), /isn’t a Budgeer backup/)
+})
+
+// An impossible day is refused by arithmetic, whatever the engine's Date
+// parser makes of it (V8 rolls 30 February over; JavaScriptCore gives an
+// Invalid Date, whose toISOString throws).
+test('realDay: real calendar days only, leap years included', () => {
+  for (const day of ['2026-02-28', '2024-02-29', '2000-02-29', '2026-12-31', '0050-01-01']) assert.equal(realDay(day), true, day)
+  for (const day of ['2026-02-30', '2026-02-29', '1900-02-29', '2026-13-01', '2026-00-10', '2026-04-31', '2026-01-00']) {
+    assert.equal(realDay(day), false, day)
+  }
+  const doc = sourceDoc()
+  doc.data.transactions[0].spent_at = '2026-02-31'
+  assert.throws(() => readBackup(JSON.stringify(doc)), (err) => err instanceof BackupError && /entry #1: date/.test(err.message))
 })
 
 test('confirm step: when the backup was made, and what happens to the main currency', () => {
