@@ -41,8 +41,12 @@ const outcome = (fn, args) => {
   return { threw: false, value, json: tryEncode(value) }
 }
 
+// A class (errors.js' UserError) is constructed with `new`, never called
+// through the bridge: it stays as it is.
+const isClass = (fn) => /^class[\s{]/.test(Function.prototype.toString.call(fn))
+
 export function wrap(module, name, value) {
-  if (typeof value !== 'function' || !isMainThread) return value
+  if (typeof value !== 'function' || isClass(value) || !isMainThread) return value
   if (!functions.has(module)) functions.set(module, new Set())
   functions.get(module).add(name)
   const key = `${module}.${name}`

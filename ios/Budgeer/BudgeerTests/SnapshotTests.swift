@@ -122,6 +122,62 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
+    func testGroupsSnapshots() async throws {
+        let fixture = try GroupsFixture.load()
+        let now = fixture.now
+        let user = AuthUser.sample.id.uuidString.lowercased()
+        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+            let language = language(lang)
+            let suffix = "\(lang)\(dark ? "-dark" : "")"
+            let store = fixture.store()
+            let live = LiveHub()
+            // The Groups tab: an invite and two groups.
+            let list = GroupsModel(data: store.data, userId: user)
+            await list.load()
+            try snapshot(GroupsView(model: list, data: store.data, live: live, site: "https://dev.budgeer.com")
+                .environment(language), name: "groups-\(suffix)", dark: dark)
+            // A group's page, seen by its owner.
+            let group = GroupModel(groupId: fixture.groupId, userId: user, site: "https://dev.budgeer.com",
+                                   data: store.data, now: { now })
+            await group.load()
+            try snapshot(NavigationStack { GroupPageView(model: group, live: live) }.environment(language),
+                         name: "group-\(suffix)", dark: dark, height: 1500)
+            group.tab = "activity"
+            try snapshot(NavigationStack { GroupPageView(model: group, live: live) }.environment(language),
+                         name: "group-activity-\(suffix)", dark: dark, height: 1500)
+            // Add an expense, split by amounts.
+            let form = group.expenseForm(expenseId: nil)
+            form.setDescription("Taxi")
+            form.setAmount("84.60")
+            form.pickMode("exact")
+            form.setShare("m1", "40")
+            form.setShare("m2", "20")
+            try snapshot(NavigationStack { GroupExpenseView(model: form) { _ in } }.environment(language),
+                         name: "group-expense-\(suffix)", dark: dark, height: 1300)
+            // Settle up, on the biggest payment you're part of.
+            let settle = try XCTUnwrap(group.settleUp())
+            try snapshot(NavigationStack { SettleUpView(model: settle) {} }.environment(language),
+                         name: "group-settle-\(suffix)", dark: dark, height: 1100)
+            // Members, with a share link made.
+            try snapshot(NavigationStack { MembersView(model: group) }.environment(language),
+                         name: "group-members-\(suffix)", dark: dark, height: 1100)
+            // Add, with "Who's it for?" on a group: its quick form.
+            let mine = MyGroupsModel(data: store.data, userId: user)
+            await mine.load()
+            let lisbon = try XCTUnwrap(mine.group("g-lisbon"))
+            let quick = GroupExpenseModel(group: lisbon, members: lisbon["members"] ?? [], myMemberId: "m1", userId: user,
+                                          expense: nil, initial: ["amount": "12.50", "currency": "EUR",
+                                                                  "currencyPicked": false, "description": "Snacks",
+                                                                  "spentAt": "2026-09-19"],
+                                          quick: true, data: store.data, now: { now })
+            try snapshot(NavigationStack {
+                GroupExpenseView(model: quick) { _ in } lead: {
+                    WhoForChips(groups: mine.groups, value: "g-lisbon") { _ in }
+                }
+            }.environment(language), name: "add-group-\(suffix)", dark: dark, height: 1100)
+        }
+    }
+
     private func language(_ lang: String) -> AppLanguage {
         let defaults = UserDefaults(suiteName: "SnapshotTests")!
         return AppLanguage(preference: lang, defaults: defaults, deviceLanguages: ["en"])

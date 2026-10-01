@@ -7,6 +7,7 @@ import { Users } from 'lucide-react'
 import { copyText } from '../../shared/lib/clipboard.js'
 import { Trans, useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
+import { deleteNameMatches, stillInNames } from './groupFormat.js'
 
 // The group's confirmation dialogs (its forms are full pages).
 
@@ -16,7 +17,7 @@ import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
 export function DeleteGroupModal({ group, check, isOpen, onClose, busy, onConfirm, onMembers }) {
   const t = useT('groups')
   const [text, setText] = useState('')
-  const match = text.trim() === group.name
+  const match = deleteNameMatches(text, group.name)
   if (!check.canDelete) {
     return (
       <ConfirmDialog isOpen={isOpen} onClose={onClose} onConfirm={onMembers}
@@ -27,7 +28,7 @@ export function DeleteGroupModal({ group, check, isOpen, onClose, busy, onConfir
           {check.others.length > 0 && (
             <Text fontSize="sm">
               <Trans t={t} k="modals.deleteBlocked.stillIn" components={{ b: <b /> }}
-                values={{ names: check.others.map((m) => m.display_name).join(', ') }} />
+                values={{ names: stillInNames(check.others) }} />
             </Text>
           )}
         </Stack>

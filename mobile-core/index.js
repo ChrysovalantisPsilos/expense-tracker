@@ -29,8 +29,11 @@ import * as savings from '../src/shared/lib/savings.js'
 import * as formChecks from '../src/shared/lib/formChecks.js'
 import * as fxPreview from '../src/shared/lib/fxPreview.js'
 import * as demoAccount from '../src/shared/lib/demoAccount.js'
+import * as payLinks from '../src/shared/lib/payLinks.js'
+import * as errors from '../src/shared/lib/errors.js'
 import * as kitMath from '../src/shared/ui/kit/kitMath.js'
 import * as chartAxis from '../src/shared/ui/chartAxis.js'
+import * as avatarLook from '../src/shared/ui/avatarLook.js'
 import * as sharedMoney from '../supabase/functions/_shared/money.ts'
 import * as sharedSavings from '../supabase/functions/_shared/savings.ts'
 import * as sharedSalaryShift from '../supabase/functions/_shared/salaryShift.ts'
@@ -42,6 +45,8 @@ import * as aiHelper from '../supabase/functions/_shared/aiHelper.ts'
 import * as splitMath from '../src/features/groups/splitMath.js'
 import * as quickAddMath from '../src/features/groups/quickAddMath.js'
 import * as groupFormat from '../src/features/groups/groupFormat.js'
+import * as groupExpenseForm from '../src/features/groups/groupExpenseForm.js'
+import * as settleForm from '../src/features/groups/settleForm.js'
 import * as importMath from '../src/features/import/importMath.js'
 import * as importRulesMath from '../src/features/import/importRulesMath.js'
 import * as bankPresets from '../src/features/import/bankPresets.js'
@@ -95,8 +100,11 @@ export const modules = {
   formChecks,
   fxPreview,
   demoAccount,
+  payLinks,
+  errors,
   kitMath,
   chartAxis,
+  avatarLook,
   sharedMoney,
   sharedSavings,
   sharedSalaryShift,
@@ -108,6 +116,8 @@ export const modules = {
   splitMath,
   quickAddMath,
   groupFormat,
+  groupExpenseForm,
+  settleForm,
   importMath,
   importRulesMath,
   bankPresets,

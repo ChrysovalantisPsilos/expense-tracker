@@ -4,9 +4,8 @@ import {
 } from '@chakra-ui/react'
 import { ExternalLink, Info, QrCode, Copy } from 'lucide-react'
 import { memberPaymentInfo } from './groups.js'
-import { revolutUrl, paypalUrl, sepaQrPayload } from '../../shared/lib/payLinks.js'
+import { payShortcutParts } from './settleForm.js'
 import { copyText } from '../../shared/lib/clipboard.js'
-import { intlLocale } from '../../shared/lib/i18n/i18n.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Brand names: the same in every language.
@@ -37,17 +36,10 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
     return () => { active = false }
   }, [member?.id, member?.user_id])
 
-  const iban = info?.payment_iban
-  const eur = currency === 'EUR'
-  // "12.50" (English, as before) or "12,50" (Greek), for the QR's caption.
-  const amountStr = intlLocale()
-    ? (amountMinor / 100).toLocaleString(intlLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    : (amountMinor / 100).toFixed(2)
+  const parts = payShortcutParts({ member, info, amountMinor, currency, groupName })
   // The QR belongs to one payload: a new amount (or payee) builds a new one,
   // so a stale code is never shown.
-  const payload = iban && eur ? sepaQrPayload({
-    name: member?.display_name, iban, amountMinor, reference: `Budgeer settle-up · ${groupName ?? ''}`,
-  }) : null
+  const payload = parts.qr ?? null
 
   useEffect(() => {
     if (!showQr || !payload || qr?.payload === payload) return
@@ -64,25 +56,21 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
     return () => { active = false }
   }, [showQr, payload, qr?.payload, toast, t])
 
-  const revolut = revolutUrl(info?.payment_revolut, amountMinor, currency)
-  const paypal = paypalUrl(info?.payment_paypal, amountMinor, currency)
-  if (!member) return null
   // No details (yet): say what this box would offer, so people know it exists.
   // Not shown while the details are still loading.
-  if (!member.user_id || (info && !iban && !revolut && !paypal)) {
+  if (parts.kind === 'hint') {
     return (
       <Box borderWidth="1px" borderColor="border.default" borderRadius="lg" p={3}>
         <HStack spacing={2} mb={1}>
           <Info size={15} aria-hidden />
-          <Text fontSize="sm" fontWeight="600">{t('pay.direct', { name: member.display_name })}</Text>
+          <Text fontSize="sm" fontWeight="600">{parts.title}</Text>
         </HStack>
-        <Text fontSize="xs" color="text.muted">
-          {t(member.user_id ? 'pay.noDetails' : 'pay.notJoined', { name: member.display_name })}
-        </Text>
+        <Text fontSize="xs" color="text.muted">{parts.note}</Text>
       </Box>
     )
   }
-  if (!info) return null
+  if (parts.kind !== 'links') return null
+  const { iban, revolut, paypal } = parts
 
   const qrUrl = showQr && qr?.payload === payload ? qr.url : null
 
@@ -93,9 +81,7 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
 
   return (
     <Box borderWidth="1px" borderColor="border.default" borderRadius="lg" p={3}>
-      <Text fontSize="sm" fontWeight="600" mb={2}>
-        {t('pay.direct', { name: member.display_name })}
-      </Text>
+      <Text fontSize="sm" fontWeight="600" mb={2}>{parts.title}</Text>
       <HStack spacing={2} flexWrap="wrap">
         {revolut && (
           <Button as="a" size="sm" target="_blank" rel="noopener noreferrer" href={revolut}
@@ -125,12 +111,12 @@ export default function PayShortcuts({ member, amountMinor, currency, groupName 
           {/* White backing keeps the QR scannable in dark mode. */}
           <Image src={qrUrl} boxSize="200px" borderRadius="md" bg="white" p={2} alt={t('pay.qrAlt')} />
           <Text fontSize="xs" color="text.muted" mt={2}>
-            {t('pay.scan', { amount: amountStr })}
+            {parts.qrCaption}
           </Text>
         </Center>
       )}
       <Text fontSize="xs" color="text.muted" mt={2}>
-        {t('pay.afterPaying')}
+        {parts.after}
       </Text>
     </Box>
   )

@@ -11,6 +11,11 @@ struct AppConfig: Equatable, Sendable {
     let supabaseURL: URL
     let supabaseAnonKey: String
 
+    /// The website of this build's project: where an invite link opens.
+    var siteURL: String {
+        environment == .prod ? "https://www.budgeer.com" : "https://dev.budgeer.com"
+    }
+
     enum Error: Swift.Error, CustomStringConvertible {
         case missing(String)
         var description: String {

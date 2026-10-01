@@ -1,9 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import { Stack, HStack, Text, Spacer, Button, Flex, IconButton } from '@chakra-ui/react'
 import { HandCoins, FileDown, MessageSquare, Plus, Receipt, UserPlus } from 'lucide-react'
-import { splitLabel, paidByLabel, isEveryoneEqualSplit, expenseLabel, settlementLabel } from './groupFormat.js'
-import { formatMoney } from '../../shared/lib/currency.js'
-import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
+import { activityParts, expenseRowParts, settlementRowParts } from './groupFormat.js'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import EmptyState from '../../shared/ui/EmptyState.jsx'
@@ -56,17 +54,12 @@ export default function GroupHistory({
       ) : (
         <Stack spacing={0}>
           {expenses.map((e) => {
-            const canEdit = e.created_by === myUserId || isOwner
+            const row = expenseRowParts(e, { members, myMemberId: myMember?.id, myUserId, isOwner, currency: cur, counts })
             return (
-              <ItemRow key={e.id} icon={Receipt} title={expenseLabel(e)}
-                meta={<RowMeta parts={[paidByLabel(members, e.paid_by, myMember?.id), shortDate(e.spent_at),
-                  { text: splitLabel(e), phone: !isEveryoneEqualSplit(e, members) }]} />}
-                amount={formatMoney(e.amount_minor, e.currency)}
-                amountMeta={e.currency !== cur && e.group_amount_minor != null
-                  ? `≈ ${formatMoney(e.group_amount_minor, cur)}` : undefined}
-                onClick={canEdit ? () => onEdit(e) : undefined}
-                trailing={<CommentButton count={counts.get(e.id)}
-                  onClick={() => onThread(e.id)} />} />
+              <ItemRow key={row.id} icon={Receipt} title={row.title} meta={<RowMeta parts={row.meta} />}
+                amount={row.amount} amountMeta={row.amountMeta ?? undefined}
+                onClick={row.canEdit ? () => onEdit(e) : undefined}
+                trailing={<CommentButton count={row.comments} onClick={() => onThread(row.id)} />} />
             )
           })}
         </Stack>
@@ -77,12 +70,10 @@ export default function GroupHistory({
       ) : (
         <Stack spacing={0}>
           {settlements.map((s) => {
+            const row = settlementRowParts(s, { members, myMemberId: myMember?.id, counts })
             return (
-              <ItemRow key={s.id} icon={HandCoins} title={settlementLabel(s, members, myMember?.id)}
-                meta={shortDate(s.settled_at)}
-                amount={formatMoney(s.amount_minor, s.currency)}
-                trailing={<CommentButton count={counts.get(s.id)}
-                  onClick={() => onThread(s.id)} />} />
+              <ItemRow key={row.id} icon={HandCoins} title={row.title} meta={row.meta} amount={row.amount}
+                trailing={<CommentButton count={row.comments} onClick={() => onThread(row.id)} />} />
             )
           })}
         </Stack>
@@ -92,16 +83,14 @@ export default function GroupHistory({
         <Text fontSize="sm" color="text.muted">{t('history.noActivity')}</Text>
       ) : (
         <Stack spacing={0}>
-          {auditLog.slice(0, 25).map((a) => (
+          {activityParts(auditLog, cur).map((a) => (
             <HStack key={a.id} py={2} align="start" spacing={3}>
               <Stack spacing={0} flex="1" minW={0}>
-                <Text fontSize="sm" overflowWrap="anywhere">{a.summary}</Text>
-                <Text fontSize="xs" color="text.muted">{shortDateTime(a.created_at)}</Text>
+                <Text fontSize="sm" overflowWrap="anywhere">{a.text}</Text>
+                <Text fontSize="xs" color="text.muted">{a.when}</Text>
               </Stack>
-              {a.amount_minor != null && (
-                <Text fontSize="sm" fontWeight="700" whiteSpace="nowrap">
-                  {formatMoney(a.amount_minor, a.currency || cur)}
-                </Text>
+              {a.amount != null && (
+                <Text fontSize="sm" fontWeight="700" whiteSpace="nowrap">{a.amount}</Text>
               )}
             </HStack>
           ))}
@@ -112,12 +101,11 @@ export default function GroupHistory({
 }
 
 // A row's muted meta line that wraps between its parts on narrow screens
-// ("Paid by You · 8 Sep · split 4 ways"). A part is a string, or
-// { text, phone: false } to hide it below `sm`. Each separator stays at the
+// ("Paid by You · 8 Sep · split 4 ways"). A part is { text, phone }, and
+// `phone: false` hides it below `sm`. Each separator stays at the
 // end of the part before it (so a wrapped line never starts with one) and
 // shows only where the part after it does.
-function RowMeta({ parts }) {
-  const list = parts.map((p) => (typeof p === 'string' ? { text: p, phone: true } : p))
+function RowMeta({ parts: list }) {
   const shown = (p) => (p.phone ? undefined : { base: 'none', sm: 'inline' })
   return (
     <Flex wrap="wrap" columnGap={1} fontSize="xs" color="text.muted">

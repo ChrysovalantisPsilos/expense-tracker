@@ -6,13 +6,12 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useLiveQuery } from '../../shared/lib/db.js'
 import { unsavedFormAttr } from '../../shared/lib/autoUpdate.js'
-import { shortDateTime } from '../../shared/lib/dates.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { listComments, addComment, deleteComment } from './comments.js'
-import { commentTarget } from './groupFormat.js'
+import { commentParts, commentTarget } from './groupFormat.js'
 import GroupFormPage from './GroupFormPage.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
@@ -81,17 +80,15 @@ function Thread({ groupId, target, myMember }) {
           <Text color="text.muted" fontSize="sm">{t('comments.empty')}</Text>
         ) : (
           <Stack spacing={4}>
-            {comments.map((cm) => (
+            {comments.map((raw) => commentParts(raw, user?.id)).map((cm) => (
               <HStack key={cm.id} align="start" spacing={3}>
-                <UserAvatar size="xs" name={cm.author?.display_name} />
+                <UserAvatar size="xs" name={cm.name} />
                 <Box flex="1" minW={0}>
                   <HStack spacing={2} mb={0.5} align="center">
-                    <Text fontSize="sm" fontWeight="600" minW={0} overflowWrap="anywhere">
-                      {cm.author?.display_name || t('member')}
-                    </Text>
-                    <Text fontSize="xs" color="text.muted">{shortDateTime(cm.created_at)}</Text>
+                    <Text fontSize="sm" fontWeight="600" minW={0} overflowWrap="anywhere">{cm.author}</Text>
+                    <Text fontSize="xs" color="text.muted">{cm.when}</Text>
                     <Box flex="1" />
-                    {cm.author_id === user?.id && (
+                    {cm.canDelete && (
                       <IconButton aria-label={t('comments.delete')} size="xs" variant="ghost" color="status.negative"
                         icon={<Trash2 size={13} />} isDisabled={busy} onClick={() => remove(cm.id)} />
                     )}

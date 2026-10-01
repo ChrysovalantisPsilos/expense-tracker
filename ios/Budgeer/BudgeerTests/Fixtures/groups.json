@@ -1,0 +1,2566 @@
+{
+  "input": {
+    "now": "2026-09-20T12:00:00.000Z",
+    "today": "2026-09-20",
+    "userId": "0badbeef-0000-4000-8000-000000000001",
+    "sofiaId": "aaaaaaaa-0000-4000-8000-000000000002",
+    "groups": [
+      {
+        "id": "g-lisbon",
+        "name": "Lisbon trip",
+        "currency": "EUR",
+        "owner_id": "0badbeef-0000-4000-8000-000000000001",
+        "image_url": null,
+        "created_at": "2026-08-01T10:00:00Z",
+        "group_members": [
+          {
+            "count": 4
+          }
+        ]
+      },
+      {
+        "id": "g-flat",
+        "name": "Flat 3B",
+        "currency": "GBP",
+        "owner_id": "aaaaaaaa-0000-4000-8000-000000000002",
+        "image_url": "https://example.com/flat.png",
+        "created_at": "2026-07-01T10:00:00Z",
+        "group_members": [
+          {
+            "count": 2
+          }
+        ]
+      }
+    ],
+    "summaries": {
+      "g-lisbon": {
+        "members": [
+          {
+            "id": "m1",
+            "group_id": "g-lisbon",
+            "user_id": "0badbeef-0000-4000-8000-000000000001",
+            "display_name": "Alex Morgan",
+            "role": "owner",
+            "created_at": "2026-08-01T10:00:00Z"
+          },
+          {
+            "id": "m2",
+            "group_id": "g-lisbon",
+            "user_id": "aaaaaaaa-0000-4000-8000-000000000002",
+            "display_name": "Sofia",
+            "role": "member",
+            "created_at": "2026-08-02T10:00:00Z"
+          },
+          {
+            "id": "m3",
+            "group_id": "g-lisbon",
+            "user_id": "aaaaaaaa-0000-4000-8000-000000000003",
+            "display_name": "Marco Rossi",
+            "role": "member",
+            "created_at": "2026-08-03T10:00:00Z"
+          },
+          {
+            "id": "m4",
+            "group_id": "g-lisbon",
+            "user_id": null,
+            "display_name": "Anna",
+            "role": "member",
+            "created_at": "2026-08-04T10:00:00Z"
+          }
+        ],
+        "avatars": [
+          {
+            "user_id": "aaaaaaaa-0000-4000-8000-000000000002",
+            "avatar_url": "https://example.com/sofia.png"
+          }
+        ],
+        "balances": [
+          {
+            "member_id": "m1",
+            "net_minor": 16275
+          },
+          {
+            "member_id": "m2",
+            "net_minor": -8925
+          },
+          {
+            "member_id": "m3",
+            "net_minor": -7065
+          },
+          {
+            "member_id": "m4",
+            "net_minor": -285
+          }
+        ]
+      },
+      "g-flat": {
+        "members": [
+          {
+            "id": "f1",
+            "group_id": "g-flat",
+            "user_id": "aaaaaaaa-0000-4000-8000-000000000002",
+            "display_name": "Sofia",
+            "role": "owner",
+            "created_at": "2026-08-01T10:00:00Z"
+          },
+          {
+            "id": "f2",
+            "group_id": "g-flat",
+            "user_id": "0badbeef-0000-4000-8000-000000000001",
+            "display_name": "Alex Morgan",
+            "role": "member",
+            "created_at": "2026-08-02T10:00:00Z"
+          }
+        ],
+        "avatars": [
+          {
+            "user_id": "aaaaaaaa-0000-4000-8000-000000000002",
+            "avatar_url": "https://example.com/sofia.png"
+          }
+        ],
+        "balances": [
+          {
+            "member_id": "f1",
+            "net_minor": 1250
+          },
+          {
+            "member_id": "f2",
+            "net_minor": -1250
+          }
+        ]
+      }
+    },
+    "invites": [
+      {
+        "invite_id": "i1",
+        "group_id": "g-ski",
+        "group_name": "Ski week",
+        "invited_by": "Marco Rossi"
+      }
+    ],
+    "detail": {
+      "group": {
+        "id": "g-lisbon",
+        "name": "Lisbon trip",
+        "currency": "EUR",
+        "owner_id": "0badbeef-0000-4000-8000-000000000001",
+        "image_url": null,
+        "created_at": "2026-08-01T10:00:00Z",
+        "group_members": [
+          {
+            "count": 4
+          }
+        ]
+      },
+      "members": [
+        {
+          "id": "m1",
+          "group_id": "g-lisbon",
+          "user_id": "0badbeef-0000-4000-8000-000000000001",
+          "display_name": "Alex Morgan",
+          "role": "owner",
+          "created_at": "2026-08-01T10:00:00Z"
+        },
+        {
+          "id": "m2",
+          "group_id": "g-lisbon",
+          "user_id": "aaaaaaaa-0000-4000-8000-000000000002",
+          "display_name": "Sofia",
+          "role": "member",
+          "created_at": "2026-08-02T10:00:00Z"
+        },
+        {
+          "id": "m3",
+          "group_id": "g-lisbon",
+          "user_id": "aaaaaaaa-0000-4000-8000-000000000003",
+          "display_name": "Marco Rossi",
+          "role": "member",
+          "created_at": "2026-08-03T10:00:00Z"
+        },
+        {
+          "id": "m4",
+          "group_id": "g-lisbon",
+          "user_id": null,
+          "display_name": "Anna",
+          "role": "member",
+          "created_at": "2026-08-04T10:00:00Z"
+        }
+      ],
+      "avatars": [
+        {
+          "user_id": "aaaaaaaa-0000-4000-8000-000000000002",
+          "avatar_url": "https://example.com/sofia.png"
+        }
+      ],
+      "balances": [
+        {
+          "member_id": "m1",
+          "net_minor": 16275
+        },
+        {
+          "member_id": "m2",
+          "net_minor": -8925
+        },
+        {
+          "member_id": "m3",
+          "net_minor": -7065
+        },
+        {
+          "member_id": "m4",
+          "net_minor": -285
+        }
+      ],
+      "ledger": {
+        "expenses": [
+          {
+            "id": "e1",
+            "group_id": "g-lisbon",
+            "description": "Dinner at the harbour",
+            "amount_minor": 24000,
+            "currency": "EUR",
+            "exchange_rate": null,
+            "group_amount_minor": 24000,
+            "paid_by": "m1",
+            "spent_at": "2026-09-14",
+            "created_by": "0badbeef-0000-4000-8000-000000000001",
+            "split_type": "equal",
+            "expense_splits": [
+              {
+                "member_id": "m1",
+                "share_minor": 6000
+              },
+              {
+                "member_id": "m2",
+                "share_minor": 6000
+              },
+              {
+                "member_id": "m3",
+                "share_minor": 6000
+              },
+              {
+                "member_id": "m4",
+                "share_minor": 6000
+              }
+            ]
+          },
+          {
+            "id": "e2",
+            "group_id": "g-lisbon",
+            "description": "Museum tickets",
+            "amount_minor": 4250,
+            "currency": "GBP",
+            "exchange_rate": 1.1699,
+            "group_amount_minor": 4972,
+            "paid_by": "m2",
+            "spent_at": "2026-09-12",
+            "created_by": "aaaaaaaa-0000-4000-8000-000000000002",
+            "split_type": "exact",
+            "expense_splits": [
+              {
+                "member_id": "m1",
+                "share_minor": 2486
+              },
+              {
+                "member_id": "m2",
+                "share_minor": 2486
+              }
+            ]
+          },
+          {
+            "id": "e3",
+            "group_id": "g-lisbon",
+            "description": null,
+            "amount_minor": 1000,
+            "currency": "EUR",
+            "exchange_rate": null,
+            "group_amount_minor": 1000,
+            "paid_by": "m3",
+            "spent_at": "2025-12-30",
+            "created_by": "aaaaaaaa-0000-4000-8000-000000000003",
+            "split_type": "percent",
+            "expense_splits": [
+              {
+                "member_id": "m1",
+                "share_minor": 333.4
+              },
+              {
+                "member_id": "m2",
+                "share_minor": 333.3
+              },
+              {
+                "member_id": "m3",
+                "share_minor": 333.3
+              }
+            ]
+          }
+        ],
+        "settlements": [
+          {
+            "id": "s1",
+            "group_id": "g-lisbon",
+            "from_member": "m3",
+            "to_member": "m1",
+            "amount_minor": 2000,
+            "currency": "EUR",
+            "note": null,
+            "settled_at": "2026-09-15",
+            "created_by": "aaaaaaaa-0000-4000-8000-000000000003"
+          }
+        ]
+      }
+    },
+    "auditLog": [
+      {
+        "id": "a1",
+        "summary": "Sofia added “Museum tickets”",
+        "created_at": "2026-09-12T18:30:00Z",
+        "amount_minor": 4250,
+        "currency": "GBP"
+      },
+      {
+        "id": "a2",
+        "summary": "Anna joined the group",
+        "created_at": "2026-08-04T09:05:00Z",
+        "amount_minor": null,
+        "currency": null
+      }
+    ],
+    "counts": [
+      {
+        "target_id": "e2",
+        "n": 3
+      },
+      {
+        "target_id": "s1",
+        "n": 1
+      }
+    ],
+    "forms": [
+      {
+        "name": "new",
+        "edits": {
+          "description": "Taxi",
+          "amount": "84.60"
+        },
+        "rate": 1,
+        "quick": false
+      },
+      {
+        "name": "quick",
+        "quick": true,
+        "rate": 0.9,
+        "initial": {
+          "amount": "12.5",
+          "currency": "USD",
+          "currencyPicked": true,
+          "description": "Snacks",
+          "spentAt": "2026-09-19"
+        },
+        "edits": {
+          "splitWith": [
+            "m1",
+            "m2",
+            "m3"
+          ]
+        }
+      },
+      {
+        "name": "exactShort",
+        "rate": 1,
+        "quick": false,
+        "edits": {
+          "description": "Groceries",
+          "amount": "30",
+          "mode": "exact",
+          "values": {
+            "m1": "10",
+            "m2": "12.50"
+          },
+          "splitWith": [
+            "m1",
+            "m2"
+          ]
+        }
+      },
+      {
+        "name": "editPercent",
+        "expenseId": "e3",
+        "rate": 1,
+        "quick": false,
+        "edits": {}
+      }
+    ]
+  },
+  "expected": {
+    "en": {
+      "list": {
+        "cards": [
+          {
+            "id": "g-lisbon",
+            "name": "Lisbon trip",
+            "imageUrl": null,
+            "members": "4 members",
+            "currency": "EUR",
+            "avatars": {
+              "shown": [
+                {
+                  "id": "m1",
+                  "name": "Alex Morgan",
+                  "src": null,
+                  "highlight": true,
+                  "initials": "AM",
+                  "bg": null,
+                  "fg": "light"
+                },
+                {
+                  "id": "m2",
+                  "name": "Sofia",
+                  "src": "https://example.com/sofia.png",
+                  "highlight": false,
+                  "initials": "S",
+                  "bg": "#02a0c5",
+                  "fg": "light"
+                },
+                {
+                  "id": "m3",
+                  "name": "Marco Rossi",
+                  "src": null,
+                  "highlight": false,
+                  "initials": "MR",
+                  "bg": "#16e951",
+                  "fg": "dark"
+                },
+                {
+                  "id": "m4",
+                  "name": "Anna",
+                  "src": null,
+                  "highlight": false,
+                  "initials": "A",
+                  "bg": "#c0361f",
+                  "fg": "light"
+                }
+              ],
+              "overflow": 0
+            },
+            "balance": {
+              "label": "You’re owed",
+              "amount": "€162.75",
+              "tone": "positive"
+            }
+          },
+          {
+            "id": "g-flat",
+            "name": "Flat 3B",
+            "imageUrl": "https://example.com/flat.png",
+            "members": "2 members",
+            "currency": "GBP",
+            "avatars": {
+              "shown": [
+                {
+                  "id": "f2",
+                  "name": "Alex Morgan",
+                  "src": null,
+                  "highlight": true,
+                  "initials": "AM",
+                  "bg": null,
+                  "fg": "light"
+                },
+                {
+                  "id": "f1",
+                  "name": "Sofia",
+                  "src": "https://example.com/sofia.png",
+                  "highlight": false,
+                  "initials": "S",
+                  "bg": "#02a0c5",
+                  "fg": "light"
+                }
+              ],
+              "overflow": 0
+            },
+            "balance": {
+              "label": "You owe",
+              "amount": "£12.50",
+              "tone": "negative"
+            }
+          }
+        ],
+        "invites": [
+          {
+            "id": "i1",
+            "name": "Ski week",
+            "text": "Marco Rossi invited you"
+          }
+        ]
+      },
+      "owner": {
+        "name": "Lisbon trip",
+        "imageUrl": null,
+        "currency": "EUR",
+        "total": "€299.72",
+        "members": "4 members",
+        "avatars": {
+          "shown": [
+            {
+              "id": "m1",
+              "name": "Alex Morgan",
+              "src": null,
+              "highlight": true,
+              "initials": "AM",
+              "bg": null,
+              "fg": "light"
+            },
+            {
+              "id": "m2",
+              "name": "Sofia",
+              "src": "https://example.com/sofia.png",
+              "highlight": false,
+              "initials": "S",
+              "bg": "#02a0c5",
+              "fg": "light"
+            },
+            {
+              "id": "m3",
+              "name": "Marco Rossi",
+              "src": null,
+              "highlight": false,
+              "initials": "MR",
+              "bg": "#16e951",
+              "fg": "dark"
+            },
+            {
+              "id": "m4",
+              "name": "Anna",
+              "src": null,
+              "highlight": false,
+              "initials": "A",
+              "bg": "#c0361f",
+              "fg": "light"
+            }
+          ],
+          "overflow": 0
+        },
+        "myMemberId": "m1",
+        "isOwner": true,
+        "balances": {
+          "mine": {
+            "text": "+€162.75",
+            "tone": "positive"
+          },
+          "tiles": [
+            {
+              "id": "m1",
+              "label": "You",
+              "text": "+€162.75",
+              "tone": "positive"
+            },
+            {
+              "id": "m2",
+              "label": "Sofia",
+              "text": "−€89.25",
+              "tone": "negative"
+            },
+            {
+              "id": "m3",
+              "label": "Marco Rossi",
+              "text": "−€70.65",
+              "tone": "negative"
+            },
+            {
+              "id": "m4",
+              "label": "Anna",
+              "text": "−€2.85",
+              "tone": "negative"
+            }
+          ],
+          "highlight": {
+            "text": "3 people owe you",
+            "amount": "€162.75",
+            "tone": "positive"
+          },
+          "plan": [
+            {
+              "key": "m2-m1",
+              "amount": "€89.25",
+              "tone": "positive",
+              "from": {
+                "id": "m2",
+                "name": "Sofia",
+                "src": "https://example.com/sofia.png",
+                "highlight": false,
+                "initials": "S",
+                "bg": "#02a0c5",
+                "fg": "light"
+              },
+              "to": {
+                "id": "m1",
+                "name": "You",
+                "src": null,
+                "highlight": true,
+                "initials": "Y",
+                "bg": null,
+                "fg": "light"
+              }
+            },
+            {
+              "key": "m3-m1",
+              "amount": "€70.65",
+              "tone": "positive",
+              "from": {
+                "id": "m3",
+                "name": "Marco Rossi",
+                "src": null,
+                "highlight": false,
+                "initials": "MR",
+                "bg": "#16e951",
+                "fg": "dark"
+              },
+              "to": {
+                "id": "m1",
+                "name": "You",
+                "src": null,
+                "highlight": true,
+                "initials": "Y",
+                "bg": null,
+                "fg": "light"
+              }
+            },
+            {
+              "key": "m4-m1",
+              "amount": "€2.85",
+              "tone": "positive",
+              "from": {
+                "id": "m4",
+                "name": "Anna",
+                "src": null,
+                "highlight": false,
+                "initials": "A",
+                "bg": "#c0361f",
+                "fg": "light"
+              },
+              "to": {
+                "id": "m1",
+                "name": "You",
+                "src": null,
+                "highlight": true,
+                "initials": "Y",
+                "bg": null,
+                "fg": "light"
+              }
+            }
+          ],
+          "planSubtitle": "3 payments to settle everyone up"
+        },
+        "expenses": [
+          {
+            "id": "e1",
+            "title": "Dinner at the harbour",
+            "meta": [
+              {
+                "text": "Paid by You",
+                "phone": true
+              },
+              {
+                "text": "14 Sep",
+                "phone": true
+              },
+              {
+                "text": "split 4 ways",
+                "phone": false
+              }
+            ],
+            "amount": "€240.00",
+            "amountMeta": null,
+            "comments": 0,
+            "canEdit": true
+          },
+          {
+            "id": "e2",
+            "title": "Museum tickets",
+            "meta": [
+              {
+                "text": "Paid by Sofia",
+                "phone": true
+              },
+              {
+                "text": "12 Sep",
+                "phone": true
+              },
+              {
+                "text": "custom split · 2 people",
+                "phone": true
+              }
+            ],
+            "amount": "£42.50",
+            "amountMeta": "≈ €49.72",
+            "comments": 3,
+            "canEdit": true
+          },
+          {
+            "id": "e3",
+            "title": "Expense",
+            "meta": [
+              {
+                "text": "Paid by Marco Rossi",
+                "phone": true
+              },
+              {
+                "text": "30 Dec 2025",
+                "phone": true
+              },
+              {
+                "text": "custom split · 3 people",
+                "phone": true
+              }
+            ],
+            "amount": "€10.00",
+            "amountMeta": null,
+            "comments": 0,
+            "canEdit": true
+          }
+        ],
+        "settlements": [
+          {
+            "id": "s1",
+            "title": "Marco Rossi → You",
+            "meta": "15 Sep",
+            "amount": "€20.00",
+            "comments": 1
+          }
+        ],
+        "activity": [
+          {
+            "id": "a1",
+            "text": "Sofia added “Museum tickets”",
+            "when": "12 Sep, 18:30",
+            "amount": "£42.50"
+          },
+          {
+            "id": "a2",
+            "text": "Anna joined the group",
+            "when": "4 Aug, 09:05",
+            "amount": null
+          }
+        ],
+        "memberRows": [
+          {
+            "id": "m1",
+            "name": "Alex Morgan",
+            "src": null,
+            "highlight": true,
+            "initials": "AM",
+            "bg": null,
+            "fg": "light",
+            "label": "Alex Morgan (you)",
+            "isMe": true,
+            "owner": "Owner",
+            "canRemove": false,
+            "removeLabel": "Remove Alex Morgan"
+          },
+          {
+            "id": "m2",
+            "name": "Sofia",
+            "src": "https://example.com/sofia.png",
+            "highlight": false,
+            "initials": "S",
+            "bg": "#02a0c5",
+            "fg": "light",
+            "label": "Sofia",
+            "isMe": false,
+            "owner": null,
+            "canRemove": true,
+            "removeLabel": "Remove Sofia"
+          },
+          {
+            "id": "m3",
+            "name": "Marco Rossi",
+            "src": null,
+            "highlight": false,
+            "initials": "MR",
+            "bg": "#16e951",
+            "fg": "dark",
+            "label": "Marco Rossi",
+            "isMe": false,
+            "owner": null,
+            "canRemove": true,
+            "removeLabel": "Remove Marco Rossi"
+          },
+          {
+            "id": "m4",
+            "name": "Anna",
+            "src": null,
+            "highlight": false,
+            "initials": "A",
+            "bg": "#c0361f",
+            "fg": "light",
+            "label": "Anna",
+            "isMe": false,
+            "owner": null,
+            "canRemove": true,
+            "removeLabel": "Remove Anna"
+          }
+        ],
+        "shareText": "Lisbon trip: €299.72 spent in total\n\nTo settle up (3 payments):\n• Sofia owes Alex Morgan €89.25\n• Marco Rossi owes Alex Morgan €70.65\n• Anna owes Alex Morgan €2.85\n\nShared from Budgeer",
+        "canDelete": false,
+        "stillIn": "Sofia, Marco Rossi"
+      },
+      "member": {
+        "name": "Lisbon trip",
+        "imageUrl": null,
+        "currency": "EUR",
+        "total": "€299.72",
+        "members": "4 members",
+        "avatars": {
+          "shown": [
+            {
+              "id": "m2",
+              "name": "Sofia",
+              "src": "https://example.com/sofia.png",
+              "highlight": true,
+              "initials": "S",
+              "bg": null,
+              "fg": "light"
+            },
+            {
+              "id": "m1",
+              "name": "Alex Morgan",
+              "src": null,
+              "highlight": false,
+              "initials": "AM",
+              "bg": "#061218",
+              "fg": "light"
+            },
+            {
+              "id": "m3",
+              "name": "Marco Rossi",
+              "src": null,
+              "highlight": false,
+              "initials": "MR",
+              "bg": "#16e951",
+              "fg": "dark"
+            },
+            {
+              "id": "m4",
+              "name": "Anna",
+              "src": null,
+              "highlight": false,
+              "initials": "A",
+              "bg": "#c0361f",
+              "fg": "light"
+            }
+          ],
+          "overflow": 0
+        },
+        "myMemberId": "m2",
+        "isOwner": false,
+        "balances": {
+          "mine": {
+            "text": "−€89.25",
+            "tone": "negative"
+          },
+          "tiles": [
+            {
+              "id": "m2",
+              "label": "You",
+              "text": "−€89.25",
+              "tone": "negative"
+            },
+            {
+              "id": "m1",
+              "label": "Alex Morgan",
+              "text": "+€162.75",
+              "tone": "positive"
+            },
+            {
+              "id": "m3",
+              "label": "Marco Rossi",
+              "text": "−€70.65",
+              "tone": "negative"
+            },
+            {
+              "id": "m4",
+              "label": "Anna",
+              "text": "−€2.85",
+              "tone": "negative"
+            }
+          ],
+          "highlight": {
+            "text": "You owe Alex Morgan",
+            "amount": "€89.25",
+            "tone": "negative"
+          },
+          "plan": [
+            {
+              "key": "m2-m1",
+              "amount": "€89.25",
+              "tone": "negative",
+              "from": {
+                "id": "m2",
+                "name": "You",
+                "src": "https://example.com/sofia.png",
+                "highlight": true,
+                "initials": "Y",
+                "bg": null,
+                "fg": "light"
+              },
+              "to": {
+                "id": "m1",
+                "name": "Alex Morgan",
+                "src": null,
+                "highlight": false,
+                "initials": "AM",
+                "bg": "#061218",
+                "fg": "light"
+              }
+            },
+            {
+              "key": "m3-m1",
+              "amount": "€70.65",
+              "tone": "default",
+              "from": {
+                "id": "m3",
+                "name": "Marco Rossi",
+                "src": null,
+                "highlight": false,
+                "initials": "MR",
+                "bg": "#16e951",
+                "fg": "dark"
+              },
+              "to": {
+                "id": "m1",
+                "name": "Alex Morgan",
+                "src": null,
+                "highlight": false,
+                "initials": "AM",
+                "bg": "#061218",
+                "fg": "light"
+              }
+            },
+            {
+              "key": "m4-m1",
+              "amount": "€2.85",
+              "tone": "default",
+              "from": {
+                "id": "m4",
+                "name": "Anna",
+                "src": null,
+                "highlight": false,
+                "initials": "A",
+                "bg": "#c0361f",
+                "fg": "light"
+              },
+              "to": {
+                "id": "m1",
+                "name": "Alex Morgan",
+                "src": null,
+                "highlight": false,
+                "initials": "AM",
+                "bg": "#061218",
+                "fg": "light"
+              }
+            }
+          ],
+          "planSubtitle": "3 payments to settle everyone up"
+        },
+        "expenses": [
+          {
+            "id": "e1",
+            "title": "Dinner at the harbour",
+            "meta": [
+              {
+                "text": "Paid by Alex Morgan",
+                "phone": true
+              },
+              {
+                "text": "14 Sep",
+                "phone": true
+              },
+              {
+                "text": "split 4 ways",
+                "phone": false
+              }
+            ],
+            "amount": "€240.00",
+            "amountMeta": null,
+            "comments": 0,
+            "canEdit": false
+          },
+          {
+            "id": "e2",
+            "title": "Museum tickets",
+            "meta": [
+              {
+                "text": "Paid by You",
+                "phone": true
+              },
+              {
+                "text": "12 Sep",
+                "phone": true
+              },
+              {
+                "text": "custom split · 2 people",
+                "phone": true
+              }
+            ],
+            "amount": "£42.50",
+            "amountMeta": "≈ €49.72",
+            "comments": 3,
+            "canEdit": true
+          },
+          {
+            "id": "e3",
+            "title": "Expense",
+            "meta": [
+              {
+                "text": "Paid by Marco Rossi",
+                "phone": true
+              },
+              {
+                "text": "30 Dec 2025",
+                "phone": true
+              },
+              {
+                "text": "custom split · 3 people",
+                "phone": true
+              }
+            ],
+            "amount": "€10.00",
+            "amountMeta": null,
+            "comments": 0,
+            "canEdit": false
+          }
+        ],
+        "settlements": [
+          {
+            "id": "s1",
+            "title": "Marco Rossi → Alex Morgan",
+            "meta": "15 Sep",
+            "amount": "€20.00",
+            "comments": 1
+          }
+        ],
+        "activity": [
+          {
+            "id": "a1",
+            "text": "Sofia added “Museum tickets”",
+            "when": "12 Sep, 18:30",
+            "amount": "£42.50"
+          },
+          {
+            "id": "a2",
+            "text": "Anna joined the group",
+            "when": "4 Aug, 09:05",
+            "amount": null
+          }
+        ],
+        "memberRows": [
+          {
+            "id": "m2",
+            "name": "Sofia",
+            "src": "https://example.com/sofia.png",
+            "highlight": true,
+            "initials": "S",
+            "bg": null,
+            "fg": "light",
+            "label": "Sofia (you)",
+            "isMe": true,
+            "owner": null,
+            "canRemove": false,
+            "removeLabel": "Remove Sofia"
+          },
+          {
+            "id": "m1",
+            "name": "Alex Morgan",
+            "src": null,
+            "highlight": false,
+            "initials": "AM",
+            "bg": "#061218",
+            "fg": "light",
+            "label": "Alex Morgan",
+            "isMe": false,
+            "owner": "Owner",
+            "canRemove": false,
+            "removeLabel": "Remove Alex Morgan"
+          },
+          {
+            "id": "m3",
+            "name": "Marco Rossi",
+            "src": null,
+            "highlight": false,
+            "initials": "MR",
+            "bg": "#16e951",
+            "fg": "dark",
+            "label": "Marco Rossi",
+            "isMe": false,
+            "owner": null,
+            "canRemove": false,
+            "removeLabel": "Remove Marco Rossi"
+          },
+          {
+            "id": "m4",
+            "name": "Anna",
+            "src": null,
+            "highlight": false,
+            "initials": "A",
+            "bg": "#c0361f",
+            "fg": "light",
+            "label": "Anna",
+            "isMe": false,
+            "owner": null,
+            "canRemove": false,
+            "removeLabel": "Remove Anna"
+          }
+        ],
+        "shareText": "Lisbon trip: €299.72 spent in total\n\nTo settle up (3 payments):\n• Sofia owes Alex Morgan €89.25\n• Marco Rossi owes Alex Morgan €70.65\n• Anna owes Alex Morgan €2.85\n\nShared from Budgeer",
+        "canDelete": false,
+        "stillIn": "Alex Morgan, Marco Rossi"
+      },
+      "forms": {
+        "new": {
+          "start": {
+            "description": "",
+            "paidCurrency": "EUR",
+            "currencyPicked": false,
+            "amount": "",
+            "paidBy": "m1",
+            "spentAt": "2026-09-20",
+            "splitWith": [
+              "m1",
+              "m2",
+              "m3",
+              "m4"
+            ],
+            "mode": "equal",
+            "values": {}
+          },
+          "totalMinor": 8460,
+          "preview": {
+            "byMember": {
+              "m1": 2115,
+              "m2": 2115,
+              "m3": 2115,
+              "m4": 2115
+            },
+            "shareText": {
+              "m1": "€21.15",
+              "m2": "€21.15",
+              "m3": "€21.15",
+              "m4": "€21.15"
+            },
+            "summary": "€21.15 each",
+            "complete": true
+          },
+          "card": {
+            "title": "Split equally",
+            "line": "All 4 · €21.15 each"
+          },
+          "problem": null,
+          "args": {
+            "groupId": "g-lisbon",
+            "description": "Taxi",
+            "amountMinor": 8460,
+            "currency": "EUR",
+            "exchangeRate": null,
+            "paidBy": "m1",
+            "spentAt": "2026-09-20",
+            "memberIds": [
+              "m1",
+              "m2",
+              "m3",
+              "m4"
+            ],
+            "shares": null,
+            "splitType": "equal"
+          },
+          "toast": {
+            "title": "Expense added"
+          }
+        },
+        "quick": {
+          "start": {
+            "description": "Snacks",
+            "paidCurrency": "USD",
+            "currencyPicked": true,
+            "amount": "12.5",
+            "paidBy": "m1",
+            "spentAt": "2026-09-19",
+            "splitWith": [
+              "m1",
+              "m2",
+              "m3",
+              "m4"
+            ],
+            "mode": "equal",
+            "values": {}
+          },
+          "totalMinor": 1125,
+          "preview": {
+            "byMember": {
+              "m1": 375,
+              "m2": 375,
+              "m3": 375
+            },
+            "shareText": {
+              "m1": "€3.75",
+              "m2": "€3.75",
+              "m3": "€3.75"
+            },
+            "summary": "€3.75 each",
+            "complete": true
+          },
+          "card": {
+            "title": "Split equally",
+            "line": "3 of 4 · €3.75 each"
+          },
+          "problem": null,
+          "args": {
+            "groupId": "g-lisbon",
+            "description": "Snacks",
+            "amountMinor": 1250,
+            "currency": "USD",
+            "exchangeRate": 0.9,
+            "paidBy": "m1",
+            "spentAt": "2026-09-19",
+            "memberIds": [
+              "m1",
+              "m2",
+              "m3"
+            ],
+            "shares": null,
+            "splitType": "equal"
+          },
+          "toast": {
+            "title": "Added to Lisbon trip",
+            "description": "Your share, €3.75, is in your expenses."
+          }
+        },
+        "exactShort": {
+          "start": {
+            "description": "",
+            "paidCurrency": "EUR",
+            "currencyPicked": false,
+            "amount": "",
+            "paidBy": "m1",
+            "spentAt": "2026-09-20",
+            "splitWith": [
+              "m1",
+              "m2",
+              "m3",
+              "m4"
+            ],
+            "mode": "equal",
+            "values": {}
+          },
+          "totalMinor": 3000,
+          "preview": {
+            "byMember": {
+              "m1": 1000,
+              "m2": 1250
+            },
+            "shareText": {
+              "m1": "€10.00",
+              "m2": "€12.50"
+            },
+            "summary": "€7.50 left to assign",
+            "complete": false
+          },
+          "card": {
+            "title": "Custom split",
+            "line": "2 of 4 · €7.50 left to assign"
+          },
+          "problem": {
+            "title": "Amounts must add up to the total",
+            "description": "Missing €7.50"
+          },
+          "args": {
+            "groupId": "g-lisbon",
+            "description": "Groceries",
+            "amountMinor": 3000,
+            "currency": "EUR",
+            "exchangeRate": null,
+            "paidBy": "m1",
+            "spentAt": "2026-09-20",
+            "memberIds": [
+              "m1",
+              "m2"
+            ],
+            "shares": [
+              1000,
+              1250
+            ],
+            "splitType": "exact"
+          },
+          "toast": {
+            "title": "Expense added"
+          }
+        },
+        "editPercent": {
+          "start": {
+            "description": "",
+            "paidCurrency": "EUR",
+            "currencyPicked": false,
+            "amount": "10.00",
+            "paidBy": "m3",
+            "spentAt": "2025-12-30",
+            "splitWith": [
+              "m1",
+              "m2",
+              "m3"
+            ],
+            "mode": "percent",
+            "values": {
+              "m1": "33.34",
+              "m2": "33.33",
+              "m3": "33.33"
+            }
+          },
+          "totalMinor": 1000,
+          "preview": {
+            "byMember": {
+              "m1": 334,
+              "m2": 333,
+              "m3": 333
+            },
+            "shareText": {
+              "m1": "€3.34",
+              "m2": "€3.33",
+              "m3": "€3.33"
+            },
+            "summary": "Adds up to 100% ✓",
+            "complete": true
+          },
+          "card": {
+            "title": "Custom split",
+            "line": "3 of 4 · Adds up to 100% ✓"
+          },
+          "problem": null,
+          "args": {
+            "expenseId": "e3",
+            "description": "",
+            "amountMinor": 1000,
+            "currency": "EUR",
+            "exchangeRate": null,
+            "paidBy": "m3",
+            "spentAt": "2025-12-30",
+            "memberIds": [
+              "m1",
+              "m2",
+              "m3"
+            ],
+            "shares": [
+              334,
+              333,
+              333
+            ],
+            "splitType": "percent"
+          },
+          "toast": {
+            "title": "Expense updated"
+          }
+        }
+      },
+      "settleOwed": {
+        "others": [
+          "m2",
+          "m3",
+          "m4"
+        ],
+        "start": {
+          "direction": "in",
+          "otherId": "m2",
+          "amount": "89.25",
+          "settledAt": "2026-09-20",
+          "picked": 0
+        },
+        "suggestions": [
+          {
+            "index": 0,
+            "direction": "in",
+            "otherId": "m2",
+            "amount": "89.25",
+            "key": "groups:settle.payIn",
+            "values": {
+              "name": "Sofia",
+              "amount": "€89.25"
+            },
+            "text": "<b>Sofia</b> pays you €89.25",
+            "remind": {
+              "memberId": "m2",
+              "label": "Remind Sofia to settle"
+            }
+          },
+          {
+            "index": 1,
+            "direction": "in",
+            "otherId": "m3",
+            "amount": "70.65",
+            "key": "groups:settle.payIn",
+            "values": {
+              "name": "Marco Rossi",
+              "amount": "€70.65"
+            },
+            "text": "<b>Marco Rossi</b> pays you €70.65",
+            "remind": {
+              "memberId": "m3",
+              "label": "Remind Marco Rossi to settle"
+            }
+          },
+          {
+            "index": 2,
+            "direction": "in",
+            "otherId": "m4",
+            "amount": "2.85",
+            "key": "groups:settle.payIn",
+            "values": {
+              "name": "Anna",
+              "amount": "€2.85"
+            },
+            "text": "<b>Anna</b> pays you €2.85",
+            "remind": null
+          }
+        ],
+        "otherLine": "Sofia owes €89.25 overall",
+        "parties": {
+          "from": "Sofia",
+          "to": "You"
+        },
+        "problem": null,
+        "args": {
+          "groupId": "g-lisbon",
+          "fromMember": "m2",
+          "toMember": "m1",
+          "amountMinor": 8925,
+          "currency": "EUR",
+          "settledAt": "2026-09-20"
+        }
+      },
+      "settlePay": {
+        "others": [
+          "m1",
+          "m3",
+          "m4"
+        ],
+        "start": {
+          "direction": "out",
+          "otherId": "m1",
+          "amount": "89.25",
+          "settledAt": "2026-09-20",
+          "picked": 0
+        },
+        "suggestions": [
+          {
+            "index": 0,
+            "direction": "out",
+            "otherId": "m1",
+            "amount": "89.25",
+            "key": "groups:settle.payOut",
+            "values": {
+              "name": "Alex Morgan",
+              "amount": "€89.25"
+            },
+            "text": "Pay <b>Alex Morgan</b> €89.25",
+            "remind": null
+          }
+        ],
+        "otherLine": "Alex Morgan is owed €162.75 overall",
+        "parties": {
+          "from": "You",
+          "to": "Alex Morgan"
+        },
+        "problem": null,
+        "args": {
+          "groupId": "g-lisbon",
+          "fromMember": "m2",
+          "toMember": "m1",
+          "amountMinor": 8925,
+          "currency": "EUR",
+          "settledAt": "2026-09-20"
+        }
+      }
+    },
+    "el": {
+      "list": {
+        "cards": [
+          {
+            "id": "g-lisbon",
+            "name": "Lisbon trip",
+            "imageUrl": null,
+            "members": "4 μέλη",
+            "currency": "EUR",
+            "avatars": {
+              "shown": [
+                {
+                  "id": "m1",
+                  "name": "Alex Morgan",
+                  "src": null,
+                  "highlight": true,
+                  "initials": "AM",
+                  "bg": null,
+                  "fg": "light"
+                },
+                {
+                  "id": "m2",
+                  "name": "Sofia",
+                  "src": "https://example.com/sofia.png",
+                  "highlight": false,
+                  "initials": "S",
+                  "bg": "#02a0c5",
+                  "fg": "light"
+                },
+                {
+                  "id": "m3",
+                  "name": "Marco Rossi",
+                  "src": null,
+                  "highlight": false,
+                  "initials": "MR",
+                  "bg": "#16e951",
+                  "fg": "dark"
+                },
+                {
+                  "id": "m4",
+                  "name": "Anna",
+                  "src": null,
+                  "highlight": false,
+                  "initials": "A",
+                  "bg": "#c0361f",
+                  "fg": "light"
+                }
+              ],
+              "overflow": 0
+            },
+            "balance": {
+              "label": "Σου χρωστάνε",
+              "amount": "162,75 €",
+              "tone": "positive"
+            }
+          },
+          {
+            "id": "g-flat",
+            "name": "Flat 3B",
+            "imageUrl": "https://example.com/flat.png",
+            "members": "2 μέλη",
+            "currency": "GBP",
+            "avatars": {
+              "shown": [
+                {
+                  "id": "f2",
+                  "name": "Alex Morgan",
+                  "src": null,
+                  "highlight": true,
+                  "initials": "AM",
+                  "bg": null,
+                  "fg": "light"
+                },
+                {
+                  "id": "f1",
+                  "name": "Sofia",
+                  "src": "https://example.com/sofia.png",
+                  "highlight": false,
+                  "initials": "S",
+                  "bg": "#02a0c5",
+                  "fg": "light"
+                }
+              ],
+              "overflow": 0
+            },
+            "balance": {
+              "label": "Χρωστάς",
+              "amount": "12,50 £",
+              "tone": "negative"
+            }
+          }
+        ],
+        "invites": [
+          {
+            "id": "i1",
+            "name": "Ski week",
+            "text": "Σε κάλεσε: Marco Rossi"
+          }
+        ]
+      },
+      "owner": {
+        "name": "Lisbon trip",
+        "imageUrl": null,
+        "currency": "EUR",
+        "total": "299,72 €",
+        "members": "4 μέλη",
+        "avatars": {
+          "shown": [
+            {
+              "id": "m1",
+              "name": "Alex Morgan",
+              "src": null,
+              "highlight": true,
+              "initials": "AM",
+              "bg": null,
+              "fg": "light"
+            },
+            {
+              "id": "m2",
+              "name": "Sofia",
+              "src": "https://example.com/sofia.png",
+              "highlight": false,
+              "initials": "S",
+              "bg": "#02a0c5",
+              "fg": "light"
+            },
+            {
+              "id": "m3",
+              "name": "Marco Rossi",
+              "src": null,
+              "highlight": false,
+              "initials": "MR",
+              "bg": "#16e951",
+              "fg": "dark"
+            },
+            {
+              "id": "m4",
+              "name": "Anna",
+              "src": null,
+              "highlight": false,
+              "initials": "A",
+              "bg": "#c0361f",
+              "fg": "light"
+            }
+          ],
+          "overflow": 0
+        },
+        "myMemberId": "m1",
+        "isOwner": true,
+        "balances": {
+          "mine": {
+            "text": "+162,75 €",
+            "tone": "positive"
+          },
+          "tiles": [
+            {
+              "id": "m1",
+              "label": "Εσύ",
+              "text": "+162,75 €",
+              "tone": "positive"
+            },
+            {
+              "id": "m2",
+              "label": "Sofia",
+              "text": "−89,25 €",
+              "tone": "negative"
+            },
+            {
+              "id": "m3",
+              "label": "Marco Rossi",
+              "text": "−70,65 €",
+              "tone": "negative"
+            },
+            {
+              "id": "m4",
+              "label": "Anna",
+              "text": "−2,85 €",
+              "tone": "negative"
+            }
+          ],
+          "highlight": {
+            "text": "Σου χρωστάνε 3 άτομα",
+            "amount": "162,75 €",
+            "tone": "positive"
+          },
+          "plan": [
+            {
+              "key": "m2-m1",
+              "amount": "89,25 €",
+              "tone": "positive",
+              "from": {
+                "id": "m2",
+                "name": "Sofia",
+                "src": "https://example.com/sofia.png",
+                "highlight": false,
+                "initials": "S",
+                "bg": "#02a0c5",
+                "fg": "light"
+              },
+              "to": {
+                "id": "m1",
+                "name": "Εσύ",
+                "src": null,
+                "highlight": true,
+                "initials": "Ε",
+                "bg": null,
+                "fg": "light"
+              }
+            },
+            {
+              "key": "m3-m1",
+              "amount": "70,65 €",
+              "tone": "positive",
+              "from": {
+                "id": "m3",
+                "name": "Marco Rossi",
+                "src": null,
+                "highlight": false,
+                "initials": "MR",
+                "bg": "#16e951",
+                "fg": "dark"
+              },
+              "to": {
+                "id": "m1",
+                "name": "Εσύ",
+                "src": null,
+                "highlight": true,
+                "initials": "Ε",
+                "bg": null,
+                "fg": "light"
+              }
+            },
+            {
+              "key": "m4-m1",
+              "amount": "2,85 €",
+              "tone": "positive",
+              "from": {
+                "id": "m4",
+                "name": "Anna",
+                "src": null,
+                "highlight": false,
+                "initials": "A",
+                "bg": "#c0361f",
+                "fg": "light"
+              },
+              "to": {
+                "id": "m1",
+                "name": "Εσύ",
+                "src": null,
+                "highlight": true,
+                "initials": "Ε",
+                "bg": null,
+                "fg": "light"
+              }
+            }
+          ],
+          "planSubtitle": "3 πληρωμές για να ξεχρεώσετε όλοι"
+        },
+        "expenses": [
+          {
+            "id": "e1",
+            "title": "Dinner at the harbour",
+            "meta": [
+              {
+                "text": "Πλήρωσες εσύ",
+                "phone": true
+              },
+              {
+                "text": "14 Σεπ",
+                "phone": true
+              },
+              {
+                "text": "ισόποσα σε 4 άτομα",
+                "phone": false
+              }
+            ],
+            "amount": "240,00 €",
+            "amountMeta": null,
+            "comments": 0,
+            "canEdit": true
+          },
+          {
+            "id": "e2",
+            "title": "Museum tickets",
+            "meta": [
+              {
+                "text": "Πλήρωσε: Sofia",
+                "phone": true
+              },
+              {
+                "text": "12 Σεπ",
+                "phone": true
+              },
+              {
+                "text": "προσαρμοσμένο μοίρασμα · 2 άτομα",
+                "phone": true
+              }
+            ],
+            "amount": "42,50 £",
+            "amountMeta": "≈ 49,72 €",
+            "comments": 3,
+            "canEdit": true
+          },
+          {
+            "id": "e3",
+            "title": "Έξοδο",
+            "meta": [
+              {
+                "text": "Πλήρωσε: Marco Rossi",
+                "phone": true
+              },
+              {
+                "text": "30 Δεκ 2025",
+                "phone": true
+              },
+              {
+                "text": "προσαρμοσμένο μοίρασμα · 3 άτομα",
+                "phone": true
+              }
+            ],
+            "amount": "10,00 €",
+            "amountMeta": null,
+            "comments": 0,
+            "canEdit": true
+          }
+        ],
+        "settlements": [
+          {
+            "id": "s1",
+            "title": "Marco Rossi → Εσύ",
+            "meta": "15 Σεπ",
+            "amount": "20,00 €",
+            "comments": 1
+          }
+        ],
+        "activity": [
+          {
+            "id": "a1",
+            "text": "Sofia added “Museum tickets”",
+            "when": "12 Σεπ, 18:30",
+            "amount": "42,50 £"
+          },
+          {
+            "id": "a2",
+            "text": "Anna joined the group",
+            "when": "4 Αυγ, 09:05",
+            "amount": null
+          }
+        ],
+        "memberRows": [
+          {
+            "id": "m1",
+            "name": "Alex Morgan",
+            "src": null,
+            "highlight": true,
+            "initials": "AM",
+            "bg": null,
+            "fg": "light",
+            "label": "Alex Morgan (εσύ)",
+            "isMe": true,
+            "owner": "Διαχειριστής",
+            "canRemove": false,
+            "removeLabel": "Αφαίρεση: Alex Morgan"
+          },
+          {
+            "id": "m2",
+            "name": "Sofia",
+            "src": "https://example.com/sofia.png",
+            "highlight": false,
+            "initials": "S",
+            "bg": "#02a0c5",
+            "fg": "light",
+            "label": "Sofia",
+            "isMe": false,
+            "owner": null,
+            "canRemove": true,
+            "removeLabel": "Αφαίρεση: Sofia"
+          },
+          {
+            "id": "m3",
+            "name": "Marco Rossi",
+            "src": null,
+            "highlight": false,
+            "initials": "MR",
+            "bg": "#16e951",
+            "fg": "dark",
+            "label": "Marco Rossi",
+            "isMe": false,
+            "owner": null,
+            "canRemove": true,
+            "removeLabel": "Αφαίρεση: Marco Rossi"
+          },
+          {
+            "id": "m4",
+            "name": "Anna",
+            "src": null,
+            "highlight": false,
+            "initials": "A",
+            "bg": "#c0361f",
+            "fg": "light",
+            "label": "Anna",
+            "isMe": false,
+            "owner": null,
+            "canRemove": true,
+            "removeLabel": "Αφαίρεση: Anna"
+          }
+        ],
+        "shareText": "Lisbon trip: 299,72 € έξοδα συνολικά\n\nΓια να ξεχρεώσετε (3 πληρωμές):\n• Sofia → Alex Morgan: 89,25 €\n• Marco Rossi → Alex Morgan: 70,65 €\n• Anna → Alex Morgan: 2,85 €\n\nΑπό το Budgeer",
+        "canDelete": false,
+        "stillIn": "Sofia, Marco Rossi"
+      },
+      "member": {
+        "name": "Lisbon trip",
+        "imageUrl": null,
+        "currency": "EUR",
+        "total": "299,72 €",
+        "members": "4 μέλη",
+        "avatars": {
+          "shown": [
+            {
+              "id": "m2",
+              "name": "Sofia",
+              "src": "https://example.com/sofia.png",
+              "highlight": true,
+              "initials": "S",
+              "bg": null,
+              "fg": "light"
+            },
+            {
+              "id": "m1",
+              "name": "Alex Morgan",
+              "src": null,
+              "highlight": false,
+              "initials": "AM",
+              "bg": "#061218",
+              "fg": "light"
+            },
+            {
+              "id": "m3",
+              "name": "Marco Rossi",
+              "src": null,
+              "highlight": false,
+              "initials": "MR",
+              "bg": "#16e951",
+              "fg": "dark"
+            },
+            {
+              "id": "m4",
+              "name": "Anna",
+              "src": null,
+              "highlight": false,
+              "initials": "A",
+              "bg": "#c0361f",
+              "fg": "light"
+            }
+          ],
+          "overflow": 0
+        },
+        "myMemberId": "m2",
+        "isOwner": false,
+        "balances": {
+          "mine": {
+            "text": "−89,25 €",
+            "tone": "negative"
+          },
+          "tiles": [
+            {
+              "id": "m2",
+              "label": "Εσύ",
+              "text": "−89,25 €",
+              "tone": "negative"
+            },
+            {
+              "id": "m1",
+              "label": "Alex Morgan",
+              "text": "+162,75 €",
+              "tone": "positive"
+            },
+            {
+              "id": "m3",
+              "label": "Marco Rossi",
+              "text": "−70,65 €",
+              "tone": "negative"
+            },
+            {
+              "id": "m4",
+              "label": "Anna",
+              "text": "−2,85 €",
+              "tone": "negative"
+            }
+          ],
+          "highlight": {
+            "text": "Χρωστάς: Alex Morgan",
+            "amount": "89,25 €",
+            "tone": "negative"
+          },
+          "plan": [
+            {
+              "key": "m2-m1",
+              "amount": "89,25 €",
+              "tone": "negative",
+              "from": {
+                "id": "m2",
+                "name": "Εσύ",
+                "src": "https://example.com/sofia.png",
+                "highlight": true,
+                "initials": "Ε",
+                "bg": null,
+                "fg": "light"
+              },
+              "to": {
+                "id": "m1",
+                "name": "Alex Morgan",
+                "src": null,
+                "highlight": false,
+                "initials": "AM",
+                "bg": "#061218",
+                "fg": "light"
+              }
+            },
+            {
+              "key": "m3-m1",
+              "amount": "70,65 €",
+              "tone": "default",
+              "from": {
+                "id": "m3",
+                "name": "Marco Rossi",
+                "src": null,
+                "highlight": false,
+                "initials": "MR",
+                "bg": "#16e951",
+                "fg": "dark"
+              },
+              "to": {
+                "id": "m1",
+                "name": "Alex Morgan",
+                "src": null,
+                "highlight": false,
+                "initials": "AM",
+                "bg": "#061218",
+                "fg": "light"
+              }
+            },
+            {
+              "key": "m4-m1",
+              "amount": "2,85 €",
+              "tone": "default",
+              "from": {
+                "id": "m4",
+                "name": "Anna",
+                "src": null,
+                "highlight": false,
+                "initials": "A",
+                "bg": "#c0361f",
+                "fg": "light"
+              },
+              "to": {
+                "id": "m1",
+                "name": "Alex Morgan",
+                "src": null,
+                "highlight": false,
+                "initials": "AM",
+                "bg": "#061218",
+                "fg": "light"
+              }
+            }
+          ],
+          "planSubtitle": "3 πληρωμές για να ξεχρεώσετε όλοι"
+        },
+        "expenses": [
+          {
+            "id": "e1",
+            "title": "Dinner at the harbour",
+            "meta": [
+              {
+                "text": "Πλήρωσε: Alex Morgan",
+                "phone": true
+              },
+              {
+                "text": "14 Σεπ",
+                "phone": true
+              },
+              {
+                "text": "ισόποσα σε 4 άτομα",
+                "phone": false
+              }
+            ],
+            "amount": "240,00 €",
+            "amountMeta": null,
+            "comments": 0,
+            "canEdit": false
+          },
+          {
+            "id": "e2",
+            "title": "Museum tickets",
+            "meta": [
+              {
+                "text": "Πλήρωσες εσύ",
+                "phone": true
+              },
+              {
+                "text": "12 Σεπ",
+                "phone": true
+              },
+              {
+                "text": "προσαρμοσμένο μοίρασμα · 2 άτομα",
+                "phone": true
+              }
+            ],
+            "amount": "42,50 £",
+            "amountMeta": "≈ 49,72 €",
+            "comments": 3,
+            "canEdit": true
+          },
+          {
+            "id": "e3",
+            "title": "Έξοδο",
+            "meta": [
+              {
+                "text": "Πλήρωσε: Marco Rossi",
+                "phone": true
+              },
+              {
+                "text": "30 Δεκ 2025",
+                "phone": true
+              },
+              {
+                "text": "προσαρμοσμένο μοίρασμα · 3 άτομα",
+                "phone": true
+              }
+            ],
+            "amount": "10,00 €",
+            "amountMeta": null,
+            "comments": 0,
+            "canEdit": false
+          }
+        ],
+        "settlements": [
+          {
+            "id": "s1",
+            "title": "Marco Rossi → Alex Morgan",
+            "meta": "15 Σεπ",
+            "amount": "20,00 €",
+            "comments": 1
+          }
+        ],
+        "activity": [
+          {
+            "id": "a1",
+            "text": "Sofia added “Museum tickets”",
+            "when": "12 Σεπ, 18:30",
+            "amount": "42,50 £"
+          },
+          {
+            "id": "a2",
+            "text": "Anna joined the group",
+            "when": "4 Αυγ, 09:05",
+            "amount": null
+          }
+        ],
+        "memberRows": [
+          {
+            "id": "m2",
+            "name": "Sofia",
+            "src": "https://example.com/sofia.png",
+            "highlight": true,
+            "initials": "S",
+            "bg": null,
+            "fg": "light",
+            "label": "Sofia (εσύ)",
+            "isMe": true,
+            "owner": null,
+            "canRemove": false,
+            "removeLabel": "Αφαίρεση: Sofia"
+          },
+          {
+            "id": "m1",
+            "name": "Alex Morgan",
+            "src": null,
+            "highlight": false,
+            "initials": "AM",
+            "bg": "#061218",
+            "fg": "light",
+            "label": "Alex Morgan",
+            "isMe": false,
+            "owner": "Διαχειριστής",
+            "canRemove": false,
+            "removeLabel": "Αφαίρεση: Alex Morgan"
+          },
+          {
+            "id": "m3",
+            "name": "Marco Rossi",
+            "src": null,
+            "highlight": false,
+            "initials": "MR",
+            "bg": "#16e951",
+            "fg": "dark",
+            "label": "Marco Rossi",
+            "isMe": false,
+            "owner": null,
+            "canRemove": false,
+            "removeLabel": "Αφαίρεση: Marco Rossi"
+          },
+          {
+            "id": "m4",
+            "name": "Anna",
+            "src": null,
+            "highlight": false,
+            "initials": "A",
+            "bg": "#c0361f",
+            "fg": "light",
+            "label": "Anna",
+            "isMe": false,
+            "owner": null,
+            "canRemove": false,
+            "removeLabel": "Αφαίρεση: Anna"
+          }
+        ],
+        "shareText": "Lisbon trip: 299,72 € έξοδα συνολικά\n\nΓια να ξεχρεώσετε (3 πληρωμές):\n• Sofia → Alex Morgan: 89,25 €\n• Marco Rossi → Alex Morgan: 70,65 €\n• Anna → Alex Morgan: 2,85 €\n\nΑπό το Budgeer",
+        "canDelete": false,
+        "stillIn": "Alex Morgan, Marco Rossi"
+      },
+      "forms": {
+        "new": {
+          "start": {
+            "description": "",
+            "paidCurrency": "EUR",
+            "currencyPicked": false,
+            "amount": "",
+            "paidBy": "m1",
+            "spentAt": "2026-09-20",
+            "splitWith": [
+              "m1",
+              "m2",
+              "m3",
+              "m4"
+            ],
+            "mode": "equal",
+            "values": {}
+          },
+          "totalMinor": 8460,
+          "preview": {
+            "byMember": {
+              "m1": 2115,
+              "m2": 2115,
+              "m3": 2115,
+              "m4": 2115
+            },
+            "shareText": {
+              "m1": "21,15 €",
+              "m2": "21,15 €",
+              "m3": "21,15 €",
+              "m4": "21,15 €"
+            },
+            "summary": "21,15 € ο καθένας",
+            "complete": true
+          },
+          "card": {
+            "title": "Ισόποσα",
+            "line": "Και οι 4 · 21,15 € ο καθένας"
+          },
+          "problem": null,
+          "args": {
+            "groupId": "g-lisbon",
+            "description": "Taxi",
+            "amountMinor": 8460,
+            "currency": "EUR",
+            "exchangeRate": null,
+            "paidBy": "m1",
+            "spentAt": "2026-09-20",
+            "memberIds": [
+              "m1",
+              "m2",
+              "m3",
+              "m4"
+            ],
+            "shares": null,
+            "splitType": "equal"
+          },
+          "toast": {
+            "title": "Το έξοδο προστέθηκε"
+          }
+        },
+        "quick": {
+          "start": {
+            "description": "Snacks",
+            "paidCurrency": "USD",
+            "currencyPicked": true,
+            "amount": "12.5",
+            "paidBy": "m1",
+            "spentAt": "2026-09-19",
+            "splitWith": [
+              "m1",
+              "m2",
+              "m3",
+              "m4"
+            ],
+            "mode": "equal",
+            "values": {}
+          },
+          "totalMinor": 1125,
+          "preview": {
+            "byMember": {
+              "m1": 375,
+              "m2": 375,
+              "m3": 375
+            },
+            "shareText": {
+              "m1": "3,75 €",
+              "m2": "3,75 €",
+              "m3": "3,75 €"
+            },
+            "summary": "3,75 € ο καθένας",
+            "complete": true
+          },
+          "card": {
+            "title": "Ισόποσα",
+            "line": "3 από 4 · 3,75 € ο καθένας"
+          },
+          "problem": null,
+          "args": {
+            "groupId": "g-lisbon",
+            "description": "Snacks",
+            "amountMinor": 1250,
+            "currency": "USD",
+            "exchangeRate": 0.9,
+            "paidBy": "m1",
+            "spentAt": "2026-09-19",
+            "memberIds": [
+              "m1",
+              "m2",
+              "m3"
+            ],
+            "shares": null,
+            "splitType": "equal"
+          },
+          "toast": {
+            "title": "Προστέθηκε στην ομάδα «Lisbon trip»",
+            "description": "Το μερίδιό σου, 3,75 €, μπήκε στα έξοδά σου."
+          }
+        },
+        "exactShort": {
+          "start": {
+            "description": "",
+            "paidCurrency": "EUR",
+            "currencyPicked": false,
+            "amount": "",
+            "paidBy": "m1",
+            "spentAt": "2026-09-20",
+            "splitWith": [
+              "m1",
+              "m2",
+              "m3",
+              "m4"
+            ],
+            "mode": "equal",
+            "values": {}
+          },
+          "totalMinor": 3000,
+          "preview": {
+            "byMember": {
+              "m1": 1000,
+              "m2": 1250
+            },
+            "shareText": {
+              "m1": "10,00 €",
+              "m2": "12,50 €"
+            },
+            "summary": "Μένουν 7,50 € να μοιραστούν",
+            "complete": false
+          },
+          "card": {
+            "title": "Προσαρμοσμένο",
+            "line": "2 από 4 · Μένουν 7,50 € να μοιραστούν"
+          },
+          "problem": {
+            "title": "Τα ποσά πρέπει να βγάζουν το σύνολο",
+            "description": "Λείπουν 7,50 €"
+          },
+          "args": {
+            "groupId": "g-lisbon",
+            "description": "Groceries",
+            "amountMinor": 3000,
+            "currency": "EUR",
+            "exchangeRate": null,
+            "paidBy": "m1",
+            "spentAt": "2026-09-20",
+            "memberIds": [
+              "m1",
+              "m2"
+            ],
+            "shares": [
+              1000,
+              1250
+            ],
+            "splitType": "exact"
+          },
+          "toast": {
+            "title": "Το έξοδο προστέθηκε"
+          }
+        },
+        "editPercent": {
+          "start": {
+            "description": "",
+            "paidCurrency": "EUR",
+            "currencyPicked": false,
+            "amount": "10.00",
+            "paidBy": "m3",
+            "spentAt": "2025-12-30",
+            "splitWith": [
+              "m1",
+              "m2",
+              "m3"
+            ],
+            "mode": "percent",
+            "values": {
+              "m1": "33.34",
+              "m2": "33.33",
+              "m3": "33.33"
+            }
+          },
+          "totalMinor": 1000,
+          "preview": {
+            "byMember": {
+              "m1": 334,
+              "m2": 333,
+              "m3": 333
+            },
+            "shareText": {
+              "m1": "3,34 €",
+              "m2": "3,33 €",
+              "m3": "3,33 €"
+            },
+            "summary": "Βγαίνει 100% ✓",
+            "complete": true
+          },
+          "card": {
+            "title": "Προσαρμοσμένο",
+            "line": "3 από 4 · Βγαίνει 100% ✓"
+          },
+          "problem": null,
+          "args": {
+            "expenseId": "e3",
+            "description": "",
+            "amountMinor": 1000,
+            "currency": "EUR",
+            "exchangeRate": null,
+            "paidBy": "m3",
+            "spentAt": "2025-12-30",
+            "memberIds": [
+              "m1",
+              "m2",
+              "m3"
+            ],
+            "shares": [
+              334,
+              333,
+              333
+            ],
+            "splitType": "percent"
+          },
+          "toast": {
+            "title": "Το έξοδο ενημερώθηκε"
+          }
+        }
+      },
+      "settleOwed": {
+        "others": [
+          "m2",
+          "m3",
+          "m4"
+        ],
+        "start": {
+          "direction": "in",
+          "otherId": "m2",
+          "amount": "89.25",
+          "settledAt": "2026-09-20",
+          "picked": 0
+        },
+        "suggestions": [
+          {
+            "index": 0,
+            "direction": "in",
+            "otherId": "m2",
+            "amount": "89.25",
+            "key": "groups:settle.payIn",
+            "values": {
+              "name": "Sofia",
+              "amount": "89,25 €"
+            },
+            "text": "Σου δίνει 89,25 €: <b>Sofia</b>",
+            "remind": {
+              "memberId": "m2",
+              "label": "Υπενθύμιση ξεχρέωσης: Sofia"
+            }
+          },
+          {
+            "index": 1,
+            "direction": "in",
+            "otherId": "m3",
+            "amount": "70.65",
+            "key": "groups:settle.payIn",
+            "values": {
+              "name": "Marco Rossi",
+              "amount": "70,65 €"
+            },
+            "text": "Σου δίνει 70,65 €: <b>Marco Rossi</b>",
+            "remind": {
+              "memberId": "m3",
+              "label": "Υπενθύμιση ξεχρέωσης: Marco Rossi"
+            }
+          },
+          {
+            "index": 2,
+            "direction": "in",
+            "otherId": "m4",
+            "amount": "2.85",
+            "key": "groups:settle.payIn",
+            "values": {
+              "name": "Anna",
+              "amount": "2,85 €"
+            },
+            "text": "Σου δίνει 2,85 €: <b>Anna</b>",
+            "remind": null
+          }
+        ],
+        "otherLine": "Sofia · χρωστάει 89,25 € συνολικά",
+        "parties": {
+          "from": "Sofia",
+          "to": "Εσύ"
+        },
+        "problem": null,
+        "args": {
+          "groupId": "g-lisbon",
+          "fromMember": "m2",
+          "toMember": "m1",
+          "amountMinor": 8925,
+          "currency": "EUR",
+          "settledAt": "2026-09-20"
+        }
+      },
+      "settlePay": {
+        "others": [
+          "m1",
+          "m3",
+          "m4"
+        ],
+        "start": {
+          "direction": "out",
+          "otherId": "m1",
+          "amount": "89.25",
+          "settledAt": "2026-09-20",
+          "picked": 0
+        },
+        "suggestions": [
+          {
+            "index": 0,
+            "direction": "out",
+            "otherId": "m1",
+            "amount": "89.25",
+            "key": "groups:settle.payOut",
+            "values": {
+              "name": "Alex Morgan",
+              "amount": "89,25 €"
+            },
+            "text": "Πλήρωσε 89,25 € σε: <b>Alex Morgan</b>",
+            "remind": null
+          }
+        ],
+        "otherLine": "Alex Morgan · παίρνει 162,75 € συνολικά",
+        "parties": {
+          "from": "Εσύ",
+          "to": "Alex Morgan"
+        },
+        "problem": null,
+        "args": {
+          "groupId": "g-lisbon",
+          "fromMember": "m2",
+          "toMember": "m1",
+          "amountMinor": 8925,
+          "currency": "EUR",
+          "settledAt": "2026-09-20"
+        }
+      }
+    }
+  }
+}

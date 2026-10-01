@@ -10,6 +10,8 @@ import SwiftUI
 @MainActor
 struct EntryFormView: View {
     @Bindable var model: EntryFormModel
+    /// Add's "Who's it for?" row (the user's groups), for a new expense.
+    var who: AnyView? = nil
     let onDone: (Bool) -> Void
     @Environment(AppLanguage.self) private var language
     @State private var confirmDelete = false
@@ -87,6 +89,7 @@ struct EntryFormView: View {
         VStack(alignment: .leading, spacing: Theme.Space.s4) {
             if model.quickOn { TypeItField(model: model) }
             kindField
+            if model.mode == .add, model.kind == "expense", let who { who }
             HStack(alignment: .top, spacing: Theme.Space.s3) {
                 FormRow(label: language.t("transactions:form.amount") + " *", suggested: model.marks.contains("amount"),
                         error: model.errors["amount"]) {
@@ -363,8 +366,8 @@ private struct TypeItField: View {
 }
 
 /// The exchange rate under the amount (fxPreview): one line, or the request
-/// for a rate with its field and what it gives.
-private struct FxLine: View {
+/// for a rate with its field and what it gives (a group expense's form too).
+struct FxLine: View {
     let line: JSONValue
     @Binding var manual: String
     @Environment(AppLanguage.self) private var language

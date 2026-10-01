@@ -33,10 +33,15 @@ export const CORE_MODULES = {
   fxPreview: 'src/shared/lib/fxPreview.js',
   // The shared demo login (profiles.is_demo): what it keeps to this device.
   demoAccount: 'src/shared/lib/demoAccount.js',
+  payLinks: 'src/shared/lib/payLinks.js',
+  // Which error text a user sees (userMessage over the web's error shape).
+  errors: 'src/shared/lib/errors.js',
   // The design kit's pure rules (a signed amount's tone, a bar's width).
   kitMath: 'src/shared/ui/kit/kitMath.js',
   // The money charts' y-axis tick labels ("1.6k", "1,6 χιλ.").
   chartAxis: 'src/shared/ui/chartAxis.js',
+  // An avatar circle's initials and colours (UserAvatar).
+  avatarLook: 'src/shared/ui/avatarLook.js',
 
   // supabase/functions/_shared (the client ↔ edge-function parity modules).
   sharedMoney: 'supabase/functions/_shared/money.ts',
@@ -52,6 +57,8 @@ export const CORE_MODULES = {
   splitMath: 'src/features/groups/splitMath.js',
   quickAddMath: 'src/features/groups/quickAddMath.js',
   groupFormat: 'src/features/groups/groupFormat.js',
+  groupExpenseForm: 'src/features/groups/groupExpenseForm.js',
+  settleForm: 'src/features/groups/settleForm.js',
   importMath: 'src/features/import/importMath.js',
   importRulesMath: 'src/features/import/importRulesMath.js',
   bankPresets: 'src/features/import/bankPresets.js',

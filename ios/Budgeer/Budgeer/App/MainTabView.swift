@@ -1,7 +1,7 @@
 // The signed-in app: five tabs after the web's bottom navigation (Home,
-// Transactions, Groups, Budgets, More). Groups says "coming soon" until its
-// phase; More holds Recurring, Insights, the account, the language and the
-// build. The entry form opens over any tab (Add from "+", Edit from a row).
+// Transactions, Groups, Budgets, More). More holds Recurring, Insights, the
+// account, the language and the build. The entry form opens over any tab
+// (Add from "+", with "Who's it for?" for someone in a group; Edit from a row).
 import SwiftUI
 
 @MainActor
@@ -15,8 +15,14 @@ struct MainTabView: View {
     @State private var budgets: BudgetsModel?
     @State private var recurring: RecurringModel?
     @State private var insights: InsightsModel?
+    @State private var groups: GroupsModel?
+    /// The groups Add's "Who's it for?" offers.
+    @State private var myGroups: MyGroupsModel?
     /// The entry form, when open.
     @State private var entry: EntrySheet?
+
+    /// The signed-in user's id as the server writes it.
+    private var userId: String { user.id.uuidString.lowercased() }
 
     /// More's Money pages (the web's order: Insights, then Recurring).
     private var morePages: [MorePage] {
@@ -66,7 +72,16 @@ struct MainTabView: View {
                 }
             }
                 .tabItem { Label(language.t("shell:nav.transactions"), systemImage: "list.bullet.rectangle") }
-            ComingSoonView(title: language.t("shell:nav.groups"))
+            Group {
+                if let groups {
+                    GroupsView(model: groups, data: container.data, live: container.live, site: container.config.siteURL)
+                        .liveRefresh(container.live, tables: LiveHub.shared.union(["profiles"])) {
+                            await groups.load()
+                        }
+                } else {
+                    LoadingView()
+                }
+            }
                 .tabItem { Label(language.t("shell:nav.groups"), systemImage: "person.2") }
             Group {
                 if let budgets {
@@ -84,7 +99,7 @@ struct MainTabView: View {
                 .tabItem { Label(language.t("shell:nav.more"), systemImage: "ellipsis.circle") }
         }
         .sheet(item: $entry) { sheet in
-            EntryFormView(model: sheet.model) { _ in entry = nil }
+            AddEntryHost(sheet: sheet, data: container.data, userId: userId, groups: myGroups) { entry = nil }
                 .environment(language)
         }
         .onAppear {
@@ -93,6 +108,8 @@ struct MainTabView: View {
             if budgets == nil { budgets = BudgetsModel(data: container.data) }
             if recurring == nil { recurring = RecurringModel(data: container.data) }
             if insights == nil { insights = InsightsModel(data: container.data) }
+            if groups == nil { groups = GroupsModel(data: container.data, userId: userId) }
+            if myGroups == nil { myGroups = MyGroupsModel(data: container.data, userId: userId) }
         }
         // The account's language: the profile's wins (ProfileLanguage), on
         // sign-in and whenever the profile changes (another device).
@@ -105,34 +122,6 @@ struct MainTabView: View {
         .task(id: user.id) { await container.feed.start(userId: user.id) }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { container.live.catchUp() }
-        }
-    }
-}
-
-/// A tab whose feature is not in the app yet: the web has it.
-struct ComingSoonView: View {
-    let title: String
-    @Environment(AppLanguage.self) private var language
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: Theme.Space.s4) {
-                Spacer()
-                IconTile(systemName: "hammer", size: 56, tone: Theme.Colors.textMuted)
-                Text(language.t("ios:soon.title"))
-                    .font(Theme.Fonts.heading(20, weight: .bold, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                Text(language.t("ios:soon.body"))
-                    .font(Theme.Fonts.body(15, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textMuted)
-                    .multilineTextAlignment(.center)
-                Spacer()
-            }
-            .padding(Theme.Space.s6)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Theme.Colors.canvas.ignoresSafeArea())
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

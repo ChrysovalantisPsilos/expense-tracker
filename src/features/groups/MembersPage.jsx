@@ -14,7 +14,7 @@ import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import {
   createInvite, createInviteLink, emailInvite, inviteExistingUser, removeMember,
 } from './groups.js'
-import { pluralise, sortMembers } from './groupFormat.js'
+import { inviteRefusal, memberRowParts, pluralise } from './groupFormat.js'
 import GroupFormPage from './GroupFormPage.jsx'
 import { InviteLinkModal, RemoveMemberModal } from './GroupModals.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
@@ -75,26 +75,21 @@ function Members({ group, members, myMember, isOwner, reload }) {
     <>
       <Panel icon={Users} title={t('members.inGroup')} subtitle={pluralise(members.length, 'member')}>
         <List spacing={0}>
-          {sortMembers(members, user.id).map((m, i) => {
-            const isMe = m.user_id === user.id
-            return (
-              <ListItem key={m.id}>
-                {i > 0 && <Divider />}
-                <HStack py={2.5} spacing={3} minH="56px">
-                  <UserAvatar size="sm" name={m.display_name} src={m.avatar_url} highlight={isMe} />
-                  <Text fontWeight={isMe ? '700' : '500'} minW={0} overflowWrap="anywhere">
-                    {isMe ? t('members.me', { name: m.display_name }) : m.display_name}
-                  </Text>
-                  {m.role === 'owner' && <Badge colorScheme="brand" flexShrink={0}>{t('members.owner')}</Badge>}
-                  {isOwner && !isMe && (
-                    <IconButton aria-label={t('members.remove', { name: m.display_name })} size="sm" variant="ghost"
-                      ml="auto" flexShrink={0} color="status.negative" icon={<UserMinus size={16} />}
-                      onClick={() => setRemoving(m)} />
-                  )}
-                </HStack>
-              </ListItem>
-            )
-          })}
+          {memberRowParts(members, user.id, isOwner).map((m, i) => (
+            <ListItem key={m.id}>
+              {i > 0 && <Divider />}
+              <HStack py={2.5} spacing={3} minH="56px">
+                <UserAvatar size="sm" name={m.name} src={m.src} highlight={m.highlight} />
+                <Text fontWeight={m.isMe ? '700' : '500'} minW={0} overflowWrap="anywhere">{m.label}</Text>
+                {m.owner && <Badge colorScheme="brand" flexShrink={0}>{m.owner}</Badge>}
+                {m.canRemove && (
+                  <IconButton aria-label={m.removeLabel} size="sm" variant="ghost"
+                    ml="auto" flexShrink={0} color="status.negative" icon={<UserMinus size={16} />}
+                    onClick={() => setRemoving(members.find((x) => x.id === m.id))} />
+                )}
+              </HStack>
+            </ListItem>
+          ))}
         </List>
       </Panel>
 
@@ -105,12 +100,6 @@ function Members({ group, members, myMember, isOwner, reload }) {
         busy={removeBusy} onConfirm={doRemove} />
     </>
   )
-}
-
-// invite_existing_user's refusals → their words (groups:members.status.*).
-const INVITE_STATUS_KEY = {
-  already_member: 'members.status.alreadyMember',
-  already_invited: 'members.status.alreadyInvited',
 }
 
 // Invite by email (an in-app request to an existing Budgeer user, else an
@@ -145,7 +134,7 @@ function InvitePanel({ group, onCopyLink, onShowLink }) {
         }
         setEmail('')
       } else {
-        toast({ title: t(INVITE_STATUS_KEY[status] ?? 'members.sendFailed'), status: 'error' })
+        toast({ title: inviteRefusal(status), status: 'error' })
       }
     })
   }

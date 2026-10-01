@@ -4,7 +4,25 @@ import Foundation
 @testable import Budgeer
 
 final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepository, RecurringRepository,
-    BudgetsRepository, FxRepository, AiRepository, @unchecked Sendable {
+    BudgetsRepository, FxRepository, AiRepository, GroupsRepository, @unchecked Sendable {
+    // The groups' reads (GroupsRepository, in FakeStore+Groups.swift).
+    var groupsResult: Result<JSONValue, Error> = .success([])
+    var invitesResult: Result<JSONValue, Error> = .success([])
+    /// Each group's { members, avatars, balances }, by id.
+    var summaries: [String: JSONValue] = [:]
+    /// Each group's detail ({ group, members, avatars, balances, ledger }), by id.
+    var details: [String: JSONValue] = [:]
+    var activityRows: JSONValue = []
+    var commentCountRows: JSONValue = []
+    var commentRows: JSONValue = []
+    var paymentInfo: JSONValue = [:]
+    /// What the groups' writes did, in order: "rpc-name" plus its arguments.
+    var groupWrites: [(name: String, args: JSONValue)] = []
+    /// invite_user_to_group's answer.
+    var inviteStatus = "invited"
+    /// Set to make the send-invite email fail.
+    var emailError: Error?
+
     // Reads.
     var profileResult: Result<JSONValue, Error> = .success(["base_currency": "EUR"])
     var vouchersResult: Result<JSONValue, Error> = .success(.null)

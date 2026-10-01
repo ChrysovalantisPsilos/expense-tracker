@@ -6,6 +6,7 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { useGroup } from './groups.js'
+import { groupViewer } from './groupFormat.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // The shell of a group's own pages (settle up, add or edit an expense,
@@ -24,8 +25,7 @@ export default function GroupFormPage({ title, description, children }) {
 
   const ctx = !error && !loading && data?.group ? {
     ...data,
-    myMember: data.members.find((m) => m.user_id === user.id) ?? null,
-    isOwner: data.group.owner_id === user.id,
+    ...groupViewer(data.group, data.members, user.id),
     groupPath,
     reload,
   } : null

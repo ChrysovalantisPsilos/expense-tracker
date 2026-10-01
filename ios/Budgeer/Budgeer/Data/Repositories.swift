@@ -7,6 +7,7 @@
 //   BudgetsRepository       features/budgets/budgets.js
 //   FxRepository            shared/lib/fx.js (Frankfurter, the ECB's rates)
 //   AiRepository            features/ai/ai.js (the ai-helper edge function)
+//   GroupsRepository        features/groups/groups.js, comments.js (the split groups)
 // Rows travel as plain JSON (JSONValue), exactly as the server returns them:
 // the core's functions read their columns; the app never types a table.
 // SupabaseStore implements them all over the one client (with the offline
@@ -96,6 +97,53 @@ protocol AiRepository: Sendable {
     func parseEntry(text: String, today: String, labels: JSONValue) async throws -> JSONValue
 }
 
+protocol GroupsRepository: Sendable {
+    /// listGroups: the groups the user can see, newest first, each with
+    /// group_members(count).
+    func groups() async throws -> JSONValue
+    /// list_my_group_invites: invites waiting for the user's answer.
+    func groupInvites() async throws -> JSONValue
+    /// One group's summary for the lists (listGroupSummaries' parts, as read):
+    /// { members, avatars, balances } (balances [] when not asked for).
+    func groupSummary(id: String, balances: Bool) async throws -> JSONValue
+    /// getGroup's reads, as read: { group, members, avatars, balances, ledger }
+    /// (ledger: group_ledger's { expenses, settlements }).
+    func groupDetail(id: String) async throws -> JSONValue
+    /// group_audit_entries, newest first.
+    func groupActivity(id: String) async throws -> JSONValue
+    /// group_comment_counts rows ({ target_id, n }).
+    func groupCommentCounts(id: String) async throws -> JSONValue
+    /// group_comments_for: one item's thread, oldest first.
+    func groupComments(groupId: String, targetId: String) async throws -> JSONValue
+    /// member_payment_info: a co-member's IBAN / Revolut / PayPal ({} without).
+    func memberPaymentInfo(memberId: String) async throws -> JSONValue
+
+    /// create_group: the new group's id.
+    func createGroup(name: String, currency: String) async throws -> String
+    func renameGroup(id: String, name: String) async throws
+    /// create_group_expense_v2 (no `expenseId` in `args`) or
+    /// update_group_expense_v2; `args` is groupExpenseForm.expenseSaveArgs'.
+    func saveGroupExpense(_ args: JSONValue) async throws
+    func deleteGroupExpense(id: String) async throws
+    /// add_settlement; `args` is settleForm.settlementArgs'.
+    func addSettlement(_ args: JSONValue) async throws
+    /// nudge_member: a rate-limited "please settle up".
+    func nudgeMember(groupId: String, memberId: String) async throws
+    /// remove_group_member: leave (your own row) or, as owner, remove someone.
+    func removeMember(memberId: String, silent: Bool) async throws
+    func deleteGroup(id: String) async throws
+    /// respond_to_invite: the group's id when accepted.
+    func respondToInvite(id: String, accept: Bool) async throws -> String?
+    /// invite_user_to_group: 'invited', 'no_account', 'already_member' or 'already_invited'.
+    func inviteExistingUser(groupId: String, email: String) async throws -> String?
+    /// A group_invites row (its creator and expiry are the server's): its token.
+    func createInvite(groupId: String, email: String?) async throws -> String
+    /// The send-invite edge function: the join link by email.
+    func emailInvite(to: String, token: String) async throws
+    func addComment(groupId: String, targetType: String, targetId: String, authorMemberId: String, body: String) async throws
+    func deleteComment(id: String) async throws
+}
+
 /// Everything a screen may read or write, handed to the view models.
 struct DataLayer: Sendable {
     let profile: ProfileRepository
@@ -105,10 +153,11 @@ struct DataLayer: Sendable {
     let budgets: BudgetsRepository
     let fx: FxRepository
     let ai: AiRepository
+    let groups: GroupsRepository
 
     /// One object that is every repository (the Supabase store, a test's fake).
     init<Store: ProfileRepository & CategoriesRepository & TransactionsRepository & RecurringRepository
-            & BudgetsRepository & FxRepository & AiRepository>(_ store: Store) {
+            & BudgetsRepository & FxRepository & AiRepository & GroupsRepository>(_ store: Store) {
         profile = store
         categories = store
         transactions = store
@@ -116,13 +165,16 @@ struct DataLayer: Sendable {
         budgets = store
         fx = store
         ai = store
+        groups = store
     }
 }
 
-/// A server refusal with the words to show (a UserError on the web): the
-/// ai-helper's code, or a message.
+/// A server refusal (a UserError on the web): the ai-helper's code, or a
+/// message. `edge`: an edge function's own { error } words; otherwise a
+/// database error (its code, P0001 for a RAISE, and its message).
 struct ServerError: Error, Equatable, CustomStringConvertible {
     let code: String?
     let message: String
+    var edge = false
     var description: String { message }
 }

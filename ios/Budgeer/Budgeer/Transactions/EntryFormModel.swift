@@ -43,6 +43,8 @@ final class EntryFormModel {
     private(set) var rule: JSONValue?
     private let startKind: String
     private let startRepeat: Bool
+    /// What a group's form carried over on Add ({ amount, currency, currencyPicked, description, spentAt }).
+    private let initial: JSONValue
     private let data: DataLayer
     private let core: BudgeerCore
     private let now: @Sendable () -> Date
@@ -93,9 +95,10 @@ final class EntryFormModel {
     private(set) var repeatWarning: String?
 
     init(mode: Mode, kind: String = "expense", repeats: Bool = false, transaction: JSONValue? = nil,
-         rule: JSONValue? = nil, data: DataLayer, core: BudgeerCore = .shared,
+         rule: JSONValue? = nil, initial: JSONValue = .null, data: DataLayer, core: BudgeerCore = .shared,
          now: @escaping @Sendable () -> Date = { Date() }) {
         self.mode = mode
+        self.initial = initial
         self.transaction = transaction
         self.rule = rule
         startKind = kind
@@ -143,7 +146,7 @@ final class EntryFormModel {
         switch mode {
         case .add:
             form = try core.json("entryForm", "newForm", [["kind": .string(startKind), "baseCurrency": .string(baseCurrency),
-                                                           "date": .string(today)] as JSONValue])
+                                                           "date": .string(today), "initial": initial] as JSONValue])
             repeatOn = startRepeat
             draft = try core.json("recurringMath", "repeatDraft", [JSONValue.null, ["fromDate": form["date"] ?? .null] as JSONValue])
         case .edit:
@@ -205,6 +208,13 @@ final class EntryFormModel {
         guard tried else { return [:] }
         let found = (try? core.json("entryForm", "entryErrors", [["amount": .string(amount), "date": .string(date)] as JSONValue])) ?? [:]
         return (found.objectValue ?? [:]).compactMapValues(\.stringValue)
+    }
+
+    /// What Add carries to a group's form when the user picks one under
+    /// "Who's it for?" (the web's onDraft).
+    var whoForDraft: JSONValue {
+        ["amount": .string(amount), "currency": .string(currency), "currencyPicked": .bool(currencyPicked),
+         "description": .string(description), "spentAt": .string(date)]
     }
 
     /// The categories of this kind as the picker lists them: (id, name shown).
