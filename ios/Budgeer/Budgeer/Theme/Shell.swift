@@ -197,7 +197,8 @@ struct BottomNav: View {
 
     var body: some View {
         // justify-content: space-around: each tab as wide as its word (at
-        // least 60 pt), the room left shared around them.
+        // least 52 pt), the room left shared around them. The tabs are laid
+        // out first; a word only shrinks when five do not fit side by side.
         HStack(spacing: 0) {
             ForEach(AppTab.allCases, id: \.self) { tab in
                 let on = tab == selected
@@ -208,15 +209,16 @@ struct BottomNav: View {
                         Text(language.t("shell:nav.\(tab.rawValue)"))
                             .font(Theme.Fonts.body(10, weight: on ? .semibold : .regular, lang: language.current))
                             .lineLimit(1)
-                            .fixedSize()
+                            .minimumScaleFactor(0.8)
                     }
                     .foregroundStyle(on ? Theme.Colors.accentFg : Theme.Colors.textMuted)
-                    .padding(.horizontal, Theme.Space.s2)
+                    .padding(.horizontal, Theme.Space.s1)
                     .padding(.vertical, Theme.Space.s1)
-                    .frame(minWidth: 60)
+                    .frame(minWidth: 52)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .layoutPriority(1)
                 .accessibilityAddTraits(on ? .isSelected : [])
                 .accessibilityIdentifier("tab.\(tab.rawValue)")
                 Spacer(minLength: 0)
