@@ -243,7 +243,7 @@ npm run dev       # Vite
   PROD, from `Config/*.xcconfig` (public anon keys only). `npm run
   ios:prepare` builds the core, the strings and the project. Sign-in is
   email/password or Google (`budgeer://auth-callback`) via supabase-swift
-  2.49.0 (the last on Swift tools 5.10; CI pins Xcode 15.4 on macos-14);
+  2.49.0 (chosen when CI ran Xcode 15.4; CI now pins Xcode 26.5 on macos-26);
   the legal gate sends the user to the web to accept. Real: Home (period
   picker, projection, Recurring card), Add/Edit, Transactions, Budgets,
   Recurring and Insights (from More), and (phase 3) Groups with Add's
@@ -259,7 +259,8 @@ npm run dev       # Vite
   Greek body text uses the system font. CI: `.github/workflows/ios-app.yml`
   (snapshots of every screen as the `snapshots` artifact).
 - **The owner builds and runs the app with Xcode 27** on their Mac (and a
-  free Apple ID for now), while CI builds with Xcode 15.4. Every package pin
+  free Apple ID for now), while CI builds with Xcode 26.5 (macos-26, iPhone 17
+  on iOS 26.5; moved from 15.4 for Liquid Glass). Every package pin
   and Swift change must work on both: check a dependency's newest releases
   (what Xcode 27 resolves) as well as the oldest CI accepts. Package pins
   live in `ios/Budgeer/project.yml` with the reason beside each; the

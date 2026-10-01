@@ -201,7 +201,7 @@ a core call (the web's function); Swift reads, lays out and draws.
 - **Sign-in** with email and password, or **Google** (`signInWithOAuth`
   through `ASWebAuthenticationSession`, back to `budgeer://auth-callback`;
   a cancelled sheet is not an error). supabase-swift is pinned to 2.49.0,
-  the last release on Swift tools 5.10, which Xcode 15.4 builds. The
+  the last release on Swift tools 5.10 (picked when CI ran Xcode 15.4; it builds on 26 too). The
   session lives in the Keychain. Apple and passkeys are still refused.
 - **The legal gate**: `my_legal_status` after every sign-in, failing
   closed; the app cannot record consent yet (the gate says to accept on the
@@ -358,7 +358,7 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   iOS 26 SDK: built with Xcode 15.4 the pictures show the iOS 17–18
   fallback (the same shapes in the standard material).
 
-CI is `.github/workflows/ios-app.yml` (macos-14, Xcode 15.4): XcodeGen, a
+CI is `.github/workflows/ios-app.yml` (macos-26, Xcode 26.5, iPhone 17 on iOS 26.5): XcodeGen, a
 Simulator build, the tests, and the snapshots as the `snapshots` artifact.
 
 ### Running on a device

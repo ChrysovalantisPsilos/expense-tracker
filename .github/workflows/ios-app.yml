@@ -7,7 +7,7 @@
 name: ios-app
 on:
   push:
-    branches: [ios-app-1b, ios-native, ios-phase2, ios-phase3, ios-ui-match, develop]
+    branches: [ios-app-1b, ios-native, ios-phase2, ios-phase3, ios-ui-match, ios-native-design, develop]
     paths: ['ios/**', 'mobile-core/**', 'src/locales/**', 'package.json', 'package-lock.json', '.github/workflows/ios-app.yml']
   pull_request:
     paths: ['ios/**', 'mobile-core/**', 'src/locales/**', 'package.json', 'package-lock.json', '.github/workflows/ios-app.yml']
@@ -19,12 +19,12 @@ permissions:
 env:
   PROJECT: ios/Budgeer/Budgeer.xcodeproj
   SCHEME: Budgeer Dev
-  DESTINATION: platform=iOS Simulator,name=iPhone 15,OS=17.5
+  DESTINATION: platform=iOS Simulator,name=iPhone 17,OS=26.5
   DERIVED: ios/Budgeer/DerivedData
 
 jobs:
   app:
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -33,7 +33,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Pin Xcode
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app && xcodebuild -version
+        run: sudo xcode-select -s /Applications/Xcode_26.5.app && xcodebuild -version
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Core, strings and project
