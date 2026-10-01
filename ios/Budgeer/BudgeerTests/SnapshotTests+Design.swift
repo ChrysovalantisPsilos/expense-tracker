@@ -54,8 +54,9 @@ extension SnapshotTests {
             await model.load()
             for (name, take) in SnapshotTests.takes {
                 for unfolded in [false, true] {
-                    var design = DesignOptions.all(take)
-                    design.unfolded = unfolded
+                    var picked = DesignOptions.all(take)
+                    picked.unfolded = unfolded
+                    let design = picked
                     try await shots(framed(.more) {
                         NavigationStack { SalaryView(model: model) { _ in } }
                             .environment(\.design, design)
