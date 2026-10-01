@@ -1,7 +1,7 @@
 // The Meal vouchers page's state, after the web's useMealVouchers and
 // useVoucherCard: the setup (none: the page offers to set it up), the
 // expenses paid with vouchers (pending rates filled) and the profile, then
-// the figures from the core (VoucherFigures). "Fix days" edits the days of
+// the figures from the core (VoucherFigures). "Edit days" edits the days of
 // the month the next top-up pays for in place (daysFixParts as the stepper
 // moves) and saves voucherMath.withDays; "Show older" refigures nothing.
 // Settings › Meal vouchers is VoucherSetupModel.
@@ -21,7 +21,7 @@ final class VouchersModel {
     }
 
     private(set) var state: State = .loading
-    /// Fix days, open in place: the days as stepped, and their words.
+    /// Edit days, open in place: the days as stepped, and their words.
     private(set) var fixing: DaysFix?
     private(set) var fixDays = 0
     private(set) var busy = false
@@ -65,7 +65,7 @@ final class VouchersModel {
         }
     }
 
-    // MARK: Fix days
+    // MARK: Edit days
 
     func startFix() {
         guard let figures else { return }
