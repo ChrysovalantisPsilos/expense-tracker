@@ -20,7 +20,7 @@ import {
   primaryCategoryBody, reviewDetailAttributes, submissionAction, versionLocalizationAttributes,
 } from '../scripts/asc/requests.mjs'
 import {
-  commitBody, displayTypeFor, localScreenshots, md5, pngSize, reserveBody, screenshotPlan, uploadRequests,
+  commitBody, displayTypeFor, localScreenshots, md5, pngSize, reserveBody, screenshotFolder, screenshotPlan, uploadRequests,
 } from '../scripts/asc/screenshots.mjs'
 import { marketingVersion, parseArgs } from '../scripts/asc/store-info.mjs'
 
@@ -320,6 +320,22 @@ test('a locale folder is read in name order; a missing one means no screenshots'
   assert.equal(groups.APP_IPHONE_67[0].checksum, md5(fakePng(1290, 2796)))
   writeFileSync(path.join(dir, 'el', '03-small.png'), fakePng(390, 844))
   assert.throws(() => localScreenshots('el', dir), /03-small\.png is 390×844/)
+})
+
+test('the app’s primary language (en-GB) takes the English set; a folder of its own wins', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'asc-shots-'))
+  for (const locale of ['en-US', 'el']) {
+    mkdirSync(path.join(dir, locale))
+    writeFileSync(path.join(dir, locale, `1-${locale}.png`), fakePng(1320, 2868))
+  }
+  assert.equal(screenshotFolder('en-GB', dir), 'en-US')
+  assert.equal(screenshotFolder('el-GR', dir), 'el')
+  assert.equal(screenshotFolder('en-US', dir), 'en-US')
+  assert.deepEqual(localScreenshots('en-GB', dir).APP_IPHONE_67.map((f) => f.fileName), ['1-en-US.png'])
+  mkdirSync(path.join(dir, 'en-GB'))
+  writeFileSync(path.join(dir, 'en-GB', '1-en-GB.png'), fakePng(1320, 2868))
+  assert.equal(screenshotFolder('en-GB', dir), 'en-GB')
+  assert.deepEqual(localScreenshots('en-GB', dir).APP_IPHONE_67.map((f) => f.fileName), ['1-en-GB.png'])
 })
 
 test('a set is kept only when it holds the same files in order', () => {

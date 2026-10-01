@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Store frame</title>
+<!--
+  One App Store frame: the brand's cream canvas, the mark and wordmark, the
+  headline (its highlighted phrase in the accent), a subline, and the app's
+  screen in a phone frame below. build.mjs opens this page at the store size,
+  adds the fonts (@fontsource, from node_modules) and calls render(). Every
+  length is in --u (canvas width / 1320); the phone takes the room the
+  headline leaves.
+-->
+<style>
+  :root {
+    --coral: #F95D38; --accent: #E2431F; --amber: #FBB324;
+    --ink: #242019; --canvas: #FAF8F4; --muted: #6f634f;
+    --heading: 'Poppins', 'Manrope', sans-serif;
+    --body: 'Nunito Sans', 'Noto Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100vw; height: 100vh; overflow: hidden; }
+  body { --u: calc(100vw / 1320); background: var(--canvas); color: var(--ink); font-family: var(--body);
+    display: flex; flex-direction: column; align-items: center; position: relative; padding-top: calc(120 * var(--u)); }
+
+  .brand { display: flex; align-items: center; gap: calc(18 * var(--u)); margin-bottom: calc(60 * var(--u)); }
+  .brand svg { width: calc(76 * var(--u)); height: calc(76 * var(--u)); }
+  .brand span { font-family: var(--heading); font-weight: 700; font-size: calc(50 * var(--u)); letter-spacing: -0.02em; }
+
+  .head { width: 100%; padding: 0 calc(110 * var(--u)); text-align: center; }
+  h1 { font-family: var(--heading); font-weight: 700; font-size: calc(112 * var(--u)); letter-spacing: -0.02em;
+    line-height: 1.08; text-wrap: balance; }
+  :lang(el) h1 { font-weight: 800; letter-spacing: -0.01em; }
+  h1 em { font-style: normal; color: var(--accent); }
+  p.sub { margin-top: calc(34 * var(--u)); font-size: calc(50 * var(--u)); font-weight: 600; color: var(--muted);
+    line-height: 1.3; text-wrap: balance; }
+
+  .phone { position: relative; flex: none; background: var(--ink); border-radius: calc(150 * var(--u)); padding: calc(24 * var(--u));
+    box-shadow: 0 calc(50 * var(--u)) calc(120 * var(--u)) rgba(36, 32, 25, .22), 0 0 0 calc(5 * var(--u)) #3d372d inset; }
+  .glass { width: 100%; height: 100%; border-radius: calc(128 * var(--u)); overflow: hidden; position: relative; background: #fff; }
+  .glass img { display: block; width: 100%; height: 100%; }
+  .island { position: absolute; top: calc(30 * var(--u)); left: 50%; transform: translateX(-50%);
+    width: calc(300 * var(--u)); height: calc(88 * var(--u)); background: #000; border-radius: calc(44 * var(--u)); }
+  .glow { position: absolute; left: 50%; bottom: calc(-500 * var(--u)); transform: translateX(-50%); z-index: -1;
+    width: calc(1700 * var(--u)); height: calc(1500 * var(--u)); border-radius: 50%;
+    background: radial-gradient(closest-side, rgba(251, 179, 36, .28), rgba(249, 93, 56, .10) 60%, transparent); }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="brand">
+    <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <rect x="9.25" y="3.6" width="7.5" height="29.4" rx="3.75" fill="#f95d38"/>
+      <g transform="rotate(-90 24 29.6)" stroke-width="7.5">
+        <circle cx="24" cy="29.6" r="11" stroke="#fbb324" stroke-dasharray="19 50.1"/>
+        <circle cx="24" cy="29.6" r="11" stroke="#f95d38" stroke-dasharray="48.2 20.9" stroke-dashoffset="-21"/>
+      </g>
+    </svg>
+    <span>budgeer</span>
+  </div>
+  <div class="head"><h1 id="title"></h1><p class="sub" id="sub"></p></div>
+  <div class="phone" id="phone"><div class="glass"><img id="screen" alt=""><div class="island"></div></div></div>
+<script>
+  // render({ lang, parts: [{ text, em }], sub, shot (a file URL), shotSize: { width, height } })
+  // fills the frame, sizes the phone to the room left, and answers what doesn't fit.
+  window.render = async ({ lang, parts, sub, shot, shotSize }) => {
+    document.documentElement.lang = lang
+    const title = document.getElementById('title')
+    title.replaceChildren(...parts.map((p) => {
+      if (!p.em) return document.createTextNode(p.text)
+      const em = document.createElement('em')
+      em.textContent = p.text
+      return em
+    }))
+    document.getElementById('sub').textContent = sub
+    const img = document.getElementById('screen')
+    img.src = shot
+    await Promise.all([...[...document.fonts].map((f) => f.load()), img.decode()])
+    await document.fonts.ready
+
+    const u = innerWidth / 1320
+    const top = document.querySelector('.head').getBoundingClientRect().bottom
+    const gap = 75 * u, bottom = 95 * u, bezel = 24 * u
+    let h = innerHeight - top - gap - bottom
+    let w = (h - 2 * bezel) * shotSize.width / shotSize.height + 2 * bezel
+    if (w > 1100 * u) { w = 1100 * u; h = (w - 2 * bezel) * shotSize.height / shotSize.width + 2 * bezel }
+    const phone = document.getElementById('phone')
+    Object.assign(phone.style, { width: `${w}px`, height: `${h}px`, marginTop: `${gap}px` })
+
+    const problems = []
+    for (const el of document.querySelectorAll('h1, p.sub, .brand')) {
+      if (el.scrollWidth > el.clientWidth + 1) problems.push(`${el.id || el.className} is wider than the frame`)
+    }
+    const lines = Math.round(title.getBoundingClientRect().height / parseFloat(getComputedStyle(title).lineHeight))
+    if (lines > 2) problems.push(`the headline takes ${lines} lines`)
+    const r = phone.getBoundingClientRect()
+    if (r.top < 0 || r.bottom > innerHeight) problems.push('the phone is off the frame')
+    if (img.naturalWidth !== shotSize.width || img.naturalHeight !== shotSize.height) {
+      problems.push(`the screen is ${img.naturalWidth}×${img.naturalHeight}, not ${shotSize.width}×${shotSize.height}`)
+    }
+    return problems
+  }
+</script>
+</body>
+</html>

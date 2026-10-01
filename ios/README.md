@@ -886,6 +886,10 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   data (`<name>-<variant>.png`, and `-long` for the pages worth seeing
   whole); attached to the test run and written to `SNAPSHOT_DIR` when set
   (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
+- The App Store pictures' screens (`SnapshotTests+Store.swift`): Home, Activity, Add's "Who's it
+  for?", a group, Budgets and Savings as `store-<screen>-<en|el>.png`, light, from the same
+  fixtures moved to 2026 and in the picture's language (`StoreSample`, `Fixtures/store-sample.json`).
+  `npm run store:shots -- <unzipped snapshots>` frames them into `ios/store/screenshots/`.
 
 CI is `.github/workflows/ios-app.yml` (macos-26, Xcode 26.5, iPhone 17 on iOS 26.5): the core's
 replay, XcodeGen, a Simulator build, the tests, and the snapshots as the `snapshots` artifact. It runs

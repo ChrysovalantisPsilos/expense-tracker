@@ -228,6 +228,12 @@ npm run dev       # Vite
 - **Promo set v1:** store frames 1–6 (home, split, budgets, currency, import,
   privacy), OG 1200×630, social 1080 and 1080×1920, hero 1920×1080. Built from
   the app with fake data (scratchpad `promo/`).
+- **App Store screenshots (Oct 2026, style A picked by the owner):** cream
+  canvas, mark + wordmark, a headline with its key words in the accent, a
+  subline, the real iOS screen in a phone frame; EN and EL, 1320×2868.
+  Regenerate: run ios-app.yml by hand with "snapshots", unzip the artifact,
+  `npm run store:shots -- <dir>`, check every picture, commit
+  `ios/store/screenshots/`.
 - **Link previews:** the live OG image is `https://www.budgeer.com/og-image.png`
   (1200×630). Invite links (`/join/…`) currently share the generic preview.
 - **Rule:** the landing copy never opens with "Free app".
