@@ -11,9 +11,8 @@ import UIKit
 
 /// Light or dark, as the web's ThemeToggle keeps it (per device); nil
 /// follows the system until the switch is first used.
-@MainActor
 @Observable
-final class AppAppearance {
+final class AppAppearance: @unchecked Sendable {
     private static let key = "budgeer.appearance"
     private let defaults: UserDefaults
     var stored: String?

@@ -66,7 +66,6 @@ final class SignInViewModel {
 }
 
 @MainActor
-@MainActor
 struct SignInView: View {
     @Bindable var model: SignInViewModel
     let session: SessionStore

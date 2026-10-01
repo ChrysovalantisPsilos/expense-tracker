@@ -124,6 +124,7 @@ struct TransactionsView: View {
 
 /// The Filters panel (opened in place): Category (any, the type's, or none),
 /// Min and Max in the base currency, From and To each behind a switch.
+@MainActor
 private struct FiltersPanel: View {
     let model: LedgerModel
     @Environment(AppLanguage.self) private var language

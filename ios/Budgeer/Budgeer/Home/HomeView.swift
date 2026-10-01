@@ -82,6 +82,7 @@ struct HomeView: View {
 
 // MARK: Overview
 
+@MainActor
 private struct OverviewPanel: View {
     let model: HomeViewModel
     let figures: HomeFigures
@@ -144,6 +145,7 @@ private struct OverviewPanel: View {
 /// The overview's "In words" side (MonthSummary): the lines with their
 /// dots, "Your totals changed" with Update, who wrote it; while writing, the
 /// skeleton; when it failed, Try again.
+@MainActor
 private struct MonthSummaryView: View {
     let words: OverviewWords
     let failed: Bool
@@ -195,6 +197,7 @@ private struct MonthSummaryView: View {
 }
 
 /// Where Spent, Income and Net will be (OverviewSkeleton).
+@MainActor
 private struct OverviewSkeleton: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s4) {
@@ -212,6 +215,7 @@ private struct OverviewSkeleton: View {
 
 // MARK: Meal vouchers
 
+@MainActor
 private struct VoucherPanel: View {
     let card: VoucherCardFigures
     @Environment(AppLanguage.self) private var language
@@ -234,6 +238,7 @@ private struct VoucherPanel: View {
 
 // MARK: Spending by category
 
+@MainActor
 private struct CategoriesPanel: View {
     @Bindable var model: HomeViewModel
     let figures: HomeFigures
@@ -329,6 +334,7 @@ private struct CategoriesPanel: View {
 
 // MARK: Budgets
 
+@MainActor
 private struct BudgetsCardPanel: View {
     let state: HomeViewModel.CardState<BudgetCardFigures>
     let onManage: () -> Void
@@ -374,6 +380,7 @@ private struct BudgetsCardPanel: View {
 
 // MARK: Expenses and Income
 
+@MainActor
 private struct ListPanel: View {
     let list: HomeList
     let icon: Lucide
@@ -404,6 +411,7 @@ private struct ListPanel: View {
 /// The Recurring card (SubscriptionsCard): Manage; a pill per frequency, its
 /// headline and note, then the next charges ("Show all N charges") or, for
 /// a past period, what it was charged.
+@MainActor
 private struct RecurringCardPanel: View {
     let card: RecurringCard
     let onManage: () -> Void

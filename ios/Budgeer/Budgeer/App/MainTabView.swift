@@ -272,6 +272,7 @@ struct MainTabView: View {
 /// The bell's list (NotificationBell's popover): "Notifications", then each
 /// one with its icon, its title (bold while unread) and body; or the empty
 /// line. A tap goes where it leads.
+@MainActor
 struct BellList: View {
     let model: ShellModel?
     let open: (BellItem) -> Void
