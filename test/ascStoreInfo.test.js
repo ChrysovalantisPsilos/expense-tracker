@@ -11,6 +11,7 @@ import path from 'node:path'
 import { AUDIENCE, AscError, createClient, errorText, makeToken, normalisePem, tokenParts } from '../scripts/asc/api.mjs'
 import {
   APPS, LIMITS, LISTING_FILES, appUrls, length, listingProblems, loadStore, missingSecrets, requiredSecrets, reviewSecrets,
+  withPrimaryLocale,
 } from '../scripts/asc/listing.mjs'
 import {
   ageRatingAttributes, betaAppLocalizationAttributes, betaGroupCreateBody, betaGroupLinkPatch, betaSubmissionBody,
@@ -367,4 +368,13 @@ test('the workflow passes every secret under its own name and never echoes one',
   assert.doesNotMatch(yml, /echo .*secrets\./)
   assert.match(yml, /node scripts\/asc\/store-info\.mjs --app "\$\{\{ inputs\.app \}\}" --submit "\$\{\{ inputs\.submit \}\}"/)
   assert.ok(length(config.copyright) > 0)
+})
+
+test('the app\'s primary language gets texts too: English for any English, Greek for Greek', () => {
+  const listings = { 'en-US': { n: 'en' }, el: { n: 'el' } }
+  assert.equal(withPrimaryLocale(listings, 'en-US'), listings)
+  assert.deepEqual(Object.keys(withPrimaryLocale(listings, 'en-GB')), ['en-GB', 'en-US', 'el'])
+  assert.equal(withPrimaryLocale(listings, 'en-GB')['en-GB'].n, 'en')
+  assert.equal(withPrimaryLocale(listings, 'el-GR')['el-GR'].n, 'el')
+  assert.equal(withPrimaryLocale(listings, undefined), listings)
 })

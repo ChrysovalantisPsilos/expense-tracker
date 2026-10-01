@@ -14,7 +14,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { AscError, createClient } from './api.mjs'
-import { APPS, appUrls, listingProblems, loadStore, missingSecrets, requiredSecrets, reviewSecrets } from './listing.mjs'
+import { APPS, appUrls, listingProblems, loadStore, missingSecrets, requiredSecrets, reviewSecrets, withPrimaryLocale } from './listing.mjs'
 import {
   ageRatingAttributes, appInfoLocalizationAttributes, betaAppLocalizationAttributes, betaGroupCreateBody,
   betaGroupLinkPatch, betaSubmissionBody, buildsLinkBody, changedAttributes, editableAppInfo, editableVersion,
@@ -239,8 +239,8 @@ async function appStore({ client, app, appKey, config, listings, secrets }) {
 
 async function main() {
   const { app: appKey, submit } = parseArgs(process.argv.slice(2))
-  const { config, listings } = loadStore()
-  const problems = listingProblems({ config, listings })
+  const { config, listings: files } = loadStore()
+  const problems = listingProblems({ config, listings: files })
   if (problems.length) throw new Error(`ios/store has problems:\n- ${problems.join('\n- ')}`)
 
   const missing = missingSecrets(appKey, process.env)
@@ -257,7 +257,8 @@ async function main() {
   const secrets = reviewSecrets(appKey, process.env)
   const client = createClient({ keyId: process.env.ASC_KEY_ID.trim(), issuerId: process.env.ASC_ISSUER_ID.trim(), privateKey: process.env.ASC_KEY_P8 })
   const app = await findApp(client, config.apps[appKey].bundleId)
-  log(`App: ${app.attributes.name} (${config.apps[appKey].bundleId})`)
+  log(`App: ${app.attributes.name} (${config.apps[appKey].bundleId}), primary language ${app.attributes.primaryLocale}`)
+  const listings = withPrimaryLocale(files, app.attributes.primaryLocale)
 
   log('— TestFlight')
   await testFlight({ client, app, appKey, config, listings, secrets, submit })
