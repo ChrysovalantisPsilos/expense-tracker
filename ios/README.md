@@ -531,7 +531,8 @@ a core call (the web's function); Swift reads, lays out and draws.
     reordering (the web has none).
   - **A category's page** (the web's `/categories/:id`; from the list,
     Home's By category rows and its See all, the budget rows on Home and
-    Budgets, as `categoryLinks` links them, a group's share to its group):
+    Budgets, Insights' "Where your money went" legend, as `categoryLinks`
+    links them, a group's share to its group):
     the badge, what kind it is, the period's total (Spent, Earned or
     Saved, by the app's spread rule: `categoryPeriod`) with the period
     picker, the month's budget (`categoryBudget`: its bar with a carried

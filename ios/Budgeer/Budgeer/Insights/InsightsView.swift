@@ -308,6 +308,19 @@ struct InsightsView: View {
 
     // MARK: Where your money went
 
+    private func shareRow(_ item: ShareItem, index: Int) -> some View {
+        HStack(spacing: 10) {
+            Circle().fill(NativeSwatch.color(index, item.name)).frame(width: 10, height: 10)
+            Text(item.label).lineLimit(1)
+            Spacer()
+            Text(verbatim: "\(item.share)%")
+                .fontWeight(.semibold)
+                .monospacedDigit()
+                .nativeFigure(Double(item.share))
+        }
+        .accessibilityElement(children: .combine)
+    }
+
     private func spending(_ figures: InsightsFigures) -> some View {
         Section {
             if figures.shares.isEmpty {
@@ -315,16 +328,13 @@ struct InsightsView: View {
             } else {
                 NativeShareBar(shares: figures.shares.map { ($0.name, $0.share) }).padding(.vertical, 6)
                 ForEach(Array(figures.shares.enumerated()), id: \.element.name) { index, item in
-                    HStack(spacing: 10) {
-                        Circle().fill(NativeSwatch.color(index, item.name)).frame(width: 10, height: 10)
-                        Text(item.label).lineLimit(1)
-                        Spacer()
-                        Text(verbatim: "\(item.share)%")
-                            .fontWeight(.semibold)
-                            .monospacedDigit()
-                            .nativeFigure(Double(item.share))
+                    // Each entry opens its category's page (or its group's), as the web's legend links.
+                    if let route = AppPaths.route(item.to) {
+                        NavigationLink(value: route) { shareRow(item, index: index) }
+                            .accessibilityHint(item.linkLabel ?? "")
+                    } else {
+                        shareRow(item, index: index)
                     }
-                    .accessibilityElement(children: .combine)
                 }
             }
             if figures.hasTrend {
