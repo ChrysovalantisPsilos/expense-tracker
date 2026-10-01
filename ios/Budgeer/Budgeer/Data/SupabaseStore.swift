@@ -12,13 +12,13 @@ import Supabase
 import BudgeerCore
 
 final class SupabaseStore: ProfileRepository, CategoriesRepository, TransactionsRepository, RecurringRepository,
-    BudgetsRepository, FxRepository, AiRepository, @unchecked Sendable {
-    private let client: SupabaseClient
+    BudgetsRepository, FxRepository, AiRepository, GroupsRepository, @unchecked Sendable {
+    let client: SupabaseClient
     private let cache: QueryCache
-    private let core: BudgeerCore
+    let core: BudgeerCore
     private let http: URLSession
     private let defaults: UserDefaults
-    private let announce: @Sendable (String) -> Void
+    let announce: @Sendable (String) -> Void
 
     /// The profile columns the screens read (ProfileProvider's figures, the helpers' switches).
     static let profileColumns = "id, base_currency, yearly_separate, salary_shift_from_day, salary_category_id, "
@@ -38,7 +38,7 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
 
     // MARK: The signed-in user and the offline copy
 
-    private func userId() throws -> String {
+    func userId() throws -> String {
         guard let user = client.auth.currentUser else {
             throw ServerError(code: "signed_out", message: "Not signed in")
         }
@@ -46,7 +46,7 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
     }
 
     /// A read, network first, its last good answer when offline (per user).
-    private func cached(_ name: String, _ params: String = "",
+    func cached(_ name: String, _ params: String = "",
                         _ fetch: () async throws -> JSONValue) async throws -> JSONValue {
         let key = "\(try userId())|\(name)|\(params)"
         return try await cache.read(key, fetch: fetch)
