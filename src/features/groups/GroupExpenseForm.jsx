@@ -4,14 +4,15 @@ import {
   Divider, useToast, ButtonGroup, InputGroup, InputRightAddon, Box, SimpleGrid, Switch,
 } from '@chakra-ui/react'
 import { Trash2 } from 'lucide-react'
-import { toMinor, formatMoney, keptRate, effectiveRate, minorToInput } from '../../shared/lib/currency.js'
+import { keptRate, effectiveRate, minorToInput, toMinor } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today } from '../../shared/lib/dates.js'
-import {
-  splitEqually, expenseGroupAmount, computeSplit, prefillSplitValues, evenPercents,
-} from './splitMath.js'
+import { evenPercents } from './splitMath.js'
 import { viewerName } from './groupFormat.js'
-import { splitCountLabel } from './quickAddMath.js'
+import {
+  EXPENSE_FIELDS, SPLIT_MODES, expenseFieldErrors, expenseFormStart, expenseSaveArgs, expenseSaveProblem,
+  expenseSavedToast, includedIds, paidMinorOf, shareUnit, splitCardParts, splitPreview, splitTotal,
+} from './groupExpenseForm.js'
 import { addSharedExpense, updateSharedExpense } from './groups.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
@@ -23,20 +24,9 @@ import AvatarStack from './AvatarStack.jsx'
 import MemberSelect from './MemberSelect.jsx'
 import UserAvatar from '../../shared/ui/UserAvatar.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
-import { amountError, fieldErrors, firstInvalid, requiredError } from '../../shared/lib/formChecks.js'
-import { intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { firstInvalid } from '../../shared/lib/formChecks.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
-
-const FIELDS = ['description', 'amount', 'paidBy']
-const checkFields = ({ description, amount, paidBy }, t) => fieldErrors({
-  description: requiredError(description, t('form.errors.description')),
-  amount: amountError(amount),
-  paidBy: requiredError(paidBy, t('form.errors.paidBy')),
-})
-
-// The split modes; each one's button reads groups:form.modes.<mode>.
-const MODES = ['equal', 'exact', 'percent', 'shares']
 
 // The body of a group expense's page (GroupExpensePage): a new expense, or
 // (`expense`) an existing one, with a Delete button when `onDelete` is given
@@ -64,27 +54,25 @@ export default function GroupExpenseForm({
   const isEdit = !!expense
   const cur = group.currency // shares and balances
 
-  const initialMode = ['exact', 'percent', 'shares'].includes(expense?.split_type)
-    ? expense.split_type
-    : expense?.split_type === 'items' ? 'exact' : 'equal'
-
-  const [description, setDescription] = useState(expense?.description ?? initial?.description ?? '')
-  const [paidCurrency, setPaidCurrency] = useState(expense?.currency ?? initial?.currency ?? cur)
-  const [currencyPicked, setCurrencyPicked] = useState(!!initial?.currencyPicked)
-  const [amount, setAmount] = useState(
-    expense ? minorToInput(expense.amount_minor, expense.currency ?? cur) : initial?.amount ?? '')
+  // Where the form opens (read once).
+  const [start] = useState(() => expenseFormStart({
+    expense, members, defaultPayer, groupCurrency: cur, initial, today: today(),
+  }))
+  const [description, setDescription] = useState(start.description)
+  const [paidCurrency, setPaidCurrency] = useState(start.paidCurrency)
+  const [currencyPicked, setCurrencyPicked] = useState(start.currencyPicked)
+  const [amount, setAmount] = useState(start.amount)
   const [manualRate, setManualRate] = useState('')
-  const [paidBy, setPaidBy] = useState(expense?.paid_by ?? defaultPayer ?? members[0]?.id ?? '')
-  const [spentAt, setSpentAt] = useState(expense?.spent_at ?? initial?.spentAt ?? today)
-  const [splitWith, setSplitWith] = useState(
-    expense ? (expense.expense_splits ?? []).map((s) => s.member_id) : members.map((m) => m.id))
-  const [mode, setMode] = useState(initialMode)
-  const [values, setValues] = useState(() => (isEdit ? prefillSplitValues(expense, initialMode, cur) : {}))
+  const [paidBy, setPaidBy] = useState(start.paidBy)
+  const [spentAt, setSpentAt] = useState(start.spentAt)
+  const [splitWith, setSplitWith] = useState(start.splitWith)
+  const [mode, setMode] = useState(start.mode)
+  const [values, setValues] = useState(start.values)
   const { busy, run } = useAsyncSubmit()
   // Inline errors for the required fields, shown from the first submit on.
   const [tried, setTried] = useState(false)
   const refs = { description: useRef(null), amount: useRef(null), paidBy: useRef(null) }
-  const errors = tried ? checkFields({ description, amount, paidBy }, t) : {}
+  const errors = tried ? expenseFieldErrors({ description, amount, paidBy }) : {}
   const [adjust, setAdjust] = useState(false)
   const adjustId = useId()
   const sideways = !!useShellHeader()
@@ -101,15 +89,15 @@ export default function GroupExpenseForm({
   const fx = useFxRate(paidCurrency, cur, spentAt, { skip: kept != null })
   const rate = effectiveRate({ needsFx, kept, fx, manual: manualRate })
 
-  const includedIds = members.filter((m) => splitWith.includes(m.id)).map((m) => m.id)
-  const paidMinor = amount && Number(amount) > 0 ? toMinor(amount, paidCurrency) : 0
+  const ids = includedIds(members, splitWith)
+  const paidMinor = paidMinorOf(amount, paidCurrency)
   // What the split must add up to: the amount in the group currency.
-  const totalMinor = expenseGroupAmount(paidMinor, paidCurrency, rate, cur) ?? 0
+  const totalMinor = splitTotal({ paidMinor, paidCurrency, rate, groupCurrency: cur })
   const setVal = (id, v) => setValues((s) => ({ ...s, [id]: v }))
 
   // Switching to Percent starts from an even split of whoever is included.
   function pickMode(next) {
-    if (next === 'percent' && mode !== 'percent') setValues(evenPercents(includedIds))
+    if (next === 'percent' && mode !== 'percent') setValues(evenPercents(ids))
     setMode(next)
   }
 
@@ -122,99 +110,41 @@ export default function GroupExpenseForm({
     if (date) setSpentAt(date)
   }
 
-  // Live-compute each included member's share (minor) for the current mode.
-  const computed = useMemo(
-    () => computeSplit(mode, totalMinor, includedIds, values, cur),
-    [mode, includedIds, values, totalMinor, cur])
-
-  const shareOf = (id) => {
-    const i = includedIds.indexOf(id)
-    return i >= 0 ? computed.shares[i] ?? 0 : 0
-  }
+  // Live-compute each included member's share (minor) for the current mode,
+  // and the line under the split.
+  const preview = useMemo(
+    () => splitPreview({ mode, totalMinor, ids, values, currency: cur, needsFx, paidMinor, rate }),
+    [mode, totalMinor, ids, values, cur, needsFx, paidMinor, rate])
 
   async function submit() {
-    const first = firstInvalid(checkFields({ description, amount, paidBy }, t), FIELDS)
+    const first = firstInvalid(expenseFieldErrors({ description, amount, paidBy }), EXPENSE_FIELDS)
     if (first) {
       setTried(true)
       refs[first].current?.focus()
       return
     }
-    // Never split a foreign amount without a real rate (no silent 1:1).
-    if (!rate) {
-      return toast({
-        title: t(fx.status === 'loading' ? 'form.toast.fxLoading' : 'form.toast.fxMissing'),
-        status: 'warning',
-      })
-    }
-    if (includedIds.length === 0) return toast({ title: t('form.toast.nobody'), status: 'warning' })
+    const problem = expenseSaveProblem({
+      rate, fxLoading: fx.status === 'loading', ids, mode, preview, totalMinor, currency: cur,
+    })
+    if (problem) return toast({ ...problem, status: 'warning' })
 
-    if (mode === 'exact' && computed.assigned !== totalMinor) {
-      const diff = totalMinor - computed.assigned
-      return toast({
-        title: t('form.toast.exactTitle'),
-        description: t(diff > 0 ? 'form.toast.missing' : 'form.toast.overBy', { amount: formatMoney(Math.abs(diff), cur) }),
-        status: 'warning',
-      })
-    }
-    if (mode === 'percent' && !computed.ok) {
-      return toast({ title: t('form.toast.percent'), status: 'warning' })
-    }
-    if (mode === 'shares' && !computed.ok) {
-      return toast({ title: t('form.toast.shares'), status: 'warning' })
-    }
-
-    const shares = mode === 'equal' ? null : includedIds.map((id) => shareOf(id))
-    const myShare = shareOf(myMemberId)
+    const args = expenseSaveArgs({
+      groupId: group.id, expenseId: expense?.id, description, paidMinor, paidCurrency, needsFx, rate,
+      paidBy, spentAt, ids, mode, preview,
+    })
+    const done = expenseSavedToast({
+      isEdit, quick, groupName: group.name, myShare: preview.byMember[myMemberId] ?? 0, currency: cur,
+    })
     await run(async () => {
-      if (isEdit) {
-        await updateSharedExpense({
-          expenseId: expense.id, description, amountMinor: paidMinor, currency: paidCurrency,
-          exchangeRate: needsFx ? rate : null,
-          paidBy, spentAt, memberIds: includedIds, shares, splitType: mode,
-        })
-        toast({ title: t('form.toast.updated'), status: 'success' })
-      } else {
-        await addSharedExpense({
-          groupId: group.id, description, amountMinor: paidMinor, currency: paidCurrency,
-          exchangeRate: needsFx ? rate : null,
-          paidBy, spentAt, memberIds: includedIds, shares, splitType: mode,
-        })
-        toast(quick ? {
-          title: t('form.toast.addedTo', { name: group.name }),
-          description: myShare > 0
-            ? t('form.toast.yourShare', { amount: formatMoney(myShare, cur) })
-            : t('form.toast.notYours'),
-          status: 'success',
-        } : { title: t('form.toast.added'), status: 'success' })
-      }
+      await (isEdit ? updateSharedExpense(args) : addSharedExpense(args))
+      toast({ ...done, status: 'success' })
       onSaved?.()
     })
   }
 
-  const remaining = totalMinor - computed.assigned
-  const pctSum = mode === 'percent' ? (computed.wsum ?? 0) : 0
-
-  function summary() {
-    if (includedIds.length === 0) return t('form.summary.pickOne')
-    if (needsFx && paidMinor && !rate) return t('form.summary.needsRate')
-    if (!totalMinor) return t('form.summary.enterAmount')
-    if (mode === 'equal') return t('form.summary.each', { amount: formatMoney(splitEqually(totalMinor, includedIds.length)[0], cur) })
-    if (mode === 'exact') {
-      if (remaining === 0) return t('form.summary.addsUp')
-      return t(remaining > 0 ? 'form.summary.left' : 'form.summary.over', { amount: formatMoney(Math.abs(remaining), cur) })
-    }
-    if (mode === 'percent') {
-      const r = Math.round((pctSum) * 10) / 10
-      // English keeps its plain "33.3"; Greek writes "33,3".
-      const pct = intlLocale() ? r.toLocaleString(intlLocale()) : String(r)
-      return r === 100 ? t('form.summary.pctOk') : t('form.summary.pctPartial', { pct })
-    }
-    return t(computed.wsum > 0 ? 'form.summary.byShares' : 'form.summary.giveShare')
-  }
-  const summaryOk = includedIds.length > 0 && totalMinor > 0 &&
-    (mode === 'equal' || computed.ok)
-
-  const addon = mode === 'percent' ? '%' : mode === 'shares' ? '×' : cur
+  const summary = preview.summary
+  const summaryOk = preview.complete
+  const addon = shareUnit(mode, cur)
 
   const scanner = !isEdit && <ReceiptScanner onScan={handleScan} />
   const descriptionField = (
@@ -264,7 +194,7 @@ export default function GroupExpenseForm({
     <>
       <ButtonGroup size="sm" isAttached variant="outline" mb={3} flexWrap="wrap"
         aria-label={quick ? t('form.split') : undefined}>
-        {MODES.map((m) => (
+        {SPLIT_MODES.map((m) => (
           <Button key={m}
             onClick={() => pickMode(m)}
             variant={mode === m ? 'solid' : 'outline'}
@@ -297,7 +227,7 @@ export default function GroupExpenseForm({
               )}
               {on && (
                 <Text fontSize="sm" color="text.muted" minW="72px" textAlign="right">
-                  {formatMoney(shareOf(m.id), cur)}
+                  {preview.shareText[m.id]}
                 </Text>
               )}
             </HStack>
@@ -307,7 +237,7 @@ export default function GroupExpenseForm({
 
       <Text fontSize="sm" mt={2} fontWeight="600"
         color={summaryOk ? 'status.positive' : 'text.muted'}>
-        {summary()}
+        {summary}
       </Text>
     </>
   )
@@ -338,16 +268,15 @@ export default function GroupExpenseForm({
   }
 
   // The quick layout: the split folded to one line until the user adjusts it.
+  const card = splitCardParts({ mode, included: ids.length, total: members.length, summary })
   const splitCard = (
     <>
       <HStack spacing={3}>
         <AvatarStack members={members.filter((m) => splitWith.includes(m.id))} myUserId={myUserId}
           ring="bg.surface" />
         <Box flex="1" minW={0}>
-          <Text fontSize="sm" fontWeight="600">{t(mode === 'equal' ? 'form.splitEqually' : 'form.customSplit')}</Text>
-          <Text fontSize="xs" color="text.muted">
-            {splitCountLabel(includedIds.length, members.length)} · {summary()}
-          </Text>
+          <Text fontSize="sm" fontWeight="600">{card.title}</Text>
+          <Text fontSize="xs" color="text.muted">{card.line}</Text>
         </Box>
         <FormControl display="flex" alignItems="center" w="auto" flexShrink={0} minH="44px">
           <FormLabel htmlFor={adjustId} mb={0} mr={2} fontSize="sm" fontWeight="400" color="text.muted" cursor="pointer">

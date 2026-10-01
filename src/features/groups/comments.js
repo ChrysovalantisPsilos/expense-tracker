@@ -1,5 +1,6 @@
 import { supabase } from '../../shared/lib/supabase.js'
 import { dbError } from '../../shared/lib/errors.js'
+import { commentCountsFrom } from './groupFormat.js'
 
 // Comment bodies are encrypted at rest: reads go through the decrypting
 // `group_comments_for` RPC, posts through `add_group_comment` (which checks
@@ -30,5 +31,5 @@ export async function deleteComment(id) {
 export async function commentCounts(groupId) {
   const { data, error } = await supabase.rpc('group_comment_counts', { p_group: groupId })
   if (error) throw dbError(error)
-  return new Map((data ?? []).map((r) => [r.target_id, Number(r.n)]))
+  return commentCountsFrom(data)
 }

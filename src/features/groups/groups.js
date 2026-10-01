@@ -4,6 +4,7 @@ import { fileStem, saveBlob, toBlob } from '../../shared/lib/download.js'
 import { FILE_TYPES } from '../../../supabase/functions/_shared/files.ts'
 import { dbError, edgeFunctionError } from '../../shared/lib/errors.js'
 import { deviceFirst } from '../../shared/lib/deviceFirst.js'
+import { balancesFrom, inviteLink, membersWithAvatars } from './groupFormat.js'
 
 // ---- Queries -------------------------------------------------------------
 
@@ -15,15 +16,6 @@ export async function listGroups() {
   if (error) throw error
   return data ?? []
 }
-
-// Attach avatar_url (from the group_member_avatars RPC rows) to member rows.
-function withAvatars(members, avatars) {
-  const byUser = Object.fromEntries((avatars ?? []).map((a) => [a.user_id, a.avatar_url]))
-  return (members ?? []).map((m) => ({ ...m, avatar_url: m.user_id ? byUser[m.user_id] : null }))
-}
-
-// group_balances RPC rows → Map<memberId, net minor>.
-const balanceMap = (rows) => new Map((rows ?? []).map((b) => [b.member_id, Number(b.net_minor)]))
 
 // Full detail for one group: members (+avatars), expenses (+splits), settlements.
 export async function getGroup(groupId) {
@@ -43,10 +35,10 @@ export async function getGroup(groupId) {
 
   return {
     group: g.data,
-    members: withAvatars(members.data, avs.data),
+    members: membersWithAvatars(members.data, avs.data),
     expenses: ledger.data?.expenses ?? [],
     settlements: ledger.data?.settlements ?? [],
-    balances: balanceMap(bal.data),
+    balances: balancesFrom(bal.data),
   }
 }
 
@@ -88,8 +80,8 @@ export async function listGroupSummaries(groupIds, { balances = true } = {}) {
   ])
   if (members.error) throw members.error
   return new Map(groupIds.map((id, i) => [id, {
-    members: withAvatars((members.data ?? []).filter((m) => m.group_id === id), perGroup[i][0].data),
-    balances: balanceMap(perGroup[i][1].data),
+    members: membersWithAvatars((members.data ?? []).filter((m) => m.group_id === id), perGroup[i][0].data),
+    balances: balancesFrom(perGroup[i][1].data),
   }]))
 }
 
@@ -172,7 +164,7 @@ export async function createInvite(groupId, { email = null } = {}) {
     .insert({ group_id: groupId, invited_email: email })
     .select('token').single()
   if (error) throw error
-  return { token: data.token, url: `${window.location.origin}/join/${data.token}` }
+  return { token: data.token, url: inviteLink(window.location.origin, data.token) }
 }
 
 // Helper for the copy-link button.

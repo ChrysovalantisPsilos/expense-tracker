@@ -10,7 +10,7 @@ import BackButton from '../../shared/ui/BackButton.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useGroup, removeMember, deleteGroup, downloadGroupReport } from './groups.js'
 import { commentCounts } from './comments.js'
-import { groupDeleteCheck, groupTotal, groupSummaryText } from './groupFormat.js'
+import { groupDeleteCheck, groupTotal, groupSummaryText, groupViewer } from './groupFormat.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import GroupHeader from './GroupHeader.jsx'
 import GroupBalances from './GroupBalances.jsx'
@@ -54,7 +54,7 @@ export default function GroupDetail() {
   }
 
   const balances = data?.balances ?? new Map()
-  const myMember = data?.members.find((m) => m.user_id === user.id)
+  const { myMember, isOwner } = groupViewer(data?.group, data?.members, user.id)
 
   // "Share summary": the system share sheet where there is one (phones),
   // else the clipboard. Text only — total and who owes whom.
@@ -121,7 +121,6 @@ export default function GroupDetail() {
   }
 
   const { group, members, expenses, settlements, auditLog } = data
-  const isOwner = group.owner_id === user.id
 
   return (
     <Stack spacing={5}>
