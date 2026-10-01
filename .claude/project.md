@@ -278,6 +278,29 @@ npm run dev       # Vite
   `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `APPLE_TEAM_ID`. It fails at
   once, naming what's missing, without them. `ITSAppUsesNonExemptEncryption`
   is NO (only the OS's TLS/Keychain and a SHA-256 nonce hash).
+- **Store information:** `.github/workflows/ios-store-info.yml`, by hand
+  (app = dev | prod, `submit` = send the newest build to Beta App Review),
+  on Linux, no packages: `scripts/asc/store-info.mjs` over the App Store
+  Connect API (ES256 token by node:crypto, `scripts/asc/api.mjs`; bodies in
+  `requests.mjs`; screenshots in `screenshots.mjs`). It sets TestFlight's
+  test information (en-US + el), the beta review details (contact + the
+  reviewer's login), What to Test on the newest VALID build, the external
+  group "Public" with a public link (limit 1000 prod, 100 dev) and the build
+  in it; and the App Store page, never submitted: name, subtitle, privacy
+  URL, category FINANCE, age rating (all NONE/false), the version's
+  description, keywords, promotional text, support/marketing URLs,
+  copyright, App Review details, and screenshots once
+  `ios/store/screenshots/<locale>/*.png` exists (6.9" = `APP_IPHONE_67`,
+  name order, ≤ 10). It writes only what differs, so re-run it freely (the
+  public link only goes live after Beta App Review: run it again then).
+  The texts are `ios/store/listing.{en,el}.json`, the settings and review
+  notes `ios/store/config.json`; `test/ascStoreInfo.test.js` checks limits,
+  both languages, URLs and the bodies. Extra GitHub secrets (names only):
+  `ASC_CONTACT_EMAIL`, `ASC_CONTACT_PHONE`, `REVIEW_EMAIL`,
+  `REVIEW_PASSWORD` (Budgeer, a PROD account), `REVIEW_EMAIL_DEV`,
+  `REVIEW_PASSWORD_DEV` (Budgeer Dev, a TEST account). App Privacy, price,
+  availability and the age-rating's final check stay by hand in App Store
+  Connect.
   `ASC_KEY_P8` holds the whole .p8 text, BEGIN/END lines included
   ("invalidPEMDocument" = it doesn't). The app is iPhone-only: keep
   `TARGETED_DEVICE_FAMILY: "1"` on the Budgeer target itself (XcodeGen's
