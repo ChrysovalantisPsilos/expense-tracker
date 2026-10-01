@@ -271,6 +271,7 @@ struct CommentCount: View {
             }
             .foregroundStyle(Theme.Colors.textMuted)
             .frame(width: 40, height: 36, alignment: .leading)
+            .padding(.leading, 6)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

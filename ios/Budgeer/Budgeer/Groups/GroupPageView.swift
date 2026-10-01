@@ -122,12 +122,16 @@ struct GroupPageView: View {
                     .font(Theme.Fonts.heading(22, weight: .bold, lang: language.current))
                     .kerning(-0.44)
                     .foregroundStyle(Theme.Colors.textPrimary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
                 Button { path = .members } label: {
                     HStack(spacing: Theme.Space.s2) {
                         AvatarStackView(stack: figures.avatars, ring: Theme.Colors.canvas)
                         Text(figures.members)
                             .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
                             .foregroundStyle(Theme.Colors.textMuted)
+                            .lineLimit(1)
+                            .fixedSize()
                     }
                 }
                 .buttonStyle(.plain)
@@ -337,7 +341,7 @@ struct HistoryCard: View {
     @ViewBuilder private var expenses: some View {
         if figures.expenses.isEmpty {
             VStack(spacing: Theme.Space.s3) {
-                IconTile(systemName: "receipt", size: 48, tone: Theme.Colors.accentFg)
+                IconTile(systemName: "doc.text", size: 48, tone: Theme.Colors.accentFg)
                 Text(language.t("groups:history.empty.title"))
                     .font(Theme.Fonts.heading(17, weight: .semibold, lang: language.current))
                     .foregroundStyle(Theme.Colors.textPrimary)
@@ -363,8 +367,9 @@ struct HistoryCard: View {
                 ForEach(figures.expenses) { row in
                     HStack(spacing: 0) {
                         Button { if row.canEdit { open(.expense(row.id)) } } label: {
-                            GroupItemRow(icon: "receipt", title: row.title,
-                                         meta: row.meta.map(\.text).joined(separator: " · "),
+                            // On a phone the line leaves out what goes without saying (`phone: false`).
+                            GroupItemRow(icon: "doc.text", title: row.title,
+                                         meta: row.meta.filter(\.phone).map(\.text).joined(separator: " · "),
                                          amount: row.amount, amountMeta: row.amountMeta) { EmptyView() }
                         }
                         .buttonStyle(.plain)

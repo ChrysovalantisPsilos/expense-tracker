@@ -85,7 +85,7 @@ struct MembersView: View {
                 CardHeader(title: language.t("groups:members.invite.title"), icon: "envelope",
                            subtitle: language.t("groups:members.invite.subtitle"))
                 FormRow(label: language.t("groups:members.invite.email"), help: language.t("groups:members.invite.emailHint")) {
-                    TextField("friend@example.com", text: $email)
+                    TextField("", text: $email, prompt: Text(verbatim: "friend@example.com"))
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()

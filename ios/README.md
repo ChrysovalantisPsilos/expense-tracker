@@ -161,6 +161,11 @@ ios/Budgeer/
     Budgets/             BudgetFigures, BudgetsModel, BudgetsView
     Recurring/           RecurringFigures, RecurringModel, RecurringView
     Insights/            InsightsFigures, InsightsModel, InsightsView (Swift Charts draws, the core computes)
+    Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab),
+                         GroupModel + GroupPageView (a group's page, rename, leave, delete), GroupExpenseModel +
+                         GroupExpenseView (add or edit an expense, the quick layout), SettleUpModel + SettleUpView,
+                         MembersView, CommentsModel + CommentsView, MyGroupsModel + WhoForAdd (Add's "Who's it
+                         for?"), GroupKit (avatars, GroupMark, TransferRow, HighlightPill, rich text)
     More/                MoreView (Money pages, account, sign out, language, build)
     Theme/               Theme (tokens), Kit (Panel, Figure, ProgressRow, buttons), FormKit (form rows, fields),
                          CategoryBadge (the web's icons as SF Symbols, the category colour)
@@ -168,11 +173,11 @@ ios/Budgeer/
     Resources/Fonts/     Poppins, Nunito Sans, Manrope (OFL, static TTFs)
     Resources/Generated/ <lang>.lproj/Localizable.strings — generated, not committed
   BudgeerTests/          view models over FakeStore, the parity tests, the strings, snapshots
-    Fixtures/*.json      the web's figures for fake inputs: home, ledger, budgets, recurring, insights
-                         (npm run ios:fixture)
+    Fixtures/*.json      the web's figures for fake inputs: home, ledger, budgets, recurring, insights,
+                         groups (npm run ios:fixture)
 ```
 
-### What is real and what is not (phase 2)
+### What is real and what is not (phase 3)
 
 Every figure, label, grouping, validation and form ↔ row mapping below is
 a core call (the web's function); Swift reads, lays out and draws.
@@ -195,7 +200,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   switch is on (`ai-helper` `parse_entry`), Repeat, foreign currency with
   the ECB preview, savings and meal-voucher sources; saved with
   `save_transactions` / `update_transaction` / `save_recurring_rule`,
-  deleted after a confirm. Not yet: receipts, splitting with a group.
+  deleted after a confirm. A new expense asks "Who's it for?" when the
+  user is in a group (below). Not yet: receipts.
 - **Transactions**: the month picker, search, the rows and their
   "Counts for October" notes, 20 at a time. Not yet: the advanced filters.
 - **Budgets**: this month's bars and tones, set or change a budget inline
@@ -211,8 +217,33 @@ a core call (the web's function); Swift reads, lays out and draws.
   pending rates filled, spending by category and the Recurring card ("Show
   all N charges"). Not yet: the categories' "Show all", the vouchers card,
   In words.
-- **Groups**: "Coming to the app soon". **More**: the Money pages, who is
-  signed in, sign out, the language, the version.
+- **Groups** (phase 3): the tab lists the invites (Accept / Decline) and
+  a card per group (picture, name, the avatar stack, the member count,
+  your balance in its tone); New group (a name and a currency). A group's
+  page: the header (picture, name over the avatars and member count, which
+  open Members, and the Total), the balances card (your balance with Settle
+  up, everyone's tiles, the highlight line), Who owes whom, and the history
+  (expenses with their split and comment counts, settlements, activity).
+  Add or edit an expense in any currency (the ECB rate, or one typed) with
+  every split mode (Equally, Amounts, Percent, Shares); delete it after a
+  confirm. Settle up opens on your biggest payment, with the suggestions,
+  the reminder bell and Pay directly (Revolut, PayPal, a bank QR drawn on
+  the device from the core's EPC payload, the IBAN to copy). Members:
+  remove (the owner), invite by email (a request in the app, else an
+  emailed link) or with a share link shown inline to copy or share.
+  Comments on an expense or a settlement. Rename (the owner), Share
+  summary, Leave (or leave silently) and Delete (type the name; the web's
+  "can't yet" while others are in it). Add's **"Who's it for?"**: Just me
+  or a group (most recently used first); a group turns Add into its quick
+  form (the split folded into one card with Adjust), carrying what was
+  typed. Everything is the web's RPCs and tables, cached for offline and
+  live through the groups' tables on the realtime channel (unfiltered:
+  Row Level Security scopes them). Not yet: the group photo upload (the
+  photo shows), the PDF statement, joining from an invite link, the
+  payment-details ask on Settle up, and opening a group from a shared row
+  in Transactions.
+- **More**: the Money pages, who is signed in, sign out, the language,
+  the version.
 
 ### Strings
 
@@ -252,19 +283,24 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   Google: success, cancelled, failed), `DataLayerTests` (the cache, live
   refresh), `EntryFormModelTests`, `LedgerTests`, `BudgetsTests`,
   `RecurringTests`, `InsightsTests`, `HomeViewModelTests`,
-  `CategoryBadgeTests`.
+  `CategoryBadgeTests`, `GroupsModelTests` (the list and invites, a
+  group's page and its actions, invites, the expense form, settle up,
+  comments, Who's it for's order).
 - Parity: each screen's fixture inputs through its `…Figures` (every step a
   core call) must give what the web's functions wrote into
-  `Fixtures/{home,ledger,budgets,recurring,insights}.json`, in English and
-  Greek. `npm run ios:fixture` (`mobile-core/homeFigures.mjs`,
-  `mobile-core/screenFigures.mjs`) rewrites them from the web's source;
-  `test/iosHome.test.js` and `test/iosScreens.test.js` (in `npm test`) fail
-  when a committed file no longer matches the web.
+  `Fixtures/{home,ledger,budgets,recurring,insights,groups}.json`, in
+  English and Greek. `npm run ios:fixture` (`mobile-core/homeFigures.mjs`,
+  `mobile-core/screenFigures.mjs`, `mobile-core/groupFigures.mjs`) rewrites
+  them from the web's source; `test/iosHome.test.js`,
+  `test/iosScreens.test.js` and `test/iosGroups.test.js` (in `npm test`)
+  fail when a committed file no longer matches the web.
 - `L10nTests`: both languages bundled, the web's keys, the fallback, the
   language preference.
 - `SnapshotTests`: PNGs of Sign-in, Home (with the picker and the Recurring
   card), Add (an expense with Repeat on), Edit, Transactions, Budgets,
-  Recurring and Insights, each light, dark and Greek, with the fixtures'
+  Recurring, Insights, Groups (the tab, a group's page and its activity,
+  an expense split by amounts, settle up, members, Add's quick group
+  form), each light, dark and Greek, with the fixtures'
   data; attached to the test run and written to `SNAPSHOT_DIR` when set
   (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
 

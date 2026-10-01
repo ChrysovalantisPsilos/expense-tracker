@@ -169,12 +169,14 @@ struct GroupExpenseView<Lead: View>: View {
                         .font(Theme.Fonts.body(12, lang: language.current))
                         .foregroundStyle(Theme.Colors.textMuted)
                 }
-                Spacer(minLength: Theme.Space.s2)
-                Toggle(language.t("groups:form.adjust"), isOn: $model.adjust)
+                Spacer(minLength: Theme.Space.s1)
+                Text(language.t("groups:form.adjust"))
                     .font(Theme.Fonts.body(14, lang: language.current))
                     .foregroundStyle(Theme.Colors.textMuted)
-                    .tint(Theme.Colors.accentSolid)
                     .fixedSize()
+                Toggle(language.t("groups:form.adjust"), isOn: $model.adjust)
+                    .labelsHidden()
+                    .tint(Theme.Colors.accentSolid)
             }
             if model.adjust { SplitEditor(model: model) }
         }

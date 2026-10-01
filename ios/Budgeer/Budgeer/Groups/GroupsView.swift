@@ -156,6 +156,7 @@ struct GroupCardView: View {
                             .font(Theme.Fonts.body(12, lang: language.current))
                             .foregroundStyle(Theme.Colors.textMuted)
                             .lineLimit(1)
+                            .fixedSize()
                     }
                 }
                 Spacer(minLength: Theme.Space.s2)
