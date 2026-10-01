@@ -91,6 +91,27 @@ final class ReceiptTests: XCTestCase {
         XCTAssertEqual(form.receipt.stage, .idle)
     }
 
+    func testAGroupExpenseTakesTheTotalInTheCurrencyPaidAndTheDate() async throws {
+        let fixture = try GroupsFixture.load()
+        let store = fixture.store()
+        let form = GroupExpenseModel(group: fixture.group, members: fixture.members, myMemberId: "m1", expense: nil,
+                                     data: store.data)
+        XCTAssertTrue(form.offersReceipt)
+        form.setDescription("Taxi")
+        form.receipt.read(boxes: ReceiptTests.boxes)
+        form.useReceipt()
+        XCTAssertEqual(form.receipt.stage, .done)
+        // As the web's group form: the amount in the currency paid and the date; never the shop or its currency.
+        XCTAssertEqual(form.form.amount, "13.30")
+        XCTAssertEqual(form.form.paidCurrency, fixture.group["currency"]?.stringValue)
+        XCTAssertEqual(form.form.spentAt, "2026-09-14")
+        XCTAssertEqual(form.form.description, "Taxi")
+        let saved = try XCTUnwrap(fixture.group["id"]?.stringValue)
+        let editing = GroupExpenseModel(group: fixture.group, members: fixture.members, myMemberId: "m1",
+                                        expense: ["id": "e1", "group_id": .string(saved)], data: store.data)
+        XCTAssertFalse(editing.offersReceipt)
+    }
+
     func testOnlyANewExpenseOffersAReceipt() async {
         let (income, _) = await model(kind: "income")
         XCTAssertFalse(income.offersReceipt)

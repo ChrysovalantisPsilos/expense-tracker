@@ -67,8 +67,9 @@ struct GroupExpenseSheet: View {
 }
 
 /// The expense's fields: the amount (with the pad while Add is collapsed),
-/// its date and currency, the exchange rate, what it was for and who paid,
-/// `extra` (Add's "Who's it for?", or Delete), then the split.
+/// its date and currency (and Scan a receipt on a new one), the exchange
+/// rate, what it was for and who paid, `extra` (Add's "Who's it for?", or
+/// Delete), then the split.
 @MainActor
 struct GroupExpenseForm<Extra: View>: View {
     @Bindable var model: GroupExpenseModel
@@ -76,6 +77,10 @@ struct GroupExpenseForm<Extra: View>: View {
     var compact: Bool
     @ViewBuilder var extra: () -> Extra
     @Environment(AppLanguage.self) private var language
+    /// The receipt's photo (in memory for its thumbnail, never saved) and its pickers.
+    @State private var receiptPhoto: UIImage?
+    @State private var takingPhoto = false
+    @State private var pickingPhoto = false
 
     var body: some View {
         ScrollView {
@@ -88,6 +93,13 @@ struct GroupExpenseForm<Extra: View>: View {
                 AmountHeader(text: model.amountText, value: Double(model.amountMinor), error: model.errors["amount"]) {
                     DayPill(iso: Binding(get: { model.form.spentAt }, set: { model.setDate($0) }))
                     CurrencyPill(options: model.currencyOptions, value: model.form.paidCurrency) { model.pickCurrency($0) }
+                    if model.offersReceipt, model.receipt.stage == .idle {
+                        ReceiptPill(camera: { takingPhoto = true }, library: { pickingPhoto = true })
+                    }
+                }
+                if model.offersReceipt, model.receipt.stage != .idle || model.receipt.problem != nil {
+                    ReceiptCard(receipt: model.receipt, photo: receiptPhoto) { model.useReceipt() }
+                        .padding(.horizontal, 16)
                 }
                 if let line = model.fxLine {
                     FxLineView(line: line, manual: $model.manualRate).padding(.horizontal, 16)
@@ -127,6 +139,7 @@ struct GroupExpenseForm<Extra: View>: View {
             .padding(.bottom, 24)
         }
         .scrollDismissesKeyboard(.interactively)
+        .modifier(ReceiptCapture(receipt: model.receipt, camera: $takingPhoto, library: $pickingPhoto, photo: $receiptPhoto))
     }
 
     /// The split: who it covers, the modes, a row per member (in or out,

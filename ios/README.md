@@ -272,7 +272,9 @@ a core call (the web's function); Swift reads, lays out and draws.
   is never uploaded or kept, as on the web; the website's crop and turn
   step isn't here (Vision reads a photo upright and whole). The camera's
   reason is `NSCameraUsageDescription` (`ios:native.receipt.cameraUsage`,
-  in both languages' InfoPlist.strings). Not on a group's expense form.
+  in both languages' InfoPlist.strings). A new group expense scans one
+  too (its sheet, and Add's quick group form), filling only the total in
+  the currency paid and the date, as the web's group form does.
 - **Home**: a month per page you swipe between (the months since the first
   entry), the month's spend with Income and Net (the ⓘ: How Net adds up);
   "every budget held" on a past month that kept them all (a burst of
@@ -550,7 +552,8 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   order), `GroupLinksTests` (Edit group's rename and upload, the
   statement's file, joining from a pasted or opened link and the refusals,
   Settle up's payment-details ask and Not now), `ReceiptTests` (a receipt
-  read, checked and filling the form, little read, a new expense only),
+  read, checked and filling the form, a group expense's fill, little read, a new
+  expense only),
   `ShellModelTests` (the bell's feed, opening it), `AppLockTests` (off by default, the
   owner's check, locked on launch and after the grace, off unlocks), `SettingsModelTests`
   (Account, the switches, Security over `FakeSecurity`, Privacy), `CategoriesModelTests` (the
@@ -582,7 +585,7 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   receipt used), Activity, Groups (the
   tab, New group empty, filled and made,
   a group's page, settled with its confetti caught mid-fall, Balances, an
-  expense split by amounts, Settle up, its payment-details ask open, Edit
+  expense split by amounts, a new one from a receipt, Settle up, its payment-details ask open, Edit
   group, Members, Join with a link: the link pasted, the group it opens,
   an expired one), More, Settings and its
   pages (Account, Monthly spending, Notifications, Appearance, AI helpers,

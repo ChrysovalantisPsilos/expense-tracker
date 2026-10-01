@@ -4,8 +4,10 @@
 // rules are groupExpenseForm.js's (GroupExpenseFigures): where it starts,
 // the split's preview and line, the split card, what stops a save, what a
 // save sends and the toast; the exchange rate is the web's (keptRate, the
-// ECB's rate for the day, or one typed when there is none). This file holds
-// the fields and does the I/O.
+// ECB's rate for the day, or one typed when there is none). A new expense
+// can start from a receipt (ReceiptModel), which fills the amount and the
+// date as the web's group form does (receiptFill). This file holds the
+// fields and does the I/O.
 import Foundation
 import Observation
 import BudgeerCore
@@ -32,6 +34,8 @@ final class GroupExpenseModel {
     private(set) var notice: ToastText?
     /// The toast after a save (the words of "Added to Lisbon trip").
     private(set) var saved: ToastText?
+    /// Scan a receipt (a new expense only, as on the web).
+    let receipt: ReceiptModel
 
     private let data: DataLayer
     private let core: BudgeerCore
@@ -48,6 +52,7 @@ final class GroupExpenseModel {
         self.quick = quick
         self.data = data
         self.core = core
+        receipt = ReceiptModel(core: core)
         let today = (try? core.isoDate(now())) ?? ""
         form = (try? GroupExpenseFigures.start(group: group, members: members, myMemberId: myMemberId, expense: expense,
                                                initial: initial, today: today, core: core))
@@ -58,6 +63,20 @@ final class GroupExpenseModel {
     }
 
     var isEdit: Bool { expense != nil }
+
+    /// "Scan a receipt" is offered on a new expense (GroupExpenseForm).
+    var offersReceipt: Bool { !isEdit }
+
+    /// "Use these": the receipt's total in the currency paid, and its date
+    /// (the web's group form takes only those: receiptFill with { total, date }).
+    func useReceipt() {
+        guard let scan = receipt.use() else { return }
+        let read: JSONValue = ["total": scan["total"] ?? .null, "date": scan["date"] ?? .null]
+        let form: JSONValue = ["currency": .string(self.form.paidCurrency)]
+        guard let fill = try? core.json("receiptRead", "receiptFill", [read, form]) else { return }
+        if let amount = fill["amount"]?.stringValue { setAmount(amount) }
+        if let day = fill["date"]?.stringValue { setDate(day) }
+    }
     var groupCurrency: String { group["currency"]?.stringValue ?? "EUR" }
     var groupName: String { group["name"]?.stringValue ?? "" }
     /// The split modes in the buttons' order.

@@ -199,6 +199,13 @@ final class SnapshotTests: XCTestCase {
                 NavigationStack { GroupPageView(model: group) }
                     .sheet(isPresented: .constant(true)) { GroupExpenseSheet(model: form) { _ in } }
             }, name: "group-expense", lang: lang, dark: dark, settle: 1.6)
+            // A new expense from a receipt: the check.
+            let scanned = group.expenseForm(expenseId: nil)
+            scanned.receipt.read(boxes: ReceiptTests.boxes)
+            try await shots(framed(.groups) {
+                NavigationStack { GroupPageView(model: group) }
+                    .sheet(isPresented: .constant(true)) { GroupExpenseSheet(model: scanned) { _ in } }
+            }, name: "group-expense-receipt", lang: lang, dark: dark, settle: 1.6)
             // Settle up, on the biggest payment you're part of.
             let settle = try XCTUnwrap(group.settleUp())
             try await shots(framed(.groups) {

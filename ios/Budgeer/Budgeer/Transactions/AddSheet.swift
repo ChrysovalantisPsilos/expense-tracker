@@ -104,6 +104,8 @@ struct AddSheet: View {
             .toolbar { toolbar }
         }
         .nativeAddPresentation(detent: $detent)
+        // A group's receipt check needs the room the keypad takes, as the entry's does.
+        .onChange(of: groupForm?.receipt.stage) { _, stage in if stage == .check { detent = .large } }
         .task {
             if !entry.ready { await entry.load() }
             if entry.mode == .add { await groups.load() }
