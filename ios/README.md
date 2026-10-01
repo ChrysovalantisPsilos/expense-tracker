@@ -181,6 +181,12 @@ signing; the key needs the Admin role). The build number is the run number.
 Repository secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`,
 `APPLE_TEAM_ID`; the run stops at once, naming any that is missing.
 
+The store information (TestFlight's test details, What to Test, the public
+"Public" group, Beta App Review, and the App Store page, never submitted) is
+`.github/workflows/ios-store-info.yml` → `scripts/asc/store-info.mjs`, with
+the texts in `ios/store/` and screenshots, once there are some, in
+`ios/store/screenshots/<locale>/` (`.claude/project.md`, iOS app).
+
 ### Layout
 
 ```

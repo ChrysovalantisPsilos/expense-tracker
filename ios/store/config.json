@@ -1,0 +1,35 @@
+{
+  "apps": {
+    "prod": {
+      "bundleId": "com.budgeer.app",
+      "name": "Budgeer",
+      "site": "https://www.budgeer.com",
+      "publicLinkLimit": 1000
+    },
+    "dev": {
+      "bundleId": "com.budgeer.app.dev",
+      "name": "Budgeer Dev",
+      "site": "https://dev.budgeer.com",
+      "publicLinkLimit": 100
+    }
+  },
+  "locales": ["en-US", "el"],
+  "paths": {
+    "privacyPolicy": "/privacy",
+    "support": "/help"
+  },
+  "feedbackEmail": "support@budgeer.com",
+  "contact": {
+    "firstName": "Chrysovalantis",
+    "lastName": "Psilos"
+  },
+  "copyright": "2026 Chrysovalantis Psilos",
+  "primaryCategory": "FINANCE",
+  "contentRightsDeclaration": "DOES_NOT_USE_THIRD_PARTY_CONTENT",
+  "betaGroup": "Public",
+  "ageRatingOverrides": {},
+  "reviewNotes": {
+    "prod": "Budgeer is a personal finance app: expenses and income, monthly budgets, recurring payments with Plan (a place to try changes to them before making them), savings goals, a meal voucher card, salary insights, and splitting bills with friends in groups. It never holds or moves money, and it is free: no in-app purchases and no ads.\n\nSign in with the demo account below (email and password on the sign-in screen). It is an ordinary account made for review; add, edit and delete anything you like.\n\nTwo apps: Budgeer (com.budgeer.app) is the production app, on budgeer.com's server. Budgeer Dev (com.budgeer.app.dev) is the same app on our test server (dev.budgeer.com), used to test new versions before they reach Budgeer; its accounts are separate.\n\nNotes:\n- Sign-in: email and password, Sign in with Apple or Google.\n- The camera is used only to read a receipt on the device (Apple's Vision); the photo is not saved or uploaded.\n- Face ID is an optional app lock (More > Account & settings > Face ID lock).\n- The AI helpers are optional and off until the user turns them on (More > Account & settings > AI helpers).\n- Account deletion: More > Account & settings > Security > Delete account.\n- Privacy policy: https://www.budgeer.com/privacy. Support: support@budgeer.com.",
+    "dev": "Budgeer Dev is the test version of Budgeer: the same app on our test server (dev.budgeer.com), used to test new versions before they reach the production app, Budgeer (com.budgeer.app, on budgeer.com). Its accounts and data are separate from budgeer.com and are test data.\n\nBudgeer is a personal finance app: expenses and income, monthly budgets, recurring payments with Plan (a place to try changes to them before making them), savings goals, a meal voucher card, salary insights, and splitting bills with friends in groups. It never holds or moves money, and it is free: no in-app purchases and no ads.\n\nSign in with the demo account below (email and password on the sign-in screen). It is an ordinary test account made for review; add, edit and delete anything you like.\n\nNotes:\n- Sign-in: email and password, Sign in with Apple or Google.\n- The camera is used only to read a receipt on the device (Apple's Vision); the photo is not saved or uploaded.\n- Face ID is an optional app lock (More > Account & settings > Face ID lock).\n- The AI helpers are optional and off until the user turns them on (More > Account & settings > AI helpers).\n- Account deletion: More > Account & settings > Security > Delete account.\n- Privacy policy: https://dev.budgeer.com/privacy. Support: support@budgeer.com."
+  }
+}
