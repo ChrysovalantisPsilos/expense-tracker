@@ -15,7 +15,8 @@ import BudgeerCore
 @Observable
 final class EntryFormModel {
     enum Mode: Equatable {
-        /// A new expense or income (Repeat offered).
+        /// A new expense or income (Repeat offered); with a saved
+        /// transaction, a copy of it dated today (Duplicate, Split).
         case add
         /// A saved transaction (its kind fixed), with its rule when it repeats.
         case edit
@@ -145,8 +146,14 @@ final class EntryFormModel {
         let form: JSONValue
         switch mode {
         case .add:
-            form = try core.json("entryForm", "newForm", [["kind": .string(startKind), "baseCurrency": .string(baseCurrency),
-                                                           "date": .string(today), "initial": initial] as JSONValue])
+            if let copy = transaction {
+                // Duplicate / Split: the saved entry's fields, dated today.
+                form = try core.json("entryForm", "formFromRow", [copy, JSONValue.string(today)])
+                notes = copy["notes"]?.stringValue ?? ""
+            } else {
+                form = try core.json("entryForm", "newForm", [["kind": .string(startKind), "baseCurrency": .string(baseCurrency),
+                                                               "date": .string(today), "initial": initial] as JSONValue])
+            }
             repeatOn = startRepeat
             draft = try core.json("recurringMath", "repeatDraft", [JSONValue.null, ["fromDate": form["date"] ?? .null] as JSONValue])
         case .edit:
@@ -217,12 +224,28 @@ final class EntryFormModel {
          "description": .string(description), "spentAt": .string(date)]
     }
 
-    /// The categories of this kind as the picker lists them: (id, name shown).
-    var categoryOptions: [(id: String, name: String)] {
+    /// The categories of this kind as the chips show them: (id, name shown, badge).
+    var categoryOptions: [(id: String, name: String, look: CategoryLook)] {
         (categories.arrayValue ?? []).compactMap { category in
             guard let id = category["id"]?.stringValue else { return nil }
             let name: String = (try? core.call("categoryName", "categoryDisplayName", [category])) ?? ""
-            return (id, name)
+            let look = (try? CategoryLook.of(category, kind: kind, core: core)) ?? CategoryLook(key: "other", tone: "accent", tint: nil)
+            return (id, name, look)
+        }
+    }
+
+    /// The amount as the big figure shows it (currency.formatMoney; nothing typed reads 0).
+    var amountText: String {
+        core.formatMoney(.int(amountMinor), currency)
+    }
+
+    /// A key of the number pad: a digit or the decimal point is typed at the
+    /// end, "⌫" takes the last character off (the text is cleaned as typed).
+    func press(_ key: String) {
+        if key == "⌫" {
+            setAmount(String(amount.dropLast()))
+        } else {
+            setAmount(amount + key)
         }
     }
 

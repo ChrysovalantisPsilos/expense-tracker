@@ -591,7 +591,8 @@
             "over": false,
             "overLabel": null
           }
-        ]
+        ],
+        "held": null
       },
       "carried": {
         "subtitle": "Carried over from August",
@@ -633,13 +634,15 @@
             "over": false,
             "overLabel": null
           }
-        ]
+        ],
+        "held": null
       },
       "pastEmpty": {
         "subtitle": "May 2020",
         "empty": "No budgets in May 2020.",
         "canSet": false,
-        "items": []
+        "items": [],
+        "held": null
       },
       "year": {
         "subtitle": "This year · 2 months",
@@ -681,7 +684,8 @@
             "over": false,
             "overLabel": null
           }
-        ]
+        ],
+        "held": null
       }
     },
     "el": {
@@ -741,7 +745,8 @@
             "over": false,
             "overLabel": null
           }
-        ]
+        ],
+        "held": null
       },
       "carried": {
         "subtitle": "Ίδια όρια με του Αυγούστου",
@@ -783,13 +788,15 @@
             "over": false,
             "overLabel": null
           }
-        ]
+        ],
+        "held": null
       },
       "pastEmpty": {
         "subtitle": "Μάιος 2020",
         "empty": "Χωρίς προϋπολογισμούς: Μάιος 2020.",
         "canSet": false,
-        "items": []
+        "items": [],
+        "held": null
       },
       "year": {
         "subtitle": "Φέτος · 2 μήνες",
@@ -831,7 +838,8 @@
             "over": false,
             "overLabel": null
           }
-        ]
+        ],
+        "held": null
       }
     }
   }

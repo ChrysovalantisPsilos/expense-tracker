@@ -14,15 +14,13 @@ import { salaryShiftOf } from '../src/shared/lib/salaryShift.js'
 import { savingsIdsOf } from '../src/shared/lib/savings.js'
 import { EMPTY_FILTERS, filterTransactions, isFiltering, netBaseMinor } from '../src/features/transactions/txnFilter.js'
 import { isFirstRun, ledgerSummary, listHeading } from '../src/features/transactions/listHeading.js'
-import { listParts } from '../src/features/transactions/rowParts.js'
-import { pageCount, pageSlice } from '../src/shared/lib/paginate.js'
-import { t } from '../src/shared/lib/i18n/i18n.js'
+import { dayGroups } from '../src/features/transactions/rowParts.js'
 import { isMonthPeriod, isPastPeriod, periodFromValue, thisMonthPeriod } from '../src/shared/lib/periods.js'
 import { isoDate, lastMonths, monthTitle } from '../src/shared/lib/dates.js'
 import { spendRows } from '../src/shared/lib/spread.js'
 import {
   budgetRowParts, budgetWindow, canCopyBudgets, capsInMonth, carriedFrom, carriedLabel, monthSets, periodBudgets,
-  previousPeriod, budgetSubtitle, budgetsEmpty,
+  previousPeriod, budgetSubtitle, budgetsEmpty, heldNote,
 } from '../src/features/budgets/budgetMath.js'
 import {
   groupTotalParts, incomePerMonth, incomeRules, incomeTotalParts, ruleRowParts, subscriptionGroups,
@@ -36,13 +34,11 @@ export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
 
 // Rows a page of the app's Transactions list (LedgerFigures.pageSize), with
 // the web's Paginator ("2 of 5") under it.
-export const LEDGER_PAGE = 20
-
-// The Transactions page (LedgerPage + TransactionList) for `kind`
+// Activity (the web's LedgerPage + TransactionList) for `kind`
 // ('expense' | 'income' | null for all), a period from the picker, and the
-// search text: its heading, its line, whether it's the first run, and page
-// `page` of the rows as the list shows them.
-export function ledgerFigures({ rows, profile, categories, kind = null, period, text = '', oldest = null, page = 1, lang = 'en' }) {
+// search text: its heading, its line, whether it's the first run, and the
+// rows by day as the native app lists them (dayGroups, as of `now`).
+export function ledgerFigures({ rows, profile, categories, kind = null, period, text = '', oldest = null, now, lang = 'en' }) {
   setLanguage(lang)
   const baseCurrency = profile?.base_currency || 'EUR'
   const salaryShift = salaryShiftOf(profile)
@@ -51,14 +47,11 @@ export function ledgerFigures({ rows, profile, categories, kind = null, period, 
   const shown = searching ? filterTransactions(rows, { text, ...EMPTY_FILTERS }, baseCurrency) : rows
   const net = netBaseMinor(shown, baseCurrency, savingsIds)
   const head = listHeading({ kind, periodLabel: period.label, count: shown.length, searching })
-  const pages = pageCount(shown.length, LEDGER_PAGE)
   return {
     title: head.title,
     subtitle: ledgerSummary(head.subtitle, { searching, count: shown.length, net, baseCurrency }),
     firstRun: isFirstRun({ loading: false, failed: false, count: shown.length, oldest, searching }),
-    pages,
-    position: t('common:paginator.position', { page, pages }),
-    rows: listParts(pageSlice(shown, page, LEDGER_PAGE), { kind, baseCurrency, salaryShift, savingsIds }),
+    days: dayGroups(shown, { kind, baseCurrency, salaryShift, savingsIds }, isoDate(new Date(now))),
   }
 }
 
@@ -106,11 +99,13 @@ export function budgetCard({ profile, sets, rows, periodValue, now, lang = 'en' 
   const { items, months } = periodBudgets({ sets, span, spend, baseCurrency })
   const carried = isMonthPeriod(period) ? carriedFrom(capsInMonth(sets, span.first), span.first) : null
   const empty = budgetsEmpty(period, !isPastPeriod(period, todayISO))
+  const parts = items.map((item) => budgetRowParts(item, baseCurrency))
   return {
     subtitle: budgetSubtitle(period, { months, carried, periodStart: span.last }),
     empty: empty.text,
     canSet: empty.canSet,
-    items: items.map((item) => budgetRowParts(item, baseCurrency)),
+    items: parts,
+    held: heldNote(parts, period, todayISO),
   }
 }
 

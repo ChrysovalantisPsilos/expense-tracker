@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { budgetChange, budgetPercent, budgetTone, setPeriods } from '../src/features/budgets/budgetMath.js'
+import { budgetChange, budgetPercent, budgetTone, heldNote, setPeriods } from '../src/features/budgets/budgetMath.js'
 
 test('budgetTone: default under 80% of the cap, warning up to it, negative over it; a zero cap with no spend is neutral', () => {
   assert.equal(budgetTone(0, 10000), undefined)
@@ -245,4 +245,16 @@ test('setPeriods: the months a span reads, from the one in force at its start', 
   assert.deepEqual(setPeriods(periods, null, '2026-05-01'), ['2026-01-01', '2026-03-01'])
   assert.deepEqual(setPeriods(periods, '2025-01-01', '2026-02-01'), ['2026-01-01'])
   assert.deepEqual(setPeriods([], '2026-01-01', '2026-02-01'), [])
+})
+
+test('heldNote: a past month whose every budget held; nothing for this month, an over budget, none, or a year', () => {
+  const aug = { value: 'm:2026-8', from: '2026-08-01', to: '2026-08-31', label: 'August 2026' }
+  const sep = { value: 'm:2026-9', from: '2026-09-01', to: '2026-09-30', label: 'September 2026' }
+  const ok = [{ over: false }, { over: false }]
+  assert.deepEqual(heldNote(ok, aug, '2026-09-29'),
+    { title: 'August 2026: every budget held', note: 'You stayed under all 2 budgets.' })
+  assert.equal(heldNote(ok, sep, '2026-09-29'), null)
+  assert.equal(heldNote([{ over: false }, { over: true }], aug, '2026-09-29'), null)
+  assert.equal(heldNote([], aug, '2026-09-29'), null)
+  assert.equal(heldNote(ok, { value: 'y:2025', from: '2025-01-01', to: '2025-12-31', label: '2025' }, '2026-09-29'), null)
 })

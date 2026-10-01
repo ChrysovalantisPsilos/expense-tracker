@@ -1,19 +1,12 @@
-// The native app's icons (mobile-core/icons.mjs): the web's Lucide icons as
-// template SVG image sets, one per category key of the web's registry, and
-// the committed files equal to what the generator writes today.
+// The native app's category icons (mobile-core/icons.mjs): the web's Lucide
+// icons as template SVG image sets, one per category key of the web's
+// registry, and the committed catalog equal to what the generator writes
+// today (nothing more in it).
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import { CATALOG, ROOT, SWIFT, categoryIcons, iconFiles, kebab, svgFor } from '../mobile-core/icons.mjs'
-
-test('ios icons: Lucide names become asset names', () => {
-  assert.equal(kebab('MoreHorizontal'), 'more-horizontal')
-  assert.equal(kebab('Trash2'), 'trash-2')
-  assert.equal(kebab('Wand2'), 'wand-2')
-  assert.equal(kebab('BarChart3'), 'bar-chart-3')
-  assert.equal(kebab('ChartBarDecreasing'), 'chart-bar-decreasing')
-})
+import { CATALOG, ROOT, categoryIcons, iconFiles, svgFor } from '../mobile-core/icons.mjs'
 
 test('ios icons: an icon is the SVG the web renders, in black for tinting', () => {
   const svg = svgFor('House')
@@ -35,9 +28,12 @@ test('ios icons: every category key of the web registry has its icon', async () 
   }
 })
 
-test('ios icons: the committed catalog and Swift enum match the generator', async () => {
+test('ios icons: the committed catalog matches the generator, with nothing else in it', async () => {
   const files = await iconFiles()
-  assert.match(files[SWIFT], /case layoutDashboard = "lucide-layout-dashboard"/)
+  const sets = (await readdir(resolve(ROOT, CATALOG))).filter((name) => name.endsWith('.imageset')).sort()
+  const expected = Object.keys(files).filter((path) => path.endsWith('.svg'))
+    .map((path) => path.split('/').at(-2)).sort()
+  assert.deepEqual(sets, expected)
   for (const [path, content] of Object.entries(files)) {
     const committed = await readFile(resolve(ROOT, path), 'utf8').catch(() => null)
     assert.equal(committed, content, `${path} is stale: run npm run ios:icons`)

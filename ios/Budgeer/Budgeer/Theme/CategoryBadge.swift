@@ -19,8 +19,7 @@ struct CategoryBadge: View {
             .frame(width: (size / 2).rounded(), height: (size / 2).rounded())
             .foregroundStyle(foreground)
             .frame(width: size, height: size)
-            .background(background)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+            .background(background, in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
             .accessibilityHidden(true)
     }
 
@@ -41,12 +40,16 @@ struct CategoryBadge: View {
     }
 }
 
-/// A group's share of an expense (Home's bars): the web's people icon on the
-/// sand tile.
+/// A group's share of an expense (Home's By category): people on the sand tile.
 struct GroupBadge: View {
     var size: CGFloat = 32
 
     var body: some View {
-        IconTile(icon: .users, size: size)
+        Image(systemName: "person.2.fill")
+            .font(.system(size: size * 0.4, weight: .semibold))
+            .foregroundStyle(Theme.Colors.accentFg)
+            .frame(width: size, height: size)
+            .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
+            .accessibilityHidden(true)
     }
 }

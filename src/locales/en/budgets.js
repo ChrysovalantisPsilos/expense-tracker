@@ -3,6 +3,12 @@
 export default {
   title: 'Budgets',
   thisMonth: 'This month',
+  // A past month with every budget held (budgetMath.heldNote, the native app's Home).
+  held: {
+    title: '{{period}}: every budget held',
+    note_one: 'You stayed under your {{count}} budget.',
+    note_other: 'You stayed under all {{count}} budgets.',
+  },
   // QueryError's "Couldn't load …".
   what: 'budgets',
   form: {

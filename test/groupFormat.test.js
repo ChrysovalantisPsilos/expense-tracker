@@ -4,7 +4,7 @@ import {
   memberName, pluralise, splitLabel, settlePlan, sortMembers, avatarStack,
   paidByLabel, groupTotal, memberBalances, balanceHighlight, isEveryoneEqualSplit,
   myGroupBalance, mySettleSuggestions, viewerName, expenseLabel, settlementLabel, commentTarget,
-  groupDeleteCheck,
+  groupDeleteCheck, timelineParts,
 } from '../src/features/groups/groupFormat.js'
 import { latestSql } from './migrations.js'
 
@@ -267,4 +267,43 @@ test('groupDeleteCheck mirrors delete_group: linked members other than the calle
   assert.match(sql, /m\.user_id is not null and m\.user_id <> uid/)
   assert.match(sql, /raise exception 'Remove the other members before deleting this group\.'/)
   assert.match(sql, /owner_id = uid/)
+})
+
+test('timelineParts: oldest first under day headings, the payer and your share, each item followed by its comments', () => {
+  const people = [{ id: 'm1', user_id: 'u1', display_name: 'Alex Morgan' }, { id: 'm2', user_id: 'u2', display_name: 'Sofia' }]
+  const split = (a, b) => [{ member_id: 'm1', share_minor: a }, { member_id: 'm2', share_minor: b }]
+  const expenses = [
+    { id: 'e2', description: 'Taxi', amount_minor: 3000, currency: 'EUR', paid_by: 'm2', spent_at: '2026-09-14',
+      created_by: 'u2', split_type: 'equal', created_at: '2026-09-14T10:00:00Z', expense_splits: split(1500, 1500) },
+    { id: 'e1', description: 'Hotel', amount_minor: 20000, currency: 'EUR', paid_by: 'm1', spent_at: '2026-09-12',
+      created_by: 'u1', split_type: 'equal', created_at: '2026-09-12T10:00:00Z', expense_splits: split(10000, 10000) },
+  ]
+  const settlements = [{ id: 's1', from_member: 'm2', to_member: 'm1', amount_minor: 5000, currency: 'EUR',
+    settled_at: '2026-09-14', created_at: '2026-09-14T12:00:00Z' }]
+  const comments = {
+    e1: [
+      { id: 'c2', author_id: 'u2', author: { display_name: 'Sofia' }, body: 'Thanks', created_at: '2026-09-13T09:00:00Z' },
+      { id: 'c1', author_id: 'u1', author: { display_name: 'Alex Morgan' }, body: 'Booked', created_at: '2026-09-12T11:00:00Z' },
+    ],
+  }
+  const out = timelineParts({
+    expenses, settlements, comments, members: people, myMemberId: 'm1', myUserId: 'u1', isOwner: true, currency: 'EUR',
+    counts: new Map([['e1', 2]]), now: new Date(2026, 8, 20),
+  })
+  assert.deepEqual(out.map((x) => `${x.type}:${x.id}`), [
+    'day:day-2026-09-12', 'expense:e1', 'comment:c1', 'comment:c2', 'day:day-2026-09-14', 'expense:e2', 'settlement:s1',
+  ])
+  assert.equal(out[0].title, '12 Sep')
+  assert.equal(out[1].mine, true)
+  assert.equal(out[1].share, 'Your share €100.00')
+  assert.equal(out[1].payer.initials, 'AM')
+  assert.equal(out[1].payer.highlight, true)
+  assert.equal(out[1].comments, 2)
+  assert.equal(out[2].mine, true)
+  assert.equal(out[2].targetId, 'e1')
+  assert.equal(out[3].mine, false)
+  assert.equal(out[5].mine, false)
+  assert.equal(out[5].share, 'Your share €15.00')
+  assert.equal(out[5].payer.highlight, false)
+  assert.equal(out[6].title, 'Sofia → You')
 })

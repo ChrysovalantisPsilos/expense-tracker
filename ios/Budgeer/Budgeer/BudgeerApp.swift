@@ -8,11 +8,12 @@ import SwiftUI
 struct BudgeerApp: App {
     private let container: AppContainer?
     private let configError: String?
-    @State private var language = AppLanguage()
-    /// Light or dark as the top bar's switch (or Settings › Appearance) left it.
-    @State private var appearance = AppAppearance()
+    @State private var language: AppLanguage
 
     init() {
+        let language = AppLanguage()
+        _language = State(initialValue: language)
+        NativeStyle.installAppearance(lang: language.current)
         do {
             container = AppContainer(config: try AppConfig.load())
             configError = nil
@@ -32,9 +33,7 @@ struct BudgeerApp: App {
                 }
             }
             .environment(language)
-            .environment(appearance)
-            .preferredColorScheme(appearance.scheme)
-            .tint(Theme.Colors.accentFg)
+            .tint(NativeStyle.tint)
         }
     }
 }
@@ -45,16 +44,16 @@ struct ConfigErrorView: View {
     let message: String
 
     var body: some View {
-        VStack(spacing: Theme.Space.s4) {
-            LucideIcon(icon: .alertTriangle, size: 40)
-                .foregroundStyle(Theme.Colors.warning)
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 40))
+                .foregroundStyle(NativeStyle.warning)
             Text(message)
                 .font(.system(size: 14, design: .monospaced))
                 .multilineTextAlignment(.center)
-                .foregroundStyle(Theme.Colors.textPrimary)
         }
-        .padding(Theme.Space.s6)
+        .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.Colors.canvas.ignoresSafeArea())
+        .background(NativeStyle.canvas.ignoresSafeArea())
     }
 }

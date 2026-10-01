@@ -14,7 +14,7 @@ final class L10nTests: XCTestCase {
         XCTAssertEqual(L10n.string("shell:nav.home", lang: "en"), "Home")
         XCTAssertEqual(L10n.string("shell:nav.home", lang: "el"), "Αρχική")
         XCTAssertEqual(L10n.string("dashboard:overview.spent", lang: "en"), "Spent")
-        XCTAssertEqual(L10n.string("ios:more.account", lang: "en"), "Account")
+        XCTAssertEqual(L10n.string("ios:native.seeAll", lang: "en"), "See all")
     }
 
     func testAMissingKeyFallsBackToEnglishThenToTheKey() {

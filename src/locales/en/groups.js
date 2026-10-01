@@ -7,6 +7,10 @@ export default {
   whatGroups: 'your groups',
   whatGroup: 'this group',
   you: 'You',
+  // The native app's group timeline (groupFormat.timelineParts).
+  timeline: {
+    yourShare: 'Your share {{amount}}',
+  },
   expense: 'Expense',
   member: 'Member',
   total: 'Total',

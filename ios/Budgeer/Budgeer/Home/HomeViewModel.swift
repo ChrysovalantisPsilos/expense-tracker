@@ -22,23 +22,15 @@ struct VoucherCardFigures: Equatable, Sendable {
     let nextWhy: String
 }
 
-/// The overview's "In words" side (MonthSummary): its state
+/// The month in plain words (MonthSummary): its state
 /// (aiMath.summaryState), the header, and the lines.
 struct OverviewWords: Equatable, Sendable {
-    /// Numbers | In words is offered, and the words are what shows (overviewWords).
+    /// The words are offered this month (overviewWords).
     let offered: Bool
-    let shown: Bool
     /// 'writing', 'failed', 'ready' or 'stale'.
     let state: String
     let title: String
     let lines: [String]
-}
-
-/// A list card's page: its rows, how many pages, "Page 1 of 3".
-struct HomeListPage: Equatable, Sendable {
-    let rows: [EntryRow]
-    let pages: Int
-    let position: String
 }
 
 @MainActor
@@ -69,41 +61,18 @@ final class HomeViewModel {
     private(set) var budgets: CardState<BudgetCardFigures> = .loading
     /// The overview's words, nil while the helper is off.
     private(set) var words: OverviewWords?
-    /// The month's name over the numbers when words are offered (monthName()).
-    private(set) var monthTitle = ""
-    /// The pages of the Expenses and Income cards.
-    var expensePage = 1
-    var incomePage = 1
-    /// The categories card: all rows ("Show all"), and chart or table.
-    var showAllBars = false
-    var view: String = "chart" {
-        didSet { saveView() }
-    }
-    /// Numbers or In words (the viewer's saved choice).
-    private(set) var tab: String?
-
-    /// The rows as read (a row opens Edit with its saved row).
-    private var rows: JSONValue = []
-    private var summary: (data: JSONValue, month: String)?
     private var summaryAttempted: String?
     private var summaryWriting = false
     private var summaryFailed = false
 
-    private static let viewKey = "budgeer.overviewView"
-    private static let tabKey = "budgeer.overviewTab"
     private let data: DataLayer
     private let core: BudgeerCore
     private let now: @Sendable () -> Date
-    private let defaults: UserDefaults
 
-    init(data: DataLayer, core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() },
-         defaults: UserDefaults = .standard) {
+    init(data: DataLayer, core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() }) {
         self.data = data
         self.core = core
         self.now = now
-        self.defaults = defaults
-        view = defaults.string(forKey: HomeViewModel.viewKey) ?? "chart"
-        tab = defaults.string(forKey: HomeViewModel.tabKey)
     }
 
     /// The first load; the same again when the language changes.
@@ -127,10 +96,20 @@ final class HomeViewModel {
     func setPeriod(_ value: String) async {
         guard value != (periodValue ?? currentValue) else { return }
         periodValue = value
-        expensePage = 1
-        incomePage = 1
-        showAllBars = false
         await load()
+    }
+
+    /// This month's value ('m:2026-9').
+    var thisMonthValue: String {
+        (try? core.json("periods", "thisMonthPeriod", [JSDate(now())]))?["value"]?.stringValue ?? ""
+    }
+
+    /// The months the hero pages through, oldest first (buildPeriods'
+    /// month periods; the years and all time stay with the lists).
+    var monthPeriods: [HomePeriod] {
+        periods.filter { period in
+            (try? core.call("periods", "isMonthPeriod", [["value": .string(period.value)] as JSONValue])) ?? false
+        }.reversed()
     }
 
     /// The value the picker shows (this month until another is picked).
@@ -138,31 +117,6 @@ final class HomeViewModel {
         if let periodValue { return periodValue }
         if case .loaded(let figures) = state { return figures.period.value }
         return ""
-    }
-
-    /// Delete a row (after the list's confirm), then read the period again.
-    func delete(_ row: JSONValue) async {
-        guard let id = row["id"]?.stringValue else { return }
-        do {
-            try await data.transactions.delete(id: id)
-        } catch {
-            refreshError = core.text("transactions:list.notDeleted")
-            return
-        }
-        await load()
-    }
-
-    /// The saved row behind a list row (for Edit).
-    func row(id: String) -> JSONValue? {
-        rows.arrayValue?.first { $0["id"]?.stringValue == id }
-    }
-
-    /// One page of a list card (paginate, ten rows a page).
-    func page(_ list: HomeList, _ page: Int) -> HomeListPage {
-        let pages: Int = (try? core.call("paginate", "pageCount", [list.rows.count, 10])) ?? 1
-        let rows: [EntryRow] = (try? core.call("paginate", "pageSlice", [list.rows, page, 10])) ?? list.rows
-        let position = core.text("common:paginator.position", ["page": .int(page), "pages": .int(pages)])
-        return HomeListPage(rows: rows, pages: pages, position: position)
     }
 
     /// Write (or rewrite) the month's summary: Update, Try again.
@@ -187,7 +141,6 @@ final class HomeViewModel {
         async let read = data.transactions.transactions(TxnQuery(from: window.fetchFrom, to: window.period.to, spread: true))
         async let categories = data.categories.savingsCategories()
         let rows = try await FxRates.fillPending(try await read, base: base, today: try core.isoDate(instant), fx: data.fx, core: core)
-        self.rows = rows
         let input = HomeInput(rows: rows, profile: profile, categories: try await categories, rules: rules, rates: rates,
                               now: instant, periodValue: periodValue, oldest: options.oldest, oldestKnown: options.oldestKnown)
         return try HomeFigures.compute(input, core: core)
@@ -253,7 +206,6 @@ final class HomeViewModel {
     /// first one written without asking (shouldAutoWrite).
     private func loadWords(profile: JSONValue) async {
         do {
-            monthTitle = try core.call("dates", "monthName", [JSDate(now())])
             let on = try core.json("aiMath", "helpersOn", [profile])["monthSummary"]?.boolValue ?? false
             guard on else { words = nil; return }
             let month: String = try core.call("aiMath", "monthStartOf", [try core.isoDate(now())])
@@ -294,7 +246,6 @@ final class HomeViewModel {
     }
 
     private func shape(_ summary: JSONValue, month: String) throws {
-        self.summary = (summary, month)
         let state: String = try core.call("aiMath", "summaryState", [[
             "data": summary, "error": .null, "writing": .bool(summaryWriting), "writeFailed": .bool(summaryFailed),
             "lang": .string(core.language),
@@ -302,25 +253,10 @@ final class HomeViewModel {
         let period = try HomeFigures.period(periodValue, now: now(), core: core)
         let thisMonth: Bool = try core.call("periods", "isThisMonth", [period, JSDate(now())])
         let shown = try core.json("aiMath", "overviewWords", [[
-            "state": .string(state), "thisMonth": .bool(thisMonth), "tab": tab.json,
+            "state": .string(state), "thisMonth": .bool(thisMonth), "tab": .null,
         ] as JSONValue])
         let lines = (summary["summary"]?["lines"]?.arrayValue ?? []).compactMap(\.stringValue)
-        words = OverviewWords(offered: shown["offered"]?.boolValue ?? false, shown: shown["words"]?.boolValue ?? false,
-                              state: state,
+        words = OverviewWords(offered: shown["offered"]?.boolValue ?? false, state: state,
                               title: try core.call("aiMath", "summaryTitle", [month]), lines: lines)
     }
-
-    private func saveView() { defaults.set(view, forKey: HomeViewModel.viewKey) }
-
-    /// Numbers | In words picked: shown at once, kept for next time.
-    func pickTab(_ value: String) {
-        tab = value
-        defaults.set(value, forKey: HomeViewModel.tabKey)
-        if let summary { try? shape(summary.data, month: summary.month) }
-    }
-
-    /// Whether the overview shows the words now (overviewWords.words).
-    var showsWords: Bool { words?.shown ?? false }
-
-    var summaryFailedToUpdate: Bool { summaryFailed }
 }

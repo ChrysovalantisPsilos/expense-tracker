@@ -1,22 +1,12 @@
-// A group's page, after the web's GroupDetail: the header (the picture, the
-// name over the avatars and "4 members", which open Members, and the
-// group's Total), the balances card (your balance with Settle up, everyone's
-// tiles, the line that matters most), "Who owes whom", and the history in
-// three tabs (expenses, settlements, activity). The back arrow, Add expense
-// and the ⋮ menu (Share summary, Rename, Leave, Delete) open the page, as on
-// the web. Its pages (an
-// expense, settle up, members, comments, rename) are pushed from here. Live:
-// a change to the group's tables refreshes it.
+// A group's page: a balance hero at the top (the members' circles, your
+// balance, the line that matters most, Settle up in prominent glass and
+// Balances beside it), then one chat-like timeline of expenses, settlements
+// and comments, newest at the bottom like Messages, with the comment field
+// floating over its foot. Add expense and the … menu (Members, Share
+// summary, Rename, Leave, Delete) are in the bar; who owes whom is behind
+// Balances. Settling the group up bursts confetti behind the cards.
+// Everything it shows is GroupModel's (the core's).
 import SwiftUI
-
-/// A page a group's page pushes.
-enum GroupPage: Hashable {
-    case expense(String?)
-    case settle
-    case members
-    case comments(String)
-    case rename
-}
 
 /// Holds one group's model while its page is in the stack.
 @MainActor
@@ -33,214 +23,343 @@ struct GroupPageHost: View {
     var body: some View {
         Group {
             if let model {
-                GroupPageView(model: model, live: live, onGone: onGone)
+                GroupPageView(model: model, onGone: onGone)
                     .liveRefresh(live, tables: LiveHub.shared) { await model.load() }
             } else {
-                LoadingView()
+                NativeLoading()
             }
         }
         .onAppear {
-            if model == nil {
-                model = GroupModel(groupId: groupId, userId: userId, site: site, data: data)
-            }
+            if model == nil { model = GroupModel(groupId: groupId, userId: userId, site: site, data: data) }
         }
     }
+}
+
+/// An expense form or settle-up sheet over the group's page.
+struct GroupSheet: Identifiable {
+    enum Kind {
+        case expense(GroupExpenseModel)
+        case settle(SettleUpModel)
+        case balances
+    }
+    let id = UUID()
+    let kind: Kind
 }
 
 @MainActor
 struct GroupPageView: View {
     @Bindable var model: GroupModel
-    let live: LiveHub
     var onGone: () -> Void = {}
     @Environment(AppLanguage.self) private var language
-    @Environment(\.dismiss) private var dismiss
+    @State private var sheet: GroupSheet?
+    @State private var showMembers = false
     @State private var confirmLeave = false
     @State private var confirmDelete = false
-    @State private var typedName = ""
+    @State private var renaming = false
     @State private var blocked = false
-    @State private var path: GroupPage?
+    @State private var typed = ""
+    @State private var comment = ""
+    @State private var replyTo: String?
+    @State private var celebrating: Bool
+    @FocusState private var composing: Bool
+
+    init(model: GroupModel, onGone: @escaping () -> Void = {}, celebrating: Bool = false) {
+        self.model = model
+        self.onGone = onGone
+        _celebrating = State(initialValue: celebrating)
+    }
 
     var body: some View {
-        Page(refresh: { await model.load() }) {
-            topBar
-            switch model.state {
-            case .loading:
-                Panel { SkeletonRows(count: 4) }
-            case .failed(let message):
-                Panel { LoadErrorBlock(message: message) { await model.load() } }
-            case .loaded(let figures):
-                if let message = model.message { Note(text: message, tone: Theme.Colors.textPrimary, size: 14) }
-                header(figures)
-                BalancesCard(parts: figures.balances, onSettle: figures.myMemberId == nil ? nil : { path = .settle })
-                if !figures.balances.plan.isEmpty { whoOwes(figures.balances) }
-                HistoryCard(model: model, figures: figures, open: { path = $0 })
-            }
-        }
-        .navigationDestination(item: $path) { page in destination(page) }
-        .task(id: language.current) { await model.load() }
-        .confirmationDialog(language.t("groups:modals.leave.title", ["name": .string(model.groupName)]),
-                            isPresented: $confirmLeave, titleVisibility: .visible) {
-            Button(language.t("groups:modals.leave.confirm"), role: .destructive) { leave(silent: false) }
-            Button(language.t("groups:modals.leave.silent"), role: .destructive) { leave(silent: true) }
-            Button(language.t("common:actions.cancel"), role: .cancel) {}
-        } message: {
-            Text(language.t(model.figures?.isOwner == true ? "groups:modals.leave.bodyOwner" : "groups:modals.leave.body"))
-        }
-        .alert(language.t("groups:modals.delete.title", ["name": .string(model.groupName)]), isPresented: $confirmDelete) {
-            TextField(model.groupName, text: $typedName)
-            Button(language.t("groups:header.delete"), role: .destructive) {
-                Task { if await model.delete() { onGone() } }
-            }
-            .disabled(!model.deleteConfirmed(typedName))
-            Button(language.t("common:actions.cancel"), role: .cancel) {}
-        } message: {
-            RichText.text(model.rich(language.t("groups:modals.delete.body")))
-                + Text("\n\n" + language.t("groups:modals.delete.confirm"))
-        }
-        .alert(language.t("groups:modals.deleteBlocked.title", ["name": .string(model.groupName)]), isPresented: $blocked) {
-            Button(language.t("groups:modals.deleteBlocked.manage")) { path = .members }
-            Button(language.t("common:actions.close"), role: .cancel) {}
-        } message: {
-            Text(language.t("groups:modals.deleteBlocked.body")) + Text("\n\n")
-                + RichText.text(model.rich(language.t("groups:modals.deleteBlocked.stillIn",
-                                                      ["names": .string(model.figures?.stillIn ?? "")])))
-        }
-    }
-
-    // MARK: Header
-
-    private func header(_ figures: GroupPageFigures) -> some View {
-        HStack(spacing: Theme.Space.s3) {
-            GroupMark(imageUrl: figures.imageUrl, size: 48)
-            VStack(alignment: .leading, spacing: Theme.Space.s1) {
-                Text(figures.name)
-                    .kitHeading(22, tracking: -0.02)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-                Button { path = .members } label: {
-                    HStack(spacing: Theme.Space.s2) {
-                        AvatarStackView(stack: figures.avatars, ring: Theme.Colors.canvas)
-                        Text(figures.members)
-                            .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
-                            .foregroundStyle(Theme.Colors.textMuted)
-                            .lineLimit(1)
-                            .fixedSize()
-                    }
+        content
+            .background {
+                ZStack {
+                    NativeStyle.canvas
+                    if celebrating { NativeConfetti() }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(language.t("groups:header.showMembers", ["members": .string(figures.members)]))
-                .accessibilityIdentifier("group.members")
+                .ignoresSafeArea()
             }
-            Spacer(minLength: Theme.Space.s2)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(language.t("groups:total")).kitText(12, color: Theme.Colors.textMuted)
-                Text(figures.total)
-                    .kitHeading(24, tracking: 0)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+            .navigationTitle(model.groupName)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbar }
+            .task(id: language.current) { await model.load() }
+            .onChange(of: model.figures?.balances.plan.isEmpty) { was, now in
+                if was == false, now == true {
+                    celebrating = true
+                    NativeHaptics.success()
+                }
             }
-            .accessibilityElement(children: .combine)
+            .sheet(item: $sheet) { sheet in sheetContent(sheet).environment(language) }
+            .navigationDestination(isPresented: $showMembers) { MembersView(model: model) }
+            .confirmationDialog(language.t("groups:modals.leave.title", ["name": .string(model.groupName)]),
+                                isPresented: $confirmLeave, titleVisibility: .visible) {
+                Button(language.t("groups:modals.leave.confirm"), role: .destructive) { leave(silent: false) }
+                Button(language.t("groups:modals.leave.silent"), role: .destructive) { leave(silent: true) }
+                Button(language.t("common:actions.cancel"), role: .cancel) {}
+            } message: {
+                Text(language.t(model.figures?.isOwner == true ? "groups:modals.leave.bodyOwner" : "groups:modals.leave.body"))
+            }
+            .alert(language.t("groups:modals.delete.title", ["name": .string(model.groupName)]), isPresented: $confirmDelete) {
+                TextField(model.groupName, text: $typed)
+                Button(language.t("groups:header.delete"), role: .destructive) {
+                    Task { if await model.delete() { onGone() } }
+                }
+                .disabled(!model.deleteConfirmed(typed))
+                Button(language.t("common:actions.cancel"), role: .cancel) {}
+            } message: {
+                NativeRich.text(model.rich(language.t("groups:modals.delete.body")))
+                    + Text("\n\n" + language.t("groups:modals.delete.confirm"))
+            }
+            .alert(language.t("groups:modals.deleteBlocked.title", ["name": .string(model.groupName)]), isPresented: $blocked) {
+                Button(language.t("groups:modals.deleteBlocked.manage")) { showMembers = true }
+                Button(language.t("common:actions.close"), role: .cancel) {}
+            } message: {
+                Text(language.t("groups:modals.deleteBlocked.body")) + Text("\n\n")
+                    + NativeRich.text(model.rich(language.t("groups:modals.deleteBlocked.stillIn",
+                                                            ["names": .string(model.figures?.stillIn ?? "")])))
+            }
+            .alert(language.t("groups:edit.title"), isPresented: $renaming) {
+                TextField(language.t("groups:edit.name"), text: $typed)
+                Button(language.t("common:actions.save")) { Task { _ = await model.rename(typed) } }
+                Button(language.t("common:actions.cancel"), role: .cancel) {}
+            }
+    }
+
+    @ViewBuilder private var content: some View {
+        switch model.state {
+        case .loading:
+            NativeLoading()
+        case .failed(let message):
+            NativeFailed(message: message) { await model.load() }
+        case .loaded(let figures):
+            VStack(spacing: 0) {
+                if let message = model.message {
+                    NativeNotice(text: message).padding(.horizontal, 16).padding(.top, 6)
+                }
+                hero(figures)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 10)
+                timeline(figures)
+            }
+            .nativeTabBarRoom()
         }
     }
 
-    /// The page's first row (GroupHeader): back, then Add expense and the ⋮ menu.
-    private var topBar: some View {
-        HStack(spacing: 14) {
-            Button { dismiss() } label: {
-                LucideIcon(icon: .arrowLeft, size: 18)
-                    .foregroundStyle(Theme.Colors.textMuted)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+    // MARK: The hero
+
+    private func hero(_ figures: GroupPageFigures) -> some View {
+        VStack(spacing: 6) {
+            Button { showMembers = true } label: {
+                HStack(spacing: 8) {
+                    NativeAvatarStack(stack: figures.avatars, size: 30)
+                    Text(figures.members).font(.footnote.weight(.semibold)).foregroundStyle(.secondary)
+                }
             }
             .buttonStyle(.plain)
-            .padding(.leading, -12)
-            .accessibilityLabel(language.t("common:actions.back"))
-            Spacer()
+            .accessibilityLabel(language.t("groups:header.showMembers", ["members": .string(figures.members)]))
+            .accessibilityIdentifier("group.members")
+            Text(language.t("groups:balances.yours"))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.top, 2)
+            NativeMoney(text: figures.balances.mine.text, value: 0, font: NativeStyle.money(42),
+                        color: NativeStyle.tone(figures.balances.mine.tone))
+                .accessibilityIdentifier("group.mine")
+            Text(highlight(figures.balances.highlight))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            HStack(spacing: 10) {
+                if figures.myMemberId != nil, !figures.balances.plan.isEmpty {
+                    Button { openSettle() } label: {
+                        Label(language.t("groups:balances.settleUp"), systemImage: "checkmark.circle.fill").lineLimit(1)
+                    }
+                    .nativeGlassButton(prominent: true)
+                    .accessibilityIdentifier("group.settle")
+                }
+                Button { sheet = GroupSheet(kind: .balances) } label: {
+                    Label(language.t("groups:balances.title"), systemImage: "list.bullet").lineLimit(1)
+                }
+                .nativeGlassButton()
+                .accessibilityIdentifier("group.balances")
+            }
+            .padding(.top, 8)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    /// The line that matters most: its words, then the amount.
+    private func highlight(_ line: BalancesParts.Highlight) -> String {
+        [line.text, line.amount].compactMap { $0 }.joined(separator: " ")
+    }
+
+    // MARK: The timeline
+
+    private func timeline(_ figures: GroupPageFigures) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 10) {
+                if model.timeline.isEmpty {
+                    ContentUnavailableView(language.t("groups:history.empty.title"), systemImage: "doc.text",
+                                           description: Text(language.t("groups:history.empty.text")))
+                }
+                ForEach(model.timeline) { item in
+                    TimelineRow(item: item, selected: item.itemId == target && item.itemId != nil) {
+                        if case .expense(let row) = item, row.canEdit {
+                            sheet = GroupSheet(kind: .expense(model.expenseForm(expenseId: row.id)))
+                        }
+                    } reply: {
+                        replyTo = item.itemId
+                        composing = true
+                    } delete: { commentId in
+                        Task { await deleteComment(commentId, on: item.itemId) }
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+        }
+        .defaultScrollAnchor(.bottom)
+        .scrollDismissesKeyboard(.interactively)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if figures.myMemberId != nil, target != nil { composer }
+        }
+    }
+
+    /// The item a new comment goes on: the one picked, else the newest.
+    private var target: String? {
+        replyTo ?? model.timeline.last { $0.itemId != nil }?.itemId
+    }
+
+    private var targetName: String {
+        for item in model.timeline {
+            switch item {
+            case .expense(let row) where row.id == target: return row.title
+            case .settlement(let row) where row.id == target: return row.title
+            default: continue
+            }
+        }
+        return ""
+    }
+
+    private var composer: some View {
+        HStack(spacing: 8) {
+            TextField(language.t("ios:native.group.commentOn", ["name": .string(targetName)]), text: $comment, axis: .vertical)
+                .lineLimit(1...4)
+                .focused($composing)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 11)
+                .nativeGlass(RoundedRectangle(cornerRadius: 22, style: .continuous), interactive: true)
+                .accessibilityIdentifier("group.comment")
+            Button { Task { await send() } } label: {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 44, height: 44)
+                    .nativeGlass(Circle(), tint: NativeStyle.solid, interactive: true)
+            }
+            .buttonStyle(.plain)
+            .disabled(comment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityLabel(language.t("groups:comments.send"))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    // MARK: The bar
+
+    @ToolbarContentBuilder private var toolbar: some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarTrailing) {
             if model.figures?.myMemberId != nil {
-                PageAction(icon: .plus, label: language.t("groups:header.addExpense")) { path = .expense(nil) }
-                    .accessibilityIdentifier("group.add")
+                Button { sheet = GroupSheet(kind: .expense(model.expenseForm(expenseId: nil))) } label: {
+                    Image(systemName: "plus")
+                }
+                .accessibilityLabel(language.t("groups:header.addExpense"))
+                .accessibilityIdentifier("group.add")
             }
             Menu {
+                Button { showMembers = true } label: {
+                    Label(language.t("groups:members.title"), systemImage: "person.2")
+                }
                 if let text = model.figures?.shareText {
                     ShareLink(item: text, subject: Text(model.groupName)) {
-                        Label { Text(language.t("groups:header.shareSummary")) } icon: { Image(Lucide.share2.rawValue) }
+                        Label(language.t("groups:header.shareSummary"), systemImage: "square.and.arrow.up")
                     }
                 }
                 if model.figures?.isOwner == true {
-                    Button { path = .rename } label: {
-                        Label { Text(language.t("groups:header.rename")) } icon: { Image(Lucide.pencil.rawValue) }
+                    Button {
+                        typed = model.groupName
+                        renaming = true
+                    } label: {
+                        Label(language.t("groups:header.rename"), systemImage: "pencil")
                     }
                 }
                 if model.figures?.myMemberId != nil {
                     Button { confirmLeave = true } label: {
-                        Label { Text(language.t("groups:header.leave")) } icon: { Image(Lucide.logOut.rawValue) }
+                        Label(language.t("groups:header.leave"), systemImage: "rectangle.portrait.and.arrow.right")
                     }
                 }
                 if model.figures?.isOwner == true {
                     Button(role: .destructive) {
-                        typedName = ""
+                        typed = ""
                         if model.figures?.canDelete == true { confirmDelete = true } else { blocked = true }
                     } label: {
-                        Label { Text(language.t("groups:header.delete")) } icon: { Image(Lucide.trash2.rawValue) }
+                        Label(language.t("groups:header.delete"), systemImage: "trash")
                     }
                 }
             } label: {
-                LucideIcon(icon: .moreVertical, size: 18)
-                    .foregroundStyle(Theme.Colors.textMuted)
-                    .frame(width: 32, height: 32)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
+                Image(systemName: "ellipsis")
             }
-            .padding(.trailing, -6)
             .accessibilityLabel(language.t("groups:header.options"))
         }
-        .padding(.vertical, -6)
     }
 
-    // MARK: Who owes whom
+    // MARK: Sheets
 
-    private func whoOwes(_ parts: BalancesParts) -> some View {
-        Panel(title: language.t("groups:balances.whoOwes"), icon: .arrowLeftRight, subtitle: parts.planSubtitle) {
-            VStack(alignment: .leading, spacing: Theme.Space.s2) {
-                ForEach(parts.plan) { row in TransferRowView(row: row) }
+    @ViewBuilder private func sheetContent(_ sheet: GroupSheet) -> some View {
+        switch sheet.kind {
+        case .expense(let form):
+            GroupExpenseSheet(model: form) { toast in
+                model.note(toast?.title)
+                Task { await model.load() }
+            }
+        case .settle(let settle):
+            SettleUpView(model: settle) {
+                model.note(language.t("groups:settle.recorded"))
+                Task { await model.load() }
+            }
+        case .balances:
+            BalancesSheet(model: model) {
+                self.sheet = nil
+                openSettle()
             }
         }
     }
 
-    // MARK: Pages
+    private func openSettle() {
+        if let settle = model.settleUp() { sheet = GroupSheet(kind: .settle(settle)) }
+    }
 
-    @ViewBuilder private func destination(_ page: GroupPage) -> some View {
-        switch page {
-        case .expense(let id):
-            ModelHost(make: { model.expenseForm(expenseId: id) }) { form in
-                GroupExpenseView(model: form) { toast in
-                    path = nil
-                    model.note(toast?.title)
-                    Task { await model.load() }
-                }
-            } missing: { EmptyView() }
-        case .settle:
-            ModelHost(make: { model.settleUp() }) { settle in
-                SettleUpView(model: settle, onDone: {
-                    path = nil
-                    model.note(language.t("groups:settle.recorded"))
-                    Task { await model.load() }
-                }, groupName: model.groupName)
-            } missing: {
-                Panel { Note(text: language.t("groups:settle.onlyMembers")) }.padding(Theme.Space.s4)
-            }
-        case .members:
-            MembersView(model: model)
-        case .comments(let id):
-            ModelHost(make: { model.comments(itemId: id) }) { comments in
-                CommentsView(model: comments)
-                    .liveRefresh(live, tables: ["group_comments"]) { await comments.load() }
-            } missing: {
-                Panel { Note(text: language.t("groups:comments.gone")) }.padding(Theme.Space.s4)
-            }
-        case .rename:
-            RenameGroupView(model: model) { path = nil }
+    // MARK: Actions
+
+    private func send() async {
+        guard let target, let thread = model.comments(itemId: target) else { return }
+        thread.draft = comment
+        await thread.send()
+        if thread.message == nil {
+            comment = ""
+            replyTo = nil
+            await model.load()
+        } else {
+            model.note(thread.message)
         }
+    }
+
+    private func deleteComment(_ id: String, on item: String?) async {
+        guard let item, let thread = model.comments(itemId: item) else { return }
+        await thread.delete(id)
+        await model.load()
     }
 
     private func leave(silent: Bool) {
@@ -248,169 +367,191 @@ struct GroupPageView: View {
     }
 }
 
-/// The balances card (GroupBalances): your balance with Settle up,
-/// everyone's net in sand tiles, and the line that matters most.
-struct BalancesCard: View {
-    let parts: BalancesParts
-    /// Settle up (nil for someone who isn't in the group).
-    let onSettle: (() -> Void)?
+/// One moment of the timeline: a day, an expense bubble (yours on the right,
+/// in the accent's tint), a settlement in the middle, or a comment.
+struct TimelineRow: View {
+    let item: TimelineItem
+    /// The item a new comment goes on.
+    let selected: Bool
+    let open: () -> Void
+    let reply: () -> Void
+    let delete: (String) -> Void
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
-        Panel {
-            VStack(alignment: .leading, spacing: Theme.Space.s3) {
-                HStack(alignment: .center, spacing: Theme.Space.s3) {
-                    Figure(label: language.t("groups:balances.yours"), value: parts.mine.text,
-                           tone: Tone(name: parts.mine.tone), size: .xl)
-                        .accessibilityIdentifier("group.mine")
-                    Spacer(minLength: Theme.Space.s2)
-                    if let onSettle {
-                        Button(action: onSettle) {
-                            IconLabel(text: language.t("groups:balances.settleUp"), icon: .handCoins)
-                        }
-                        .buttonStyle(.kit(.outline, .sm))
-                        .accessibilityIdentifier("group.settle")
-                    }
+        switch item {
+        case .day(_, let title):
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.top, 8)
+        case .expense(let row):
+            HStack(alignment: .bottom, spacing: 8) {
+                if row.mine {
+                    Spacer(minLength: 40)
+                } else if let payer = row.payer {
+                    NativeAvatar(avatar: payer, size: 28)
                 }
-                if !parts.tiles.isEmpty {
-                    SectionLabel(text: language.t("groups:balances.title")).padding(.top, Theme.Space.s1)
-                    LazyVGrid(columns: [GridItem(.flexible(), spacing: Theme.Space.s2), GridItem(.flexible())],
-                              spacing: Theme.Space.s2) {
-                        ForEach(parts.tiles) { tile in
-                            BalanceTile(label: tile.label, value: tile.text, tone: Tone(name: tile.tone))
-                        }
-                    }
-                }
-                HighlightPill(text: parts.highlight.text, amount: parts.highlight.amount, tone: parts.highlight.tone)
-            }
-        }
-    }
-}
-
-/// The history (GroupHistory): Expenses | Settlements | Activity.
-struct HistoryCard: View {
-    @Bindable var model: GroupModel
-    let figures: GroupPageFigures
-    let open: (GroupPage) -> Void
-    @Environment(AppLanguage.self) private var language
-
-    var body: some View {
-        Panel {
-            VStack(alignment: .leading, spacing: Theme.Space.s3) {
-                SegmentedControl(options: ["expenses", "settlements", "activity"].map { ($0, language.t("groups:history.tabs.\($0)")) },
-                                 value: model.tab) { model.tab = $0 }
-                    .accessibilityLabel(language.t("groups:history.label"))
-                    .accessibilityIdentifier("group.tabs")
-                switch model.tab {
-                case "settlements": settlements
-                case "activity": activity
-                default: expenses
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private var expenses: some View {
-        if figures.expenses.isEmpty {
-            EmptyStateBlock(icon: .receipt, title: language.t("groups:history.empty.title"),
-                            text: language.t("groups:history.empty.text")) {
-                VStack(spacing: Theme.Space.s2) {
-                    if figures.myMemberId != nil {
-                        Button { open(.expense(nil)) } label: { IconLabel(text: language.t("groups:history.empty.add"), icon: .plus) }
-                            .buttonStyle(.kit(.solid, .md))
-                    }
-                    if figures.memberRows.count < 2 {
-                        Button { open(.members) } label: {
-                            IconLabel(text: language.t("groups:history.empty.invite"), icon: .userPlus)
-                        }
-                        .buttonStyle(.kit(.outline, .md, scheme: .gray))
-                    }
-                }
-            }
-        } else {
-            VStack(spacing: 0) {
-                ForEach(figures.expenses) { row in
-                    HStack(spacing: 0) {
-                        Button { if row.canEdit { open(.expense(row.id)) } } label: {
-                            // On a phone the line leaves out what goes without saying (`phone: false`).
-                            GroupItemRow(icon: .receipt, title: row.title,
-                                         meta: row.meta.filter(\.phone).map(\.text).joined(separator: " · "),
-                                         amount: row.amount, amountMeta: row.amountMeta) { EmptyView() }
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(!row.canEdit)
-                        CommentCount(count: row.comments, label: language.t("groups:history.comments")) {
-                            open(.comments(row.id))
-                        }
-                    }
-                    .accessibilityIdentifier("group.expense.\(row.id)")
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private var settlements: some View {
-        if figures.settlements.isEmpty {
-            Note(text: language.t("groups:history.noSettlements"))
-        } else {
-            VStack(spacing: 0) {
-                ForEach(figures.settlements) { row in
-                    HStack(spacing: 0) {
-                        GroupItemRow(icon: .handCoins, title: row.title, meta: row.meta, amount: row.amount) { EmptyView() }
-                        CommentCount(count: row.comments, label: language.t("groups:history.comments")) {
-                            open(.comments(row.id))
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder private var activity: some View {
-        if figures.activity.isEmpty {
-            Note(text: language.t("groups:history.noActivity"))
-        } else {
-            VStack(spacing: 0) {
-                ForEach(figures.activity) { row in
-                    HStack(alignment: .top, spacing: Theme.Space.s3) {
+                Button(action: open) {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(NativeStyle.tint)
+                            .frame(width: 34, height: 34)
+                            .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(row.text).kitText(14).fixedSize(horizontal: false, vertical: true)
-                            Text(row.when).kitText(12, color: Theme.Colors.textMuted)
-                        }
-                        Spacer(minLength: Theme.Space.s2)
-                        if let amount = row.amount {
-                            Text(amount).kitText(14, .bold)
+                            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                Text(row.title).font(.subheadline.weight(.semibold)).lineLimit(2)
+                                Spacer(minLength: 4)
+                                Text(row.amount).font(.subheadline.weight(.semibold)).monospacedDigit()
+                            }
+                            Text(row.meta.map(\.text).joined(separator: " · "))
+                                .font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                            if let share = row.share {
+                                Text(share).font(.caption.weight(.medium)).foregroundStyle(NativeStyle.tint)
+                            }
+                            if let amountMeta = row.amountMeta {
+                                Text(amountMeta).font(.caption).foregroundStyle(.secondary)
+                            }
                         }
                     }
-                    .padding(.vertical, Theme.Space.s2)
+                    .padding(12)
+                    .frame(maxWidth: 310, alignment: .leading)
+                    .background(row.mine ? Theme.Colors.accentSubtle : NativeStyle.card,
+                                in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay {
+                        if selected {
+                            RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(NativeStyle.tint, lineWidth: 1.5)
+                        }
+                    }
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("group.expense.\(row.id)")
+                replyButton(count: row.comments)
+                if !row.mine { Spacer(minLength: 0) }
+            }
+        case .settlement(let row):
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(NativeStyle.positive)
+                Text(row.title).lineLimit(1)
+                Text(verbatim: "·")
+                Text(row.amount).fontWeight(.semibold).monospacedDigit()
+            }
+            .font(.footnote)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(NativeStyle.positive.opacity(0.12), in: Capsule())
+            .overlay { if selected { Capsule().stroke(NativeStyle.tint, lineWidth: 1.5) } }
+            .onTapGesture(perform: reply)
+        case .comment(let row):
+            HStack(alignment: .bottom, spacing: 8) {
+                if row.mine { Spacer(minLength: 64) } else { NativeAvatar(avatar: row.avatar, size: 28) }
+                VStack(alignment: .leading, spacing: 2) {
+                    if !row.mine {
+                        Text(row.author).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                    }
+                    Text(row.body).font(.subheadline)
+                    Text(row.when).font(.caption2).foregroundStyle(row.mine ? Color.white.opacity(0.8) : Color.secondary)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 9)
+                .foregroundStyle(row.mine ? Color.white : Color.primary)
+                .background(row.mine ? NativeStyle.solid : NativeStyle.card,
+                            in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .contextMenu {
+                    if row.canDelete {
+                        Button(role: .destructive) { delete(row.avatar.id ?? "") } label: {
+                            Label(language.t("common:actions.delete"), systemImage: "trash")
+                        }
+                    }
+                }
+                if !row.mine { Spacer(minLength: 64) }
             }
         }
     }
+
+    /// Comment on this item (with its count).
+    private func replyButton(count: Int) -> some View {
+        Button(action: reply) {
+            HStack(spacing: 2) {
+                Image(systemName: "bubble.right")
+                if count > 0 { Text(verbatim: "\(count)").font(.caption2) }
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(minWidth: 32, minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(language.t("groups:history.comments"))
+    }
 }
 
-/// /groups/:id/edit: the owner renames the group.
-struct RenameGroupView: View {
+/// Balances (behind a tap): your balance, everyone's, the line that matters
+/// most, and who pays whom to settle everyone up.
+@MainActor
+struct BalancesSheet: View {
     let model: GroupModel
-    let onDone: () -> Void
+    let settle: () -> Void
     @Environment(AppLanguage.self) private var language
-    @State private var name = ""
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        Page {
-            PageHeader(title: language.t("groups:edit.title"), eyebrow: model.groupName, back: onDone)
-            if let message = model.message { Note(text: message, tone: Theme.Colors.negative, size: 14) }
-            Panel {
-                FormRow(label: language.t("groups:edit.name"), required: true) {
-                    TextField("", text: $name).fieldStyle()
+        NavigationStack {
+            List {
+                if let parts = model.figures?.balances {
+                    Section {
+                        HStack {
+                            Text(language.t("groups:balances.yours"))
+                            Spacer()
+                            Text(parts.mine.text).fontWeight(.semibold).foregroundStyle(NativeStyle.tone(parts.mine.tone))
+                        }
+                        ForEach(parts.tiles) { tile in
+                            HStack {
+                                Text(tile.label)
+                                Spacer()
+                                Text(tile.text).foregroundStyle(NativeStyle.tone(tile.tone)).monospacedDigit()
+                            }
+                        }
+                    } footer: {
+                        Text([parts.highlight.text, parts.highlight.amount].compactMap { $0 }.joined(separator: " "))
+                    }
+                    if !parts.plan.isEmpty {
+                        Section {
+                            ForEach(parts.plan) { row in
+                                HStack(spacing: 8) {
+                                    NativeAvatar(avatar: row.from, size: 28)
+                                    Text(row.from.name).lineLimit(1)
+                                    Image(systemName: "arrow.right").font(.caption).foregroundStyle(.secondary)
+                                    NativeAvatar(avatar: row.to, size: 28)
+                                    Text(row.to.name).lineLimit(1)
+                                    Spacer(minLength: 6)
+                                    Text(row.amount).fontWeight(.semibold).foregroundStyle(NativeStyle.tone(row.tone))
+                                }
+                            }
+                        } header: {
+                            NativeCapsHeader(title: parts.planSubtitle ?? language.t("groups:balances.whoOwes"))
+                        }
+                        if model.figures?.myMemberId != nil {
+                            Section {
+                                Button(action: settle) {
+                                    Label(language.t("groups:balances.settleUp"), systemImage: "checkmark.circle.fill")
+                                        .frame(maxWidth: .infinity)
+                                }
+                                .nativeGlassButton(prominent: true)
+                                .listRowBackground(Color.clear)
+                            }
+                        }
+                    }
                 }
             }
-            Button {
-                Task { if await model.rename(name) { onDone() } }
-            } label: { Text(language.t("common:actions.save")) }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(model.busy || name.trimmingCharacters(in: .whitespaces).isEmpty)
+            .navigationTitle(language.t("groups:balances.title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(language.t("common:actions.done")) { dismiss() }
+                }
+            }
         }
-        .onAppear { if name.isEmpty { name = model.groupName } }
+        .presentationDetents([.medium, .large])
     }
 }

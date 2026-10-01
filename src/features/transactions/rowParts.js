@@ -2,8 +2,8 @@
 // app's lists): its title, the parts of the muted line under it, the amount
 // with its sign and tone, and a foreign amount's value in the base currency.
 // Pure, in the app's language; unit-tested in test/rowParts.test.js.
-import { baseEquivalent, formatMoney, formatSigned, rateText } from '../../shared/lib/currency.js'
-import { shortDate } from '../../shared/lib/dates.js'
+import { baseEquivalent, formatMoney, formatSigned, rateText, toBaseMinor } from '../../shared/lib/currency.js'
+import { isoDate, shortDate } from '../../shared/lib/dates.js'
 import { groupLabel } from '../../shared/lib/txnRollup.js'
 import { monthlyShare } from '../../shared/lib/spread.js'
 import { countsForLabel } from '../../shared/lib/salaryShift.js'
@@ -63,3 +63,41 @@ export function rowParts(row, { kind, baseCurrency, salaryShift = null, savingsI
 
 // Every row of a list, with the same options.
 export const listParts = (rows, options) => rows.map((row) => rowParts(row, options))
+
+// A day's heading: "Today", "Yesterday", else its short date ("21 Sep").
+// Days are local 'YYYY-MM-DD' strings, like `todayISO`.
+export function dayTitle(day, todayISO) {
+  const [y, m, d] = String(todayISO).split('-').map(Number)
+  if (day === todayISO) return t('transactions:ledger.today')
+  if (day === isoDate(new Date(y, m - 1, d - 1))) return t('transactions:ledger.yesterday')
+  return shortDate(day, new Date(y, m - 1, d))
+}
+
+// A list's rows by day, newest day first (the native app's Activity): each
+// day's heading (dayTitle), what was spent that day in the base currency
+// ("€45.55 spent", null without an expense), and its rows (rowParts,
+// without the date the heading already says).
+export function dayGroups(rows, options, todayISO) {
+  const sorted = [...(rows ?? [])].sort((a, b) => String(b.spent_at).localeCompare(String(a.spent_at)))
+  const days = []
+  for (const row of sorted) {
+    const key = String(row.spent_at ?? '').slice(0, 10)
+    const last = days[days.length - 1]
+    if (last && last.key === key) last.rows.push(row)
+    else days.push({ key, rows: [row] })
+  }
+  return days.map(({ key, rows: list }) => {
+    const spent = list
+      .filter((r) => (r.kind ?? options.kind) !== 'income')
+      .reduce((sum, r) => sum + toBaseMinor(r.amount_minor, r.exchange_rate ?? 1, r.currency, options.baseCurrency), 0)
+    return {
+      key,
+      title: dayTitle(key, todayISO),
+      spent: spent > 0 ? t('transactions:ledger.daySpent', { amount: formatMoney(spent, options.baseCurrency) }) : null,
+      rows: list.map((row) => {
+        const parts = rowParts(row, options)
+        return { ...parts, meta: row.spent_at ? parts.meta.slice(1) : parts.meta }
+      }),
+    }
+  })
+}

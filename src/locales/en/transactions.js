@@ -34,6 +34,10 @@ export default {
   },
   ledger: {
     title: 'Transactions',
+    // The native app's day headings (rowParts.dayGroups).
+    today: 'Today',
+    yesterday: 'Yesterday',
+    daySpent: '{{amount}} spent',
     types: {
       expense: 'Expenses',
       income: 'Income',

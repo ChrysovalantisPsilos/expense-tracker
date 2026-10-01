@@ -1,7 +1,7 @@
-// The Transactions list: its figures equal the web's (Fixtures/ledger.json,
-// written by mobile-core/screenFigures.mjs) in both languages, and the
-// model reads the web's queries (this month; all history for a search),
-// switches type and period, and opens the saved row.
+// Activity: its figures equal the web's (Fixtures/ledger.json, written by
+// mobile-core/screenFigures.mjs) in both languages, the rows by day; and
+// the model reads the web's queries (the picked month; all history for a
+// search), switches kind and month, deletes a row and opens the saved one.
 import XCTest
 import BudgeerCore
 @testable import Budgeer
@@ -58,11 +58,11 @@ final class LedgerParityTests: XCTestCase {
                 let figures = try LedgerFigures.compute(
                     rows: fixture.rows(kind: view.kind), profile: fixture.input.profile, categories: fixture.input.categories,
                     kind: view.kind, periodLabel: view.period.labels[lang] ?? "", text: view.text,
-                    oldest: fixture.input.oldest, core: .shared)
+                    oldest: fixture.input.oldest, today: try BudgeerCore.shared.isoDate(fixture.now), core: .shared)
                 let expected = try XCTUnwrap(fixture.expected[lang]?[view.name])
                 XCTAssertEqual(figures.title, expected.title, "\(lang) \(view.name)")
                 XCTAssertEqual(figures.subtitle, expected.subtitle, "\(lang) \(view.name)")
-                XCTAssertEqual(figures.rows, expected.rows, "\(lang) \(view.name)")
+                XCTAssertEqual(figures.days, expected.days, "\(lang) \(view.name)")
                 XCTAssertEqual(figures, expected, "\(lang) \(view.name)")
             }
         }
@@ -91,14 +91,25 @@ final class LedgerModelTests: XCTestCase {
         let now = fixture.now
         let model = LedgerModel(data: store.data, core: .shared, now: { now })
         await model.load()
-        // The periods from the first transaction (March 2020) up to now; this month picked.
+        // The periods from the first transaction (March 2020) up to now; this month picked, everything shown.
         XCTAssertEqual(model.periodValue, "m:2020-9")
         XCTAssertEqual(model.periods.first?.value, "m:2020-9")
         XCTAssertTrue(model.periods.contains { $0.value == "all" })
+        XCTAssertEqual(model.type, "all")
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-09-01", to: "2020-09-30"))
+
+        await model.setType("expense")
         XCTAssertEqual(store.queries.last, TxnQuery(kind: "expense", from: "2020-09-01", to: "2020-09-30"))
         guard case .loaded(let figures) = model.state else { return XCTFail("\(model.state)") }
         XCTAssertEqual(figures.title, "Expenses")
         XCTAssertEqual(figures.subtitle, "This month · 8 entries")
+
+        // The pill: the month before, and back.
+        XCTAssertNil(model.neighbour(1))
+        XCTAssertEqual(model.neighbour(-1)?.value, "m:2020-8")
+        await model.setPeriod("m:2020-8")
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: "expense", from: "2020-08-01", to: "2020-08-31"))
+        await model.setPeriod("m:2020-9")
 
         await model.setType("all")
         XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-09-01", to: "2020-09-30"))
@@ -128,7 +139,21 @@ final class LedgerModelTests: XCTestCase {
         XCTAssertEqual(store.queries.count, reads)
         guard case .loaded(let figures) = model.state else { return XCTFail("\(model.state)") }
         XCTAssertEqual(figures.subtitle, "1 result · Net −€12.99")
-        XCTAssertEqual(figures.rows.map(\.id), ["a6"])
+        XCTAssertEqual(figures.days.flatMap(\.rows).map(\.id), ["a6"])
+    }
+
+    func testASwipedRowIsDeletedAfterItsQuestion() async throws {
+        let fixture = try LedgerFixture.load()
+        let store = store(fixture)
+        let now = fixture.now
+        let model = LedgerModel(data: store.data, core: .shared, now: { now })
+        await model.load()
+        let words = model.deleteWords(id: "a4")
+        XCTAssertEqual(words.title, "Delete this expense?")
+        XCTAssertTrue(words.body.hasPrefix("Diner"))
+        let deleted = await model.delete(id: "a4")
+        XCTAssertTrue(deleted)
+        XCTAssertEqual(store.deleted, ["a4"])
     }
 
     func testNothingLoggedShowsTheFirstEntry() async throws {

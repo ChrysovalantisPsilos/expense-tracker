@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { rowParts } from '../src/features/transactions/rowParts.js'
+import { dayGroups, dayTitle, rowParts } from '../src/features/transactions/rowParts.js'
 import { ledgerSummary } from '../src/features/transactions/listHeading.js'
 import { salaryShiftOf } from '../src/shared/lib/salaryShift.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
@@ -78,4 +78,28 @@ test('ledgerSummary: a loaded search adds its net', () => {
     '3 results · Net −€5.00')
   assert.equal(ledgerSummary('', { searching: true, loading: true, count: 3, net: -500, baseCurrency: 'EUR' }), '')
   assert.equal(ledgerSummary('0 results', { searching: true, count: 0, net: 0, baseCurrency: 'EUR' }), '0 results')
+})
+
+test('dayTitle: Today, Yesterday (across a month and a year), else the short date', () => {
+  assert.equal(dayTitle('2026-09-29', '2026-09-29'), 'Today')
+  assert.equal(dayTitle('2026-09-30', '2026-10-01'), 'Yesterday')
+  assert.equal(dayTitle('2025-12-31', '2026-01-01'), 'Yesterday')
+  assert.equal(dayTitle('2026-09-25', '2026-09-29'), '25 Sep')
+  assert.equal(dayTitle('2025-12-30', '2026-01-02'), '30 Dec 2025')
+})
+
+test('dayGroups: newest day first, each day\'s spend in the base currency, its rows without the date', () => {
+  const rows = [
+    row({ id: 'a', spent_at: '2026-09-28', amount_minor: 1000 }),
+    row({ id: 'b', spent_at: '2026-09-29', amount_minor: 340 }),
+    row({ id: 'c', spent_at: '2026-09-28', amount_minor: 2000, currency: 'USD', exchange_rate: 0.5 }),
+    row({ id: 'd', spent_at: '2026-09-27', kind: 'income', amount_minor: 5000 }),
+  ]
+  const days = dayGroups(rows, opts, '2026-09-29')
+  assert.deepEqual(days.map((d) => d.key), ['2026-09-29', '2026-09-28', '2026-09-27'])
+  assert.deepEqual(days.map((d) => d.title), ['Today', 'Yesterday', '27 Sep'])
+  assert.deepEqual(days.map((d) => d.spent), ['€3.40 spent', '€20.00 spent', null])
+  assert.deepEqual(days[1].rows.map((r) => r.id), ['a', 'c'])
+  assert.deepEqual(days[0].rows[0].meta, [])
+  assert.deepEqual(dayGroups([], opts, '2026-09-29'), [])
 })

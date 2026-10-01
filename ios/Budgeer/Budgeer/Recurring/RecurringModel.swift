@@ -19,8 +19,6 @@ final class RecurringModel {
     private(set) var state: State = .loading
     /// 'expense' (Subscriptions) or 'income'.
     var tab = "expense"
-    /// The picked frequency group (by key).
-    var group: String?
     private(set) var message: String?
 
     private var rules: JSONValue = []

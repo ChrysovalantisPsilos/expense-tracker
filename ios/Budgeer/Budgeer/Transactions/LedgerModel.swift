@@ -1,9 +1,9 @@
-// The Transactions tab's state, after the web's LedgerPage: Expenses |
-// Income | All, this month's entries, and the search and the Filters panel
-// (category, amounts, dates), which span all history as on the web (up to
-// 1,000 rows, the read from txnFilter.ledgerRead, refined by its
-// filterTransactions). Reads through the data layer, pending
-// rates filled as fx.js does, the figures from the core (LedgerFigures).
+// Activity's state, after the web's LedgerPage: Expenses | Income | All,
+// the picked month's entries (this month by default; the floating pill
+// steps through the months), and the search, which spans all history as on
+// the web (up to 1,000 rows, the read from txnFilter.ledgerRead, refined by
+// its filterTransactions). Reads through the data layer, pending rates
+// filled as fx.js does, the figures from the core (LedgerFigures).
 import Foundation
 import Observation
 import BudgeerCore
@@ -17,8 +17,8 @@ final class LedgerModel {
         case failed(String)
     }
 
-    /// The web's ?type=: 'expense' (the default), 'income' or 'all'.
-    private(set) var type = "expense"
+    /// The web's ?type=: 'all' (Activity's default), 'expense' or 'income'.
+    private(set) var type = "all"
     private(set) var periods: [HomePeriod] = []
     private(set) var periodValue = ""
     private(set) var text = ""
@@ -26,7 +26,6 @@ final class LedgerModel {
     private(set) var filters: JSONValue = LedgerFigures.noFilters
     /// The panel's category choices for the type: (id, name shown).
     private(set) var categoryOptions: [(id: String, name: String)] = []
-    private(set) var page = 1
     private(set) var state: State = .loading
 
     private var profile: JSONValue = [:]
@@ -56,6 +55,28 @@ final class LedgerModel {
     func filter(_ key: String) -> String { filters[key]?.stringValue ?? "" }
     var period: HomePeriod? { periods.first { $0.value == periodValue } ?? periods.first }
 
+    /// The months the pill steps through, oldest first (buildPeriods' month periods).
+    var monthPeriods: [HomePeriod] {
+        periods.filter { period in
+            (try? core.call("periods", "isMonthPeriod", [["value": .string(period.value)] as JSONValue])) ?? false
+        }.reversed()
+    }
+
+    /// The month before or after the picked one (nil at either end).
+    func neighbour(_ step: Int) -> HomePeriod? {
+        let months = monthPeriods
+        guard let index = months.firstIndex(where: { $0.value == periodValue }), months.indices.contains(index + step)
+        else { return nil }
+        return months[index + step]
+    }
+
+    /// Another month from the pill.
+    func setPeriod(_ value: String) async {
+        guard value != periodValue else { return }
+        periodValue = value
+        await reloadRows()
+    }
+
     /// The profile, the savings categories and the pickers' periods, then the rows.
     func load() async {
         do {
@@ -82,11 +103,11 @@ final class LedgerModel {
     /// The rows for the current view, then the figures.
     func reloadRows() async {
         do {
-            // ledgerRead: this month, or all history narrowed by the server's filters.
-            let thisMonth: HomePeriod = try core.call("periods", "thisMonthPeriod", [JSDate(now())])
+            // ledgerRead: the picked month, or all history narrowed by the server's filters.
+            let month: HomePeriod = try period ?? core.call("periods", "thisMonthPeriod", [JSDate(now())])
             let read = try core.json("txnFilter", "ledgerRead", [[
                 "kind": kind.json, "filters": filters, "searching": .bool(searching),
-                "month": ["from": thisMonth.from.json, "to": thisMonth.to.json],
+                "month": ["from": month.from.json, "to": month.to.json],
             ] as JSONValue])
             let query = TxnQuery(kind: read["kind"]?.stringValue, from: read["from"]?.stringValue, to: read["to"]?.stringValue,
                                  categoryId: read["categoryId"]?.stringValue, limit: read["limit"]?.intValue)
@@ -103,14 +124,14 @@ final class LedgerModel {
     private func refigure() throws {
         let figures = try LedgerFigures.compute(rows: rows, profile: profile, categories: savings, kind: kind,
                                                 periodLabel: period?.label ?? "", text: text, filters: filters,
-                                                oldest: oldest, oldestKnown: oldestKnown, page: page, core: core)
+                                                oldest: oldest, oldestKnown: oldestKnown, today: try core.isoDate(now()),
+                                                core: core)
         state = .loaded(figures)
     }
 
     func setType(_ next: String) async {
         guard next != type else { return }
         type = next
-        page = 1
         // Categories are per kind, so switching type drops the category filter.
         filters = filters.with("categoryId", "")
         await loadCategories()
@@ -121,7 +142,6 @@ final class LedgerModel {
     func setFilter(_ key: String, _ value: String) async {
         guard filter(key) != value else { return }
         filters = filters.with(key, .string(value))
-        page = 1
         await reloadRows()
     }
 
@@ -129,7 +149,6 @@ final class LedgerModel {
     func clearAll() async {
         text = ""
         filters = LedgerFigures.noFilters
-        page = 1
         await reloadRows()
     }
 
@@ -143,18 +162,28 @@ final class LedgerModel {
         }
     }
 
-    /// The panel's Delete-from-a-row: remove it, then read again.
-    func delete(_ row: JSONValue) async {
-        guard let id = row["id"]?.stringValue else { return }
-        try? await data.transactions.delete(id: id)
+    /// A row swiped away (after the confirm): remove it, then read again.
+    /// False when the server refused.
+    func delete(id: String) async -> Bool {
+        do {
+            try await data.transactions.delete(id: id)
+        } catch {
+            return false
+        }
         await reloadRows()
+        return true
+    }
+
+    /// DeleteTransactionDialog's words for a row: its title and body.
+    func deleteWords(id: String) -> (title: String, body: String) {
+        let row = self.row(id: id) ?? [:]
+        return (TransactionWords.deleteTitle(row, core: core), TransactionWords.deleteBody(row, core: core))
     }
 
     /// The search text: the list follows after a short pause (typing fires per key).
     func setText(_ value: String) {
         let wasSearching = searching
         text = value
-        page = 1
         searchTask?.cancel()
         searchTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 300_000_000)
@@ -171,11 +200,6 @@ final class LedgerModel {
     /// Wait for a search in flight (tests).
     func settleSearch() async {
         await searchTask?.value
-    }
-
-    func showPage(_ next: Int) {
-        page = next
-        try? refigure()
     }
 
     /// The saved row behind a list row (the form edits it).

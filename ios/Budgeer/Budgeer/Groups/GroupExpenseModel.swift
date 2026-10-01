@@ -174,6 +174,20 @@ final class GroupExpenseModel {
 
     // MARK: Editing
 
+    /// The amount as paid, as the big figure shows it (paidMinorOf, formatMoney).
+    var amountText: String {
+        core.formatMoney(.int(amountMinor), form.paidCurrency)
+    }
+
+    var amountMinor: Int {
+        (try? core.call("groupExpenseForm", "paidMinorOf", [form.amount, form.paidCurrency])) ?? 0
+    }
+
+    /// A key of the number pad (as EntryFormModel.press).
+    func press(_ key: String) {
+        setAmount(key == "⌫" ? String(form.amount.dropLast()) : form.amount + key)
+    }
+
     func setDescription(_ text: String) { form.description = text }
 
     /// The amount as typed, cleaned as the web's MoneyInput cleans it.

@@ -28,6 +28,9 @@ export default {
   },
   ledger: {
     title: 'Κινήσεις',
+    today: 'Σήμερα',
+    yesterday: 'Χθες',
+    daySpent: 'Έξοδα {{amount}}',
     types: {
       expense: 'Έξοδα',
       income: 'Έσοδα',

@@ -1,6 +1,6 @@
 // Everything the app makes once from its configuration: the Supabase
 // client, the auth service behind the session store, the offline cache, the
-// live-refresh hub and its realtime feed, and the data layer every screen
+// live-refresh hub and its realtime feed, the Face ID lock, and the data layer every screen
 // reads through (SupabaseStore). Views get what they need from here; nothing
 // else makes a client.
 import Foundation
@@ -15,6 +15,8 @@ final class AppContainer {
     let live: LiveHub
     let feed: RealtimeFeed
     let data: DataLayer
+    /// The Face ID lock (this device's choice).
+    let lock = AppLock()
 
     init(config: AppConfig) {
         self.config = config

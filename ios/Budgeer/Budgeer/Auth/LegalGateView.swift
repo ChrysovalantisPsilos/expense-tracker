@@ -13,55 +13,51 @@ struct LegalGateView: View {
     @State private var checking = false
 
     var body: some View {
-        VStack(spacing: Theme.Space.s6) {
+        VStack(spacing: 22) {
             Spacer()
-            IconTile(icon: .shieldCheck, size: 56)
-            VStack(spacing: Theme.Space.s3) {
+            NativeIconTile(symbol: "checkmark.shield.fill", color: NativeStyle.coral, size: 64)
+            VStack(spacing: 10) {
                 Text(language.t(status.isFirstAcceptance ? "privacy:gate.firstTitle" : "privacy:gate.updateTitle"))
-                    .font(Theme.Fonts.heading(22, weight: .bold, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .font(NativeStyle.title(24, lang: language.current))
                     .multilineTextAlignment(.center)
                 Text(language.t(status.isFirstAcceptance ? "privacy:gate.firstBody" : "privacy:gate.updateBody"))
-                    .font(Theme.Fonts.body(15, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textMuted)
+                    .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                 Text(language.t("ios:gate.acceptOnWeb"))
-                    .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textPrimary)
+                    .fontWeight(.semibold)
                     .multilineTextAlignment(.center)
                 if let version = status.privacyVersion {
                     Text(language.t("privacy:gate.version", ["date": .string(version)]))
-                        .font(Theme.Fonts.body(12, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
-            VStack(spacing: Theme.Space.s3) {
+            VStack(spacing: 12) {
                 Link(destination: URL(string: "https://www.budgeer.com/")!) {
-                    Text("budgeer.com")
+                    Text(verbatim: "budgeer.com").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(PrimaryButtonStyle())
+                .nativeGlassButton(prominent: true)
                 Button {
                     checking = true
-                    Task { await session.recheckLegal(); checking = false }
+                    Task {
+                        await session.recheckLegal()
+                        checking = false
+                    }
                 } label: {
-                    Text(language.t("common:actions.retry"))
+                    Text(language.t("common:actions.retry")).frame(maxWidth: .infinity)
                 }
-                .buttonStyle(OutlineButtonStyle())
+                .nativeGlassButton()
                 .disabled(checking)
-                Button {
-                    Task { await session.signOut() }
-                } label: {
-                    Text(language.t("privacy:gate.signOut"))
-                        .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
-                        .foregroundStyle(Theme.Colors.accentFg)
-                        .frame(minHeight: 44)
-                }
+                Button(language.t("privacy:gate.signOut")) { Task { await session.signOut() } }
+                    .fontWeight(.semibold)
+                    .foregroundStyle(NativeStyle.tint)
+                    .frame(minHeight: 44)
             }
             Spacer()
         }
-        .padding(Theme.Space.s6)
+        .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.Colors.canvas.ignoresSafeArea())
+        .background(NativeStyle.canvas.ignoresSafeArea())
     }
 }
 
@@ -74,36 +70,29 @@ struct LegalCheckErrorView: View {
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
-        VStack(spacing: Theme.Space.s5) {
+        VStack(spacing: 20) {
             Spacer()
-            IconTile(icon: .wifiOff, size: 56, tone: .warning)
-            Text(language.t("common:errors.connection"))
-                .font(Theme.Fonts.body(15, lang: language.current))
-                .foregroundStyle(Theme.Colors.textPrimary)
-                .multilineTextAlignment(.center)
+            NativeIconTile(symbol: "wifi.slash", color: NativeStyle.warning, size: 64)
+            Text(language.t("common:errors.connection")).multilineTextAlignment(.center)
             Text(message)
                 .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(Theme.Colors.textMuted)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
             Button {
                 Task { await session.recheckLegal() }
             } label: {
-                Text(language.t("common:errorScreen.actions.tryAgain"))
+                Text(language.t("common:errorScreen.actions.tryAgain")).frame(maxWidth: .infinity)
             }
-            .buttonStyle(PrimaryButtonStyle())
-            Button {
-                Task { await session.signOut() }
-            } label: {
-                Text(language.t("shell:signOut"))
-                    .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
-                    .foregroundStyle(Theme.Colors.accentFg)
-                    .frame(minHeight: 44)
-            }
+            .nativeGlassButton(prominent: true)
+            Button(language.t("shell:signOut")) { Task { await session.signOut() } }
+                .fontWeight(.semibold)
+                .foregroundStyle(NativeStyle.tint)
+                .frame(minHeight: 44)
             Spacer()
         }
-        .padding(Theme.Space.s6)
+        .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Theme.Colors.canvas.ignoresSafeArea())
+        .background(NativeStyle.canvas.ignoresSafeArea())
     }
 }

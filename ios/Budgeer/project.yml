@@ -104,15 +104,13 @@ targets:
           - CFBundleURLName: com.budgeer.app.auth
             CFBundleURLSchemes: [budgeer]
         CFBundleLocalizations: [en, el]
+        # The Face ID lock (AppLock); each language's words are the generated
+        # InfoPlist.strings (ios:native.lock.usage).
+        NSFaceIDUsageDescription: Budgeer uses Face ID to keep your money private.
         CFBundleDevelopmentRegion: en
         UIAppFonts:
-          - Poppins-Regular.ttf
           - Poppins-SemiBold.ttf
           - Poppins-Bold.ttf
-          - NunitoSans-Regular.ttf
-          - NunitoSans-SemiBold.ttf
-          - NunitoSans-Bold.ttf
-          - Manrope-Regular.ttf
           - Manrope-SemiBold.ttf
           - Manrope-Bold.ttf
         # From the xcconfig of the configuration being built (AppConfig.swift).

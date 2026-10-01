@@ -1,8 +1,7 @@
 // What the frame shows around the pages (AppShell): your initials for the
 // picture (avatarLook.avatarInitials over the profile's name), the bell's
-// feed with its unread count and badge (bellMath), where a notification
-// leads (bellMath.notificationPath), and whether the page on screen has the
-// floating Add (navMatch.showsAddExpense). Every rule is the web's, through
+// feed with its unread count and badge (bellMath), and where a notification
+// leads (bellMath.notificationPath). Every rule is the web's, through
 // the core; the feed is the web's table, read through the data layer.
 import Foundation
 import Observation
@@ -76,10 +75,5 @@ final class ShellModel {
         unreadCount = 0
         badge = nil
         try? await data.profile.markNotificationsRead()
-    }
-
-    /// navMatch.showsAddExpense for the web path of the page on screen.
-    func showsAdd(_ path: String) -> Bool {
-        (try? core.call("navMatch", "showsAddExpense", [path])) ?? false
     }
 }
