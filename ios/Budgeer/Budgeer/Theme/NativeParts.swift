@@ -1,6 +1,6 @@
 // The native kit's small pieces: an inset-grouped section's header with
 // its "See all", a progress bar that fills smoothly, a money figure that
-// counts up and down, the iOS Settings-style icon tile, a person's circle
+// counts up and down, the brand's icon tones and tile, a person's circle
 // and a stack of them, and the states a page shows before its figures (a
 // spinner, a failed read with Try again, an empty line). They draw what
 // they are given; every figure and word comes from the core and src/locales.
@@ -88,18 +88,30 @@ struct NativeBar: View {
 
 // MARK: Icons and people
 
-/// The iOS Settings tile: a white SF Symbol on a rounded square of colour.
+/// The app's few icon colours, all from the brand (palette.js through
+/// Theme): coral for most things, amber for money put aside or set aside,
+/// green for growth, sand for the quiet ones. Every tile uses one of these,
+/// so lists read as one family instead of a rainbow.
+enum NativeTone {
+    static let coral = Theme.Colors.accentFg
+    static let amber = Theme.Colors.warning
+    static let green = Theme.Colors.positive
+    static let sand = Theme.Colors.textMuted
+}
+
+/// An icon tile in the category badges' style (CategoryBadge): the symbol
+/// in its tone on a tile tinted with it, the same family everywhere.
 struct NativeIconTile: View {
     let symbol: String
-    let color: Color
+    var color: Color = NativeTone.coral
     var size: CGFloat = 30
 
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: size * 0.5, weight: .semibold))
-            .foregroundStyle(Color.white)
+            .font(.system(size: size * 0.46, weight: .semibold))
+            .foregroundStyle(color)
             .frame(width: size, height: size)
-            .background(color, in: RoundedRectangle(cornerRadius: size * 0.24, style: .continuous))
+            .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
             .accessibilityHidden(true)
     }
 }

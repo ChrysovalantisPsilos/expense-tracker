@@ -152,7 +152,7 @@ struct SavingsView: View {
                         if let rule = model.rule(id: item.id) { openRule(rule) }
                     } label: {
                         HStack(spacing: 12) {
-                            NativeIconTile(symbol: "repeat", color: SettingsRow.purple)
+                            RepeatingBadge(look: model.savingsLook)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(item.title).lineLimit(1)
                                 Text(item.meta).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
@@ -334,14 +334,14 @@ struct SavingsView: View {
         .listRowBackground(NativeStyle.card)
         if !figures.goals.isEmpty { goalsSection(figures.goals) }
         Section {
-            howRow("fromIncome", symbol: "banknote.fill", color: SettingsRow.green)
-            howRow("received", symbol: "gift.fill", color: SettingsRow.amber)
-            howRow("fromSavings", symbol: "bag.fill", color: SettingsRow.coral)
+            howRow("fromIncome", symbol: "banknote.fill", color: NativeTone.green)
+            howRow("received", symbol: "gift.fill", color: NativeTone.amber)
+            howRow("fromSavings", symbol: "bag.fill", color: NativeTone.coral)
             Button {
                 add(model.savingsCategory, true)
             } label: {
                 HStack(spacing: 14) {
-                    NativeIconTile(symbol: "repeat", color: SettingsRow.purple)
+                    RepeatingBadge(look: model.savingsLook)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(language.t("savings:how.auto.title"))
                         Text(language.t("savings:how.auto.meta")).font(.footnote).foregroundStyle(.secondary)

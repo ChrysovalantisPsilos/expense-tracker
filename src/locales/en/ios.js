@@ -14,6 +14,14 @@ export default {
   native: {
     seeAll: 'See all',
     profile: 'Profile and settings',
+    more: {
+      // More's first row: the way in to Settings.
+      accountSettings: 'Account & settings',
+    },
+    insights: {
+      // The statement row's button (it opens PDF or Excel).
+      export: 'Export',
+    },
     tabs: {
       activity: 'Activity',
       add: 'Add',
@@ -83,13 +91,33 @@ export default {
     lock: {
       setting: 'Face ID lock',
       settingNote: 'Ask for Face ID (or your passcode) when Budgeer opens, and after a minute away.',
-      unavailable: 'Set up Face ID or a passcode on this iPhone to use the lock.',
+      unavailable: 'Set up Face ID or a passcode on this iPhone, or an app PIN below, to use the lock.',
       locked: 'Budgeer is locked',
       note: 'Your money stays private until you look.',
       unlock: 'Unlock',
       reason: 'Unlock Budgeer',
       // Info.plist's NSFaceIDUsageDescription (iOS shows it the first time).
       usage: 'Budgeer uses Face ID to keep your money private.',
+      // The app's own PIN, for when Face ID fails or isn't there.
+      pin: {
+        title: 'App PIN',
+        note: 'A 4–6 digit PIN that opens Budgeer when Face ID doesn’t. It stays on this iPhone, kept as a salted hash, never the digits.',
+        use: 'Use PIN',
+        enter: 'Enter your Budgeer PIN',
+        wrong: 'That’s not the PIN. Try again.',
+        wait_one: 'Too many tries. Try again in {{count}} second.',
+        wait_other: 'Too many tries. Try again in {{count}} seconds.',
+        set: 'Set up a PIN',
+        change: 'Change PIN',
+        remove: 'Remove PIN',
+        current: 'Enter your current PIN',
+        new: 'Choose a PIN of 4–6 digits',
+        next: 'Next',
+        confirm: 'Enter the same PIN again',
+        mismatch: 'Those PINs don’t match. Choose one again.',
+        saved: 'PIN saved',
+        removed: 'PIN removed',
+      },
     },
   },
 }

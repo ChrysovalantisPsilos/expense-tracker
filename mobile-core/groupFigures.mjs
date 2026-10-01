@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url'
 import { formatMoney } from '../src/shared/lib/currency.js'
 import {
   activityParts, avatarStackParts, balancesFrom, balancesParts, commentCountsFrom, expenseRowParts, groupCardParts,
-  groupDeleteCheck, groupShareText, groupTotal, groupViewer, inviteRowParts, memberRowParts, membersWithAvatars,
+  groupDeleteCheck, groupTotal, groupViewer, inviteRowParts, memberRowParts, membersWithAvatars,
   pluralise, settlementRowParts, stillInNames,
 } from '../src/features/groups/groupFormat.js'
 import {
@@ -76,7 +76,6 @@ export function groupPageFigures({ detail, auditLog, counts, userId, now, lang =
     settlements: settlements.map((s) => settlementRowParts(s, rowOptions)),
     activity: activityParts(auditLog, cur, date),
     memberRows: memberRowParts(members, userId, isOwner),
-    shareText: groupShareText({ group, expenses, balances, members }),
     canDelete: check.canDelete,
     stillIn: stillInNames(check.others),
   }

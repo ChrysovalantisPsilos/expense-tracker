@@ -219,7 +219,7 @@ struct PaymentDetailsAsk: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 12) {
-                NativeIconTile(symbol: "building.columns.fill", color: NativeStyle.coral, size: 30)
+                NativeIconTile(symbol: "building.columns.fill", color: NativeTone.coral, size: 30)
                 Text(language.t("groups:paymentAsk.body")).font(.subheadline)
             }
             if model.askOpen {
@@ -388,11 +388,7 @@ struct SettleUpView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
         .padding(.horizontal, 12)
-        .background {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(LinearGradient(colors: [Theme.Colors.accentSubtle, NativeStyle.card],
-                                     startPoint: .top, endPoint: .bottom))
-        }
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
     }
 
     private func party(_ avatar: Avatar?, name: String) -> some View {
@@ -696,11 +692,7 @@ struct MembersView: View {
     private var invite: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "person.badge.plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 42, height: 42)
-                    .background(GroupCoverArt.brand, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                NativeIconTile(symbol: "person.badge.plus", size: 42)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(language.t("groups:members.invite.title")).font(.headline)
                     Text(language.t("groups:members.invite.subtitle")).font(.footnote).foregroundStyle(.secondary)

@@ -1,14 +1,13 @@
 // The lock's screen: the brand's mark on a glass disc over a soft coral and
 // amber glow, "Budgeer is locked", the note, and Unlock in glass (Face ID's
-// glyph in it) with a slot under it for another way in. It asks at once
-// when it appears, as banking apps do; the check itself is AppLock's.
+// glyph in it) with the app PIN under it (LockPinEntry: "Use PIN", or the
+// pad itself when the phone can't check its owner). It asks at once when it
+// appears, as banking apps do; the checks themselves are AppLock's.
 import SwiftUI
 
 @MainActor
-struct LockScreen<Fallback: View>: View {
+struct LockScreen: View {
     let lock: AppLock
-    /// Under Unlock: another way in (Use PIN), when there is one.
-    @ViewBuilder let fallback: () -> Fallback
     @Environment(AppLanguage.self) private var language
     @State private var tries = 0
     @State private var shown = false
@@ -16,7 +15,7 @@ struct LockScreen<Fallback: View>: View {
     var body: some View {
         glow
             .task(id: tries) {
-                guard lock.locked else { return }
+                guard lock.locked, lock.deviceCheck else { return }
                 await lock.unlock(reason: language.t("ios:native.lock.reason"))
             }
             .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { shown = true } }
@@ -63,10 +62,10 @@ struct LockScreen<Fallback: View>: View {
         }
     }
 
-    /// Unlock (Face ID's glyph in it), and the slot under it.
+    /// Unlock (Face ID's glyph in it) when the phone can check its owner, and the PIN under it.
     private var actions: some View {
         VStack(spacing: 10) {
-            if lock.locked {
+            if lock.locked && lock.deviceCheck {
                 Button {
                     tries += 1
                 } label: {
@@ -77,14 +76,8 @@ struct LockScreen<Fallback: View>: View {
                 .accessibilityIdentifier("lock.unlock")
                 .transition(.opacity.combined(with: .move(edge: .bottom)))
             }
-            fallback()
+            if lock.locked { LockPinEntry(lock: lock) }
         }
         .animation(.snappy, value: lock.locked)
-    }
-}
-
-extension LockScreen where Fallback == EmptyView {
-    init(lock: AppLock) {
-        self.init(lock: lock) { EmptyView() }
     }
 }

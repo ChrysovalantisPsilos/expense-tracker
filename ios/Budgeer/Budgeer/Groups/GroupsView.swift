@@ -69,7 +69,7 @@ struct GroupsView: View {
     private var joinRow: some View {
         NavigationLink(value: AppRoute.join(nil)) {
             HStack(spacing: 12) {
-                NativeIconTile(symbol: "link", color: NativeStyle.coral, size: 30)
+                NativeIconTile(symbol: "link", color: NativeTone.coral, size: 30)
                 Text(language.t("ios:native.join.entry")).font(.subheadline.weight(.semibold))
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right").font(.footnote.weight(.bold)).foregroundStyle(.tertiary)
@@ -110,11 +110,7 @@ struct InviteBanner: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                Image(systemName: "envelope.open.fill")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundStyle(Color.white)
-                    .frame(width: 46, height: 46)
-                    .background(GroupCoverArt.brand, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                NativeIconTile(symbol: "envelope.open.fill", size: 46)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(invite.name).font(.headline)
                     Text(invite.text).font(.subheadline).foregroundStyle(.secondary)
@@ -138,11 +134,7 @@ struct InviteBanner: View {
             .disabled(model.busy)
         }
         .padding(16)
-        .background {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(LinearGradient(colors: [Theme.Colors.accentSubtle, NativeStyle.card],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-        }
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay { RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(NativeStyle.tint.opacity(0.25)) }
         .accessibilityIdentifier("groups.invite.\(invite.id)")
     }

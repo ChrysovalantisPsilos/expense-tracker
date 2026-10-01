@@ -205,8 +205,6 @@ struct GroupPageFigures: Decodable, Equatable, Sendable {
     let settlements: [SettlementRow]
     let activity: [ActivityRow]
     let memberRows: [MemberRow]
-    /// "Share summary"'s text.
-    let shareText: String
     let canDelete: Bool
     /// Who is still in the way of deleting it ("Sofia, Marco").
     let stillIn: String
@@ -269,9 +267,6 @@ struct GroupPageFigures: Decodable, Equatable, Sendable {
             }),
             "activity": try core.json("groupFormat", "activityParts", [auditLog, currency, date]),
             "memberRows": try core.json("groupFormat", "memberRowParts", [members, user, isOwner]),
-            "shareText": try core.json("groupFormat", "groupShareText", [[
-                "group": group, "expenses": expenses, "balances": balances, "members": members,
-            ] as JSONValue]),
             "canDelete": check["canDelete"] ?? false,
             "stillIn": try core.json("groupFormat", "stillInNames", [check["others"] ?? []]),
         ]

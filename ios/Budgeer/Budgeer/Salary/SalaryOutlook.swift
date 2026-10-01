@@ -175,20 +175,11 @@ struct SalaryPricesSection: View {
 struct SalaryInfoHeader: View {
     let title: String
     @Binding var shown: Bool
-    @Environment(AppLanguage.self) private var language
 
     var body: some View {
         HStack(spacing: 6) {
             Text(title).font(.title3.weight(.semibold)).foregroundStyle(Color.primary)
-            Button {
-                withAnimation(.snappy) { shown.toggle() }
-            } label: {
-                Image(systemName: shown ? "info.circle.fill" : "info.circle")
-                    .contentTransition(.symbolEffect(.replace))
-            }
-            .buttonStyle(.borderless)
-            .foregroundStyle(NativeStyle.tint)
-            .accessibilityLabel(Text(language.t("common:info")))
+            NativeInfoButton(shown: $shown)
         }
         .textCase(nil)
         .padding(.horizontal, -4)

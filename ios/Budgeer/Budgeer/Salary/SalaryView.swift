@@ -124,7 +124,7 @@ struct SalaryView: View {
             ForEach(model.allRaises ? raises.rows : Array(raises.rows.prefix(5))) { row in
                 HStack(spacing: 12) {
                     NativeIconTile(symbol: row.up ? "chart.line.uptrend.xyaxis" : "chart.line.downtrend.xyaxis",
-                                   color: row.up ? SettingsRow.green : NativeStyle.negative)
+                                   color: row.up ? NativeTone.green : NativeStyle.negative)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(row.title).font(.body.weight(.semibold))
                         Text(row.meta).font(.footnote).foregroundStyle(.secondary)
@@ -295,7 +295,7 @@ struct SalaryView: View {
         case "holiday": return Theme.Palette.amber400
         case "thirteenth": return Theme.Palette.chart6
         case "bonus": return Theme.Colors.chart7
-        default: return SettingsRow.slate
+        default: return NativeTone.sand
         }
     }
 

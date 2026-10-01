@@ -2,10 +2,11 @@
 import SwiftUI
 
 /// Settings › Language (LanguageSettings): Follow my device (and what it is
-/// now), English, Ελληνικά; a choice applies at once and is saved to the profile.
+/// now), English, Ελληνικά; a choice applies at once (the words cross-fade)
+/// and is saved to the profile (ProfileLanguage.choose).
 @MainActor
 struct LanguageView: View {
-    let profiles: ProfileRepository
+    let profileLanguage: ProfileLanguage
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
@@ -14,8 +15,8 @@ struct LanguageView: View {
                 ForEach([AppLanguage.system] + AppLanguage.languages, id: \.self) { value in
                     Button {
                         guard value != language.preference else { return }
-                        language.preference = value
-                        Task { await ProfileLanguage.save(language, profiles: profiles) }
+                        withAnimation(.easeInOut(duration: 0.25)) { language.preference = value }
+                        Task { await profileLanguage.choose(value) }
                     } label: {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {

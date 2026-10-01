@@ -9,6 +9,12 @@ export default {
   native: {
     seeAll: 'Όλα',
     profile: 'Προφίλ και ρυθμίσεις',
+    more: {
+      accountSettings: 'Λογαριασμός και ρυθμίσεις',
+    },
+    insights: {
+      export: 'Εξαγωγή',
+    },
     tabs: {
       activity: 'Κινήσεις',
       add: 'Προσθήκη',
@@ -71,12 +77,31 @@ export default {
     lock: {
       setting: 'Κλείδωμα με Face ID',
       settingNote: 'Ζήτα Face ID (ή τον κωδικό σου) όταν ανοίγει το Budgeer και μετά από ένα λεπτό εκτός.',
-      unavailable: 'Όρισε Face ID ή κωδικό σε αυτό το iPhone για να χρησιμοποιήσεις το κλείδωμα.',
+      unavailable: 'Όρισε Face ID ή κωδικό σε αυτό το iPhone, ή ένα PIN εφαρμογής παρακάτω, για να χρησιμοποιήσεις το κλείδωμα.',
       locked: 'Το Budgeer είναι κλειδωμένο',
       note: 'Τα οικονομικά σου μένουν ιδιωτικά μέχρι να κοιτάξεις.',
       unlock: 'Ξεκλείδωμα',
       reason: 'Ξεκλείδωσε το Budgeer',
       usage: 'Το Budgeer χρησιμοποιεί το Face ID για να κρατά τα οικονομικά σου ιδιωτικά.',
+      pin: {
+        title: 'PIN εφαρμογής',
+        note: 'Ένα PIN 4–6 ψηφίων που ανοίγει το Budgeer όταν δεν πετυχαίνει το Face ID. Μένει σε αυτό το iPhone, φυλαγμένο ως αλατισμένο hash, ποτέ τα ψηφία.',
+        use: 'Χρήση PIN',
+        enter: 'Βάλε το PIN του Budgeer',
+        wrong: 'Λάθος PIN. Προσπάθησε ξανά.',
+        wait_one: 'Πολλές προσπάθειες. Δοκίμασε ξανά σε {{count}} δευτερόλεπτο.',
+        wait_other: 'Πολλές προσπάθειες. Δοκίμασε ξανά σε {{count}} δευτερόλεπτα.',
+        set: 'Όρισε PIN',
+        change: 'Αλλαγή PIN',
+        remove: 'Αφαίρεση PIN',
+        current: 'Βάλε το τωρινό PIN',
+        new: 'Διάλεξε PIN 4–6 ψηφίων',
+        next: 'Επόμενο',
+        confirm: 'Βάλε ξανά το ίδιο PIN',
+        mismatch: 'Τα PIN δεν ταιριάζουν. Διάλεξε ξανά.',
+        saved: 'Το PIN αποθηκεύτηκε',
+        removed: 'Το PIN αφαιρέθηκε',
+      },
     },
   },
 }
