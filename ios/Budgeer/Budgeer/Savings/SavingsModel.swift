@@ -2,7 +2,7 @@
 // useRecurring: the profile, the savings categories (and the active income
 // ones, for "Add to savings"), every income entry and every expense paid
 // from savings (pending rates filled), the net-worth accounts, the rules and
-// the goals; then the figures from the core (SavingsFigures). The history's
+// the goals, one read after another; then the figures from the core (SavingsFigures). The history's
 // filter and "Show older" refigure without reading again. A goal's quick
 // "+ / −" saves the whole goal (savingsMath.goalSavedAfter), as the web's
 // GoalsCard does; deleting a goal or an entry asks first (the view).
@@ -59,18 +59,15 @@ final class SavingsModel {
             profile = try await data.profile.profile()
             let base = profile["base_currency"]?.stringValue ?? "EUR"
             let today = try core.isoDate(instant)
-            async let savings = data.categories.savingsCategories()
-            async let incomeKinds = data.categories.categories(kind: "income")
-            async let incomeRead = data.transactions.transactions(TxnQuery(kind: "income"))
-            async let spentRead = data.transactions.transactions(TxnQuery(kind: "expense", paidFromSavings: true))
-            async let accountRows = data.savings.accounts()
-            async let goals = data.savings.goals()
-            categories = try await savings
-            incomeCategories = (try? await incomeKinds) ?? []
-            income = try await FxRates.fillPending(try await incomeRead, base: base, today: today, fx: data.fx, core: core)
-            fromSavings = try await FxRates.fillPending(try await spentRead, base: base, today: today, fx: data.fx, core: core)
-            accounts = try await accountRows
-            goalRows = try await goals
+            // One read after another: the data layer's reads are not run side by side.
+            categories = try await data.categories.savingsCategories()
+            incomeCategories = (try? await data.categories.categories(kind: "income")) ?? []
+            let incomeRead = try await data.transactions.transactions(TxnQuery(kind: "income"))
+            income = try await FxRates.fillPending(incomeRead, base: base, today: today, fx: data.fx, core: core)
+            let spentRead = try await data.transactions.transactions(TxnQuery(kind: "expense", paidFromSavings: true))
+            fromSavings = try await FxRates.fillPending(spentRead, base: base, today: today, fx: data.fx, core: core)
+            accounts = try await data.savings.accounts()
+            goalRows = try await data.savings.goals()
             // The repeating savings are this page's extra; the rest doesn't wait on them.
             rules = (try? await data.recurring.rules()) ?? []
             try refigure()
