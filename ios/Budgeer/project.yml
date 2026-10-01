@@ -106,6 +106,8 @@ targets:
       - package: BudgeerCore
       - package: Supabase
         product: Supabase
+      # The widgets, embedded in the app (PlugIns).
+      - target: BudgeerWidgets
     info:
       path: Budgeer/Info.plist
       properties:
@@ -150,6 +152,8 @@ targets:
         SupabaseAnonKey: $(SUPABASE_ANON_KEY)
         # Which APNs host this build's device token belongs to (AppConfig).
         APNSEnvironment: $(APNS_ENVIRONMENT)
+        # The App Group shared with the widgets (WidgetShelf; Config/*.xcconfig).
+        BudgeerAppGroup: $(BUDGEER_APP_GROUP)
     settings:
       base:
         # Per target, never in the shared xcconfig: a test bundle named like
@@ -212,6 +216,57 @@ targets:
       base:
         PRODUCT_NAME: BudgeerTests
         GENERATE_INFOPLIST_FILE: "YES"
+
+  # The widgets (WidgetKit): "This month" on the Home Screen and the Lock
+  # Screen, and the Lock Screen's "+ Add". They show the snapshot the app
+  # writes to the App Group (Budgeer/Widgets: WidgetSync); the extension runs
+  # no core and no network. Its own sources plus the few app files it shares
+  # (the snapshot, the faces, the colour tokens, the mark, the strings
+  # lookup), the generated strings and the fonts. One entitlements file for
+  # every configuration: the App Group only.
+  BudgeerWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: BudgeerWidgets
+      - path: Budgeer/Widgets/WidgetSnapshot.swift
+      - path: Budgeer/Widgets/WidgetViews.swift
+      - path: Budgeer/Theme/Theme.swift
+      - path: Budgeer/Theme/NativeStyle.swift
+      - path: Budgeer/Theme/BrandMarkCanvas.swift
+      - path: Budgeer/Support/L10n.swift
+      - path: Budgeer/Resources/Generated
+        buildPhase: resources
+      - path: Budgeer/Resources/Fonts
+        buildPhase: resources
+        excludes:
+          - "*.txt"
+    info:
+      path: BudgeerWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: $(BUDGEER_DISPLAY_NAME)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, el]
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        UIAppFonts:
+          - Poppins-SemiBold.ttf
+          - Poppins-Bold.ttf
+          - Manrope-SemiBold.ttf
+          - Manrope-Bold.ttf
+        BudgeerAppGroup: $(BUDGEER_APP_GROUP)
+    settings:
+      base:
+        PRODUCT_NAME: BudgeerWidgets
+        # com.budgeer.app.dev.widgets or com.budgeer.app.widgets.
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUDGEER_BUNDLE_ID).widgets
+        GENERATE_INFOPLIST_FILE: "NO"
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_ENTITLEMENTS: Config/BudgeerWidgets.entitlements
+        APPLICATION_EXTENSION_API_ONLY: "YES"
+        SKIP_INSTALL: "YES"
 
 schemes:
   Budgeer Dev:

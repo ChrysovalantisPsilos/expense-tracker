@@ -9,7 +9,8 @@
 // period's caps and expenses) and, with its switch on, the month in plain
 // words (my_month_summary, written once without asking as on the web). A
 // refresh that fails keeps the figures on screen and shows the error beside
-// them. The Expenses and Income cards page ten rows at a time.
+// them. The Expenses and Income cards page ten rows at a time. This month's
+// reads also go to the widgets (onThisMonth → WidgetSync).
 import Foundation
 import Observation
 import BudgeerCore
@@ -64,6 +65,9 @@ final class HomeViewModel {
     private var summaryAttempted: String?
     private var summaryWriting = false
     private var summaryFailed = false
+
+    /// This month's reads, each time they give the figures on screen (the widgets' snapshot).
+    var onThisMonth: (@MainActor (HomeInput) -> Void)?
 
     private let data: DataLayer
     private let core: BudgeerCore
@@ -132,6 +136,20 @@ final class HomeViewModel {
         periods = options.periods
         // A picked period that went away (next month's salary deleted) falls back to this month.
         if let picked = periodValue, !periods.contains(where: { $0.value == picked }) { periodValue = nil }
+        var input = try await HomeViewModel.input(data: data, profile: profile, periodValue: periodValue, now: instant, core: core)
+        input.oldest = options.oldest
+        input.oldestKnown = options.oldestKnown
+        let figures = try HomeFigures.compute(input, core: core)
+        // This month on screen: the widgets get the same reads (WidgetSync).
+        if figures.period.value == thisMonthValue { onThisMonth?(input) }
+        return figures
+    }
+
+    /// The reads behind a period's figures (nil: this month), given the
+    /// profile: the rules and today's rates, the period's rows (from the
+    /// shifted start, pending rates filled) and the savings categories.
+    static func input(data: DataLayer, profile: JSONValue, periodValue: String?, now instant: Date,
+                      core: BudgeerCore) async throws -> HomeInput {
         let window = try HomeFigures.window(profile: profile, periodValue: periodValue, now: instant, core: core)
         let base = profile["base_currency"]?.stringValue ?? "EUR"
         // The rules feed the projection and the Recurring card; the card's own
@@ -142,9 +160,8 @@ final class HomeViewModel {
         let read = try await data.transactions.transactions(TxnQuery(from: window.fetchFrom, to: window.period.to, spread: true))
         let categories = try await data.categories.savingsCategories()
         let rows = try await FxRates.fillPending(read, base: base, today: try core.isoDate(instant), fx: data.fx, core: core)
-        let input = HomeInput(rows: rows, profile: profile, categories: categories, rules: rules, rates: rates,
-                              now: instant, periodValue: periodValue, oldest: options.oldest, oldestKnown: options.oldestKnown)
-        return try HomeFigures.compute(input, core: core)
+        return HomeInput(rows: rows, profile: profile, categories: categories, rules: rules, rates: rates,
+                         now: instant, periodValue: periodValue)
     }
 
     // MARK: The cards with reads of their own

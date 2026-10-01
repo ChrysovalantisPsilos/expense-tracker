@@ -38,9 +38,12 @@ struct RootView: View {
             }
         }
         .task { await session.start() }
-        // budgeer://join/<token>, and the website's links (Universal Links
+        // budgeer://join/<token>, a widget's budgeer://app/<path> (opened as a
+        // notification's page is), and the website's links (Universal Links
         // reach SwiftUI as an opened URL or as a browsing activity).
-        .onOpenURL { url in container.open(url) }
+        .onOpenURL { url in
+            if let path = WidgetLinks.path(url) { PushInbox.shared.path = path } else { container.open(url) }
+        }
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
             if let url = activity.webpageURL { container.open(url) }
         }

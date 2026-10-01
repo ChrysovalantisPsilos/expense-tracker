@@ -34,6 +34,19 @@ enum Theme {
         static let chart7 = dynamic(0x7C6F59, 0xB8AB94)          // chart.7 (sand.600 | sand.400): a bonus, indexation
     }
 
+    // MARK: Share swatches (kitMath.shareSwatch's tokens)
+
+    private static let swatches: [String: Color] = [
+        "brand.500": Palette.brand500, "amber.400": Palette.amber400, "brand.300": Palette.brand300,
+        "amber.600": Color(hex: 0xD97A06), "chart.5": Color(hex: 0xF6C453), "chart.6": Palette.chart6,
+        "chart.3": Color(hex: 0xEF8A5A), "text.muted": Colors.textMuted,
+    ]
+
+    /// A spending share's colour by its kitMath.shareSwatch token (the coral for an unknown one).
+    static func swatch(_ token: String) -> Color {
+        swatches[token] ?? Palette.brand500
+    }
+
     // MARK: Helpers
 
     private static func dynamic(_ light: UInt32, _ dark: UInt32) -> Color {

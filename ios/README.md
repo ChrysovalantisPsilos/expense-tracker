@@ -163,6 +163,12 @@ the App Store); `APNS_ENVIRONMENT` tells the app which (Info.plist
 `APNSEnvironment`), and the server sends each token to its own host.
 Signing is automatic. `ITSAppUsesNonExemptEncryption` is NO: the app uses
 only the system's TLS and Keychain and a SHA-256 hash (Apple's nonce).
+**App Groups**: the app and its widget extension (`BudgeerWidgets`,
+`$(BUDGEER_BUNDLE_ID).widgets`, embedded in the app) share
+`group.com.budgeer.app.dev` (Dev) or `group.com.budgeer.app` (Prod)
+(`BUDGEER_APP_GROUP` in the xcconfigs; the app's two entitlements files and
+`Config/BudgeerWidgets.entitlements`, the extension's one for every
+configuration; Info.plist `BudgeerAppGroup` names it to Swift).
 
 ### TestFlight
 
@@ -277,7 +283,11 @@ ios/Budgeer/
                          avatars, loading and failure states, rich text), NativeMotion (the springs, the ⓘ and
                          its explanation, rolling figures, NativeFlow for wrapping tags), NativeChrome (the bell
                          and your picture, the confetti), NativeSwatch, NativeHaptics, CategoryBadge (+
-                         RepeatingBadge), BrandMark (+ BrandIntro, the sign-in's wordmark)
+                         RepeatingBadge), BrandMarkCanvas (the mark, shared with the widgets), BrandMark
+                         (BrandIntro, the sign-in's wordmark)
+    Widgets/             WidgetSnapshot (what the widgets show, WidgetShelf: the App Group's defaults,
+                         WidgetLinks), WidgetSync (the snapshot from Home's core calls, written and cleared),
+                         WidgetViews (the widgets' faces; compiled into the extension too)
     Support/             AppLanguage, ProfileLanguage (the account's language), L10n (the generated strings),
                          AppAppearance (light, dark or the phone's), JSONValue, CoreHelpers, CategoryLook, ISODay
     Resources/Fonts/     Poppins and Manrope, semibold and bold (OFL, static TTFs)
@@ -289,6 +299,7 @@ ios/Budgeer/
     Resources/Icons.xcassets/   the web's Lucide category icons as template SVGs (npm run ios:icons; committed)
     Resources/LUCIDE-LICENSE.txt  Lucide's ISC licence
     Resources/Generated/ <lang>.lproj/Localizable.strings and InfoPlist.strings — generated, not committed
+  BudgeerWidgets/        the widget extension: BudgeerWidgets (the bundle, the timelines, the families)
   BudgeerTests/          view models over FakeStore, the parity tests, the strings, snapshots
     Fixtures/*.json      the web's figures for fake inputs: home, ledger, budgets, recurring, insights,
                          savings, vouchers, groups, plan, salary, networth, import (npm run ios:fixture);
@@ -623,6 +634,31 @@ a core call (the web's function); Swift reads, lays out and draws.
   card today; Save says what it did in place (off: the setup goes, the
   expenses keep their flag). save_meal_vouchers with voucherMath's
   newSettings / withDays.
+- **Widgets** (`BudgeerWidgets`, WidgetKit): "This month" on the Home
+  Screen, small and medium, exactly Home's overview: Spent big, then Income
+  and Net with their dots (Net in `kitMath.signTone`'s colour); the medium
+  one adds By category as a share bar with the top three and "Other" in
+  `kitMath.shareSwatch`'s colours (Home's donut's) and a + that opens Add as
+  an expense. Always this month (`periods.thisMonthPeriod`), never Home's
+  picked period. On the Lock Screen: the rectangle (This month, Spent and
+  Net), the line over the clock (Spent) and a "+ Add" circle; the amounts
+  are privacy-sensitive, so the Lock Screen hides them while the iPhone is
+  locked, and the + always works. A tap opens Home (`budgeer://app/`), the
+  + Add (`budgeer://app/transactions/new`: the web's own addresses through
+  `AppPaths`, Add waiting for the Face ID lock to lift). The extension runs
+  no core, network or sign-in: the app works the figures out with Home's
+  core calls (`WidgetSync`: `HomeFigures` with the legend at three) and
+  writes a snapshot (formatted strings, swatch tokens, the month's dates,
+  the language, when) to the App Group whenever Home's this-month reads come
+  in and whenever entries, categories, rules or the profile change (its own
+  saves and deletes included, through the live hub), then reloads the
+  widgets when something changed. A snapshot of another month shows "Open
+  Budgeer to see this month" (`ios:native.widget.stale`), and each timeline
+  has an entry at midnight for that. Signing out (and deleting the account)
+  clears it. The words are the web's keys in the snapshot's language
+  (`L10n`, the generated strings bundled in the extension too), the figures
+  Poppins (bundled in the extension), the colours the app's tokens, light
+  and dark.
 - **More**: you (your picture, name and email over "Account & settings":
   the way in to Settings), Money (Budgets, Savings, Recurring, Plan, and
   Meal vouchers once set up, as on the web) and Insights (Your salary opens
@@ -845,7 +881,10 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   Settle up's payment-details ask and Not now), `ReceiptTests` (a receipt
   read, checked and filling the form, a group expense's fill, little read, a new
   expense only),
-  `ShellModelTests` (the bell's feed, opening it), `AppLockTests` (off by default, the
+  `ShellModelTests` (the bell's feed, opening it), `WidgetSyncTests` (Home's fixture through
+  the core as this month's snapshot in both languages, written from the app's reads and from
+  Home's this-month reads only, unchanged writes not reloading, the month check, cleared on
+  sign-out, the widgets' links and words), `AppLockTests` (off by default, the
   owner's check, locked on launch and after the grace, off unlocks), `SettingsModelTests`
   (Account, the switches, Security over `FakeSecurity`, Privacy), `CategoriesModelTests` (the
   list, archive, delete with a move, adding and editing), `SavingsModelTests` (the web's reads, the
@@ -919,7 +958,9 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   the new merchants with the AI's ideas, done, a rate to type), Import
   rules (the list, a rule's page, none yet), Your data, Export backup (as
   it opens, the file ready) and Restore (the file to pick, a sealed one's
-  password, what's in one, done, not a backup), each light, dark and Greek, with the fixtures'
+  password, what's in one, done, not a backup), the widgets (small, medium and the Lock
+  Screen's three with this month's figures, and without: open the app), each light, dark and
+  Greek, with the fixtures'
   data (`<name>-<variant>.png`, and `-long` for the pages worth seeing
   whole); attached to the test run and written to `SNAPSHOT_DIR` when set
   (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
@@ -933,6 +974,7 @@ on develop and pull requests; a feature branch runs it by hand (Actions → ios-
 A simulator build needs no signing. For a device, put `DEVELOPMENT_TEAM =
 <your team id>` in `ios/Budgeer/Config/Local.xcconfig` (gitignored) and let
 Xcode manage the profiles; the App IDs need Push Notifications and Sign in
-with Apple (Xcode adds them with automatic signing). Push on a device run
+with Apple, and the app and its widgets' App IDs App Groups with the
+build's group (Xcode adds them with automatic signing). Push on a device run
 from Xcode uses the development APNs (sandbox); TestFlight builds use
 production.

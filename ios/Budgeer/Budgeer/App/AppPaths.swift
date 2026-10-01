@@ -68,6 +68,13 @@ enum AppPaths {
         }
     }
 
+    /// The kind of a new entry when `path` is Add's (addLinks' /transactions/new,
+    /// `kind=income` or the expense it defaults to), or nil.
+    static func addKind(_ path: String) -> String? {
+        guard let components = URLComponents(string: path), components.path == "/transactions/new" else { return nil }
+        return components.queryItems?.first(where: { $0.name == "kind" })?.value == "income" ? "income" : "expense"
+    }
+
     /// The page a link inside a tab pushes (the place's last page), or nil.
     static func route(_ path: String?) -> AppRoute? {
         path.flatMap { place($0)?.routes.last }

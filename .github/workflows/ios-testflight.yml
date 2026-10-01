@@ -11,7 +11,10 @@
 # `xcodebuild -exportArchive` with an ExportOptions.plist whose method is
 # app-store-connect and destination upload, both with -allowProvisioningUpdates
 # and the -authenticationKey… options. The build number is this workflow's
-# run number, so every upload is newer than the last.
+# run number, so every upload is newer than the last. The archive holds the
+# widget extension too ($(BUDGEER_BUNDLE_ID).widgets, embedded in the app):
+# the same automatic signing registers its App ID and the App Group both
+# share (group.com.budgeer.app[.dev]) and signs it with the app.
 #
 # Secrets (repository → Settings → Secrets and variables → Actions), by name:
 #   ASC_KEY_ID        the API key's id

@@ -27,6 +27,9 @@ export default {
       comingUp: 'Έρχονται',
       byCategory: 'Ανά κατηγορία',
     },
+    widget: {
+      stale: 'Άνοιξε το Budgeer για να δεις αυτόν τον μήνα',
+    },
     salary: {
       pricesFrom: '{{country}} · από το {{year}}',
     },

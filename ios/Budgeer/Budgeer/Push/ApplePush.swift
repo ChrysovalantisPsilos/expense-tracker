@@ -9,8 +9,8 @@ import SwiftUI
 import UIKit
 import UserNotifications
 
-/// A tapped notification's path (or an opened link's page, AppLink),
-/// waiting for the signed-in frame.
+/// A tapped notification's path (or an opened link's page, AppLink, or a
+/// widget's), waiting for the signed-in frame.
 @MainActor
 @Observable
 final class PushInbox {

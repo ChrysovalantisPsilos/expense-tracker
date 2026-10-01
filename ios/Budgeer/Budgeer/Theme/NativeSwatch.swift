@@ -5,17 +5,10 @@ import BudgeerCore
 import SwiftUI
 
 enum NativeSwatch {
-    /// kitMath.shareSwatch's colour tokens.
-    private static let tokens: [String: Color] = [
-        "brand.500": Theme.Palette.brand500, "amber.400": Theme.Palette.amber400, "brand.300": Theme.Palette.brand300,
-        "amber.600": Color(hex: 0xD97A06), "chart.5": Color(hex: 0xF6C453), "chart.6": Color(hex: 0xC2703D),
-        "chart.3": Color(hex: 0xEF8A5A), "text.muted": Theme.Colors.textMuted,
-    ]
-
     /// The colour of the share at `index` named `name`.
     static func color(_ index: Int, _ name: String) -> Color {
         let token: String = (try? BudgeerCore.shared.call("kitMath", "shareSwatch", [index, name])) ?? "brand.500"
-        return tokens[token] ?? Theme.Palette.brand500
+        return Theme.swatch(token)
     }
 }
 
