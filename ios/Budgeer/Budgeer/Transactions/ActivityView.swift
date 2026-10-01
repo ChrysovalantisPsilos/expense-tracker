@@ -98,7 +98,7 @@ struct ActivityView: View {
                     .accessibilityIdentifier("activity.header")
                 }
                 // The chips' row runs edge to edge, with room for the glass's shadow.
-                ActivityChips(model: model, inset: option == .a ? 4 : 16)
+                ActivityChips(model: model, inset: option == .a ? 4 : 16, glass: option == .b)
                     .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
@@ -376,13 +376,16 @@ private struct RunningLine: View {
 
 // MARK: The chips
 
-/// All · Expenses · Income, then the kind's categories, as glass chips in
-/// one sideways row; the picked one in the tint.
+/// All · Expenses · Income, then the kind's categories, as chips in one
+/// sideways row; the picked one in the tint.
 @MainActor
 struct ActivityChips: View {
     let model: LedgerModel
     /// The row's lead-in before the first chip.
     var inset: CGFloat = 16
+    /// Glass chips (B); A's sit on the sand as solid cards (inside an inset
+    /// list's cell the glass's backdrop shows as a band).
+    var glass = true
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
@@ -423,10 +426,26 @@ struct ActivityChips: View {
                 .lineLimit(1)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 36)
-                .nativeGlass(Capsule(), tint: picked ? NativeStyle.solid : nil, interactive: true)
+                .modifier(ChipSurface(picked: picked, glass: glass))
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(picked ? .isSelected : [])
+    }
+}
+
+/// A chip's surface: glass, or a solid card with a hairline (the tint when picked).
+private struct ChipSurface: ViewModifier {
+    let picked: Bool
+    let glass: Bool
+
+    func body(content: Content) -> some View {
+        if glass {
+            content.nativeGlass(Capsule(), tint: picked ? NativeStyle.solid : nil, interactive: true)
+        } else {
+            content
+                .background(picked ? NativeStyle.solid : NativeStyle.card, in: Capsule())
+                .overlay { Capsule().stroke(Color.primary.opacity(picked ? 0 : 0.08), lineWidth: 1) }
+        }
     }
 }
 
