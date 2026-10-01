@@ -1,13 +1,19 @@
-# The iOS app on a Mac: the core and the strings from the web's source, the
-# Xcode project from project.yml (XcodeGen), a Simulator build, the tests
-# (view models over fakes, Home's parity with the web's figures through the
-# core, the snapshots) and the snapshot PNGs as an artifact. macOS minutes
-# cost ten times Linux ones, so this runs only for the branches and paths
-# that can change the app.
+# The iOS app on a Mac, in one job: the core and the strings from the web's
+# source, the core's Swift package tests (the recorded vectors replayed
+# through JavaScriptCore), the Xcode project from project.yml (XcodeGen), a
+# Simulator build, the app's tests (view models over fakes, parity with the
+# web's figures through the core, the snapshots) and the snapshot PNGs as an
+# artifact.
+#
+# macOS minutes cost ten times Linux ones, so this runs only on pushes to
+# develop that touch the app, on pull requests, and by hand (Actions → ios-app
+# → Run workflow, picking the branch) for a feature branch. A newer push to
+# the same branch cancels the run in progress. The Linux replay of the core
+# (test/mobileCore.test.js in ci) checks every push.
 name: ios-app
 on:
   push:
-    branches: [ios-app-1b, ios-native, ios-phase2, ios-phase3, ios-ui-match, ios-native-design, develop]
+    branches: [develop]
     paths: ['ios/**', 'mobile-core/**', 'src/locales/**', 'package.json', 'package-lock.json', '.github/workflows/ios-app.yml']
   pull_request:
     paths: ['ios/**', 'mobile-core/**', 'src/locales/**', 'package.json', 'package-lock.json', '.github/workflows/ios-app.yml']
@@ -15,6 +21,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: ios-app-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   PROJECT: ios/Budgeer/Budgeer.xcodeproj
@@ -25,6 +35,8 @@ env:
 jobs:
   app:
     runs-on: macos-26
+    # A hung Simulator would otherwise burn up to six hours of macOS minutes.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -35,9 +47,23 @@ jobs:
       - name: Pin Xcode
         run: sudo xcode-select -s /Applications/Xcode_26.5.app && xcodebuild -version
       - name: Install XcodeGen
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_INSTALL_CLEANUP: '1'
         run: brew install xcodegen
+      # Swift packages (supabase-swift and friends) come from the cache when
+      # the pins haven't changed.
+      - name: Swift package cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Budgeer/DerivedData/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-xcode26.5-${{ hashFiles('ios/Budgeer/project.yml', 'ios/BudgeerCore/Package.swift') }}
       - name: Core, strings and project
         run: npm run ios:prepare
+      - name: Core package tests (JavaScriptCore replay)
+        run: npm run core:vectors && cd ios/BudgeerCore && TZ=UTC swift test
       - name: Build for the Simulator
         run: >
           set -o pipefail &&

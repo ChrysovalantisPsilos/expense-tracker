@@ -54,7 +54,7 @@ function) that sets `globalThis.BudgeerCore`. It contains no React, Supabase
 or browser code: the build fails on any such module in the graph, and
 `test/mobileCore.test.js` loads it in a bare context with only the engine's
 globals. Run it before opening the Swift package in Xcode (the package
-declares the file as a resource); CI runs it in `.github/workflows/ios-core.yml`.
+declares the file as a resource); CI runs it in `.github/workflows/ios-app.yml`.
 
 From Swift:
 
@@ -111,7 +111,7 @@ suite is for.
    `import * as name` plus a `modules` entry in `mobile-core/index.js`.
 3. `npm run core:build` (the guard says if it reaches something it mustn't),
    then `npm run core:vectors` and commit the new `vectors.json`.
-4. `npm test` replays it on Linux; the `ios-core` workflow replays it on a
+4. `npm test` replays it on Linux; the `ios-app` workflow replays it on a
    Mac.
 
 ## The app
@@ -350,8 +350,9 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   whole); attached to the test run and written to `SNAPSHOT_DIR` when set
   (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
 
-CI is `.github/workflows/ios-app.yml` (macos-26, Xcode 26.5, iPhone 17 on iOS 26.5): XcodeGen, a
-Simulator build, the tests, and the snapshots as the `snapshots` artifact.
+CI is `.github/workflows/ios-app.yml` (macos-26, Xcode 26.5, iPhone 17 on iOS 26.5): the core's
+replay, XcodeGen, a Simulator build, the tests, and the snapshots as the `snapshots` artifact. It runs
+on develop and pull requests; a feature branch runs it by hand (Actions → ios-app → Run workflow).
 
 ### Running on a device
 

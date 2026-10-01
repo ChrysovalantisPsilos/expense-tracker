@@ -10,14 +10,23 @@
 name: ci
 on:
   push:
+    # Changes only to the iOS app or to docs can't change the web's checks.
+    paths-ignore: ['ios/**', 'docs/**', '**/*.md']
   pull_request:
+    paths-ignore: ['ios/**', 'docs/**', '**/*.md']
 
 permissions:
   contents: read
 
+# A newer push to the same branch cancels the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,6 +53,7 @@ jobs:
   # Deno is pinned so a new release can't add rules under an unchanged repo.
   functions:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       DENO_NO_PACKAGE_JSON: '1'
     steps:
