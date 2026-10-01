@@ -4,9 +4,8 @@ import {
 } from '@chakra-ui/react'
 import { KeyRound } from 'lucide-react'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
-import { validatePassword } from '../../shared/lib/password.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import { hasPassword } from './authMethods.js'
+import { hasPassword, newPasswordError } from './authMethods.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
@@ -26,9 +25,8 @@ export default function PasswordCard({ user }) {
 
   async function submit(e) {
     e.preventDefault()
-    const err = validatePassword(next)
+    const err = newPasswordError(next, confirm)
     if (err) { toast({ title: err, status: 'warning' }); return }
-    if (next !== confirm) { toast({ title: t('password.mismatch'), status: 'warning' }); return }
     setBusy(true)
     try {
       // AuthProvider re-verifies the current password (and so does the server).

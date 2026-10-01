@@ -1,6 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveMode, toggledPref } from '../src/shared/lib/themePref.js'
+import { appearancePrefs, resolveMode, toggledPref } from '../src/shared/lib/themePref.js'
+
+test('the choices Appearance offers, in order', () => {
+  assert.deepEqual(appearancePrefs(), ['light', 'dark', 'system'])
+})
 
 test('system follows the device; light and dark are pinned', () => {
   assert.equal(resolveMode('system', true), 'dark')

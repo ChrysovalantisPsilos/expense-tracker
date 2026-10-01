@@ -10,7 +10,7 @@ import { useOwnedQuery } from './db.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { UserError, dbError } from './errors.js'
 import { savingsIdsOf } from './savings.js'
-import { sortByDisplayName } from './categoryName.js'
+import { categoryUpdateRow, newCategoryRow, sortByDisplayName } from './categoryName.js'
 import { t } from './i18n/i18n.js'
 
 // The columns a category read returns (the page list adds created_at).
@@ -65,11 +65,8 @@ const friendly = (error) => (error.code === '23505'
 
 // `savings` (income only; the server's CHECK refuses it on an expense
 // category): its entries count as saved, not as income.
-export async function createCategory({ name, kind, icon, color, savings = false }) {
-  const { error } = await supabase.from('categories').insert({
-    name: name.trim(), kind, icon: icon ?? null, color: color ?? null,
-    is_savings: kind === 'income' && savings,
-  })
+export async function createCategory(fields) {
+  const { error } = await supabase.from('categories').insert(newCategoryRow(fields))
   if (error) throw friendly(error)
 }
 
@@ -84,8 +81,7 @@ export async function createCategories(userId, rows) {
 
 // patch: any of { name, icon, color, is_archived, is_savings }.
 export async function updateCategory(id, patch) {
-  const { error } = await supabase.from('categories')
-    .update(patch.name != null ? { ...patch, name: patch.name.trim() } : patch).eq('id', id)
+  const { error } = await supabase.from('categories').update(categoryUpdateRow(patch)).eq('id', id)
   if (error) throw friendly(error)
 }
 

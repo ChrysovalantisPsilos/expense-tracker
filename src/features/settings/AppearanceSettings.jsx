@@ -1,16 +1,14 @@
 import { SimpleGrid, Button, Text } from '@chakra-ui/react'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { useAppearance } from '../../shared/lib/appearance.jsx'
+import { appearancePrefs } from '../../shared/lib/themePref.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
-// `value` is also the option's key under appearance.* in the settings namespace.
-const APPEARANCE_OPTIONS = [
-  { value: 'light', icon: Sun },
-  { value: 'dark', icon: Moon },
-  { value: 'system', icon: Monitor },
-]
+// Each choice's icon; the choice is also its key under appearance.* in the
+// settings namespace.
+const ICONS = { light: Sun, dark: Moon, system: Monitor }
 
 export default function AppearanceSettings() {
   const t = useT('settings')
@@ -19,7 +17,8 @@ export default function AppearanceSettings() {
     <SettingsSubPage title={t('appearance.title')} description={t('appearance.description')}>
       <Panel>
         <SimpleGrid columns={3} spacing={{ base: 2, md: 3 }}>
-          {APPEARANCE_OPTIONS.map(({ value, icon: Icon }) => {
+          {appearancePrefs().map((value) => {
+            const Icon = ICONS[value]
             const active = pref === value
             return (
               <Button key={value} onClick={() => setPref(value)} variant="outline"

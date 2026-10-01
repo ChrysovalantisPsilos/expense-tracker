@@ -77,6 +77,13 @@ import * as listHeading from '../src/features/transactions/listHeading.js'
 import * as navMatch from '../src/app/navMatch.js'
 import * as bellMath from '../src/features/notifications/bellMath.js'
 import * as voucherText from '../src/features/vouchers/voucherText.js'
+import * as themePref from '../src/shared/lib/themePref.js'
+import * as contact from '../src/shared/lib/contact.js'
+import * as reauth from '../supabase/functions/_shared/reauth.ts'
+import * as spendingPrefs from '../src/features/settings/spendingPrefs.js'
+import * as authMethods from '../src/features/settings/authMethods.js'
+import * as legal from '../src/features/privacy/legal.js'
+import * as whatsNewMath from '../src/features/whatsnew/whatsNewMath.js'
 
 // The language every wording function answers in. English is the default and
 // always at hand; Greek is bundled here too (the web app fetches it lazily).
@@ -153,6 +160,13 @@ export const modules = {
   navMatch,
   bellMath,
   voucherText,
+  themePref,
+  contact,
+  reauth,
+  spendingPrefs,
+  authMethods,
+  legal,
+  whatsNewMath,
 }
 
 // The paths each namespace comes from, for the guard test and the docs.

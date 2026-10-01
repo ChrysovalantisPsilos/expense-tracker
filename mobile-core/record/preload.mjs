@@ -41,6 +41,24 @@ for (const name of ['getRandomValues', 'randomUUID']) {
   } catch { /* a frozen crypto: its calls go unrecorded anyway (a Promise result) */ }
 }
 
+// Nor can a call that reaches a host API JavaScriptCore doesn't give (the
+// core's replays run with the language's own globals only): base64 and
+// text decoding, URL search params.
+for (const name of ['atob', 'btoa']) {
+  const real = globalThis[name]
+  if (typeof real === 'function') globalThis[name] = (...args) => { taint(); return real(...args) }
+}
+for (const name of ['TextDecoder', 'TextEncoder', 'URLSearchParams']) {
+  const Real = globalThis[name]
+  if (typeof Real !== 'function') continue
+  globalThis[name] = class extends Real {
+    constructor(...args) {
+      taint()
+      super(...args)
+    }
+  }
+}
+
 const dir = process.env.BUDGEER_VECTORS_DIR
 if (dir) {
   process.on('exit', () => {

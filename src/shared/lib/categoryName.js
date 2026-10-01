@@ -29,6 +29,23 @@ export function byDisplayName(a, b) {
 // A copy of `categories` in that order (the category pickers' lists).
 export const sortByDisplayName = (categories) => [...(categories ?? [])].sort(byDisplayName)
 
+// A new category as inserted (categories.js createCategory, and the native
+// app's): the name trimmed as it's stored, no icon or colour as null, and
+// `savings` only on an income category (the server's CHECK refuses
+// is_savings on an expense one).
+export function newCategoryRow({ name, kind, icon, color, savings = false }) {
+  return {
+    name: String(name ?? '').trim(), kind, icon: icon ?? null, color: color ?? null,
+    is_savings: kind === 'income' && savings,
+  }
+}
+
+// A category update as written (any of name, icon, color, is_archived,
+// is_savings): a new name trimmed as it's stored.
+export function categoryUpdateRow(patch) {
+  return patch.name != null ? { ...patch, name: String(patch.name).trim() } : patch
+}
+
 // `categoryId` value for personal expenses with no category — the breakdowns'
 // "Uncategorized" bucket (a group share buckets under its group instead). The
 // server can't filter on "no category", so the client refines it.

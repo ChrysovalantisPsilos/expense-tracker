@@ -8,6 +8,7 @@ import SwiftUI
 struct RootView: View {
     let container: AppContainer
     @State private var signIn = SignInViewModel()
+    @AppStorage(AppAppearance.key) private var appearance = AppAppearance.system
 
     var body: some View {
         let session = container.session
@@ -32,6 +33,8 @@ struct RootView: View {
             }
         }
         .task { await session.start() }
+        // Settings › Appearance: this device's light, dark or the phone's.
+        .onChange(of: appearance, initial: true) { _, pref in AppAppearance.apply(pref) }
         .onChange(of: session.state) { _, state in
             if state == .signedOut { Task { await container.signedOut() } }
         }

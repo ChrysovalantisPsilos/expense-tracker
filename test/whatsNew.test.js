@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  pickRelease, createSeenTracker, ringVariant, releaseDay, releaseDate, releaseText,
+  pickRelease, createSeenTracker, ringVariant, releaseDay, releaseDate, releaseText, whatsNewList,
 } from '../src/features/whatsnew/whatsNewMath.js'
 import { RELEASES } from '../src/features/whatsnew/releases.js'
 import en from '../src/locales/en/index.js'
@@ -246,6 +246,18 @@ test('releaseText: fills in the words and keeps the ids and the shape', () => {
     }],
   })
   assert.equal(releaseText(null, (k) => k), null)
+})
+
+test('whatsNewList: the releases with pages, newest first, dated and worded', () => {
+  const list = whatsNewList()
+  assert.deepEqual(list.map((r) => r.id), RELEASES.filter((r) => r.pages.length > 0).map((r) => r.id))
+  const first = RELEASES[0]
+  assert.equal(list[0].date, releaseDate(first.date))
+  assert.deepEqual(list[0].pages, first.pages.map((p) => ({
+    title: en.whatsnew.releases[first.id][p.id].title, body: en.whatsnew.releases[first.id][p.id].body,
+  })))
+  const sample = [{ id: 'r2', date: '2026-02-03', pages: [] }, { id: 'r1', date: '2026-01-01', pages: [{ id: 'a' }] }]
+  assert.deepEqual(whatsNewList(sample).map((r) => [r.id, r.date]), [['r1', '1 January 2026']])
 })
 
 test('the recent releases: their pages, and the actions and words that matter', () => {

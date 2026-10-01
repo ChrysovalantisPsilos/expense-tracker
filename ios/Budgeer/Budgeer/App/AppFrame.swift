@@ -11,12 +11,27 @@ enum AppRoute: Hashable {
     case budgets
     case recurring
     case insights
+    /// Home's "By category" in full.
     case categories
     case settings
     case language
     case group(String)
     case newGroup
     case notifications
+    // Settings' pages.
+    case account
+    case spending
+    case messages
+    case appearance
+    case aiHelpers
+    case security
+    case privacy
+    case privacyRequest
+    case whatsNew
+    /// Settings › Categories, a category's page, a new one of a kind.
+    case categoryList
+    case category(String)
+    case newCategory(String)
 }
 
 /// What the Add sheet opens on.
@@ -108,8 +123,15 @@ final class AppModels {
     let insights: InsightsModel
     let groups: GroupsModel
     let myGroups: MyGroupsModel
+    // Settings and its pages.
+    let account: AccountModel
+    let preferences: PreferencesModel
+    let security: SecurityModel
+    let privacy: PrivacyModel
+    let categories: CategoriesModel
 
-    init(data: DataLayer, userId: String) {
+    init(data: DataLayer, userId: String, security accountSecurity: AccountSecurity,
+         signOut: @escaping @MainActor () async -> Void) {
         shell = ShellModel(data: data)
         home = HomeViewModel(data: data)
         ledger = LedgerModel(data: data)
@@ -118,6 +140,11 @@ final class AppModels {
         insights = InsightsModel(data: data)
         groups = GroupsModel(data: data, userId: userId)
         myGroups = MyGroupsModel(data: data, userId: userId)
+        account = AccountModel(data: data)
+        preferences = PreferencesModel(data: data)
+        security = SecurityModel(data: data, security: accountSecurity, signOut: signOut)
+        privacy = PrivacyModel(data: data)
+        categories = CategoriesModel(data: data)
     }
 }
 
@@ -152,7 +179,11 @@ struct AppFrame: View {
         }
         .tint(NativeStyle.tint)
         .onAppear {
-            if models == nil { models = AppModels(data: container.data, userId: userId) }
+            if models == nil {
+                let session = container.session
+                models = AppModels(data: container.data, userId: userId, security: container.security,
+                                   signOut: { await session.signOut() })
+            }
         }
         // The account's language: the profile's wins (ProfileLanguage), on
         // sign-in and whenever the profile changes (another device).
@@ -256,10 +287,41 @@ struct AppFrame: View {
         case .categories:
             HomeCategoriesPage(model: models.home)
         case .settings:
-            SettingsView(config: container.config, session: container.session, lock: lock,
-                         name: models.shell.name, email: user.email ?? "", initials: models.shell.initials)
+            SettingsView(config: container.config, session: container.session, lock: lock, account: models.account,
+                         email: user.email ?? "")
+                .liveRefresh(container.live, tables: ["profiles"]) { await models.account.refreshProfile() }
         case .language:
             LanguageView(profiles: container.data.profile)
+        case .account:
+            AccountView(model: models.account, email: user.email ?? "")
+        case .spending:
+            SpendingView(model: models.preferences)
+                .liveRefresh(container.live, tables: ["profiles", "categories"]) { await models.preferences.load() }
+        case .messages:
+            MessagesView(model: models.preferences)
+                .liveRefresh(container.live, tables: ["profiles"]) { await models.preferences.load() }
+        case .appearance:
+            AppearanceView()
+        case .aiHelpers:
+            AiHelpersView(model: models.preferences)
+                .liveRefresh(container.live, tables: ["profiles"]) { await models.preferences.load() }
+        case .security:
+            SecurityView(model: models.security)
+        case .privacy:
+            PrivacyView(model: models.privacy, preferences: models.preferences) {
+                router.tab = .activity
+            }
+        case .privacyRequest:
+            PrivacyRequestView(model: models.privacy)
+        case .whatsNew:
+            WhatsNewView()
+        case .categoryList:
+            CategoriesView(model: models.categories)
+                .liveRefresh(container.live, tables: ["categories"]) { await models.categories.load() }
+        case .category(let id):
+            CategoryEditHost(categories: models.categories, id: id, kind: "expense")
+        case .newCategory(let kind):
+            CategoryEditHost(categories: models.categories, id: nil, kind: kind)
         case .group(let id):
             GroupPageHost(groupId: id, userId: userId, data: container.data, live: container.live,
                           site: container.config.siteURL) {

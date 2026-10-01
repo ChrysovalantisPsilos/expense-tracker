@@ -153,8 +153,11 @@ ios/Budgeer/
                          (sign-in, the legal gate, the frame, the lock over it), AppFrame (the tabs, each tab's
                          stack of pages (AppRoute), the Add sheet, AppRouter), NotificationsView (the bell's page),
                          AppLock + LockView (Face ID), ShellModel (your initials, the bell's feed), LiveRefresh
-    Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView
-    Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables),
+    Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView,
+                         AccountSecurity (Settings › Security's calls: identities, the token's claims, the
+                         password, linking Google)
+    Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables;
+                         +Groups, +Settings: the profile, the payment details, the photo, categories, privacy),
                          QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
                          refetch), FxRates (ECB rates as fx.js), PeriodSource (the period pickers' options)
     Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView (the month pager,
@@ -170,8 +173,14 @@ ios/Budgeer/
                          GroupTimeline + GroupPageView (a group's page, its timeline), BalancesView,
                          GroupExpenseModel + SettleUpModel + GroupForms (the expense sheet and Add's quick group
                          form, Settle up, Members), CommentsModel, MyGroupsModel (Add's "Who's it for?")
-    More/                MoreView (your profile, Money), SettingsView (Profile, Language, the Face ID
-                         lock, Sign out, the build), LanguageView
+    More/                MoreView (your profile, Money, Insights)
+    Settings/            SettingsView (the list, its rows, the demo note), AccountModel + AccountView,
+                         PreferencesModel + PreferencesViews (Monthly spending, Notifications, Appearance, AI
+                         helpers), SecurityModel + SecurityView (+ DeleteAccountSheet), PrivacyModel +
+                         PrivacyView (+ PrivacyRequestView, WhatsNewView), LanguageView, SettingsFigures (the
+                         plain pages' core calls), WebPage (the website's pages in Safari)
+    Categories/          CategoriesModel (+ CategoryEditorModel), CategoriesView (+ DeleteCategorySheet),
+                         CategoryEditView (+ CategoryEditHost)
     Theme/               Theme (the web's colour tokens), NativeStyle (the coral tint, Poppins titles and money
                          figures), NativeAppearance (the bars' title faces), NativeGlass (Liquid Glass on iOS 26,
                          the standard material on iOS 17–18), NativeTabs (the floating tab bar with Add beside
@@ -179,7 +188,7 @@ ios/Budgeer/
                          states, rich text), NativeChrome (the bell and initials, the confetti), NativeSwatch,
                          NativeHaptics, CategoryBadge, BrandMark (+ BrandIntro, the sign-in's wordmark)
     Support/             AppLanguage, ProfileLanguage (the account's language), L10n (the generated strings),
-                         JSONValue, CoreHelpers, CategoryLook, ISODay
+                         AppAppearance (light, dark or the phone's), JSONValue, CoreHelpers, CategoryLook, ISODay
     Resources/Fonts/     Poppins and Manrope, semibold and bold (OFL, static TTFs)
     Resources/Assets.xcassets/  AppIcon: one 1024 px opaque PNG of public/pwa-icon.svg (the apple-touch-icon art)
     Resources/Icons.xcassets/   the web's Lucide category icons as template SVGs (npm run ios:icons; committed)
@@ -218,7 +227,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   standard material. Every tab is a stack of pages under a large title, with
   the bell (its unread count; the notifications as a page pushed on the
   tab you're on, each with when it came, the new ones marked) and your
-  initials (Settings) top right. The appearance follows the system.
+  initials (Settings) top right. The appearance follows the phone unless
+  Settings › Appearance picks light or dark.
 - **Add / Edit an entry** (Add; a row in Activity; a rule in Recurring), a
   sheet: the amount first, on a keypad, the category chips and the day; pull
   it up for the rest, in the web's words: Type it when the AI switch is on
@@ -278,13 +288,62 @@ a core call (the web's function); Swift reads, lays out and draws.
   the realtime channel. Not yet: changing an existing group's photo, the
   PDF statement, joining from an invite link, the payment-details ask
   on Settle up.
-- **More**: your profile (to Settings), and Money: Budgets, Recurring and
-  Insights. The web's Savings, Plan, Meal vouchers, Salary and
-  Categories pages are not built yet and are not offered.
-- **Settings**: Profile, Language, the **Face ID lock** (off by default;
-  turning it on asks for Face ID or the passcode first; once on, Budgeer
-  asks when it opens and after a minute away, and the app switcher shows the
-  lock, not the money), Sign out, the version.
+- **More**: your profile (to Settings), Money (Budgets, Recurring,
+  Categories) and Insights. The web's Savings, Plan, Meal vouchers and
+  Salary pages are not built yet and are not offered.
+- **Settings** (from More or your initials), as iOS's own Settings, the
+  web's groups in its order, every page pushed and edited in place
+  (a sheet only to confirm deleting):
+  - **Account**: your picture (Change photo, uploaded as the web's
+    `uploadAvatar`; not on the shared demo account), name and default
+    currency (fixed once entries depend on it, `base_currency_locked`, with
+    the web's note), Save; then Getting paid (IBAN, Revolut tag, PayPal.me
+    name, tidied by `payLinks.paymentDetailsToSave`), Save.
+  - **Categories**: Expenses or Income, your categories (active A–Z, then
+    archived, dimmed; "New" on the new default ones; "Savings, not income"),
+    swipe to archive or unarchive or delete (after choosing where its
+    entries go, `delete_category`), + to add. A category's page: the badge
+    as it will look, the name (`categoryNameError`), the colour and the
+    icon (`categoryStyle.categoryPicker`, the web's Lucide icons), "Counts
+    as savings" on an income one, Archive and Delete; Save writes what
+    changed (`categoryPatch`) or the new row (`newCategoryRow`). Not here:
+    a category's entries and its budget (the web's category page; budgets
+    are on Budgets), reordering (the web has none).
+  - **Monthly spending**: yearly subscriptions in monthly spending, the
+    salary shift with its day and category (`spendingPrefs`).
+  - **Notifications**: the email and weekly-summary messages (off on the
+    demo account). The web's push switch is not here: it is about the
+    browsers allowed on the website, and this app has no push yet (that
+    needs APNs and a paid developer account).
+  - **Appearance**: light, dark or the phone's, on this device (as the
+    web keeps it per browser). **Language** and the **Face ID lock** (off
+    by default; turning it on asks for Face ID or the passcode first; once
+    on, Budgeer asks when it opens and after a minute away, and the app
+    switcher shows the lock, not the money).
+  - **AI helpers**: the four switches, what each sends, the privacy note;
+    the demo note on the demo account.
+  - **Security**: the sign-in methods (email & password, Google; passkeys
+    stay the website's, so they are not listed, as on a browser without
+    them), Connect Google (the system's web sheet, then the session) and
+    Disconnect (never the last way in), Set a password (Google-only) or
+    Change password (the current one checked, then GoTrue's PUT /user with
+    it), and Delete account (the password, or a sign-in in the last ten
+    minutes and DELETE typed; the delete-account edge function). Connecting,
+    disconnecting and deleting without a password need a fresh sign-in
+    (`reauth.isRecentClaims`), with Log in again. The demo note on the demo
+    account.
+  - **Privacy**: each GDPR right with its way here (Download my data as
+    the web's JSON file, then Share; Edit profile; your transactions in
+    Activity; Delete account; Send a request, its own page; email), the
+    message switches as consent, the consent history.
+  - The **Privacy Notice**, **Terms of Use**, **Help & FAQ** and the
+    **status page** open in Safari inside the app; **What's new** lists
+    every release's pages; **Contact support** opens Mail. Then Sign out
+    and the version.
+  - Not yet, and not offered: Meal vouchers' setup (with the vouchers
+    page), Import rules (they only act on an import), Your data's backup
+    and restore (with import), the tour and the live/test switch (the
+    website's own).
 
 ### Strings
 
@@ -344,7 +403,9 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   new group with its picture, invites and link, a group's page and its
   actions, invites, the expense form, settle up, comments, Who's it for's
   order), `ShellModelTests` (the bell's feed, opening it), `AppLockTests` (off by default, the
-  owner's check, locked on launch and after the grace, off unlocks).
+  owner's check, locked on launch and after the grace, off unlocks), `SettingsModelTests`
+  (Account, the switches, Security over `FakeSecurity`, Privacy), `CategoriesModelTests` (the
+  list, archive, delete with a move, adding and editing).
 - Parity: each screen's fixture inputs through its `…Figures` (every step a
   core call) must give what the web's functions wrote into
   `Fixtures/{home,ledger,budgets,recurring,insights,groups}.json`, in
@@ -363,8 +424,11 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   comes up, Edit pulled up, Split with a group), Activity, Groups (the
   tab, New group empty, filled and made,
   a group's page, settled with its confetti caught mid-fall, Balances, an
-  expense split by amounts, Settle up, Members), More, Settings, the
-  notifications, Budgets,
+  expense split by amounts, Settle up, Members), More, Settings and its
+  pages (Account, Monthly spending, Notifications, Appearance, AI helpers,
+  What's new, Security with Delete account and a Google-only account,
+  Privacy and its request), Categories (both kinds, a category's page, a
+  new one with a name taken, deleting), the notifications, Budgets,
   Recurring and Insights, each light, dark and Greek, with the fixtures'
   data (`<name>-<variant>.png`, and `-long` for the pages worth seeing
   whole); attached to the test run and written to `SNAPSHOT_DIR` when set

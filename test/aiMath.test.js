@@ -2,7 +2,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  AI_SWITCHES, aiErrorKey, applySuggestions, categoryLabels, fillPlan, helpersOn, isSuggested, monthStartOf,
+  AI_SWITCHES, aiSwitchIds, aiSwitchPatch, aiErrorKey, applySuggestions, categoryLabels, fillPlan, helpersOn, isSuggested, monthStartOf,
   overviewWords, settlePendingCategory, shouldAutoWrite, suggestionRequest, summaryState, summaryTitle,
 } from '../src/features/ai/aiMath.js'
 import { MERCHANTS_MAX } from '../supabase/functions/_shared/aiHelper.ts'
@@ -16,6 +16,12 @@ test('helpers: each one on only by its own switch (the demo too); none before th
   assert.equal(helpersOn({ ai_plan_whatif: 'yes' }).planWhatIf, false)
   // Every switch has its words in Settings.
   for (const id of Object.keys(AI_SWITCHES)) assert.ok(en.settings[id]?.label && en.settings[id]?.more, id)
+})
+
+test('the switches in order, and the profile update for one', () => {
+  assert.deepEqual(aiSwitchIds(), ['quickEntry', 'importCategories', 'monthSummary', 'planWhatIf'])
+  assert.deepEqual(aiSwitchPatch('monthSummary', false), { ai_month_summary: false })
+  assert.deepEqual(aiSwitchPatch('planWhatIf', true), { ai_plan_whatif: true })
 })
 
 test('month start and category labels', () => {

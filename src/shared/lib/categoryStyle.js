@@ -135,6 +135,21 @@ export function categoryTile(colorKey) {
   return hex ? { fg: hex, bg: `${hex}29` } : null
 }
 
+// What a category's icon and colour are picked from (the web's
+// CategoryFields and the native app's category page), in the app's
+// language: the icon picker's labelled groups, each icon with its name, then
+// the colour swatches, each with its hex and name.
+export function categoryPicker() {
+  return {
+    icons: CATEGORY_ICON_GROUPS.map((g) => ({
+      label: g.label, keys: g.keys.map((key) => ({ key, label: CATEGORY_ICON_LABELS[key] })),
+    })),
+    colours: CATEGORY_COLOR_KEYS.map((key) => ({
+      key, hex: CATEGORY_COLORS[key], label: t(`categories:fields.colours.${key}`),
+    })),
+  }
+}
+
 // How a category's badge looks (CategoryBadge, and the native app's): the
 // icon key it shows, the tone of a plain tile's icon (income positive, else
 // accent), and its tint when the user picked a colour (null: the sand tile).

@@ -10,7 +10,7 @@ import { userMessage } from '../../shared/lib/errors.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import PrefRow from '../settings/PrefRow.jsx'
 import DemoNotice from '../settings/DemoNotice.jsx'
-import { AI_SWITCHES } from './aiMath.js'
+import { aiSwitchIds } from './aiMath.js'
 import { saveAiHelper, useAiHelpers } from './ai.js'
 
 const drop = (obj, ids) => Object.fromEntries(Object.entries(obj).filter(([id]) => !ids.includes(id)))
@@ -56,7 +56,7 @@ export default function AiSettings() {
       </Panel>
       <Panel>
         <Stack spacing={4} divider={<Divider />}>
-          {Object.keys(AI_SWITCHES).map((id) => (
+          {aiSwitchIds().map((id) => (
             <PrefRow key={id} id={`ai-${id}`} label={t(`settings.${id}.label`)} hint={t(`settings.${id}.hint`)}
               more={t(`settings.${id}.more`)} isChecked={on[id]}
               onChange={(e) => flip(id, e.target.checked)} />

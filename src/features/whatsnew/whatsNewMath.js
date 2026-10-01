@@ -1,6 +1,7 @@
 import { RETIRED_STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { shortMonth } from '../../shared/lib/dates.js'
-import { getLanguage, intlLocale } from '../../shared/lib/i18n/i18n.js'
+import { getLanguage, intlLocale, t } from '../../shared/lib/i18n/i18n.js'
+import { RELEASES } from './releases.js'
 
 // Which "What's new" release to show, and what to remember (per account, in
 // profiles.whats_new_seen, 0087: the id of the newest release seen).
@@ -49,6 +50,17 @@ export function releaseText(release, t) {
       }
     }),
   }
+}
+
+// Settings → What's new (the web's and the app's): every release with pages,
+// newest first, its day as Settings shows it and each page's title and body
+// in the app's language.
+export function whatsNewList(releases = RELEASES) {
+  return releases.filter((r) => r.pages.length > 0).map((r) => ({
+    id: r.id,
+    date: releaseDate(r.date),
+    pages: releaseText(r, (key) => t(`whatsnew:${key}`)).pages.map((p) => ({ title: p.title, body: p.body })),
+  }))
 }
 
 // Fixed English month names: Intl's short months differ by ICU version ("Sept").

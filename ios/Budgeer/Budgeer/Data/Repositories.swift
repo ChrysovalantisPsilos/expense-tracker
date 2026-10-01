@@ -1,8 +1,10 @@
 // The app's data access, one protocol per area, each after the web's data
 // module of the same area and calling the same tables and RPCs:
-//   ProfileRepository       shared/lib/profile.js, vouchers.js (the setup),
-//                           notifications.js (the bell)
+//   ProfileRepository       shared/lib/profile.js (Settings' profile, the
+//                           payment details, the photo), vouchers.js (the
+//                           setup), notifications.js (the bell)
 //   CategoriesRepository    shared/lib/categories.js
+//   PrivacyRepository       features/privacy/privacyData.js, profile.js deleteMyAccount
 //   TransactionsRepository  shared/lib/transactions.js
 //   RecurringRepository     features/recurring/recurring.js
 //   BudgetsRepository       features/budgets/budgets.js
@@ -51,6 +53,18 @@ protocol ProfileRepository: Sendable {
     func notifications() async throws -> JSONValue
     /// markAllRead: every unread notification read now.
     func markNotificationsRead() async throws
+    /// updateProfile: only the columns in `fields` change (the name, the
+    /// currency, Monthly spending, the message and helper switches).
+    func updateProfile(_ fields: JSONValue) async throws
+    /// baseCurrencyLocked: true once entries depend on the currency (0078).
+    func baseCurrencyLocked() async throws -> Bool
+    /// getMyPaymentInfo: { payment_iban, payment_revolut, payment_paypal }.
+    func myPaymentInfo() async throws -> JSONValue
+    /// savePaymentInfo with payLinks.paymentDetailsToSave's { iban, revolut, paypal }.
+    func savePaymentInfo(_ details: JSONValue) async throws
+    /// uploadAvatar: the picture into avatars/<uid>/avatar.<ext>, then the
+    /// profile's avatar_url (the public URL, cache-busted): that URL.
+    func uploadAvatar(data: Data, contentType: String, ext: String) async throws -> String
 }
 
 protocol CategoriesRepository: Sendable {
@@ -58,6 +72,29 @@ protocol CategoriesRepository: Sendable {
     func categories(kind: String?) async throws -> JSONValue
     /// The savings categories, archived ones included (id, kind, is_savings).
     func savingsCategories() async throws -> JSONValue
+    /// useAllCategories: every category, archived ones included, with created_at.
+    func allCategories() async throws -> JSONValue
+    /// createCategory with categoryName.newCategoryRow's row.
+    func createCategory(_ row: JSONValue) async throws
+    /// updateCategory with categoryName.categoryUpdateRow's fields.
+    func updateCategory(id: String, fields: JSONValue) async throws
+    /// countCategoryUse: how many of the user's transactions use it.
+    func countCategoryUse(id: String) async throws -> Int
+    /// deleteCategory (delete_category): its entries moved to `moveTo` first
+    /// (nil: left uncategorised); how many moved.
+    func deleteCategory(id: String, moveTo: String?) async throws -> Int
+}
+
+protocol PrivacyRepository: Sendable {
+    /// listMyConsents: the consent and preference history, newest first.
+    func consents() async throws -> JSONValue
+    /// export_my_data: everything Budgeer holds about the user, decrypted.
+    func exportMyData() async throws -> JSONValue
+    /// sendPrivacyRequest: legal.privacyRequestToSend's { kind, message } to the privacy inbox.
+    func sendPrivacyRequest(_ request: JSONValue) async throws
+    /// deleteMyAccount: the delete-account edge function (the password for a
+    /// password account, which the server checks again).
+    func deleteAccount(password: String?) async throws
 }
 
 protocol TransactionsRepository: Sendable {
@@ -171,10 +208,11 @@ struct DataLayer: Sendable {
     let fx: FxRepository
     let ai: AiRepository
     let groups: GroupsRepository
+    let privacy: PrivacyRepository
 
     /// One object that is every repository (the Supabase store, a test's fake).
     init<Store: ProfileRepository & CategoriesRepository & TransactionsRepository & RecurringRepository
-            & BudgetsRepository & FxRepository & AiRepository & GroupsRepository>(_ store: Store) {
+            & BudgetsRepository & FxRepository & AiRepository & GroupsRepository & PrivacyRepository>(_ store: Store) {
         profile = store
         categories = store
         transactions = store
@@ -183,6 +221,7 @@ struct DataLayer: Sendable {
         fx = store
         ai = store
         groups = store
+        privacy = store
     }
 }
 

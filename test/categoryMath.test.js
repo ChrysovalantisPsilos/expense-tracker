@@ -3,13 +3,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   CATEGORY_NAME_MAX, categoryNameError, sortCategories, moveTargets, sameKindOthers,
-  categoryPatch, categoryPeriod, NEW_DEFAULT_CATEGORIES, NEW_TAG_MS, isNewCategory,
+  categoryPatch, categoryPeriod, NEW_DEFAULT_CATEGORIES, NEW_TAG_MS, isNewCategory, categoryDraft,
 } from '../src/features/categories/categoryMath.js'
-import { NO_CATEGORY, presetCategoryId } from '../src/shared/lib/categoryName.js'
+import { NO_CATEGORY, presetCategoryId, newCategoryRow, categoryUpdateRow } from '../src/shared/lib/categoryName.js'
 import { latestSql } from './migrations.js'
 import {
   CATEGORY_ICON_KEYS, CATEGORY_ICON_LABELS, CATEGORY_ICON_GROUPS, CATEGORY_COLOR_KEYS,
-  CATEGORY_COLORS, categoryTile, categoryIconKey, categoryLook,
+  CATEGORY_COLORS, categoryTile, categoryIconKey, categoryLook, categoryPicker,
 } from '../src/shared/lib/categoryStyle.js'
 
 test('categoryNameError mirrors the server rule: 1–60 chars trimmed, no control chars', () => {
@@ -166,6 +166,32 @@ test('icon picker: every key has a label and sits in exactly one group', () => {
   assert.equal(new Set(grouped).size, grouped.length)
   assert.deepEqual(Object.keys(CATEGORY_ICON_LABELS).sort(), [...CATEGORY_ICON_KEYS].sort())
   assert.equal(new Set(CATEGORY_ICON_KEYS).size, CATEGORY_ICON_KEYS.length)
+})
+
+test('categoryPicker: the icon groups with each icon named, then the colours with their hex', () => {
+  const picker = categoryPicker()
+  assert.deepEqual(picker.icons.map((g) => g.label), ['Everyday', 'Home & bills', 'Getting around & leisure', 'Money & work'])
+  assert.deepEqual(picker.icons.flatMap((g) => g.keys.map((k) => k.key)), CATEGORY_ICON_GROUPS.flatMap((g) => g.keys))
+  assert.ok(picker.icons.every((g) => g.keys.every((k) => k.label === CATEGORY_ICON_LABELS[k.key])))
+  assert.deepEqual(picker.colours.map((c) => c.key), CATEGORY_COLOR_KEYS)
+  assert.deepEqual(picker.colours[0], { key: 'coral', hex: CATEGORY_COLORS.coral, label: 'coral' })
+})
+
+test('categoryDraft: where the add/edit form starts', () => {
+  assert.deepEqual(categoryDraft(null), { name: '', icon: 'other', color: null, savings: false })
+  assert.deepEqual(categoryDraft({ id: 'a', name: 'Taxi', icon: null, color: 'teal', is_savings: false }),
+    { name: 'Taxi', icon: 'taxi', color: 'teal', savings: false })
+  assert.deepEqual(categoryDraft({ id: 'b', name: 'Savings', default_key: 'savings', kind: 'income', icon: 'savings', is_savings: true }),
+    { name: 'Savings', icon: 'savings', color: null, savings: true })
+})
+
+test('newCategoryRow / categoryUpdateRow: the name trimmed, savings only on income', () => {
+  assert.deepEqual(newCategoryRow({ name: '  Pets ', kind: 'expense', icon: 'gifts', color: null, savings: true }),
+    { name: 'Pets', kind: 'expense', icon: 'gifts', color: null, is_savings: false })
+  assert.deepEqual(newCategoryRow({ name: 'Pot', kind: 'income', savings: true }),
+    { name: 'Pot', kind: 'income', icon: null, color: null, is_savings: true })
+  assert.deepEqual(categoryUpdateRow({ name: ' Food ', color: 'teal' }), { name: 'Food', color: 'teal' })
+  assert.deepEqual(categoryUpdateRow({ is_archived: true }), { is_archived: true })
 })
 
 test('categoryIconKey: a stored key wins, else the name suggests one, else other', () => {

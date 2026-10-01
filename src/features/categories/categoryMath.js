@@ -8,6 +8,7 @@ import { paidInWindow, spendRows } from '../../shared/lib/spread.js'
 import { toBaseMinor } from '../../shared/lib/currency.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 import { NO_CATEGORY, byDisplayName, categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { categoryIconKey } from '../../shared/lib/categoryStyle.js'
 
 export const CATEGORY_NAME_MAX = 60
 
@@ -50,6 +51,19 @@ export function moveTargets(categories, deleting) {
 // the same kind's (archived included), without the one being edited.
 export function sameKindOthers(categories, category) {
   return (categories ?? []).filter((c) => c.kind === category?.kind && c.id !== category?.id)
+}
+
+// The add/edit form's starting { name, icon, color, savings } for `category`
+// (null for a new one): a default category starts on its name in the app's
+// language, and a legacy/unknown stored icon on the icon its badge shows, so
+// saving keeps its look; a new category starts on 'other'.
+export function categoryDraft(category) {
+  return {
+    name: categoryDisplayName(category),
+    icon: category?.id ? categoryIconKey(category) : 'other',
+    color: category?.color ?? null,
+    savings: !!category?.is_savings,
+  }
 }
 
 // The update an edit form's { name, icon, color, savings } makes to

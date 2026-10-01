@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  REAUTH_WINDOW_SECONDS, REAUTH_REQUIRED, reauthMessage, jwtClaims, signedInAt, isRecentSignIn,
+  REAUTH_WINDOW_SECONDS, REAUTH_REQUIRED, reauthMessage, jwtClaims, signedInAt, isRecentSignIn, isRecentClaims,
 } from '../supabase/functions/_shared/reauth.ts'
 
 const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url')
@@ -43,6 +43,15 @@ test('isRecentSignIn: within the window only — a refreshed token of an old sig
   assert.equal(isRecentSignIn(null, NOW), false)
   assert.equal(isRecentSignIn('garbage', NOW), false)
   assert.equal(isRecentSignIn(jwt({ amr: [{ method: 'password', timestamp: s(-10 * MIN) }] }), NOW), false)
+})
+
+test('isRecentClaims: the same rule over claims already read (the native app)', () => {
+  assert.equal(isRecentClaims({ iat: s(0), amr: [{ method: 'oauth', timestamp: s(2 * MIN) }] }, NOW), true)
+  assert.equal(isRecentClaims({ iat: s(MIN), amr: [{ method: 'oauth', timestamp: s(3 * 60 * MIN) }] }, NOW), false)
+  assert.equal(isRecentClaims({ iat: s(5 * MIN) }, NOW), true)
+  assert.equal(isRecentClaims({ iat: s(-10 * MIN) }, NOW), false)
+  assert.equal(isRecentClaims(null, NOW), false)
+  assert.equal(isRecentClaims({ iat: s(5 * MIN) }, NOW, 60), false)
 })
 
 test('the reauth error code and copy', () => {

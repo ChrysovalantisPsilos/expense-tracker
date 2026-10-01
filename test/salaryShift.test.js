@@ -15,7 +15,7 @@ import { categoryPeriod } from '../src/features/categories/categoryMath.js'
 import { expectedInWindow } from '../src/features/recurring/recurringMath.js'
 import { buildStatement, salaryNote } from '../supabase/functions/generate-report/statementMath.ts'
 import {
-  SALARY_SHIFT_DAYS, SALARY_SHIFT_DEFAULT_DAY, defaultSalaryCategoryId, salaryShiftPatch,
+  SALARY_SHIFT_DAYS, SALARY_SHIFT_DEFAULT_DAY, defaultSalaryCategoryId, salaryShiftPatch, salaryShiftView,
 } from '../src/features/settings/spendingPrefs.js'
 
 const SAL = 'cat-salary'
@@ -248,6 +248,23 @@ test('settings: the day picker, the default category and the patch', () => {
     { salary_shift_from_day: 28, salary_category_id: 'f' })
   assert.deepEqual(salaryShiftPatch(false, { fromDay: 25, categoryId: 's', categories: cats }),
     { salary_shift_from_day: null })
+})
+
+test('salaryShiftView: held off without an income category, the shorter-months note past the 28th', () => {
+  const hint = 'settings:spending.salary.hint'
+  const days = SALARY_SHIFT_DAYS
+  assert.deepEqual(salaryShiftView({ fromDay: null, incomeCount: 2 }),
+    { on: false, disabled: false, hint, more: true, shortMonths: false, days })
+  assert.deepEqual(salaryShiftView({ fromDay: null, incomeCount: 0 }),
+    { on: false, disabled: true, hint: 'settings:spending.salary.needsIncome', more: false, shortMonths: false, days })
+  // Still reading the categories: not held off yet.
+  assert.deepEqual(salaryShiftView({ fromDay: null, incomeCount: 0, loading: true }),
+    { on: false, disabled: false, hint, more: true, shortMonths: false, days })
+  // On stays switchable off, even with no income category left.
+  assert.deepEqual(salaryShiftView({ fromDay: 25, incomeCount: 0 }),
+    { on: true, disabled: false, hint, more: true, shortMonths: false, days })
+  assert.equal(salaryShiftView({ fromDay: 28, incomeCount: 1 }).shortMonths, false)
+  assert.equal(salaryShiftView({ fromDay: 29, incomeCount: 1 }).shortMonths, true)
 })
 
 test('countedInWindow: a late-month salary is listed in the month it counts for', () => {

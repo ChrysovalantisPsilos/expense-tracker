@@ -10,7 +10,7 @@ import PrefRow from './PrefRow.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import { useCategories } from '../../shared/lib/categories.js'
-import { SALARY_SHIFT_DAYS, salaryShiftPatch } from './spendingPrefs.js'
+import { salaryShiftPatch, salaryShiftView } from './spendingPrefs.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 
@@ -82,8 +82,8 @@ function SalaryShiftPref({ profile, save }) {
   }
   if (pending && Object.entries(pending).every(([k, v]) => live[k] === v)) setPending(null)
   const shown = { ...live, ...pending }
-  const on = shown.salary_shift_from_day != null
-  const noIncome = !loading && categories.length === 0
+  const view = salaryShiftView({ fromDay: shown.salary_shift_from_day, incomeCount: categories.length, loading })
+  const { on } = view
 
   function change(patch) {
     setPending((p) => ({ ...p, ...patch }))
@@ -93,9 +93,8 @@ function SalaryShiftPref({ profile, save }) {
   return (
     <Stack spacing={3}>
       <PrefRow id="pref-salary-shift" label={t('spending.salary.label')}
-        hint={noIncome && !on ? t('spending.salary.needsIncome') : t('spending.salary.hint')}
-        more={noIncome && !on ? undefined : t('spending.salary.more')}
-        isChecked={on} isDisabled={noIncome && !on}
+        hint={t(view.hint)} more={view.more ? t('spending.salary.more') : undefined}
+        isChecked={on} isDisabled={view.disabled}
         onChange={(e) => change(salaryShiftPatch(e.target.checked, {
           fromDay: shown.salary_shift_from_day, categoryId: shown.salary_category_id, categories,
         }))} />
@@ -107,11 +106,11 @@ function SalaryShiftPref({ profile, save }) {
               <Select id="pref-salary-day" size="sm" w="76px" borderRadius="lg"
                 value={shown.salary_shift_from_day}
                 onChange={(e) => change({ salary_shift_from_day: Number(e.target.value) })}>
-                {SALARY_SHIFT_DAYS.map((d) => <option key={d} value={d}>{d}</option>)}
+                {view.days.map((d) => <option key={d} value={d}>{d}</option>)}
               </Select>
               <Text fontSize="sm" color="text.muted">{t('spending.salary.toEnd')}</Text>
             </HStack>
-            {shown.salary_shift_from_day > 28 && (
+            {view.shortMonths && (
               <Text fontSize="xs" color="text.muted" mt={1}>{t('spending.salary.shortMonths')}</Text>
             )}
           </FormControl>

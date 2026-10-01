@@ -4,7 +4,7 @@ import {
 } from '@chakra-ui/react'
 import { Landmark } from 'lucide-react'
 import { getMyPaymentInfo, savePaymentInfo } from '../../shared/lib/profile.js'
-import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
+import { paymentDetailsToSave } from '../../shared/lib/payLinks.js'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
@@ -38,18 +38,14 @@ export default function PaymentCard({ user }) {
 
   async function save(e) {
     e.preventDefault()
-    const paypalName = paypal.trim() ? normalisePaypalHandle(paypal) : null
-    if (paypal.trim() && !paypalName) {
-      toast({ title: t('payment.paypalInvalid'), status: 'warning' })
+    const details = paymentDetailsToSave({ iban, revolut, paypal })
+    if (details.error) {
+      toast({ title: t(details.error), status: 'warning' })
       return
     }
     await run(async () => {
-      await savePaymentInfo({
-        iban: iban.replace(/\s+/g, '').toUpperCase() || null,
-        revolut: revolut.replace(/^@/, '').trim() || null,
-        paypal: paypalName,
-      })
-      setPaypal(paypalName ?? '')
+      await savePaymentInfo(details)
+      setPaypal(details.paypal ?? '')
       toast({ title: t('payment.saved'), status: 'success' })
     })
   }

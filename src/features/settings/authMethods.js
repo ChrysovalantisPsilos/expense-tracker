@@ -2,6 +2,7 @@
 // the auth user / API responses they already have. Labels and messages come
 // in the app's language (settings:signIn.*).
 import { userMessage } from '../../shared/lib/errors.js'
+import { validatePassword } from '../../shared/lib/password.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 
 // True when the account has an email/password identity (so it has a password
@@ -70,6 +71,49 @@ export function googleDisconnectBlock({ user, identities }) {
   if (!identities.some((i) => i.provider === 'google')) return t('settings:signIn.block.notConnected')
   if (identities.length >= 2) return null
   return hasPassword(user) ? t('settings:signIn.block.createdWithGoogle') : t('settings:signIn.block.onlyWay')
+}
+
+// Why a new password can't be set, or null when it can: the sign-up rules
+// (validatePassword), then whether the two fields match. `mismatchKey` names
+// the words for a mismatch (Change password and Set a password each have
+// their own).
+export function newPasswordError(next, confirm, mismatchKey = 'settings:password.mismatch') {
+  return validatePassword(String(next ?? '')) ?? (next === confirm ? null : t(mismatchKey))
+}
+
+// What a user without a password types to confirm deleting the account
+// (checked as typed, in every language).
+export const DELETE_CONFIRM_WORD = 'DELETE'
+
+// The delete-account confirmation for `user` with `value` typed: whether it
+// asks for the password (an email identity; the stricter path when unsure)
+// or, without one, for a recent sign-in (the server checks it too,
+// _shared/reauth.ts) and the typed word; whether a fresh sign-in is needed
+// first; whether Delete can be pressed; and the field's label and
+// placeholder.
+export function deleteAccountCheck({ user, recent, value }) {
+  const password = hasPasswordIdentity(user)
+  const needsReauth = !password && !recent
+  const typed = String(value ?? '')
+  return {
+    password,
+    needsReauth,
+    canSubmit: password ? typed.length > 0 : !needsReauth && typed.trim().toUpperCase() === DELETE_CONFIRM_WORD,
+    label: t(password ? 'settings:deleteAccount.passwordLabel' : 'settings:deleteAccount.typeLabel'),
+    placeholder: password ? t('settings:deleteAccount.passwordPlaceholder') : DELETE_CONFIRM_WORD,
+  }
+}
+
+// What deletion erases and what stays, in the app's language: the same
+// lists as the deletion confirmation email (DELETION_SCOPE,
+// _shared/accountDeletion.ts; settings:deleteAccount.scope).
+const SCOPE = {
+  deleted: ['account', 'records', 'notifications', 'groups'],
+  stays: ['shared'],
+}
+export function deletionScope() {
+  return Object.fromEntries(Object.entries(SCOPE)
+    .map(([list, ids]) => [list, ids.map((id) => t(`settings:deleteAccount.scope.${list}.${id}`))]))
 }
 
 // A user-facing message for a failed link, from supabase-js' error or the
