@@ -38,10 +38,6 @@ export default {
     group: {
       commentOn: 'Comment on {{name}}',
     },
-    // Savings: deleting a goal asks first (the web deletes at once).
-    savings: {
-      deleteGoal: 'Delete the goal “{{name}}”?',
-    },
     // A group's Balances page.
     balances: {
       everyone: 'Everyone',

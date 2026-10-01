@@ -303,8 +303,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   edit the rule), the goals (a ring in the logo's amber and coral, "€X of
   €Y", the pace or status, "+ / −" a tenth of the target saved in place,
   tap for the goal's page: name, target, saved so far, an optional target
-  date, Save, Delete; swipe to delete; a goal's delete asks first, which the
-  web doesn't), and the history (All / In / Out, month by month with each
+  date, Save, Delete; swipe to delete; a goal's delete asks first, as on the
+  web), and the history (All / In / Out, month by month with each
   month's net, tap to edit, swipe to delete after the web's question, Show
   older). Before anything was saved: the web's explainer, Add to savings,
   Set a goal, How savings work and Make it automatic (Add with Repeat on).

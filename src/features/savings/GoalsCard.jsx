@@ -1,9 +1,11 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Box, Button, Flex, HStack, Stack, Text, useToast } from '@chakra-ui/react'
 import { Pencil, Plus, Target, Trash2 } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import RowActions from '../../shared/ui/RowActions.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
+import ConfirmDialog from '../../shared/ui/ConfirmDialog.jsx'
 import { SkeletonBlock, SkeletonRegion } from '../../shared/ui/Skeleton.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { saveGoal, deleteGoal } from './savings.js'
@@ -47,12 +49,18 @@ export default function GoalsCard({ goals, loading, error, reload }) {
   const toast = useToast()
   const navigate = useNavigate()
   const t = useT('savings')
+  // The goal waiting for "Delete the goal …?" (deleting asks first).
+  const [removing, setRemoving] = useState(null)
+  const [busy, setBusy] = useState(false)
 
-  async function remove(g) {
-    try { await deleteGoal(g.id); reload() }
+  async function remove() {
+    setBusy(true)
+    try { await deleteGoal(removing.id); reload() }
     catch (e) {
       console.error('[savings] goal delete failed:', e)
       toast({ title: userMessage(e, t('goals.deleteFailed')), status: 'error' })
+    } finally {
+      setBusy(false); setRemoving(null)
     }
   }
   async function addTo(g, deltaMinor) {
@@ -103,7 +111,7 @@ export default function GoalsCard({ goals, loading, error, reload }) {
                   </Box>
                   <RowActions actions={[
                     { label: t('common:actions.edit'), icon: Pencil, onClick: () => navigate(`/savings/goals/${g.id}`, { state: { goal: g } }) },
-                    { label: t('common:actions.delete'), icon: Trash2, onClick: () => remove(g), danger: true },
+                    { label: t('common:actions.delete'), icon: Trash2, onClick: () => setRemoving(g), danger: true },
                   ]} />
                 </HStack>
                 {parts.plus && (
@@ -119,6 +127,8 @@ export default function GoalsCard({ goals, loading, error, reload }) {
           })}
         </Stack>
       )}
+      <ConfirmDialog isOpen={!!removing} onClose={() => setRemoving(null)} onConfirm={remove} busy={busy} danger
+        title={t('goals.deleteQuestion', { name: removing?.name ?? '' })} confirmLabel={t('common:actions.delete')} />
     </Panel>
   )
 }

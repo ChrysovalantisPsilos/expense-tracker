@@ -79,7 +79,7 @@ struct GoalEditView: View {
         .navigationTitle(language.t(model.isNew ? "savings:goal.titleNew" : "savings:goal.titleEdit"))
         .task { await model.load() }
         .sensoryFeedback(.success, trigger: done)
-        .confirmationDialog(language.t("ios:native.savings.deleteGoal", ["name": .string(model.name)]),
+        .confirmationDialog(language.t("savings:goals.deleteQuestion", ["name": .string(model.name)]),
                             isPresented: $confirming, titleVisibility: .visible) {
             Button(language.t("common:actions.delete"), role: .destructive) {
                 Task { if await model.delete() { dismiss() } }

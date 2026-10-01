@@ -177,7 +177,7 @@ final class SavingsModel {
 
     /// The question before a goal goes.
     func deleteGoalQuestion(id: String) -> String {
-        core.text("ios:native.savings.deleteGoal", ["name": .string(goal(id: id)?["name"]?.stringValue ?? "")])
+        core.text("savings:goals.deleteQuestion", ["name": .string(goal(id: id)?["name"]?.stringValue ?? "")])
     }
 
     private func say(_ key: String, warning: Bool = false) {
