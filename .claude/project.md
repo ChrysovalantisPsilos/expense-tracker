@@ -271,6 +271,12 @@ npm run dev       # Vite
   pushes cancel older runs. Helpers commit locally and push checked batches,
   never WIP. A commit that can't change a check (notes, workflow-only edits
   already checked) may carry `[skip ci]`.
+- **Feature parity (owner rule, 1 Oct 2026):** every feature the website
+  offers must also be in the iOS app, and the other way round, before a
+  release; no discrepancies. App-only extras that are platform features
+  (widgets, Siri, Face ID lock, push on iOS) are fine. A release to PROD
+  ships both: budgeer.com and the two TestFlight apps (Budgeer on PROD,
+  Budgeer Dev on TEST).
 - **The owner builds and runs the app with Xcode 27** on their Mac (and a
   free Apple ID for now), while CI builds with Xcode 26.5 (macos-26, iPhone 17
   on iOS 26.5; moved from 15.4 for Liquid Glass). Every package pin
