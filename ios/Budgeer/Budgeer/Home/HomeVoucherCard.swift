@@ -1,42 +1,8 @@
-// Home's Meal vouchers, two takes (DesignOptions.vouchers), both keeping
-// what's on the card apart from the next top-up. A: the balance big beside
-// the vouchers' badge (the app's category style, a fork and knife), the next
-// top-up on a soft strip under it. B: the card itself, in the brand's coral,
-// with the balance on it, and the next top-up as a line beneath. Every word
+// Home's Meal vouchers: the card itself, in the brand's coral, with what's
+// on it, opening the vouchers' page; the next top-up apart from it, as a
+// line beneath ("Next top-up" · "+€160.00 on 5 Oct", then why). Every word
 // and figure is the core's (voucherCardParts) or vouchers' strings.
 import SwiftUI
-
-/// Take A: the balance, then the next top-up.
-struct VoucherBalanceSummary: View {
-    let card: VoucherCardFigures
-    @Environment(AppLanguage.self) private var language
-
-    /// The vouchers' badge, as a category's: the fork and knife on the sand tile.
-    private static let badge = CategoryLook(key: "utensils", tone: "accent", tint: nil)
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 14) {
-                CategoryBadge(look: VoucherBalanceSummary.badge, size: 44)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(language.t("vouchers:balance")).font(.footnote).foregroundStyle(.secondary)
-                    Text(card.balance)
-                        .font(NativeStyle.money(28, relativeTo: .title))
-                        .foregroundStyle(card.tone == "negative" ? NativeStyle.negative : Color.primary)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                        .contentTransition(.numericText())
-                }
-                .accessibilityElement(children: .combine)
-            }
-            VoucherNextTopUp(card: card)
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-    }
-}
 
 /// "Next top-up" with "+€160.00 on 5 Oct" across from it, why under it.
 struct VoucherNextTopUp: View {
@@ -60,7 +26,7 @@ struct VoucherNextTopUp: View {
     }
 }
 
-/// Take B: the card, opening the vouchers' page, then the next top-up.
+/// The card, opening the vouchers' page, then the next top-up.
 struct VoucherWallet: View {
     let card: VoucherCardFigures
     @Environment(AppLanguage.self) private var language

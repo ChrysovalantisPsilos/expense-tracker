@@ -1,15 +1,12 @@
-// Your salary's two outlook cards, each in two takes (DesignOptions.salary)
-// with fewer figures up front and the rest a tap away.
+// Your salary's two outlook cards, few figures up front and the rest a tap
+// away.
 //
-// If things go on. A: the chart and the three ways by name; their figures,
-// the yearly raise and the notes behind "Show details". B: the three ways
-// with one figure each (what each adds up to); a tap opens a way in place:
-// its line, the chart with that way lit, and for What if the raise to try.
+// If things go on: the three ways with one figure each (what each adds up
+// to); a tap opens a way in place: its line, the chart with that way lit,
+// and for What if the raise to try.
 //
-// Against prices. A: the verdict, the real change big with the monthly gap
-// under it; the country, the year, the headline and the two figures behind
-// "Show details". B: the country and the year folded into one menu, then
-// the pay, the prices and the real change as three lines, and the gap.
+// Against prices: the country and the year as one menu, then the pay, the
+// prices and the real change as three lines, and the monthly gap.
 //
 // Every figure and word is SalaryModel's (the core's) or salary's strings.
 import SwiftUI
@@ -21,11 +18,8 @@ struct SalaryProjectionSection: View {
     let model: SalaryModel
     let projection: SalaryProjection
     @Environment(AppLanguage.self) private var language
-    @Environment(\.design) private var design
     @State private var info = false
-    /// A: the details shown.
-    @State private var details = false
-    /// B: the way open.
+    /// The way open.
     @State private var open: String?
 
     var body: some View {
@@ -40,52 +34,14 @@ struct SalaryProjectionSection: View {
             if info {
                 Text(language.t("salary:projection.info")).font(.footnote).foregroundStyle(.secondary)
             }
-            switch design.salary {
-            case .a: chartFirst
-            case .b: waysFirst
-            }
+            ways
         } header: {
             SalaryInfoHeader(title: language.t("salary:projection.title"), shown: $info)
         }
         .listRowBackground(NativeStyle.card)
-        .onAppear {
-            guard design.unfolded else { return }
-            details = true
-            open = projection.ways.last?.id
-        }
     }
 
-    // MARK: A
-
-    @ViewBuilder private var chartFirst: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ProjectionChartView(projection: projection)
-                .animation(.smooth(duration: 0.45), value: projection.ways)
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(projection.ways) { way in
-                    HStack(spacing: 10) {
-                        SalaryWaySwatch(id: way.id, small: true)
-                        Text(way.title).font(.footnote.weight(.semibold))
-                    }
-                }
-            }
-            .accessibilityElement(children: .combine)
-        }
-        .padding(.vertical, 8)
-        if details {
-            Text(projection.total).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            ForEach(projection.ways) { way in
-                SalaryWayRow(way: way)
-                if way.id == "whatIf" { SalaryWhatIfSlider(model: model, slider: projection.slider) }
-            }
-            notes
-        }
-        SalaryDetailsButton(open: $details)
-    }
-
-    // MARK: B
-
-    @ViewBuilder private var waysFirst: some View {
+    @ViewBuilder private var ways: some View {
         Text(projection.total).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
         ForEach(projection.ways) { way in
             Button {
@@ -125,8 +81,7 @@ struct SalaryProjectionSection: View {
         if open != nil { notes }
     }
 
-    // MARK: Shared
-
+    /// The notes under an open way.
     @ViewBuilder private var notes: some View {
         if let later = projection.trendLater {
             Text(later).font(.footnote).foregroundStyle(.secondary)
@@ -143,17 +98,11 @@ struct SalaryPricesSection: View {
     let prices: SalaryPrices
     let country: String
     @Environment(AppLanguage.self) private var language
-    @Environment(\.design) private var design
     @State private var info = false
-    /// A: the details shown.
-    @State private var details = false
 
     var body: some View {
         Section {
-            switch design.salary {
-            case .a: verdict
-            case .b: compared
-            }
+            compared
             if info {
                 Text(prices.info).font(.footnote).foregroundStyle(.secondary)
             }
@@ -161,11 +110,7 @@ struct SalaryPricesSection: View {
             SalaryInfoHeader(title: language.t("salary:inflation.title"), shown: $info)
         }
         .listRowBackground(NativeStyle.card)
-        .onAppear { if design.unfolded { details = true } }
     }
-
-    /// The real change's tile (the core's "real").
-    private var real: SalaryPrices.Tile? { prices.tiles.first { $0.key == "real" } }
 
     private var countryBinding: Binding<String> {
         Binding(get: { country }, set: { value in Task { await model.setCountry(value) } })
@@ -174,58 +119,6 @@ struct SalaryPricesSection: View {
     private var sinceBinding: Binding<Int> {
         Binding(get: { prices.from ?? 0 }, set: { value in withAnimation(.snappy) { model.setSince(value) } })
     }
-
-    // MARK: A
-
-    @ViewBuilder private var verdict: some View {
-        if let empty = prices.empty {
-            Text(empty).font(.subheadline).foregroundStyle(.secondary)
-        } else {
-            VStack(alignment: .leading, spacing: 4) {
-                if let real {
-                    Text(real.label).font(.footnote).foregroundStyle(.secondary)
-                    Text(real.text)
-                        .font(NativeStyle.money(34))
-                        .foregroundStyle(SavingsView.color(real.tone))
-                        .monospacedDigit()
-                        .contentTransition(.numericText())
-                }
-                if let gap = prices.gap {
-                    NativeRich.text(model.rich(gap)).font(.subheadline).foregroundStyle(.secondary)
-                }
-            }
-            .padding(.vertical, 4)
-        }
-        if details {
-            Picker(language.t("salary:inflation.country"), selection: countryBinding) {
-                ForEach(prices.countries, id: \.value) { choice in Text(choice.label).tag(choice.value) }
-            }
-            .pickerStyle(.segmented)
-            if prices.empty == nil {
-                if prices.choices.count > 1 {
-                    HStack {
-                        Text(language.t("salary:inflation.since")).font(.subheadline).foregroundStyle(.secondary)
-                        Picker(language.t("salary:inflation.since"), selection: sinceBinding) {
-                            ForEach(prices.choices, id: \.value) { choice in Text(choice.label).tag(choice.value) }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                }
-                if let headline = prices.headline {
-                    Text(headline).font(.subheadline.weight(.semibold))
-                }
-                HStack(spacing: 8) {
-                    ForEach(prices.tiles.filter { $0.key != "real" }, id: \.key) { tile in
-                        SalaryTile(label: tile.label, text: tile.text, tone: tile.tone, note: nil)
-                    }
-                }
-                .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
-            }
-        }
-        SalaryDetailsButton(open: $details)
-    }
-
-    // MARK: B
 
     @ViewBuilder private var compared: some View {
         Menu {
@@ -302,62 +195,17 @@ struct SalaryInfoHeader: View {
     }
 }
 
-/// "Show details" / "Hide details", its chevron turning.
-struct SalaryDetailsButton: View {
-    @Binding var open: Bool
-    @Environment(AppLanguage.self) private var language
-
-    var body: some View {
-        Button {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) { open.toggle() }
-        } label: {
-            HStack(spacing: 6) {
-                Text(language.t(open ? "ios:native.details.hide" : "ios:native.details.show"))
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.semibold))
-                    .rotationEffect(.degrees(open ? 180 : 0))
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(NativeStyle.tint)
-        }
-        .buttonStyle(.borderless)
-    }
-}
-
 /// A way's colour as its line in the chart (what if dashed).
 struct SalaryWaySwatch: View {
     let id: String
-    var small = false
 
     var body: some View {
         RoundedRectangle(cornerRadius: 2)
             .fill(SalaryView.wayColor(id))
-            .frame(width: small ? 14 : 18, height: small ? 3 : 4)
-            .frame(width: small ? 18 : 32, height: small ? 12 : 32)
-            .background(small ? Color.clear : Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .frame(width: 18, height: 4)
+            .frame(width: 32, height: 32)
+            .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .accessibilityHidden(true)
-    }
-}
-
-/// A way with its line (where the pay is by the end) and what it adds up to.
-struct SalaryWayRow: View {
-    let way: SalaryProjection.Way
-    @Environment(AppLanguage.self) private var language
-
-    var body: some View {
-        HStack(spacing: 12) {
-            SalaryWaySwatch(id: way.id)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(way.title).font(.subheadline.weight(.semibold))
-                Text(way.meta).font(.footnote).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 6)
-            VStack(alignment: .trailing, spacing: 0) {
-                Text(way.total).font(.subheadline.weight(.bold)).monospacedDigit().contentTransition(.numericText())
-                Text(language.t("salary:projection.earned")).font(.caption).foregroundStyle(.secondary)
-            }
-        }
-        .accessibilityElement(children: .combine)
     }
 }
 

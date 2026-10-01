@@ -166,10 +166,9 @@ ios/Budgeer/
                          refetch), FxRates (ECB rates as fx.js), PeriodSource (the period pickers' options)
     Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView (the month pager,
                          the cards, HomeCategoriesPage), HomeCard (a card, a charge's tile), HomeCategoryViews
-                         (By category: ranked rows, the donut), HomeVoucherCard (Meal vouchers' two takes)
-    Design/              DesignOptions (design round 3: take A or B of Home, By category, Meal vouchers, the lock
-                         and Your salary's outlook; `-design.<piece> b` as a launch argument picks B)
-    Lock/                LockScreen (the lock's screen in two takes, a slot under Unlock for another way in)
+                         (By category's donut, a category's row), HomeVoucherCard (the Meal vouchers card)
+    Lock/                LockScreen (the lock's screen: the mark on the glow, Unlock, a slot under it for another
+                         way in)
     Transactions/        EntryFormModel + AddSheet (Add/Edit/a rule: the amount, the keypad, the details),
                          ReceiptModel + ReceiptCard + ReceiptReader (Scan a receipt: Vision on the device, the
                          check, CameraPicker),
@@ -283,18 +282,14 @@ a core call (the web's function); Swift reads, lays out and draws.
   entry), the month's spend with Income and Net (the ⓘ: How Net adds up);
   "every budget held" on a past month that kept them all (a burst of
   confetti the first time), and what was put aside with "See savings ›"
-  (Savings); then rounded cards without hairlines, a few rows each with See
-  all (Meal vouchers' opens their page), in one of two takes until the
-  owner picks (Design/DesignOptions): A reads Budgets, Coming up, By
-  category, Meal vouchers, then the month in plain words (when its AI switch
-  is on); B leads with the month in words and Coming up as a strip of tiles,
-  then By category, Budgets and Meal vouchers, each title above its card. By
-  category is the categories ranked with amount, share and a thin bar (A),
-  or a donut of the four biggest and "Other" with its legend's amounts (B,
-  categoryBars at four). Meal vouchers keeps what's on the card apart from
-  the next top-up: the balance big by the vouchers' badge with the top-up
-  on a strip under it (A), or the card itself in coral with the top-up as a
-  line beneath (B). The cards spring in and the figures roll.
+  (Savings); then a summary first, each title on the canvas over a rounded
+  card without hairlines, See all beside it: the month in plain words (when
+  its AI switch is on), Coming up (or what a past month was charged) as a
+  strip of tiles, By category as a donut of the four biggest and "Other"
+  (categoryBars at four) with what was spent in its middle and a legend of
+  their amounts, Budgets, and Meal vouchers as the card itself in coral
+  (what's on it, opening their page) with the next top-up as a line
+  beneath. The cards spring in and the figures roll.
 - **Activity**: the month at a glance (spent, income and net, a bar per
   day, the biggest day; rowParts.monthPulse; the card the same size every
   month and every kind, the bars in 31 even places, folding away smoothly
@@ -366,12 +361,10 @@ a core call (the web's function); Swift reads, lays out and draws.
   go on (1, 3, 5 or 10 years, the three ways as step lines with what each
   adds up to, the yearly raise on a slider, the estimate's note behind the
   ⓘ), Against prices (Belgium or Greece, saved; since which year; the three
-  figures and the monthly gap) and year by year. The two outlook cards come
-  in two takes until the owner picks (Salary/SalaryOutlook): A shows the
-  chart with the ways' names, or the real change and the gap, the rest
-  behind Show details; B shows each way with what it adds up to, a tap
-  opening its line, the chart with it lit and (What if) the raise, or the
-  country and year as one menu over the three figures. Before a Salary category or
+  figures and the monthly gap) and year by year. If things go on shows each
+  way with what it adds up to, a tap opening its line, the chart with it
+  lit and (What if) the raise; Against prices has the country and the year
+  as one menu over the three figures. Before a Salary category or
   any pay it says how to start (a new income category; Add income in the
   Salary category). Corrections (an extra's kind, the country, the Bonus
   category) are saved whole with save_salary_history, shown at once and put

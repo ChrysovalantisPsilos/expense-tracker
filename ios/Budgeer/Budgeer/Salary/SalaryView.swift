@@ -4,7 +4,7 @@
 // (each corrected in place: Holiday pay, 13th month, Bonus or Not an extra;
 // without a Bonus category, which one holds them), where the pay goes if
 // things go on (1–10 years, three ways, a yearly raise to try) and the pay
-// against prices in Belgium or Greece (SalaryOutlook, in two takes), and the
+// against prices in Belgium or Greece (SalaryOutlook), and the
 // totals year by year. Before
 // there's a Salary category or any pay, it says how to start. Every figure
 // and word is SalaryModel's (the core's); Swift Charts draws the series.
@@ -543,7 +543,7 @@ func yearAxis(_ ticks: [YearTick], hidden: Bool) -> some AxisContent {
 /// If things go on: each way's monthly pay as a step line (what if dashed).
 struct ProjectionChartView: View {
     let projection: SalaryProjection
-    /// A way to light, the others faint (Your salary B's open way).
+    /// A way to light, the others faint (the way open in If things go on).
     var focus: String? = nil
 
     var body: some View {

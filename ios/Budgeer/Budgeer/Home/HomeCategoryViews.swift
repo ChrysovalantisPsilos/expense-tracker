@@ -1,23 +1,10 @@
-// Home's By category, two takes (DesignOptions.categories). A: the
-// categories ranked, each with its amount, its share and a thin bar in its
-// colour. B: a donut of the four biggest and "Other" with what was spent in
-// its middle, and a legend with each one's amount. The figures are the
-// core's (categoryBars, bucketLabel, formatMoney); the colours kitMath's.
+// Home's By category: a donut of the four biggest and "Other" with what
+// was spent in its middle, and a legend with each one's amount; and a
+// category's row on its See all page (amount, share and a thin bar). The
+// figures are the core's (categoryBars, bucketLabel, formatMoney); the
+// colours kitMath's.
 import Charts
 import SwiftUI
-
-/// Take A: the ranked rows.
-struct CategoryRanking: View {
-    let bars: [HomeBar]
-
-    var body: some View {
-        VStack(spacing: 16) {
-            ForEach(Array(bars.enumerated()), id: \.element.name) { index, bar in
-                CategoryRankRow(bar: bar, index: index)
-            }
-        }
-    }
-}
 
 /// A category's (or a group's) row: the badge, the name and the amount, then
 /// its bar (relative to the biggest) and its share of the spending; what its
@@ -55,7 +42,7 @@ struct CategoryRankRow: View {
     }
 }
 
-/// Take B: the donut and its legend.
+/// The donut and its legend.
 struct CategoryDonut: View {
     /// The four biggest, then "Other" (HomeFigures.legend).
     let legend: [HomeBar]

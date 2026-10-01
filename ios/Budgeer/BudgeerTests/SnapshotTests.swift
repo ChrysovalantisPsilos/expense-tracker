@@ -49,7 +49,7 @@ final class SnapshotTests: XCTestCase {
             let owner = FakeOwner()
             owner.answer = false
             let lock = AppLock(defaults: defaults, owner: owner)
-            try await shots(LockView(lock: lock), name: "lock", lang: lang, dark: dark)
+            try await shots(LockScreen(lock: lock), name: "lock", lang: lang, dark: dark)
         }
     }
 
@@ -680,7 +680,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     /// Home's model over the fixture, this month, with a budget, the vouchers and the month in words.
-    func homeModel(_ fixture: HomeFixture, lang: String) async throws -> HomeViewModel {
+    private func homeModel(_ fixture: HomeFixture, lang: String) async throws -> HomeViewModel {
         _ = language(lang)
         let now = fixture.now
         let store = FakeStore(home: fixture)

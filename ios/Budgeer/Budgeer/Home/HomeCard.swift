@@ -1,8 +1,8 @@
-// Home's cards: rounded, on the surface colour, the rows spaced apart with
-// no hairlines between them. A card's title sits inside it (Home A) or on
-// the canvas above it (Home B), "See all ›" beside it; a bare card leaves
-// its content to draw its own background (Home B's strip of charges). And a
-// charge as one of that strip's tiles.
+// Home's cards: a title on the canvas with "See all ›" beside it, then the
+// card, rounded, on the surface colour, its rows spaced apart with no
+// hairlines between them; a bare card leaves its content to draw its own
+// background (the strip of charges). And a charge as one of that strip's
+// tiles.
 import SwiftUI
 
 enum HomeCardStyle {
@@ -16,15 +16,13 @@ struct HomeCard<Content: View>: View {
     let title: String
     var seeAll: String? = nil
     var route: AppRoute? = nil
-    var titleOutside = false
     var bare = false
     @ViewBuilder let content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if titleOutside { header.padding(.horizontal, 4) }
+            header.padding(.horizontal, 4)
             VStack(alignment: .leading, spacing: 16) {
-                if !titleOutside { header }
                 content
             }
             .padding(bare ? 0 : 16)
@@ -57,8 +55,8 @@ struct HomeCard<Content: View>: View {
     }
 }
 
-/// A charge as a tile in Home B's strip: its badge, its name over when and
-/// how often, the amount.
+/// A charge as a tile in Coming up's strip: its badge, its name over when
+/// and how often, the amount.
 struct ChargeTile: View {
     let row: ChargeRow
 

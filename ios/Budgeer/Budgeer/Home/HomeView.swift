@@ -1,14 +1,13 @@
 // Home: a large title, then the month's spend as one big figure with Income
 // and Net beneath it, on pages you swipe sideways between months. Below it,
-// rounded cards without hairlines: Budgets, Coming up (or what a past month
-// was charged), By category, Meal vouchers and the month in plain words
-// (when its helper is on), a few rows each and "See all" for the whole list
-// (Meal vouchers' opens their page; the savings line under the figures,
-// Savings). Two takes on the order and the look are here until the owner
-// picks (DesignOptions: home, categories, vouchers). Every figure and word
-// is HomeViewModel's (the core's); the digits roll, the bars ease and the
-// cards spring when the month changes, a pull to refresh taps, and a past
-// month that kept every budget says so with a burst of confetti.
+// a summary first: the month in plain words (when its helper is on), Coming
+// up (or what a past month was charged) as a strip of tiles, By category as
+// a donut with its legend, Budgets and the Meal vouchers card, each title on
+// the canvas over a rounded card without hairlines, "See all" for the whole
+// list (the savings line under the figures opens Savings). Every figure and
+// word is HomeViewModel's (the core's); the digits roll, the bars ease and
+// the cards spring when the month changes, a pull to refresh taps, and a
+// past month that kept every budget says so with a burst of confetti.
 import SwiftUI
 
 @MainActor
@@ -16,7 +15,6 @@ struct HomeView: View {
     let model: HomeViewModel
     let chrome: PageChrome
     @Environment(AppLanguage.self) private var language
-    @Environment(\.design) private var design
     @State private var month: String?
     @State private var showSum = false
     @State private var refreshes = 0
@@ -79,11 +77,8 @@ struct HomeView: View {
         .sheet(isPresented: $showSum) { sumSheet }
     }
 
-    /// The cards under the hero, in the order of the take shown: A reads
-    /// top-down by what needs you (budgets, what's coming, where it went,
-    /// the vouchers, then the month in words); B leads with the month in
-    /// words and what's coming as a strip of tiles, then where it went,
-    /// budgets and the vouchers, each title on the canvas above its card.
+    /// The cards under the hero: the month in words, what's coming, where
+    /// it went, the budgets and the vouchers.
     @ViewBuilder private func cards(_ figures: HomeFigures) -> some View {
         if let error = model.refreshError {
             NativeNotice(text: error, warning: true)
@@ -96,24 +91,14 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.Colors.accentSubtle, in: HomeCardStyle.shape)
         }
-        switch design.home {
-        case .a:
-            budgetsCard
-            comingUpCard(figures.recurring)
-            categoriesCard(figures)
-            vouchersCard
-            wordsCard
-        case .b:
-            wordsCard
-            comingUpStrip(figures.recurring)
-            categoriesCard(figures)
-            budgetsCard
-            vouchersCard
+        wordsCard
+        comingUpCard(figures.recurring)
+        categoriesCard(figures)
+        budgetsCard
+        if let vouchers = model.vouchers {
+            VoucherWallet(card: vouchers).transition(HomeCardStyle.transition)
         }
     }
-
-    /// Home B puts each card's title on the canvas above it.
-    private var titleOutside: Bool { design.home == .b }
 
     // MARK: The paging hero
 
@@ -196,8 +181,7 @@ struct HomeView: View {
 
     @ViewBuilder private var budgetsCard: some View {
         if case .loaded(let card) = model.budgets {
-            HomeCard(title: language.t("shell:nav.budgets"), seeAll: language.t("ios:native.seeAll"), route: .budgets,
-                     titleOutside: titleOutside) {
+            HomeCard(title: language.t("shell:nav.budgets"), seeAll: language.t("ios:native.seeAll"), route: .budgets) {
                 if card.items.isEmpty {
                     Text(card.empty).font(.subheadline).foregroundStyle(.secondary)
                     if card.canSet {
@@ -221,7 +205,7 @@ struct HomeView: View {
 
     @ViewBuilder private var wordsCard: some View {
         if let words = model.words, words.offered {
-            HomeCard(title: words.title, titleOutside: titleOutside) {
+            HomeCard(title: words.title) {
                 switch words.state {
                 case "writing":
                     HStack(spacing: 10) {
@@ -246,27 +230,17 @@ struct HomeView: View {
 
     // MARK: Coming up
 
-    /// Coming up (or what a past month was charged) as rows.
-    private func comingUpCard(_ card: RecurringCard) -> some View {
-        let rows = card.groups.flatMap(\.rows)
-        return HomeCard(title: comingUpTitle(card), seeAll: language.t("ios:native.seeAll"), route: .recurring,
-                        titleOutside: titleOutside) {
-            if rows.isEmpty {
-                Text(card.empty).font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                ForEach(rows.prefix(3)) { ChargeRowView(row: $0) }
-            }
-        }
-    }
-
-    /// Home B: the charges as a sideways strip of tiles.
-    @ViewBuilder private func comingUpStrip(_ card: RecurringCard) -> some View {
+    /// Coming up (or what a past month was charged): the charges as a
+    /// sideways strip of tiles, or the empty line on a card.
+    @ViewBuilder private func comingUpCard(_ card: RecurringCard) -> some View {
         let rows = card.groups.flatMap(\.rows)
         if rows.isEmpty {
-            comingUpCard(card)
+            HomeCard(title: comingUpTitle(card), seeAll: language.t("ios:native.seeAll"), route: .recurring) {
+                Text(card.empty).font(.subheadline).foregroundStyle(.secondary)
+            }
         } else {
             HomeCard(title: comingUpTitle(card), seeAll: language.t("ios:native.seeAll"), route: .recurring,
-                     titleOutside: true, bare: true) {
+                     bare: true) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 10) {
                         ForEach(rows.prefix(8)) { ChargeTile(row: $0) }
@@ -290,30 +264,8 @@ struct HomeView: View {
     @ViewBuilder private func categoriesCard(_ figures: HomeFigures) -> some View {
         if !figures.bars.isEmpty {
             HomeCard(title: language.t("ios:native.home.byCategory"), seeAll: language.t("ios:native.seeAll"),
-                     route: .categories, titleOutside: titleOutside) {
-                switch design.categories {
-                case .a:
-                    CategoryRanking(bars: Array(figures.bars.prefix(max(1, figures.fold.top))))
-                case .b:
-                    CategoryDonut(legend: figures.legend, spent: figures.spent, spentValue: figures.spentTotal)
-                }
-            }
-        }
-    }
-
-    // MARK: Meal vouchers
-
-    @ViewBuilder private var vouchersCard: some View {
-        if let vouchers = model.vouchers {
-            switch design.vouchers {
-            case .a:
-                HomeCard(title: language.t("shell:nav.vouchers"), seeAll: language.t("ios:native.seeAll"),
-                         route: .vouchers, titleOutside: titleOutside) {
-                    VoucherBalanceSummary(card: vouchers)
-                }
-            case .b:
-                VoucherWallet(card: vouchers)
-                    .transition(HomeCardStyle.transition)
+                     route: .categories) {
+                CategoryDonut(legend: figures.legend, spent: figures.spent, spentValue: figures.spentTotal)
             }
         }
     }
@@ -461,27 +413,6 @@ struct BudgetRowView: View {
             NativeBar(fraction: Double(item.percent) / 100, color: NativeStyle.tone(item.tone))
         }
         .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-/// A recurring charge: its badge, its name over "20 Sep · every month", the amount.
-struct ChargeRowView: View {
-    let row: ChargeRow
-
-    var body: some View {
-        HStack(spacing: 12) {
-            CategoryBadge(look: row.look, size: 34)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(row.title).lineLimit(1)
-                Text(row.meta).font(.footnote).foregroundStyle(.secondary).lineLimit(1)
-            }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(row.amount).font(.body.weight(.semibold)).monospacedDigit()
-                if let hint = row.hint { Text(hint).font(.caption).foregroundStyle(.secondary) }
-            }
-        }
         .accessibilityElement(children: .combine)
     }
 }

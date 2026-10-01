@@ -1,8 +1,6 @@
-// The lock's screen, two takes (DesignOptions.lock), both with the brand's
-// mark and colours, "Budgeer is locked", the note, and Unlock in glass with
-// a slot under it for another way in (Use PIN). A: the mark on a glass disc
-// over a soft coral and amber glow. B: the app itself, blurred behind thick
-// material, with the mark and the words on a glass card. It asks at once
+// The lock's screen: the brand's mark on a glass disc over a soft coral and
+// amber glow, "Budgeer is locked", the note, and Unlock in glass (Face ID's
+// glyph in it) with a slot under it for another way in. It asks at once
 // when it appears, as banking apps do; the check itself is AppLock's.
 import SwiftUI
 
@@ -12,26 +10,20 @@ struct LockScreen<Fallback: View>: View {
     /// Under Unlock: another way in (Use PIN), when there is one.
     @ViewBuilder let fallback: () -> Fallback
     @Environment(AppLanguage.self) private var language
-    @Environment(\.design) private var design
     @State private var tries = 0
     @State private var shown = false
 
     var body: some View {
-        Group {
-            switch design.lock {
-            case .a: glow
-            case .b: frosted
+        glow
+            .task(id: tries) {
+                guard lock.locked else { return }
+                await lock.unlock(reason: language.t("ios:native.lock.reason"))
             }
-        }
-        .task(id: tries) {
-            guard lock.locked else { return }
-            await lock.unlock(reason: language.t("ios:native.lock.reason"))
-        }
-        .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { shown = true } }
-        .sensoryFeedback(.success, trigger: lock.locked) { was, now in was && !now }
+            .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { shown = true } }
+            .sensoryFeedback(.success, trigger: lock.locked) { was, now in was && !now }
     }
 
-    // MARK: A: the glow
+    // MARK: The glow
 
     private var glow: some View {
         ZStack {
@@ -57,37 +49,7 @@ struct LockScreen<Fallback: View>: View {
         }
     }
 
-    // MARK: B: the app behind frosted glass
-
-    private var frosted: some View {
-        ZStack {
-            Rectangle().fill(.thickMaterial).ignoresSafeArea()
-            LinearGradient(colors: [NativeStyle.coral.opacity(0.18), NativeStyle.canvas.opacity(0.35)],
-                           startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-            VStack(spacing: 14) {
-                Spacer()
-                VStack(spacing: 12) {
-                    BrandMark(size: 54)
-                        .frame(width: 84, height: 84)
-                        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    words.padding(.top, 4)
-                }
-                .padding(.vertical, 28)
-                .padding(.horizontal, 22)
-                .frame(maxWidth: .infinity)
-                .nativeGlass(RoundedRectangle(cornerRadius: 32, style: .continuous))
-                .scaleEffect(shown ? 1 : 0.94)
-                .opacity(shown ? 1 : 0)
-                Spacer()
-                actions
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
-        }
-    }
-
-    // MARK: Shared
+    // MARK: The words and Unlock
 
     private var words: some View {
         VStack(spacing: 8) {
