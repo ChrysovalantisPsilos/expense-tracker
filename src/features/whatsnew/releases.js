@@ -17,6 +17,16 @@
 // Greek wording follows docs/i18n-glossary-el.md).
 export const RELEASES = [
   {
+    id: '2026-10-03',
+    date: '2026-10-03',
+    pages: [
+      { id: 'iphone', chips: ['testFlight', 'same'], variant: 'start' },
+      { id: 'apple', chips: ['apple', 'connect'], variant: 'update', action: { to: '/settings/security' } },
+      { id: 'groups', chips: ['cover', 'shares'], variant: 'split', action: { to: '/groups' } },
+      { id: 'more', chips: ['ask', 'export'], variant: 'update' },
+    ],
+  },
+  {
     id: '2026-10-02',
     date: '2026-10-02',
     pages: [

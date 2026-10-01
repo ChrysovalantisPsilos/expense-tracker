@@ -83,7 +83,9 @@ export default function WhatsNewStory({ release: shown, onClose }) {
   const t = useT('whatsnew')
   const release = releaseText(shown, t)
   const navigate = useNavigate()
-  const reduceMotion = usePrefersReducedMotion()
+  // Read on the first render (not after mount): a preset that flips from
+  // scale to none mid-open leaves the card stuck half-faded.
+  const reduceMotion = usePrefersReducedMotion({ ssr: false })
   const [index, setIndex] = useState(0)
   const [forward, setForward] = useState(true)
   const nextRef = useRef(null)

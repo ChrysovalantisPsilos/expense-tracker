@@ -56,7 +56,7 @@ export default function Spotlight({ steps, onStep, onClose, returnFocus, label }
   // the account icons), so it takes the phone's steps.
   const shortLandscape = useShortLandscape()
   const desktop = (useBreakpointValue({ base: false, md: true }, { ssr: false }) ?? false) && !shortLandscape
-  const reduce = usePrefersReducedMotion()
+  const reduce = usePrefersReducedMotion({ ssr: false })
   const [missing, setMissing] = useState(() => new Set())
   const [index, setIndex] = useState(0)
   const dir = useRef(1)

@@ -8,6 +8,30 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-10-03': {
+      iphone: {
+        title: 'Budgeer for iPhone',
+        body: 'Budgeer now has its own iPhone app. It’s in testing on TestFlight, by invitation for now, and it uses the same account and data as the website, so what you add in one shows up in the other.',
+        chips: { testFlight: 'TestFlight', same: 'Same account' },
+      },
+      apple: {
+        title: 'Sign in with Apple',
+        body: 'Log in or sign up with Apple, on the website and in the iPhone app, or connect Apple to your account in Settings › Security. The Privacy Notice now names Apple too, for Sign in with Apple and the iPhone app’s notifications.',
+        chips: { apple: 'Apple', connect: 'Connect' },
+        action: 'Open Security',
+      },
+      groups: {
+        title: 'Groups with more colour',
+        body: 'Each group without a photo now has its own colour, and New group and Edit group let you pick an emoji on a colour instead. Who owes whom shows your initials for you, and Transactions can show only your shares of group expenses.',
+        chips: { cover: 'Emoji and colour', shares: 'Only my shares' },
+        action: 'Open Groups',
+      },
+      more: {
+        title: 'And a few more',
+        body: 'Savings goals and net worth accounts now ask before they’re deleted. Meal vouchers’ Fix days is now Edit days. And in the iPhone app, the statement on Insights has a labelled Export button.',
+        chips: { ask: 'Delete it?', export: 'Export' },
+      },
+    },
     '2026-10-02': {
       salaryNet: {
         title: 'Raises as they reach your pay',
