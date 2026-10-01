@@ -123,18 +123,54 @@ struct SpendingView: View {
 
 // MARK: Notifications
 
-/// The messages Budgeer sends: email for the big events and the weekly
-/// summary (both recorded in the consent history). Push is set on the
-/// website, for the browsers allowed there.
+/// What Budgeer sends: push to this iPhone (and the account's other devices),
+/// email for the big events and the weekly summary (both recorded in the
+/// consent history).
 @MainActor
 struct MessagesView: View {
     let model: PreferencesModel
+    let push: PushModel
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
         PreferencesPage(model: model, title: language.t("settings:notifications.title")) {
+            PushToggle(model: model, push: push)
             MessageToggles(model: model)
         }
+        .task { await push.refresh() }
+    }
+}
+
+/// The account's push switch, as the web's: turning it on asks iOS here
+/// (once) and registers this iPhone; when iOS says no, how to allow it.
+@MainActor
+struct PushToggle: View {
+    let model: PreferencesModel
+    let push: PushModel
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        Section {
+            PreferenceToggle(title: language.t("settings:notifications.push.label"),
+                             hint: language.t("settings:notifications.push.hint"),
+                             isOn: model.pushOn && push.permission == .allowed,
+                             disabled: model.isDemo, id: "notifications.push") { on in
+                Task {
+                    await model.setPush(on)
+                    if on { await push.enable() }
+                }
+            }
+        } footer: {
+            if push.permission == .denied && !model.isDemo {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(language.t("ios:native.push.off"))
+                    Button(language.t("ios:native.push.openSettings")) { openAppSettings() }
+                        .font(.footnote.weight(.semibold))
+                        .accessibilityIdentifier("notifications.openSettings")
+                }
+            }
+        }
+        .listRowBackground(NativeStyle.card)
     }
 }
 

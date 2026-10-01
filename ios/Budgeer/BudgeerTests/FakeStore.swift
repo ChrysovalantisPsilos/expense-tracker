@@ -31,6 +31,8 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     var vouchersResult: Result<JSONValue, Error> = .success(.null)
     var notificationsResult: Result<JSONValue, Error> = .success([])
     private(set) var markedRead = 0
+    /// save_apns_token / delete_apns_token calls, in order ("save:<token>:<env>", "delete:<token>").
+    private(set) var deviceTokens: [String] = []
     /// Every active category; categories(kind:) keeps the ones of that kind.
     var categoriesResult: Result<JSONValue, Error> = .success([])
     var savingsResult: Result<JSONValue, Error> = .success([])
@@ -110,6 +112,15 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     func markNotificationsRead() async throws {
         if let writeError { throw writeError }
         markedRead += 1
+    }
+
+    func saveDeviceToken(_ token: String, environment: String) async throws {
+        if let writeError { throw writeError }
+        deviceTokens.append("save:\(token):\(environment)")
+    }
+
+    func deleteDeviceToken(_ token: String) async throws {
+        deviceTokens.append("delete:\(token)")
     }
 
     func categories(kind: String?) async throws -> JSONValue {

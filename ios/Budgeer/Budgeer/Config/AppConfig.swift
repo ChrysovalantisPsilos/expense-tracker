@@ -10,6 +10,10 @@ struct AppConfig: Equatable, Sendable {
     let environment: Environment
     let supabaseURL: URL
     let supabaseAnonKey: String
+    /// Which APNs host this build's device token belongs to: 'sandbox' for a
+    /// Debug build run from Xcode, 'production' for a Release build
+    /// (TestFlight, the App Store); from the configuration (APNS_ENVIRONMENT).
+    var apnsEnvironment = "sandbox"
 
     /// The website of this build's project: where an invite link opens.
     var siteURL: String {
@@ -35,6 +39,7 @@ struct AppConfig: Equatable, Sendable {
         }
         guard let environment = Environment(rawValue: try value("BudgeerEnvironment")) else { throw Error.missing("BudgeerEnvironment") }
         guard let url = URL(string: try value("SupabaseURL")), url.scheme == "https" else { throw Error.missing("SupabaseURL") }
-        return AppConfig(environment: environment, supabaseURL: url, supabaseAnonKey: try value("SupabaseAnonKey"))
+        return AppConfig(environment: environment, supabaseURL: url, supabaseAnonKey: try value("SupabaseAnonKey"),
+                         apnsEnvironment: (try? value("APNSEnvironment")) == "production" ? "production" : "sandbox")
     }
 }

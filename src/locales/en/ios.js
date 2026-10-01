@@ -3,8 +3,9 @@
 // them by the same keys). Kept small on purpose.
 export default {
   gate: {
-    // The legal gate can't record consent in the app yet.
-    acceptOnWeb: 'For now, please accept on the website, then come back and tap “Retry”.',
+    // "I don't agree" on the legal gate (the app offers signing out; deleting
+    // the account is the website's from there).
+    declined: 'Without accepting, you can’t use Budgeer. You can sign out, or delete your account on the website (Settings › Security).',
   },
   more: {
     version: 'Version {{version}}',
@@ -13,6 +14,11 @@ export default {
   // The native frame and screens.
   native: {
     seeAll: 'See all',
+    // Settings › Notifications when iOS doesn't allow Budgeer's notifications.
+    push: {
+      off: 'Notifications are off for Budgeer on this iPhone. Allow them in Settings › Notifications › Budgeer.',
+      openSettings: 'Open Settings',
+    },
     profile: 'Profile and settings',
     tabs: {
       activity: 'Activity',

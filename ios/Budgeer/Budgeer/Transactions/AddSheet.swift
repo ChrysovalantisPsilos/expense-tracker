@@ -69,11 +69,15 @@ struct AddSheet: View {
     @State private var takingPhoto = false
     @State private var pickingPhoto = false
 
-    init(request: AddRequest, data: DataLayer, userId: String, groups: MyGroupsModel) {
+    /// After a save (the frame asks about push once, after the first).
+    private let onSaved: () -> Void
+
+    init(request: AddRequest, data: DataLayer, userId: String, groups: MyGroupsModel, onSaved: @escaping () -> Void = {}) {
         self.request = request
         self.data = data
         self.userId = userId
         self.groups = groups
+        self.onSaved = onSaved
         _entry = State(initialValue: request.model)
         let collapsed = request.model.mode == .add && request.splitting == nil
         _detent = State(initialValue: collapsed ? .nativeAdd : .large)
@@ -361,6 +365,7 @@ struct AddSheet: View {
     private func done() {
         NativeHaptics.success()
         dismiss()
+        onSaved()
     }
 }
 

@@ -6,6 +6,15 @@
 # TEST Supabase project, Debug-Prod / Release-Prod at PROD (Config/*.xcconfig
 # hold the URL and the public anon key; nothing in Swift). The "Budgeer Dev"
 # scheme is the default; "Budgeer Prod" is for release builds only.
+#
+# Two apps, installable side by side: "Budgeer Dev" (com.budgeer.app.dev,
+# the Dev configurations) and "Budgeer" (com.budgeer.app, Prod); the bundle
+# id and the name come from Config/Dev.xcconfig and Prod.xcconfig. Signing is
+# automatic with the team from Config/Local.xcconfig (not tracked) or, in
+# CI, DEVELOPMENT_TEAM on the command line. Capabilities (entitlements per
+# configuration, Config/Budgeer-*.entitlements): Push Notifications (the
+# development APNs for a Debug build run from Xcode, production for a Release
+# build: TestFlight and the App Store) and Sign in with Apple.
 name: Budgeer
 options:
   bundleIdPrefix: com.budgeer
@@ -64,11 +73,14 @@ settings:
     SWIFT_VERSION: "5.10"
     SWIFT_STRICT_CONCURRENCY: minimal
     CODE_SIGN_STYLE: Automatic
-    # No team yet: simulator builds and tests need none. A device build takes
-    # the owner's DEVELOPMENT_TEAM (put it in Config/Local.xcconfig, ignored).
-    CODE_SIGN_IDENTITY: ""
+    # Simulator builds and tests need no team. A device build or an archive
+    # takes DEVELOPMENT_TEAM from Config/Local.xcconfig (not tracked) or, in
+    # CI, from the command line; never written here.
+    CODE_SIGN_IDENTITY: Apple Development
     ENABLE_USER_SCRIPT_SANDBOXING: "NO"
     TARGETED_DEVICE_FAMILY: "1"
+    # The version people see; the build number is the CI run's
+    # (ios-testflight.yml passes CURRENT_PROJECT_VERSION), 1 locally.
     MARKETING_VERSION: "0.1.0"
     CURRENT_PROJECT_VERSION: "1"
 
@@ -89,7 +101,8 @@ targets:
     info:
       path: Budgeer/Info.plist
       properties:
-        CFBundleDisplayName: Budgeer
+        # "Budgeer" or "Budgeer Dev" under the icon (Config/*.xcconfig).
+        CFBundleDisplayName: $(BUDGEER_DISPLAY_NAME)
         CFBundleName: Budgeer
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
@@ -97,6 +110,10 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
+        # Only the system's own encryption (HTTPS/TLS through URLSession, the
+        # Keychain) and a SHA-256 hash for Sign in with Apple's nonce, all
+        # exempt; the database's encryption runs on the server. So no
+        # export-compliance documents, and TestFlight builds aren't held.
         ITSAppUsesNonExemptEncryption: false
         # budgeer://auth-callback: where Google sign-in returns (a Redirect URL
         # in both Supabase projects; SupabaseAuthService.callback).
@@ -123,17 +140,36 @@ targets:
         BudgeerEnvironment: $(BUDGEER_ENV)
         SupabaseURL: $(SUPABASE_URL)
         SupabaseAnonKey: $(SUPABASE_ANON_KEY)
+        # Which APNs host this build's device token belongs to (AppConfig).
+        APNSEnvironment: $(APNS_ENVIRONMENT)
     settings:
       base:
         # Per target, never in the shared xcconfig: a test bundle named like
         # the app writes the same Budgeer.swiftmodule and the build refuses.
         PRODUCT_NAME: Budgeer
-        PRODUCT_BUNDLE_IDENTIFIER: com.budgeer.app
+        # com.budgeer.app.dev or com.budgeer.app (Config/*.xcconfig).
+        PRODUCT_BUNDLE_IDENTIFIER: $(BUDGEER_BUNDLE_ID)
         GENERATE_INFOPLIST_FILE: "NO"
         # Resources/Assets.xcassets (in the sources above): the home-screen
         # icon, one 1024 px opaque PNG of public/pwa-icon.svg (the web's
         # apple-touch-icon artwork); iOS makes the other sizes and rounds it.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      # Debug builds (run from Xcode) register with the development APNs,
+      # Release builds (archived for TestFlight and the App Store) with
+      # production; both may Sign in with Apple.
+      configs:
+        Debug-Dev:
+          CODE_SIGN_ENTITLEMENTS: Config/Budgeer-Debug.entitlements
+          APNS_ENVIRONMENT: sandbox
+        Debug-Prod:
+          CODE_SIGN_ENTITLEMENTS: Config/Budgeer-Debug.entitlements
+          APNS_ENVIRONMENT: sandbox
+        Release-Dev:
+          CODE_SIGN_ENTITLEMENTS: Config/Budgeer-Release.entitlements
+          APNS_ENVIRONMENT: production
+        Release-Prod:
+          CODE_SIGN_ENTITLEMENTS: Config/Budgeer-Release.entitlements
+          APNS_ENVIRONMENT: production
     preBuildScripts:
       # The core and the strings must exist before anything compiles; the
       # scheme's pre-action builds them (scripts/prebuild.sh) and this phase

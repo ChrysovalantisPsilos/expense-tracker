@@ -123,7 +123,7 @@ export default {
       signInOptions: {
         q: 'How can I log in?',
         a: {
-          p1: 'With your email address and a password, with “Sign in with Google”, or with a passkey once you’ve added one on your device.',
+          p1: 'With your email address and a password, with “Sign in with Google” or “Sign in with Apple”, or with a passkey once you’ve added one on your device.',
         },
       },
       appTour: {

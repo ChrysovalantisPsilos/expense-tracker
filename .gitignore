@@ -35,6 +35,8 @@ ios/BudgeerCore/.swiftpm/
 # iOS app: the project is generated (xcodegen, from ios/Budgeer/project.yml),
 # the strings from src/locales (npm run ios:strings); Xcode's own state too.
 ios/Budgeer/Budgeer.xcodeproj/
+# A developer's own signing (DEVELOPMENT_TEAM): never committed.
+ios/Budgeer/Config/Local.xcconfig
 ios/Budgeer/Budgeer/Info.plist
 ios/Budgeer/Budgeer/Resources/Generated/
 ios/Budgeer/DerivedData/

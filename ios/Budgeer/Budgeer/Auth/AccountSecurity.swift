@@ -1,7 +1,8 @@
 // Settings › Security's account calls, after the web's AuthProvider (the
 // sign-in methods): the signed-in user and its identities as the web's
 // authMethods reads them, when this session signed in (reauth), changing or
-// setting the password, and connecting or disconnecting Google. Behind a
+// setting the password, and connecting or disconnecting Google (its web
+// consent) or Apple (the system's sheet, its token linked). Behind a
 // protocol so the security page can be tested with a fake. The rules
 // (which methods show, what can be removed, how recent a sign-in must be)
 // are the core's; this file only talks to Supabase Auth.
@@ -18,7 +19,7 @@ protocol AccountSecurity: Sendable {
     /// changePassword: the current password checked by signing in with it,
     /// then the new one set with the current one (the server checks it again).
     func changePassword(current: String, next: String) async throws
-    /// setFirstPassword: a first password for a Google-only account (password_set in user_metadata).
+    /// setFirstPassword: a first password for a Google- or Apple-only account (password_set in user_metadata).
     func setFirstPassword(_ password: String) async throws
     /// markPasswordSet: the account turned out to have one already.
     func markPasswordSet() async throws
@@ -26,8 +27,10 @@ protocol AccountSecurity: Sendable {
     func googleLinkURL() async throws -> URL
     /// linkGoogle's second half: Google's answer (the callback URL) into the session.
     func finishLink(_ callback: URL) async throws
-    /// unlinkIdentity for the Google identity.
-    func unlinkGoogle() async throws
+    /// linkProvider('apple'), natively: Apple's identity token linked to this account.
+    func linkApple(_ credential: AppleCredential) async throws
+    /// unlinkIdentity for the provider's ('google', 'apple') identity.
+    func unlink(provider: String) async throws
 }
 
 /// The current password was wrong (common:errors.auth.currentPasswordInvalid).
@@ -123,11 +126,18 @@ final class SupabaseAccountSecurity: AccountSecurity {
         _ = try await auth { try await client.auth.session(from: callback) }
     }
 
-    func unlinkGoogle() async throws {
+    func linkApple(_ credential: AppleCredential) async throws {
+        _ = try await auth {
+            try await client.auth.linkIdentityWithIdToken(
+                credentials: OpenIDConnectCredentials(provider: .apple, idToken: credential.idToken, nonce: credential.nonce))
+        }
+    }
+
+    func unlink(provider: String) async throws {
         try await auth {
             let list = try await client.auth.userIdentities()
-            guard let google = list.first(where: { $0.provider == "google" }) else { return }
-            try await client.auth.unlinkIdentity(google)
+            guard let identity = list.first(where: { $0.provider == provider }) else { return }
+            try await client.auth.unlinkIdentity(identity)
         }
     }
 

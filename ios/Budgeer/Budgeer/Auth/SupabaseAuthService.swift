@@ -1,7 +1,8 @@
 // AuthService over supabase-swift. The session lives in the Keychain
 // (supabase-swift's default local storage on iOS) and is refreshed by the
-// client; the app never sees the tokens. The legal check is the same RPC
-// the web calls (my_legal_status, migration 0072).
+// client; the app never sees the tokens. The legal check and acceptance are
+// the same RPCs the web calls (my_legal_status, accept_legal_documents, 0072).
+import BudgeerCore
 import Foundation
 #if canImport(AuthenticationServices)
 import AuthenticationServices
@@ -53,9 +54,40 @@ final class SupabaseAuthService: AuthService {
             }
         case .google:
             return try await signInWithGoogle()
-        case .apple, .passkey:
+        case .apple(let credential):
+            return try await signInWithApple(credential)
+        case .passkey:
             throw SignInError.unsupported(method)
         }
+    }
+
+    /// Apple's identity token for a session (supabase-swift's id-token grant,
+    /// checked by Supabase Auth against the nonce), then the name Apple gave
+    /// on the first sign-in saved as the web saves a name.
+    private func signInWithApple(_ credential: AppleCredential) async throws -> AuthUser {
+        do {
+            let session = try await client.auth.signInWithIdToken(
+                credentials: OpenIDConnectCredentials(provider: .apple, idToken: credential.idToken, nonce: credential.nonce))
+            if let name = credential.fullName { await saveAppleName(name, user: session.user) }
+            return AuthUser(session.user)
+        } catch let error as AuthError {
+            throw SignInError.rejected(code: error.errorCode.rawValue, message: error.message)
+        } catch {
+            throw SignInError.network(error.localizedDescription)
+        }
+    }
+
+    /// The name on the account (user_metadata.full_name, as Google's) and on
+    /// the profile while it still has the sign-up's default name
+    /// (authMethods.appleProfileName). Best effort: the sign-in stands without it.
+    private func saveAppleName(_ name: String, user: User) async {
+        _ = try? await client.auth.update(user: UserAttributes(data: ["full_name": .string(name)]))
+        let uid = user.id.uuidString.lowercased()
+        guard let row: [JSONValue] = try? await client.from("profiles").select("display_name").eq("id", value: uid).execute().value,
+              let display = row.first?["display_name"] else { return }
+        let args: JSONValue = ["displayName": display, "email": user.email.json, "fullName": .string(name)]
+        guard let next = (try? BudgeerCore.shared.json("authMethods", "appleProfileName", [args]))?.stringValue else { return }
+        _ = try? await client.from("profiles").update(["display_name": next]).eq("id", value: uid).execute()
     }
 
     /// Where Google sends the user back to (registered as a Redirect URL in
@@ -88,6 +120,10 @@ final class SupabaseAuthService: AuthService {
 
     func legalStatus() async throws -> LegalStatus {
         try await client.rpc("my_legal_status").execute().value
+    }
+
+    func acceptLegal() async throws -> LegalStatus {
+        try await client.rpc("accept_legal_documents").execute().value
     }
 }
 

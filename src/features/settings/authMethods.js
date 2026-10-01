@@ -33,24 +33,31 @@ const providersOf = (user) => {
   return meta.providers || (meta.provider ? [meta.provider] : [])
 }
 
+// The sign-in providers an account can connect besides a password, in the
+// order Settings → Security lists them.
+export const PROVIDERS = ['google', 'apple']
+
 // The rows of Settings → Security's "Sign-in methods": email & password,
-// Google, and passkeys (only when `passkeys` is a list, i.e. this browser and
-// project support them). `identities` is getUserIdentities()' list, or null
-// while it loads (then the user's app_metadata providers stand in).
+// Google, Apple, and passkeys (only when `passkeys` is a list, i.e. this
+// browser and project support them). `identities` is getUserIdentities()'
+// list, or null while it loads (then the user's app_metadata providers stand
+// in). A provider's row carries its identity (for Disconnect) when connected.
 export function signInMethods({ user, identities, passkeys }) {
-  const google = identities
-    ? identities.find((i) => i.provider === 'google') ?? null
-    : (providersOf(user).includes('google') ? {} : null)
   const withPassword = hasPassword(user)
   const methods = [
     {
       key: 'password', label: t('settings:signIn.methods.password'), connected: withPassword,
       detail: withPassword ? user?.email ?? '' : t('settings:signIn.noPassword'),
     },
-    {
-      key: 'google', label: t('settings:signIn.methods.google'), connected: !!google, identity: google,
-      detail: google ? google.identity_data?.email ?? t('settings:signIn.connected') : t('settings:signIn.notConnected'),
-    },
+    ...PROVIDERS.map((provider) => {
+      const identity = identities
+        ? identities.find((i) => i.provider === provider) ?? null
+        : (providersOf(user).includes(provider) ? {} : null)
+      return {
+        key: provider, label: t(`settings:signIn.methods.${provider}`), connected: !!identity, identity,
+        detail: identity ? identity.identity_data?.email ?? t('settings:signIn.connected') : t('settings:signIn.notConnected'),
+      }
+    }),
   ]
   if (Array.isArray(passkeys)) {
     const n = passkeys.length
@@ -62,15 +69,15 @@ export function signInMethods({ user, identities, passkeys }) {
   return methods
 }
 
-// Why Google can't be disconnected right now, or null when it can. Supabase
-// unlinks an identity only while another one remains, so the account never
-// loses its last way in (a password set on a Google account isn't an
-// identity of its own, so it doesn't count).
-export function googleDisconnectBlock({ user, identities }) {
+// Why `provider` (google, apple) can't be disconnected right now, or null
+// when it can. Supabase unlinks an identity only while another one remains,
+// so the account never loses its last way in (a password set on a Google or
+// Apple account isn't an identity of its own, so it doesn't count).
+export function disconnectBlock({ user, identities, provider = 'google' }) {
   if (!identities) return t('settings:signIn.block.loading')
-  if (!identities.some((i) => i.provider === 'google')) return t('settings:signIn.block.notConnected')
+  if (!identities.some((i) => i.provider === provider)) return t(`settings:signIn.${provider}.notConnected`)
   if (identities.length >= 2) return null
-  return hasPassword(user) ? t('settings:signIn.block.createdWithGoogle') : t('settings:signIn.block.onlyWay')
+  return t(`settings:signIn.${provider}.${hasPassword(user) ? 'created' : 'onlyWay'}`)
 }
 
 // Why a new password can't be set, or null when it can: the sign-up rules
@@ -116,14 +123,33 @@ export function deletionScope() {
     .map(([list, ids]) => [list, ids.map((id) => t(`settings:deleteAccount.scope.${list}.${id}`))]))
 }
 
-// A user-facing message for a failed link, from supabase-js' error or the
-// error the OAuth redirect came back with (redirectError). Anything without
-// words of our own gets `fallback`, never Supabase's or Google's text.
-export function linkErrorMessage(error, fallback = t('settings:signIn.linkError.fallback')) {
+// A user-facing message for a failed link of `provider` (google, apple),
+// from supabase-js' error or the error the OAuth redirect came back with
+// (redirectError). Anything without words of our own gets `fallback` (by
+// default "<provider> wasn't connected"), never Supabase's, Google's or
+// Apple's text.
+export function linkErrorMessage(error, fallback = null, provider = 'google') {
   const code = error?.code
   if (code === 'manual_linking_disabled') return t('settings:signIn.linkError.disabled')
-  if (code === 'identity_already_exists') return t('settings:signIn.linkError.taken')
-  return userMessage(error, fallback)
+  if (code === 'identity_already_exists') return t(`settings:signIn.${provider}.taken`)
+  return userMessage(error, fallback ?? t(`settings:signIn.${provider}.linkFallback`))
+}
+
+// The name Sign in with Apple gave on the first sign-in (Apple sends it only
+// then, and never inside its token) as the profile's display name — only
+// while the profile still has the name the sign-up gave it by default (the
+// email's local part, handle_new_user), so a name the user chose is never
+// replaced. Cleaned as handle_new_user cleans one: control characters to
+// spaces, trimmed, at most 60 characters. null when there's nothing to save.
+// The iOS app calls it through the core after a first Apple sign-in.
+export function appleProfileName({ displayName, email, fullName }) {
+  // eslint-disable-next-line no-control-regex
+  const name = String(fullName ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 60).trim()
+  if (!name) return null
+  const current = String(displayName ?? '').trim()
+  const fallback = String(email ?? '').split('@')[0]
+  if (current && current !== fallback) return null
+  return current === name ? null : name
 }
 
 // The error an OAuth redirect came back with (?error=… or #error=…), or null.

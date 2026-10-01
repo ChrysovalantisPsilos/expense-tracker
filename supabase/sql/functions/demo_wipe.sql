@@ -27,6 +27,7 @@ begin
   delete from public.savings_goals where user_id = any(p_ids);
   delete from public.categories where user_id = any(p_ids);
   delete from public.push_subscriptions where user_id = any(p_ids);
+  delete from public.apns_devices where user_id = any(p_ids);
   delete from public.consents where user_id = any(p_ids);
   delete from public.privacy_email_queue where user_id = any(p_ids);
   delete from public.inactivity_notices where user_id = any(p_ids);

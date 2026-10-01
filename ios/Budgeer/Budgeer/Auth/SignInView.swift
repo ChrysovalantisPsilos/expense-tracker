@@ -1,7 +1,8 @@
 // Sign-in, the web's Login page's words and order under the wordmark (its
 // mark drawing itself as the website's loader does): email and password, then
-// "or continue with" and the Google button (Google's own look: white, the
-// four-colour G, "Sign in with Google"). Passkeys come with their phase.
+// "or continue with", the Google button (Google's own look: white, the
+// four-colour G, "Sign in with Google") and Apple's (its own button: black,
+// or white in dark mode). Passkeys stay the website's.
 import BudgeerCore
 import SwiftUI
 
@@ -13,11 +14,15 @@ final class SignInViewModel {
     private(set) var submitting = false
     /// Google's sheet is open (or its answer is being checked).
     private(set) var googleBusy = false
+    /// Apple's answer is being exchanged for a session.
+    private(set) var appleBusy = false
+
+    private var busy: Bool { submitting || googleBusy || appleBusy }
     /// A "ns:key" of the message to show, or nil.
     private(set) var errorKey: String?
 
     var canSubmit: Bool {
-        !submitting && !googleBusy && !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
+        !busy && !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
     }
 
     func submit(session: SessionStore) async {
@@ -35,7 +40,7 @@ final class SignInViewModel {
     /// "Sign in with Google": the legal check follows as for email. Closing
     /// Google's sheet is no error.
     func signInWithGoogle(session: SessionStore) async {
-        guard !submitting, !googleBusy else { return }
+        guard !busy else { return }
         googleBusy = true
         errorKey = nil
         defer { googleBusy = false }
@@ -46,6 +51,25 @@ final class SignInViewModel {
         } catch {
             errorKey = SignInViewModel.messageKey(for: error)
         }
+    }
+
+    /// "Sign in with Apple": Apple's credential for a session; the legal
+    /// check follows as for the others (a new account meets the gate).
+    func signInWithApple(_ credential: AppleCredential, session: SessionStore) async {
+        guard !busy else { return }
+        appleBusy = true
+        errorKey = nil
+        defer { appleBusy = false }
+        do {
+            try await session.signIn(with: .apple(credential))
+        } catch {
+            errorKey = SignInViewModel.messageKey(for: error)
+        }
+    }
+
+    /// Apple's sheet failed (not closed by the person: that's no error).
+    func appleFailed() {
+        errorKey = "common:errors.generic"
     }
 
     /// Supabase Auth's codes → the web's copy (shared/lib/errors.js AUTH_MESSAGES).
@@ -111,7 +135,7 @@ struct SignInView: View {
                 }
                 .nativeGlassButton(prominent: true)
                 // As on the web, Log in stays live; an empty form simply isn't sent.
-                .disabled(model.submitting || model.googleBusy)
+                .disabled(model.submitting || model.googleBusy || model.appleBusy)
                 .accessibilityIdentifier("signin.submit")
                 divider
                 Button {
@@ -123,8 +147,16 @@ struct SignInView: View {
                     }
                 }
                 .buttonStyle(GoogleButtonStyle())
-                .disabled(model.submitting || model.googleBusy)
+                .disabled(model.submitting || model.googleBusy || model.appleBusy)
                 .accessibilityIdentifier("signin.google")
+                AppleSignInButton { credential in
+                    Task { await model.signInWithApple(credential, session: session) }
+                } onFailure: { error in
+                    if !isAppleCancel(error) { model.appleFailed() }
+                }
+                .disabled(model.submitting || model.googleBusy || model.appleBusy)
+                .overlay { if model.appleBusy { ProgressView() } }
+                .accessibilityIdentifier("signin.apple")
                 if let site, let url = URL(string: site + "/login?signup=1") {
                     Link(destination: url) {
                         SignUpLine(nodes: (try? BudgeerCore.shared.json("translate", "parseRich", [language.t("auth:login.switch")]))

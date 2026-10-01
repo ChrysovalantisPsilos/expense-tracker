@@ -7167,11 +7167,164 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 117. 0108: iOS device tokens (apns_devices). save_apns_token stores the
+--      caller's install (lowercased, owner forced), refuses a malformed token,
+--      an unknown env and the demo login; a token moves to whoever saves it
+--      next; another account neither sees nor deletes it; direct inserts and
+--      updates are refused; delete_apns_token drops only the caller's own;
+--      anon can't call either; RLS is on with per-verb policies only.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; d uuid; cnt int; owner uuid; q text;
+        tok text := md5(random()::text) || md5(random()::text);
+        tok2 text := md5(random()::text) || md5(random()::text);
+begin
+  begin
+    u1 := pg_temp.zz_user('apns1'); u2 := pg_temp.zz_user('apns2'); d := pg_temp.zz_user('apnsdemo');
+    update public.profiles set is_demo = true where id = d;
+    if not (select relrowsecurity from pg_class where oid = 'public.apns_devices'::regclass) then
+      raise exception 'RLS off on apns_devices';
+    end if;
+    if exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'apns_devices'
+               and cmd not in ('SELECT', 'DELETE')) then
+      raise exception 'apns_devices has a write policy beyond select/delete';
+    end if;
+    if has_function_privilege('anon', 'public.save_apns_token(text,text)', 'execute')
+       or has_function_privilege('anon', 'public.delete_apns_token(text)', 'execute')
+       or has_function_privilege('authenticated', 'public.apns_devices_owner()', 'execute') then
+      raise exception 'anon can call the APNs functions';
+    end if;
+    if exists (select 1 from pg_proc where proname in ('save_apns_token', 'delete_apns_token', 'apns_devices_owner')
+               and pronamespace = 'public'::regnamespace
+               and not (proconfig @> array['search_path=public, pg_temp'])) then
+      raise exception 'an APNs function has no pinned search_path';
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_apns_token(upper(tok), 'sandbox');
+    select count(*) into cnt from public.apns_devices where token = tok and env = 'sandbox';
+    if cnt <> 1 then execute 'reset role'; raise exception 'token not saved lowercased (%)', cnt; end if;
+    foreach q in array array[
+      format('select public.save_apns_token(%L, %L)', 'zz-not-hex', 'sandbox'),
+      format('select public.save_apns_token(%L, %L)', left(tok, 63), 'sandbox'),
+      format('select public.save_apns_token(%L, %L)', tok, 'staging'),
+      format('select public.save_apns_token(%L, %L)', null, 'production'),
+      format('insert into public.apns_devices (user_id, token, env) values (%L, %L, %L)', u1, tok2, 'sandbox'),
+      format('update public.apns_devices set env = %L where token = %L', 'production', tok)] loop
+      begin
+        execute q;
+        execute 'reset role';
+        raise exception 'GUARD_MISSED: %', q;
+      exception when others then if sqlerrm like 'GUARD_MISSED%' then raise; end if; end;
+    end loop;
+    execute 'reset role';
+
+    -- Another account: can't see or delete it; saving the same token moves it.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select count(*) into cnt from public.apns_devices where token = tok;
+    if cnt <> 0 then execute 'reset role'; raise exception 'another account sees the token'; end if;
+    delete from public.apns_devices where token = tok;
+    perform public.delete_apns_token(tok);
+    execute 'reset role';
+    select user_id into owner from public.apns_devices where token = tok;
+    if owner is distinct from u1 then raise exception 'another account deleted the token'; end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_apns_token(tok, 'production');
+    execute 'reset role';
+    select user_id into owner from public.apns_devices where token = tok and env = 'production';
+    if owner is distinct from u2 then raise exception 'token did not move to the new account'; end if;
+
+    -- The owner deletes their own.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.delete_apns_token(tok);
+    execute 'reset role';
+    if exists (select 1 from public.apns_devices where token = tok) then raise exception 'delete_apns_token left it'; end if;
+
+    -- The demo login registers nothing.
+    perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.save_apns_token(tok2, 'production');
+      execute 'reset role';
+      raise exception 'GUARD_MISSED: demo saved a device';
+    exception when others then if sqlerrm like 'GUARD_MISSED%' then raise; end if; end;
+    execute 'reset role';
+    if exists (select 1 from public.apns_devices where user_id = d) then raise exception 'demo device stored'; end if;
+
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: apns_devices: own rows only, validated, moved on re-save, demo refused, writes only through the definer';
+    else update _t set fails = fails + 1; raise notice 'FAIL: apns_devices — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 118. 0108: an account keeps at most 10 installs (the least recently seen
+--      go), save_apns_token is rate-limited (20 an hour), the export lists
+--      the installs without their tokens, demo_wipe and account deletion
+--      remove them.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; cnt int; i int; doc jsonb; limited boolean := false;
+begin
+  begin
+    u1 := pg_temp.zz_user('apnscap');
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    for i in 1..12 loop
+      perform public.save_apns_token(md5('zz' || i || random()::text) || md5(random()::text), 'production');
+    end loop;
+    execute 'reset role';
+    select count(*) into cnt from public.apns_devices where user_id = u1;
+    if cnt <> 10 then raise exception 'expected 10 installs, got %', cnt; end if;
+
+    execute 'set local role authenticated';
+    doc := public.export_my_data();
+    execute 'reset role';
+    if jsonb_array_length(coalesce(doc->'apns_devices', '[]'::jsonb)) <> 10 then
+      raise exception 'export lists % installs', jsonb_array_length(coalesce(doc->'apns_devices', '[]'::jsonb));
+    end if;
+    if exists (select 1 from jsonb_array_elements(doc->'apns_devices') e where e ? 'token') then
+      raise exception 'export carries a device token';
+    end if;
+
+    execute 'set local role authenticated';
+    begin
+      for i in 1..20 loop
+        perform public.save_apns_token(md5('zr' || i || random()::text) || md5(random()::text), 'sandbox');
+      end loop;
+    exception when others then
+      limited := sqlerrm like 'Too many requests%';
+    end;
+    execute 'reset role';
+    if not limited then raise exception 'save_apns_token is not rate-limited'; end if;
+
+    perform public.demo_wipe(array[u1]);
+    if exists (select 1 from public.apns_devices where user_id = u1) then raise exception 'demo_wipe left installs'; end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    insert into public.apns_devices (user_id, token, env) values (u1, md5(random()::text) || md5(random()::text), 'sandbox');
+    delete from auth.users where id = u1;
+    if exists (select 1 from public.apns_devices where user_id = u1) then raise exception 'account deletion left installs'; end if;
+
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: apns_devices capped at 10, rate-limited, exported without tokens, wiped with demo and account';
+    else update _t set fails = fails + 1; raise notice 'FAIL: apns_devices cap/limit/export/deletion — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 117; f int; p int;  -- tests 1–116 + B-0059
+declare expected_tests constant int := 119; f int; p int;  -- tests 1–118 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

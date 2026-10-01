@@ -294,7 +294,8 @@ final class SnapshotTests: XCTestCase {
             await preferences.setSalaryShift(true)
             try await shots(framed(.more) { NavigationStack { SpendingView(model: preferences) } },
                       name: "settings-spending", lang: lang, dark: dark)
-            try await shots(framed(.more) { NavigationStack { MessagesView(model: preferences) } },
+            let push = PushModel(data: store.data, system: FakePushSystem(), environment: "sandbox")
+            try await shots(framed(.more) { NavigationStack { MessagesView(model: preferences, push: push) } },
                       name: "settings-notifications", lang: lang, dark: dark)
             try await shots(framed(.more) { NavigationStack { AppearanceView() } },
                       name: "settings-appearance", lang: lang, dark: dark)

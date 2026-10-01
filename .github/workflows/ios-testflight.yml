@@ -1,0 +1,164 @@
+# Builds one of the two iOS apps for the App Store and uploads it to
+# TestFlight: "Budgeer Dev" (com.budgeer.app.dev, the TEST project; the
+# default) or "Budgeer" (com.budgeer.app, PROD). By hand only (Actions →
+# ios-testflight → Run workflow, pick the app): macOS minutes cost ten times
+# Linux ones.
+#
+# Signing is Xcode's automatic signing with cloud-managed certificates,
+# authorised by an App Store Connect API key (Admin role, team key): no
+# certificate or profile is stored anywhere. The archive and the upload are
+# Apple's documented command-line path: `xcodebuild archive` and
+# `xcodebuild -exportArchive` with an ExportOptions.plist whose method is
+# app-store-connect and destination upload, both with -allowProvisioningUpdates
+# and the -authenticationKey… options. The build number is this workflow's
+# run number, so every upload is newer than the last.
+#
+# Secrets (repository → Settings → Secrets and variables → Actions), by name:
+#   ASC_KEY_ID        the API key's id
+#   ASC_ISSUER_ID     the issuer id (Users and Access → Integrations)
+#   ASC_KEY_P8        the key file's contents (AuthKey_<id>.p8)
+#   APPLE_TEAM_ID     the developer team id
+# The key goes to a file only this job can read and is removed at the end;
+# nothing here prints a secret.
+name: ios-testflight
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'Which app: dev = "Budgeer Dev" (TEST), prod = "Budgeer" (PROD)'
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+permissions:
+  contents: read
+
+# One upload per app at a time; a second run waits rather than cancelling an
+# upload half-way.
+concurrency:
+  group: ios-testflight-${{ inputs.app }}
+  cancel-in-progress: false
+
+env:
+  PROJECT: ios/Budgeer/Budgeer.xcodeproj
+  DERIVED: ios/Budgeer/DerivedData
+
+jobs:
+  upload:
+    runs-on: macos-26
+    # A hung archive would otherwise burn up to six hours of macOS minutes.
+    timeout-minutes: 45
+    steps:
+      - name: Check the secrets
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          missing=""
+          for name in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secrets:$missing (Settings → Secrets and variables → Actions). See .claude/project.md, iOS app."
+            exit 1
+          fi
+      - name: Which app
+        run: |
+          if [ "${{ inputs.app }}" = "prod" ]; then
+            echo "SCHEME=Budgeer Prod" >> "$GITHUB_ENV"
+            echo "CONFIGURATION=Release-Prod" >> "$GITHUB_ENV"
+          else
+            echo "SCHEME=Budgeer Dev" >> "$GITHUB_ENV"
+            echo "CONFIGURATION=Release-Dev" >> "$GITHUB_ENV"
+          fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Pin Xcode
+        run: sudo xcode-select -s /Applications/Xcode_26.5.app && xcodebuild -version
+      - name: Install XcodeGen
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: '1'
+          HOMEBREW_NO_INSTALL_CLEANUP: '1'
+        run: brew install xcodegen
+      - name: Swift package cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ios/Budgeer/DerivedData/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-xcode26.5-${{ hashFiles('ios/Budgeer/project.yml', 'ios/BudgeerCore/Package.swift') }}
+      - name: Core, strings and project
+        run: npm run ios:prepare
+      - name: The API key and the export options
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          umask 077
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/asc_key.p8"
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          EOF
+      - name: Archive
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: >
+          set -o pipefail &&
+          xcodebuild archive
+          -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIGURATION"
+          -destination "generic/platform=iOS"
+          -archivePath "$RUNNER_TEMP/Budgeer.xcarchive" -derivedDataPath "$DERIVED"
+          -skipPackagePluginValidation
+          -allowProvisioningUpdates
+          -authenticationKeyPath "$RUNNER_TEMP/asc_key.p8"
+          -authenticationKeyID "$ASC_KEY_ID"
+          -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
+          CURRENT_PROJECT_VERSION="${{ github.run_number }}"
+          | tee archive.log | grep -E "error:|warning: .*Budgeer/|ARCHIVE|\*\*"
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: >
+          set -o pipefail &&
+          xcodebuild -exportArchive
+          -archivePath "$RUNNER_TEMP/Budgeer.xcarchive"
+          -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist"
+          -exportPath "$RUNNER_TEMP/export"
+          -allowProvisioningUpdates
+          -authenticationKeyPath "$RUNNER_TEMP/asc_key.p8"
+          -authenticationKeyID "$ASC_KEY_ID"
+          -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          | tee export.log | grep -E "error:|Upload|EXPORT|\*\*"
+      - name: Remove the key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/asc_key.p8" "$RUNNER_TEMP/ExportOptions.plist"
+      - name: Logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-logs
+          path: |
+            archive.log
+            export.log
+          if-no-files-found: ignore

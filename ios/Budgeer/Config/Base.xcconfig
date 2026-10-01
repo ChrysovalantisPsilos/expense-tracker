@@ -1,4 +1,10 @@
 // Shared by every configuration. Dev.xcconfig and Prod.xcconfig include it
-// and add the Supabase project. A developer's own settings (DEVELOPMENT_TEAM
-// for a device build) go in Local.xcconfig, which is not tracked.
+// and add the Supabase project and the app's identity (bundle id, name).
+//
+// Signing is automatic. The team is not in the repository: a developer puts
+// theirs in Local.xcconfig (not tracked), as one line
+//     DEVELOPMENT_TEAM = <the team id>
+// and CI passes DEVELOPMENT_TEAM on xcodebuild's command line from the
+// APPLE_TEAM_ID secret (.github/workflows/ios-testflight.yml). A Simulator
+// build needs neither.
 #include? "Local.xcconfig"

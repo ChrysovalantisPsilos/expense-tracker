@@ -68,8 +68,8 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 
 **Platform**
 - Installable PWA, offline reading, realtime everywhere (no polling)
-- Notification bell + web push + email (big events only), per-account switches
-- Passkeys, sign-in methods (connect/disconnect Google, set a password on a Google account), dark/light/system appearance, account deletion with data handover
+- Notification bell + web push + iOS push (APNs) + email (big events only), per-account switches
+- Passkeys, Sign in with Apple (web and iOS), sign-in methods (connect/disconnect Google and Apple, set a password on a Google or Apple account), dark/light/system appearance, account deletion with data handover
 
 ---
 
@@ -906,3 +906,44 @@ entries. Check at 390px (light and dark, English and Greek) and desktop 1280.
 7. Failures: with the key removed every helper says AI helpers aren't available, and
    Add, Import, Insights and Plan still work normally. The data export has
    "ai_month_summaries".
+
+### K10. Sign in with Apple, iOS push, the two apps, TestFlight
+
+Needs the owner's Apple setup (`.claude/project.md` › Sign in with Apple, iOS
+app) on the project under test.
+
+1. Website, Log in: "Sign in with Apple" sits under Google (black, white in
+   the dark theme). It goes to Apple and back signed in. Sign up: unticked,
+   "Sign up with Apple" shows the consent error and doesn't leave; ticked, it
+   goes to Apple and, back, no prompt appears and the consent history shows
+   both documents accepted. A new account made from Log in meets the
+   blocking prompt instead. With "Hide My Email", the relay address is the
+   account's email and our emails (invites, notices) still arrive.
+2. Website, Settings › Security: Apple is a row beside Google. Connect goes
+   to Apple and back with "Apple connected"; Disconnect works while another
+   way in remains, and is blocked (with the reason under the list) on an
+   Apple-only account. An hour after signing in, Connect/Disconnect ask for
+   a fresh sign-in.
+3. iOS (Budgeer Dev from Xcode on a device): Sign in with Apple under Google.
+   A new account: the legal gate with the two documents (Safari) and Accept
+   and continue → the app; I don't agree → the sign-out line. Its first
+   sign-in sets the profile's name to Apple's (Settings › Account), unless
+   the account already had a name of its own. Settings › Security: Connect
+   Apple (Apple's sheet) and Disconnect, the same rules as the website.
+4. iOS push: nothing is asked on launch. Save a first entry → iOS asks once
+   (never again, never on the demo login). Or Settings › Notifications →
+   Push on → iOS asks. Allowed: `apns_devices` has a row for the account
+   with env `sandbox` (a TestFlight build: `production`). A group expense by
+   another member → a banner on the iPhone (also with the app open); tapping
+   it opens that group; a budget alert opens Budgets, a reminder Recurring.
+   Denied in iOS Settings → the switch shows off with "Open Settings". Sign
+   out → the row is gone and no more pushes arrive. Push off on the account
+   (web or app) → no pushes on any device. Without the APNs function secrets
+   `notify-user` still answers and sends web push and email.
+5. Two apps: Budgeer Dev and Budgeer install side by side with their own
+   names and icons; Dev signs in to dev.budgeer.com's accounts, Budgeer to
+   budgeer.com's.
+6. TestFlight: Actions → ios-testflight → Run workflow (dev). Without the
+   secrets it stops at once naming the missing ones; with them the build
+   shows in App Store Connect › TestFlight with the run number as its build
+   number and no export-compliance question.
