@@ -38,6 +38,8 @@ struct ActivityView: View {
         .listSectionSpacing(14)
         .scrollContentBackground(.hidden)
         .background(NativeStyle.canvas)
+        // Every change of the list (a month, a chip, a search) moves smoothly.
+        .animation(.smooth(duration: 0.35), value: model.state)
         .searchable(text: Binding(get: { model.text }, set: { model.setText($0) }),
                     placement: .navigationBarDrawer(displayMode: .automatic),
                     prompt: language.t("transactions:ledger.search"))
@@ -81,11 +83,13 @@ struct ActivityView: View {
         } else {
             Section {
                 if !figures.pulse.days.isEmpty {
+                    // A search or a filter folds the card away (and back) smoothly.
                     MonthBarsCard(pulse: figures.pulse, period: model.period?.label ?? "")
-                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 6, trailing: 16))
-                    .listRowBackground(Color.clear)
-                    .listRowSeparator(.hidden)
-                    .accessibilityIdentifier("activity.header")
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 6, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .top)))
+                        .accessibilityIdentifier("activity.header")
                 }
                 // The chips' row runs across the card's width, with room for their shadow.
                 ActivityChips(model: model)
@@ -166,94 +170,128 @@ struct ActivityView: View {
 // MARK: The month's header
 
 /// The month's figures: spent big, then income and net (whichever the
-/// list's kind shows).
+/// list's kind shows). The big figure keeps one height, however long it is.
 private struct MonthFigures: View {
     let pulse: MonthPulse
     let period: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(period.capsLabel)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-            if let main = pulse.spent ?? pulse.income {
-                Text(main.amount)
-                    .font(NativeStyle.money(34))
-                    .foregroundStyle(pulse.spent == nil ? NativeStyle.positive : Color.primary)
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                    .contentTransition(.numericText())
-                Text(main.label).font(.subheadline).foregroundStyle(.secondary)
-            }
+            let main = pulse.spent ?? pulse.income
+            Text(main?.amount ?? " ")
+                .font(NativeStyle.money(34))
+                .foregroundStyle(pulse.spent == nil ? NativeStyle.positive : Color.primary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .contentTransition(.numericText())
+                .frame(height: 44, alignment: .leading)
+            Text(main?.label ?? " ").font(.subheadline).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
     }
 }
 
-/// Income and net as two small figures side by side.
+/// Income and net as two small figures, one above the other. Both places
+/// are always kept (a figure the kind leaves out is an empty place), so the
+/// card doesn't change size when a chip changes the kind.
 private struct MonthSideFigures: View {
     let pulse: MonthPulse
 
     var body: some View {
         VStack(alignment: .trailing, spacing: 8) {
-            if pulse.spent != nil, let income = pulse.income {
-                side(income.label, income.amount, NativeStyle.positive)
-            }
-            if let net = pulse.net {
-                side(net.label, net.text, NativeStyle.tone(net.tone))
-            }
+            let income = pulse.spent == nil ? nil : pulse.income
+            side(income?.label, income?.amount, NativeStyle.positive)
+            side(pulse.net?.label, pulse.net?.text, NativeStyle.tone(pulse.net?.tone))
         }
     }
 
-    private func side(_ label: String, _ amount: String, _ color: Color) -> some View {
+    private func side(_ label: String?, _ amount: String?, _ color: Color) -> some View {
         VStack(alignment: .trailing, spacing: 1) {
-            Text(label).font(.caption).foregroundStyle(.secondary)
-            Text(amount).font(.subheadline.weight(.semibold)).foregroundStyle(color).monospacedDigit().lineLimit(1)
+            Text(label ?? " ").font(.caption).foregroundStyle(.secondary)
+            Text(amount ?? " ")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(color)
+                .monospacedDigit()
+                .lineLimit(1)
+                .contentTransition(.numericText())
         }
+        .opacity(amount == nil ? 0 : 1)
         .accessibilityElement(children: .combine)
+        .accessibilityHidden(amount == nil)
     }
 }
 
-/// The month's card: the figures, then a bar per day (today in the
-/// tint, the days ahead faint) and the biggest day.
+/// The month's card: the figures, then a bar per day (today in the tint,
+/// the days ahead faint) and the biggest day. Its size is the same every
+/// month: the bars stand in 31 even places whatever the month's length,
+/// the peak's line keeps its place when there's none, and everything sits
+/// well inside the card's edge. Moving between months, the bars grow and
+/// shrink in place and the figures roll.
 struct MonthBarsCard: View {
     let pulse: MonthPulse
     let period: String
 
+    /// A day's place in the row: the longest month's days.
+    private static let places = 31
+    private static let barHeight: CGFloat = 54
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top) {
+            HStack(alignment: .top, spacing: 12) {
                 MonthFigures(pulse: pulse, period: period)
                 MonthSideFigures(pulse: pulse)
             }
-            HStack(alignment: .bottom, spacing: 3) {
-                ForEach(pulse.days) { day in
+            bars
+            Label(pulse.peak ?? " ", systemImage: "flame.fill")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .labelStyle(PeakLabelStyle())
+                .lineLimit(1)
+                .opacity(pulse.peak == nil ? 0 : 1)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .animation(.smooth(duration: 0.4), value: pulse)
+    }
+
+    private var bars: some View {
+        GeometryReader { proxy in
+            let place = proxy.size.width / CGFloat(MonthBarsCard.places)
+            HStack(alignment: .bottom, spacing: 0) {
+                ForEach(0..<MonthBarsCard.places, id: \.self) { index in
+                    let day: MonthPulse.Day? = pulse.days.indices.contains(index) ? pulse.days[index] : nil
                     VStack(spacing: 4) {
                         Capsule()
-                            .fill(color(day))
-                            .frame(height: max(4, 54 * day.bar))
-                            .frame(height: 54, alignment: .bottom)
-                        Text(day.label)
-                            .font(.system(size: 8, weight: day.today ? .bold : .regular))
-                            .foregroundStyle(day.today ? NativeStyle.tint : Color.secondary)
-                            .opacity(showsLabel(day) ? 1 : 0)
+                            .fill(day.map(color) ?? Color.clear)
+                            .frame(width: max(3, place * 0.6), height: barHeight(day))
+                            .frame(height: MonthBarsCard.barHeight, alignment: .bottom)
+                        Text(day?.label ?? "")
+                            .font(.system(size: 8, weight: day?.today == true ? .bold : .regular))
+                            .foregroundStyle(day?.today == true ? NativeStyle.tint : Color.secondary)
+                            .opacity(day.map(showsLabel) == true ? 1 : 0)
                             .fixedSize()
+                            .frame(height: 10)
                     }
-                    .frame(maxWidth: .infinity)
+                    .frame(width: place)
                 }
             }
-            .accessibilityHidden(true)
-            if let peak = pulse.peak {
-                Label(peak, systemImage: "flame.fill")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .labelStyle(PeakLabelStyle())
-            }
         }
-        .padding(18)
-        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .frame(height: MonthBarsCard.barHeight + 14)
+        .accessibilityHidden(true)
+    }
+
+    /// A day's bar: its share of the biggest day's height (a sliver at least); none past the month's end.
+    private func barHeight(_ day: MonthPulse.Day?) -> CGFloat {
+        guard let day else { return 0 }
+        return max(4, MonthBarsCard.barHeight * day.bar)
     }
 
     private func color(_ day: MonthPulse.Day) -> Color {

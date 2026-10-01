@@ -1,7 +1,8 @@
 // Settings, as iOS's own Settings: you at the top (your picture, name and
 // email; Account), then the web's groups in its order. Preferences:
 // Categories, Monthly spending, Meal vouchers, Notifications, Appearance, Language, Import rules, AI
-// helpers and this phone's Face ID lock. Privacy & security: Security, Your data,
+// helpers and this phone's Face ID lock (its page: the switch and the app PIN). Privacy & security:
+// Security, Your data,
 // Privacy, and the Privacy Notice and Terms of Use (the website's pages in
 // Safari). Help: Help & FAQ and the status page (in Safari), What's new,
 // Contact support (Mail). Then Sign out and the version. Meal vouchers sits
@@ -13,7 +14,6 @@ import SwiftUI
 struct SettingsView: View {
     let config: AppConfig
     let session: SessionStore
-    let lock: AppLock
     let account: AccountModel
     let email: String
     @Environment(AppLanguage.self) private var language
@@ -48,51 +48,40 @@ struct SettingsView: View {
             }
 
             Section {
-                SettingsRow(route: .categoryList, symbol: "tag.fill", color: SettingsRow.coral,
+                SettingsRow(route: .categoryList, symbol: "tag.fill", color: NativeTone.coral,
                             title: language.t("settings:rows.categories.label"), id: "settings.categories")
-                SettingsRow(route: .spending, symbol: "calendar", color: SettingsRow.amber,
+                SettingsRow(route: .spending, symbol: "calendar", color: NativeTone.coral,
                             title: language.t("settings:rows.spending.label"), id: "settings.spending")
-                SettingsRow(route: .voucherSetup, symbol: "ticket.fill", color: SettingsRow.teal,
+                SettingsRow(route: .voucherSetup, symbol: "ticket.fill", color: NativeTone.coral,
                             title: language.t("settings:rows.vouchers.label"), id: "settings.vouchers")
-                SettingsRow(route: .messages, symbol: "bell.badge.fill", color: SettingsRow.pink,
+                SettingsRow(route: .messages, symbol: "bell.badge.fill", color: NativeTone.coral,
                             title: language.t("settings:rows.notifications.label"), id: "settings.notifications")
-                SettingsRow(route: .appearance, symbol: "circle.lefthalf.filled", color: SettingsRow.slate,
+                SettingsRow(route: .appearance, symbol: "circle.lefthalf.filled", color: NativeTone.coral,
                             title: language.t("settings:rows.appearance.label"),
                             value: language.t("settings:appearance.\(appearance)"), id: "settings.appearance")
-                SettingsRow(route: .language, symbol: "globe", color: SettingsRow.blue,
+                SettingsRow(route: .language, symbol: "globe", color: NativeTone.coral,
                             title: language.t("settings:rows.language.label"), value: languageValue, id: "settings.language")
-                SettingsRow(route: .importRules, symbol: "wand.and.stars", color: SettingsRow.teal,
+                SettingsRow(route: .importRules, symbol: "wand.and.stars", color: NativeTone.coral,
                             title: language.t("settings:rows.importRules.label"), id: "settings.importRules")
-                SettingsRow(route: .aiHelpers, symbol: "sparkles", color: SettingsRow.purple,
+                SettingsRow(route: .aiHelpers, symbol: "sparkles", color: NativeTone.coral,
                             title: language.t("settings:rows.ai.label"), id: "settings.ai")
-                Toggle(isOn: Binding(get: { lock.enabled }, set: { on in
-                    Task { await lock.set(on, reason: language.t("ios:native.lock.reason")) }
-                })) {
-                    HStack(spacing: 14) {
-                        NativeIconTile(symbol: "faceid", color: SettingsRow.green)
-                        Text(language.t("ios:native.lock.setting"))
-                    }
-                }
-                .tint(NativeStyle.positive)
-                .disabled(!lock.available && !lock.enabled)
-                .accessibilityIdentifier("settings.lock")
+                SettingsRow(route: .faceLock, symbol: "faceid", color: NativeTone.coral,
+                            title: language.t("ios:native.lock.setting"), id: "settings.faceLock")
             } header: {
                 NativeCapsHeader(title: language.t("settings:sections.preferences"))
-            } footer: {
-                Text(language.t(lock.available || lock.enabled ? "ios:native.lock.settingNote" : "ios:native.lock.unavailable"))
             }
             .listRowBackground(NativeStyle.card)
 
             Section {
-                SettingsRow(route: .security, symbol: "lock.shield.fill", color: SettingsRow.slate,
+                SettingsRow(route: .security, symbol: "lock.shield.fill", color: NativeTone.sand,
                             title: language.t("settings:rows.security.label"), id: "settings.security")
-                SettingsRow(route: .yourData, symbol: "externaldrive.fill", color: SettingsRow.green,
+                SettingsRow(route: .yourData, symbol: "externaldrive.fill", color: NativeTone.sand,
                             title: language.t("settings:rows.data.label"), id: "settings.data")
-                SettingsRow(route: .privacy, symbol: "hand.raised.fill", color: SettingsRow.blue,
+                SettingsRow(route: .privacy, symbol: "hand.raised.fill", color: NativeTone.sand,
                             title: language.t("settings:rows.privacy.label"), id: "settings.privacy")
-                webRow("/privacy", symbol: "doc.text.fill", color: SettingsRow.teal,
+                webRow("/privacy", symbol: "doc.text.fill", color: NativeTone.sand,
                        title: language.t("settings:rows.privacyNotice.label"), id: "settings.privacyNotice")
-                webRow("/terms", symbol: "checkmark.seal.fill", color: SettingsRow.teal,
+                webRow("/terms", symbol: "checkmark.seal.fill", color: NativeTone.sand,
                        title: language.t("settings:rows.terms.label"), id: "settings.terms")
             } header: {
                 NativeCapsHeader(title: language.t("settings:sections.privacy"))
@@ -100,16 +89,16 @@ struct SettingsView: View {
             .listRowBackground(NativeStyle.card)
 
             Section {
-                webRow("/help", symbol: "questionmark.circle.fill", color: SettingsRow.green,
+                webRow("/help", symbol: "questionmark.circle.fill", color: NativeTone.amber,
                        title: language.t("settings:rows.help.label"), id: "settings.help")
-                SettingsRow(route: .whatsNew, symbol: "sparkle", color: SettingsRow.amber,
+                SettingsRow(route: .whatsNew, symbol: "sparkle", color: NativeTone.amber,
                             title: language.t("settings:rows.whatsNew.label"), id: "settings.whatsNew")
                 if let contact = SettingsFigures.contact() {
-                    webRow(contact.status, symbol: "waveform.path.ecg", color: SettingsRow.pink,
+                    webRow(contact.status, symbol: "waveform.path.ecg", color: NativeTone.amber,
                            title: language.t("settings:rows.status.label"), id: "settings.status")
                     if let mail = URL(string: "mailto:\(contact.support)") {
                         Link(destination: mail) {
-                            SettingsLabel(symbol: "envelope.fill", color: SettingsRow.blue,
+                            SettingsLabel(symbol: "envelope.fill", color: NativeTone.amber,
                                           title: language.t("settings:rows.contact.label"), value: contact.support)
                         }
                         .foregroundStyle(Color.primary)
@@ -184,16 +173,6 @@ struct SettingsRow: View {
         }
         .accessibilityIdentifier(id)
     }
-
-    // The tiles' colours: the category palette (categoryStyle.CATEGORY_COLORS).
-    static let coral = Color(hex: 0xE4572E)
-    static let amber = Color(hex: 0xC98A0B)
-    static let green = Color(hex: 0x2E9B62)
-    static let teal = Color(hex: 0x16939A)
-    static let blue = Color(hex: 0x3A78D4)
-    static let purple = Color(hex: 0x8558D0)
-    static let pink = Color(hex: 0xD24D8A)
-    static let slate = Color(hex: 0x6B7280)
 }
 
 /// A Settings row's face: the tile, the name, the value; an arrow for a page that opens outside.
@@ -226,7 +205,7 @@ struct DemoNotice: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
-            NativeIconTile(symbol: "testtube.2", color: SettingsRow.amber)
+            NativeIconTile(symbol: "testtube.2", color: NativeTone.amber)
             VStack(alignment: .leading, spacing: 4) {
                 Text(language.t("settings:demo.title")).font(.subheadline.weight(.semibold))
                 if let text { Text(text).font(.subheadline) }

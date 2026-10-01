@@ -56,7 +56,7 @@ test('vouchers: the page’s card, this month’s top-ups and spending', () => {
   assert.deepEqual([quiet.topUps.tone, quiet.spent.tone], ['muted', 'muted'])
 })
 
-test('vouchers: Fix days’ words and the stepper’s ends', () => {
+test('vouchers: Edit days’ words and the stepper’s ends', () => {
   const parts = daysFixParts(SETTINGS, '2026-09', 20)
   assert.equal(parts.label, 'Days worked in September')
   assert.deepEqual(parts.total, { perDay: '€8.00', amount: '€160.00' })

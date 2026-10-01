@@ -138,10 +138,11 @@ final class HomeViewModel {
         // error is the web's, Home's figures don't wait on it.
         let rules = (try? await data.recurring.rules()) ?? []
         let rates = (try? await FxRates.latest(for: rules, base: base, fx: data.fx, core: core)) ?? [:]
-        async let read = data.transactions.transactions(TxnQuery(from: window.fetchFrom, to: window.period.to, spread: true))
-        async let categories = data.categories.savingsCategories()
-        let rows = try await FxRates.fillPending(try await read, base: base, today: try core.isoDate(instant), fx: data.fx, core: core)
-        let input = HomeInput(rows: rows, profile: profile, categories: try await categories, rules: rules, rates: rates,
+        // One read after another, as every model here does.
+        let read = try await data.transactions.transactions(TxnQuery(from: window.fetchFrom, to: window.period.to, spread: true))
+        let categories = try await data.categories.savingsCategories()
+        let rows = try await FxRates.fillPending(read, base: base, today: try core.isoDate(instant), fx: data.fx, core: core)
+        let input = HomeInput(rows: rows, profile: profile, categories: categories, rules: rules, rates: rates,
                               now: instant, periodValue: periodValue, oldest: options.oldest, oldestKnown: options.oldestKnown)
         return try HomeFigures.compute(input, core: core)
     }

@@ -1,7 +1,8 @@
 // Budgets (from Home's "See all" and More): this month's caps with their
 // spend, each row's bar easing to its percent (a light warning tap the
 // first time one crosses its cap). Tap a row (or swipe it) to change its
-// cap; swipe it away to delete it; + sets a new one; "Copy last month's
+// cap; swipe it away to delete it; the floating Add sets a new one (the
+// page lends it, AddSlot); "Copy last month's
 // budgets" when they can be copied. Every figure and word is BudgetsModel's.
 import SwiftUI
 
@@ -74,13 +75,7 @@ struct BudgetsView: View {
         .background(NativeStyle.canvas)
         .nativeTabBarRoom()
         .navigationTitle(language.t("budgets:title"))
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button { startNew() } label: { Image(systemName: "plus") }
-                    .accessibilityLabel(language.t("budgets:form.title"))
-                    .accessibilityIdentifier("budgets.add")
-            }
-        }
+        .lendsAdd(.run { startNew() })
         .refreshable { await model.load() }
         .task(id: language.current) { await model.load() }
         .sensoryFeedback(.warning, trigger: overCount) { old, new in new > old }

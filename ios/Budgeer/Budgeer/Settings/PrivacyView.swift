@@ -23,7 +23,7 @@ struct PrivacyView: View {
             }
             .listRowBackground(Color.clear)
 
-            right("download", symbol: "arrow.down.doc.fill", color: SettingsRow.blue) {
+            right("download", symbol: "arrow.down.doc.fill", color: NativeTone.sand) {
                 Button {
                     Task { await model.download() }
                 } label: {
@@ -43,18 +43,18 @@ struct PrivacyView: View {
                 NavigationLink(value: AppRoute.yourData) { Text(language.t("privacy:settings.download.backup")) }
                     .accessibilityIdentifier("privacy.backup")
             }
-            right("correct", symbol: "pencil", color: SettingsRow.amber) {
+            right("correct", symbol: "pencil", color: NativeTone.amber) {
                 NavigationLink(value: AppRoute.account) { Text(language.t("privacy:settings.correct.profile")) }
                 Button(language.t("privacy:settings.correct.transactions"), action: openActivity)
             }
-            right("delete", symbol: "trash.fill", color: SettingsRow.coral) {
+            right("delete", symbol: "trash.fill", color: NativeTone.coral) {
                 if !model.isDemo {
                     NavigationLink(value: AppRoute.security) {
                         Text(language.t("privacy:settings.delete.go")).foregroundStyle(NativeStyle.negative)
                     }
                 }
             }
-            right("request", symbol: "envelope.badge.shield.half.filled", color: SettingsRow.purple) {
+            right("request", symbol: "envelope.badge.shield.half.filled", color: NativeTone.amber) {
                 if !model.isDemo {
                     NavigationLink(value: AppRoute.privacyRequest) { Text(language.t("privacy:settings.request.send")) }
                         .accessibilityIdentifier("privacy.request")
@@ -70,8 +70,8 @@ struct PrivacyView: View {
                 }
             }
 
-            right("automated", symbol: "cpu", color: SettingsRow.slate) { EmptyView() }
-            right("complain", symbol: "building.columns.fill", color: SettingsRow.teal) { EmptyView() }
+            right("automated", symbol: "cpu", color: NativeTone.sand) { EmptyView() }
+            right("complain", symbol: "building.columns.fill", color: NativeTone.green) { EmptyView() }
 
             Section {
                 if let consents = model.consents {

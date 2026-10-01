@@ -40,6 +40,33 @@ struct CategoryBadge: View {
     }
 }
 
+/// Something that repeats (a saving set to go aside every month): its
+/// category's badge with the repeat mark in its corner, as Recurring's rows read.
+struct RepeatingBadge: View {
+    let look: CategoryLook?
+    var size: CGFloat = 32
+
+    var body: some View {
+        Group {
+            if let look {
+                CategoryBadge(look: look, size: size)
+            } else {
+                RoundedRectangle(cornerRadius: size * 0.3, style: .continuous).fill(Theme.Colors.subtle)
+                    .frame(width: size, height: size)
+            }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.system(size: size * 0.28, weight: .bold))
+                .foregroundStyle(NativeStyle.tint)
+                .frame(width: size * 0.5, height: size * 0.5)
+                .background(NativeStyle.card, in: Circle())
+                .offset(x: size * 0.14, y: size * 0.14)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 /// A group's share of an expense (Home's By category): people on the sand tile.
 struct GroupBadge: View {
     var size: CGFloat = 32

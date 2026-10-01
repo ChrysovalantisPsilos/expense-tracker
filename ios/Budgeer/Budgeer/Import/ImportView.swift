@@ -92,7 +92,7 @@ struct ImportView: View {
     @ViewBuilder private var map: some View {
         Section {
             HStack(spacing: 12) {
-                NativeIconTile(symbol: "tablecells.fill", color: SettingsRow.green)
+                NativeIconTile(symbol: "tablecells.fill")
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: model.fileName).font(.headline).lineLimit(1)
                     Text(model.rowsLabel).font(.footnote).foregroundStyle(.secondary)

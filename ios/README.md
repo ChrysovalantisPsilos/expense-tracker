@@ -165,8 +165,11 @@ ios/Budgeer/
     App/                 AppContainer (the client, the data layer, the cache, the live feed, the lock, the join
                          link waiting), RootView (sign-in, the legal gate, the frame, the lock over it, a
                          budgeer://join link), AppFrame (the tabs, each tab's
-                         stack of pages (AppRoute), the Add sheet, AppRouter), NotificationsView (the bell's page),
-                         AppLock + LockView (Face ID), ShellModel (your initials, the bell's feed), LiveRefresh
+                         stack of pages (AppRoute), the Add sheet, AppRouter), AddSlot (what Add does on a page
+                         that lends it its own add), NotificationsView (the bell's page), AppLock (Face ID; its screen
+                         is Lock/LockScreen), AppPin (the lock's PIN: rules, backoff) + PinKeychain (the Keychain item, PBKDF2) +
+                         LockPinEntry (the lock screen's "Use PIN" slot, PinPad), ShellModel (your picture, the
+                         bell's feed), LiveRefresh
     Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView,
                          AccountSecurity (Settings › Security's calls: identities, the token's claims, the
                          password, linking Google)
@@ -180,7 +183,10 @@ ios/Budgeer/
                          QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
                          refetch), FxRates (ECB rates as fx.js), PeriodSource (the period pickers' options)
     Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView (the month pager,
-                         the sections, HomeCategoriesPage)
+                         the cards, HomeCategoriesPage), HomeCard (a card, a charge's tile), HomeCategoryViews
+                         (By category's donut, a category's row), HomeVoucherCard (the Meal vouchers card)
+    Lock/                LockScreen (the lock's screen: the mark on the glow, Unlock, a slot under it for another
+                         way in)
     Transactions/        EntryFormModel + AddSheet (Add/Edit/a rule: the amount, the keypad, the details),
                          ReceiptModel + ReceiptCard + ReceiptReader (Scan a receipt: Vision on the device, the
                          check, CameraPicker),
@@ -200,7 +206,7 @@ ios/Budgeer/
     Savings/             SavingsFigures (Savings.jsx's steps as core calls), SavingsModel, SavingsView (the pot and
                          its line, This month, the goals, the history), GoalEditorModel + GoalEditView (+ GoalEditHost)
     Vouchers/            VoucherFigures (Vouchers.jsx's steps), VouchersModel + VouchersView (the card, the next top-up
-                         with Fix days, the history), VoucherSetupModel + VoucherSetupView (Settings › Meal vouchers)
+                         with Edit days, the history), VoucherSetupModel + VoucherSetupView (Settings › Meal vouchers)
     Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab's
                          grid, Join with a link), NewGroupModel + NewGroupView (the new-group flow; the cover
                          picker and its upload, GroupCoverPicker + GroupCoverFile), GroupModel (+ GroupInvite) +
@@ -209,12 +215,13 @@ ios/Budgeer/
                          SettleUpModel + GroupForms (the expense sheet and Add's quick group form, Settle up
                          with the payment-details ask, Members), CommentsModel, MyGroupsModel (Add's "Who's it
                          for?"), JoinModel + JoinView (a group from an invite link; JoinInbox)
-    More/                MoreView (your profile, Money (Budgets, Savings, Recurring, Plan, Categories; Meal vouchers
-                         once set up), Insights)
+    More/                MoreView (you over "Account & settings", Money (Budgets, Savings, Recurring, Plan; Meal
+                         vouchers once set up), Insights)
     Settings/            SettingsView (the list, its rows, the demo note), AccountModel + AccountView,
                          PreferencesModel + PreferencesViews (Monthly spending, Notifications, Appearance, AI
                          helpers), SecurityModel + SecurityView (+ DeleteAccountSheet), PrivacyModel +
-                         PrivacyView (+ PrivacyRequestView, WhatsNewView), LanguageView, SettingsFigures (the
+                         PrivacyView (+ PrivacyRequestView, WhatsNewView), LanguageView, LockSettingsView (Face ID
+                         lock: the switch and the app PIN), SettingsFigures (the
                          plain pages' core calls), WebPage (the website's pages in Safari)
     Categories/          CategoriesModel (+ CategoryEditorModel), CategoriesView (+ DeleteCategorySheet),
                          CategoryEditView (+ CategoryEditHost)
@@ -226,13 +233,19 @@ ios/Budgeer/
     Theme/               Theme (the web's colour tokens), NativeStyle (the coral tint, Poppins titles and money
                          figures), NativeAppearance (the bars' title faces), NativeGlass (Liquid Glass on iOS 26,
                          the standard material on iOS 17–18), NativeTabs (the floating tab bar with Add beside
-                         it), NativeParts (section headers, money, bars, tiles, avatars, loading and failure
-                         states, rich text), NativeChrome (the bell and initials, the confetti), NativeSwatch,
-                         NativeHaptics, CategoryBadge, BrandMark (+ BrandIntro, the sign-in's wordmark)
+                         it), NativeParts (section headers, money, bars, the brand's icon tones and tiles,
+                         avatars, loading and failure states, rich text), NativeMotion (the springs, the ⓘ and
+                         its explanation, rolling figures, NativeFlow for wrapping tags), NativeChrome (the bell
+                         and your picture, the confetti), NativeSwatch, NativeHaptics, CategoryBadge (+
+                         RepeatingBadge), BrandMark (+ BrandIntro, the sign-in's wordmark)
     Support/             AppLanguage, ProfileLanguage (the account's language), L10n (the generated strings),
                          AppAppearance (light, dark or the phone's), JSONValue, CoreHelpers, CategoryLook, ISODay
     Resources/Fonts/     Poppins and Manrope, semibold and bold (OFL, static TTFs)
-    Resources/Assets.xcassets/  AppIcon: one 1024 px opaque PNG of public/pwa-icon.svg (the apple-touch-icon art)
+    Resources/AppIcon.icon/     the layered iOS 26 icon (Icon Composer: icon.json + the mark's stem and two arcs as
+                                SVG layers in two glass groups, on the cream; dark: the ink); AppIcon-Dev.icon the Dev
+                                configurations' (the same mark on the ink, an amber DEV band as its own layer)
+    Resources/Assets.xcassets/  AppIcon and AppIcon-Dev: one opaque 1024 px PNG each, the same name's fallback for a
+                                build that can't read the .icon
     Resources/Icons.xcassets/   the web's Lucide category icons as template SVGs (npm run ios:icons; committed)
     Resources/LUCIDE-LICENSE.txt  Lucide's ISC licence
     Resources/Generated/ <lang>.lproj/Localizable.strings and InfoPlist.strings — generated, not committed
@@ -271,8 +284,15 @@ a core call (the web's function); Swift reads, lays out and draws.
   standard material. Every tab is a stack of pages under a large title, with
   the bell (its unread count; the notifications as a page pushed on the
   tab you're on, each with when it came, the new ones marked) and your
-  initials (Settings) top right. The appearance follows the phone unless
-  Settings › Appearance picks light or dark.
+  picture or initials (Settings) top right. The appearance follows the phone unless
+  Settings › Appearance picks light or dark. Add is the only add button:
+  no page carries a + in its bar; a page whose own thing is added lends Add
+  its action while it's on top (`AddSlot`): Budgets a new budget,
+  Categories a new category of the kind shown, Recurring a recurring entry
+  of the kind shown, a group's page an expense in that group; anywhere else
+  it's a new entry. Things open and close in place on one spring
+  (`NativeMotion`), every ⓘ opens its explanation the same way, and figures
+  roll their digits when they change.
 - **Add / Edit an entry** (Add; a row in Activity; a rule in Recurring), a
   sheet: the amount first, on a keypad, the category chips and the day; pull
   it up for the rest, in the web's words: Type it when the AI switch is on
@@ -301,11 +321,18 @@ a core call (the web's function); Swift reads, lays out and draws.
   entry), the month's spend with Income and Net (the ⓘ: How Net adds up);
   "every budget held" on a past month that kept them all (a burst of
   confetti the first time), and what was put aside with "See savings ›"
-  (Savings); then Budgets, the month in plain words (when its AI switch is
-  on), Coming up (or what a past month was charged), By category and Meal
-  vouchers, a few rows each with See all (Meal vouchers' opens their page).
+  (Savings); then a summary first, each title on the canvas over a rounded
+  card without hairlines, See all beside it: the month in plain words (when
+  its AI switch is on), Coming up (or what a past month was charged) as a
+  strip of tiles, By category as a donut of the four biggest and "Other"
+  (categoryBars at four) with what was spent in its middle and a legend of
+  their amounts, Budgets, and Meal vouchers as the card itself in coral
+  (what's on it, opening their page) with the next top-up as a line
+  beneath. The cards spring in and the figures roll.
 - **Activity**: the month at a glance (spent, income and net, a bar per
-  day, the biggest day; rowParts.monthPulse), chips for the kind and the
+  day, the biggest day; rowParts.monthPulse; the card the same size every
+  month and every kind, the bars in 31 even places, folding away smoothly
+  when a search or a filter hides it), chips for the kind and the
   categories (and Groups: only your shares of group expenses, txnFilter's
   shared filter), then the month's entries by day, each day in its own card
   with what it spent; a floating glass pill for the month; search over all
@@ -314,11 +341,13 @@ a core call (the web's function); Swift reads, lays out and draws.
   with today's date) or Split with a group (the group's quick form; the
   personal entry goes once the group's is saved); a tap opens Edit.
 - **Budgets** (from Home): the month's bars and tones, set or change a
-  budget, the carried-over label, copy last month's.
+  budget (Add sets a new one here), the carried-over label, copy last month's.
 - **Recurring** (from More): Subscriptions and Income, the totals per
-  frequency, pause, tap to edit the rule, add one (Add with Repeat on).
+  frequency, pause, tap to edit the rule, add one (Add, with Repeat on and
+  the kind shown).
 - **Insights** (from More): "Where your money went" (tap a month in the
-  last six), "Income vs expenses", Spending abroad, then the web's other
+  last six: the bars, the split and its shares spring to it, the rows kept
+  by name so nothing flickers), "Income vs expenses", Spending abroad, then the web's other
   cards: **Your salary** (the regular pay, the last raise and a small step
   line of the pay; it opens the salary page, or says how it works before any
   pay), **Net worth** (Assets and Debts, the savings accounts with "See
@@ -327,8 +356,9 @@ a core call (the web's function); Swift reads, lays out and draws.
   "+ Account" and a tap open an account's page: its name, what it is (an
   asset, a debt, savings, with the savings note), its balance in its own
   currency, Add account / Save changes, Delete; a delete asks first, from
-  the page or a swipe, as on the web) and **Export statement** (From
-  and To, this month by default; Export PDF or Excel, off before anything
+  the page or a swipe, as on the web) and **Export statement**, one
+  compact row (From and To, this month by default; a small Export button
+  offers PDF or Excel, off before anything
   was logged; the file comes from the `generate-report` edge function, the
   same builder (`statementFile.ts`) the website runs on the device, named as
   the web names it (`statementFilename`), then the share sheet, and a Share
@@ -373,7 +403,10 @@ a core call (the web's function); Swift reads, lays out and draws.
   go on (1, 3, 5 or 10 years, the three ways as step lines with what each
   adds up to, the yearly raise on a slider, the estimate's note behind the
   ⓘ), Against prices (Belgium or Greece, saved; since which year; the three
-  tiles and the monthly gap) and year by year. Before a Salary category or
+  figures and the monthly gap) and year by year. If things go on shows each
+  way with what it adds up to, a tap opening its line, the chart with it
+  lit and (What if) the raise; Against prices has the country and the year
+  as one menu over the three figures. Before a Salary category or
   any pay it says how to start (a new income category; Add income in the
   Salary category). Corrections (an extra's kind, the country, the Bonus
   category) are saved whole with save_salary_history, shown at once and put
@@ -403,15 +436,19 @@ a core call (the web's function); Swift reads, lays out and draws.
   as the web does (`payLinks.askForPaymentDetails`): Add payment details
   opens Getting paid's three fields in place, saved as Settings › Account
   saves them (`paymentDetailsToSave`, `set_payment_info`); Not now is kept
-  on the phone (the web's `budge:paymentAsk`). The … menu: Members
-  (remove, invite by email or a share link), Share summary, **Download
-  statement (PDF)** (the `group-report` edge function's file, named as the
-  website names it, `reportFiles.groupStatementFilename`, then the share
-  sheet), Rename (the owner: **Edit group**, the name and the picture, as
-  a new group's (a photo or an emoji on a colour over the photo now), sent
-  by the same upload; also from the camera on the owner's picture), Leave
-  (or leave silently) and Delete (type the name; the web's "can't yet"
-  while others are in it). **Joining from an invite link**: a
+  on the phone (the web's `budge:paymentAsk`). The timeline's expenses wear
+  the badge their description suggests (`categoryStyle.categoryLook` over
+  the name, as an uncategorised entry's). Add (the floating one) adds an
+  expense to the group. The owner renames the group in place (tap its
+  name: the field, Save, Cancel) and changes its picture any time (tap the
+  picture: **Edit group**, the name and the picture, as a new group's (a
+  photo or an emoji on a colour over the photo now), sent by the same
+  upload). The … menu: Members (remove, invite by email or a share link),
+  **Share summary** (the group's PDF report: the `group-report` edge
+  function's file, named as the website names it,
+  `reportFiles.groupStatementFilename`, then the share sheet), Edit group,
+  Leave (or leave silently) and Delete (type the name on a small sheet;
+  the web's "can't yet" while others are in it). **Joining from an invite link**: a
   `budgeer://join/<token>` link opens the join page on the Groups tab
   (kept until you're signed in), and the tab's "Join with a link" takes a
   pasted link or its code (Paste reads the clipboard only when tapped;
@@ -446,7 +483,7 @@ a core call (the web's function); Swift reads, lays out and draws.
   web's toast).
 - **Meal vouchers** (Home's card, More › Money once set up): what's on the
   card (red below zero) with this month's top-ups and spending, the next
-  top-up and why, Fix days in place (a stepper, "× €8.00 = **€160.00**",
+  top-up and why, Edit days in place (a stepper, "× €8.00 = **€160.00**",
   the calendar's count, Save or Cancel; the calendar's own count removes the
   fix), and the card's history by month (expenses open in Edit; top-ups;
   the starting balance; Show older). The gear opens the setup; without one
@@ -456,9 +493,15 @@ a core call (the web's function); Swift reads, lays out and draws.
   card today; Save says what it did in place (off: the setup goes, the
   expenses keep their flag). save_meal_vouchers with voucherMath's
   newSettings / withDays.
-- **More**: your profile (to Settings), Money (Budgets, Savings, Recurring,
-  Plan, Categories, and Meal vouchers once set up, as on the web) and
-  Insights (Your salary opens from its card there, as on the web).
+- **More**: you (your picture, name and email over "Account & settings":
+  the way in to Settings), Money (Budgets, Savings, Recurring, Plan, and
+  Meal vouchers once set up, as on the web) and Insights (Your salary opens
+  from its card there, as on the web). Every tile is in the category
+  badges' style in the brand's tones (`NativeTone`: coral, amber, green,
+  sand), Settings' too. One place to edit each thing: Categories live in
+  Settings only (More no longer lists them); net-worth accounts in
+  Insights' Net worth; a salary's corrections on its page; the meal
+  vouchers' setup in Settings (their page links there).
 - **Settings** (from More or your initials), as iOS's own Settings, the
   web's groups in its order, every page pushed and edited in place
   (a sheet only to confirm deleting):
@@ -470,7 +513,7 @@ a core call (the web's function); Swift reads, lays out and draws.
   - **Categories**: Expenses or Income, your categories (active A–Z, then
     archived, dimmed; "New" on the new default ones; "Savings, not income"),
     swipe to archive or unarchive or delete (after choosing where its
-    entries go, `delete_category`), + to add. A category's page: the badge
+    entries go, `delete_category`), Add for a new one of the kind shown. A category's page: the badge
     as it will look, the name (`categoryNameError`), the colour and the
     icon (`categoryStyle.categoryPicker`, the web's Lucide icons), "Counts
     as savings" on an income one, Archive and Delete; Save writes what
@@ -484,10 +527,18 @@ a core call (the web's function); Swift reads, lays out and draws.
     browsers allowed on the website, and this app has no push yet (that
     needs APNs and a paid developer account).
   - **Appearance**: light, dark or the phone's, on this device (as the
-    web keeps it per browser). **Language** and the **Face ID lock** (off
-    by default; turning it on asks for Face ID or the passcode first; once
-    on, Budgeer asks when it opens and after a minute away, and the app
-    switcher shows the lock, not the money).
+    web keeps it per browser). **Language** and the **Face ID lock**, its
+    own page (off by default; turning it on asks for Face ID or the passcode
+    first; once on, Budgeer asks when it opens and after a minute away, and
+    the app switcher shows the lock, not the money), with the **app PIN**
+    for when Face ID fails or isn't there: set up (4–6 digits, then again),
+    changed or removed (each after the current PIN), all in place. It's kept
+    on this iPhone only, as a salted PBKDF2-SHA256 hash in the Keychain
+    (this device only, never the digits); wrong tries back off from the
+    fifth (30 s, doubling, up to an hour), kept with the hash so a relaunch
+    doesn't reset them. The lock screen offers "Use PIN" (`LockPinEntry`),
+    and shows the pad at once on a phone that can't check its owner;
+    removing the PIN there turns the lock off.
   - **AI helpers**: the four switches, what each sends, the privacy note;
     the demo note on the demo account.
   - **Security**: the sign-in methods (email & password, Google; passkeys
@@ -580,9 +631,15 @@ The language preference ('system', 'en', 'el') is the web's own rule
 "Follow my device" reads only the device's first preferred language, which
 is what iOS Safari reports to the web: the whole list would make an English
 phone with Greek as a second language Greek. Signed in, the profile's
-language wins and a choice in More is saved to it (`ProfileLanguage`, the
-core's `reconcileLanguage` and `profileValue`, as the web's ProfileLanguage
-and Settings › Language); the shared demo account keeps it on the device.
+language wins and a choice in Settings › Language is saved to it
+(`ProfileLanguage`, the core's `reconcileLanguage` and `profileValue`, as the
+web's ProfileLanguage and Settings › Language); the shared demo account keeps
+it on the device. As on the web, only a new profile value reconciles, and
+once a choice is made here, reads that still answer the old language are
+passed over until the profile says what was saved (choosing "Follow my
+device" while the profile held Greek used to put Greek straight back); a
+save that fails keeps the choice on this device. A change cross-fades the
+words, and the bars already on screen take the new title face.
 
 ### Theme and fonts
 
@@ -630,7 +687,7 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   (Account, the switches, Security over `FakeSecurity`, Privacy), `CategoriesModelTests` (the
   list, archive, delete with a move, adding and editing), `SavingsModelTests` (the web's reads, the
   filter without a read, savings accounts as the total, the first run, Show older, a goal's quick
-  add, deleting goals and entries, a goal's page), `VouchersModelTests` (the card, Fix days and the
+  add, deleting goals and entries, a goal's page), `VouchersModelTests` (the card, Edit days and the
   calendar's count, no setup, the setup's form, turning vouchers off),
   `PlanModelTests` (the web's reads, a row's editor and the save, a failed save, What if I add…, the
   ideas and the picker, Apply and Undo, Clear plan, the salary from the entries, Type a what-if,
@@ -654,25 +711,30 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   fail when a committed file no longer matches the web.
 - `L10nTests`: both languages bundled, the web's keys, the fallback, the
   language preference. `AppLanguageTests`: the device's first language only,
-  the profile's language first, the demo account left alone.
+  the profile's language first, the demo account left alone, "Follow my
+  device" after Greek staying put (an old read, a failed save).
+  `AppPinTests` and `AppLockTests`: the PIN's rules (4–6 digits, a salted
+  hash, the backoff, a relaunch keeping the wait), the PIN unlocking when
+  Face ID fails, and the lock on a phone without Face ID.
 - `SnapshotTests`: PNGs at an iPhone 17's size (402×874) inside the frame
   (the floating tab bar, the screen's tab picked) of Sign-in (and three
-  moments of its intro), the legal gate, the lock, Home (this month, a past
+  moments of its intro), the legal gate, the lock (with "Use PIN", and the
+  PIN pad on a phone without Face ID), Home (this month, a past
   month that held its budgets, By category's See all), the Add sheet (as it
   comes up, Edit pulled up, Split with a group, a receipt's check and the
   receipt used), Activity, Groups (the
   tab, New group empty, filled and made,
   a group's page, settled with its confetti caught mid-fall, Balances, an
   expense split by amounts, a new one from a receipt, Settle up, its payment-details ask open, Edit
-  group, Members, Join with a link: the link pasted, the group it opens,
+  group, Delete's sheet, Members, Join with a link: the link pasted, the group it opens,
   an expired one), More, Settings and its
-  pages (Account, Monthly spending, Notifications, Appearance, AI helpers,
+  pages (Face ID lock without and with a PIN, Account, Monthly spending, Notifications, Appearance, AI helpers,
   What's new, Security with Delete account and a Google-only account,
   Privacy and its request), Categories (both kinds, a category's page, a
   new one with a name taken, deleting), the notifications, Budgets,
   Recurring and Insights, Savings (from the entries, from savings accounts,
   before anything was saved, a goal's page, a new goal as it opens),
-  Meal vouchers (the page, Fix days open, no setup, the setup, More with
+  Meal vouchers (the page, Edit days open, no setup, the setup, More with
   their row), Plan (the page, a row's editor, the overlap picker, What if I
   add…, Type a what-if, a plan with changes and its Apply sheet, just
   applied, the salary from the entries, no income, nothing to plan), Your

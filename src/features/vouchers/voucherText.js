@@ -46,7 +46,7 @@ export function voucherPageParts(settings, summary) {
   }
 }
 
-// "Fix days" for the month the next top-up pays for, at `days`: its label,
+// "Edit days" for the month the next top-up pays for, at `days`: its label,
 // the values of "× €8.00 = <b>€176.00</b>" (fix.total), what the calendar
 // says, and which way the stepper can still go (none to every day).
 export function daysFixParts(settings, month, days) {

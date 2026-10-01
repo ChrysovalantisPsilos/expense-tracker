@@ -31,7 +31,7 @@ struct EditGroupView: View {
                 }
                 GroupCoverPicker(photo: $photo, emoji: $emoji, colour: $colour, current: model.figures?.imageUrl)
                 HStack(spacing: 12) {
-                    NativeIconTile(symbol: "character.cursor.ibeam", color: NativeStyle.coral, size: 30)
+                    NativeIconTile(symbol: "character.cursor.ibeam", color: NativeTone.coral, size: 30)
                     TextField(language.t("groups:edit.name"), text: $name)
                         .font(.body.weight(.semibold))
                         .submitLabel(.done)

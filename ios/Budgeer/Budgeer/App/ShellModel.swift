@@ -1,5 +1,5 @@
-// What the frame shows around the pages (AppShell): your initials for the
-// picture (avatarLook.avatarInitials over the profile's name), the bell's
+// What the frame shows around the pages (AppShell): your picture (the
+// photo, or the initials: avatarLook over the profile), the bell's
 // feed with its unread count and badge (bellMath), when each came
 // (dates.shortDateTime), and where a notification leads
 // (bellMath.notificationPath), and whether the user gets meal vouchers
@@ -26,6 +26,8 @@ struct BellItem: Identifiable, Equatable, Sendable {
 @Observable
 final class ShellModel {
     private(set) var initials = ""
+    /// Your circle (More's first row, the bar's corner): the photo, or the initials.
+    private(set) var avatar: Avatar?
     /// The profile's name (Settings' Profile row).
     private(set) var name = ""
     /// A meal vouchers setup exists (my_meal_vouchers).
@@ -55,6 +57,7 @@ final class ShellModel {
             let display = profile["display_name"] ?? .null
             name = display.stringValue ?? ""
             initials = (try? core.call("avatarLook", "avatarInitials", [display])) ?? ""
+            avatar = Avatar.viewer(profile, core: core)
         }
         await loadFeed()
     }
@@ -93,5 +96,14 @@ final class ShellModel {
         unreadCount = 0
         badge = nil
         try? await data.profile.markNotificationsRead()
+    }
+}
+
+extension Avatar {
+    /// The viewer's own circle from their profile: the photo, or the
+    /// initials in the accent (avatarLook, highlighted), as the web's header draws it.
+    static func viewer(_ profile: JSONValue, core: BudgeerCore) -> Avatar? {
+        let options: JSONValue = ["src": profile["avatar_url"] ?? .null, "highlight": true]
+        return try? core.call("avatarLook", "avatarLook", [profile["display_name"] ?? .null, options])
     }
 }

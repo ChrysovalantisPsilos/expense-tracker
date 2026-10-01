@@ -13,9 +13,9 @@ export default {
     days_other: '{{month}} · {{count}} working days × {{perDay}}',
     fixed: 'your days',
   },
-  // "Fix days": the days worked in the month the next top-up pays for.
+  // "Edit days": the days worked in the month the next top-up pays for.
   fix: {
-    button: 'Fix days',
+    button: 'Edit days',
     label: 'Days worked in {{month}}',
     hint_one: 'The calendar says {{count}} working day. Take off days you were on leave or sick.',
     hint_other: 'The calendar says {{count}} working days. Take off days you were on leave or sick.',

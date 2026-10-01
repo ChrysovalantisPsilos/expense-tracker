@@ -2,7 +2,7 @@
 // core call (in Node the same sequence writes the parity fixture:
 // mobile-core/screenFigures.mjs voucherFigures): what's on the card and this
 // month's top-ups and spending (voucherSummary, voucherPageParts), the next
-// top-up (nextTopUp, nextTopUpText), "Fix days" for the month it pays for
+// top-up (nextTopUp, nextTopUpText), "Edit days" for the month it pays for
 // (daysFor, daysFixParts), the card's history (voucherHistory,
 // voucherHistoryParts), and Settings › Meal vouchers' form as it opens
 // (setupDraft) with its choices (countryOptions).
@@ -33,7 +33,7 @@ struct VoucherMonth: Codable, Equatable, Identifiable, Sendable {
     var id: String { month }
 }
 
-/// "Fix days" at a number of days (daysFixParts).
+/// "Edit days" at a number of days (daysFixParts).
 struct DaysFix: Codable, Equatable, Sendable {
     struct Total: Codable, Equatable, Sendable {
         let perDay: String
@@ -120,7 +120,7 @@ struct VoucherFigures: Codable, Equatable, Sendable {
             countries: try core.call("voucherText", "countryOptions", []))
     }
 
-    /// Fix days at `days` (the stepper moved).
+    /// Edit days at `days` (the stepper moved).
     static func fix(settings: JSONValue, month: String, days: Int, core: BudgeerCore) throws -> DaysFix {
         try core.call("voucherText", "daysFixParts", [settings, JSONValue.string(month), JSONValue.int(days)])
     }

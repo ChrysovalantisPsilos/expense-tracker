@@ -26,7 +26,7 @@ struct RootView: View {
                 ZStack {
                     AppFrame(container: container, user: user, lock: container.lock)
                     if container.lock.covers {
-                        LockView(lock: container.lock).transition(.opacity)
+                        LockScreen(lock: container.lock).transition(.opacity)
                     }
                 }
                 .animation(.easeInOut(duration: 0.25), value: container.lock.covers)

@@ -24,7 +24,7 @@ struct YourDataView: View {
             Section {
                 Text(language.t("backup:export.lead")).font(.subheadline).foregroundStyle(.secondary)
                 NavigationLink(value: AppRoute.exportBackup) {
-                    SettingsLabel(symbol: "square.and.arrow.down.fill", color: SettingsRow.blue,
+                    SettingsLabel(symbol: "square.and.arrow.down.fill", color: NativeTone.coral,
                                   title: language.t("backup:export.title"))
                 }
                 .accessibilityIdentifier("data.export")
@@ -36,7 +36,7 @@ struct YourDataView: View {
             Section {
                 Text(language.t("backup:restore.lead")).font(.subheadline).foregroundStyle(.secondary)
                 NavigationLink(value: AppRoute.restoreBackup) {
-                    SettingsLabel(symbol: "square.and.arrow.up.fill", color: SettingsRow.green,
+                    SettingsLabel(symbol: "square.and.arrow.up.fill", color: NativeTone.coral,
                                   title: language.t("backup:restore.title"))
                 }
                 .accessibilityIdentifier("data.restore")
