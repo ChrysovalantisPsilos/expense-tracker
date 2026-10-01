@@ -2,8 +2,9 @@
 // The server-side FALLBACK for the group statement PDF. The app builds it on
 // the device (src/features/groups/deviceGroupStatement.js) and only calls
 // this when that fails (an old browser, say).
-// TODO(release after next): delete this function and the app's fallback to it
-// (see docs/TESTING.md, "Statements on the device").
+// TODO(release after next): delete the web app's fallback to it (see
+// docs/TESTING.md, "Statements on the device"), but keep this function while
+// the native iOS app makes its group statement here (a group's … menu).
 // verify_jwt = true.
 //
 // Auth/isolation: the function uses the CALLER'S JWT with the anon key, so RLS

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Button, Stack, Text, useToast } from '@chakra-ui/react'
 import { Trash2 } from 'lucide-react'
-import { toMinor, minorToInput, keptRate, effectiveRate, CURRENCIES } from '../../shared/lib/currency.js'
+import { keptRate, effectiveRate } from '../../shared/lib/currency.js'
+import { receiptFill } from '../../shared/lib/receiptRead.js'
 import { useFxRate } from '../../shared/lib/fx.js'
 import { today } from '../../shared/lib/dates.js'
 import { insertTransaction, updateTransaction } from '../../shared/lib/transactions.js'
@@ -75,12 +76,12 @@ export default function TransactionForm({
 
   // A confirmed receipt fills the amount and date, the shop's name when the
   // description is still empty, and the currency when the app supports it.
-  function handleScan({ total, date, merchant, currency: scanned }) {
-    const cur = scanned && CURRENCIES.includes(scanned) ? scanned : currency
-    if (total != null) f.setAmount(minorToInput(toMinor(total, cur), cur))
-    if (date) f.changeDate(date)
-    if (merchant && !description.trim()) f.setDescription(merchant)
-    if (cur !== currency) f.pickCurrency(cur)
+  function handleScan(scan) {
+    const fill = receiptFill(scan, { currency, description })
+    if (fill.amount != null) f.setAmount(fill.amount)
+    if (fill.date) f.changeDate(fill.date)
+    if (fill.description) f.setDescription(fill.description)
+    if (fill.currency) f.pickCurrency(fill.currency)
   }
 
   // After the entry is saved: its rule. Never fails the save — the entry is
