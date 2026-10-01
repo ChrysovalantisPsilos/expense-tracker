@@ -164,8 +164,10 @@ ios/Budgeer/
     More/                MoreView (Money pages, account, sign out, language, build)
     Theme/               Theme (tokens), Kit (Panel, Figure, ProgressRow, buttons), FormKit (form rows, fields),
                          CategoryBadge (the web's icons as SF Symbols, the category colour)
-    Support/             AppLanguage, L10n (the generated strings), JSONValue, CoreHelpers, CategoryLook, ISODay
+    Support/             AppLanguage, ProfileLanguage (the account's language), L10n (the generated strings),
+                         JSONValue, CoreHelpers, CategoryLook, ISODay
     Resources/Fonts/     Poppins, Nunito Sans, Manrope (OFL, static TTFs)
+    Resources/Assets.xcassets/  AppIcon: one 1024 px opaque PNG of public/pwa-icon.svg (the apple-touch-icon art)
     Resources/Generated/ <lang>.lproj/Localizable.strings — generated, not committed
   BudgeerTests/          view models over FakeStore, the parity tests, the strings, snapshots
     Fixtures/*.json      the web's figures for fake inputs: home, ledger, budgets, recurring, insights
@@ -228,6 +230,12 @@ namespace (`src/locales/{en,el}/ios.js`).
 The language preference ('system', 'en', 'el') is the web's own rule
 (`language.resolveLanguage` in the core) and the result goes to
 `BudgeerCore.setLanguage`, so every figure the core answers is in it.
+"Follow my device" reads only the device's first preferred language, which
+is what iOS Safari reports to the web: the whole list would make an English
+phone with Greek as a second language Greek. Signed in, the profile's
+language wins and a choice in More is saved to it (`ProfileLanguage`, the
+core's `reconcileLanguage` and `profileValue`, as the web's ProfileLanguage
+and Settings › Language); the shared demo account keeps it on the device.
 
 ### Theme and fonts
 
@@ -261,7 +269,8 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   `test/iosHome.test.js` and `test/iosScreens.test.js` (in `npm test`) fail
   when a committed file no longer matches the web.
 - `L10nTests`: both languages bundled, the web's keys, the fallback, the
-  language preference.
+  language preference. `AppLanguageTests`: the device's first language only,
+  the profile's language first, the demo account left alone.
 - `SnapshotTests`: PNGs of Sign-in, Home (with the picker and the Recurring
   card), Add (an expense with Repeat on), Edit, Transactions, Budgets,
   Recurring and Insights, each light, dark and Greek, with the fixtures'

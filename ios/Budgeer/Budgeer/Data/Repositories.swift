@@ -36,8 +36,10 @@ struct TxnQuery: Hashable, Sendable, Codable {
 
 protocol ProfileRepository: Sendable {
     /// The profile columns the screens read (currency, the yearly and salary
-    /// settings, the helpers' switches).
+    /// settings, the helpers' switches, the language, the demo flag).
     func profile() async throws -> JSONValue
+    /// updateProfile with { language }: 'en', 'el', or nil to follow the device.
+    func saveLanguage(_ language: String?) async throws
     /// my_meal_vouchers: the setup, or null without one.
     func mealVouchers() async throws -> JSONValue
 }

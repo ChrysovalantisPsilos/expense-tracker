@@ -22,7 +22,7 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
 
     /// The profile columns the screens read (ProfileProvider's figures, the helpers' switches).
     static let profileColumns = "id, base_currency, yearly_separate, salary_shift_from_day, salary_category_id, "
-        + "ai_quick_entry, ai_import_categories, ai_month_summary, ai_plan_whatif"
+        + "ai_quick_entry, ai_import_categories, ai_month_summary, ai_plan_whatif, language, is_demo"
     /// shared/lib/categories.js CATEGORY_COLUMNS.
     static let categoryColumns = "id, name, kind, icon, color, is_archived, is_savings, default_key"
 
@@ -66,6 +66,13 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
             try await client.from("profiles").select(SupabaseStore.profileColumns)
                 .eq("id", value: uid).single().execute().value
         }
+    }
+
+    func saveLanguage(_ language: String?) async throws {
+        let uid = try userId()
+        let fields: [String: JSONValue] = ["language": language.json]
+        try await client.from("profiles").update(fields).eq("id", value: uid).execute()
+        announce("profiles")
     }
 
     func mealVouchers() async throws -> JSONValue {

@@ -10,12 +10,23 @@ struct MoreView: View {
     let config: AppConfig
     let session: SessionStore
     let user: AuthUser
+    /// Where a language chosen here is saved for the account (ProfileLanguage).
+    let profiles: ProfileRepository
     /// The Money section's pages, in the web's order.
     var pages: [MorePage] = []
     @Environment(AppLanguage.self) private var language
 
+    /// The picker's selection: a choice applies here at once and is saved to
+    /// the profile, as Settings › Language on the web.
+    private var languageChoice: Binding<String> {
+        Binding(get: { language.preference }, set: { next in
+            guard next != language.preference else { return }
+            language.preference = next
+            Task { await ProfileLanguage.save(language, profiles: profiles) }
+        })
+    }
+
     var body: some View {
-        @Bindable var language = language
         NavigationStack {
             List {
                 if !pages.isEmpty {
@@ -55,7 +66,7 @@ struct MoreView: View {
                     .accessibilityIdentifier("more.signOut")
                 }
                 Section(language.t("settings:language.title")) {
-                    Picker(language.t("settings:language.title"), selection: $language.preference) {
+                    Picker(language.t("settings:language.title"), selection: languageChoice) {
                         Text(language.t("settings:language.system")).tag(AppLanguage.system)
                         ForEach(AppLanguage.languages, id: \.self) { lang in
                             Text(AppLanguage.nativeNames[lang] ?? lang).tag(lang)

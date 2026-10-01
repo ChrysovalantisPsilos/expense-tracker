@@ -79,7 +79,8 @@ struct MainTabView: View {
                 }
             }
                 .tabItem { Label(language.t("shell:nav.budgets"), systemImage: "chart.pie") }
-            MoreView(config: container.config, session: container.session, user: user, pages: morePages)
+            MoreView(config: container.config, session: container.session, user: user,
+                     profiles: container.data.profile, pages: morePages)
                 .tabItem { Label(language.t("shell:nav.more"), systemImage: "ellipsis.circle") }
         }
         .sheet(item: $entry) { sheet in
@@ -92,6 +93,12 @@ struct MainTabView: View {
             if budgets == nil { budgets = BudgetsModel(data: container.data) }
             if recurring == nil { recurring = RecurringModel(data: container.data) }
             if insights == nil { insights = InsightsModel(data: container.data) }
+        }
+        // The account's language: the profile's wins (ProfileLanguage), on
+        // sign-in and whenever the profile changes (another device).
+        .task(id: user.id) { await ProfileLanguage.sync(language, profiles: container.data.profile) }
+        .liveRefresh(container.live, tables: ["profiles"]) {
+            await ProfileLanguage.sync(language, profiles: container.data.profile)
         }
         // Live updates for this account while the app is open; back in the
         // foreground, everything catches up on what realtime missed.
