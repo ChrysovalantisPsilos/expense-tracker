@@ -175,6 +175,12 @@ ios/Budgeer/
                          InfoButton, NavList), FormKit (FormRow, the outline field, SelectMenu, DayField,
                          the Switch), Shell (the top bar, the bottom bar, the floating Add, PageHeader, Page,
                          ShellChrome, the mark, AppAppearance), CategoryBadge, Lucide (generated)
+    Native/              the native redesign's mockups (sign-off first, not wired to data or to RootView):
+                         NativeAppMock (the tabs and Add's sheet), Kit/ (NativeStyle: the coral tint, Poppins
+                         titles and figures; NativeGlass: Liquid Glass on iOS 26, the standard material on
+                         iOS 17–18; NativeTabs: the floating tab bar with Add beside it; NativeParts),
+                         Preview/NativeSample (made-up data worded by the core), Home/, Add/, Activity/,
+                         Groups/, More/, Extras/ (widgets, Siri phrases, the Face ID lock)
     Support/             AppLanguage, ProfileLanguage (the account's language), L10n (the generated strings),
                          JSONValue, CoreHelpers, CategoryLook, ISODay
     Resources/Fonts/     Poppins, Nunito Sans, Manrope (OFL, static TTFs)
@@ -345,6 +351,12 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   form), each light, dark and Greek, with the fixtures'
   data, whole and as the first screen (`-top`); attached to the test run and written to `SNAPSHOT_DIR` when set
   (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
+- `NativeSnapshotTests`: the redesign's mockups (`native-<screen>-<variant>.png`):
+  Home, Add collapsed and pulled up, Activity (plain, rows held mid-swipe,
+  the delete question), a group (and settled), More, the widgets, the Siri
+  phrases and the Face ID lock, light, dark and Greek. The glass needs the
+  iOS 26 SDK: built with Xcode 15.4 the pictures show the iOS 17–18
+  fallback (the same shapes in the standard material).
 
 CI is `.github/workflows/ios-app.yml` (macos-14, Xcode 15.4): XcodeGen, a
 Simulator build, the tests, and the snapshots as the `snapshots` artifact.

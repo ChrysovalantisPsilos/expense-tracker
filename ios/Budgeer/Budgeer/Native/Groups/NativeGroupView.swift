@@ -45,6 +45,7 @@ struct NativeGroupsView: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(NativeStyle.canvas)
+            .nativeTabBarRoom()
             .navigationTitle(language.t("shell:nav.groups"))
             .toolbar {
                 NativeAccountItems(me: sample.me, unread: true, bellLabel: language.t("notifications:bell.title"),
@@ -86,6 +87,7 @@ struct NativeGroupPage: View {
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom, spacing: 0) { composer }
         }
+        .nativeTabBarRoom()
         .background(NativeStyle.canvas)
         .navigationTitle(trip.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -128,11 +130,13 @@ struct NativeGroupPage: View {
                             color: NativeStyle.positive)
             }
             HStack(spacing: 10) {
-                Button { settles += 1 } label: {
-                    Label(language.t("groups:balances.settleUp"), systemImage: "checkmark.circle.fill")
-                        .lineLimit(1)
+                if !settled {
+                    Button { settles += 1 } label: {
+                        Label(language.t("groups:balances.settleUp"), systemImage: "checkmark.circle.fill")
+                            .lineLimit(1)
+                    }
+                    .nativeGlassButton(prominent: true)
                 }
-                .nativeGlassButton(prominent: true)
                 Button { showBalances = true } label: {
                     Label(language.t("ios:native.group.seeBalances"), systemImage: "list.bullet")
                         .lineLimit(1)
@@ -140,7 +144,6 @@ struct NativeGroupPage: View {
                 .nativeGlassButton()
             }
             .padding(.top, 8)
-            .disabled(settled)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
@@ -204,17 +207,17 @@ struct NativeMomentView: View {
         case .expense(_, let title, let mine, let author, let paidBy, let amount, let share, let look):
             HStack(alignment: .bottom, spacing: 8) {
                 if mine { Spacer(minLength: 48) } else { NativeAvatar(avatar: author, size: 28) }
-                HStack(spacing: 10) {
+                HStack(alignment: .top, spacing: 10) {
                     CategoryBadge(look: look, size: 34)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(title).font(.subheadline.weight(.semibold)).lineLimit(2)
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(title).font(.subheadline.weight(.semibold)).lineLimit(2)
+                            Spacer(minLength: 4)
+                            Text(amount).font(.subheadline.weight(.semibold)).monospacedDigit()
+                        }
                         Text(paidBy).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    Spacer(minLength: 6)
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text(amount).font(.subheadline.weight(.semibold)).monospacedDigit()
                         if let share {
-                            Text(share).font(.caption).foregroundStyle(NativeStyle.tint).lineLimit(1)
+                            Text(share).font(.caption.weight(.medium)).foregroundStyle(NativeStyle.tint).lineLimit(1)
                         }
                     }
                 }

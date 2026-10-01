@@ -2,7 +2,7 @@
 // for the owner's sign-off: Home, the Add sheet collapsed and pulled up,
 // Activity (plain, with rows held mid-swipe, and asking before a delete), a
 // group's page (and settled, with its confetti), More, the widgets, the Siri
-// phrases and the Face ID lock, each in light, dark and Greek at an
+// phrases and the Face ID lock, each in light and dark, English and Greek, at an
 // iPhone 15's size, as "native-<screen>-<variant>.png". Written to
 // SNAPSHOT_DIR like SnapshotTests' pictures; nothing is compared.
 import SwiftUI
@@ -13,7 +13,7 @@ import BudgeerCore
 @MainActor
 final class NativeSnapshotTests: XCTestCase {
     private static let size = CGSize(width: 393, height: 852)
-    private static let variants = [("en", false), ("en", true), ("el", false)]
+    private static let variants = [("en", false), ("en", true), ("el", false), ("el", true)]
 
     override func tearDown() {
         try? BudgeerCore.shared.setLanguage("en")

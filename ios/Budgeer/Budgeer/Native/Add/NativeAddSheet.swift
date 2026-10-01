@@ -1,4 +1,4 @@
-// Add, redesigned as an amount-first sheet. Collapsed (about 60% of the
+// Add, redesigned as an amount-first sheet. Collapsed (two thirds of the
 // screen): the big amount, a number keypad, then the category chips. Pull it
 // up (the large detent) and the keypad steps aside for the details: what it
 // was for, the date, Repeat, Currency, Receipt, "Who's it for?", Paid from
@@ -7,7 +7,7 @@ import SwiftUI
 
 extension PresentationDetent {
     /// Add's collapsed height: the amount, the keypad and the chips.
-    static let nativeAdd = PresentationDetent.fraction(0.6)
+    static let nativeAdd = PresentationDetent.fraction(0.66)
 }
 
 extension View {
@@ -62,7 +62,7 @@ struct NativeAddSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 18) {
+                VStack(spacing: 14) {
                     amount
                     if !expanded {
                         NativeKeypad()
@@ -94,6 +94,15 @@ struct NativeAddSheet: View {
                     }
                     .accessibilityLabel(language.t("common:actions.cancel"))
                 }
+                ToolbarItem(placement: .principal) {
+                    Picker(language.t(kind == "income" ? "ios:native.add.newIncome" : "ios:native.add.newExpense"),
+                           selection: $kind) {
+                        Text(language.t("transactions:kinds.expense")).tag("expense")
+                        Text(language.t("transactions:kinds.income")).tag("income")
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 190)
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(language.t("common:actions.save")) { saved += 1 }
                         .fontWeight(.semibold)
@@ -106,14 +115,8 @@ struct NativeAddSheet: View {
     // MARK: The amount
 
     private var amount: some View {
-        VStack(spacing: 10) {
-            Picker("", selection: $kind) {
-                Text(language.t("transactions:kinds.expense")).tag("expense")
-                Text(language.t("transactions:kinds.income")).tag("income")
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 260)
-            NativeMoney(text: sample.addAmount, value: sample.addAmountMinor, font: NativeStyle.money(58),
+        VStack(spacing: 8) {
+            NativeMoney(text: sample.addAmount, value: sample.addAmountMinor, font: NativeStyle.money(54),
                         color: kind == "income" ? NativeStyle.positive : Color.primary)
                 .padding(.horizontal, 20)
             HStack(spacing: 8) {
@@ -121,7 +124,6 @@ struct NativeAddSheet: View {
                 pill(symbol: "eurosign.circle", text: "EUR")
             }
         }
-        .padding(.top, 6)
     }
 
     private func pill(symbol: String, text: String) -> some View {
@@ -280,7 +282,7 @@ struct NativeKeypad: View {
     private let keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "⌫"]
 
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 10) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 3), spacing: 8) {
             ForEach(keys, id: \.self) { key in
                 Button { taps += 1 } label: {
                     Group {
@@ -290,9 +292,9 @@ struct NativeKeypad: View {
                             Text(verbatim: key)
                         }
                     }
-                    .font(.system(size: 26, weight: .medium, design: .rounded))
+                    .font(.system(size: 24, weight: .medium, design: .rounded))
                     .foregroundStyle(Color.primary)
-                    .frame(maxWidth: .infinity, minHeight: 52)
+                    .frame(maxWidth: .infinity, minHeight: 46)
                     .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 .buttonStyle(.plain)

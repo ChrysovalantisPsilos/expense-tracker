@@ -150,7 +150,7 @@ struct NativeAvatarStack: View {
     var ring: Color = NativeStyle.card
 
     var body: some View {
-        HStack(spacing: -size * 0.3) {
+        HStack(spacing: -size * 0.22) {
             ForEach(Array(avatars.enumerated()), id: \.offset) { index, avatar in
                 NativeAvatar(avatar: avatar, size: size, ring: ring)
                     .zIndex(Double(avatars.count - index))

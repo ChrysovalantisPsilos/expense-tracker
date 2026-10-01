@@ -34,7 +34,7 @@ struct NativeMoreView: View {
                                 Text(language.t("shell:more.settings"))
                                     .font(.footnote)
                                     .foregroundStyle(.secondary)
-                                    .lineLimit(1)
+                                    .lineLimit(2)
                             }
                         }
                         .padding(.vertical, 6)
@@ -107,6 +107,7 @@ struct NativeMoreView: View {
             .listSectionSpacing(20)
             .scrollContentBackground(.hidden)
             .background(NativeStyle.canvas)
+            .nativeTabBarRoom()
             .navigationTitle(language.t("shell:nav.more"))
             .toolbar {
                 NativeAccountItems(me: sample.me, unread: true, bellLabel: language.t("notifications:bell.title"),

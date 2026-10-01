@@ -216,7 +216,7 @@ struct NativeSample {
                 entry("e4", "Uber", "transport", 1_480),
             ]),
             ("2026-09-26", f.shortDate("2026-09-26"), [
-                entry("e5", pick("September salary", "Μισθός Σεπτεμβρίου"), "salary", 352_000, repeats: true),
+                entry("e5", pick("September salary", "Μισθός Σεπτ."), "salary", 352_000, repeats: true),
                 entry("e6", "Netflix", "fun", 1_399, repeats: true),
             ]),
             ("2026-09-25", f.shortDate("2026-09-25"), [

@@ -59,7 +59,7 @@ struct NativeGlassModifier<S: Shape>: ViewModifier {
                 }
             }
             .overlay { shape.stroke(Color.primary.opacity(0.08), lineWidth: 0.5) }
-            .shadow(color: Color.black.opacity(0.12), radius: 14, x: 0, y: 6)
+            .shadow(color: Color.black.opacity(0.10), radius: 18, x: 0, y: 4)
     }
 }
 

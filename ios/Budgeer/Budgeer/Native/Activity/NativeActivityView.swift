@@ -59,6 +59,7 @@ struct NativeActivityView: View {
                 NativeActivityFilter(month: sample.current.title, kind: $kind)
                     .padding(.bottom, 8)
             }
+            .nativeTabBarRoom()
             .confirmationDialog(language.t("ios:native.activity.deleteTitle"),
                                 isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
                                 titleVisibility: .visible, presenting: pendingDelete) { _ in

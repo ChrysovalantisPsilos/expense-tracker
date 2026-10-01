@@ -96,6 +96,7 @@ struct NativeHomeView: View {
             .listSectionSpacing(20)
             .scrollContentBackground(.hidden)
             .background(NativeStyle.canvas)
+            .nativeTabBarRoom()
             .navigationTitle(language.t("shell:nav.home"))
             .toolbar {
                 NativeAccountItems(me: sample.me, unread: true, bellLabel: language.t("notifications:bell.title"),
@@ -214,25 +215,28 @@ struct NativeBudgetRow: View {
             HStack(spacing: 12) {
                 CategoryBadge(look: budget.look, size: 34)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(budget.name)
-                        .font(.body.weight(.medium))
-                        .lineLimit(1)
-                    Text(budget.meta)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                }
-                Spacer(minLength: 8)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(verbatim: "\(budget.percent)%")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(budget.tone == nil ? Color.primary : NativeStyle.tone(budget.tone))
-                        .monospacedDigit()
-                    Text(budget.note)
-                        .font(.caption)
-                        .foregroundStyle(budget.tone == "negative" ? NativeStyle.negative : Color.secondary)
-                        .lineLimit(1)
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(budget.name)
+                            .font(.body.weight(.medium))
+                            .lineLimit(1)
+                        Spacer(minLength: 8)
+                        Text(verbatim: "\(budget.percent)%")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(budget.tone == nil ? Color.primary : NativeStyle.tone(budget.tone))
+                            .monospacedDigit()
+                    }
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(budget.meta)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                        Spacer(minLength: 6)
+                        Text(budget.note)
+                            .foregroundStyle(budget.tone == "negative" ? NativeStyle.negative : Color.secondary)
+                            .lineLimit(1)
+                    }
+                    .font(.footnote)
+                    .minimumScaleFactor(0.85)
                 }
             }
             NativeBar(fraction: Double(budget.percent) / 100, color: NativeStyle.tone(budget.tone))
@@ -315,6 +319,7 @@ struct NativeListPage<Rows: View>: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(NativeStyle.canvas)
+        .nativeTabBarRoom()
         .navigationTitle(title)
     }
 }

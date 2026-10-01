@@ -3,7 +3,8 @@
 // the Add sheet. On iOS 26 this is the system's Liquid Glass tab bar (it
 // shrinks while you scroll down), with Add in the bar's separate trailing
 // slot, the place iOS gives a tab bar's one distinct action. On iOS 17–18 a
-// bar of the same shape is drawn in the standard material.
+// bar of the same shape is drawn in the standard material, floating over
+// the page; each page leaves room for it (nativeTabBarRoom).
 import SwiftUI
 
 enum NativeTab: Hashable, CaseIterable {
@@ -91,11 +92,39 @@ struct NativeDrawnTabs<Page: View>: View {
     @ViewBuilder var page: (NativeTab) -> Page
 
     var body: some View {
-        page(tab)
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                NativeFloatingTabBar(tab: $tab, onAdd: onAdd)
-            }
+        ZStack(alignment: .bottom) {
+            page(tab)
+            NativeFloatingTabBar(tab: $tab, onAdd: onAdd)
+        }
     }
+}
+
+extension View {
+    /// Room at the foot of a tab's page for the floating bar, so its last
+    /// rows (and its own floating controls) sit clear of it. Apply it after
+    /// the page's own bottom insets. iOS 26's system bar makes this room itself.
+    func nativeTabBarRoom() -> some View {
+        modifier(NativeTabBarRoom())
+    }
+}
+
+struct NativeTabBarRoom: ViewModifier {
+    /// The drawn bar's height above the home indicator (NativeFloatingTabBar).
+    static let height: CGFloat = 72
+
+    #if compiler(>=6.2)
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+        } else {
+            content.safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: NativeTabBarRoom.height) }
+        }
+    }
+    #else
+    func body(content: Content) -> some View {
+        content.safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: NativeTabBarRoom.height) }
+    }
+    #endif
 }
 
 /// The floating bar: the four tabs in a capsule (the lit one on a soft lens,

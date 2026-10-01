@@ -58,5 +58,11 @@ enum NativeStyle {
 }
 
 /// The redesign's root controller: its navigation bars take the brand's
-/// title face (NativeStyle.installTitles).
-final class NativeHost: UIHostingController<AnyView> {}
+/// title face (NativeStyle.installTitles) and its window the coral tint.
+final class NativeHost: UIHostingController<AnyView> {
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        // System alerts and confirmation dialogs take the window's tint.
+        view.window?.tintColor = UIColor(NativeStyle.tint)
+    }
+}
