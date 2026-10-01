@@ -8,6 +8,19 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-10-02': {
+      salaryNet: {
+        title: 'Raises as they reach your pay',
+        body: 'Your salary’s outlook now shows a raise as the rough share that reaches your pay after tax, about half in Belgium and a little more in Greece, with the gross raise underneath. It’s an estimate, and the page says so.',
+        chips: { net: '≈ +1.6% net', gross: '+3.2% gross' },
+        action: 'See your salary',
+      },
+      backButton: {
+        title: 'A way back from More',
+        body: 'On a phone, every page you open from More now has a back button at the top, so you can get back to More in one tap.',
+        chips: { back: 'Back', more: 'More' },
+      },
+    },
     '2026-10-01': {
       planSavings: {
         title: 'Plan counts what you save',

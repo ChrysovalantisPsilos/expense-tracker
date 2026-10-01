@@ -250,8 +250,14 @@ test('releaseText: fills in the words and keeps the ids and the shape', () => {
 
 test('the recent releases: their pages, and the actions and words that matter', () => {
   const release = (id) => inEnglish(RELEASES.find((x) => x.id === id))
-  // This release (2026-10-01): three pages; Plan and the salary open their pages.
-  const r1 = inEnglish(RELEASES[0])
+  // This release (2026-10-02): the salary's net estimate opens its page; More's back button.
+  const r2 = inEnglish(RELEASES[0])
+  assert.equal(r2.id, '2026-10-02')
+  assert.deepEqual(r2.pages.map((p) => p.action?.to), ['/insights/salary', undefined])
+  assert.match(r2.pages[0].body, /estimate/)
+
+  // 2026-10-01: three pages; Plan and the salary open their pages.
+  const r1 = release('2026-10-01')
   assert.equal(r1.id, '2026-10-01')
   assert.deepEqual(r1.pages.map((p) => p.action?.to), ['/plan', '/insights/salary', undefined])
   assert.match(r1.pages[2].body, /switch on Repeat/)

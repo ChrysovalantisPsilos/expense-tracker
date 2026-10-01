@@ -25,7 +25,7 @@ export { COUNTRIES }
 // coicop18 TOTAL, geo BE and EL (Eurostat's code for Greece; 'GR' here).
 // INFLATION_LATEST is the latest 12-month rate (prc_hicp_minr, unit RCH_A,
 // coicop18 TOTAL): it stands in for a year that has no annual figure yet.
-// Retrieved 2026-09-29 from
+// Retrieved 2026-10-01 from
 // https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_ainr
 // and …/prc_hicp_minr. Refreshed with each release (part of the release steps).
 export const INFLATION = {

@@ -17,6 +17,14 @@
 // Greek wording follows docs/i18n-glossary-el.md).
 export const RELEASES = [
   {
+    id: '2026-10-02',
+    date: '2026-10-02',
+    pages: [
+      { id: 'salaryNet', chips: ['net', 'gross'], variant: 'update', action: { to: '/insights/salary' } },
+      { id: 'backButton', chips: ['back', 'more'], variant: 'update' },
+    ],
+  },
+  {
     id: '2026-10-01',
     date: '2026-10-01',
     pages: [
