@@ -162,6 +162,28 @@ struct NativeAvatarStack: View {
     }
 }
 
+// MARK: Floating at the foot
+
+enum NativeFoot {
+    /// Room under a page's last card so it scrolls clear of what floats at
+    /// the foot (the tab bar, a page's own button or pill).
+    static let room: CGFloat = 112
+}
+
+extension View {
+    /// A button floating at a page's foot: the canvas fades in behind it, so
+    /// what scrolls under it never shows through its words.
+    func nativeFootBar() -> some View {
+        background(alignment: .bottom) {
+            LinearGradient(colors: [NativeStyle.canvas.opacity(0), NativeStyle.canvas, NativeStyle.canvas],
+                           startPoint: .top, endPoint: .bottom)
+                .padding(.top, -28)
+                .ignoresSafeArea(edges: .bottom)
+                .allowsHitTesting(false)
+        }
+    }
+}
+
 // MARK: States
 
 /// A page's first load.

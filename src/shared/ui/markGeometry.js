@@ -17,3 +17,7 @@ export const MARK_ARCS = {
 }
 
 export const circumference = (r) => 2 * Math.PI * r
+
+// The wordmark's text (Poppins Bold, tracking -0.02em): under the loading
+// ring, and beside the mark on the native sign-in.
+export const WORDMARK = 'budgeer'

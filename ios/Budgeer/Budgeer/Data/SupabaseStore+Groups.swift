@@ -109,6 +109,23 @@ extension SupabaseStore {
         announce("groups")
     }
 
+    func uploadGroupImage(groupId: String, data: Data, contentType: String, ext: String) async throws -> String {
+        // groups.js uploadGroupImage: the owner's folder (storage RLS checks
+        // is_group_owner), replaced in place, then the public URL with a
+        // cache-buster on the group (image_url_guard checks the prefix).
+        let path = "\(groupId)/cover.\(ext)"
+        let bucket = client.storage.from("group-images")
+        let url: String = try await refusal {
+            try await bucket.upload(path, data: data, options: FileOptions(contentType: contentType, upsert: true))
+            let base = try bucket.getPublicURL(path: path)
+            let stamped = "\(base.absoluteString)?t=\(Int(Date().timeIntervalSince1970 * 1000))"
+            try await client.from("groups").update(["image_url": JSONValue.string(stamped)]).eq("id", value: groupId).execute()
+            return stamped
+        }
+        announce("groups")
+        return url
+    }
+
     func saveGroupExpense(_ args: JSONValue) async throws {
         // groups.js addSharedExpense / updateSharedExpense: one transaction, so
         // an expense never lands without its split.
@@ -226,6 +243,8 @@ extension SupabaseStore {
             return try await work()
         } catch let error as PostgrestError {
             throw ServerError(code: error.code, message: error.message)
+        } catch let error as StorageError {
+            throw ServerError(code: error.statusCode, message: error.message)
         } catch FunctionsError.httpError(_, let data) {
             let payload = try? JSONValue.parse(data)
             throw ServerError(code: payload?["code"]?.stringValue, message: payload?["error"]?.stringValue ?? "", edge: true)

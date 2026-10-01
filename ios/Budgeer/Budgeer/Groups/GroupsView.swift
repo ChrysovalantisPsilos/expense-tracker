@@ -1,8 +1,10 @@
-// The Groups tab, after the web's Groups page: the invites waiting for an
-// answer (Accept / Decline), then a row per group (its picture, name, the
-// avatars and "4 members", and your balance in it), New group, or the empty
-// state. A row opens the group's page; New group opens its form (a name and
-// a currency), which lands in the new group. Every word is GroupsModel's.
+// The Groups tab, after the web's Groups page, as a gallery: the invites
+// waiting for an answer first, as a banner card each (Accept / Decline),
+// then the groups as a grid of square cards (the picture, or the brand's
+// gradient with the group's letters; the name, the avatars, and your
+// balance as a chip in the corner), New group last. A card opens the
+// group's page; New group opens its flow. Every word is GroupsModel's (the
+// core's).
 import SwiftUI
 
 @MainActor
@@ -12,57 +14,29 @@ struct GroupsView: View {
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
-        List {
-            if let message = model.message {
-                Section { NativeNotice(text: message, warning: true) }
-            }
-            switch model.state {
-            case .loading:
-                Section { NativeLoading() }.listRowBackground(Color.clear)
-            case .failed(let message):
-                Section { NativeFailed(message: message) { await model.load() } }.listRowBackground(Color.clear)
-            case .loaded(let figures):
-                if !figures.invites.isEmpty {
-                    Section {
-                        ForEach(figures.invites) { invite in inviteRow(invite) }
-                    }
-                    .listRowBackground(NativeStyle.card)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                if let message = model.message {
+                    NativeNotice(text: message, warning: true)
                 }
-                if figures.cards.isEmpty {
-                    Section {
-                        ContentUnavailableView {
-                            Label(language.t("groups:list.empty.title"), systemImage: "person.2")
-                        } description: {
-                            Text(language.t("groups:list.empty.text"))
-                        } actions: {
-                            NavigationLink(value: AppRoute.newGroup) {
-                                Text(language.t("groups:list.empty.action"))
-                            }
-                            .nativeGlassButton(prominent: true)
-                        }
+                switch model.state {
+                case .loading:
+                    NativeLoading()
+                case .failed(let message):
+                    NativeFailed(message: message) { await model.load() }
+                case .loaded(let figures):
+                    ForEach(figures.invites) { invite in InviteBanner(invite: invite, model: model) }
+                    if figures.cards.isEmpty {
+                        empty
+                    } else {
+                        grid(figures.cards)
                     }
-                    .listRowBackground(Color.clear)
-                } else {
-                    Section {
-                        ForEach(figures.cards) { card in
-                            NavigationLink(value: AppRoute.group(card.id)) { GroupRow(card: card) }
-                                .accessibilityIdentifier("groups.card.\(card.id)")
-                        }
-                    }
-                    .listRowBackground(NativeStyle.card)
-                    Section {
-                        NavigationLink(value: AppRoute.newGroup) {
-                            Label(language.t("groups:list.newGroup"), systemImage: "plus.circle.fill")
-                                .foregroundStyle(NativeStyle.tint)
-                        }
-                        .accessibilityIdentifier("groups.new")
-                    }
-                    .listRowBackground(NativeStyle.card)
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .padding(.bottom, NativeFoot.room)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
         .background(NativeStyle.canvas)
         .nativeTabBarRoom()
         .navigationTitle(language.t("groups:title"))
@@ -71,131 +45,222 @@ struct GroupsView: View {
         .task(id: language.current) { await model.load() }
     }
 
-    private func inviteRow(_ invite: InviteRow) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+    private var empty: some View {
+        ContentUnavailableView {
+            Label(language.t("groups:list.empty.title"), systemImage: "person.2")
+        } description: {
+            Text(language.t("groups:list.empty.text"))
+        } actions: {
+            NavigationLink(value: AppRoute.newGroup) {
+                Text(language.t("groups:list.empty.action"))
+            }
+            .nativeGlassButton(prominent: true)
+        }
+        .padding(.top, 40)
+    }
+
+    // MARK: The grid
+
+    private func grid(_ cards: [GroupCard]) -> some View {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            ForEach(cards) { card in
+                NavigationLink(value: AppRoute.group(card.id)) { GroupSquareCard(card: card) }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("groups.card.\(card.id)")
+            }
+            NavigationLink(value: AppRoute.newGroup) { NewGroupTile() }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("groups.new")
+        }
+    }
+
+}
+
+/// An invite as a banner card: who asked you into which group, Decline and
+/// Accept in glass.
+@MainActor
+struct InviteBanner: View {
+    let invite: InviteRow
+    let model: GroupsModel
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
-                NativeIconTile(symbol: "envelope.open.fill", color: NativeStyle.coral, size: 40)
+                Image(systemName: "envelope.open.fill")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 46, height: 46)
+                    .background(GroupCoverArt.gradient(0), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(invite.name).font(.body.weight(.semibold))
-                    Text(invite.text).font(.footnote).foregroundStyle(.secondary)
+                    Text(invite.name).font(.headline)
+                    Text(invite.text).font(.subheadline).foregroundStyle(.secondary)
                 }
+                Spacer(minLength: 0)
             }
             HStack(spacing: 10) {
-                Button(language.t("groups:actions.decline")) {
+                Button {
                     Task { _ = await model.respond(invite, accept: false) }
+                } label: {
+                    Text(language.t("groups:actions.decline")).frame(maxWidth: .infinity)
                 }
                 .nativeGlassButton()
-                Button(language.t("groups:actions.accept")) {
+                Button {
                     Task { _ = await model.respond(invite, accept: true) }
+                } label: {
+                    Text(language.t("groups:actions.accept")).frame(maxWidth: .infinity)
                 }
                 .nativeGlassButton(prominent: true)
             }
             .disabled(model.busy)
-            .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.vertical, 6)
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(LinearGradient(colors: [Theme.Colors.accentSubtle, NativeStyle.card],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+        }
+        .overlay { RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(NativeStyle.tint.opacity(0.25)) }
+        .accessibilityIdentifier("groups.invite.\(invite.id)")
     }
 }
 
-/// A group's row: its picture, name, the avatars and "4 members", your balance in its tone.
-struct GroupRow: View {
+/// A group's picture filling its shape: the photo, or the brand's gradient
+/// with the group's letters, raised by `lift`.
+struct GroupCover: View {
+    let card: GroupCard
+    let letters: CGFloat
+    let lift: CGFloat
+
+    var body: some View {
+        ZStack {
+            GroupCoverArt.gradient(0)
+            Text(verbatim: card.initials)
+                .font(.custom("Poppins-Bold", size: letters))
+                .foregroundStyle(Color.white.opacity(0.95))
+                .offset(y: -lift)
+            if let imageUrl = card.imageUrl, let url = URL(string: imageUrl) {
+                AsyncImage(url: url) { image in
+                    image.resizable().scaledToFill()
+                } placeholder: {
+                    Color.clear
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// Your balance in a group as a small chip: the amount in its tone, or
+/// "Settled up".
+struct BalanceChip: View {
+    let balance: GroupCard.Balance
+
+    var body: some View {
+        Text(balance.amount ?? balance.label)
+            .font(.caption.weight(.bold))
+            .monospacedDigit()
+            .foregroundStyle(NativeStyle.tone(balance.tone))
+            .lineLimit(1)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 5)
+            .background(NativeStyle.card, in: Capsule())
+            .accessibilityLabel([balance.label, balance.amount].compactMap { $0 }.joined(separator: " "))
+    }
+}
+
+/// A group's card: the picture filling a square, the name, avatars and
+/// your balance over a shade at its foot.
+struct GroupSquareCard: View {
     let card: GroupCard
 
     var body: some View {
-        HStack(spacing: 12) {
-            GroupPicture(imageUrl: card.imageUrl, size: 44)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(card.name).font(.body.weight(.semibold)).lineLimit(2)
-                HStack(spacing: 6) {
-                    if let avatars = card.avatars { NativeAvatarStack(stack: avatars, size: 22) }
-                    Text(card.avatars == nil ? "\(card.members) · \(card.currency)" : card.members)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay { GroupCover(card: card, letters: 44, lift: 20) }
+            .overlay(alignment: .topTrailing) {
+                if let balance = card.balance { BalanceChip(balance: balance).padding(10) }
             }
-            Spacer(minLength: 8)
-            if let balance = card.balance {
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(balance.label).font(.caption.weight(.semibold))
-                    if let amount = balance.amount {
-                        Text(amount).font(.subheadline.weight(.semibold)).monospacedDigit()
+            .overlay(alignment: .bottomLeading) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(card.name)
+                        .font(.headline)
+                        .foregroundStyle(Color.white)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    HStack(spacing: 6) {
+                        if let avatars = card.avatars {
+                            NativeAvatarStack(stack: avatars, size: 22, ring: Color.white.opacity(0.9))
+                        }
+                        Text(card.members)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.white.opacity(0.9))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                 }
-                .foregroundStyle(NativeStyle.tone(balance.tone))
-                .lineLimit(1)
-                .fixedSize()
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    LinearGradient(colors: [Color.black.opacity(0), Color.black.opacity(0.5)], startPoint: .top,
+                                   endPoint: .bottom)
+                }
             }
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 6)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(card.name)
     }
 }
 
-/// A group's picture: the owner's photo, or people on the coral tile.
+/// The grid's last tile: New group, in a dashed outline.
+struct NewGroupTile: View {
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        Color.clear
+            .aspectRatio(1, contentMode: .fit)
+            .overlay {
+                VStack(spacing: 10) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 48, height: 48)
+                        .nativeGlass(Circle(), tint: NativeStyle.solid)
+                    Text(language.t("groups:list.newGroup"))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NativeStyle.tint)
+                }
+            }
+            .background {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(NativeStyle.tint.opacity(0.45), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
+            }
+    }
+}
+
+/// A group's picture as a tile: the owner's photo, or the brand's gradient
+/// with people.
 struct GroupPicture: View {
     var imageUrl: String? = nil
     var size: CGFloat = 40
 
     var body: some View {
         ZStack {
-            NativeIconTile(symbol: "person.2.fill", color: NativeStyle.coral, size: size)
+            GroupCoverArt.gradient(0)
+            Image(systemName: "person.2.fill")
+                .font(.system(size: size * 0.4, weight: .semibold))
+                .foregroundStyle(Color.white)
             if let imageUrl, let url = URL(string: imageUrl) {
                 AsyncImage(url: url) { image in
                     image.resizable().scaledToFill()
                 } placeholder: {
                     Color.clear
                 }
-                .clipShape(RoundedRectangle(cornerRadius: size * 0.24, style: .continuous))
             }
         }
         .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous))
         .accessibilityHidden(true)
-    }
-}
-
-/// /groups/new: a name and the group's currency (the base currency to start).
-@MainActor
-struct NewGroupView: View {
-    let model: GroupsModel
-    let onCreated: (String) -> Void
-    @Environment(AppLanguage.self) private var language
-    @State private var name = ""
-    @State private var currency = ""
-
-    var body: some View {
-        Form {
-            if let message = model.message {
-                Section { NativeNotice(text: message, warning: true) }
-            }
-            Section {
-                TextField(language.t("groups:create.nameHint"), text: $name)
-                    .accessibilityIdentifier("groups.newName")
-                Picker(language.t("groups:create.currency"), selection: Binding(
-                    get: { currency.isEmpty ? model.baseCurrency : currency }, set: { currency = $0 })) {
-                    ForEach(model.currencyOptions, id: \.self) { Text($0).tag($0) }
-                }
-            } header: {
-                NativeCapsHeader(title: language.t("groups:create.name"))
-            }
-            Section {
-                Button {
-                    Task {
-                        if let id = await model.create(name: name, currency: currency.isEmpty ? model.baseCurrency : currency) {
-                            NativeHaptics.success()
-                            onCreated(id)
-                        }
-                    }
-                } label: {
-                    Text(language.t("groups:create.submit")).frame(maxWidth: .infinity)
-                }
-                .disabled(model.busy || name.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-        }
-        .scrollContentBackground(.hidden)
-        .background(NativeStyle.canvas)
-        .nativeTabBarRoom()
-        .navigationTitle(language.t("groups:create.title"))
-        .navigationBarTitleDisplayMode(.inline)
     }
 }

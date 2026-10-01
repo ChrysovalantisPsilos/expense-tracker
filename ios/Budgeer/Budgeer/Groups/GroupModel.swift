@@ -159,39 +159,17 @@ final class GroupModel {
         }
     }
 
-    /// Invite by email (MembersPage's InvitePanel): an existing user gets a
-    /// request in the app; anyone else an emailed join link (or, when the
-    /// email can't go, the link to share). True when the field can clear.
+    /// Invite by email (MembersPage's InvitePanel, GroupInvite): true when
+    /// the field can clear.
     func invite(email: String) async -> Bool {
         let address = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !address.isEmpty else { return false }
         busy = true
         defer { busy = false }
-        do {
-            let status = try await data.groups.inviteExistingUser(groupId: groupId, email: address)
-            switch status {
-            case "invited":
-                message = core.text("groups:members.requestSent", ["email": .string(address)])
-                    + " " + core.text("groups:members.requestSentHint")
-                return true
-            case "no_account":
-                let token = try await data.groups.createInvite(groupId: groupId, email: address)
-                do {
-                    try await data.groups.emailInvite(to: address, token: token)
-                    message = core.text("groups:members.emailed", ["email": .string(address)])
-                } catch {
-                    inviteLink = try core.call("groupFormat", "inviteLink", [site, token])
-                    message = core.text("groups:members.emailFailed")
-                }
-                return true
-            default:
-                message = try core.call("groupFormat", "inviteRefusal", [status.json])
-                return false
-            }
-        } catch {
-            message = UserMessage.of(error, fallback: core.text("groups:members.sendFailed"), core: core)
-            return false
-        }
+        let outcome = await GroupInvite.send(address, groupId: groupId, site: site, data: data, core: core)
+        message = outcome.message
+        if let link = outcome.link { inviteLink = link }
+        return outcome.sent
     }
 
     /// A share link (createInviteLink): shown to copy or share.
@@ -227,6 +205,52 @@ final class GroupModel {
         } catch {
             message = UserMessage.of(error, fallback: failure.map { core.text($0) }, core: core)
             return false
+        }
+    }
+}
+
+/// One invite by email, as MembersPage's InvitePanel sends it: someone on
+/// Budgeer gets a request in the app (invite_user_to_group); anyone else an
+/// emailed join link (a group_invites row, then send-invite), or the link to
+/// share when the email can't go. The new-group flow sends its invites the
+/// same way.
+enum GroupInvite {
+    struct Outcome: Equatable, Sendable {
+        /// What to tell the user.
+        let message: String
+        /// The invite went (the field can clear).
+        let sent: Bool
+        /// A join link to share instead, when the email failed.
+        let link: String?
+    }
+
+    @MainActor
+    static func send(_ address: String, groupId: String, site: String, data: DataLayer,
+                     core: BudgeerCore) async -> Outcome {
+        do {
+            let status = try await data.groups.inviteExistingUser(groupId: groupId, email: address)
+            switch status {
+            case "invited":
+                return Outcome(message: core.text("groups:members.requestSent", ["email": .string(address)])
+                                   + " " + core.text("groups:members.requestSentHint"), sent: true, link: nil)
+            case "no_account":
+                let token = try await data.groups.createInvite(groupId: groupId, email: address)
+                do {
+                    try await data.groups.emailInvite(to: address, token: token)
+                    return Outcome(message: core.text("groups:members.emailed", ["email": .string(address)]),
+                                   sent: true, link: nil)
+                } catch {
+                    let link: String? = try? core.call("groupFormat", "inviteLink", [site, token])
+                    return Outcome(message: core.text("groups:members.emailFailed"), sent: true, link: link)
+                }
+            default:
+                let refusal: String = (try? core.call("groupFormat", "inviteRefusal", [status.json]))
+                    ?? core.text("groups:members.sendFailed")
+                return Outcome(message: refusal, sent: false, link: nil)
+            }
+        } catch {
+            return Outcome(message: UserMessage.of(error, fallback: core.text("groups:members.sendFailed"), core: core),
+                           sent: false, link: nil)
         }
     }
 }

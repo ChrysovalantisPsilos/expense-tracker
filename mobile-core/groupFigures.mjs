@@ -34,16 +34,14 @@ export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
 //   summaries  { [groupId]: { members, avatars, balances } } (rows as read)
 export function groupsListFigures({ groups, summaries, invites, userId, lang = 'en' }) {
   setLanguage(lang)
-  return {
-    cards: groups.map((g) => {
-      const raw = summaries[g.id]
-      const summary = raw
-        ? { members: membersWithAvatars(raw.members, raw.avatars), balances: balancesFrom(raw.balances) }
-        : undefined
-      return groupCardParts(g, summary, userId)
-    }),
-    invites: invites.map(inviteRowParts),
-  }
+  const cards = groups.map((g) => {
+    const raw = summaries[g.id]
+    const summary = raw
+      ? { members: membersWithAvatars(raw.members, raw.avatars), balances: balancesFrom(raw.balances) }
+      : undefined
+    return groupCardParts(g, summary, userId)
+  })
+  return { cards, invites: invites.map(inviteRowParts) }
 }
 
 // A group's page (GroupDetail: the header, the balances, the history; the

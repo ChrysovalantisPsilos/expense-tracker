@@ -58,11 +58,13 @@ final class LedgerParityTests: XCTestCase {
                 let figures = try LedgerFigures.compute(
                     rows: fixture.rows(kind: view.kind), profile: fixture.input.profile, categories: fixture.input.categories,
                     kind: view.kind, periodLabel: view.period.labels[lang] ?? "", text: view.text,
-                    oldest: fixture.input.oldest, today: try BudgeerCore.shared.isoDate(fixture.now), core: .shared)
+                    oldest: fixture.input.oldest, today: try BudgeerCore.shared.isoDate(fixture.now),
+                    month: ["from": .string(view.period.from), "to": .string(view.period.to)], core: .shared)
                 let expected = try XCTUnwrap(fixture.expected[lang]?[view.name])
                 XCTAssertEqual(figures.title, expected.title, "\(lang) \(view.name)")
                 XCTAssertEqual(figures.subtitle, expected.subtitle, "\(lang) \(view.name)")
                 XCTAssertEqual(figures.days, expected.days, "\(lang) \(view.name)")
+                XCTAssertEqual(figures.pulse, expected.pulse, "\(lang) \(view.name)")
                 XCTAssertEqual(figures, expected, "\(lang) \(view.name)")
             }
         }

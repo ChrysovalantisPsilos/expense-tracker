@@ -3,7 +3,7 @@ import { t } from '../../shared/lib/i18n/i18n.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
-import { avatarLook } from '../../shared/ui/avatarLook.js'
+import { avatarInitials, avatarLook } from '../../shared/ui/avatarLook.js'
 
 // Display name for a member id within a group's member list. Falls back to an
 // em dash for unknown/removed ids. (Members carry their own display_name, so
@@ -285,6 +285,8 @@ export function groupCardParts(group, summary, myUserId) {
     name: group.name,
     imageUrl: group.image_url ?? null,
     members: pluralise(count, 'member'),
+    // The cover's letters when there's no photo (the native app's grid).
+    initials: avatarInitials(group.name).toUpperCase(),
     currency: group.currency,
     avatars: summary ? avatarStackParts(summary.members, myUserId) : null,
     balance: bal && {
@@ -305,13 +307,20 @@ export function balancesParts({ balances, members, myMember, myUserId, currency 
   const plan = settlePlan(balances, members, myMember?.id)
   const highlight = balanceHighlight(plan)
   const nets = memberBalances(balances, members, myUserId)
+  const most = Math.max(0, ...nets.map((b) => Math.abs(b.net)))
   const person = (id, name) => {
     const m = (members ?? []).find((x) => x.id === id)
     return { id, ...avatarLook(name, { src: m?.avatar_url, highlight: id === myMember?.id }) }
   }
   return {
     mine: signedAmount(myMember ? (balances?.get(myMember.id) ?? 0) : 0, money),
-    tiles: nets.length > 1 ? nets.map((b) => ({ id: b.id, label: b.label, ...signedAmount(b.net, money) })) : [],
+    // Each tile with the person's avatar and `bar`: the size of their
+    // balance next to the biggest one (0…1), its side in the tone.
+    tiles: nets.length > 1 ? nets.map((b) => ({
+      id: b.id, label: b.label, ...signedAmount(b.net, money),
+      avatar: person(b.id, (members ?? []).find((m) => m.id === b.id)?.display_name),
+      bar: most > 0 ? Math.abs(b.net) / most : 0,
+    })) : [],
     highlight: highlight
       ? { text: highlight.text, amount: money(highlight.amount), tone: highlight.tone }
       : { text: t('groups:balances.allSettled'), amount: null, tone: null },

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { dayGroups, dayTitle, rowParts } from '../src/features/transactions/rowParts.js'
+import { dayGroups, dayTitle, monthPulse, rowParts } from '../src/features/transactions/rowParts.js'
 import { ledgerSummary } from '../src/features/transactions/listHeading.js'
 import { salaryShiftOf } from '../src/shared/lib/salaryShift.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
@@ -102,4 +102,44 @@ test('dayGroups: newest day first, each day\'s spend in the base currency, its r
   assert.deepEqual(days[1].rows.map((r) => r.id), ['a', 'c'])
   assert.deepEqual(days[0].rows[0].meta, [])
   assert.deepEqual(dayGroups([], opts, '2026-09-29'), [])
+})
+
+test('monthPulse: spent, income and net over the list, a bar per day of the month', () => {
+  const rows = [
+    row({ id: 'a', spent_at: '2026-09-02', amount_minor: 1000 }),
+    row({ id: 'b', spent_at: '2026-09-04', amount_minor: 4000 }),
+    row({ id: 'c', spent_at: '2026-09-04', amount_minor: 2000, currency: 'USD', exchange_rate: 0.5 }),
+    row({ id: 'd', spent_at: '2026-09-01', kind: 'income', amount_minor: 250000, categories: cat('p', 'Pay', 'income') }),
+    row({ id: 'e', spent_at: '2026-09-03', kind: 'income', amount_minor: 30000, category_id: 's',
+      categories: cat('s', 'Savings', 'income'), savings_from_income: true }),
+  ]
+  const month = { from: '2026-09-01', to: '2026-09-30' }
+  const pulse = monthPulse(rows, { kind: null, baseCurrency: 'EUR', savingsIds: new Set(['s']) }, month, '2026-09-05')
+  assert.deepEqual(pulse.spent, { label: 'Spent', amount: '€60.00' })
+  assert.deepEqual(pulse.income, { label: 'Income', amount: '+€2,500.00' })
+  // Income less spending less the savings taken from income.
+  assert.deepEqual(pulse.net, { label: 'Net', text: '+€2,140.00', tone: 'positive' })
+  assert.equal(pulse.days.length, 30)
+  assert.deepEqual(pulse.days.slice(0, 5).map((d) => d.bar), [0, 0.2, 0, 1, 0])
+  assert.deepEqual(pulse.days.slice(3, 6).map((d) => [d.label, d.today, d.future]), [['4', false, false], ['5', true, false], ['6', false, true]])
+  assert.equal(pulse.peak, 'Biggest day: 4 Sep · €50.00')
+})
+
+test('monthPulse: a kind shows its own figures; no month, no days; nothing spent, no peak', () => {
+  const rows = [row({ id: 'a', spent_at: '2026-02-10', amount_minor: 900 })]
+  const feb = { from: '2026-02-01', to: '2026-02-28' }
+  const spending = monthPulse(rows, { kind: 'expense', baseCurrency: 'EUR' }, feb, '2026-03-01')
+  assert.equal(spending.income, null)
+  assert.equal(spending.net, null)
+  assert.equal(spending.days.length, 28)
+  assert.ok(spending.days.every((d) => !d.future && !d.today))
+  const pay = [row({ id: 'p', kind: 'income', spent_at: '2026-02-25', amount_minor: 5000, categories: cat('p', 'Pay', 'income') })]
+  const income = monthPulse(pay, { kind: 'income', baseCurrency: 'EUR' }, feb, '2026-03-01')
+  assert.equal(income.spent, null)
+  assert.equal(income.days[24].bar, 1)
+  assert.equal(income.peak, 'Most in: 25 Feb · €50.00')
+  const search = monthPulse(rows, { kind: null, baseCurrency: 'EUR' }, null, '2026-03-01')
+  assert.deepEqual(search.days, [])
+  assert.equal(search.peak, null)
+  assert.equal(monthPulse([], { kind: null, baseCurrency: 'EUR' }, feb, '2026-03-01').peak, null)
 })

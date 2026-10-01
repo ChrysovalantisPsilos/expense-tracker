@@ -42,6 +42,8 @@ export const CORE_MODULES = {
   chartAxis: 'src/shared/ui/chartAxis.js',
   // An avatar circle's initials and colours (UserAvatar).
   avatarLook: 'src/shared/ui/avatarLook.js',
+  // The loading ring's motion (the sign-in's intro).
+  loaderTiming: 'src/shared/ui/loaderTiming.js',
 
   // supabase/functions/_shared (the client ↔ edge-function parity modules).
   sharedMoney: 'supabase/functions/_shared/money.ts',

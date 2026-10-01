@@ -34,6 +34,7 @@ import * as errors from '../src/shared/lib/errors.js'
 import * as kitMath from '../src/shared/ui/kit/kitMath.js'
 import * as chartAxis from '../src/shared/ui/chartAxis.js'
 import * as avatarLook from '../src/shared/ui/avatarLook.js'
+import * as loaderTiming from '../src/shared/ui/loaderTiming.js'
 import * as sharedMoney from '../supabase/functions/_shared/money.ts'
 import * as sharedSavings from '../supabase/functions/_shared/savings.ts'
 import * as sharedSalaryShift from '../supabase/functions/_shared/salaryShift.ts'
@@ -108,6 +109,7 @@ export const modules = {
   kitMath,
   chartAxis,
   avatarLook,
+  loaderTiming,
   sharedMoney,
   sharedSavings,
   sharedSalaryShift,

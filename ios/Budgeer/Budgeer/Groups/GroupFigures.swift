@@ -56,6 +56,8 @@ struct GroupCard: Codable, Equatable, Identifiable, Sendable {
     let imageUrl: String?
     /// "4 members".
     let members: String
+    /// The cover's letters when there's no photo ("F3").
+    let initials: String
     let currency: String
     let avatars: AvatarStackParts?
     let balance: Balance?
@@ -100,6 +102,9 @@ struct BalanceTileParts: Codable, Equatable, Identifiable, Sendable {
     let label: String
     let text: String
     let tone: String
+    let avatar: Avatar
+    /// The balance's size next to the biggest one in the group (0…1).
+    let bar: Double
 }
 
 struct PlanRow: Codable, Equatable, Identifiable, Sendable {

@@ -194,41 +194,50 @@ struct GroupExpenseForm<Extra: View>: View {
 
 // MARK: Settle up
 
-/// Settle up, as a sheet: the suggested payments (a tap fills the form; a
-/// bell reminds someone who owes you), I paid | I received, who, "You → Sam",
-/// the amount and date, "Pay Sam directly", then Record.
+/// Settle up, as a sheet: a hero with who pays whom (both avatars, the
+/// arrow between) over the amount in big figures, I paid | I received and
+/// the person as avatar chips, the suggested payments (a tap fills the form;
+/// a bell reminds someone who owes you), the date, then "Pay Sam directly"
+/// as glass buttons; Record floats at the foot.
 @MainActor
 struct SettleUpView: View {
     @Bindable var model: SettleUpModel
     let onDone: () -> Void
     @Environment(AppLanguage.self) private var language
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var amountFocused: Bool
 
     var body: some View {
         NavigationStack {
-            Form {
-                if let message = model.message {
-                    Section { NativeNotice(text: message) }
+            ScrollView {
+                VStack(spacing: 16) {
+                    if let message = model.message {
+                        NativeNotice(text: message).padding(.horizontal, 4)
+                    }
+                    if model.others.isEmpty {
+                        Text(language.t("groups:settle.addMemberFirst"))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                    } else {
+                        hero
+                        who
+                        if !model.suggestions.isEmpty { suggestions }
+                        NativeFormCard {
+                            DayRow(title: language.t("groups:settle.date"), iso: $model.settledAt)
+                        }
+                        if let pay = model.payShortcut { PayShortcutCard(parts: pay) }
+                    }
                 }
-                if model.others.isEmpty {
-                    Section { Text(language.t("groups:settle.addMemberFirst")).foregroundStyle(.secondary) }
-                } else {
-                    if !model.suggestions.isEmpty { suggestions }
-                    fields
-                    if let pay = model.payShortcut { PayShortcutSection(parts: pay) }
-                }
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+                .padding(.bottom, 40)
             }
-            .scrollContentBackground(.hidden)
+            .scrollDismissesKeyboard(.interactively)
             .background(NativeStyle.canvas)
-            .navigationTitle(language.t("groups:settle.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: { Image(systemName: "xmark") }
-                        .accessibilityLabel(language.t("common:actions.cancel"))
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(language.t("groups:settle.record")) {
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if !model.others.isEmpty {
+                    Button {
                         Task {
                             if await model.record() {
                                 NativeHaptics.success()
@@ -236,139 +245,257 @@ struct SettleUpView: View {
                                 dismiss()
                             }
                         }
+                    } label: {
+                        Group {
+                            if model.busy {
+                                ProgressView().tint(Color.white)
+                            } else {
+                                Label(language.t("groups:settle.record"), systemImage: "checkmark.circle.fill")
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
                     }
-                    .fontWeight(.semibold)
-                    .disabled(model.busy || model.others.isEmpty)
+                    .nativeGlassButton(prominent: true)
+                    .disabled(model.busy)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .nativeFootBar()
                     .accessibilityIdentifier("settle.record")
+                }
+            }
+            .navigationTitle(language.t("groups:settle.title"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .accessibilityLabel(language.t("common:actions.cancel"))
                 }
             }
             .task(id: "\(model.otherId)|\(model.direction)") { await model.loadPayInfo() }
         }
+        .presentationDetents([.large])
     }
 
-    private var suggestions: some View {
-        Section {
-            ForEach(model.suggestions) { suggestion in
-                HStack(spacing: 8) {
-                    Button { model.apply(suggestion) } label: {
-                        HStack {
-                            NativeRich.text(model.rich(suggestion.text))
-                                .foregroundStyle(Color.primary)
-                            Spacer(minLength: 4)
-                            if model.picked == suggestion.index {
-                                Image(systemName: "checkmark").foregroundStyle(NativeStyle.tint)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(model.picked == suggestion.index ? .isSelected : [])
-                    if let remind = suggestion.remind {
-                        Button { Task { await model.remind(remind.memberId) } } label: {
-                            Image(systemName: "bell.and.waves.left.and.right").frame(width: 44, height: 44)
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(NativeStyle.tint)
-                        .accessibilityLabel(remind.label)
-                    }
-                }
+    /// From → to with both circles, the amount to type in big figures, and
+    /// where the other person stands overall.
+    private var hero: some View {
+        let state = model.state
+        return VStack(spacing: 14) {
+            HStack(alignment: .top, spacing: 6) {
+                party(model.avatar(state?.args["fromMember"]?.stringValue), name: state?.parties.from ?? "")
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(NativeStyle.tint)
+                    .frame(width: 44, height: 44)
+                    .nativeGlass(Circle())
+                    .padding(.top, 8)
+                party(model.avatar(state?.args["toMember"]?.stringValue), name: state?.parties.to ?? "")
             }
-        } header: {
-            NativeCapsHeader(title: language.t("groups:settle.suggested"))
+            VStack(spacing: 4) {
+                TextField("0", text: Binding(get: { model.amount }, set: { model.setAmount($0) }))
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.center)
+                    .font(NativeStyle.money(46))
+                    .monospacedDigit()
+                    .focused($amountFocused)
+                    .accessibilityLabel(language.t("groups:settle.amount", ["currency": .string(model.currency)]))
+                    .accessibilityIdentifier("settle.amount")
+                Text(verbatim: model.currency)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .background(Color.primary.opacity(0.07), in: Capsule())
+            }
+            if let line = state?.otherLine {
+                Text(line).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .padding(.horizontal, 12)
+        .background {
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .fill(LinearGradient(colors: [Theme.Colors.accentSubtle, NativeStyle.card],
+                                     startPoint: .top, endPoint: .bottom))
         }
     }
 
-    private var fields: some View {
-        let state = model.state
-        let whoLabel = language.t(model.direction == "out" ? "groups:settle.paidTo" : "groups:settle.receivedFrom")
-        return Section {
+    private func party(_ avatar: Avatar?, name: String) -> some View {
+        VStack(spacing: 6) {
+            if let avatar {
+                NativeAvatar(avatar: avatar, size: 60, ring: NativeStyle.card)
+            } else {
+                Circle().fill(Color.primary.opacity(0.08)).frame(width: 60, height: 60)
+            }
+            Text(name).font(.subheadline.weight(.semibold)).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// I paid | I received, then the person as a row of avatar chips.
+    private var who: some View {
+        VStack(alignment: .leading, spacing: 12) {
             Picker("", selection: Binding(get: { model.direction }, set: { model.setDirection($0) })) {
                 Text(language.t("groups:settle.iPaid")).tag("out")
                 Text(language.t("groups:settle.iReceived")).tag("in")
             }
             .pickerStyle(.segmented)
-            Picker(whoLabel, selection: Binding(get: { model.otherId }, set: { model.pickOther($0) })) {
-                ForEach(model.others, id: \.self) { id in Text(model.name(id)).tag(id) }
-            }
-            if let parties = state?.parties {
-                HStack(spacing: 8) {
-                    Text(parties.from)
-                    Image(systemName: "arrow.right").foregroundStyle(.secondary)
-                    Text(parties.to)
+            Text(language.t(model.direction == "out" ? "groups:settle.paidTo" : "groups:settle.receivedFrom").capsLabel)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(model.others, id: \.self) { id in
+                        personChip(id)
+                    }
                 }
-                .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
+                .padding(.vertical, 2)
             }
-            HStack {
-                Text(language.t("groups:settle.amount", ["currency": .string(model.currency)]))
-                Spacer()
-                TextField("0", text: Binding(get: { model.amount }, set: { model.setAmount($0) }))
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .font(.body.weight(.semibold))
-                    .accessibilityIdentifier("settle.amount")
+            .scrollClipDisabled()
+        }
+        .padding(16)
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private func personChip(_ id: String) -> some View {
+        let picked = model.otherId == id
+        return Button { model.pickOther(id) } label: {
+            HStack(spacing: 8) {
+                if let avatar = model.avatar(id) { NativeAvatar(avatar: avatar, size: 28) }
+                Text(model.name(id)).font(.subheadline.weight(.semibold)).lineLimit(1)
             }
-            DayRow(title: language.t("groups:settle.date"), iso: $model.settledAt)
-        } footer: {
-            if let line = state?.otherLine { Text(line) }
+            .foregroundStyle(picked ? Color.white : Color.primary)
+            .padding(.leading, 6)
+            .padding(.trailing, 14)
+            .frame(minHeight: 40)
+            .nativeGlass(Capsule(), tint: picked ? NativeStyle.solid : nil, interactive: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(picked ? .isSelected : [])
+    }
+
+    private var suggestions: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(language.t("groups:settle.suggested").capsLabel)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .padding(.leading, 16)
+            VStack(spacing: 0) {
+                ForEach(model.suggestions) { suggestion in
+                    suggestionRow(suggestion)
+                    if suggestion.id != model.suggestions.last?.id { Divider().padding(.leading, 34) }
+                }
+            }
+            .padding(.horizontal, 16)
+            .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+    }
+
+    private func suggestionRow(_ suggestion: SettleSuggestion) -> some View {
+        let picked = model.picked == suggestion.index
+        return HStack(spacing: 10) {
+            Button { model.apply(suggestion) } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: picked ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(picked ? NativeStyle.tint : Color.secondary)
+                    NativeRich.text(model.rich(suggestion.text))
+                        .foregroundStyle(Color.primary)
+                        .multilineTextAlignment(.leading)
+                    Spacer(minLength: 4)
+                }
+                .frame(minHeight: 50)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(picked ? .isSelected : [])
+            if let remind = suggestion.remind {
+                Button { Task { await model.remind(remind.memberId) } } label: {
+                    Image(systemName: "bell.and.waves.left.and.right")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(width: 40, height: 40)
+                        .nativeGlass(Circle(), interactive: true)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(NativeStyle.tint)
+                .accessibilityLabel(remind.label)
+            }
         }
     }
 }
 
-/// "Pay Sam directly" (payShortcutParts): what it would offer, or the links,
-/// the bank QR (drawn on the device from the core's EPC payload) and the
-/// IBAN to copy.
-struct PayShortcutSection: View {
+/// "Pay Sam directly" (payShortcutParts): what it would offer, or Revolut,
+/// PayPal, the bank QR (drawn on the device from the core's EPC payload)
+/// and the IBAN to copy, as glass buttons.
+struct PayShortcutCard: View {
     let parts: JSONValue
     @Environment(AppLanguage.self) private var language
     @State private var showQr = false
     @State private var copied = false
 
     var body: some View {
-        Section {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(parts["title"]?.stringValue ?? "", systemImage: "creditcard.fill")
+                .font(.headline)
             if parts["kind"] == "hint" {
                 Text(parts["note"]?.stringValue ?? "").font(.footnote).foregroundStyle(.secondary)
             } else {
-                if let link = parts["revolut"]?.stringValue, let url = URL(string: link) {
-                    Link(destination: url) { Label(verbatimTitle: "Revolut", systemImage: "arrow.up.right.square") }
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                    if let link = parts["revolut"]?.stringValue, let url = URL(string: link) {
+                        Link(destination: url) { option(Text(verbatim: "Revolut"), symbol: "arrow.up.right") }
+                    }
+                    if let link = parts["paypal"]?.stringValue, let url = URL(string: link) {
+                        Link(destination: url) { option(Text(verbatim: "PayPal"), symbol: "arrow.up.right") }
+                    }
+                    if parts["qr"]?.stringValue != nil {
+                        Button { showQr.toggle() } label: {
+                            option(Text(language.t(showQr ? "groups:pay.hideQr" : "groups:pay.showQr")), symbol: "qrcode")
+                        }
+                    }
+                    if let iban = parts["iban"]?.stringValue {
+                        Button {
+                            UIPasteboard.general.string = iban
+                            copied = true
+                        } label: {
+                            option(Text(language.t(copied ? "groups:pay.ibanCopied" : "groups:pay.copyIban")),
+                                   symbol: copied ? "checkmark" : "doc.on.doc")
+                        }
+                    }
                 }
-                if let link = parts["paypal"]?.stringValue, let url = URL(string: link) {
-                    Link(destination: url) { Label(verbatimTitle: "PayPal", systemImage: "arrow.up.right.square") }
-                }
-                if parts["qr"]?.stringValue != nil {
-                    Button(language.t(showQr ? "groups:pay.hideQr" : "groups:pay.showQr")) { showQr.toggle() }
-                }
+                .buttonStyle(.plain)
                 if showQr, let payload = parts["qr"]?.stringValue, let image = QRImage.make(payload) {
                     VStack(spacing: 8) {
                         Image(uiImage: image)
                             .interpolation(.none)
                             .resizable()
                             .frame(width: 200, height: 200)
-                            .padding(8)
-                            .background(Color.white, in: RoundedRectangle(cornerRadius: 8))
+                            .padding(10)
+                            .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                             .accessibilityLabel(language.t("groups:pay.qrAlt"))
                         Text(parts["qrCaption"]?.stringValue ?? "").font(.footnote).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
                 }
-                if let iban = parts["iban"]?.stringValue {
-                    Button(language.t(copied ? "groups:pay.ibanCopied" : "groups:pay.copyIban")) {
-                        UIPasteboard.general.string = iban
-                        copied = true
-                    }
-                }
             }
-        } header: {
-            NativeCapsHeader(title: parts["title"]?.stringValue ?? "")
-        } footer: {
-            if let after = parts["after"]?.stringValue { Text(after) }
+            if let after = parts["after"]?.stringValue {
+                Text(after).font(.caption).foregroundStyle(.secondary)
+            }
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
-}
 
-extension Label where Title == Text, Icon == Image {
-    /// A label whose words aren't the app's (a brand's name).
-    init(verbatimTitle: String, systemImage: String) {
-        self.init { Text(verbatim: verbatimTitle) } icon: { Image(systemName: systemImage) }
+    /// One way to pay: its name and symbol in a glass capsule.
+    private func option(_ title: Text, symbol: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol).font(.subheadline.weight(.semibold))
+            title.font(.subheadline.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .foregroundStyle(NativeStyle.tint)
+        .frame(maxWidth: .infinity, minHeight: 46)
+        .nativeGlass(Capsule(), interactive: true)
     }
 }
 
@@ -386,40 +513,52 @@ enum QRImage {
 
 // MARK: Members
 
-/// A group's members, after the web's MembersPage: "In this group" (you
-/// and the owner first, the owner's badge, the owner's remove behind a
-/// confirm), then "Invite people": by email (an in-app request to someone on
-/// Budgeer, else an emailed join link) or with a share link to copy or share.
+/// A group's members, after the web's MembersPage: the group up top, then
+/// "In this group" as a card of people (big circles, "(you)", the owner's
+/// badge, the owner's remove behind a confirm), then "Invite people" as its
+/// own card: by email (an in-app request to someone on Budgeer, else an
+/// emailed join link) or with a share link to copy or share.
 @MainActor
 struct MembersView: View {
     @Bindable var model: GroupModel
     @Environment(AppLanguage.self) private var language
     @State private var removing: MemberRow?
     @State private var email = ""
-    @State private var copied = false
 
     var body: some View {
-        List {
-            if let message = model.message {
-                Section { NativeNotice(text: message) }
-            }
-            if let figures = model.figures {
-                Section {
-                    ForEach(figures.memberRows) { row in memberRow(row) }
-                } header: {
-                    NativeCapsHeader(title: language.t("groups:members.inGroup"))
-                } footer: {
-                    Text(figures.members)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                if let message = model.message {
+                    NativeNotice(text: message).padding(.horizontal, 4)
                 }
-                .listRowBackground(NativeStyle.card)
-                if figures.myMemberId != nil { invite }
+                if let figures = model.figures {
+                    header(figures)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(language.t("groups:members.inGroup").capsLabel)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 16)
+                        VStack(spacing: 0) {
+                            ForEach(figures.memberRows) { row in
+                                memberRow(row)
+                                if row.id != figures.memberRows.last?.id { Divider().padding(.leading, 64) }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    }
+                    if figures.myMemberId != nil { invite }
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.top, 6)
+            .padding(.bottom, NativeFoot.room)
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.interactively)
         .background(NativeStyle.canvas)
         .nativeTabBarRoom()
         .navigationTitle(language.t("groups:members.title"))
+        .navigationBarTitleDisplayMode(.large)
         .confirmationDialog(language.t("groups:modals.remove.title", ["name": .string(removing?.avatar.name ?? "")]),
                             isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
                             titleVisibility: .visible) {
@@ -432,75 +571,110 @@ struct MembersView: View {
         }
     }
 
+    /// The group's picture, its name and "4 members" over the stack of circles.
+    private func header(_ figures: GroupPageFigures) -> some View {
+        HStack(spacing: 14) {
+            GroupPicture(imageUrl: figures.imageUrl, size: 56)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(figures.name).font(.headline).lineLimit(2)
+                HStack(spacing: 6) {
+                    NativeAvatarStack(stack: figures.avatars, size: 22)
+                    Text(figures.members).font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(14)
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
     private func memberRow(_ row: MemberRow) -> some View {
-        HStack(spacing: 12) {
-            NativeAvatar(avatar: row.avatar, size: 34)
-            Text(row.label).fontWeight(row.isMe ? .semibold : .regular)
-            if let owner = row.owner {
-                Text(owner.capsLabel)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(NativeStyle.tint)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Theme.Colors.accentSubtle, in: Capsule())
+        HStack(spacing: 14) {
+            NativeAvatar(avatar: row.avatar, size: 46)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(row.label).font(.body.weight(row.isMe ? .semibold : .medium)).lineLimit(1)
+                if let owner = row.owner {
+                    Label(owner, systemImage: "crown.fill")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(NativeStyle.tint)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Theme.Colors.accentSubtle, in: Capsule())
+                }
             }
             Spacer(minLength: 8)
             if row.canRemove {
                 Button { removing = row } label: {
-                    Image(systemName: "person.badge.minus").frame(width: 44, height: 44)
+                    Image(systemName: "person.badge.minus")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(width: 40, height: 40)
+                        .nativeGlass(Circle(), interactive: true)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(NativeStyle.tint)
+                .foregroundStyle(NativeStyle.negative)
                 .accessibilityLabel(row.removeLabel)
             }
         }
-        .frame(minHeight: 48)
+        .frame(minHeight: 66)
     }
 
+    /// Invite by email, or make a share link (then copy or share it).
     private var invite: some View {
-        Section {
-            TextField("", text: $email, prompt: Text(verbatim: "friend@example.com"))
-                .keyboardType(.emailAddress)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .accessibilityIdentifier("members.email")
-            Button {
-                Task { if await model.invite(email: email) { email = "" } }
-            } label: {
-                Label(language.t("groups:members.invite.send"), systemImage: "envelope")
-            }
-            .disabled(model.busy || email.trimmingCharacters(in: .whitespaces).isEmpty)
-            Button {
-                copied = false
-                Task { await model.makeInviteLink() }
-            } label: {
-                Label(language.t("groups:members.invite.copyLink"), systemImage: "link")
-            }
-            .disabled(model.busy)
-            if let link = model.inviteLink {
-                Text(link)
-                    .font(.system(size: 13, design: .monospaced))
-                    .textSelection(.enabled)
-                    .accessibilityLabel(language.t("groups:modals.invite.field"))
-                HStack(spacing: 16) {
-                    Button(language.t(copied ? "groups:modals.invite.copied" : "groups:modals.invite.copy")) {
-                        UIPasteboard.general.string = link
-                        copied = true
-                    }
-                    .buttonStyle(.borderless)
-                    if let url = URL(string: link) {
-                        ShareLink(item: url, subject: Text(language.t("groups:modals.invite.shareTitle"))) {
-                            Text(language.t("groups:actions.share"))
-                        }
-                        .buttonStyle(.borderless)
-                    }
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "person.badge.plus")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.white)
+                    .frame(width: 42, height: 42)
+                    .background(GroupCoverArt.gradient(0), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(language.t("groups:members.invite.title")).font(.headline)
+                    Text(language.t("groups:members.invite.subtitle")).font(.footnote).foregroundStyle(.secondary)
                 }
             }
-        } header: {
-            NativeCapsHeader(title: language.t("groups:members.invite.title"))
-        } footer: {
-            Text(language.t("groups:members.invite.emailHint"))
+            HStack(spacing: 8) {
+                TextField(language.t("groups:members.invite.email"), text: $email)
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.send)
+                    .onSubmit { send() }
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 46)
+                    .background(Theme.Colors.subtle, in: Capsule())
+                    .accessibilityIdentifier("members.email")
+                Button(action: send) {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .frame(width: 46, height: 46)
+                        .nativeGlass(Circle(), tint: NativeStyle.solid, interactive: true)
+                }
+                .buttonStyle(.plain)
+                .disabled(model.busy || email.trimmingCharacters(in: .whitespaces).isEmpty)
+                .accessibilityLabel(language.t("groups:members.invite.send"))
+            }
+            Text(language.t("groups:members.invite.emailHint")).font(.caption).foregroundStyle(.secondary)
+            Divider()
+            if let link = model.inviteLink {
+                InviteLinkCard(link: link, framed: false)
+            } else {
+                Button {
+                    Task { await model.makeInviteLink() }
+                } label: {
+                    Label(language.t("groups:members.invite.copyLink"), systemImage: "link")
+                        .frame(maxWidth: .infinity)
+                }
+                .nativeGlassButton()
+                .disabled(model.busy)
+            }
         }
-        .listRowBackground(NativeStyle.card)
+        .padding(16)
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+
+    private func send() {
+        Task { if await model.invite(email: email) { email = "" } }
     }
 }

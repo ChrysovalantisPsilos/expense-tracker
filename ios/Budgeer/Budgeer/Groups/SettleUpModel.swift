@@ -68,6 +68,13 @@ final class SettleUpModel {
         (members.arrayValue ?? []).first { $0["id"]?.stringValue == id }?["display_name"]?.stringValue ?? ""
     }
 
+    /// A member's circle (groupFormat.memberAvatar), the viewer's in the accent.
+    func avatar(_ memberId: String?) -> Avatar? {
+        guard let memberId,
+              let member = (members.arrayValue ?? []).first(where: { $0["id"]?.stringValue == memberId }) else { return nil }
+        return try? core.call("groupFormat", "memberAvatar", [member, JSONValue.bool(memberId == myMemberId)])
+    }
+
     /// A suggestion's words as rich text (translate.parseRich: strings and { tag, children }).
     func rich(_ text: String) -> JSONValue {
         (try? core.json("translate", "parseRich", [text])) ?? [.string(text)]

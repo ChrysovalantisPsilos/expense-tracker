@@ -36,6 +36,12 @@ extension FakeStore {
         try write("rename_group", ["id": .string(id), "name": .string(name)])
     }
 
+    func uploadGroupImage(groupId: String, data: Data, contentType: String, ext: String) async throws -> String {
+        try write("group-images", ["path": .string("\(groupId)/cover.\(ext)"), "contentType": .string(contentType),
+                                   "bytes": .int(data.count)])
+        return "https://example.supabase.co/storage/v1/object/public/group-images/\(groupId)/cover.\(ext)?t=1"
+    }
+
     func saveGroupExpense(_ args: JSONValue) async throws {
         try write(args["expenseId"] == nil ? "create_group_expense_v2" : "update_group_expense_v2", args)
     }

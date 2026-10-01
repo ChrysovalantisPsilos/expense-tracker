@@ -2,7 +2,8 @@
 // data, in the app's frame (the floating tab bar with the screen's tab
 // picked, Add beside it) at an iPhone 17's size: "<name>-<variant>.png",
 // plus "<name>-<variant>-long.png" for the pages worth seeing whole. Sheets
-// are shown over the page they come up on. Each PNG is attached to the test
+// are shown over the page they come up on; what plays once (the sign-in's
+// intro, the confetti) is caught at fixed moments. Each PNG is attached to the test
 // and, when SNAPSHOT_DIR is set (CI passes it as TEST_RUNNER_SNAPSHOT_DIR),
 // written there for the workflow's artifact. Nothing is compared: these are
 // for looking at.
@@ -30,8 +31,13 @@ final class SnapshotTests: XCTestCase {
     func testSignInSnapshots() async throws {
         for (lang, dark) in SnapshotTests.variants {
             let session = SessionStore(auth: FakeAuthService())
-            try await shots(SignInView(model: SignInViewModel(), session: session, site: "https://dev.budgeer.com"),
-                      name: "signin", lang: lang, dark: dark)
+            let signIn = SignInView(model: SignInViewModel(), session: session, site: "https://dev.budgeer.com")
+            try await shots(signIn.environment(\.nativeFrozenMotion, 1), name: "signin", lang: lang, dark: dark)
+            // The wordmark's intro (the website's loading ring, once), at three moments.
+            for (index, moment) in [0.18, 0.42, 0.7].enumerated() {
+                try await shots(signIn.environment(\.nativeFrozenMotion, moment), name: "signin-intro\(index + 1)",
+                                lang: lang, dark: dark, settle: 0.4)
+            }
             try await shots(LegalGateView(status: .outdated, session: session), name: "legal", lang: lang, dark: dark)
         }
     }
@@ -110,6 +116,7 @@ final class SnapshotTests: XCTestCase {
             let store = FakeStore()
             store.profileResult = .success(fixture.input.profile)
             store.savingsResult = .success(fixture.input.categories)
+            store.categoriesResult = .success(TestData.categories)
             store.oldest = .success(fixture.input.oldest)
             store.rowsFor = { query in fixture.rows(kind: query.kind) }
             let model = LedgerModel(data: store.data, core: .shared, now: { now })
@@ -119,7 +126,7 @@ final class SnapshotTests: XCTestCase {
                     ActivityView(model: model, chrome: SnapshotTests.chrome, open: { _ in }, duplicate: { _ in },
                                  split: { _ in })
                 }
-            }, name: "activity", lang: lang, dark: dark, long: 1600)
+            }, name: "activity", lang: lang, dark: dark, long: 2000)
         }
     }
 
@@ -130,14 +137,32 @@ final class SnapshotTests: XCTestCase {
         let now = fixture.now
         for (lang, dark) in SnapshotTests.variants {
             _ = language(lang)
-            let store = fixture.store()
-            // The Groups tab: an invite and two groups.
+            let store = SnapshotTests.galleryStore(fixture)
+            // The Groups tab: an invite and four groups.
             let list = GroupsModel(data: store.data, userId: SnapshotTests.user)
             await list.load()
             try await shots(framed(.groups) { NavigationStack { GroupsView(model: list, chrome: SnapshotTests.chrome) } },
-                      name: "groups", lang: lang, dark: dark)
-            try await shots(framed(.groups) { NavigationStack { NewGroupView(model: list) { _ in } } },
-                      name: "group-new", lang: lang, dark: dark)
+                      name: "groups", lang: lang, dark: dark, long: 1500)
+            // New group: empty, filled in (an emoji cover, two invites, a link), and made.
+            let empty = NewGroupModel(data: store.data, site: "https://dev.budgeer.com")
+            await empty.load()
+            try await shots(framed(.groups) { NavigationStack { NewGroupView(model: empty) { _ in } } },
+                      name: "group-new", lang: lang, dark: dark, long: 1500)
+            let filled = NewGroupModel(data: store.data, site: "https://dev.budgeer.com")
+            await filled.load()
+            filled.name = "Lisbon 2027"
+            for address in ["sofia@example.com", "marco@example.com"] {
+                filled.emailText = address
+                filled.addEmail()
+            }
+            filled.shareLink = true
+            try await shots(framed(.groups) {
+                NavigationStack { NewGroupView(model: filled, onCreated: { _ in }, emoji: "✈️", colour: 2) }
+            }, name: "group-new-filled", lang: lang, dark: dark, long: 1500)
+            _ = await filled.create(cover: nil)
+            try await shots(framed(.groups) {
+                NavigationStack { NewGroupView(model: filled, onCreated: { _ in }, emoji: "✈️", colour: 2) }
+            }, name: "group-new-done", lang: lang, dark: dark)
             // A group's page, seen by its owner.
             let group = GroupModel(groupId: fixture.groupId, userId: SnapshotTests.user, site: "https://dev.budgeer.com",
                                    data: store.data, now: { now })
@@ -149,11 +174,9 @@ final class SnapshotTests: XCTestCase {
                 NavigationStack { GroupPageView(model: group, celebrating: true) }
                     .environment(\.nativeFrozenMotion, 0.6)
             }, name: "group-settled", lang: lang, dark: dark)
-            // Balances, in its half sheet.
-            try await shots(framed(.groups) {
-                NavigationStack { GroupPageView(model: group) }
-                    .sheet(isPresented: .constant(true)) { BalancesSheet(model: group) {} }
-            }, name: "group-balances", lang: lang, dark: dark, settle: 1.6)
+            // Balances, its own page.
+            try await shots(framed(.groups) { NavigationStack { BalancesView(model: group) {} } },
+                      name: "group-balances", lang: lang, dark: dark, long: 1200)
             // Add an expense, split by amounts.
             let form = group.expenseForm(expenseId: nil)
             form.setDescription("Taxi")
@@ -171,9 +194,10 @@ final class SnapshotTests: XCTestCase {
                 NavigationStack { GroupPageView(model: group) }
                     .sheet(isPresented: .constant(true)) { SettleUpView(model: settle) {} }
             }, name: "group-settle", lang: lang, dark: dark, settle: 1.6)
-            // Members.
+            // Members, with a share link made.
+            await group.makeInviteLink()
             try await shots(framed(.groups) { NavigationStack { MembersView(model: group) } },
-                      name: "group-members", lang: lang, dark: dark)
+                      name: "group-members", lang: lang, dark: dark, long: 1300)
         }
     }
 
@@ -196,17 +220,14 @@ final class SnapshotTests: XCTestCase {
                                  email: "sam@example.com", initials: "SM")
                 }
             }, name: "settings", lang: lang, dark: dark, long: 1300)
-            // The bell's sheet over More.
+            // The bell's page, pushed on More (the new one still marked).
             let store = FakeStore()
             store.notificationsResult = .success(SnapshotTests.notifications)
-            let shell = ShellModel(data: store.data)
+            let shell = ShellModel(data: store.data, now: { SnapshotTests.bellNow })
             await shell.load()
-            try await shots(framed(.more) {
-                NavigationStack {
-                    MoreView(name: "Sam Morgan", email: "sam@example.com", initials: "SM", chrome: SnapshotTests.chrome)
-                }
-                .sheet(isPresented: .constant(true)) { BellSheet(model: shell) { _ in } }
-            }, name: "bell", lang: lang, dark: dark, settle: 1.6)
+            await shell.opened()
+            try await shots(framed(.more) { NavigationStack { NotificationsView(model: shell) { _ in } } },
+                      name: "notifications", lang: lang, dark: dark)
         }
     }
 
@@ -254,12 +275,48 @@ final class SnapshotTests: XCTestCase {
         "paid_with_vouchers": false,
     ]
 
+    private static let bellNow = ISO8601DateFormatter().date(from: "2026-09-20T12:00:00Z")!
+
     private static let notifications: JSONValue = [
         ["id": "n1", "type": "expense", "title": "Alex added Taxi", "body": "Lisbon trip · €84.60", "read_at": .null,
-         "data": ["group_id": "g-lisbon"]],
+         "created_at": "2026-09-20T08:05:00Z", "group_id": "g-lisbon"],
+        ["id": "n4", "type": "settlement", "title": "Marco Rossi paid you €20.00", "body": "Lisbon trip",
+         "read_at": .null, "created_at": "2026-09-19T18:40:00Z", "group_id": "g-lisbon"],
         ["id": "n2", "type": "budget", "title": "Eating out is at 90%", "body": "€9 left this month",
-         "read_at": "2026-09-18T09:00:00Z", "data": [:]],
+         "read_at": "2026-09-18T09:00:00Z", "created_at": "2026-09-18T07:00:00Z"],
+        ["id": "n3", "type": "invite", "title": "Marco Rossi invited you to Ski week", "body": .null,
+         "read_at": "2026-09-16T09:00:00Z", "created_at": "2026-09-16T08:30:00Z"],
+        ["id": "n5", "type": "digest", "title": "Your week: €182.40 spent", "body": "Groceries led the way.",
+         "read_at": "2026-09-15T09:00:00Z", "created_at": "2026-09-15T06:00:00Z"],
     ]
+
+    /// The groups' fixture with two more groups (one settled, one just made),
+    /// so the gallery has a full page.
+    private static func galleryStore(_ fixture: GroupsFixture) -> FakeStore {
+        let store = fixture.store()
+        let alex = JSONValue.string(SnapshotTests.user)
+        let extra: [JSONValue] = [
+            ["id": "g-home", "name": "Home & bills", "currency": "EUR", "owner_id": alex, "image_url": .null,
+             "created_at": "2026-06-01T10:00:00Z", "group_members": [["count": 2]]],
+            ["id": "g-book", "name": "Book club", "currency": "EUR", "owner_id": "u-anna", "image_url": .null,
+             "created_at": "2026-05-01T10:00:00Z", "group_members": [["count": 5]]],
+        ]
+        store.groupsResult = .success(.array((fixture.input.groups.arrayValue ?? []) + extra))
+        let person = { (id: String, group: String, user: JSONValue, name: String, role: String) -> JSONValue in
+            ["id": .string(id), "group_id": .string(group), "user_id": user, "display_name": .string(name),
+             "role": .string(role), "created_at": "2026-05-01T10:00:00Z"]
+        }
+        store.summaries["g-home"] = [
+            "members": [person("h1", "g-home", alex, "Alex Morgan", "owner"), person("h2", "g-home", .null, "Jamie", "member")],
+            "avatars": [], "balances": [],
+        ]
+        store.summaries["g-book"] = [
+            "members": .array([person("b1", "g-book", "u-anna", "Anna", "owner"), person("b2", "g-book", alex, "Alex Morgan", "member")]
+                + ["Nikos", "Eleni", "Tom"].enumerated().map { person("b\($0.offset + 3)", "g-book", .null, $0.element, "member") }),
+            "avatars": [], "balances": [],
+        ]
+        return store
+    }
 
     /// Home's model over the fixture, this month, with a budget, the vouchers and the month in words.
     private func homeModel(_ fixture: HomeFixture, lang: String) async throws -> HomeViewModel {

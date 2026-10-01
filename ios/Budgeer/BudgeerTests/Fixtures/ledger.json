@@ -635,7 +635,235 @@
               }
             ]
           }
-        ]
+        ],
+        "pulse": {
+          "spent": {
+            "label": "Spent",
+            "amount": "€371.29"
+          },
+          "income": {
+            "label": "Income",
+            "amount": "+€2,500.00"
+          },
+          "net": {
+            "label": "Net",
+            "text": "+€1,948.71",
+            "tone": "positive"
+          },
+          "days": [
+            {
+              "key": "2020-09-01",
+              "label": "1",
+              "bar": 0.8,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-02",
+              "label": "2",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-03",
+              "label": "3",
+              "bar": 1,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-04",
+              "label": "4",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-05",
+              "label": "5",
+              "bar": 0.10825,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-06",
+              "label": "6",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-07",
+              "label": "7",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-08",
+              "label": "8",
+              "bar": 0.18333333333333332,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-09",
+              "label": "9",
+              "bar": 0.19008333333333333,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-10",
+              "label": "10",
+              "bar": 0.3,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-11",
+              "label": "11",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-12",
+              "label": "12",
+              "bar": 0.15825,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-13",
+              "label": "13",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-14",
+              "label": "14",
+              "bar": 0.3541666666666667,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-15",
+              "label": "15",
+              "bar": 0,
+              "today": true,
+              "future": false
+            },
+            {
+              "key": "2020-09-16",
+              "label": "16",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-17",
+              "label": "17",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-18",
+              "label": "18",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-19",
+              "label": "19",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-20",
+              "label": "20",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-21",
+              "label": "21",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-22",
+              "label": "22",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-23",
+              "label": "23",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-24",
+              "label": "24",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-25",
+              "label": "25",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-26",
+              "label": "26",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-27",
+              "label": "27",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-28",
+              "label": "28",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-29",
+              "label": "29",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-30",
+              "label": "30",
+              "bar": 0,
+              "today": false,
+              "future": true
+            }
+          ],
+          "peak": "Biggest day: 3 Sep · €120.00"
+        }
       },
       "expenses": {
         "title": "Expenses",
@@ -893,7 +1121,228 @@
               }
             ]
           }
-        ]
+        ],
+        "pulse": {
+          "spent": {
+            "label": "Spent",
+            "amount": "€371.29"
+          },
+          "income": null,
+          "net": null,
+          "days": [
+            {
+              "key": "2020-09-01",
+              "label": "1",
+              "bar": 0.8,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-02",
+              "label": "2",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-03",
+              "label": "3",
+              "bar": 1,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-04",
+              "label": "4",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-05",
+              "label": "5",
+              "bar": 0.10825,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-06",
+              "label": "6",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-07",
+              "label": "7",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-08",
+              "label": "8",
+              "bar": 0.18333333333333332,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-09",
+              "label": "9",
+              "bar": 0.19008333333333333,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-10",
+              "label": "10",
+              "bar": 0.3,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-11",
+              "label": "11",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-12",
+              "label": "12",
+              "bar": 0.15825,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-13",
+              "label": "13",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-14",
+              "label": "14",
+              "bar": 0.3541666666666667,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-15",
+              "label": "15",
+              "bar": 0,
+              "today": true,
+              "future": false
+            },
+            {
+              "key": "2020-09-16",
+              "label": "16",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-17",
+              "label": "17",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-18",
+              "label": "18",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-19",
+              "label": "19",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-20",
+              "label": "20",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-21",
+              "label": "21",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-22",
+              "label": "22",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-23",
+              "label": "23",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-24",
+              "label": "24",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-25",
+              "label": "25",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-26",
+              "label": "26",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-27",
+              "label": "27",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-28",
+              "label": "28",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-29",
+              "label": "29",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-30",
+              "label": "30",
+              "bar": 0,
+              "today": false,
+              "future": true
+            }
+          ],
+          "peak": "Biggest day: 3 Sep · €120.00"
+        }
       },
       "search": {
         "title": "Search results",
@@ -931,7 +1380,24 @@
               }
             ]
           }
-        ]
+        ],
+        "pulse": {
+          "spent": {
+            "label": "Spent",
+            "amount": "€12.99"
+          },
+          "income": {
+            "label": "Income",
+            "amount": "€0.00"
+          },
+          "net": {
+            "label": "Net",
+            "text": "−€12.99",
+            "tone": "negative"
+          },
+          "days": [],
+          "peak": null
+        }
       }
     },
     "el": {
@@ -1251,7 +1717,235 @@
               }
             ]
           }
-        ]
+        ],
+        "pulse": {
+          "spent": {
+            "label": "Έξοδα",
+            "amount": "371,29 €"
+          },
+          "income": {
+            "label": "Έσοδα",
+            "amount": "+2.500,00 €"
+          },
+          "net": {
+            "label": "Καθαρό",
+            "text": "+1.948,71 €",
+            "tone": "positive"
+          },
+          "days": [
+            {
+              "key": "2020-09-01",
+              "label": "1",
+              "bar": 0.8,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-02",
+              "label": "2",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-03",
+              "label": "3",
+              "bar": 1,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-04",
+              "label": "4",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-05",
+              "label": "5",
+              "bar": 0.10825,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-06",
+              "label": "6",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-07",
+              "label": "7",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-08",
+              "label": "8",
+              "bar": 0.18333333333333332,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-09",
+              "label": "9",
+              "bar": 0.19008333333333333,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-10",
+              "label": "10",
+              "bar": 0.3,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-11",
+              "label": "11",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-12",
+              "label": "12",
+              "bar": 0.15825,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-13",
+              "label": "13",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-14",
+              "label": "14",
+              "bar": 0.3541666666666667,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-15",
+              "label": "15",
+              "bar": 0,
+              "today": true,
+              "future": false
+            },
+            {
+              "key": "2020-09-16",
+              "label": "16",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-17",
+              "label": "17",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-18",
+              "label": "18",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-19",
+              "label": "19",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-20",
+              "label": "20",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-21",
+              "label": "21",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-22",
+              "label": "22",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-23",
+              "label": "23",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-24",
+              "label": "24",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-25",
+              "label": "25",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-26",
+              "label": "26",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-27",
+              "label": "27",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-28",
+              "label": "28",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-29",
+              "label": "29",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-30",
+              "label": "30",
+              "bar": 0,
+              "today": false,
+              "future": true
+            }
+          ],
+          "peak": "Μεγαλύτερη μέρα: 3 Σεπ · 120,00 €"
+        }
       },
       "expenses": {
         "title": "Έξοδα",
@@ -1509,7 +2203,228 @@
               }
             ]
           }
-        ]
+        ],
+        "pulse": {
+          "spent": {
+            "label": "Έξοδα",
+            "amount": "371,29 €"
+          },
+          "income": null,
+          "net": null,
+          "days": [
+            {
+              "key": "2020-09-01",
+              "label": "1",
+              "bar": 0.8,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-02",
+              "label": "2",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-03",
+              "label": "3",
+              "bar": 1,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-04",
+              "label": "4",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-05",
+              "label": "5",
+              "bar": 0.10825,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-06",
+              "label": "6",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-07",
+              "label": "7",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-08",
+              "label": "8",
+              "bar": 0.18333333333333332,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-09",
+              "label": "9",
+              "bar": 0.19008333333333333,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-10",
+              "label": "10",
+              "bar": 0.3,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-11",
+              "label": "11",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-12",
+              "label": "12",
+              "bar": 0.15825,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-13",
+              "label": "13",
+              "bar": 0,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-14",
+              "label": "14",
+              "bar": 0.3541666666666667,
+              "today": false,
+              "future": false
+            },
+            {
+              "key": "2020-09-15",
+              "label": "15",
+              "bar": 0,
+              "today": true,
+              "future": false
+            },
+            {
+              "key": "2020-09-16",
+              "label": "16",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-17",
+              "label": "17",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-18",
+              "label": "18",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-19",
+              "label": "19",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-20",
+              "label": "20",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-21",
+              "label": "21",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-22",
+              "label": "22",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-23",
+              "label": "23",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-24",
+              "label": "24",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-25",
+              "label": "25",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-26",
+              "label": "26",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-27",
+              "label": "27",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-28",
+              "label": "28",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-29",
+              "label": "29",
+              "bar": 0,
+              "today": false,
+              "future": true
+            },
+            {
+              "key": "2020-09-30",
+              "label": "30",
+              "bar": 0,
+              "today": false,
+              "future": true
+            }
+          ],
+          "peak": "Μεγαλύτερη μέρα: 3 Σεπ · 120,00 €"
+        }
       },
       "search": {
         "title": "Αποτελέσματα αναζήτησης",
@@ -1547,7 +2462,24 @@
               }
             ]
           }
-        ]
+        ],
+        "pulse": {
+          "spent": {
+            "label": "Έξοδα",
+            "amount": "12,99 €"
+          },
+          "income": {
+            "label": "Έσοδα",
+            "amount": "0,00 €"
+          },
+          "net": {
+            "label": "Καθαρό",
+            "text": "−12,99 €",
+            "tone": "negative"
+          },
+          "days": [],
+          "peak": null
+        }
       }
     }
   }
