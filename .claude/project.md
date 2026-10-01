@@ -244,8 +244,9 @@ npm run dev       # Vite
   2.49.0 (the last on Swift tools 5.10; CI pins Xcode 15.4 on macos-14);
   the legal gate sends the user to the web to accept. Real: Home (period
   picker, projection, Recurring card), Add/Edit, Transactions, Budgets,
-  Recurring and Insights (from More), over a cached, realtime data layer;
-  Groups is a placeholder (ios/README.md lists what is not yet there).
+  Recurring and Insights (from More), and (phase 3) Groups with Add's
+  "Who's it for?", over a cached, realtime data layer (ios/README.md lists
+  what is not yet there).
   Strings come from `src/locales` (`mobile-core/strings.mjs`), never written
   in Swift; the app's own few words are the `ios` namespace. Each screen's
   figures are checked against the web's through `Fixtures/*.json`
