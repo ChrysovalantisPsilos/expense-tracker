@@ -56,8 +56,9 @@ struct GroupCard: Codable, Equatable, Identifiable, Sendable {
     let imageUrl: String?
     /// "4 members".
     let members: String
-    /// The cover's letters when there's no photo ("F3").
+    /// The cover's letters and colour when there's no photo ("F3").
     let initials: String
+    let colour: CoverColour
     let currency: String
     let avatars: AvatarStackParts?
     let balance: Balance?
@@ -65,6 +66,7 @@ struct GroupCard: Codable, Equatable, Identifiable, Sendable {
 
 struct InviteRow: Codable, Equatable, Identifiable, Sendable {
     let id: String
+    let groupId: String?
     let name: String
     /// "Marco invited you".
     let text: String
@@ -188,6 +190,8 @@ struct MemberRow: Decodable, Equatable, Identifiable, Sendable {
 struct GroupPageFigures: Decodable, Equatable, Sendable {
     let name: String
     let imageUrl: String?
+    /// The picture's colour when there's no photo (groupCover.groupColour).
+    let colour: CoverColour
     let currency: String
     /// The header's "Total".
     let total: String
@@ -246,6 +250,7 @@ struct GroupPageFigures: Decodable, Equatable, Sendable {
         let figures: JSONValue = [
             "name": group["name"] ?? "",
             "imageUrl": group["image_url"] ?? .null,
+            "colour": try core.json("groupCover", "groupColour", [group["id"] ?? .null]),
             "currency": currency,
             "total": .string(core.formatMoney(try core.json("groupFormat", "groupTotal", [expenses, currency]),
                                               currency.stringValue ?? "EUR")),

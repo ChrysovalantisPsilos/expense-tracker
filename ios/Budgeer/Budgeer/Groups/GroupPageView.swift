@@ -164,7 +164,7 @@ struct GroupPageView: View {
     private func hero(_ figures: GroupPageFigures) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 14) {
-                GroupPicture(imageUrl: figures.imageUrl, size: 58)
+                GroupPicture(imageUrl: figures.imageUrl, colour: figures.colour, size: 58)
                 VStack(alignment: .leading, spacing: 5) {
                     Text(figures.name)
                         .font(NativeStyle.title(28, lang: language.current, relativeTo: .largeTitle))

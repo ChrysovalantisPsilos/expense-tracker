@@ -14,8 +14,17 @@ export function parseTxnType(value) {
   return TXN_TYPES.includes(value) ? value : 'expense'
 }
 
-// The advanced filters (everything besides the `?q=` text).
-export const EMPTY_FILTERS = { categoryId: '', from: '', to: '', min: '', max: '' }
+// The advanced filters (everything besides the `?q=` text). `shared: '1'`
+// keeps only your shares of group expenses (rows with a group_expense_id).
+export const EMPTY_FILTERS = { categoryId: '', from: '', to: '', min: '', max: '', shared: '' }
+
+// The value `shared` takes when it's on.
+export const SHARED_ONLY = '1'
+
+// Whether the filters keep only group shares, and `filters` with that
+// switched on or off (the website's switch, the native app's Groups chip).
+export const isSharedOnly = (filters) => filters?.shared === SHARED_ONLY
+export const withSharedOnly = (filters, on) => ({ ...filters, shared: on ? SHARED_ONLY : '' })
 
 // The Transactions page's read (listTransactions' options): this month
 // (`month`: { from, to }) of the kind, or, while searching, all history
@@ -42,13 +51,15 @@ export function isFiltering(text, filters) {
 // Rows whose description, notes or category name contain `text` (any case)
 // and whose base-currency amount sits within [min, max] (decimal strings in
 // the base currency; '' means unbounded). `categoryId: NO_CATEGORY` keeps only
-// uncategorised personal rows (any other category is filtered server-side).
-export function filterTransactions(rows, { text = '', min = '', max = '', categoryId = '' }, baseCurrency) {
+// uncategorised personal rows (any other category is filtered server-side);
+// `shared: SHARED_ONLY` only your shares of group expenses.
+export function filterTransactions(rows, { text = '', min = '', max = '', categoryId = '', shared = '' }, baseCurrency) {
   const q = text.trim().toLowerCase()
   const minBase = min !== '' ? toMinor(min, baseCurrency) : null
   const maxBase = max !== '' ? toMinor(max, baseCurrency) : null
   return rows.filter((r) => {
     if (categoryId === NO_CATEGORY && (r.category_id || r.group_expense_id)) return false
+    if (shared === SHARED_ONLY && !r.group_expense_id) return false
     if (q) {
       const hay = `${r.description ?? ''} ${r.notes ?? ''} ${r.categories?.name ?? ''} ${categoryDisplayName(r.categories)}`.toLowerCase()
       if (!hay.includes(q)) return false

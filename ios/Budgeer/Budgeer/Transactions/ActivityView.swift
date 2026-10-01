@@ -280,7 +280,7 @@ private struct PeakLabelStyle: LabelStyle {
 
 // MARK: The chips
 
-/// All · Expenses · Income, then the kind's categories, as chips in one
+/// All · Expenses · Income · Groups, then the kind's categories, as chips in one
 /// sideways row: solid cards with a hairline, the picked one in the tint.
 @MainActor
 struct ActivityChips: View {
@@ -298,6 +298,10 @@ struct ActivityChips: View {
                 }
                 chip(language.t("transactions:ledger.types.income"), picked: model.type == "income") {
                     Task { await model.setType("income") }
+                }
+                // Only your shares of group expenses (txnFilter's shared filter).
+                chip(language.t("groups:title"), picked: model.sharedOnly) {
+                    Task { await model.setSharedOnly(!model.sharedOnly) }
                 }
                 if !model.categoryOptions.isEmpty {
                     Capsule().fill(Color.primary.opacity(0.12)).frame(width: 1, height: 22)

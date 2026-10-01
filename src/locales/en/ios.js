@@ -46,10 +46,6 @@ export default {
     },
     // The new-group flow (NewGroupModel).
     newGroup: {
-      cover: 'Group picture',
-      photo: 'Choose a photo',
-      removePhoto: 'Remove the photo',
-      emoji: 'Or pick an emoji and a colour',
       shareLink: 'Also make a share link',
       next: {
         title: 'What happens next',

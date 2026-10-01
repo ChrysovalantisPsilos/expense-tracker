@@ -46,6 +46,7 @@ import * as aiHelper from '../supabase/functions/_shared/aiHelper.ts'
 import * as splitMath from '../src/features/groups/splitMath.js'
 import * as quickAddMath from '../src/features/groups/quickAddMath.js'
 import * as groupFormat from '../src/features/groups/groupFormat.js'
+import * as groupCover from '../src/features/groups/groupCover.js'
 import * as groupExpenseForm from '../src/features/groups/groupExpenseForm.js'
 import * as settleForm from '../src/features/groups/settleForm.js'
 import * as importMath from '../src/features/import/importMath.js'
@@ -121,6 +122,7 @@ export const modules = {
   splitMath,
   quickAddMath,
   groupFormat,
+  groupCover,
   groupExpenseForm,
   settleForm,
   importMath,

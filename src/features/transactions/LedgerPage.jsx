@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Box, Stack, useDisclosure, Collapse, Text, HStack,
   IconButton, Input, InputGroup, InputLeftElement, InputRightElement, Select,
-  FormControl, FormLabel, SimpleGrid, Button, Menu, MenuButton, MenuList, MenuItem,
+  FormControl, FormLabel, SimpleGrid, Button, Menu, MenuButton, MenuList, MenuItem, Switch,
 } from '@chakra-ui/react'
 import {
   FileSpreadsheet, MoreHorizontal, Plus, ReceiptText, Search, SlidersHorizontal, Wallet, X,
@@ -20,7 +20,9 @@ import FirstEntry from './FirstEntry.jsx'
 import { isFirstRun, ledgerSummary, listHeading } from './listHeading.js'
 import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
 import { useCategories, useSavingsIds } from '../../shared/lib/categories.js'
-import { isFiltering, filterTransactions, ledgerRead, netBaseMinor, EMPTY_FILTERS } from './txnFilter.js'
+import {
+  isFiltering, filterTransactions, ledgerRead, netBaseMinor, EMPTY_FILTERS, isSharedOnly, withSharedOnly,
+} from './txnFilter.js'
 import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { parseLedgerParams, withLedgerParams } from './ledgerLinks.js'
 import { addEntryLink } from '../../shared/lib/addLinks.js'
@@ -39,7 +41,7 @@ const TYPES = ['expense', 'income', 'all']
 
 // The Transactions page (/transactions). The URL holds its whole state —
 // `?type=expense|income|all`, the `?q=` search text and every filter
-// (`category`, `from`, `to`, `min`, `max`; see ledgerLinks.js) — so it
+// (`category`, `from`, `to`, `min`, `max`, `shared`; see ledgerLinks.js) — so it
 // survives reloads, back/forward and links. Opened with filters already in
 // the URL (a link), it shows a back button. With no search it shows this month's entries;
 // searching (text or the Filters panel) spans all history, or the chosen
@@ -182,6 +184,11 @@ export default function LedgerPage() {
         </FormControl>
         <FormControl>
           <OptionalDate label={t('ledger.to')} value={filters.to} onChange={setFilter('to')} />
+        </FormControl>
+        <FormControl display="flex" alignItems="center" gap={3} gridColumn={{ base: 'span 2', md: 'auto' }}>
+          <Switch id="ledger-shared" colorScheme="brand" isChecked={isSharedOnly(filters)}
+            onChange={(e) => setFilter('shared')(withSharedOnly(filters, e.target.checked).shared)} />
+          <FormLabel htmlFor="ledger-shared" mb={0} fontSize="sm">{t('ledger.sharedOnly')}</FormLabel>
         </FormControl>
       </SimpleGrid>
     </Collapse>

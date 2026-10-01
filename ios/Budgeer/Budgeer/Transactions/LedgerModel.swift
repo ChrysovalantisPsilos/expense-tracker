@@ -146,6 +146,16 @@ final class LedgerModel {
         await reloadRows()
     }
 
+    /// Only your shares of group expenses (the Groups chip; txnFilter's).
+    var sharedOnly: Bool { (try? core.call("txnFilter", "isSharedOnly", [filters])) ?? false }
+
+    func setSharedOnly(_ on: Bool) async {
+        guard on != sharedOnly, let next: JSONValue = try? core.call("txnFilter", "withSharedOnly", [filters, JSONValue.bool(on)])
+        else { return }
+        filters = next
+        await reloadRows()
+    }
+
     /// Clear: the text and every filter.
     func clearAll() async {
         text = ""

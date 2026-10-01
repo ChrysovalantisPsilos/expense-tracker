@@ -43,6 +43,7 @@ export default {
       income: 'Income',
       all: 'All',
     },
+    sharedOnly: 'Only my shares of group expenses',
     typeLabel: 'Transaction type',
     add: {
       expense: 'Add expense',

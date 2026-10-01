@@ -57,7 +57,7 @@ export default function GroupHeader({
   // The group photo; the owner can replace it.
   const photo = (size) => (
     <Box position="relative" flexShrink={0}>
-      <GroupMark name={group.name} src={group.image_url} size={size} />
+      <GroupMark name={group.name} src={group.image_url} colourKey={group.id} size={size} />
       {isOwner && (
         <>
           <IconButton aria-label={t('header.changePhoto')} icon={<Camera size={size < 40 ? 10 : 12} />}

@@ -574,7 +574,7 @@ struct MembersView: View {
     /// The group's picture, its name and "4 members" over the stack of circles.
     private func header(_ figures: GroupPageFigures) -> some View {
         HStack(spacing: 14) {
-            GroupPicture(imageUrl: figures.imageUrl, size: 56)
+            GroupPicture(imageUrl: figures.imageUrl, colour: figures.colour, size: 56)
             VStack(alignment: .leading, spacing: 4) {
                 Text(figures.name).font(.headline).lineLimit(2)
                 HStack(spacing: 6) {
@@ -626,7 +626,7 @@ struct MembersView: View {
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(Color.white)
                     .frame(width: 42, height: 42)
-                    .background(GroupCoverArt.gradient(0), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .background(GroupCoverArt.brand, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
                 VStack(alignment: .leading, spacing: 3) {
                     Text(language.t("groups:members.invite.title")).font(.headline)
                     Text(language.t("groups:members.invite.subtitle")).font(.footnote).foregroundStyle(.secondary)

@@ -157,11 +157,11 @@ final class SnapshotTests: XCTestCase {
             }
             filled.shareLink = true
             try await shots(framed(.groups) {
-                NavigationStack { NewGroupView(model: filled, onCreated: { _ in }, emoji: "✈️", colour: 2) }
+                NavigationStack { NewGroupView(model: filled, onCreated: { _ in }, emoji: "✈️", colour: "blue") }
             }, name: "group-new-filled", lang: lang, dark: dark, long: 1500)
             _ = await filled.create(cover: nil)
             try await shots(framed(.groups) {
-                NavigationStack { NewGroupView(model: filled, onCreated: { _ in }, emoji: "✈️", colour: 2) }
+                NavigationStack { NewGroupView(model: filled, onCreated: { _ in }, emoji: "✈️", colour: "blue") }
             }, name: "group-new-done", lang: lang, dark: dark)
             // A group's page, seen by its owner.
             let group = GroupModel(groupId: fixture.groupId, userId: SnapshotTests.user, site: "https://dev.budgeer.com",

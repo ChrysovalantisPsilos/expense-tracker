@@ -72,7 +72,7 @@ export default function Groups() {
                   squeeze it into a letter-per-line column. */}
               <Stack direction={{ base: 'column', sm: 'row' }} spacing={3} align={{ sm: 'center' }}>
                 <HStack spacing={3} flex="1" minW={0}>
-                  <GroupMark name={inv.name} size={40} />
+                  <GroupMark name={inv.name} colourKey={inv.groupId} size={40} />
                   <Stack spacing={0} flex="1" minW={0}>
                     <Text fontWeight="600" noOfLines={2} wordBreak="break-word">{inv.name}</Text>
                     <Text fontSize="xs" color="text.muted" noOfLines={2} wordBreak="break-word">{inv.text}</Text>
@@ -113,7 +113,7 @@ export default function Groups() {
                 _hover={{ borderColor: 'brand.200', _dark: { borderColor: 'brand.700' } }}
                 _focusVisible={{ boxShadow: 'outline' }} transition="border-color 0.15s">
                 <HStack spacing={3}>
-                  <GroupMark name={card.name} src={card.imageUrl} size={44} />
+                  <GroupMark name={card.name} src={card.imageUrl} colourKey={card.id} size={44} />
                   <Box flex="1" minW={0}>
                     <Text fontFamily="heading" fontWeight="700" overflowWrap="anywhere">{card.name}</Text>
                     <HStack spacing={2} mt={1} minW={0}>

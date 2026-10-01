@@ -16,11 +16,13 @@ test('parseLedgerParams: empty URL is expenses, no text, no filters', () => {
 
 test('parseLedgerParams: reads type, text and every filter', () => {
   const p = new URLSearchParams(
-    `type=all&q=coffee&category=${CAT}&from=2026-09-01&to=2026-09-30&min=5&max=12.5`)
+    `type=all&q=coffee&category=${CAT}&from=2026-09-01&to=2026-09-30&min=5&max=12.5&shared=1`)
   assert.deepEqual(parseLedgerParams(p), {
     type: 'all', text: 'coffee',
-    filters: { categoryId: CAT, from: '2026-09-01', to: '2026-09-30', min: '5', max: '12.5' },
+    filters: { categoryId: CAT, from: '2026-09-01', to: '2026-09-30', min: '5', max: '12.5', shared: '1' },
   })
+  assert.equal(parseLedgerParams(new URLSearchParams('shared=yes')).filters.shared, '')
+  assert.equal(withLedgerParams(new URLSearchParams(''), { shared: '1' }).get('shared'), '1')
   assert.equal(parseLedgerParams(new URLSearchParams('category=none')).filters.categoryId, NO_CATEGORY)
 })
 

@@ -125,6 +125,24 @@ final class LedgerModelTests: XCTestCase {
         XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-09-01", to: "2020-09-30"))
     }
 
+    func testTheGroupsChipKeepsOnlyYourGroupShares() async throws {
+        let fixture = try LedgerFixture.load()
+        let store = store(fixture)
+        let now = fixture.now
+        let model = LedgerModel(data: store.data, core: .shared, now: { now })
+        await model.load()
+        XCTAssertFalse(model.sharedOnly)
+        await model.setSharedOnly(true)
+        XCTAssertTrue(model.sharedOnly)
+        XCTAssertTrue(model.hasFilters)
+        // A filter searches all history (ledgerRead); the shares are kept on the device (filterTransactions).
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, limit: 1000))
+        guard case .loaded(let figures) = model.state else { return XCTFail("\(model.state)") }
+        XCTAssertEqual(figures.days.flatMap { $0.rows.map(\.id) }, ["a5"])
+        await model.setSharedOnly(false)
+        XCTAssertFalse(model.searching)
+    }
+
     func testASearchSpansAllHistoryAndTypingOnlyRefinesIt() async throws {
         let fixture = try LedgerFixture.load()
         let store = store(fixture)

@@ -4,6 +4,7 @@ import { formatMoney } from '../../shared/lib/currency.js'
 import { shortDate, shortDateTime } from '../../shared/lib/dates.js'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { avatarInitials, avatarLook } from '../../shared/ui/avatarLook.js'
+import { groupColour } from './groupCover.js'
 
 // Display name for a member id within a group's member list. Falls back to an
 // em dash for unknown/removed ids. (Members carry their own display_name, so
@@ -229,7 +230,8 @@ export function groupShareText({ group, expenses, balances, members }) {
 // An invite on the groups list (list_my_group_invites' row): the group and
 // who invited you.
 export const inviteRowParts = (inv) => ({
-  id: inv.invite_id, name: inv.group_name, text: t('groups:list.invitedYou', { name: inv.invited_by }),
+  id: inv.invite_id, groupId: inv.group_id ?? null, name: inv.group_name,
+  text: t('groups:list.invitedYou', { name: inv.invited_by }),
 })
 
 // ---- The rows the server sends, as the pages read them ---------------------
@@ -285,8 +287,9 @@ export function groupCardParts(group, summary, myUserId) {
     name: group.name,
     imageUrl: group.image_url ?? null,
     members: pluralise(count, 'member'),
-    // The cover's letters when there's no photo (the native app's grid).
+    // The cover's letters and colour when there's no photo (groupCover.js).
     initials: avatarInitials(group.name).toUpperCase(),
+    colour: groupColour(group.id),
     currency: group.currency,
     avatars: summary ? avatarStackParts(summary.members, myUserId) : null,
     balance: bal && {
@@ -308,9 +311,12 @@ export function balancesParts({ balances, members, myMember, myUserId, currency 
   const highlight = balanceHighlight(plan)
   const nets = memberBalances(balances, members, myUserId)
   const most = Math.max(0, ...nets.map((b) => Math.abs(b.net)))
+  // Each person by the name shown ("You" for the viewer), their circle by
+  // their own name (your initials, not a "Y").
   const person = (id, name) => {
     const m = (members ?? []).find((x) => x.id === id)
-    return { id, ...avatarLook(name, { src: m?.avatar_url, highlight: id === myMember?.id }) }
+    const look = avatarLook(m?.display_name ?? name, { src: m?.avatar_url, highlight: id === myMember?.id })
+    return { id, ...look, name, avatarName: look.name }
   }
   return {
     mine: signedAmount(myMember ? (balances?.get(myMember.id) ?? 0) : 0, money),
