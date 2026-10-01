@@ -12,7 +12,6 @@ import Panel from '../../shared/ui/kit/Panel.jsx'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import RingLoader from '../../shared/ui/RingLoader.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
-import { minorToInput, toMinor } from '../../shared/lib/currency.js'
 import { today } from '../../shared/lib/dates.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
@@ -20,7 +19,8 @@ import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import useGoBack from '../../shared/ui/useGoBack.js'
-import { COUNTRIES, firstTopUpDate, newSettings } from './voucherMath.js'
+import { setupDraft, setupToSave } from './voucherMath.js'
+import { countryOptions } from './voucherText.js'
 import { saveMealVouchers, useMealVouchers, useVoucherCard } from './vouchers.js'
 
 export default function VoucherSetup() {
@@ -46,29 +46,27 @@ function SetupForm({ settings, balance }) {
   const back = useGoBack('/settings')
   const { user } = useAuth()
   const { baseCurrency } = useProfile()
-  const currency = settings?.currency ?? baseCurrency
-  const [on, setOn] = useState(!!settings)
-  const [perDay, setPerDay] = useState(settings ? minorToInput(settings.per_day_minor, currency) : '')
-  const [country, setCountry] = useState(settings?.country ?? 'BE')
+  const [start] = useState(() => setupDraft(settings, balance, baseCurrency, today()))
+  const { currency } = start
+  const [on, setOn] = useState(start.on)
+  const [perDay, setPerDay] = useState(start.perDay)
+  const [country, setCountry] = useState(start.country)
   // Picked on a calendar as the next top-up's date; its day repeats monthly.
-  const [topUpOn, setTopUpOn] = useState(firstTopUpDate(settings, today()))
-  const [onCard, setOnCard] = useState(minorToInput(Math.max(balance, 0), currency))
+  const [topUpOn, setTopUpOn] = useState(start.topUpOn)
+  const [onCard, setOnCard] = useState(start.onCard)
   const [tried, setTried] = useState(false)
   const [busy, setBusy] = useState(false)
-  const perDayMinor = Number(perDay) > 0 ? toMinor(perDay, currency) : 0
-  const missing = on && perDayMinor <= 0
+  // The form ready to save (setupToSave): off, missing its amount, or the setup.
+  const ready = setupToSave({ on, perDay, country, topUpOn, onCard, currency }, settings, today())
+  const missing = !!ready.missing
 
   async function save() {
     setTried(true)
     if (missing) return
     setBusy(true)
     try {
-      if (on) {
-        const next = newSettings({
-          country, per_day_minor: perDayMinor, currency, topup_day: Number(topUpOn.slice(8, 10)),
-          balance_minor: Number(onCard) > 0 ? toMinor(onCard, currency) : 0,
-        }, settings, today())
-        await saveMealVouchers(user.id, next)
+      if (ready.settings) {
+        await saveMealVouchers(user.id, ready.settings)
         toast({ title: t('setup.saved'), status: 'success' })
         // Back to the card when it opened this page; from Settings, on to the
         // card in this page's place (so its back leads to Settings).
@@ -105,7 +103,7 @@ function SetupForm({ settings, balance }) {
           <FormControl>
             <FormLabel>{t('setup.country')}</FormLabel>
             <Select value={country} onChange={(e) => setCountry(e.target.value)}>
-              {COUNTRIES.map((c) => <option key={c} value={c}>{t(`setup.countries.${c}`)}</option>)}
+              {countryOptions().map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </Select>
           </FormControl>
           <FormControl>

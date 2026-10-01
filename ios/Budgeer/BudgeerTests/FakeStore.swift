@@ -4,7 +4,8 @@ import Foundation
 @testable import Budgeer
 
 final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepository, RecurringRepository,
-    BudgetsRepository, FxRepository, AiRepository, GroupsRepository, PrivacyRepository, @unchecked Sendable {
+    BudgetsRepository, FxRepository, AiRepository, GroupsRepository, PrivacyRepository, SavingsRepository,
+    @unchecked Sendable {
     // The groups' reads (GroupsRepository, in FakeStore+Groups.swift).
     var groupsResult: Result<JSONValue, Error> = .success([])
     var invitesResult: Result<JSONValue, Error> = .success([])
@@ -75,6 +76,12 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     var consentRows: JSONValue = []
     var exported: JSONValue = ["profile": ["display_name": "Sam Morgan"]]
     var deleteAccountError: Error?
+
+    // Savings and meal vouchers (FakeStore+Savings.swift).
+    var accountRows: JSONValue = []
+    var goalRows: JSONValue = []
+    /// What the savings' and vouchers' writes did, in order: "saveGoal", "deleteGoal", "saveMealVouchers" plus the argument.
+    var savingsWrites: [(name: String, args: JSONValue)] = []
 
     init() {}
 

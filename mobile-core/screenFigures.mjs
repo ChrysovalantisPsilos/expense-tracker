@@ -11,7 +11,12 @@ import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { salaryShiftOf } from '../src/shared/lib/salaryShift.js'
-import { savingsIdsOf } from '../src/shared/lib/savings.js'
+import { savingsIdsOf, savingsPotMinor, savingsTotal } from '../src/shared/lib/savings.js'
+import { goalParts, savingsHistory, savingsMoves, savingsPage } from '../src/features/savings/savingsMath.js'
+import { daysFor, nextTopUp, setupDraft, voucherHistory, voucherSummary } from '../src/features/vouchers/voucherMath.js'
+import {
+  countryOptions, daysFixParts, nextTopUpText, voucherHistoryParts, voucherPageParts,
+} from '../src/features/vouchers/voucherText.js'
 import { EMPTY_FILTERS, filterTransactions, isFiltering, netBaseMinor } from '../src/features/transactions/txnFilter.js'
 import { isFirstRun, ledgerSummary, listHeading } from '../src/features/transactions/listHeading.js'
 import { dayGroups, monthPulse } from '../src/features/transactions/rowParts.js'
@@ -161,6 +166,44 @@ export function insightsFigures({ profile, categories, rows, now, picked = null,
     // "Spending abroad": this month's foreign payments (the actual rows, not shares).
     abroad: ((a) => (a.items.length ? abroadCard(a, baseCurrency) : null))(
       foreignSpending(rows, months[months.length - 1].key, baseCurrency)),
+  }
+}
+
+// The Savings page (Savings.jsx, SavingsHistory, GoalsCard) as savings.js
+// reads it: every income entry and every expense paid from savings, the
+// net-worth accounts (savings accounts are the total when there are any),
+// the recurring rules and the goals; the history for a filter.
+export function savingsFigures({ profile, categories, income, fromSavings, accounts, rules, goals, filter = 'all', now, lang = 'en' }) {
+  setLanguage(lang)
+  const date = new Date(now)
+  const baseCurrency = profile?.base_currency || 'EUR'
+  const savingsIds = savingsIdsOf(categories)
+  const moves = savingsMoves([...income, ...fromSavings], savingsIds)
+  const total = savingsTotal(accounts, savingsPotMinor(moves, savingsIds, baseCurrency))
+  return {
+    ...savingsPage({ moves, total, savingsIds, baseCurrency, rules, now: date }),
+    history: savingsHistory(moves, savingsIds, baseCurrency, filter, date),
+    goals: goals.map((g) => goalParts(g, date)),
+  }
+}
+
+// The Meal vouchers page (Vouchers.jsx) and its setup (VoucherSetup.jsx)
+// for a setup and the expenses paid with vouchers: the card, the next
+// top-up, Fix days for the month it pays for, the history, and the form.
+export function voucherFigures({ settings, spends, profile, now, lang = 'en' }) {
+  setLanguage(lang)
+  const date = new Date(now)
+  const day = isoDate(date)
+  const summary = voucherSummary(settings, spends, day)
+  const next = nextTopUp(settings, day)
+  const days = daysFor(settings, next.month).days
+  return {
+    card: voucherPageParts(settings, summary),
+    next: { ...nextTopUpText(settings, next), month: next.month },
+    fix: { days, ...daysFixParts(settings, next.month, days) },
+    history: voucherHistoryParts(settings, voucherHistory(settings, spends, day), date),
+    setup: setupDraft(settings, summary.balance, profile?.base_currency || 'EUR', day),
+    countries: countryOptions(),
   }
 }
 
@@ -342,6 +385,76 @@ export function budgetsFixture() {
   return { input: BUDGETS_INPUT, expected, cards }
 }
 
+const income = (id, spent_at, amount_minor, extra = {}) =>
+  txn(id, spent_at, 'income', amount_minor, cat(SAVINGS, 'Savings', 'income', { is_savings: true }), extra)
+export const SAVINGS_INPUT = {
+  now: '2020-09-15T10:00:00.000Z',
+  profile: PROFILE,
+  categories: SAVINGS_CATEGORIES,
+  // my_transactions(kind income): the savings ones and the salary (which never moves the pot).
+  income: [
+    income('s1', '2020-09-02', 30000, { savings_from_income: true, recurring_rule_id: 'r8', created_at: '2020-09-02T08:00:00Z' }),
+    txn('s2', '2020-08-27', 'income', 250000, PAY),
+    income('s3', '2020-08-20', 4500, { description: 'Interest', currency: 'GBP', exchange_rate: 1.1 }),
+    income('s4', '2020-08-02', 30000, { savings_from_income: true, recurring_rule_id: 'r8' }),
+    income('s5', '2020-06-02', 30000, { savings_from_income: true }),
+    income('s6', '2020-05-14', 20000, { description: 'Birthday gift' }),
+  ],
+  // my_transactions(kind expense, p_paid_from_savings).
+  fromSavings: [txn('s7', '2020-09-03', 'expense', 12000, null, { paid_from_savings: true, description: 'New bike' })],
+  rules: RECURRING_INPUT.rules,
+  goals: [
+    { id: 'g1', name: 'Summer trip', saved_minor: 115000, target_minor: 300000, currency: 'EUR', target_date: '2021-06-30' },
+    { id: 'g2', name: 'Emergency fund', saved_minor: 600000, target_minor: 600000, currency: 'EUR', target_date: null },
+    { id: 'g3', name: 'New laptop', saved_minor: 0, target_minor: 150000, currency: 'EUR', target_date: null },
+  ],
+  views: [
+    { name: 'entries', accounts: [], filter: 'all' },
+    { name: 'out', accounts: [], filter: 'out' },
+    { name: 'accounts', filter: 'all', accounts: [
+      { id: 'a1', name: 'Bank savings', type: 'savings', balance_minor: 420000, currency: 'EUR' },
+      { id: 'a2', name: 'Current', type: 'checking', balance_minor: 90000, currency: 'EUR' },
+    ] },
+    { name: 'first', filter: 'all', accounts: [], empty: true },
+  ],
+}
+
+export function savingsFixture() {
+  const expected = {}
+  for (const lang of ['en', 'el']) {
+    expected[lang] = {}
+    for (const view of SAVINGS_INPUT.views) {
+      const reads = view.empty ? { income: [], fromSavings: [] } : {}
+      expected[lang][view.name] = savingsFigures({ ...SAVINGS_INPUT, ...reads, ...view, lang })
+    }
+  }
+  setLanguage('en')
+  return { input: SAVINGS_INPUT, expected }
+}
+
+const VOUCHER_SETTINGS = {
+  v: 1, country: 'BE', per_day_minor: 800, currency: 'EUR', topup_day: 5, start_on: '2020-07-20',
+  start_balance_minor: 3450, days: { '2020-09': 20 },
+}
+export const VOUCHERS_INPUT = {
+  now: '2020-09-15T10:00:00.000Z',
+  profile: PROFILE,
+  settings: VOUCHER_SETTINGS,
+  // my_transactions(kind expense, p_paid_with_vouchers).
+  spends: [
+    txn('v1', '2020-09-11', 'expense', 2340, GROCERIES, { paid_with_vouchers: true, description: 'Market' }),
+    txn('v2', '2020-09-08', 'expense', 1450, EATING, { paid_with_vouchers: true }),
+    txn('v3', '2020-08-21', 'expense', 3120, GROCERIES, { paid_with_vouchers: true }),
+    txn('v4', '2020-07-10', 'expense', 999, EATING, { paid_with_vouchers: true }),
+  ],
+}
+
+export function vouchersFixture() {
+  const expected = { en: voucherFigures(VOUCHERS_INPUT), el: voucherFigures({ ...VOUCHERS_INPUT, lang: 'el' }) }
+  setLanguage('en')
+  return { input: VOUCHERS_INPUT, expected }
+}
+
 const isMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 if (isMain) {
   const root = fileURLToPath(new URL('..', import.meta.url))
@@ -354,4 +467,8 @@ if (isMain) {
   console.log(`recurring fixture: ${FIXTURES_DIR}/recurring.json`)
   await writeFile(resolve(root, FIXTURES_DIR, 'insights.json'), JSON.stringify(insightsFixture(), null, 2) + '\n')
   console.log(`insights fixture: ${FIXTURES_DIR}/insights.json`)
+  await writeFile(resolve(root, FIXTURES_DIR, 'savings.json'), JSON.stringify(savingsFixture(), null, 2) + '\n')
+  console.log(`savings fixture: ${FIXTURES_DIR}/savings.json`)
+  await writeFile(resolve(root, FIXTURES_DIR, 'vouchers.json'), JSON.stringify(vouchersFixture(), null, 2) + '\n')
+  console.log(`vouchers fixture: ${FIXTURES_DIR}/vouchers.json`)
 }

@@ -60,6 +60,8 @@ export default {
     what: 'your goals',
     empty: 'No goals yet — set one to start saving toward it.',
     of: '{{saved}} of {{target}}',
+    // Deleting a goal asks first (GoalsCard, the native app).
+    deleteQuestion: 'Delete the goal “{{name}}”?',
     deleteFailed: 'Couldn’t delete the goal. Please try again.',
     updateFailed: 'Couldn’t update the goal. Please try again.',
     // savingsMath.goalStatus: the line under a goal's amounts.

@@ -15,7 +15,7 @@
 // after start_on count; so do expenses paid with vouchers dated start_on or
 // later. Dates are local calendar strings ('YYYY-MM-DD'); the maths runs in
 // UTC so the time zone never moves a day.
-import { toBaseMinor } from '../../shared/lib/currency.js'
+import { minorToInput, toBaseMinor, toMinor } from '../../shared/lib/currency.js'
 
 export const COUNTRIES = ['BE', 'GR']
 const MAX_TOPUP_DAY = 31
@@ -178,6 +178,39 @@ export function newSettings({ country, per_day_minor, currency, topup_day, balan
   return {
     v: 1, country, per_day_minor, currency, topup_day,
     start_on: today, start_balance_minor: balance_minor, days,
+  }
+}
+
+// Settings → Meal vouchers' form as it opens: whether vouchers are on, the
+// amount per day, whose working days, the next top-up's date (firstTopUpDate)
+// and what's on the card now (never below zero), in the setup's currency (the
+// base one for a new setup).
+export function setupDraft(settings, balanceMinor, baseCurrency, today) {
+  const currency = settings?.currency ?? baseCurrency
+  return {
+    on: !!settings,
+    perDay: settings ? minorToInput(settings.per_day_minor, currency) : '',
+    country: settings?.country ?? 'BE',
+    topUpOn: firstTopUpDate(settings, today),
+    onCard: minorToInput(Math.max(balanceMinor, 0), currency),
+    currency,
+  }
+}
+
+// The form ready to save: { settings: null } turns vouchers off,
+// { missing: true } while it's on without an amount per day, else
+// { settings } (newSettings: the top-up's day from its date, the card counted
+// on from today).
+export function setupToSave(form, previous, today) {
+  if (!form.on) return { settings: null }
+  const perDayMinor = Number(form.perDay) > 0 ? toMinor(form.perDay, form.currency) : 0
+  if (perDayMinor <= 0) return { missing: true }
+  return {
+    settings: newSettings({
+      country: form.country, per_day_minor: perDayMinor, currency: form.currency,
+      topup_day: Number(form.topUpOn.slice(8, 10)),
+      balance_minor: Number(form.onCard) > 0 ? toMinor(form.onCard, form.currency) : 0,
+    }, previous, today),
   }
 }
 

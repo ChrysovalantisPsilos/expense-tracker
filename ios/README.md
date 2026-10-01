@@ -157,7 +157,8 @@ ios/Budgeer/
                          AccountSecurity (Settings › Security's calls: identities, the token's claims, the
                          password, linking Google)
     Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables;
-                         +Groups, +Settings: the profile, the payment details, the photo, categories, privacy),
+                         +Groups, +Settings: the profile, the payment details, the photo, categories, privacy;
+                         +Savings: the net-worth accounts, the goals, the meal vouchers' setup),
                          QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
                          refetch), FxRates (ECB rates as fx.js), PeriodSource (the period pickers' options)
     Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView (the month pager,
@@ -168,12 +169,16 @@ ios/Budgeer/
     Budgets/             BudgetFigures, BudgetsModel, BudgetsView
     Recurring/           RecurringFigures, RecurringModel, RecurringView
     Insights/            InsightsFigures, InsightsModel, InsightsView (Swift Charts draws, the core computes)
+    Savings/             SavingsFigures (Savings.jsx's steps as core calls), SavingsModel, SavingsView (the pot and
+                         its line, This month, the goals, the history), GoalEditorModel + GoalEditView (+ GoalEditHost)
+    Vouchers/            VoucherFigures (Vouchers.jsx's steps), VouchersModel + VouchersView (the card, the next top-up
+                         with Fix days, the history), VoucherSetupModel + VoucherSetupView (Settings › Meal vouchers)
     Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab's
                          grid), NewGroupModel + NewGroupView (the new-group flow), GroupModel (+ GroupInvite) +
                          GroupTimeline + GroupPageView (a group's page, its timeline), BalancesView,
                          GroupExpenseModel + SettleUpModel + GroupForms (the expense sheet and Add's quick group
                          form, Settle up, Members), CommentsModel, MyGroupsModel (Add's "Who's it for?")
-    More/                MoreView (your profile, Money, Insights)
+    More/                MoreView (your profile, Money (Savings; Meal vouchers once set up), Insights)
     Settings/            SettingsView (the list, its rows, the demo note), AccountModel + AccountView,
                          PreferencesModel + PreferencesViews (Monthly spending, Notifications, Appearance, AI
                          helpers), SecurityModel + SecurityView (+ DeleteAccountSheet), PrivacyModel +
@@ -196,7 +201,7 @@ ios/Budgeer/
     Resources/Generated/ <lang>.lproj/Localizable.strings and InfoPlist.strings — generated, not committed
   BudgeerTests/          view models over FakeStore, the parity tests, the strings, snapshots
     Fixtures/*.json      the web's figures for fake inputs: home, ledger, budgets, recurring, insights,
-                         groups (npm run ios:fixture)
+                         savings, vouchers, groups (npm run ios:fixture)
 ```
 
 ### What is real and what is not
@@ -241,9 +246,10 @@ a core call (the web's function); Swift reads, lays out and draws.
 - **Home**: a month per page you swipe between (the months since the first
   entry), the month's spend with Income and Net (the ⓘ: How Net adds up);
   "every budget held" on a past month that kept them all (a burst of
-  confetti the first time); then Budgets, the month in plain words (when its
-  AI switch is on), Coming up (or what a past month was charged), By
-  category and Meal vouchers, a few rows each with See all.
+  confetti the first time), and what was put aside with "See savings ›"
+  (Savings); then Budgets, the month in plain words (when its AI switch is
+  on), Coming up (or what a past month was charged), By category and Meal
+  vouchers, a few rows each with See all (Meal vouchers' opens their page).
 - **Activity**: the month at a glance (spent, income and net, a bar per
   day, the biggest day; rowParts.monthPulse), chips for the kind and the
   categories (and Groups: only your shares of group expenses, txnFilter's
@@ -288,9 +294,39 @@ a core call (the web's function); Swift reads, lays out and draws.
   the realtime channel. Not yet: changing an existing group's photo, the
   PDF statement, joining from an invite link, the payment-details ask
   on Settle up.
-- **More**: your profile (to Settings), Money (Budgets, Recurring,
-  Categories) and Insights. The web's Savings, Plan, Meal vouchers and
-  Salary pages are not built yet and are not offered.
+- **Savings** (More › Money, Home's savings line), as the web's page: the
+  pot (its total, from the savings accounts when there are any, else the
+  entries, with the web's line saying which; this month's chip, "since May ·
+  5 months", the month-end line as a soft coral area in Swift Charts, Add to
+  savings: Add on the first savings category), This month (from income,
+  received, from savings, the net change, the savings that repeat: tap to
+  edit the rule), the goals (a ring in the logo's amber and coral, "€X of
+  €Y", the pace or status, "+ / −" a tenth of the target saved in place,
+  tap for the goal's page: name, target, saved so far, an optional target
+  date, Save, Delete; swipe to delete; a goal's delete asks first, as on the
+  web), and the history (All / In / Out, month by month with each
+  month's net, tap to edit, swipe to delete after the web's question, Show
+  older). Before anything was saved: the web's explainer, Add to savings,
+  Set a goal, How savings work and Make it automatic (Add with Repeat on).
+  Reads: every income entry, the expenses paid from savings, my_accounts,
+  my_goals, the rules; writes: save_goal, deleting a goal or an entry. The
+  net-worth accounts themselves are Insights' (not yet here): Savings only
+  sums their savings ones, as on the web.
+- **Meal vouchers** (Home's card, More › Money once set up): what's on the
+  card (red below zero) with this month's top-ups and spending, the next
+  top-up and why, Fix days in place (a stepper, "× €8.00 = **€160.00**",
+  the calendar's count, Save or Cancel; the calendar's own count removes the
+  fix), and the card's history by month (expenses open in Edit; top-ups;
+  the starting balance; Show older). The gear opens the setup; without one
+  the page offers to set it up. **Settings › Meal vouchers**: the switch,
+  the amount per working day (its message once Save is tapped without it),
+  Belgium's or Greece's working days, the next top-up's date, what's on the
+  card today; Save says what it did in place (off: the setup goes, the
+  expenses keep their flag). save_meal_vouchers with voucherMath's
+  newSettings / withDays.
+- **More**: your profile (to Settings), Money (Budgets, Savings, Recurring,
+  Categories, and Meal vouchers once set up, as on the web) and Insights.
+  The web's Plan and Salary pages are not built yet and are not offered.
 - **Settings** (from More or your initials), as iOS's own Settings, the
   web's groups in its order, every page pushed and edited in place
   (a sheet only to confirm deleting):
@@ -340,10 +376,11 @@ a core call (the web's function); Swift reads, lays out and draws.
     **status page** open in Safari inside the app; **What's new** lists
     every release's pages; **Contact support** opens Mail. Then Sign out
     and the version.
-  - Not yet, and not offered: Meal vouchers' setup (with the vouchers
-    page), Import rules (they only act on an import), Your data's backup
-    and restore (with import), the tour and the live/test switch (the
-    website's own).
+  - **Meal vouchers**: the setup (above), after Monthly spending as on
+    the web.
+  - Not yet, and not offered: Import rules (they only act on an import),
+    Your data's backup and restore (with import), the tour and the
+    live/test switch (the website's own).
 
 ### Strings
 
@@ -405,10 +442,13 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   order), `ShellModelTests` (the bell's feed, opening it), `AppLockTests` (off by default, the
   owner's check, locked on launch and after the grace, off unlocks), `SettingsModelTests`
   (Account, the switches, Security over `FakeSecurity`, Privacy), `CategoriesModelTests` (the
-  list, archive, delete with a move, adding and editing).
+  list, archive, delete with a move, adding and editing), `SavingsModelTests` (the web's reads, the
+  filter without a read, savings accounts as the total, the first run, Show older, a goal's quick
+  add, deleting goals and entries, a goal's page), `VouchersModelTests` (the card, Fix days and the
+  calendar's count, no setup, the setup's form, turning vouchers off).
 - Parity: each screen's fixture inputs through its `…Figures` (every step a
   core call) must give what the web's functions wrote into
-  `Fixtures/{home,ledger,budgets,recurring,insights,groups}.json`, in
+  `Fixtures/{home,ledger,budgets,recurring,insights,savings,vouchers,groups}.json`, in
   English and Greek. `npm run ios:fixture` (`mobile-core/homeFigures.mjs`,
   `mobile-core/screenFigures.mjs`, `mobile-core/groupFigures.mjs`) rewrites
   them from the web's source; `test/iosHome.test.js`,
@@ -429,7 +469,10 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   What's new, Security with Delete account and a Google-only account,
   Privacy and its request), Categories (both kinds, a category's page, a
   new one with a name taken, deleting), the notifications, Budgets,
-  Recurring and Insights, each light, dark and Greek, with the fixtures'
+  Recurring and Insights, Savings (from the entries, from savings accounts,
+  before anything was saved, a goal's page, a new goal missing its name),
+  Meal vouchers (the page, Fix days open, no setup, the setup, More with
+  their row), each light, dark and Greek, with the fixtures'
   data (`<name>-<variant>.png`, and `-long` for the pages worth seeing
   whole); attached to the test run and written to `SNAPSHOT_DIR` when set
   (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).

@@ -1,7 +1,8 @@
 // More, as an iOS Settings-style list: you at the top (Settings), then the
-// pages the tabs don't hold: Money (Budgets, Recurring, Categories) and
-// Insights. Savings, Plan, Meal vouchers and Your salary join here as their
-// pages are built. Settings is its own page (Settings/SettingsView).
+// pages the tabs don't hold: Money (Budgets, Savings, Recurring, Categories,
+// and Meal vouchers once they're set up, as on the web) and Insights. Plan
+// and Your salary join here as their pages are built. Settings is its own
+// page (Settings/SettingsView).
 import SwiftUI
 
 @MainActor
@@ -9,6 +10,8 @@ struct MoreView: View {
     let name: String
     let email: String
     let initials: String
+    /// Meal vouchers are set up: their page joins Money.
+    var vouchers = false
     let chrome: PageChrome
     @Environment(AppLanguage.self) private var language
 
@@ -36,10 +39,16 @@ struct MoreView: View {
 
             Section {
                 row(.budgets, symbol: "chart.pie.fill", color: NativeStyle.coral, title: "shell:nav.budgets", id: "more.budgets")
+                row(.savings, symbol: "banknote.fill", color: Color(hex: 0x2E9B62), title: "shell:nav.savings",
+                    subtitle: "shell:more.savings", id: "more.savings")
                 row(.recurring, symbol: "arrow.triangle.2.circlepath", color: Color(hex: 0x8558D0),
                     title: "shell:nav.recurring", subtitle: "shell:more.recurring", id: "more.recurring")
                 row(.categoryList, symbol: "tag.fill", color: Color(hex: 0x16939A), title: "settings:rows.categories.label",
                     subtitle: "settings:rows.categories.desc", id: "more.categories")
+                if vouchers {
+                    row(.vouchers, symbol: "ticket.fill", color: Color(hex: 0xC98A0B), title: "shell:nav.vouchers",
+                        subtitle: "shell:more.vouchers", id: "more.vouchers")
+                }
             } header: {
                 NativeCapsHeader(title: language.t("shell:more.money"))
             }
