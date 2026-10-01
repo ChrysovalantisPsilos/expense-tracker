@@ -15,11 +15,11 @@ import BudgeerCore
 @MainActor
 final class SnapshotTests: XCTestCase {
     private static let size = CGSize(width: 402, height: 874)
-    private static let variants = [("en", false), ("en", true), ("el", false)]
+    static let variants = [("en", false), ("en", true), ("el", false)]
     private static let config = AppConfig(environment: .dev, supabaseURL: URL(string: "https://example.supabase.co")!,
                                           supabaseAnonKey: "test")
     private static let user = AuthUser.sample.id.uuidString.lowercased()
-    private static let chrome = PageChrome(initials: "SM", badge: "1", onBell: {}, onProfile: {})
+    static let chrome = PageChrome(initials: "SM", badge: "1", onBell: {}, onProfile: {})
 
     override func tearDown() {
         try? BudgeerCore.shared.setLanguage("en")
@@ -579,7 +579,7 @@ final class SnapshotTests: XCTestCase {
             await model.load()
             try await shots(framed(.home) { NavigationStack { VouchersView(model: model) { _ in } } },
                       name: "vouchers", lang: lang, dark: dark, long: 1900)
-            // Fix days, open in place.
+            // Edit days, open in place.
             model.startFix()
             model.step(-1)
             try await shots(framed(.home) { NavigationStack { VouchersView(model: model) { _ in } } },
@@ -680,7 +680,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     /// Home's model over the fixture, this month, with a budget, the vouchers and the month in words.
-    private func homeModel(_ fixture: HomeFixture, lang: String) async throws -> HomeViewModel {
+    func homeModel(_ fixture: HomeFixture, lang: String) async throws -> HomeViewModel {
         _ = language(lang)
         let now = fixture.now
         let store = FakeStore(home: fixture)
@@ -709,7 +709,7 @@ final class SnapshotTests: XCTestCase {
 
     // MARK: Helpers
 
-    private func language(_ lang: String) -> AppLanguage {
+    func language(_ lang: String) -> AppLanguage {
         let language = AppLanguage(preference: lang, defaults: defaults(), deviceLanguages: ["en"])
         NativeStyle.installAppearance(lang: language.current)
         return language
@@ -718,7 +718,7 @@ final class SnapshotTests: XCTestCase {
     private func defaults() -> UserDefaults { UserDefaults(suiteName: "SnapshotTests")! }
 
     /// A page in the frame, with its tab picked.
-    private func framed<V: View>(_ tab: NativeTab, @ViewBuilder _ page: @escaping () -> V) -> some View {
+    func framed<V: View>(_ tab: NativeTab, @ViewBuilder _ page: @escaping () -> V) -> some View {
         NativeTabs(tab: .constant(tab), onAdd: {}) { shown in
             if shown == tab { page() } else { Color.clear }
         }
@@ -733,7 +733,7 @@ final class SnapshotTests: XCTestCase {
     }
 
     /// The phone's screen, and the whole page when `long` is given.
-    private func shots<V: View>(_ view: V, name: String, lang: String, dark: Bool, long: CGFloat? = nil,
+    func shots<V: View>(_ view: V, name: String, lang: String, dark: Bool, long: CGFloat? = nil,
                                 settle: TimeInterval = 0.8) async throws {
         let dressed = view.environment(language(lang)).tint(NativeStyle.tint)
         let variant = "\(lang)\(dark ? "-dark" : "")"

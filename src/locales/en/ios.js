@@ -22,6 +22,15 @@ export default {
       comingUp: 'Coming up',
       byCategory: 'By category',
     },
+    // A card's extra figures, folded behind a tap (Your salary's outlook cards).
+    details: {
+      show: 'Show details',
+      hide: 'Hide details',
+    },
+    // Your salary's Against prices: the country and the year compared from, as one menu.
+    salary: {
+      pricesFrom: '{{country}} · since {{year}}',
+    },
     add: {
       pullUp: 'Pull up for repeat, notes and groups',
     },

@@ -17,6 +17,13 @@ export default {
       comingUp: 'Έρχονται',
       byCategory: 'Ανά κατηγορία',
     },
+    details: {
+      show: 'Περισσότερα',
+      hide: 'Λιγότερα',
+    },
+    salary: {
+      pricesFrom: '{{country}} · από το {{year}}',
+    },
     add: {
       pullUp: 'Σύρε πάνω για επανάληψη, σημειώσεις και ομάδες',
     },
