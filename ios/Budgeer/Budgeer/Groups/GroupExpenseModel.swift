@@ -16,6 +16,8 @@ final class GroupExpenseModel {
     let group: JSONValue
     let members: JSONValue
     let myMemberId: String?
+    /// The signed-in user (their avatar is the highlighted one).
+    let userId: String?
     let expense: JSONValue?
     let quick: Bool
     private(set) var form: ExpenseFormState
@@ -35,12 +37,13 @@ final class GroupExpenseModel {
     private let core: BudgeerCore
 
     /// - initial: what the Add form carried over (quickAddMath.carryDraft's answer), or null
-    init(group: JSONValue, members: JSONValue, myMemberId: String?, expense: JSONValue?, initial: JSONValue = .null,
-         quick: Bool = false, data: DataLayer, core: BudgeerCore = .shared,
+    init(group: JSONValue, members: JSONValue, myMemberId: String?, userId: String? = nil, expense: JSONValue?,
+         initial: JSONValue = .null, quick: Bool = false, data: DataLayer, core: BudgeerCore = .shared,
          now: @escaping @Sendable () -> Date = { Date() }) {
         self.group = group
         self.members = members
         self.myMemberId = myMemberId
+        self.userId = userId
         self.expense = expense
         self.quick = quick
         self.data = data
@@ -96,6 +99,12 @@ final class GroupExpenseModel {
     var amountHints: (whole: Bool, placeholder: String) {
         let hints = (try? core.json("moneyParse", "amountFieldHints", [form.paidCurrency])) ?? [:]
         return (hints["whole"]?.boolValue ?? false, hints["placeholder"]?.stringValue ?? "")
+    }
+
+    /// The quick layout's card: the avatars of whoever the split covers.
+    var splitStack: AvatarStackParts? {
+        guard let included = try? core.json("groupExpenseForm", "includedMembers", [members, form.splitWith]) else { return nil }
+        return try? core.call("groupFormat", "avatarStackParts", [included, userId.json])
     }
 
     /// What a share's field counts in: the group's currency, % or ×.
@@ -212,7 +221,7 @@ final class GroupExpenseModel {
     }
 
     /// What the Add form carries to the other side when the user switches (onDraft).
-    var draft: JSONValue {
+    var whoForDraft: JSONValue {
         ["amount": .string(form.amount), "currency": .string(form.paidCurrency), "currencyPicked": .bool(form.currencyPicked),
          "description": .string(form.description), "spentAt": .string(form.spentAt)]
     }

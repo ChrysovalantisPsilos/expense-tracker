@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  expenseFieldErrors, expenseFormStart, expenseSaveArgs, expenseSaveProblem, expenseSavedToast, includedIds,
+  expenseFieldErrors, expenseFormStart, expenseSaveArgs, expenseSaveProblem, expenseSavedToast, includedIds, includedMembers,
   initialSplitMode, paidMinorOf, shareUnit, splitCardParts, splitModes, splitPreview, splitTotal,
 } from '../src/features/groups/groupExpenseForm.js'
 import {
@@ -45,6 +45,7 @@ test('expenseFieldErrors / includedIds / paidMinorOf / splitTotal', () => {
   assert.equal(expenseFieldErrors({ description: '', amount: '1', paidBy: 'm1' }).description, 'Add a description')
   assert.deepEqual(expenseFieldErrors({ description: 'x', amount: '1', paidBy: 'm1' }), {})
   assert.deepEqual(includedIds(MEMBERS, ['m3', 'm1']), ['m1', 'm3'])
+  assert.deepEqual(includedMembers(MEMBERS, ['m2']), [MEMBERS[1]])
   assert.equal(paidMinorOf('12.5', 'EUR'), 1250)
   assert.equal(paidMinorOf('', 'EUR'), 0)
   assert.equal(splitTotal({ paidMinor: 1000, paidCurrency: 'USD', rate: 0.9, groupCurrency: 'EUR' }), 900)

@@ -11,7 +11,7 @@ import { evenPercents } from './splitMath.js'
 import { viewerName } from './groupFormat.js'
 import {
   EXPENSE_FIELDS, expenseFieldErrors, expenseFormStart, expenseSaveArgs, expenseSaveProblem,
-  expenseSavedToast, includedIds, paidMinorOf, shareUnit, splitCardParts, splitModes, splitPreview, splitTotal,
+  expenseSavedToast, includedIds, includedMembers, paidMinorOf, shareUnit, splitCardParts, splitModes, splitPreview, splitTotal,
 } from './groupExpenseForm.js'
 import { addSharedExpense, updateSharedExpense } from './groups.js'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
@@ -272,7 +272,7 @@ export default function GroupExpenseForm({
   const splitCard = (
     <>
       <HStack spacing={3}>
-        <AvatarStack members={members.filter((m) => splitWith.includes(m.id))} myUserId={myUserId}
+        <AvatarStack members={includedMembers(members, splitWith)} myUserId={myUserId}
           ring="bg.surface" />
         <Box flex="1" minW={0}>
           <Text fontSize="sm" fontWeight="600">{card.title}</Text>

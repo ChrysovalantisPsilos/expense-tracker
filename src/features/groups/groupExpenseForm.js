@@ -51,9 +51,9 @@ export function expenseFormStart({ expense, members, defaultPayer, groupCurrency
   }
 }
 
-// The members a split includes, in the group's order.
-export const includedIds = (members, splitWith) =>
-  (members ?? []).filter((m) => (splitWith ?? []).includes(m.id)).map((m) => m.id)
+// The members a split includes (their rows, and their ids), in the group's order.
+export const includedMembers = (members, splitWith) => (members ?? []).filter((m) => (splitWith ?? []).includes(m.id))
+export const includedIds = (members, splitWith) => includedMembers(members, splitWith).map((m) => m.id)
 
 // The amount as paid, in minor units (0 until one is typed).
 export const paidMinorOf = (amount, currency) => (amount && Number(amount) > 0 ? toMinor(amount, currency) : 0)

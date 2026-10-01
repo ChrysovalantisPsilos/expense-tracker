@@ -85,7 +85,7 @@ final class GroupModel {
     // MARK: The sub-pages' models
 
     func expenseForm(expenseId: String?) -> GroupExpenseModel {
-        GroupExpenseModel(group: group, members: members, myMemberId: myMemberId,
+        GroupExpenseModel(group: group, members: members, myMemberId: myMemberId, userId: userId,
                           expense: expenseId.flatMap { expense(id: $0) }, data: data, core: core, now: now)
     }
 
@@ -197,6 +197,11 @@ final class GroupModel {
         } catch {
             message = UserMessage.of(error, fallback: core.text("groups:members.inviteFailed"), core: core)
         }
+    }
+
+    /// Words with <b> as rich text (translate.parseRich).
+    func rich(_ text: String) -> JSONValue {
+        (try? core.json("translate", "parseRich", [text])) ?? [.string(text)]
     }
 
     /// A change on another page (a saved expense, a settlement): its words.
