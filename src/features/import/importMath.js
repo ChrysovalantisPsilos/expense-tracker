@@ -3,6 +3,7 @@
 import { toMinor, CURRENCIES } from '../../shared/lib/currency.js'
 import { isoDate } from '../../shared/lib/dates.js'
 import { parseLocaleAmount, parseDateText, ymd, foldText } from '../../shared/lib/localeParse.js'
+import { sha256 } from '../../shared/lib/sha256.js'
 
 // ------------------------------------------------------------ merchant keys
 //
@@ -671,10 +672,11 @@ export function dropKnownRows(rows, existing) {
 
 // Deterministic row identity: the same statement line always maps to the same
 // client_uuid, so re-importing a file (or an overlapping export) never
-// duplicates — the (user_id, client_uuid) unique constraint absorbs it.
-export async function deterministicUuid(parts) {
-  const data = new TextEncoder().encode(parts.join('|'))
-  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', data))
+// duplicates — the (user_id, client_uuid) unique constraint absorbs it. The
+// SHA-256 is plain JavaScript (sha256.js), so the native app's engine gives a
+// line the same id as the browser does.
+export function deterministicUuid(parts) {
+  const hash = sha256(parts.join('|'))
   hash[6] = (hash[6] & 0x0f) | 0x40 // uuid shape: version 4
   hash[8] = (hash[8] & 0x3f) | 0x80 // variant 10
   const hex = [...hash.slice(0, 16)].map((b) => b.toString(16).padStart(2, '0')).join('')

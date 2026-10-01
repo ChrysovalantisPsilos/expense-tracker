@@ -49,6 +49,8 @@ export const CORE_MODULES = {
   // Settings: the appearance choices, where people reach Budgeer.
   themePref: 'src/shared/lib/themePref.js',
   contact: 'src/shared/lib/contact.js',
+  // A new password's first check (the backup's optional password).
+  password: 'src/shared/lib/password.js',
 
   // supabase/functions/_shared (the client ↔ edge-function parity modules).
   sharedMoney: 'supabase/functions/_shared/money.ts',
@@ -80,6 +82,15 @@ export const CORE_MODULES = {
   statementText: 'src/features/import/statementText.js',
   kbcLabels: 'src/features/import/kbcLabels.js',
   sheetParse: 'src/features/import/sheetParse.js',
+  // A statement file's bytes → its table (SheetJS for .xlsx/.xls; the app
+  // calls it with the file's bytes through vectors.callBytes).
+  sheetRead: 'src/features/import/sheetRead.js',
+  statementRows: 'src/features/import/statementRows.js',
+  importText: 'src/features/import/importText.js',
+  // Settings › Your data: the backup file, reading and checking one, the
+  // restore's plans (backupCrypto.js is the web's WebCrypto; the app seals
+  // with CryptoKit by backupMath.SEAL).
+  backupMath: 'src/features/backup/backupMath.js',
   recurringMath: 'src/features/recurring/recurringMath.js',
   ruleForm: 'src/features/recurring/ruleForm.js',
   planMath: 'src/features/plan/planMath.js',
@@ -120,8 +131,13 @@ export const VECTORS_FILE = 'ios/BudgeerCore/Tests/BudgeerCoreTests/Resources/ve
 // for the globals in the bundle.
 export const FORBIDDEN_PACKAGES = [
   'react', 'react-dom', 'react-router', 'react-router-dom', '@chakra-ui', '@emotion', 'framer-motion',
-  '@supabase', 'recharts', 'lucide-react', 'workbox', 'tesseract.js', 'pdf-lib', 'xlsx', 'qrcode',
+  '@supabase', 'recharts', 'lucide-react', 'workbox', 'tesseract.js', 'pdf-lib', 'qrcode',
 ]
+// The packages the core may bundle: pure JavaScript the web runs as it is.
+// SheetJS (xlsx, Apache-2.0; its licence ships beside the bundle as
+// ios/BudgeerCore/Sources/BudgeerCore/Resources/SHEETJS-LICENSE.txt) reads
+// .xlsx/.xls statements on the phone as the web's parsing worker does.
+export const CORE_PACKAGES = ['xlsx']
 export const FORBIDDEN_FILES = [
   'src/shared/lib/supabase.js', 'src/shared/lib/db.js', 'src/shared/lib/realtime.js', 'src/shared/lib/fx.js',
   'src/shared/lib/push.js', 'src/shared/lib/profile.js', 'src/shared/lib/transactions.js',

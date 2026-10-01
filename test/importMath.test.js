@@ -225,13 +225,26 @@ test('parseDate: the calendar day never shifts with the timezone', () => {
   assert.equal(parseDate(new Date(2026, 8, 30, 23, 59)), '2026-09-30')
 })
 
-test('deterministicUuid: stable, distinct, uuid-shaped', async () => {
-  const a1 = await deterministicUuid(['import', 'u1', 'k', 0])
-  const a2 = await deterministicUuid(['import', 'u1', 'k', 0])
-  const b = await deterministicUuid(['import', 'u1', 'k', 1])
+test('deterministicUuid: stable, distinct, uuid-shaped', () => {
+  const a1 = deterministicUuid(['import', 'u1', 'k', 0])
+  const a2 = deterministicUuid(['import', 'u1', 'k', 0])
+  const b = deterministicUuid(['import', 'u1', 'k', 1])
   assert.equal(a1, a2)
   assert.notEqual(a1, b)
   assert.match(a1, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
+})
+
+// The ids the WebCrypto version gave (before the hash moved to sha256.js), so
+// a statement or backup made before still matches its rows.
+test('deterministicUuid: the same ids as the WebCrypto digest it replaced', async () => {
+  for (const parts of [['import', 'u1', 'k', 0], ['restore', 'u2', 'expense|2026-09-01|450|EUR|καφές ☕', 3], ['', '', '', 0]]) {
+    const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(parts.join('|'))))
+    hash[6] = (hash[6] & 0x0f) | 0x40
+    hash[8] = (hash[8] & 0x3f) | 0x80
+    const hex = [...hash.slice(0, 16)].map((b) => b.toString(16).padStart(2, '0')).join('')
+    assert.equal(deterministicUuid(parts),
+      `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`)
+  }
 })
 
 test('isOwnTransfer: transfers between the holder\'s own accounts are left out of the import', () => {

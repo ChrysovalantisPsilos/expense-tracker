@@ -1,0 +1,131 @@
+{
+  "format": "budgeer-backup",
+  "version": 4,
+  "exportedAt": "2026-09-22T12:00:00.000Z",
+  "app": {
+    "name": "Budgeer"
+  },
+  "data": {
+    "profile": {
+      "display_name": "Alex Demo",
+      "base_currency": "EUR",
+      "notify_email": false,
+      "notify_push": true,
+      "yearly_separate": null,
+      "salary_shift_from_day": null,
+      "salary_category": null
+    },
+    "payment": {
+      "iban": null,
+      "revolut": "alexdemo",
+      "paypal": null
+    },
+    "categories": [
+      {
+        "key": "c1",
+        "name": "Food",
+        "kind": "expense",
+        "icon": "utensils",
+        "color": "amber",
+        "archived": false,
+        "savings": false
+      },
+      {
+        "key": "c2",
+        "name": "Salary",
+        "kind": "income",
+        "icon": "salary",
+        "color": "green",
+        "archived": false,
+        "savings": false,
+        "default_key": "salary"
+      }
+    ],
+    "categoryRules": [
+      {
+        "pattern": "LIDL",
+        "category": "c1"
+      }
+    ],
+    "accounts": [
+      {
+        "key": "a1",
+        "name": "Current account",
+        "type": "asset",
+        "balance_minor": 125000,
+        "currency": "EUR"
+      }
+    ],
+    "goals": [
+      {
+        "name": "Holiday",
+        "target_minor": 100000,
+        "saved_minor": 2500,
+        "currency": "EUR",
+        "target_date": "2027-06-01"
+      }
+    ],
+    "budgets": [
+      {
+        "category": "c1",
+        "period_start": "2026-09-01",
+        "amount_minor": 40000,
+        "currency": "EUR"
+      }
+    ],
+    "recurring": [
+      {
+        "key": "r1",
+        "kind": "expense",
+        "category": "c1",
+        "account": null,
+        "amount_minor": 999,
+        "currency": "EUR",
+        "description": "Streaming",
+        "frequency": "monthly",
+        "interval_n": 1,
+        "next_run": "2026-10-01",
+        "end_date": null,
+        "is_active": true,
+        "remind_days_before": 2
+      }
+    ],
+    "transactions": [
+      {
+        "kind": "expense",
+        "category": "c1",
+        "account": null,
+        "amount_minor": 450,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "description": "Lunch",
+        "notes": null,
+        "spent_at": "2026-09-01"
+      },
+      {
+        "kind": "income",
+        "category": "c2",
+        "account": null,
+        "amount_minor": 300000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "description": "Salary",
+        "notes": null,
+        "spent_at": "2026-09-25"
+      },
+      {
+        "kind": "expense",
+        "category": null,
+        "account": null,
+        "amount_minor": 3333,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "description": "Dinner",
+        "notes": null,
+        "spent_at": "2026-07-02",
+        "group": "Lisbon trip"
+      }
+    ]
+  },
+  "groupHistory": []
+}

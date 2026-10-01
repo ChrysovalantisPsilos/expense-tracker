@@ -1,34 +1,30 @@
-// Import personal transactions from a bank statement (CSV / Excel). Parsing +
-// normalisation live here; the page just drives the wizard. The layout is
-// auto-detected (known bank presets, else header words + content) and the
-// user confirms/overrides the mapping before importing.
+// Import personal transactions from a bank statement (CSV / Excel). The
+// network and this device's storage live here; the page just drives the
+// wizard. The layout is auto-detected (known bank presets, else header words
+// + content) and the user confirms/overrides the mapping before importing.
+// Every step in between is pure (statementRows.js, importMath.js,
+// statementDetect.js), so the native app runs the same ones.
 import { supabase } from '../../shared/lib/supabase.js'
-import { rateOnOrBefore } from '../../shared/lib/currency.js'
 import { getRateSeriesMap } from '../../shared/lib/fx.js'
-import { importFileProblem, rowsToObjects } from './sheetParse.js'
-import { detectMapping, headerSignature, savedMappingFor } from './statementDetect.js'
-import { displayDescription } from './kbcLabels.js'
-// Pure helpers (parsing, drafts, deterministic identity) live in
-// importMath.js so they're unit-testable.
-import {
-  categoryMatcher, cleanHolderName, deterministicUuid, dropKnownRows, groupMerchants, rowToDraft, signedConvention,
-} from './importMath.js'
+import { rowsToObjects } from './sheetParse.js'
+import { detectStatement, rememberedWith } from './statementDetect.js'
+import { cleanHolderName, dropKnownRows, importedRange } from './importMath.js'
+import { SAVE_CHUNK, rateSpans, statementRows } from './statementRows.js'
+import { fileProblem, readProblem } from './importText.js'
 import { UserError, dbError } from '../../shared/lib/errors.js'
 import { listTransactions } from '../../shared/lib/transactions.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
-import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // Mappings the user confirmed, per header layout — a per-device convenience
 // (the next export from the same bank skips the mapping step). Browser
 // storage may be unavailable (private mode, blocked): then nothing is
 // remembered and detection runs as usual.
 const MAPPINGS_KEY = STORAGE_KEYS.importMappings
-const MAX_REMEMBERED = 20
 
 function rememberedMappings() {
   try {
-    const all = JSON.parse(localStorage.getItem(MAPPINGS_KEY) ?? '{}')
-    return all && typeof all === 'object' && !Array.isArray(all) ? all : {}
+    return JSON.parse(localStorage.getItem(MAPPINGS_KEY) ?? '{}')
   } catch {
     return {}
   }
@@ -36,13 +32,7 @@ function rememberedMappings() {
 
 export function rememberMapping(headers, mapping) {
   try {
-    const all = rememberedMappings()
-    const sig = headerSignature(headers)
-    delete all[sig]
-    const kept = Object.entries(all).slice(-(MAX_REMEMBERED - 1))
-    const columns = { ...mapping }
-    delete columns.holderName // kept on its own (below), not per layout
-    localStorage.setItem(MAPPINGS_KEY, JSON.stringify(Object.fromEntries([...kept, [sig, columns]])))
+    localStorage.setItem(MAPPINGS_KEY, JSON.stringify(rememberedWith(rememberedMappings(), headers, mapping)))
   } catch { /* storage full/blocked: just not remembered */ }
 }
 
@@ -74,7 +64,7 @@ export function rememberHolder(name) {
 // same header layout wins over detection. Errors come back as clear,
 // actionable messages, in the app's language.
 export async function parseWorkbook(file) {
-  const problem = importFileProblem(file, { tr: (key, vars) => t(`import:${key}`, vars), locale: intlLocale('en-US') })
+  const problem = fileProblem(file)
   if (problem) throw new UserError(problem)
   const buf = await file.arrayBuffer()
   const worker = new Worker(new URL('./sheetWorker.js', import.meta.url), { type: 'module' })
@@ -84,20 +74,9 @@ export async function parseWorkbook(file) {
       worker.onerror = () => reject(new UserError(t('import:errors.readerFailed')))
       worker.postMessage(buf, [buf])
     })
-    if (!res.ok) {
-      throw new UserError(res.key
-        ? t(`import:${res.key}`, { hint: t('import:errors.exportHint') })
-        : t('import:errors.unreadableShort'))
-    }
+    if (!res.ok) throw new UserError(readProblem(res.key))
     const rows = rowsToObjects(res.headers, res.rows)
-    const detected = detectMapping(res.headers, rows)
-    const saved = savedMappingFor(rememberedMappings(), res.headers)
-    // A mapping remembered before the holder field existed still gets the
-    // detected one, so own-account transfers are recognised.
-    const detection = saved
-      ? { ...detected, mapping: { holder: detected.mapping.holder, ...saved }, confidence: 1, remembered: true }
-      : detected
-    return { headers: res.headers, rows, lines: res.lines, detection }
+    return { headers: res.headers, rows, lines: res.lines, detection: detectStatement(res.headers, rows, rememberedMappings()) }
   } finally {
     worker.terminate()
   }
@@ -117,113 +96,35 @@ export async function saveRule(userId, pattern, categoryId) {
   if (error) throw dbError(error)
 }
 
-// Turn raw rows + a mapping into ready-to-insert transactions, collecting
-// per-row errors for anything unparseable and the lines that aren't
-// transactions (pending/declined, balance lines, footers) as `skipped`.
-// `lines` are the rows' file line numbers, for messages. `merchants`
-// maps each uncategorized row's client_uuid to its merchant key: the file's
-// merchant names grouped by groupMerchants, so the "New merchants" list and
-// the rules saved from it use the same keys ('' = none).
-//
-// Bank-statement conventions handled automatically:
-// - Sign: a debit/credit marker column or Debit/Credit columns decide the
-//   kind; otherwise, when both signs are present, negative rows are expenses
-//   and positive rows income (the near-universal export format).
-// - Rules: uncategorized rows are matched against the user's saved
-//   "contains → category" rules (longest pattern wins, same kind only).
-// - Currency: each foreign row is converted at the rate the statement itself
-//   gives (its base-currency column), else at the ECB rate for ITS date (one
-//   range request per currency). Where no rate exists (offline, pre-1999, API
-//   down) `manualRates[currency]` fills in; without one the row is listed in
-//   `missingRates` ([{ currency, count }]) and the caller must ask the user —
-//   a foreign amount is never booked at 1:1.
+// Raw rows + a mapping → { valid, merchants, errors, skipped, missingRates }
+// (statementRows.statementRows), after fetching the ECB series the foreign
+// rows need: one range request per currency.
 export async function buildTransactions({
   rows, mapping, userId, baseCurrency, categories, rules = [], manualRates = {}, lines = [],
 }) {
-  const categoryOf = categoryMatcher(categories, rules)
-
-  const signed = signedConvention(rows, mapping)
-  const drafts = rows.map((r) => rowToDraft(r, mapping, baseCurrency, { signed }))
-  const seriesByCurrency = await fetchSeries(drafts, baseCurrency)
-  const missing = new Map() // currency -> rows without a rate
-
-  const valid = []
-  const names = new Map() // client_uuid -> merchant name, uncategorized rows only
-  const errors = []
-  const skipped = []
-  const seen = new Map() // identity key -> occurrence count
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i]
-    const draft = drafts[i]
-    if (draft.skip) { skipped.push({ row: lines[i], reason: draft.skip }); continue }
-    if (draft.error) { errors.push({ row: lines[i], reason: draft.error }); continue }
-    const { spent_at, kind, currency, amount_minor, description } = draft
-
-    const exchange_rate = currency === baseCurrency ? 1
-      : draft.rate ?? rateOnOrBefore(seriesByCurrency.get(currency) ?? [], spent_at)?.rate ?? manualRates[currency] ?? null
-    if (!exchange_rate) { missing.set(currency, (missing.get(currency) ?? 0) + 1); continue }
-
-    const category_id = categoryOf(draft, r, mapping)
-
-    const key = `${spent_at}|${amount_minor}|${currency}|${kind}|${description ?? ''}`
-    const occurrence = seen.get(key) ?? 0
-    seen.set(key, occurrence + 1)
-    const client_uuid = await deterministicUuid(['import', userId, key, occurrence])
-
-    if (!category_id && description) names.set(client_uuid, draft.merchant)
-    valid.push({
-      user_id: userId,
-      kind,
-      category_id,
-      amount_minor,
-      currency,
-      exchange_rate,
-      // Saved shorter for KBC rows; the raw text above made the key and the rule match.
-      description: displayDescription(draft),
-      spent_at,
-      client_uuid,
-    })
-  }
-  const keyOf = groupMerchants([...names.values()])
-  const merchants = new Map([...names].map(([uuid, name]) => [uuid, keyOf.get(name) ?? '']))
-  const missingRates = [...missing].map(([currency, count]) => ({ currency, count }))
-  return { valid, merchants, errors, skipped, missingRates }
-}
-
-// One ECB series per foreign currency, spanning the dates of that currency's
-// rows that don't carry the statement's own rate.
-function fetchSeries(drafts, baseCurrency) {
-  const spans = new Map() // currency -> { first, last }
-  for (const d of drafts) {
-    if (d.error || d.skip || d.rate || d.currency === baseCurrency) continue
-    const s = spans.get(d.currency) ?? { first: d.spent_at, last: d.spent_at }
-    spans.set(d.currency, {
-      first: d.spent_at < s.first ? d.spent_at : s.first, last: d.spent_at > s.last ? d.spent_at : s.last,
-    })
-  }
-  return getRateSeriesMap(spans, baseCurrency)
+  const seriesByCurrency = await getRateSeriesMap(rateSpans(rows, mapping, baseCurrency), baseCurrency)
+  return statementRows({ rows, mapping, userId, baseCurrency, categories, rules, manualRates, lines, seriesByCurrency })
 }
 
 // Insert in chunks through the encrypting RPC, skipping rows whose
 // deterministic identity (client_uuid) already exists (a re-imported file, or
 // overlap with a previous export). Returns how many were actually new vs
 // skipped as duplicates. `onProgress(done, total)` reports after each chunk.
-// 500 rows a chunk keeps each call quick while staying far below the
-// server's 300-calls-an-hour limit (150,000 rows). Statement rows never send
+// Statement rows never send
 // savings_from_income or paid_from_savings, so imported savings are money
 // received and imported expenses are paid from income (the server's
 // defaults, 0084/0085): a statement can't say either. A backup restore sends
 // both flags as they were backed up.
 export async function importTransactions(rows, onProgress) {
   let inserted = 0
-  for (let i = 0; i < rows.length; i += 500) {
-    const chunk = rows.slice(i, i + 500)
+  for (let i = 0; i < rows.length; i += SAVE_CHUNK) {
+    const chunk = rows.slice(i, i + SAVE_CHUNK)
     const { data, error } = await supabase.rpc('save_transactions', {
       p_rows: chunk, p_ignore_duplicates: true,
     })
     if (error) throw dbError(error)
     inserted += Number(data ?? 0)
-    onProgress?.(Math.min(i + 500, rows.length), rows.length)
+    onProgress?.(Math.min(i + SAVE_CHUNK, rows.length), rows.length)
   }
   return { inserted, duplicates: rows.length - inserted }
 }
@@ -233,8 +134,7 @@ export async function importTransactions(rows, onProgress) {
 // the server finds by id. Returns { inserted, duplicates }.
 export async function importNewTransactions(rows, onProgress) {
   if (!rows.length) return { inserted: 0, duplicates: 0 }
-  const dates = rows.map((r) => r.spent_at).sort()
-  const existing = await listTransactions({ from: dates[0], to: dates[dates.length - 1] })
+  const existing = await listTransactions(importedRange(rows))
   const { rows: fresh, known } = dropKnownRows(rows, existing)
   const res = await importTransactions(fresh, onProgress)
   return { inserted: res.inserted, duplicates: res.duplicates + known }

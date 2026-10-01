@@ -21,10 +21,12 @@ import { today } from '../../shared/lib/dates.js'
 import { listGroups, getGroup } from '../groups/groups.js'
 import { listComments, commentCounts } from '../groups/comments.js'
 import { listRules, saveRule, importTransactions } from '../import/importExpenses.js'
+import { serializeBackup } from './backupCrypto.js'
 import {
-  buildBackup, serializeBackup, backupFileName, splitDateRange, mapCategories, matchByName,
+  buildBackup, backupFileName, splitDateRange, mapCategories, matchByName,
   planRules, planTransactions, planBudgets, planRecurring, planProfile, planSalaryShift, planPayment, restorePlan,
-  restoreSalary, rebaseRateSpans, rebaseBackupData, currencyChange,
+  restoreSalary, rebaseRateSpans, rebaseBackupData, currencyChange, FETCH_ROW_CAP, emailName, targetCurrency, categoryRows,
+  wantsSalary, settingsTally,
 } from './backupMath.js'
 import { UserError } from '../../shared/lib/errors.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
@@ -32,10 +34,6 @@ import { t } from '../../shared/lib/i18n/i18n.js'
 // The profile settings a backup carries (see backupMath.js for what's left out).
 const PROFILE_FIELDS = 'display_name, base_currency, notify_email, notify_push, yearly_separate, '
   + 'salary_shift_from_day, salary_category_id'
-// my_transactions is capped by the API's row limit; a window that comes back
-// full is split in half until each piece fits.
-const ROW_CAP = 1000
-
 // Every transaction, newest first. One call for most accounts; longer
 // histories are fetched in date windows. The total is checked against a head
 // count so a backup can never be silently incomplete. `baseCurrency` (backup)
@@ -43,7 +41,7 @@ const ROW_CAP = 1000
 async function allTransactions(baseCurrency) {
   const first = await listTransactions({ baseCurrency })
   let rows = first
-  if (first.length >= ROW_CAP) {
+  if (first.length >= FETCH_ROW_CAP) {
     const from = await oldestTransactionDate()
     const to = first[0].spent_at
     rows = []
@@ -51,7 +49,7 @@ async function allTransactions(baseCurrency) {
     while (pending.length) {
       const [a, b] = pending.shift()
       const part = await listTransactions({ from: a, to: b, baseCurrency })
-      const halves = part.length >= ROW_CAP ? splitDateRange(a, b) : null
+      const halves = part.length >= FETCH_ROW_CAP ? splitDateRange(a, b) : null
       if (halves) pending.unshift(...halves)
       else rows.push(...part)
     }
@@ -168,19 +166,13 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
 
   // Profile settings go first: the main currency can only change while the
   // account has no entries (0078), i.e. before this restore adds any.
-  const prof = planProfile(backup.data, current ?? {}, {
-    emailName: (user.email ?? '').split('@')[0], emptyAccount: !locked,
-  })
-  const data = await inMainCurrency(backup.data,
-    prof.patch.base_currency ?? current?.base_currency ?? 'EUR')
+  const prof = planProfile(backup.data, current ?? {}, { emailName: emailName(user.email), emptyAccount: !locked })
+  const data = await inMainCurrency(backup.data, targetCurrency(prof, current))
   if (Object.keys(prof.patch).length) await updateProfile(user.id, prof.patch)
 
   step('categories')
   const catPlan = mapCategories(data.categories, cats)
-  await createCategories(user.id, catPlan.missing.map((c) => ({
-    name: c.name, kind: c.kind, icon: c.icon, color: c.color, is_archived: c.archived,
-    is_savings: c.savings, default_key: c.default_key, // a hint: the server re-derives it (0094)
-  })))
+  await createCategories(user.id, categoryRows(catPlan.missing))
   tally.categories = catPlan.missing.length
   tally.duplicates += data.categories.length - catPlan.missing.length
   const categoryIdByKey = catPlan.missing.length
@@ -210,7 +202,7 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   tally.rules = rulePlan.create.length
   tally.duplicates += rulePlan.skipped
 
-  const txPlan = await planTransactions(data.transactions, existingTxns,
+  const txPlan = planTransactions(data.transactions, existingTxns,
     { userId: user.id, categoryIdByKey, accountIdByKey })
   tally.duplicates += txPlan.duplicates
   // Saved per kind so the summary can say how many of each were new; rows the
@@ -249,7 +241,7 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
 
   // The salary corrections: only into an account that has none, each onto
   // the account's matching entry (restored or already there).
-  if ((data.salary || data.transactions.some((t) => t.salary_extra)) && !(await readSalaryNotes())) {
+  if (wantsSalary(data) && !(await readSalaryNotes())) {
     const notes = restoreSalary(data, await allTransactions(), categoryIdByKey)
     if (notes) await saveSalaryNotes(notes)
   }
@@ -270,7 +262,5 @@ export async function restoreBackup(user, backup, onProgress = () => {}) {
   step('payment')
   const pay = planPayment(data, await getMyPaymentInfo())
   if (pay.patch) await savePaymentInfo(pay.patch)
-  tally.settings = Object.keys(prof.patch).length + (Object.keys(salary.patch).length ? 1 : 0) + (pay.patch ? 1 : 0)
-  tally.kept = [...prof.kept, ...salary.kept, ...pay.kept]
-  return tally
+  return { ...tally, ...settingsTally(prof, salary, pay) }
 }

@@ -183,6 +183,37 @@ public final class BudgeerCore: @unchecked Sendable {
         } catch BudgeerCoreError.javaScript(let message, _) where message.contains("BudgeerCore: no ") {
             throw BudgeerCoreError.noSuchFunction("\(module).\(fn)")
         }
+        return try decoded(json)
+    }
+
+    /// Call `module.fn` with a file's bytes as its first argument (handed to
+    /// the engine as a Uint8Array, never as JSON: a statement can be
+    /// megabytes) and `args` after them, and decode the result as `call` does.
+    public func callBytes<Result: Decodable>(_ module: String, _ fn: String, bytes: Data,
+                                             _ args: [Encodable] = []) throws -> Result {
+        let parts = try args.map { arg -> String in
+            let data = try encoder.encode(AnyEncodable(value: arg))
+            return String(decoding: data, as: UTF8.self)
+        }
+        let json: String
+        do {
+            json = try onEngine {
+                let ref = context.jsGlobalContextRef
+                guard let array = JSObjectMakeTypedArray(ref, kJSTypedArrayTypeUint8Array, bytes.count, nil) else { return nil }
+                if !bytes.isEmpty, let target = JSObjectGetTypedArrayBytesPtr(ref, array, nil) {
+                    bytes.copyBytes(to: target.assumingMemoryBound(to: UInt8.self), count: bytes.count)
+                }
+                let file = JSValue(jsValueRef: array, in: context) as Any
+                return bridge.invokeMethod("callBytes", withArguments: [module, fn, file, "[" + parts.joined(separator: ",") + "]"])
+            }.toString()
+        } catch BudgeerCoreError.javaScript(let message, _) where message.contains("BudgeerCore: no ") {
+            throw BudgeerCoreError.noSuchFunction("\(module).\(fn)")
+        }
+        return try decoded(json)
+    }
+
+    /// A call's JSON answer as `Result`, or the core's own thrown error.
+    private func decoded<Result: Decodable>(_ json: String) throws -> Result {
         let data = Data(json.utf8)
         if let thrown = try? decoder.decode(ThrownError.self, from: data), thrown.tag == "error" {
             throw BudgeerCoreError.coreError(message: thrown.message)

@@ -14,7 +14,8 @@ let package = Package(
     targets: [
         .target(
             name: "BudgeerCore",
-            resources: [.copy("Resources/core.js")]
+            // SheetJS (inside core.js) is Apache-2.0: its licence ships with it.
+            resources: [.copy("Resources/core.js"), .copy("Resources/SHEETJS-LICENSE.txt")]
         ),
         .testTarget(
             name: "BudgeerCoreTests",

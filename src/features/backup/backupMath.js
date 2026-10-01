@@ -59,12 +59,11 @@ import { FREQUENCIES } from '../recurring/recurringMath.js'
 import { PLAN_VERSION, derivedEdits, isEmptyPlan, normalisePlan } from '../plan/planMath.js'
 import { normaliseSettings } from '../vouchers/voucherMath.js'
 import { FIX_KINDS, normaliseNotes } from '../salary/salaryMath.js'
-import { sealText, openText } from './backupCrypto.js'
 import { normalisePaypalHandle } from '../../shared/lib/payLinks.js'
 import { CATEGORY_ICON_KEYS, CATEGORY_COLOR_KEYS } from '../../shared/lib/categoryStyle.js'
 import { UserError } from '../../shared/lib/errors.js'
 import { fxQueryDate, rateOnOrBefore, toBaseMinor } from '../../shared/lib/currency.js'
-import { translate } from '../../shared/lib/i18n/i18n.js'
+import { intlLocale, translate } from '../../shared/lib/i18n/i18n.js'
 
 // Words in the app's language (backup namespace), looked up when needed.
 const say = (key, vars) => translate(key, vars, { defaultNs: 'backup' })
@@ -266,14 +265,65 @@ function groupRecord({ group, members = [], expenses = [], settlements = [], bal
 
 // ---- Serialise / read --------------------------------------------------------
 
-const aadFor = (version) => `${BACKUP_FORMAT}/${version}`
+// The authenticated header of a sealed file of `version` (AES-GCM's
+// additional data: the format and version can't be swapped).
+export const aadFor = (version) => `${BACKUP_FORMAT}/${version}`
 
-// The file's text: plain JSON, or the encrypted envelope when a password is set.
-export async function serializeBackup(doc, password) {
-  const text = JSON.stringify(doc, null, 2)
-  if (!password) return text
-  const sealed = await sealText(text, password, { aad: aadFor(BACKUP_VERSION) })
-  return JSON.stringify({ format: BACKUP_FORMAT, version: BACKUP_VERSION, encrypted: true, ...sealed }, null, 2)
+// The file's text without a password: the document as indented JSON. With
+// one, this text is sealed (backupCrypto.sealText, or the native app's own
+// AES-GCM) and the file is sealedText's envelope around it.
+export const backupText = (doc) => JSON.stringify(doc, null, 2)
+export const sealedText = (sealed) =>
+  JSON.stringify({ format: BACKUP_FORMAT, version: BACKUP_VERSION, encrypted: true, ...sealed }, null, 2)
+
+// How a password-protected file is sealed (the web's WebCrypto and the
+// native app's CryptoKit both follow it, so either opens the other's file):
+//   key  = PBKDF2-SHA256(password, random 16-byte salt, 600,000 iterations) → AES-GCM-256
+//   data = AES-GCM(key, random 12-byte IV, the text, additionalData = aadFor(version))
+// A file's own iteration count must lie within bounds: refuse absurd values
+// rather than hang (or accept a weakened file) on a crafted input.
+export const SEAL = { name: 'PBKDF2', hash: 'SHA-256', iterations: 600_000, saltBytes: 16, ivBytes: 12 }
+const MIN_ITERATIONS = 310_000
+const MAX_ITERATIONS = 5_000_000
+const wrongPassword = () => fail(say('errors.wrongPassword'))
+
+// The envelope fields of a seal (its salt, IV and ciphertext with the tag,
+// each base64).
+export const sealedFields = ({ salt, iv, ciphertext }) => ({
+  kdf: { name: SEAL.name, hash: SEAL.hash, iterations: SEAL.iterations, salt }, iv, ciphertext,
+})
+
+// How many bytes a base64 text holds, or null when it isn't base64.
+function base64Bytes(b64) {
+  if (typeof b64 !== 'string' || !/^[A-Za-z0-9+/]*={0,2}$/.test(b64)) return null
+  const chars = b64.replace(/=+$/, '').length
+  return chars % 4 === 1 ? null : Math.floor((chars * 3) / 4)
+}
+
+// An envelope (readBackup's) checked before any work: the key's parameters
+// within bounds, the salt and IV of the right size. Returns { iterations,
+// salt, iv, ciphertext, aad } (still base64) for the decryption; anything
+// else is "Wrong password or damaged file." — we can't (and don't try to)
+// tell a damaged file from a wrong password.
+export function envelopeParams({ version, kdf, iv, ciphertext } = {}) {
+  const iterations = kdf?.iterations
+  if (kdf?.name !== SEAL.name || kdf?.hash !== SEAL.hash || !Number.isInteger(iterations)
+    || iterations < MIN_ITERATIONS || iterations > MAX_ITERATIONS) {
+    wrongPassword()
+  }
+  const saltBytes = base64Bytes(kdf.salt)
+  if (saltBytes === null || saltBytes < SEAL.saltBytes || base64Bytes(iv) !== SEAL.ivBytes || base64Bytes(ciphertext) === null) {
+    wrongPassword()
+  }
+  return { iterations, salt: kdf.salt, iv, ciphertext, aad: aadFor(version) }
+}
+
+// The text a sealed file opened to → the validated backup (a sealed file
+// inside a sealed file is not a backup).
+export function openedBackup(text) {
+  const inner = readBackup(text)
+  if (inner.encrypted) notABackup()
+  return inner.backup
 }
 
 // First look at a chosen file: is it ours, a version we understand, and
@@ -292,14 +342,6 @@ export function readBackup(text) {
   return { encrypted: false, backup: validateBackup(doc) }
 }
 
-// Decrypt an envelope from readBackup and validate what's inside. A wrong
-// password or a damaged file throws "Wrong password or damaged file."
-export async function unlockBackup(envelope, password) {
-  const text = await openText(envelope, password, { aad: aadFor(envelope.version) })
-  const inner = readBackup(text)
-  if (inner.encrypted) notABackup()
-  return inner.backup
-}
 
 // ---- Validation ----------------------------------------------------------------
 // The file is untrusted input: every field is type-checked and bounded, only
@@ -622,6 +664,28 @@ export function restorePlan(backupPlan, backupRules, rulesNow, categoryIdByKey) 
   })
 }
 
+// The most of a chosen file read into memory; real backups are far smaller.
+export const MAX_BACKUP_BYTES = 50 * 1024 * 1024
+
+// The confirm step's tiles, in order (labels: backup:restore.contents.<id>,
+// counts: backupContents).
+export const CONTENT_ROWS = ['expenses', 'income', 'categories', 'rules', 'budgets', 'recurring', 'accounts', 'goals', 'groups']
+
+// "Backup made 22 September 2026." for the confirm step, or null when the
+// file doesn't say (or says nonsense).
+export function madeLine(exportedAt) {
+  const made = exportedAt ? new Date(exportedAt) : null
+  if (!made || Number.isNaN(made.getTime())) return null
+  return say('restore.made', { date: made.toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) })
+}
+
+// The confirm step's line on the main currency (restoreCurrencyPlan's
+// { change, from, to }: currencyChange's answer), or null when nothing changes.
+export function currencyLine(plan) {
+  if (!plan?.change) return null
+  return say(plan.change === 'adopt' ? 'restore.currencyAdopt' : 'restore.currencyConvert', { from: plan.from, to: plan.to })
+}
+
 // What a validated backup holds, for the confirm step.
 export function backupContents({ data, groupCount }) {
   const n = (k) => data.transactions.filter((t) => t.kind === k).length
@@ -694,7 +758,7 @@ export function planRules(backupRules, existingRules, categoryIdByKey) {
 // the account add exactly one. Each new row gets a deterministic client_uuid
 // (user + key + occurrence) so the server's (user_id, client_uuid) constraint
 // also absorbs a re-run, e.g. after an interrupted restore.
-export async function planTransactions(backupTxns, existingTxns, { userId, categoryIdByKey, accountIdByKey }) {
+export function planTransactions(backupTxns, existingTxns, { userId, categoryIdByKey, accountIdByKey }) {
   const have = new Map()
   for (const t of existingTxns) { const k = txnKey(t); have.set(k, (have.get(k) ?? 0) + 1) }
   const seen = new Map()
@@ -706,7 +770,7 @@ export async function planTransactions(backupTxns, existingTxns, { userId, categ
     seen.set(k, occurrence + 1)
     if (occurrence < (have.get(k) ?? 0)) { duplicates++; continue }
     rows.push({
-      client_uuid: await deterministicUuid(['restore', userId, k, occurrence]),
+      client_uuid: deterministicUuid(['restore', userId, k, occurrence]),
       kind: t.kind,
       category_id: t.category ? categoryIdByKey.get(t.category) ?? null : null,
       account_id: t.account ? accountIdByKey.get(t.account) ?? null : null,
@@ -947,7 +1011,44 @@ export function restoreSummary(tally) {
   return { added, skipped, kept }
 }
 
+// ---- The restore's steps ----------------------------------------------------------------
+// Small decisions backup.js (and the native app's restore) take between the
+// reads and writes, kept here so the two take them the same way.
+
+// The signup default for a display name: the email's local part.
+export const emailName = (email) => String(email ?? '').split('@')[0]
+
+// The main currency the restored amounts are worth in: the one planProfile
+// sets (an empty account adopting the backup's), else the account's own.
+export const targetCurrency = (profilePlan, current) =>
+  profilePlan.patch.base_currency ?? current?.base_currency ?? DEFAULT_CURRENCY
+
+// The backup's missing categories (mapCategories' `missing`) as rows to
+// insert. default_key is only a hint: the server re-derives it (0094).
+export const categoryRows = (missing) => missing.map((c) => ({
+  name: c.name, kind: c.kind, icon: c.icon, color: c.color, is_archived: c.archived,
+  is_savings: c.savings, default_key: c.default_key,
+}))
+
+// Whether the backup holds salary corrections to bring back (its document,
+// or an entry's correction).
+export const wantsSalary = (data) => !!(data.salary || data.transactions.some((t) => t.salary_extra))
+
+// The settings a restore filled in (the profile's fields, the salary shift,
+// the payment details) and the ones it kept, from planProfile's,
+// planSalaryShift's and planPayment's answers.
+export function settingsTally(profilePlan, salaryPlan, paymentPlan) {
+  return {
+    settings: Object.keys(profilePlan.patch).length + (Object.keys(salaryPlan.patch).length ? 1 : 0) + (paymentPlan.patch ? 1 : 0),
+    kept: [...profilePlan.kept, ...salaryPlan.kept, ...paymentPlan.kept],
+  }
+}
+
 // ---- Fetch windows -------------------------------------------------------------------
+
+// my_transactions is capped by the API's row limit; a window that comes back
+// this full is split in half (splitDateRange) until each piece fits.
+export const FETCH_ROW_CAP = 1000
 
 // Split an inclusive [from, to] date range (YYYY-MM-DD) into two halves, for
 // fetching a long history in pieces under the server's row cap. A single day
