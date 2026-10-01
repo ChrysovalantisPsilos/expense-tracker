@@ -118,7 +118,13 @@ npm run dev       # Vite
 
 - **Migrations:** `supabase/migrations/NNNN_*.sql`, append-only, next free
   number. Apply with Supabase MCP `apply_migration` using the file's exact
-  contents: TEST during development, PROD at release.
+  contents: TEST during development, PROD at release. If `apply_migration`
+  (or any write) times out after 60 s, reads still work but writes are
+  blocked: check nothing landed, then hand the owner the file for that
+  project's SQL Editor with a last line recording it in
+  `supabase_migrations.schema_migrations`, and verify by reading. The test
+  suite run there shows only "Success. No rows returned": that is a pass
+  (it raises when any test fails or doesn't run).
 - **Functions:** change a function by editing
   `supabase/sql/functions/<name>.sql` and pasting it into the new migration;
   the test (`test/sqlFunctions.test.js`) keeps them equal.
@@ -272,6 +278,11 @@ npm run dev       # Vite
   `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `APPLE_TEAM_ID`. It fails at
   once, naming what's missing, without them. `ITSAppUsesNonExemptEncryption`
   is NO (only the OS's TLS/Keychain and a SHA-256 nonce hash).
+  `ASC_KEY_P8` holds the whole .p8 text, BEGIN/END lines included
+  ("invalidPEMDocument" = it doesn't). The app is iPhone-only: keep
+  `TARGETED_DEVICE_FAMILY: "1"` on the Budgeer target itself (XcodeGen's
+  preset sets "1,2" per target, and a portrait-only iPad build is refused,
+  error 90474).
 - **Push (APNs):** the app asks only from Settings › Notifications or once
   after the first entry saved (`Push/PushModel.swift`), stores the token with
   `save_apns_token` (0108: `apns_devices`, demo refused, 20/hour, 10 installs
