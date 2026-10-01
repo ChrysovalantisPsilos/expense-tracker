@@ -25,7 +25,8 @@ import { categoryDisplayName, entryName } from '../../shared/lib/categoryName.js
 import { HISTORY_MONTHS, HISTORY_MORE } from '../savings/savingsMath.js'
 import { daysFor, withDays } from './voucherMath.js'
 import { saveMealVouchers, useMealVouchers, useVoucherCard } from './vouchers.js'
-import { NextTopUp, monthOfKey } from './VoucherParts.jsx'
+import { NextTopUp } from './VoucherParts.jsx'
+import { monthOfKey } from './voucherText.js'
 import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
 
 export default function Vouchers() {

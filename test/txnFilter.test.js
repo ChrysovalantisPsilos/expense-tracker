@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  parseTxnType, isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS,
+  parseTxnType, isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS, ledgerRead,
 } from '../src/features/transactions/txnFilter.js'
 import { NO_CATEGORY } from '../src/shared/lib/categoryName.js'
 
@@ -66,4 +66,17 @@ test('NO_CATEGORY keeps only uncategorised personal rows', () => {
   assert.deepEqual(ids({ categoryId: NO_CATEGORY }), [2])
   assert.deepEqual(ids({ categoryId: 'c1' }), [1, 2, 3]) // a real category is filtered server-side
   assert.equal(isFiltering('', { ...EMPTY_FILTERS, categoryId: NO_CATEGORY }), true)
+})
+
+test('ledgerRead: this month, or all history narrowed by what the server can filter', () => {
+  const month = { from: '2026-09-01', to: '2026-09-30' }
+  assert.deepEqual(ledgerRead({ kind: 'expense', searching: false, month }), { kind: 'expense', from: '2026-09-01', to: '2026-09-30' })
+  assert.deepEqual(ledgerRead({ kind: undefined, filters: EMPTY_FILTERS, searching: true, month }),
+    { kind: undefined, from: undefined, to: undefined, categoryId: undefined, limit: 1000 })
+  const filters = { ...EMPTY_FILTERS, categoryId: 'c1', from: '2026-01-01', to: '2026-03-31' }
+  assert.deepEqual(ledgerRead({ kind: 'income', filters, searching: true, month }),
+    { kind: 'income', from: '2026-01-01', to: '2026-03-31', categoryId: 'c1', limit: 1000 })
+  // "No category" is refined on the client.
+  assert.equal(ledgerRead({ kind: 'expense', filters: { ...EMPTY_FILTERS, categoryId: NO_CATEGORY }, searching: true, month })
+    .categoryId, undefined)
 })

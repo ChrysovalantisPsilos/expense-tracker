@@ -10,6 +10,7 @@ import {
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { SHORT_LANDSCAPE } from '../../shared/lib/shortLandscape.js'
 import { markAllRead } from './notifications.js'
+import { badgeText, notificationPath, unreadCount } from './bellMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 const ICON = {
@@ -28,7 +29,7 @@ export default function NotificationBell({ feed }) {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const { items, error, reload, setItems } = feed
 
-  const unread = items.filter((n) => !n.read_at).length
+  const unread = unreadCount(items)
   const label = unread > 0 ? t('bell.labelUnread', { count: unread }) : t('bell.title')
 
   async function handleOpen() {
@@ -42,11 +43,8 @@ export default function NotificationBell({ feed }) {
 
   function go(n) {
     onClose()
-    if (n.type === 'invite') navigate('/groups')
-    else if (n.type === 'reminder') navigate('/recurring')
-    else if (n.type === 'budget') navigate('/budgets')
-    else if (n.type === 'digest') navigate('/')
-    else if (n.group_id) navigate(`/groups/${n.group_id}`)
+    const path = notificationPath(n)
+    if (path) navigate(path)
   }
 
   const list = (
@@ -106,7 +104,7 @@ export default function NotificationBell({ feed }) {
           <Badge position="absolute" top="-2px" right="-2px" borderRadius="full" aria-hidden
             pointerEvents="none" bg="accent.solid" color="white" fontSize="0.6rem" minW="16px"
             textAlign="center" px={1}>
-            {unread > 9 ? '9+' : unread}
+            {badgeText(unread)}
           </Badge>
         )}
       </Box>

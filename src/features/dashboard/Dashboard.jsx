@@ -16,11 +16,9 @@ import { usePrefetchMyGroups } from '../groups/myGroups.js'
 import { monthName, today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring, useRuleRates } from '../recurring/recurring.js'
-import { formatMoney, formatSigned } from '../../shared/lib/currency.js'
-import { spendRows, paidInWindow } from '../../shared/lib/spread.js'
+import { formatMoney } from '../../shared/lib/currency.js'
+import { spendRows } from '../../shared/lib/spread.js'
 import { rulesInBase } from '../../shared/lib/ruleFx.js'
-import { countedInWindow } from '../../shared/lib/salaryShift.js'
-import { isSavingsRow } from '../../shared/lib/savings.js'
 import { bucketLabel, bucketLabels } from '../../shared/lib/txnRollup.js'
 import { STORAGE_KEYS } from '../../shared/lib/keys.js'
 import { usePaged } from '../../shared/ui/usePaged.js'
@@ -38,8 +36,8 @@ import SumSteps from '../../shared/ui/SumSteps.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import {
-  periodTotals, periodProjection, projectedTotals, overviewNotes, netSteps, savingsLine, groupSharesByCategory, categoryLine, visibleBars, TOP_CATEGORIES,
-  homeCards, homeStacks,
+  periodTotals, periodProjection, projectedTotals, overviewNotes, netSum, savingsLine, barLines, homeLists, visibleBars,
+  TOP_CATEGORIES, homeCards, homeStacks,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
 import VoucherCard from '../vouchers/VoucherCard.jsx'
@@ -106,14 +104,10 @@ export default function Dashboard() {
     [rows, baseCurrency, period.from, period.to, separateYearly, salaryShift])
   const totals = useMemo(() => periodTotals(spend, baseCurrency, savingsIds), [spend, baseCurrency, savingsIds])
   const { byCategory, bucketRow } = totals
-  const paid = useMemo(() => paidInWindow(rows, period.from, period.to), [rows, period.from, period.to])
-  const expenses = useMemo(() => paid.filter((r) => r.kind !== 'income'), [paid])
-  // Income is listed by the month it counts for: a late-month salary (the
-  // salary setting) shows under the next month, with its real date. Savings
-  // aren't income, so they're not listed here (the Transactions page has them).
-  const income = useMemo(
-    () => countedInWindow(rows.filter((r) => r.kind === 'income' && !isSavingsRow(r, savingsIds)),
-      period.from, period.to, salaryShift),
+  // The expenses paid in the period; the income by the month it counts for
+  // (homeLists: a late-month salary shows under the next month).
+  const { expenses, income } = useMemo(
+    () => homeLists(rows, { from: period.from, to: period.to, savingsIds, salaryShift }),
     [rows, savingsIds, period.from, period.to, salaryShift])
   // Each bar drills down to its expenses for this period (a group share to its
   // group); the folded "Other" merges several buckets, so it has no link.
@@ -124,7 +118,7 @@ export default function Dashboard() {
     return linkBuckets(categoryBars(byCategory, Infinity), spend, period)
       .map((c) => ({ ...c, label: bucketLabel(c, labels) }))
   }, [byCategory, bucketRow, spend, period])
-  const groupShares = useMemo(() => groupSharesByCategory(spend, baseCurrency), [spend, baseCurrency])
+  const lines = useMemo(() => barLines(bars, spend, baseCurrency), [bars, spend, baseCurrency])
   const [showAllBars, setShowAllBars] = useState(false)
   const shownBars = visibleBars(bars, showAllBars)
 
@@ -194,7 +188,7 @@ export default function Dashboard() {
             {loading ? <OverviewSkeleton grid={overviewGrid} /> : (
             <SimpleGrid {...overviewGrid} spacing={4} alignItems="center">
               {/* What Spent, Income and the Net fold in sits behind the ⓘ
-                  (overviewNotes, netSteps). */}
+                  (overviewNotes, netSum). */}
               <Figure size="hero" value={formatMoney(spentTotal, baseCurrency)} label={
                 <HStack as="span" spacing={0.5}>
                   <span>{t('overview.spent')}</span>
@@ -218,7 +212,7 @@ export default function Dashboard() {
             )}
             {!loading && (
               <InfoBox info={info}>
-                <NetSum steps={netSteps(figures)} net={net} currency={baseCurrency} />
+                <SumSteps {...netSum(figures, baseCurrency)} />
                 {overviewNotes({ proj }, baseCurrency).map((line) => <Text key={line} mt={2}>{line}</Text>)}
               </InfoBox>
             )}
@@ -284,9 +278,9 @@ export default function Dashboard() {
           // labelled with its amount and share, so nothing depends on hover.
           <Stack spacing={4}>
           <Stack spacing={4} role="list" aria-label={t('categories.title')} id="spending-bars">
-            {shownBars.rows.map((c) => (
+            {shownBars.rows.map((c, i) => (
               <ProgressRow key={c.name} role="listitem"
-                title={c.label} meta={categoryLine(c.name, c.value, groupShares, baseCurrency)}
+                title={c.label} meta={lines[i]}
                 tooltip={t('categories.tooltip', { name: c.label, amount: formatMoney(c.value, baseCurrency), share: c.share })}
                 media={<BucketIcon row={bucketRow.get(c.name)} />}
                 percent={Math.max(c.ratio * 100, 2)} valueLabel={`${c.share}%`}
@@ -392,14 +386,3 @@ function BucketIcon({ row }) {
   if (row?.group_expense_id) return <IconTile icon={Users} />
   return <CategoryBadge category={row?.categories} size={32} />
 }
-
-// "How Net adds up" in the overview's ⓘ: each step signed, then the Net.
-function NetSum({ steps, net, currency }) {
-  const t = useT('dashboard')
-  return (
-    <SumSteps title={t('info.sumTitle')}
-      steps={steps.map((s) => ({ key: s.key, label: t(`info.steps.${s.key}`), value: formatSigned(s.minor, currency, { plus: true }) }))}
-      total={{ label: t('info.net'), value: net.text, tone: net.tone }} />
-  )
-}
-

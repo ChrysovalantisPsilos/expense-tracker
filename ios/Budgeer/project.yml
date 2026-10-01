@@ -81,6 +81,7 @@ targets:
         excludes:
           # The fonts' licence texts stay in the repository, not in the app.
           - "Resources/Fonts/*.txt"
+          - "Resources/LUCIDE-LICENSE.txt"
     dependencies:
       - package: BudgeerCore
       - package: Supabase

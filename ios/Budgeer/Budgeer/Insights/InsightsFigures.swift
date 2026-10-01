@@ -61,6 +61,22 @@ struct InsightsFigures: Codable, Equatable, Sendable {
     let bars: Bars
     let income: Income
     let chart: [Month]
+    /// "Spending abroad" (abroadCard), nil without a foreign payment this month.
+    let abroad: Abroad?
+
+    struct Abroad: Codable, Equatable, Sendable {
+        struct Row: Codable, Equatable, Identifiable, Sendable {
+            let id: String
+            let label: String
+            let rate: String
+            let from: String
+            let to: String
+        }
+        let subtitle: String
+        let rows: [Row]
+        let more: String?
+        let total: String
+    }
 
     /// lastMonths(6): the months and where to read their rows from and to.
     static func months(now: Date, core: BudgeerCore) throws -> JSONValue {
@@ -92,6 +108,14 @@ struct InsightsFigures: Codable, Equatable, Sendable {
             hasTrend: try core.call("insightsMath", "hasTrendData", [trend]),
             bars: try core.call("insightsMath", "spendingBars", [trend, index, base]),
             income: try core.call("insightsMath", "incomeFigures", [trend, base]),
-            chart: try trend.decode([Month].self))
+            chart: try trend.decode([Month].self),
+            abroad: try abroad(rows: rows, month: list.last?["key"] ?? .null, base: base, core: core))
+    }
+
+    /// foreignSpending over this month's rows, worded by abroadCard (nil when none).
+    static func abroad(rows: JSONValue, month: JSONValue, base: String, core: BudgeerCore) throws -> Abroad? {
+        let spending = try core.json("insightsMath", "foreignSpending", [rows, month, base])
+        guard !(spending["items"]?.arrayValue ?? []).isEmpty else { return nil }
+        return try core.call("insightsMath", "abroadCard", [spending, base])
     }
 }

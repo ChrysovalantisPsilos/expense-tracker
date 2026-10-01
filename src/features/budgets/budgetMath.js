@@ -126,6 +126,15 @@ export function budgetWindow(period, todayISO) {
   return { first, last, from: first, to: monthEnd(last) }
 }
 
+// The months whose caps a longer span reads (useBudgetSets): of every month
+// with budgets (`periods`, sorted), those up to `last`, from the latest one at
+// or before `first` (whose caps `first` carries; first null: from the start).
+export function setPeriods(periods, first, last) {
+  const upTo = periods.filter((p) => p <= last)
+  const from = first ? Math.max(0, upTo.findLastIndex((p) => p <= first)) : 0
+  return upTo.slice(from)
+}
+
 // Every month from `first` to `last` ('YYYY-MM-01'), oldest first.
 function monthsBetween(first, last) {
   const out = []

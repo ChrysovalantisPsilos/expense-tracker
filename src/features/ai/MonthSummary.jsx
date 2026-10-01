@@ -3,7 +3,7 @@ import { Sparkle } from 'lucide-react'
 import { InfoBox, InfoButton, useInfoToggle } from '../../shared/ui/InfoToggle.jsx'
 import { BusyNote } from '../../shared/ui/RingLoader.jsx'
 import { SkeletonBlock, SkeletonRegion } from '../../shared/ui/Skeleton.jsx'
-import { monthName } from '../../shared/lib/dates.js'
+import { summaryTitle } from './aiMath.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // "Month in plain words": the "In words" side of Home's overview (shown only
@@ -13,12 +13,10 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 // small bold style, so it shares the row with the Numbers | In words switch.
 // `month` is 'YYYY-MM-01'.
 export function SummaryTitle({ month }) {
-  const t = useT('ai')
-  const [y, m] = month.split('-').map(Number)
   return (
     <HStack as="span" spacing={2} fontFamily="body" fontSize="sm" fontWeight="700" lineHeight="1.4">
       <Box as="span" color="accent.fg" flexShrink={0} display="flex"><Sparkle size={16} aria-hidden /></Box>
-      <span>{t('summary.title', { month: monthName(new Date(y, m - 1, 1)) })}</span>
+      <span>{summaryTitle(month)}</span>
     </HStack>
   )
 }

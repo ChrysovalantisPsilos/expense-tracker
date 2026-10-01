@@ -1,8 +1,7 @@
 // The pieces the group pages are drawn with, after the web's kit and the
 // groups' own components: a person's avatar circle (UserAvatar), the
-// overlapping avatar stack (AvatarStack), a group's picture (GroupMark), a
-// card's header with its icon tile and subtitle (CardHeader), the small-caps
-// section label (SectionLabel), the pale highlight line (HighlightPill), a
+// overlapping avatar stack (AvatarStack), a group's picture (GroupMark),
+// the pale highlight line (HighlightPill), a
 // settle-up payment on its sand tile (TransferRow), a list row (ItemRow),
 // and rich text from the core's parseRich. Every word and colour they show
 // was worked out by the core; these only draw.
@@ -88,8 +87,7 @@ struct GroupMark: View {
         let radius = size >= 40 ? Theme.Radius.xl : Theme.Radius.lg
         ZStack {
             RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Theme.Palette.brand500)
-            Image(systemName: "person.2.fill")
-                .font(.system(size: size * 0.4, weight: .semibold))
+            LucideIcon(icon: .users, size: size * 0.45)
                 .foregroundStyle(Color.white)
             if let imageUrl, let url = URL(string: imageUrl) {
                 AsyncImage(url: url) { image in
@@ -102,44 +100,6 @@ struct GroupMark: View {
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
-    }
-}
-
-/// A card's header (CardHeader): the accent icon tile, the title and the muted subtitle.
-struct CardHeader: View {
-    let title: String
-    var icon: String? = nil
-    var subtitle: String? = nil
-    @Environment(AppLanguage.self) private var language
-
-    var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.s3) {
-            if let icon { IconTile(systemName: icon, tone: Theme.Colors.accentFg) }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(Theme.Fonts.heading(16, weight: .semibold, lang: language.current))
-                    .kerning(-0.16)
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                if let subtitle {
-                    Text(subtitle)
-                        .font(Theme.Fonts.body(13, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
-                }
-            }
-        }
-    }
-}
-
-/// A muted small-caps label that opens a block inside a card ("BALANCES").
-struct SectionLabel: View {
-    let text: String
-    @Environment(AppLanguage.self) private var language
-
-    var body: some View {
-        Text(text.capsLabel)
-            .font(Theme.Fonts.body(11, weight: .bold, lang: language.current))
-            .kerning(0.66)
-            .foregroundStyle(Theme.Colors.textMuted)
     }
 }
 
@@ -195,7 +155,7 @@ struct TransferRowView: View {
     }
 
     private var arrow: some View {
-        Image(systemName: "arrow.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.Colors.textMuted)
+        LucideIcon(icon: .arrowRight, size: 14).foregroundStyle(Theme.Colors.textMuted)
     }
 
     private func person(_ avatar: Avatar) -> some View {
@@ -212,7 +172,7 @@ struct TransferRowView: View {
 /// A list row (ItemRow): the icon tile, the title over its muted line, the
 /// amount (and a line under it), and a trailing control.
 struct GroupItemRow<Trailing: View>: View {
-    let icon: String
+    let icon: Lucide
     let title: String
     let meta: String
     let amount: String?
@@ -222,7 +182,7 @@ struct GroupItemRow<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: Theme.Space.s3) {
-            IconTile(systemName: icon, tone: Theme.Colors.accentFg)
+            IconTile(icon: icon)
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
@@ -266,7 +226,7 @@ struct CommentCount: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 2) {
-                Image(systemName: "bubble.left").font(.system(size: 13))
+                LucideIcon(icon: .messageSquare, size: 15)
                 if count > 0 { Text("\(count)").font(.system(size: 12)) }
             }
             .foregroundStyle(Theme.Colors.textMuted)
@@ -340,7 +300,7 @@ struct ChoiceButton: View {
     var body: some View {
         Button(action: action) {
             Text(label)
-                .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
+                .font(Theme.Fonts.body(16, weight: .semibold, lang: language.current))
                 .foregroundStyle(on ? Theme.Colors.onAccent : Theme.Colors.textPrimary)
                 .frame(maxWidth: .infinity, minHeight: 40)
                 .padding(.horizontal, Theme.Space.s2)

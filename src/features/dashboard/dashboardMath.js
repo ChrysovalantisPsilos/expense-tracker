@@ -1,8 +1,11 @@
 // Pure maths behind the Overview page's headline figures. Money is integer
 // minor units in the user's base currency.
-import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
+import { formatMoney, formatSigned, toBaseMinor } from '../../shared/lib/currency.js'
+import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { bucketOf, groupLabel, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
-import { EFFECTS, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
+import { EFFECTS, isSavingsRow, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
+import { paidInWindow } from '../../shared/lib/spread.js'
+import { countedInWindow } from '../../shared/lib/salaryShift.js'
 import { expectedInWindow } from '../recurring/recurringMath.js'
 import { isMonthPeriod } from '../../shared/lib/periods.js'
 import { isRelativeLabel } from '../budgets/budgetMath.js'
@@ -167,6 +170,37 @@ export function groupSharesByCategory(rows, baseCurrency) {
     out.set(r.categories.name, byGroup)
   }
   return out
+}
+
+// The overview's "How Net adds up" (SumSteps) as words: the title, each
+// step's label and signed amount, and the Net with its tone.
+export function netSum(figures, currency) {
+  const net = signedAmount(figures.netTotal, (m) => formatMoney(m, currency))
+  return {
+    title: t('dashboard:info.sumTitle'),
+    steps: netSteps(figures).map((s) => ({
+      key: s.key, label: t(`dashboard:info.steps.${s.key}`), value: formatSigned(s.minor, currency, { plus: true }),
+    })),
+    total: { label: t('dashboard:info.net'), value: net.text, tone: net.tone },
+  }
+}
+
+// Each bar's line under its name (categoryLine), over the period's group
+// shares (`spend`: spendRows' output).
+export function barLines(bars, spend, baseCurrency) {
+  const shares = groupSharesByCategory(spend, baseCurrency)
+  return bars.map((c) => categoryLine(c.name, c.value, shares, baseCurrency))
+}
+
+// Home's two lists for a period: the expenses paid in it, and the income
+// by the month it counts for (a late-month salary, the salary setting,
+// shows under the next month with its real date). Savings aren't income,
+// so they're not listed (the Transactions page has them).
+export function homeLists(rows, { from = null, to = null, savingsIds = NO_SAVINGS, salaryShift = null } = {}) {
+  const expenses = paidInWindow(rows, from, to).filter((r) => r.kind !== 'income')
+  const income = countedInWindow(rows.filter((r) => r.kind === 'income' && !isSavingsRow(r, savingsIds)),
+    from, to, salaryShift)
+  return { expenses, income }
 }
 
 // A category row's line: its amount, and when groups carry more of it,

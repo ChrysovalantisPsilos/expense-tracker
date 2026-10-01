@@ -1,19 +1,25 @@
-// The category badge: every web icon key has an SF Symbol that exists on
-// this iOS, and the look is the core's (categoryStyle.categoryLook).
+// The category badge: every key the core answers has the web's Lucide icon
+// bundled (Icons.xcassets "category-<key>"), an unknown key falls back to
+// the web's Tag, every app icon exists, and the look is the core's
+// (categoryStyle.categoryLook).
 import UIKit
 import XCTest
 import BudgeerCore
 @testable import Budgeer
 
 final class CategoryBadgeTests: XCTestCase {
-    func testEverySymbolExists() {
-        for (key, symbol) in CategoryBadge.symbols {
-            XCTAssertNotNil(UIImage(systemName: symbol), "\(key) → \(symbol)")
+    func testEveryAppIconIsBundled() {
+        for icon in Lucide.allCases {
+            XCTAssertNotNil(UIImage(named: icon.rawValue), icon.rawValue)
         }
-        XCTAssertNotNil(UIImage(systemName: CategoryBadge.symbol(for: "no-such-key")))
+        for bold in ["layout-dashboard", "receipt-text", "users", "target", "more-horizontal", "plus"] {
+            XCTAssertNotNil(UIImage(named: "lucide-\(bold)-bold"), bold)
+        }
+        XCTAssertEqual(CategoryBadge.asset(for: "no-such-key"), "category-fallback")
+        XCTAssertNotNil(UIImage(named: "category-fallback"))
     }
 
-    func testEveryKeyTheCoreAnswersHasASymbol() throws {
+    func testEveryKeyTheCoreAnswersHasItsIcon() throws {
         // The names the web's hints turn into each key (categoryStyle NAME_HINTS).
         let names = ["Fuel", "Parking", "Taxi", "Bus", "Bike", "Flights", "Hotel", "Restaurants", "Bars", "Groceries",
                      "Transport", "Rent", "Housing", "Insurance", "Taxes", "Bank fees", "Music", "Streaming", "Water",
@@ -23,7 +29,7 @@ final class CategoryBadgeTests: XCTestCase {
                      "Investments", "Savings", "Something else"]
         for name in names {
             let look = try CategoryLook.of(.string(name), core: .shared)
-            XCTAssertNotNil(CategoryBadge.symbols[look.key], "\(name) → \(look.key)")
+            XCTAssertEqual(CategoryBadge.asset(for: look.key), "category-\(look.key)", name)
         }
     }
 

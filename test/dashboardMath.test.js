@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  periodTotals, periodProjection, projectedTotals, visibleBars, TOP_CATEGORIES, homeCards, homeStacks,
+  periodTotals, periodProjection, projectedTotals, visibleBars, TOP_CATEGORIES, homeCards, homeStacks, homeLists, barLines, netSum,
 } from '../src/features/dashboard/dashboardMath.js'
 
 const rows = [
@@ -90,4 +90,39 @@ test('Home sideways: a strip, then two stacks that hold every card once, in the 
   // Nothing logged: the way to start leads the right stack; no empty lists.
   assert.deepEqual(homeStacks({ firstRun: true }).right, ['firstEntry', 'recurring'])
   assert.deepEqual(homeCards({ firstRun: true }).slice(0, 2), ['overview', 'firstEntry'])
+})
+
+test('homeLists: the period’s expenses as paid, its income by the month it counts for, no savings', () => {
+  const r = (id, kind, spent_at, extra = {}) => ({ id, kind, spent_at, amount_minor: 100, currency: 'EUR', exchange_rate: 1,
+    category_id: null, ...extra })
+  const all = [
+    r('e1', 'expense', '2026-09-10'), r('e0', 'expense', '2026-08-31'),
+    r('i1', 'income', '2026-09-02'), r('s1', 'income', '2026-09-03', { category_id: 'sav' }),
+    r('pay', 'income', '2026-08-27', { category_id: 'salary' }),
+  ]
+  const shift = { fromDay: 25, categoryId: 'salary' }
+  const { expenses, income } = homeLists(all, { from: '2026-09-01', to: '2026-09-30', savingsIds: new Set(['sav']), salaryShift: shift })
+  assert.deepEqual(expenses.map((x) => x.id), ['e1'])
+  assert.deepEqual(income.map((x) => x.id).sort(), ['i1', 'pay'])
+  // All time: everything but the savings entry.
+  const always = homeLists(all, { savingsIds: new Set(['sav']) })
+  assert.deepEqual(always.expenses.map((x) => x.id), ['e1', 'e0'])
+  assert.deepEqual(always.income.map((x) => x.id), ['i1', 'pay'])
+})
+
+test('barLines: each bar’s line, with what its groups add', () => {
+  const lines = barLines([{ name: 'Food', value: 1500 }, { name: 'Travel', value: 2300 }], rows, 'EUR')
+  assert.deepEqual(lines, ['€15.00', '€23.00'])
+  const shared = [{ kind: 'expense', amount_minor: 3140, currency: 'EUR', exchange_rate: 1, group_expense_id: 'g',
+    group_expenses: { groups: { name: 'Lisbon trip' } }, categories: { name: 'Food' } }]
+  assert.deepEqual(barLines([{ name: 'Food', value: 1500 }], shared, 'EUR'), ['€15.00 · +€31.40 in Lisbon trip = €46.40'])
+})
+
+test('netSum: How Net adds up, worded', () => {
+  const sum = netSum({ earnedTotal: 343000, spentTotal: 320751, fromSavingsTotal: 89900, netTotal: 112149 }, 'EUR')
+  assert.equal(sum.title, 'How Net adds up')
+  assert.deepEqual(sum.steps.map((s) => s.key), ['income', 'spent', 'fromSavings'])
+  assert.equal(sum.steps[0].value, '+€3,430.00')
+  assert.equal(sum.steps[1].value, '−€3,207.51')
+  assert.deepEqual(sum.total, { label: 'Net', value: '+€1,121.49', tone: 'positive' })
 })

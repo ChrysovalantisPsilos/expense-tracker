@@ -22,7 +22,7 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
 
     /// The profile columns the screens read (ProfileProvider's figures, the helpers' switches).
     static let profileColumns = "id, base_currency, yearly_separate, salary_shift_from_day, salary_category_id, "
-        + "ai_quick_entry, ai_import_categories, ai_month_summary, ai_plan_whatif, language, is_demo"
+        + "ai_quick_entry, ai_import_categories, ai_month_summary, ai_plan_whatif, language, is_demo, display_name, avatar_url"
     /// shared/lib/categories.js CATEGORY_COLUMNS.
     static let categoryColumns = "id, name, kind, icon, color, is_archived, is_savings, default_key"
 
@@ -81,6 +81,20 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
         }
     }
 
+    func notifications() async throws -> JSONValue {
+        try await cached("notifications") {
+            try await client.from("notifications").select("*")
+                .order("created_at", ascending: false).limit(30).execute().value
+        }
+    }
+
+    func markNotificationsRead() async throws {
+        let now: String = ISO8601DateFormatter().string(from: Date())
+        try await client.from("notifications").update(["read_at": JSONValue.string(now)])
+            .is("read_at", value: nil).execute()
+        announce("notifications")
+    }
+
     // MARK: CategoriesRepository
 
     func categories(kind: String?) async throws -> JSONValue {
@@ -103,11 +117,13 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
     // MARK: TransactionsRepository
 
     func transactions(_ query: TxnQuery) async throws -> JSONValue {
-        let params: [String: JSONValue] = [
+        var params: [String: JSONValue] = [
             "p_kind": query.kind.json, "p_from": query.from.json, "p_to": query.to.json,
             "p_category": query.categoryId.json, "p_limit": query.limit.map { JSONValue.int($0) } ?? .null,
             "p_spread": .bool(query.spread),
         ]
+        // Sent only when set, as the web's listTransactions does.
+        if query.paidWithVouchers { params["p_paid_with_vouchers"] = .bool(true) }
         return try await cached("transactions", SupabaseStore.keyOf(query)) {
             try await client.rpc("my_transactions", params: params).execute().value
         }
@@ -192,6 +208,15 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
         return copied.intValue ?? 0
     }
 
+    func budgetPeriods() async throws -> JSONValue {
+        let rows = try await cached("budget-periods") {
+            try await client.from("budgets").select("period_start").execute().value
+        }
+        // Each month once, in order (budgets.js budgetPeriods).
+        let months = Set((rows.arrayValue ?? []).compactMap { $0["period_start"]?.stringValue })
+        return .array(months.sorted().map { JSONValue.string($0) })
+    }
+
     // MARK: FxRepository (fx.js: getRate, getRateSeries)
 
     private func todayISO() throws -> String {
@@ -238,6 +263,24 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
     }
 
     // MARK: AiRepository (ai.js fillFromText)
+
+    // MARK: The month in plain words (ai.js readMonthSummary, useMonthSummary's write)
+
+    func monthSummary(month: String) async throws -> JSONValue {
+        try await cached("month-summary", month) {
+            try await client.rpc("my_month_summary", params: ["p_month": JSONValue.string(month)]).execute().value
+        }
+    }
+
+    func writeMonthSummary(month: String, lang: String, labels: JSONValue) async throws {
+        let body: JSONValue = ["action": "month_summary", "month": .string(month), "lang": .string(lang), "labels": labels]
+        do {
+            let _: JSONValue = try await client.functions.invoke("ai-helper", options: FunctionInvokeOptions(body: body))
+        } catch FunctionsError.httpError(_, let data) {
+            let payload = try? JSONValue.parse(data)
+            throw ServerError(code: payload?["code"]?.stringValue, message: payload?["error"]?.stringValue ?? "", edge: true)
+        }
+    }
 
     func parseEntry(text: String, today: String, labels: JSONValue) async throws -> JSONValue {
         let body: JSONValue = ["action": "parse_entry", "text": .string(text), "today": .string(today), "labels": labels]

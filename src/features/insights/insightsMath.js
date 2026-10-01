@@ -1,4 +1,4 @@
-import { toBaseMinor, minorFactor, baseEquivalent, formatMoney } from '../../shared/lib/currency.js'
+import { toBaseMinor, minorFactor, baseEquivalent, formatMoney, rateText } from '../../shared/lib/currency.js'
 import { monthHeading } from '../../shared/lib/dates.js'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { bucketLabel, bucketLabels, bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
@@ -115,6 +115,25 @@ export function foreignSpending(rows, monthKey, baseCurrency) {
 }
 
 // ---- The Insights page's words (Insights.jsx, the native app) ---------------
+
+// How many foreign-currency rows "Spending abroad" lists (the total covers all).
+const ABROAD_ROWS = 5
+
+// "Spending abroad" as the card shows it (foreignSpending's answer): its
+// subtitle, the first ABROAD_ROWS payments ("Phone case", "@ 0.8523",
+// "US$24.00" → "€20.46"), how many more the total includes, and the total.
+export function abroadCard(abroad, baseCurrency) {
+  const more = abroad.items.length - ABROAD_ROWS
+  return {
+    subtitle: t('insights:abroad.subtitle', { currency: baseCurrency }),
+    rows: abroad.items.slice(0, ABROAD_ROWS).map((i) => ({
+      id: i.id, label: i.label, rate: rateText(i.rate),
+      from: formatMoney(i.minor, i.currency), to: formatMoney(i.baseMinor, baseCurrency),
+    })),
+    more: more > 0 ? t('insights:abroad.more', { count: more }) : null,
+    total: formatMoney(abroad.totalBaseMinor, baseCurrency),
+  }
+}
 
 // A trend value (major units, buildTrend's) as money: back to minor units,
 // then formatted ("€1,635.00").

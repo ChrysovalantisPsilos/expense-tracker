@@ -1,9 +1,10 @@
 // The Budgets tab, after the web's Budgets page: the month over the title,
-// "Set a monthly cap" (a category and its cap), and "This month": where its
-// caps were carried over from, "Copy last month's budgets" when offered, and
-// each budget as a progress row ("€312.40 of €400.00", the percent, the bar
-// in its tone, "Over budget"). With no caps yet the empty state leads. A
-// row's menu changes its cap (in the form) or deletes it.
+// "Set a monthly cap" (a category, its cap and Set on one line), and "This
+// month": where its caps were carried over from, "Copy last month's
+// budgets" when offered, the hint (its ⓘ explains the rollover), and each
+// budget as a progress row ("€312.40 of €400.00", the percent, the bar in
+// its tone, "Over budget") with its ⋮ menu (Edit loads it into the form,
+// Delete). With no caps yet the empty state leads.
 import SwiftUI
 
 @MainActor
@@ -11,41 +12,32 @@ struct BudgetsView: View {
     @Bindable var model: BudgetsModel
     @Environment(AppLanguage.self) private var language
     @State private var confirmCopy = false
+    @State private var rolloverInfo = false
     @FocusState private var amountFocused: Bool
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: Theme.Space.s4) {
-                    switch model.state {
-                    case .loading:
-                        Panel { ProgressView().frame(maxWidth: .infinity, minHeight: 120) }
-                    case .failed(let message):
-                        Panel { LoadErrorBlock(message: message) { await model.load() } }
-                    case .loaded(let figures):
-                        Text(figures.heading)
-                            .font(Theme.Fonts.body(13, weight: .semibold, lang: language.current))
-                            .foregroundStyle(Theme.Colors.textMuted)
-                        if let message = model.message {
-                            Note(text: message, tone: Theme.Colors.textPrimary)
-                                .accessibilityIdentifier("budgets.message")
-                        }
-                        if figures.items.isEmpty {
-                            emptyState(figures)
-                            form
-                        } else {
-                            form
-                            thisMonth(figures)
-                        }
-                    }
+        Page(fab: true, refresh: { await model.load() }) {
+            switch model.state {
+            case .loading:
+                PageHeader(title: language.t("budgets:title"))
+                Panel { SkeletonRows(count: 4, progress: true) }
+            case .failed(let message):
+                PageHeader(title: language.t("budgets:title"))
+                Panel { LoadErrorBlock(message: message) { await model.load() } }
+            case .loaded(let figures):
+                PageHeader(title: language.t("budgets:title"), eyebrow: figures.heading)
+                if let message = model.message {
+                    Note(text: message, tone: Theme.Colors.textPrimary, size: 14)
+                        .accessibilityIdentifier("budgets.message")
                 }
-                .padding(Theme.Space.s4)
+                if figures.items.isEmpty {
+                    emptyState(figures)
+                    form
+                } else {
+                    form
+                    thisMonth(figures)
+                }
             }
-            .refreshable { await model.load() }
-            .scrollDismissesKeyboard(.interactively)
-            .background(Theme.Colors.canvas.ignoresSafeArea())
-            .navigationTitle(language.t("budgets:title"))
-            .navigationBarTitleDisplayMode(.inline)
         }
         .task(id: language.current) { await model.load() }
         .confirmationDialog(language.t("budgets:copy.title"), isPresented: $confirmCopy, titleVisibility: .visible) {
@@ -58,65 +50,44 @@ struct BudgetsView: View {
 
     private func emptyState(_ figures: BudgetFigures) -> some View {
         Panel {
-            VStack(spacing: Theme.Space.s3) {
-                IconTile(systemName: "target", size: 48, tone: Theme.Colors.accentFg)
-                Text(language.t("budgets:empty.title"))
-                    .font(Theme.Fonts.heading(18, weight: .semibold, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textPrimary)
-                Text(language.t("budgets:empty.text"))
-                    .font(Theme.Fonts.body(14, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textMuted)
-                    .multilineTextAlignment(.center)
-                Button {
-                    amountFocused = true
-                } label: {
-                    Label(language.t("budgets:empty.first"), systemImage: "target")
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                if figures.canCopy {
-                    Button {
-                        Task { await model.copyPrevious() }
-                    } label: {
-                        Label(language.t("budgets:copy.button"), systemImage: "doc.on.doc")
+            EmptyStateBlock(icon: .target, title: language.t("budgets:empty.title"), text: language.t("budgets:empty.text")) {
+                VStack(spacing: Theme.Space.s2) {
+                    Button { amountFocused = true } label: {
+                        IconLabel(text: language.t("budgets:empty.first"), icon: .target, size: 18)
                     }
-                    .buttonStyle(OutlineButtonStyle())
+                    .buttonStyle(.kit(.solid, .md))
+                    if figures.canCopy {
+                        Button { Task { await model.copyPrevious() } } label: {
+                            IconLabel(text: language.t("budgets:copy.button"), icon: .copy, size: 18)
+                        }
+                        .buttonStyle(.kit(.outline, .md, scheme: .gray))
+                    }
                 }
             }
-            .frame(maxWidth: .infinity)
         }
     }
 
-    /// "Set a monthly cap".
+    /// "Set a monthly cap": Category, Monthly cap and Set on one line.
     private var form: some View {
-        Panel(title: language.t("budgets:form.title"), icon: "target") {
+        Panel(title: language.t("budgets:form.title"), icon: .target) {
             HStack(alignment: .bottom, spacing: Theme.Space.s3) {
                 FormRow(label: language.t("budgets:form.category")) {
-                    Menu {
-                        Picker(language.t("budgets:form.category"), selection: $model.formCategory) {
-                            ForEach(model.categoryOptions, id: \.id) { Text($0.name).tag($0.id) }
-                        }
-                    } label: {
-                        HStack {
-                            Text(model.categoryOptions.first { $0.id == model.formCategory }?.name ?? language.t("budgets:form.select"))
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                            Image(systemName: "chevron.up.chevron.down").font(.system(size: 11))
-                        }
-                        .fieldStyle()
+                    SelectMenu(options: model.categoryOptions.map { ($0.id, $0.name) }, value: model.formCategory,
+                               placeholder: language.t("budgets:form.select"), label: language.t("budgets:form.category")) {
+                        model.formCategory = $0
                     }
                     .accessibilityIdentifier("budgets.category")
                 }
                 FormRow(label: language.t("budgets:form.cap")) {
-                    TextField("", text: Binding(get: { model.formAmount }, set: { model.setAmount($0) }))
+                    TextField(model.amountPlaceholder, text: Binding(get: { model.formAmount }, set: { model.setAmount($0) }))
                         .keyboardType(.decimalPad)
                         .focused($amountFocused)
                         .fieldStyle()
                         .accessibilityIdentifier("budgets.cap")
                 }
-                .frame(width: 110)
+                .frame(maxWidth: 120)
                 Button(language.t("budgets:form.submit")) { Task { await model.setCap() } }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .frame(width: 64)
+                    .buttonStyle(.kit(.solid, .md))
                     .disabled(!model.canSet)
                     .accessibilityIdentifier("budgets.set")
             }
@@ -124,70 +95,44 @@ struct BudgetsView: View {
     }
 
     private func thisMonth(_ figures: BudgetFigures) -> some View {
-        Panel {
-            VStack(alignment: .leading, spacing: Theme.Space.s4) {
-                HStack(alignment: .top, spacing: Theme.Space.s3) {
-                    IconTile(systemName: "calendar", tone: Theme.Colors.accentFg)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(language.t("budgets:thisMonth"))
-                            .font(Theme.Fonts.heading(16, weight: .semibold, lang: language.current))
-                            .foregroundStyle(Theme.Colors.textPrimary)
-                        if let subtitle = figures.subtitle {
-                            Text(subtitle)
-                                .font(Theme.Fonts.body(13, lang: language.current))
-                                .foregroundStyle(Theme.Colors.textMuted)
-                                .accessibilityIdentifier("budgets.carried")
-                        }
-                    }
-                }
+        Panel(title: language.t("budgets:thisMonth"), icon: .calendarDays, subtitle: figures.subtitle) {
+            VStack(alignment: .leading, spacing: Theme.Space.s5) {
                 if figures.canCopy {
-                    Button {
-                        confirmCopy = true
-                    } label: {
-                        Label(language.t("budgets:copy.action"), systemImage: "doc.on.doc")
-                            .font(Theme.Fonts.body(13, weight: .semibold, lang: language.current))
+                    Button { confirmCopy = true } label: {
+                        IconLabel(text: language.t("budgets:copy.action"), icon: .copy, size: 14)
                     }
-                    .tint(Theme.Colors.accentFg)
+                    .buttonStyle(.kit(.ghost, .xs))
                 }
-                Note(text: language.t("budgets:hint") + (figures.subtitle == nil ? "" : " " + language.t("budgets:rollover")))
-                ForEach(figures.items) { item in
-                    HStack(spacing: Theme.Space.s2) {
-                        ProgressRow(title: item.name, meta: item.meta, ratio: Double(item.percent) / 100,
-                                    valueLabel: item.valueLabel, fill: fill(item.tone),
-                                    valueTone: item.over ? Theme.Colors.negative : Theme.Colors.textMuted,
-                                    pill: item.overLabel) {
-                            CategoryBadge(look: item.look)
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 4) {
+                        Text(language.t("budgets:hint")).kitText(14, color: Theme.Colors.textMuted)
+                        if figures.subtitle != nil {
+                            InfoButton(open: $rolloverInfo, label: language.t("common:moreInfo"))
                         }
-                        Menu {
-                            Button {
+                    }
+                    if rolloverInfo { InfoBox(lines: [language.t("budgets:rollover")]) }
+                }
+                ForEach(figures.items) { item in
+                    ProgressRow(title: item.name, meta: item.meta, ratio: Double(item.percent) / 100,
+                                valueLabel: item.valueLabel, fill: Tone(name: item.tone).fill,
+                                over: item.over, overLabel: item.overLabel) {
+                        CategoryBadge(look: item.look)
+                    } trailing: {
+                        RowActionsMenu(actions: [
+                            RowAction(label: language.t("budgets:edit", ["name": .string(item.name)]), icon: .pencil) {
                                 model.edit(item)
                                 amountFocused = true
-                            } label: {
-                                Label(language.t("common:actions.edit"), systemImage: "pencil")
-                            }
-                            Button(role: .destructive) {
+                            },
+                            RowAction(label: language.t("budgets:delete", ["name": .string(item.name)]), icon: .trash2,
+                                      danger: true) {
                                 Task { await model.delete(item) }
-                            } label: {
-                                Label(language.t("common:actions.delete"), systemImage: "trash")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .foregroundStyle(Theme.Colors.textMuted)
-                                .frame(width: 32, height: 44)
-                        }
-                        .accessibilityLabel(language.t("common:actions.moreActions"))
+                            },
+                        ])
                     }
+                    .accessibilityIdentifier("budgets.row.\(item.categoryId)")
                 }
             }
-        }
-    }
-
-    /// The bar's colour for a budget tone (kitMath FILL_TONE).
-    private func fill(_ tone: String?) -> Color {
-        switch tone {
-        case "negative": return Theme.Palette.red400
-        case "warning": return Theme.Colors.warning
-        default: return Theme.Colors.fill
+            .accessibilityIdentifier("budgets.carried")
         }
     }
 }

@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  buildTrend, hasTrendData, spendDelta, netWorth, spendingShares, foreignSpending,
+  buildTrend, hasTrendData, spendDelta, netWorth, spendingShares, foreignSpending, abroadCard,
 } from '../src/features/insights/insightsMath.js'
 import { axisTick } from '../src/shared/ui/chartAxis.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
@@ -156,4 +156,18 @@ test('pickedMonthLabel: this month, or the tapped one by name', () => {
   assert.equal(pickedMonthLabel(ms, 2, now), 'This month')
   assert.equal(pickedMonthLabel(ms, 1, now), 'August')
   assert.equal(pickedMonthLabel(ms, 0, now), 'December 2025')
+})
+
+test('abroadCard: the first five payments worded, how many more, the total', () => {
+  const item = (n) => ({ id: `t${n}`, label: `Lunch ${n}`, currency: 'USD', minor: 2400, rate: 0.8523, baseMinor: 2046 })
+  const two = abroadCard({ items: [item(1), item(2)], totalBaseMinor: 4092 }, 'EUR')
+  assert.equal(two.subtitle, 'This month, in EUR')
+  const { from, ...first } = two.rows[0]
+  assert.deepEqual(first, { id: 't1', label: 'Lunch 1', rate: '0.8523', to: '€20.46' })
+  assert.match(from, /24\.00$/)
+  assert.equal(two.more, null)
+  assert.equal(two.total, '€40.92')
+  const seven = abroadCard({ items: [1, 2, 3, 4, 5, 6, 7].map(item), totalBaseMinor: 7 * 2046 }, 'EUR')
+  assert.equal(seven.rows.length, 5)
+  assert.equal(seven.more, 'and 2 more, included in the total')
 })

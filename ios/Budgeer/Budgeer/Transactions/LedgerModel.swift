@@ -1,7 +1,8 @@
 // The Transactions tab's state, after the web's LedgerPage: Expenses |
-// Income | All, a period from the picker (this month by default), and the
-// search, which spans all history as on the web (up to 1,000 rows, refined
-// by the core's filterTransactions). Reads through the data layer, pending
+// Income | All, this month's entries, and the search and the Filters panel
+// (category, amounts, dates), which span all history as on the web (up to
+// 1,000 rows, the read from txnFilter.ledgerRead, refined by its
+// filterTransactions). Reads through the data layer, pending
 // rates filled as fx.js does, the figures from the core (LedgerFigures).
 import Foundation
 import Observation
@@ -21,6 +22,10 @@ final class LedgerModel {
     private(set) var periods: [HomePeriod] = []
     private(set) var periodValue = ""
     private(set) var text = ""
+    /// The Filters panel (txnFilter.EMPTY_FILTERS: categoryId, from, to, min, max).
+    private(set) var filters: JSONValue = LedgerFigures.noFilters
+    /// The panel's category choices for the type: (id, name shown).
+    private(set) var categoryOptions: [(id: String, name: String)] = []
     private(set) var page = 1
     private(set) var state: State = .loading
 
@@ -41,9 +46,14 @@ final class LedgerModel {
         self.now = now
     }
 
+    var baseCurrency: String { profile["base_currency"]?.stringValue ?? "EUR" }
+
     /// The kind the reads and the rows take (nil for All).
     var kind: String? { type == "all" ? nil : type }
-    var searching: Bool { (try? core.call("txnFilter", "isFiltering", [text, LedgerFigures.noFilters])) ?? false }
+    var searching: Bool { (try? core.call("txnFilter", "isFiltering", [text, filters])) ?? false }
+    /// Any filter of the panel set (the button's dot).
+    var hasFilters: Bool { (try? core.call("txnFilter", "isFiltering", ["", filters])) ?? false }
+    func filter(_ key: String) -> String { filters[key]?.stringValue ?? "" }
     var period: HomePeriod? { periods.first { $0.value == periodValue } ?? periods.first }
 
     /// The profile, the savings categories and the pickers' periods, then the rows.
@@ -61,6 +71,7 @@ final class LedgerModel {
             if periodValue.isEmpty || !periods.contains(where: { $0.value == periodValue }) {
                 periodValue = thisMonth.value
             }
+            await loadCategories()
             await reloadRows()
         } catch {
             if case .loaded = state { return }
@@ -71,15 +82,17 @@ final class LedgerModel {
     /// The rows for the current view, then the figures.
     func reloadRows() async {
         do {
-            let query: TxnQuery
-            if searching {
-                query = TxnQuery(kind: kind, limit: 1000)
-            } else {
-                query = TxnQuery(kind: kind, from: period?.from, to: period?.to)
-            }
+            // ledgerRead: this month, or all history narrowed by the server's filters.
+            let thisMonth: HomePeriod = try core.call("periods", "thisMonthPeriod", [JSDate(now())])
+            let read = try core.json("txnFilter", "ledgerRead", [[
+                "kind": kind.json, "filters": filters, "searching": .bool(searching),
+                "month": ["from": thisMonth.from.json, "to": thisMonth.to.json],
+            ] as JSONValue])
+            let query = TxnQuery(kind: read["kind"]?.stringValue, from: read["from"]?.stringValue, to: read["to"]?.stringValue,
+                                 categoryId: read["categoryId"]?.stringValue, limit: read["limit"]?.intValue)
             let base = profile["base_currency"]?.stringValue ?? "EUR"
-            let read = try await data.transactions.transactions(query)
-            rows = try await FxRates.fillPending(read, base: base, today: try core.isoDate(now()), fx: data.fx, core: core)
+            let answer = try await data.transactions.transactions(query)
+            rows = try await FxRates.fillPending(answer, base: base, today: try core.isoDate(now()), fx: data.fx, core: core)
             try refigure()
         } catch {
             if case .loaded = state { return } // a failed refresh keeps the list
@@ -89,8 +102,8 @@ final class LedgerModel {
 
     private func refigure() throws {
         let figures = try LedgerFigures.compute(rows: rows, profile: profile, categories: savings, kind: kind,
-                                                periodLabel: period?.label ?? "", text: text, oldest: oldest,
-                                                oldestKnown: oldestKnown, page: page, core: core)
+                                                periodLabel: period?.label ?? "", text: text, filters: filters,
+                                                oldest: oldest, oldestKnown: oldestKnown, page: page, core: core)
         state = .loaded(figures)
     }
 
@@ -98,13 +111,42 @@ final class LedgerModel {
         guard next != type else { return }
         type = next
         page = 1
+        // Categories are per kind, so switching type drops the category filter.
+        filters = filters.with("categoryId", "")
+        await loadCategories()
         await reloadRows()
     }
 
-    func setPeriod(_ value: String) async {
-        guard value != periodValue else { return }
-        periodValue = value
+    /// One of the Filters panel's fields.
+    func setFilter(_ key: String, _ value: String) async {
+        guard filter(key) != value else { return }
+        filters = filters.with(key, .string(value))
         page = 1
+        await reloadRows()
+    }
+
+    /// Clear: the text and every filter.
+    func clearAll() async {
+        text = ""
+        filters = LedgerFigures.noFilters
+        page = 1
+        await reloadRows()
+    }
+
+    /// The type's categories for the panel, by the name shown.
+    func loadCategories() async {
+        let list = (try? await data.categories.categories(kind: kind)) ?? []
+        categoryOptions = (list.arrayValue ?? []).compactMap { c in
+            guard let id = c["id"]?.stringValue else { return nil }
+            let name: String = (try? core.call("categoryName", "categoryDisplayName", [c])) ?? ""
+            return (id, name)
+        }
+    }
+
+    /// The panel's Delete-from-a-row: remove it, then read again.
+    func delete(_ row: JSONValue) async {
+        guard let id = row["id"]?.stringValue else { return }
+        try? await data.transactions.delete(id: id)
         await reloadRows()
     }
 

@@ -19,7 +19,12 @@ import { salaryShiftOf, shiftFetchFrom } from '../src/shared/lib/salaryShift.js'
 import { savingsIdsOf } from '../src/shared/lib/savings.js'
 import { paidInWindow, spendRows } from '../src/shared/lib/spread.js'
 import { rulesInBase } from '../src/shared/lib/ruleFx.js'
-import { periodTotals, periodProjection, projectedTotals, savingsLine } from '../src/features/dashboard/dashboardMath.js'
+import {
+  periodTotals, periodProjection, projectedTotals, savingsLine, barLines, homeLists, visibleBars, homeCards, netSum,
+  overviewNotes,
+} from '../src/features/dashboard/dashboardMath.js'
+import { isFirstRun, listHeading } from '../src/features/transactions/listHeading.js'
+import { listParts } from '../src/features/transactions/rowParts.js'
 import { categoryBars } from '../supabase/functions/_shared/breakdown.ts'
 import { bucketLabel, bucketLabels } from '../src/shared/lib/txnRollup.js'
 import { formatMoney, formatSigned } from '../src/shared/lib/currency.js'
@@ -74,11 +79,25 @@ export function recurringCard({ rules, rows, period, todayISO, baseCurrency, rat
   }
 }
 
+// One of Home's lists (the Expenses or Income card): its heading, what it
+// says when empty, and every row's words (rowParts.listParts); the card
+// shows them ten at a time.
+export function homeList(kind, items, { periodLabel, baseCurrency, salaryShift, savingsIds }) {
+  const head = listHeading({ kind, periodLabel, count: items.length })
+  return {
+    title: head.title,
+    subtitle: head.subtitle,
+    empty: t(kind === 'income' ? 'dashboard:noIncome' : 'dashboard:noExpenses'),
+    rows: listParts(items, { kind, baseCurrency, salaryShift, savingsIds }),
+  }
+}
+
 // Home for a period from the picker (`periodValue`, this month by default)
 // from the rows my_transactions returned for [fetchFrom, to] with p_spread,
 // the recurring rules (the projection of what's still to come, and the
-// Recurring card) and today's rates for the foreign ones.
-export function homeFigures({ rows, profile, categories, rules = [], rates = {}, now, periodValue = null, lang = 'en' }) {
+// Recurring card) and today's rates for the foreign ones. `oldest` is the
+// first transaction's date (null: none at all), for the first-run cards.
+export function homeFigures({ rows, profile, categories, rules = [], rates = {}, now, periodValue = null, oldest, lang = 'en' }) {
   setLanguage(lang)
   const date = new Date(now)
   const period = (periodValue && periodFromValue(periodValue, date)) || thisMonthPeriod(date)
@@ -95,14 +114,26 @@ export function homeFigures({ rows, profile, categories, rules = [], rates = {},
   const labels = bucketLabels([...totals.bucketRow.values()])
   // Each bar's badge as Dashboard's BucketIcon draws it: a group's share
   // wears the people icon, anything else its category's look.
-  const bars = categoryBars(totals.byCategory, NO_FOLD).map((c) => {
+  const ranked = categoryBars(totals.byCategory, NO_FOLD)
+  const lines = barLines(ranked, spend, baseCurrency)
+  const bars = ranked.map((c, i) => {
     const row = totals.bucketRow.get(c.name)
     return {
       name: c.name, label: bucketLabel(c, labels), value: c.value, share: c.share, ratio: c.ratio,
-      amount: formatMoney(c.value, baseCurrency),
+      amount: formatMoney(c.value, baseCurrency), meta: lines[i],
       group: !!row?.group_expense_id, look: categoryLook(row?.categories),
     }
   })
+  // "Show all": the top rows first (visibleBars), the button's two words.
+  const folded = visibleBars(bars, false)
+  const fold = {
+    top: folded.rows.length, hidden: folded.hidden,
+    showAll: t('dashboard:categories.showAll', { n: bars.length }),
+    showTop: t('dashboard:categories.showTop', { n: folded.rows.length }),
+  }
+  const lists = homeLists(rows, { from: period.from, to: period.to, savingsIds, salaryShift })
+  const listOptions = { periodLabel: period.label, baseCurrency, salaryShift, savingsIds }
+  const firstRun = isFirstRun({ loading: false, failed: false, count: rows.length, oldest })
   return {
     period: { value: period.value, from: period.from, to: period.to, label: period.label },
     fetchFrom: shiftFetchFrom(period.from, salaryShift) ?? period.from,
@@ -116,7 +147,14 @@ export function homeFigures({ rows, profile, categories, rules = [], rates = {},
     net: formatSigned(figures.netTotal, baseCurrency, { plus: true }),
     netTone: signTone(figures.netTotal),
     saved: savingsLine(totals.saved, figures.fromSavingsTotal, period, baseCurrency),
+    // The overview's ⓘ: How Net adds up, and what's still to come.
+    sum: netSum(figures, baseCurrency),
+    notes: overviewNotes({ proj }, baseCurrency),
     bars,
+    fold,
+    cards: homeCards({ firstRun }),
+    expenseList: homeList('expense', lists.expenses, listOptions),
+    incomeList: homeList('income', lists.income, listOptions),
     recurring: recurringCard({ rules, rows, period, todayISO, baseCurrency, rates, separateYearly }),
   }
 }
@@ -144,6 +182,7 @@ const rule = (id, amount_minor, frequency, next_run, categories, extra = {}) => 
 })
 export const FIXTURE_INPUT = {
   now: '2020-09-15T10:00:00.000Z',
+  oldest: '2020-03-15',
   profile: { base_currency: 'EUR', yearly_separate: false, salary_shift_from_day: 25, salary_category_id: SALARY },
   categories: [
     { id: SAVINGS, kind: 'income', is_savings: true },

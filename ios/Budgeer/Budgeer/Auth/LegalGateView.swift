@@ -15,7 +15,7 @@ struct LegalGateView: View {
     var body: some View {
         VStack(spacing: Theme.Space.s6) {
             Spacer()
-            IconTile(systemName: "checkmark.shield", size: 56, tone: Theme.Colors.accentFg)
+            IconTile(icon: .shieldCheck, size: 56)
             VStack(spacing: Theme.Space.s3) {
                 Text(language.t(status.isFirstAcceptance ? "privacy:gate.firstTitle" : "privacy:gate.updateTitle"))
                     .font(Theme.Fonts.heading(22, weight: .bold, lang: language.current))
@@ -76,7 +76,7 @@ struct LegalCheckErrorView: View {
     var body: some View {
         VStack(spacing: Theme.Space.s5) {
             Spacer()
-            IconTile(systemName: "wifi.exclamationmark", size: 56, tone: Theme.Colors.warning)
+            IconTile(icon: .wifiOff, size: 56, tone: .warning)
             Text(language.t("common:errors.connection"))
                 .font(Theme.Fonts.body(15, lang: language.current))
                 .foregroundStyle(Theme.Colors.textPrimary)

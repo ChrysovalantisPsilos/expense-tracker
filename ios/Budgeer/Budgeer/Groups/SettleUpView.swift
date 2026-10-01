@@ -12,70 +12,60 @@ import UIKit
 struct SettleUpView: View {
     @Bindable var model: SettleUpModel
     let onDone: () -> Void
+    /// The group's name over the title.
+    var groupName: String = ""
     @Environment(AppLanguage.self) private var language
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.Space.s4) {
-                if let message = model.message { Note(text: message, tone: Theme.Colors.textPrimary) }
-                if model.others.isEmpty {
-                    Panel { Note(text: language.t("groups:settle.addMemberFirst")) }
-                } else {
-                    Panel { fields }
-                    Button {
-                        Task { if await model.record() { onDone() } }
-                    } label: {
-                        if model.busy { ProgressView().tint(Theme.Colors.onAccent) } else { Text(language.t("groups:settle.record")) }
-                    }
-                    .buttonStyle(PrimaryButtonStyle())
-                    .disabled(model.busy)
-                    .accessibilityIdentifier("settle.record")
+        Page {
+            PageHeader(title: language.t("groups:settle.title"), eyebrow: groupName.isEmpty ? nil : groupName,
+                       back: { dismiss() })
+            if let message = model.message { Note(text: message, tone: Theme.Colors.textPrimary, size: 14) }
+            if model.others.isEmpty {
+                Panel { Note(text: language.t("groups:settle.addMemberFirst"), size: 14) }
+            } else {
+                Panel { fields }
+                Button {
+                    Task { if await model.record() { onDone() } }
+                } label: {
+                    if model.busy { ProgressView().tint(Theme.Colors.onAccent) } else { Text(language.t("groups:settle.record")) }
                 }
+                .buttonStyle(PrimaryButtonStyle())
+                .disabled(model.busy)
+                .accessibilityIdentifier("settle.record")
             }
-            .padding(Theme.Space.s4)
         }
-        .scrollDismissesKeyboard(.interactively)
-        .background(Theme.Colors.canvas.ignoresSafeArea())
-        .navigationTitle(language.t("groups:settle.title"))
-        .navigationBarTitleDisplayMode(.inline)
         .task(id: "\(model.otherId)|\(model.direction)") { await model.loadPayInfo() }
     }
 
     private var fields: some View {
         let state = model.state
-        return VStack(alignment: .leading, spacing: Theme.Space.s4) {
+        return VStack(alignment: .leading, spacing: Theme.Space.s5) {
             if !model.suggestions.isEmpty { suggestions }
             HStack(spacing: Theme.Space.s2) {
                 ChoiceButton(label: language.t("groups:settle.iPaid"), on: model.direction == "out") { model.setDirection("out") }
                 ChoiceButton(label: language.t("groups:settle.iReceived"), on: model.direction == "in") { model.setDirection("in") }
             }
-            FormRow(label: language.t(model.direction == "out" ? "groups:settle.paidTo" : "groups:settle.receivedFrom") + " *",
-                    help: state?.otherLine) {
-                Menu {
-                    Picker("", selection: Binding(get: { model.otherId }, set: { model.pickOther($0) })) {
-                        ForEach(model.others, id: \.self) { Text(model.name($0)).tag($0) }
-                    }
-                } label: {
-                    HStack {
-                        Text(model.name(model.otherId)).lineLimit(1)
-                        Spacer(minLength: 0)
-                        Image(systemName: "chevron.up.chevron.down").font(.system(size: 11))
-                    }
-                    .fieldStyle()
+            FormRow(label: language.t(model.direction == "out" ? "groups:settle.paidTo" : "groups:settle.receivedFrom"),
+                    required: true, help: state?.otherLine) {
+                SelectMenu(options: model.others.map { ($0, model.name($0)) }, value: model.otherId,
+                           label: language.t(model.direction == "out" ? "groups:settle.paidTo" : "groups:settle.receivedFrom")) {
+                    model.pickOther($0)
                 }
             }
             if let parties = state?.parties {
                 HStack(spacing: Theme.Space.s2) {
                     Text(parties.from)
-                    Image(systemName: "arrow.right").font(.system(size: 13)).foregroundStyle(Theme.Colors.textMuted)
+                    LucideIcon(icon: .arrowRight, size: 16).foregroundStyle(Theme.Colors.textMuted)
                     Text(parties.to)
                 }
-                .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
+                .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
                 .foregroundStyle(Theme.Colors.textPrimary)
                 .frame(maxWidth: .infinity)
             }
             HStack(alignment: .top, spacing: Theme.Space.s3) {
-                FormRow(label: language.t("groups:settle.amount", ["currency": .string(model.currency)]) + " *") {
+                FormRow(label: language.t("groups:settle.amount", ["currency": .string(model.currency)]), required: true) {
                     TextField("", text: Binding(get: { model.amount }, set: { model.setAmount($0) }))
                         .keyboardType(.decimalPad)
                         .fieldStyle()
@@ -92,7 +82,7 @@ struct SettleUpView: View {
 
     private var suggestions: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s2) {
-            Label(language.t("groups:settle.suggested"), systemImage: "wand.and.stars")
+            IconLabel(text: language.t("groups:settle.suggested"), icon: .wand2)
                 .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
                 .foregroundStyle(Theme.Colors.accentFg)
             ForEach(model.suggestions) { suggestion in
@@ -108,8 +98,7 @@ struct SettleUpView: View {
                     .accessibilityAddTraits(model.picked == suggestion.index ? .isSelected : [])
                     if let remind = suggestion.remind {
                         Button { Task { await model.remind(remind.memberId) } } label: {
-                            Image(systemName: "bell.badge")
-                                .font(.system(size: 17))
+                            LucideIcon(icon: .bellRing, size: 18)
                                 .foregroundStyle(Theme.Colors.textPrimary)
                                 .frame(width: 40, height: 40)
                         }
@@ -134,7 +123,7 @@ struct PayShortcutBox: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s2) {
-            Label(parts["title"]?.stringValue ?? "", systemImage: parts["kind"] == "hint" ? "info.circle" : "creditcard")
+            IconLabel(text: parts["title"]?.stringValue ?? "", icon: parts["kind"] == "hint" ? .info : .creditCard)
                 .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
                 .foregroundStyle(Theme.Colors.textPrimary)
             if parts["kind"] == "hint" {
@@ -187,7 +176,7 @@ struct PayShortcutBox: View {
     private func linkLabel(_ brand: String) -> some View {
         HStack(spacing: 4) {
             Text(brand)
-            Image(systemName: "arrow.up.right.square").font(.system(size: 12))
+            LucideIcon(icon: .externalLink, size: 14)
         }
         .font(Theme.Fonts.body(14, weight: .bold, lang: language.current))
         .foregroundStyle(Theme.Colors.onAccent)

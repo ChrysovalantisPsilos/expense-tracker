@@ -102,9 +102,14 @@ final class LedgerModelTests: XCTestCase {
 
         await model.setType("all")
         XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-09-01", to: "2020-09-30"))
-        await model.setPeriod("m:2020-8")
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-01", to: "2020-08-31"))
         XCTAssertEqual(model.row(id: "a4")?["description"], "Diner")
+        // The Filters panel: a date range searches all history between them (ledgerRead).
+        await model.setFilter("from", "2020-08-01")
+        XCTAssertTrue(model.hasFilters)
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-01", limit: 1000))
+        await model.clearAll()
+        XCTAssertFalse(model.searching)
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-09-01", to: "2020-09-30"))
     }
 
     func testASearchSpansAllHistoryAndTypingOnlyRefinesIt() async throws {

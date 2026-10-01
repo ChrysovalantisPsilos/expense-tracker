@@ -1,8 +1,10 @@
-// The Transactions tab, after the web's LedgerPage: Expenses | Income | All,
-// the search (all history) and the period picker, then the list in a card
-// headed by what it holds ("Expenses · September 2026 · 13 entries"), a
-// page at a time with the web's Paginator. A row opens the entry form; a
-// group's share is read-only. "+" adds one of the tab's kind.
+// The Transactions tab, after the web's LedgerPage on a phone: the title
+// with Add (of the type shown), Expenses | Income | All across the page,
+// then one card: the search with the Filters button (category, amounts,
+// dates in a panel that opens in place), the list's header (the receipt, or
+// income's green wallet; "Expenses · This month · 13 entries", a search's
+// net, Clear) and the rows, a page at a time. A row opens Edit; its menu
+// edits or deletes; a group's share is read-only.
 import SwiftUI
 
 @MainActor
@@ -11,176 +13,181 @@ struct TransactionsView: View {
     var onAdd: (String) -> Void = { _ in }
     var onOpen: (JSONValue) -> Void = { _ in }
     @Environment(AppLanguage.self) private var language
+    @State private var filtersOpen = false
 
     private static let types = ["expense", "income", "all"]
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: Theme.Space.s4) {
-                    Picker(language.t("transactions:ledger.typeLabel"), selection: Binding(
-                        get: { model.type }, set: { type in Task { await model.setType(type) } })) {
-                        ForEach(TransactionsView.types, id: \.self) { Text(language.t("transactions:ledger.types.\($0)")).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("ledger.type")
-                    controls
-                    Panel { list }
+        Page(refresh: { await model.reloadRows() }) {
+            PageHeader(title: language.t("transactions:ledger.title")) {
+                PageAction(icon: .plus, label: language.t("transactions:ledger.add.\(model.type)")) {
+                    onAdd(model.type == "income" ? "income" : "expense")
                 }
-                .padding(Theme.Space.s4)
+                .accessibilityIdentifier("add")
             }
-            .refreshable { await model.reloadRows() }
-            .scrollDismissesKeyboard(.interactively)
-            .background(Theme.Colors.canvas.ignoresSafeArea())
-            .navigationTitle(language.t("transactions:ledger.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    AddButton(label: language.t("transactions:ledger.add.\(model.type)")) {
-                        onAdd(model.type == "income" ? "income" : "expense")
-                    }
+            SegmentedControl(options: TransactionsView.types.map { ($0, language.t("transactions:ledger.types.\($0)")) },
+                             value: model.type, size: .sm, fitted: true) { type in Task { await model.setType(type) } }
+                .accessibilityLabel(language.t("transactions:ledger.typeLabel"))
+                .accessibilityIdentifier("ledger.type")
+            Panel {
+                VStack(alignment: .leading, spacing: 0) {
+                    search
+                    if filtersOpen { FiltersPanel(model: model).padding(.top, Theme.Space.s4) }
                 }
+                .padding(.bottom, Theme.Space.s5)
+                list
             }
         }
         .task(id: language.current) { await model.load() }
     }
 
-    /// The search field and the period picker (a search spans all history).
-    private var controls: some View {
+    /// The search field and the Filters button (its dot while a filter is set).
+    private var search: some View {
         HStack(spacing: Theme.Space.s2) {
-            HStack(spacing: Theme.Space.s2) {
-                Image(systemName: "magnifyingglass").foregroundStyle(Theme.Colors.textMuted)
+            HStack(spacing: Theme.Space.s3) {
+                LucideIcon(icon: .search, size: 16).foregroundStyle(Theme.Colors.textMuted)
                 TextField(language.t("transactions:ledger.searchPlaceholder"),
                           text: Binding(get: { model.text }, set: { model.setText($0) }))
                     .submitLabel(.search)
                     .autocorrectionDisabled()
                     .accessibilityLabel(language.t("transactions:ledger.search"))
                 if !model.text.isEmpty {
-                    Button {
-                        model.setText("")
-                    } label: {
-                        Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.Colors.textMuted)
+                    Button { model.setText("") } label: {
+                        LucideIcon(icon: .x, size: 14).foregroundStyle(Theme.Colors.textMuted).frame(width: 24, height: 24)
                     }
+                    .buttonStyle(.plain)
                     .accessibilityLabel(language.t("transactions:ledger.clearSearch"))
                 }
             }
+            .padding(.leading, -4)
             .fieldStyle()
-            if !model.searching, !model.periods.isEmpty {
-                PeriodMenu(periods: model.periods, value: model.periodValue) { value in
-                    Task { await model.setPeriod(value) }
-                }
+            Button { filtersOpen.toggle() } label: {
+                LucideIcon(icon: .slidersHorizontal, size: 16)
+                    .foregroundStyle(filtersOpen ? Theme.Colors.onAccent : Theme.Colors.textPrimary)
+                    .frame(width: 40, height: 40)
+                    .background(filtersOpen ? Theme.Colors.accentSolid : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+                    .overlay {
+                        if !filtersOpen {
+                            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).stroke(Theme.Colors.border, lineWidth: 1)
+                        }
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        if model.hasFilters && !filtersOpen {
+                            Circle().fill(Theme.Palette.brand500).frame(width: 10, height: 10)
+                                .overlay(Circle().stroke(Theme.Colors.surface, lineWidth: 2))
+                                .offset(x: 2, y: -2)
+                        }
+                    }
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(language.t(model.hasFilters ? "transactions:ledger.filtersActive" : "transactions:ledger.filters"))
+            .accessibilityIdentifier("ledger.filters")
         }
     }
 
     @ViewBuilder private var list: some View {
         switch model.state {
         case .loading:
-            ProgressView().frame(maxWidth: .infinity, minHeight: 120)
+            CardHeader(title: language.t("transactions:heading.\(model.type)"),
+                       icon: model.type == "income" ? .wallet : .receiptText, divider: true)
+            SkeletonRows(count: 8)
         case .failed(let message):
             LoadErrorBlock(message: message) { await model.load() }
         case .loaded(let figures):
-            VStack(alignment: .leading, spacing: Theme.Space.s3) {
-                HStack(spacing: Theme.Space.s3) {
-                    IconTile(systemName: model.type == "income" ? "wallet.pass" : "doc.plaintext",
-                             tone: model.type == "income" ? Theme.Colors.positive : Theme.Colors.accentFg)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(figures.title)
-                            .font(Theme.Fonts.heading(16, weight: .semibold, lang: language.current))
-                            .foregroundStyle(Theme.Colors.textPrimary)
-                        Text(figures.subtitle)
-                            .font(Theme.Fonts.body(13, lang: language.current))
-                            .foregroundStyle(Theme.Colors.textMuted)
-                            .accessibilityIdentifier("ledger.subtitle")
+            CardHeader(title: figures.title, icon: model.type == "income" ? .wallet : .receiptText,
+                       iconTone: model.type == "income" ? .positive : .accent, subtitle: figures.subtitle, divider: true) {
+                if model.searching {
+                    Button { Task { await model.clearAll() } } label: {
+                        IconLabel(text: language.t("transactions:actions.clear"), icon: .x, size: 14)
                     }
+                    .buttonStyle(.kit(.ghost, .xs))
                 }
-                Divider().overlay(Theme.Colors.border)
-                if figures.firstRun {
-                    FirstEntryBlock { onAdd("expense") }
-                } else if figures.rows.isEmpty {
-                    Text(language.t(model.searching ? "transactions:ledger.noMatch" : "transactions:ledger.empty.\(model.type)"))
-                        .font(Theme.Fonts.body(14, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
-                } else {
-                    LazyVStack(spacing: 0) {
-                        ForEach(figures.rows) { row in
-                            // A group's share is edited in its group: shown, not opened.
-                            Button {
-                                if !row.shared, let saved = model.row(id: row.id) { onOpen(saved) }
-                            } label: {
-                                EntryRowView(row: row)
-                            }
-                            .buttonStyle(.plain)
-                            if row.id != figures.rows.last?.id { Divider().overlay(Theme.Colors.border) }
-                        }
-                    }
-                    if figures.pages > 1 {
-                        Paginator(page: model.page, pages: figures.pages, position: figures.position) { model.showPage($0) }
-                    }
+            }
+            .accessibilityIdentifier("ledger.subtitle")
+            if figures.firstRun {
+                FirstEntryBlock { onAdd("expense") }
+            } else if figures.rows.isEmpty {
+                Text(language.t(model.searching ? "transactions:ledger.noMatch" : "transactions:ledger.empty.\(model.type)"))
+                    .kitText(14, color: Theme.Colors.textMuted)
+            } else {
+                TransactionListView(rows: figures.rows, saved: { model.row(id: $0) }, open: onOpen) { row in
+                    await model.delete(row)
+                }
+                if figures.pages > 1 {
+                    Paginator(page: model.page, pages: figures.pages, position: figures.position) { model.showPage($0) }
                 }
             }
         }
     }
 }
 
-/// A period picker (buildPeriods' options) as a menu showing the picked label.
-struct PeriodMenu: View {
-    let periods: [HomePeriod]
-    let value: String
-    let pick: (String) -> Void
+/// The Filters panel (opened in place): Category (any, the type's, or none),
+/// Min and Max in the base currency, From and To each behind a switch.
+@MainActor
+private struct FiltersPanel: View {
+    let model: LedgerModel
     @Environment(AppLanguage.self) private var language
+    @State private var fromOn = false
+    @State private var toOn = false
 
     var body: some View {
-        Menu {
-            ForEach(periods, id: \.value) { period in
-                Button {
-                    pick(period.value)
-                } label: {
-                    if period.value == value { Label(period.label, systemImage: "checkmark") } else { Text(period.label) }
-                }
+        VStack(alignment: .leading, spacing: Theme.Space.s3) {
+            label(language.t("transactions:ledger.category"))
+            SelectMenu(options: [("", language.t("transactions:ledger.anyCategory"))]
+                       + model.categoryOptions.map { ($0.id, $0.name) }
+                       + [("none", language.t("transactions:uncategorized"))],
+                       value: model.filter("categoryId"), label: language.t("transactions:ledger.category")) { value in
+                Task { await model.setFilter("categoryId", value) }
             }
-        } label: {
-            HStack(spacing: Theme.Space.s1) {
-                Text(periods.first { $0.value == value }?.label ?? "")
-                    .lineLimit(1)
-                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+            HStack(alignment: .top, spacing: Theme.Space.s3) {
+                amount("min", placeholder: "0")
+                amount("max", placeholder: "∞")
             }
-            .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
-            .foregroundStyle(Theme.Colors.textPrimary)
-            .padding(.horizontal, Theme.Space.s3)
-            .frame(minHeight: 44)
-            .background(Theme.Colors.surface)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).stroke(Theme.Colors.border, lineWidth: 1))
+            HStack(alignment: .top, spacing: Theme.Space.s3) {
+                date("from", on: $fromOn)
+                date("to", on: $toOn)
+            }
         }
-        .accessibilityLabel(language.t("dashboard:period"))
-        .accessibilityIdentifier("period")
+        .onAppear {
+            fromOn = !model.filter("from").isEmpty
+            toOn = !model.filter("to").isEmpty
+        }
     }
-}
 
-/// The web's Paginator: previous, "Page 2 of 5", next.
-struct Paginator: View {
-    let page: Int
-    let pages: Int
-    let position: String
-    let go: (Int) -> Void
-    @Environment(AppLanguage.self) private var language
+    private func label(_ text: String) -> some View {
+        Text(text).kitText(12, .semibold, color: Theme.Colors.textMuted)
+    }
 
-    var body: some View {
-        HStack(spacing: Theme.Space.s2) {
-            Spacer()
-            Button { go(page - 1) } label: { Image(systemName: "chevron.left") }
-                .disabled(page <= 1)
-                .accessibilityLabel(language.t("common:paginator.previous"))
-            Text(position)
-                .font(Theme.Fonts.body(12, lang: language.current))
-                .foregroundStyle(Theme.Colors.textMuted)
-            Button { go(page + 1) } label: { Image(systemName: "chevron.right") }
-                .disabled(page >= pages)
-                .accessibilityLabel(language.t("common:paginator.next"))
+    private func amount(_ key: String, placeholder: String) -> some View {
+        let currency = model.baseCurrency
+        return VStack(alignment: .leading, spacing: Theme.Space.s2) {
+            label(language.t("transactions:ledger.\(key)", ["currency": .string(currency)]))
+            TextField(placeholder, text: Binding(get: { model.filter(key) }, set: { value in
+                Task { await model.setFilter(key, value) }
+            }))
+            .keyboardType(.decimalPad)
+            .fieldStyle()
         }
-        .tint(Theme.Colors.textPrimary)
-        .padding(.top, Theme.Space.s2)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func date(_ key: String, on: Binding<Bool>) -> some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s2) {
+            HStack(spacing: Theme.Space.s2) {
+                KitSwitch(isOn: Binding(get: { on.wrappedValue }, set: { next in
+                    on.wrappedValue = next
+                    if !next { Task { await model.setFilter(key, "") } }
+                }), label: language.t("transactions:ledger.\(key)"))
+                .padding(.vertical, -12)
+                label(language.t("transactions:ledger.\(key)"))
+            }
+            if on.wrappedValue {
+                DayField(label: language.t("transactions:ledger.\(key)"), iso: Binding(
+                    get: { model.filter(key) }, set: { value in Task { await model.setFilter(key, value) } }))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -190,20 +197,12 @@ struct FirstEntryBlock: View {
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
-        VStack(spacing: Theme.Space.s3) {
-            Text(language.t("transactions:firstEntry.title"))
-                .font(Theme.Fonts.heading(17, weight: .semibold, lang: language.current))
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Text(language.t("transactions:firstEntry.text"))
-                .font(Theme.Fonts.body(14, lang: language.current))
-                .foregroundStyle(Theme.Colors.textMuted)
-                .multilineTextAlignment(.center)
+        EmptyStateBlock(icon: .receiptText, title: language.t("transactions:firstEntry.title"),
+                        text: language.t("transactions:firstEntry.text")) {
             Button(action: add) {
-                Label(language.t("transactions:firstEntry.add"), systemImage: "plus")
+                IconLabel(text: language.t("transactions:firstEntry.add"), icon: .plus)
             }
-            .buttonStyle(PrimaryButtonStyle())
+            .buttonStyle(.kit(.solid, .md))
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Space.s4)
     }
 }

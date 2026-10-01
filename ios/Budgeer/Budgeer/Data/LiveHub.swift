@@ -9,7 +9,7 @@ import Foundation
 @MainActor
 final class LiveHub {
     /// The user's own tables (realtime filtered to their rows).
-    static let owned: Set<String> = ["transactions", "categories", "recurring_rules", "budgets", "profiles"]
+    static let owned: Set<String> = ["transactions", "categories", "recurring_rules", "budgets", "profiles", "notifications"]
     /// The groups' tables: shared with co-members, so unfiltered (Row Level
     /// Security scopes the events to the user's groups and invites, as on the web).
     static let shared: Set<String> = ["groups", "group_members", "group_expenses", "settlements", "group_invites",

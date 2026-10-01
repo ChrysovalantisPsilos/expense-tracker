@@ -17,6 +17,22 @@ export function parseTxnType(value) {
 // The advanced filters (everything besides the `?q=` text).
 export const EMPTY_FILTERS = { categoryId: '', from: '', to: '', min: '', max: '' }
 
+// The Transactions page's read (listTransactions' options): this month
+// (`month`: { from, to }) of the kind, or, while searching, all history
+// (up to 1,000 rows) narrowed by the filters the server can apply — the
+// dates and a real category ("No category" can't be asked of the server;
+// filterTransactions refines it).
+export function ledgerRead({ kind, filters = EMPTY_FILTERS, searching, month }) {
+  if (!searching) return { kind, from: month.from, to: month.to }
+  return {
+    kind,
+    from: filters.from || undefined,
+    to: filters.to || undefined,
+    categoryId: filters.categoryId && filters.categoryId !== NO_CATEGORY ? filters.categoryId : undefined,
+    limit: 1000,
+  }
+}
+
 // True when the text or any advanced filter narrows the list — the page then
 // searches all history instead of showing just this month.
 export function isFiltering(text, filters) {

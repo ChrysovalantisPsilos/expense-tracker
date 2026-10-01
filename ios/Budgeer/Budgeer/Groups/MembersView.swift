@@ -10,35 +10,27 @@ import UIKit
 struct MembersView: View {
     @Bindable var model: GroupModel
     @Environment(AppLanguage.self) private var language
+    @Environment(\.dismiss) private var dismiss
     @State private var removing: MemberRow?
     @State private var email = ""
     @State private var copied = false
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.s4) {
-                if let message = model.message { Note(text: message, tone: Theme.Colors.textPrimary) }
-                if let figures = model.figures {
-                    Panel {
-                        VStack(alignment: .leading, spacing: Theme.Space.s3) {
-                            CardHeader(title: language.t("groups:members.inGroup"), icon: "person.2", subtitle: figures.members)
-                            VStack(spacing: 0) {
-                                ForEach(figures.memberRows) { row in
-                                    if row.id != figures.memberRows.first?.id { Divider().overlay(Theme.Colors.border) }
-                                    memberRow(row)
-                                }
-                            }
+        Page {
+            PageHeader(title: language.t("groups:members.title"), eyebrow: model.groupName, back: { dismiss() })
+            if let message = model.message { Note(text: message, tone: Theme.Colors.textPrimary, size: 14) }
+            if let figures = model.figures {
+                Panel(title: language.t("groups:members.inGroup"), icon: .users, subtitle: figures.members) {
+                    VStack(spacing: 0) {
+                        ForEach(figures.memberRows) { row in
+                            if row.id != figures.memberRows.first?.id { Rectangle().fill(Theme.Colors.border).frame(height: 1) }
+                            memberRow(row)
                         }
                     }
-                    if figures.myMemberId != nil { invitePanel }
                 }
+                if figures.myMemberId != nil { invitePanel }
             }
-            .padding(Theme.Space.s4)
         }
-        .scrollDismissesKeyboard(.interactively)
-        .background(Theme.Colors.canvas.ignoresSafeArea())
-        .navigationTitle(language.t("groups:members.title"))
-        .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(language.t("groups:modals.remove.title", ["name": .string(removing?.avatar.name ?? "")]),
                             isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
                             titleVisibility: .visible) {
@@ -54,37 +46,32 @@ struct MembersView: View {
     private func memberRow(_ row: MemberRow) -> some View {
         HStack(spacing: Theme.Space.s3) {
             AvatarCircle(avatar: row.avatar, size: 32)
-            Text(row.label)
-                .font(Theme.Fonts.body(15, weight: row.isMe ? .bold : .regular, lang: language.current))
-                .foregroundStyle(Theme.Colors.textPrimary)
+            Text(row.label).kitText(16, row.isMe ? .semibold : .regular)
             if let owner = row.owner {
                 Text(owner.capsLabel)
                     .font(Theme.Fonts.body(11, weight: .bold, lang: language.current))
+                    .kerning(0.5)
                     .foregroundStyle(Theme.Colors.accentFg)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
                     .background(Theme.Colors.accentSubtle)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md / 2))
+                    .clipShape(RoundedRectangle(cornerRadius: 2))
             }
             Spacer(minLength: Theme.Space.s2)
             if row.canRemove {
-                Button { removing = row } label: {
-                    Image(systemName: "person.badge.minus")
-                        .foregroundStyle(Theme.Colors.negative)
-                        .frame(width: 36, height: 36)
+                KitIconButton(icon: .userMinus, label: row.removeLabel, size: .sm, iconSize: 16, tint: Theme.Colors.accentFg) {
+                    removing = row
                 }
-                .accessibilityLabel(row.removeLabel)
             }
         }
         .frame(minHeight: 56)
     }
 
     private var invitePanel: some View {
-        Panel {
+        Panel(title: language.t("groups:members.invite.title"), icon: .mail, subtitle: language.t("groups:members.invite.subtitle")) {
             VStack(alignment: .leading, spacing: Theme.Space.s3) {
-                CardHeader(title: language.t("groups:members.invite.title"), icon: "envelope",
-                           subtitle: language.t("groups:members.invite.subtitle"))
-                FormRow(label: language.t("groups:members.invite.email"), help: language.t("groups:members.invite.emailHint")) {
+                FormRow(label: language.t("groups:members.invite.email"), required: true,
+                        help: language.t("groups:members.invite.emailHint")) {
                     TextField("", text: $email, prompt: Text(verbatim: "friend@example.com"))
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
@@ -95,7 +82,7 @@ struct MembersView: View {
                 Button {
                     Task { if await model.invite(email: email) { email = "" } }
                 } label: {
-                    Label(language.t("groups:members.invite.send"), systemImage: "envelope")
+                    IconLabel(text: language.t("groups:members.invite.send"), icon: .mail)
                 }
                 .buttonStyle(PrimaryButtonStyle())
                 .disabled(model.busy || email.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -103,9 +90,9 @@ struct MembersView: View {
                     copied = false
                     Task { await model.makeInviteLink() }
                 } label: {
-                    Label(language.t("groups:members.invite.copyLink"), systemImage: "link")
+                    IconLabel(text: language.t("groups:members.invite.copyLink"), icon: .link2)
                 }
-                .buttonStyle(OutlineButtonStyle())
+                .buttonStyle(.kit(.outline, .md, full: true))
                 .disabled(model.busy)
                 if let link = model.inviteLink { linkBox(link) }
             }

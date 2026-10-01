@@ -15,7 +15,7 @@ struct RootView: View {
             case .loading, .checkingLegal:
                 LoadingView()
             case .signedOut:
-                SignInView(model: signIn, session: session)
+                SignInView(model: signIn, session: session, site: container.config.siteURL)
             case .legalRequired(_, let status):
                 LegalGateView(status: status, session: session)
             case .legalCheckFailed(_, let message):

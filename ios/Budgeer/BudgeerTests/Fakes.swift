@@ -89,6 +89,7 @@ struct HomeFixture: Decodable {
     }
     struct Input: Decodable {
         let now: String
+        let oldest: String?
         let profile: JSONValue
         let categories: JSONValue
         let rows: JSONValue
@@ -112,7 +113,7 @@ struct HomeFixture: Decodable {
 
     func homeInput(periodValue: String? = nil) -> HomeInput {
         HomeInput(rows: input.rows, profile: input.profile, categories: input.categories, rules: input.rules,
-                  rates: input.rates, now: now, periodValue: periodValue)
+                  rates: input.rates, now: now, periodValue: periodValue, oldest: input.oldest)
     }
 }
 

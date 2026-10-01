@@ -1,6 +1,7 @@
 // Sign-in, the web's Login page's words and order: email and password, then
 // "or continue with" and the Google button (Google's own look: white, the
 // four-colour G, "Sign in with Google"). Passkeys come with their phase.
+import BudgeerCore
 import SwiftUI
 
 @MainActor
@@ -68,50 +69,69 @@ final class SignInViewModel {
 struct SignInView: View {
     @Bindable var model: SignInViewModel
     let session: SessionStore
+    /// The website (Forgot password and Sign up open there); nil leaves them out.
+    var site: String? = nil
     @Environment(AppLanguage.self) private var language
+    @Environment(AppAppearance.self) private var appearance
+    @Environment(\.colorScheme) private var scheme
     @State private var showPassword = false
     @FocusState private var focus: Field?
 
     private enum Field { case email, password }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.Space.s6) {
-                header
-                form
-                Text(language.t("common:hobby.disclaimer"))
-                    .font(Theme.Fonts.body(12, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textMuted)
-                    .multilineTextAlignment(.center)
+        VStack(spacing: 0) {
+            topBar
+            ScrollView {
+                VStack(spacing: Theme.Space.s6) {
+                    card
+                    Text(language.t("common:hobby.disclaimer"))
+                        .kitText(12, color: Theme.Colors.textMuted)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.horizontal, Theme.Space.s4)
+                .padding(.top, Theme.Space.s12)
+                .padding(.bottom, Theme.Space.s8)
             }
-            .padding(Theme.Space.s5)
-            .padding(.top, Theme.Space.s10)
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
         }
-        .scrollBounceBehavior(.basedOnSize)
         .background(Theme.Colors.canvas.ignoresSafeArea())
     }
 
-    private var header: some View {
-        VStack(spacing: Theme.Space.s2) {
-            Image(systemName: "b.circle.fill")
-                .font(.system(size: 44, weight: .bold))
-                .foregroundStyle(Theme.Palette.brand500)
-                .accessibilityHidden(true)
-            Text(language.t("auth:login.title"))
-                .font(Theme.Fonts.heading(26, weight: .bold, lang: language.current))
-                .kerning(-0.26)
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Text(language.t("auth:login.subtitle"))
-                .font(Theme.Fonts.body(15, lang: language.current))
-                .foregroundStyle(Theme.Colors.textMuted)
-                .multilineTextAlignment(.center)
+    /// The public pages' bar (PublicHeader on a phone): the mark, and the
+    /// light/dark switch.
+    private var topBar: some View {
+        HStack {
+            BrandMark(size: 26)
+            Spacer()
+            Button {
+                appearance.toggle(from: scheme)
+            } label: {
+                LucideIcon(icon: scheme == .dark ? .sun : .moon, size: 18)
+                    .foregroundStyle(Theme.Colors.textMuted)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(language.t("shell:toggleTheme"))
         }
+        .padding(.horizontal, Theme.Space.s4)
+        .padding(.vertical, Theme.Space.s1)
     }
 
-    private var form: some View {
+    private var card: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s4) {
-            VStack(alignment: .leading, spacing: Theme.Space.s2) {
-                FieldLabel(text: language.t("auth:email"))
+            VStack(spacing: Theme.Space.s2) {
+                Text(language.t("auth:login.title"))
+                    .kitHeading(24, tracking: -0.02)
+                Text(language.t("auth:login.subtitle"))
+                    .kitText(16, color: Theme.Colors.textMuted)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, Theme.Space.s2)
+            FormRow(label: language.t("auth:email"), required: true) {
                 TextField("", text: $model.email)
                     .textContentType(.emailAddress)
                     .keyboardType(.emailAddress)
@@ -123,8 +143,7 @@ struct SignInView: View {
                     .fieldStyle()
                     .accessibilityIdentifier("signin.email")
             }
-            VStack(alignment: .leading, spacing: Theme.Space.s2) {
-                FieldLabel(text: language.t("auth:password.label"))
+            FormRow(label: language.t("auth:password.label"), required: true) {
                 HStack(spacing: Theme.Space.s2) {
                     Group {
                         if showPassword {
@@ -143,18 +162,28 @@ struct SignInView: View {
                     Button {
                         showPassword.toggle()
                     } label: {
-                        Image(systemName: showPassword ? "eye.slash" : "eye")
+                        LucideIcon(icon: showPassword ? .eyeOff : .eye, size: 18)
                             .foregroundStyle(Theme.Colors.textMuted)
                             .frame(width: 32, height: 32)
                     }
+                    .buttonStyle(.plain)
                     .accessibilityLabel(language.t(showPassword ? "auth:password.hide" : "auth:password.show"))
                 }
+                .padding(.trailing, -8)
                 .fieldStyle()
+            }
+            if let site, let url = URL(string: site + "/forgot-password") {
+                HStack {
+                    Spacer()
+                    Link(language.t("auth:login.forgot"), destination: url)
+                        .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
+                        .foregroundStyle(Theme.Colors.accentFg)
+                }
+                .padding(.top, -Theme.Space.s2)
             }
             if let key = model.errorKey {
                 Text(language.t(key))
-                    .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
-                    .foregroundStyle(Theme.Colors.negative)
+                    .kitText(14, .semibold, color: Theme.Colors.negative)
                     .accessibilityIdentifier("signin.error")
             }
             Button {
@@ -167,7 +196,8 @@ struct SignInView: View {
                 }
             }
             .buttonStyle(PrimaryButtonStyle())
-            .disabled(!model.canSubmit)
+            // As on the web, Log in stays live; an empty form simply isn't sent.
+            .disabled(model.submitting || model.googleBusy)
             .accessibilityIdentifier("signin.submit")
             divider
             Button {
@@ -185,12 +215,17 @@ struct SignInView: View {
             .buttonStyle(GoogleButtonStyle())
             .disabled(model.submitting || model.googleBusy)
             .accessibilityIdentifier("signin.google")
+            if let site, let url = URL(string: site + "/login?signup=1") {
+                Link(destination: url) {
+                    SignUpLine(nodes: (try? BudgeerCore.shared.json("translate", "parseRich", [language.t("auth:login.switch")]))
+                               ?? [.string(language.t("auth:login.switch"))])
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, Theme.Space.s2)
+            }
         }
         .padding(Theme.Space.s5)
-        .background(Theme.Colors.surface)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xxl, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.xxl, style: .continuous).stroke(Theme.Colors.border, lineWidth: 1))
-        .shadow(color: Theme.Shadow.softColor, radius: Theme.Shadow.softRadius, y: Theme.Shadow.softY)
+        .panelSurface()
     }
 
     /// "or continue with" between hairlines.
@@ -198,26 +233,49 @@ struct SignInView: View {
         HStack(spacing: Theme.Space.s3) {
             Rectangle().fill(Theme.Colors.border).frame(height: 1)
             Text(language.t("auth:orContinue"))
-                .font(Theme.Fonts.body(12, lang: language.current))
-                .foregroundStyle(Theme.Colors.textMuted)
+                .kitText(12, color: Theme.Colors.textMuted)
                 .fixedSize()
             Rectangle().fill(Theme.Colors.border).frame(height: 1)
         }
     }
 }
 
+/// "Don't have an account? Sign up": the words, the action in the accent.
+private struct SignUpLine: View {
+    let nodes: JSONValue
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        (nodes.arrayValue ?? []).reduce(Text("")) { line, node in
+            if let plain = node.stringValue { return line + Text(plain).foregroundColor(Theme.Colors.textMuted) }
+            let inner = (node["children"]?.arrayValue ?? []).compactMap(\.stringValue).joined()
+            return line + Text(inner).foregroundColor(Theme.Colors.accentFg).fontWeight(.semibold)
+        }
+        .font(Theme.Fonts.body(14, lang: language.current))
+        .multilineTextAlignment(.center)
+    }
+}
+
 /// Google's button, as the web draws it: white in both themes (the mark is
 /// made for a light surface), Chakra's gray.700 text and gray.300 hairline.
 struct GoogleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        GoogleButtonBody(label: configuration.label, pressed: configuration.isPressed)
+    }
+}
+
+private struct GoogleButtonBody<Label: View>: View {
+    let label: Label
+    let pressed: Bool
     @Environment(\.isEnabled) private var isEnabled
     @Environment(AppLanguage.self) private var language
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+    var body: some View {
+        label
             .font(Theme.Fonts.body(16, weight: .semibold, lang: language.current))
             .foregroundStyle(Color(hex: 0x2D3748))
-            .frame(maxWidth: .infinity, minHeight: 44)
-            .background(configuration.isPressed ? Color(hex: 0xEDF2F7) : Color.white)
+            .frame(maxWidth: .infinity, minHeight: 40)
+            .background(pressed ? Color(hex: 0xEDF2F7) : Color.white)
             .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
                 .stroke(Color(hex: 0xCBD5E0), lineWidth: 1))
