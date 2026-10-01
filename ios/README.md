@@ -178,11 +178,16 @@ ios/Budgeer/
                          that lends it its own add), NotificationsView (the bell's page), AppLock (Face ID; its screen
                          is Lock/LockScreen), AppPin (the lock's PIN: rules, backoff) + PinKeychain (the Keychain item, PBKDF2) +
                          LockPinEntry (the lock screen's "Use PIN" slot, PinPad), ShellModel (your picture, the
-                         bell's feed), LiveRefresh
+                         bell's feed), LiveRefresh, AppPaths (a web address as a tab and its pages), WelcomeModel +
+                         WelcomeLayer (the default categories, the setup wizard or What's new, once per session) +
+                         OnboardingView + WhatsNewStoryView, TourModel + TourOverlay (the tour's coach marks,
+                         tourTarget)
     Auth/                AuthService + SupabaseAuthService (email, Google, Apple), SessionStore, SignInView,
                          LegalGateView (the documents, Accept), AppleSignIn (the nonce, Apple's button,
                          AppleAuthorizer), AccountSecurity (Settings › Security's calls: identities, the token's
-                         claims, the password, linking Google and Apple)
+                         claims, the password, linking Google and Apple), AccountAccess + SupabaseAccountAccess
+                         (sign up, the confirmation again, a reset link), AccountForms (their models),
+                         AccountPages (AuthFlowView: Sign up, Check your inbox, Forgot password)
     Push/                PushModel (the permission, asking at the right moment, the token to the server, forgetting
                          it on sign-out), ApplePush (UserNotifications, the app delegate's token and taps, PushInbox)
     Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables;
@@ -232,9 +237,10 @@ ios/Budgeer/
                          helpers), SecurityModel + SecurityView (+ DeleteAccountSheet), PrivacyModel +
                          PrivacyView (+ PrivacyRequestView, WhatsNewView), LanguageView, LockSettingsView (Face ID
                          lock: the switch and the app PIN), SettingsFigures (the
-                         plain pages' core calls), WebPage (the website's pages in Safari)
+                         plain pages' core calls), WebPage (the website's pages in Safari), HelpView (Help & FAQ)
     Categories/          CategoriesModel (+ CategoryEditorModel), CategoriesView (+ DeleteCategorySheet),
-                         CategoryEditView (+ CategoryEditHost)
+                         CategoryEditView (+ CategoryEditHost), CategoryPageFigures + CategoryPageModel +
+                         CategoryPageView (a category's page, + CategoryPageHost)
     Theme/               Theme (the web's colour tokens), NativeStyle (the coral tint, Poppins titles and money
                          figures), NativeAppearance (the bars' title faces), NativeGlass (Liquid Glass on iOS 26,
                          the standard material on iOS 17–18), NativeTabs (the floating tab bar with Add beside
@@ -278,6 +284,23 @@ a core call (the web's function); Swift reads, lays out and draws.
   first time: it goes to `user_metadata.full_name` and, while the profile
   still has the sign-up's default name, to the profile
   (`authMethods.appleProfileName`). Passkeys stay the website's.
+  **Sign up** is its own page, as the web's sign-up mode: email and
+  password with the password's rules (`authChecks.authErrors`, shown from
+  the first try), the "I'm 16 or older and I accept…" tick with the Terms
+  of Use and the Privacy Notice opening in Safari inside the app, and the
+  consent the web records as the account's metadata
+  (`legal.signupConsentMetadata`); Sign up with Google needs the same tick
+  (its consent is then the legal gate's). Without a session it goes to
+  **Check your inbox**, which signs in by itself once the link is opened on
+  any device (`confirmWait`'s schedule, the password kept in memory only),
+  with Log in when it gives up, "resend it" (then a minute's wait) and "use
+  a different email". The confirmation link itself is the website's
+  (`/auth/confirm`, as every Supabase Auth email links). **Forgot
+  password** sends the reset link (`resetPasswordForEmail`, the same answer
+  whether or not the address has an account); the email's link opens the
+  website's reset page, as the emails link to the website and the app has
+  no Universal Links yet (Associated Domains need a paid developer
+  account), so the new password is chosen there.
 - **The legal gate**: `my_legal_status` after every sign-in, failing
   closed; a new account (made with Google or Apple) or a version bump shows
   the web's prompt: the two documents (the website's pages in Safari),
@@ -293,6 +316,30 @@ a core call (the web's function); Swift reads, lays out and draws.
   push; a tap opens the notification's page (`AppRouter.open(path:)`: a
   group, Budgets, Recurring, Groups or Home), banners show while the app is
   open.
+- **What greets an account** (`WelcomeModel`, once per signed-in
+  session): the default categories when it has none (`seed_default_categories`,
+  as the web's ensureSeeded); then for a new account (`profiles.onboarded_at`
+  empty, `onboardingMath.needsOnboarding`) the **setup wizard** full screen,
+  the web's four steps: Welcome (your name and currency), Split costs with
+  friends (a first group, optional), Stay in the loop (Enable notifications:
+  `WelcomeModel.pushOptIn` is `PushModel.optIn`, what Settings ›
+  Notifications' push switch does turned on: `notify_push` on, iOS asked
+  once, this iPhone registered; not on the demo login; the web's passkey
+  offer is left out, passkeys being the website's), and the tour
+  (Start tour or Skip tour); closing it stamps it done
+  (`onboardingMath.finishFields`, the tour marked seen unless it follows);
+  a group made on the way is where it ends up. Then the **app tour**
+  (`tourSteps.tourStops('mobile')`: the web's stops and words) as coach
+  marks over the real tabs: each stop opens its tab and page, dims the
+  screen around what it is about (a page's view marked `tourTarget`, the
+  tab bar's tabs and Add, the bell and initials) with "Step 3 of 12", Skip,
+  Back and Next; a stop whose mark isn't there is passed; it picks up by
+  itself when never finished (`tourPending`), ends marked seen
+  (`profiles.tour_done`) and is in Settings as Take the tour again.
+  Otherwise **What's new** (`whatsNewMath.storyFor` over
+  `profiles.whats_new_seen`, marked seen as it opens): the story full
+  screen, a page per change with the brand's ring and its chips, "New · 1
+  of 2 · 2 Oct", the action opening that screen (`AppPaths`), Skip and Next.
 - **The data layer** (`Data/`): repositories over the web's RPCs and
   tables, every read cached on disk (per account, cleared on sign-out) and
   served when offline, and one realtime channel whose changes refetch the
@@ -539,8 +586,21 @@ a core call (the web's function); Swift reads, lays out and draws.
     icon (`categoryStyle.categoryPicker`, the web's Lucide icons), "Counts
     as savings" on an income one, Archive and Delete; Save writes what
     changed (`categoryPatch`) or the new row (`newCategoryRow`). Not here:
-    a category's entries and its budget (the web's category page; budgets
-    are on Budgets), reordering (the web has none).
+    reordering (the web has none).
+  - **A category's page** (the web's `/categories/:id`; from the list,
+    Home's By category legend and its See all, the budget rows on Home and
+    Budgets, Insights' "Where your money went" legend, as `categoryLinks`
+    links them, a group's share to its group):
+    the badge, what kind it is, the period's total (Spent, Earned or
+    Saved, by the app's spread rule: `categoryPeriod`) with the period
+    picker, the month's budget (`categoryBudget`: its bar with a carried
+    cap's month, Set a budget this month, none in a past month, monthly
+    only for a longer period), then the entries paid in the period (a tap
+    opens Edit). Its pencil opens Edit in place on an expense category:
+    this month's cap (`budgetChange`: set it, clear it to remove it, or
+    "Nothing to save"; `edit_budget`, `delete_budget`) and the category's
+    editor above; an income category's pencil opens that editor. The
+    uncategorised bucket ("none") reads the period's expenses.
   - **Monthly spending**: yearly subscriptions in monthly spending, the
     salary shift with its day and category (`spendingPrefs`).
   - **Notifications**: push (the account's switch; when iOS doesn't allow
@@ -577,15 +637,24 @@ a core call (the web's function); Swift reads, lays out and draws.
     the web's JSON file, then Share; Edit profile; your transactions in
     Activity; Delete account; Send a request, its own page; email), the
     message switches as consent, the consent history.
-  - The **Privacy Notice**, **Terms of Use**, **Help & FAQ** and the
-    **status page** open in Safari inside the app; **What's new** lists
-    every release's pages; **Contact support** opens Mail. Then Sign out
-    and the version.
+  - **Help & FAQ**, native: the intro and the hobby-project notice, a
+    search over every question (`faqContent.faqSections`: every word must
+    match; "3 answers found", or the web's line and Show all questions),
+    the sections with each question opening its answer in place (the
+    paragraphs, the numbered steps, the app's clip played from the
+    website, Copy link to this answer: `faqMath.questionLink`), then the
+    Privacy page and the service status; `/help#<question>` opens with it
+    open. The web's install sketches (drawings of a browser's menus) stay
+    on the website. **Take the tour again** starts the tour.
+  - The **Privacy Notice**, **Terms of Use** and the **status page** open
+    in Safari inside the app (the legal documents are the website's, one
+    source); **What's new** lists every release's pages; **Contact
+    support** opens Mail. Then Sign out and the version.
   - **Meal vouchers**: the setup (above), after Monthly spending as on
     the web.
   - Not yet, and not offered: Import rules (they only act on an import),
-    Your data's backup and restore (with import), the tour and the
-    live/test switch (the website's own).
+    Your data's backup and restore (with import), and the live/test
+    switch (the website's own).
 
 ### Strings
 
@@ -646,7 +715,8 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   `FakeAuthService`): `SessionStoreTests` (incl. the gate's acceptance and
   the sign-out hook), `SignInViewModelTests` (email, Google and Apple:
   success, cancelled, failed), `PushModelTests` (asked only from Settings or
-  after the first entry, never on the demo; the token with its environment;
+  after the first entry, never on the demo; the wizard's opt-in as the
+  switch; the token with its environment;
   forgotten on sign-out), `DataLayerTests` (the cache, live
   refresh), `EntryFormModelTests`, `LedgerTests`, `BudgetsTests`,
   `RecurringTests`, `InsightsTests`, `HomeViewModelTests`,
@@ -669,14 +739,22 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   ideas and the picker, Apply and Undo, Clear plan, the salary from the entries, Type a what-if,
   the year view), `SalaryModelTests` (the reads, the cards refigured without reading, before any pay,
   a correction saved whole and put back), `InsightsCardsTests` (net worth, the salary card, the
-  statement's file, an account's page).
+  statement's file, an account's page), `CategoryPageModelTests` (the web's reads, the
+  uncategorised bucket, this month's cap set, cleared and unchanged, a past month, another period,
+  an unknown id), `AppPathsTests` (the web's addresses as tabs and pages, a category link's period,
+  every What's new action), `WelcomeModelTests` (the wizard for a new account and its writes, the
+  push step's hook, a tour never finished, What's new once and marked seen, none for a new
+  account), `TourModelTests` (a phone's stops, Back and Next, seen once), `AccountFormsTests`
+  (sign-up's checks and consent, a refusal's words, Google's tick, Check your inbox signing in by
+  itself and giving up, resend's minute, the reset link).
 - Parity: each screen's fixture inputs through its `…Figures` (every step a
   core call) must give what the web's functions wrote into
-  `Fixtures/{home,ledger,budgets,recurring,insights,savings,vouchers,groups,plan,salary,networth}.json`, in
+  `Fixtures/{home,ledger,budgets,recurring,insights,savings,vouchers,groups,plan,salary,networth,category}.json`, in
   English and Greek. `npm run ios:fixture` (`mobile-core/homeFigures.mjs`,
-  `mobile-core/screenFigures.mjs`, `mobile-core/groupFigures.mjs`) rewrites
+  `mobile-core/screenFigures.mjs`, `mobile-core/groupFigures.mjs`,
+  `mobile-core/categoryFigures.mjs`) rewrites
   them from the web's source; `test/iosHome.test.js`,
-  `test/iosScreens.test.js` and `test/iosGroups.test.js` (in `npm test`)
+  `test/iosScreens.test.js`, `test/iosGroups.test.js` and `test/iosCategory.test.js` (in `npm test`)
   fail when a committed file no longer matches the web.
 - `L10nTests`: both languages bundled, the web's keys, the fallback, the
   language preference. `AppLanguageTests`: the device's first language only,
@@ -687,8 +765,12 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   Face ID fails, and the lock on a phone without Face ID.
 - `SnapshotTests`: PNGs at an iPhone 17's size (402×874) inside the frame
   (the floating tab bar, the screen's tab picked) of Sign-in (and three
-  moments of its intro), the legal gate, the lock (with "Use PIN", and the
-  PIN pad on a phone without Face ID), Home (this month, a past
+  moments of its intro), Sign up (and its checks), Check your inbox, Forgot
+  password (and the link sent), the legal gate, the lock (with "Use PIN", and the
+  PIN pad on a phone without Face ID), the setup wizard's four steps, the
+  What's new story, the tour (its first stop over Home, More in the tab
+  bar), a category's page (its budget being edited, the uncategorised
+  bucket), Help & FAQ (and an answer open), Home (this month, a past
   month that held its budgets, By category's See all), the Add sheet (as it
   comes up, Edit pulled up, Split with a group, a receipt's check and the
   receipt used), Activity, Groups (the

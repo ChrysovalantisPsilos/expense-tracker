@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  attemptOutcome, createConfirmWait, FAST_MS, FAST_PHASE_MS, GIVE_UP_MS, MIN_GAP_MS, nextDelay, SLOW_MS,
+  attemptOutcome, createConfirmWait, FAST_MS, FAST_PHASE_MS, GIVE_UP_MS, MIN_GAP_MS, nextDelay, SLOW_MS, shouldGiveUp,
 } from '../src/features/auth/confirmWait.js'
 
 const NOT_CONFIRMED = { error: { code: 'email_not_confirmed', message: 'Email not confirmed' } }
@@ -250,4 +250,11 @@ test('a sign-in that lands after stop() changes nothing', async () => {
   assert.equal(waiter.status, 'stopped')
   assert.equal(log.forgot, 1)
   assert.deepEqual(log.statuses, ['waiting', 'stopped'])
+})
+
+test('shouldGiveUp: the wait stops after fifteen minutes', () => {
+  assert.equal(GIVE_UP_MS, 15 * 60_000)
+  assert.equal(shouldGiveUp(0), false)
+  assert.equal(shouldGiveUp(GIVE_UP_MS - 1), false)
+  assert.equal(shouldGiveUp(GIVE_UP_MS), true)
 })

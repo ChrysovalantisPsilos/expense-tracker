@@ -3,7 +3,7 @@
 // the parity fixture: mobile-core/screenFigures.mjs insightsFigures): the
 // last six months (lastMonths), the rows spread and shifted (spendRows),
 // the trend (buildTrend), "Where your money went" for the picked month
-// (spendingShares, pickedMonthLabel), the six-month bars and headline
+// (spendingShares, pickedMonthLabel, each entry's link: linkBuckets), the six-month bars and headline
 // (spendingBars), and this month's income, spend, left over and change
 // (incomeFigures). Swift Charts only draws what this holds.
 import Foundation
@@ -16,6 +16,10 @@ struct ShareItem: Codable, Equatable, Sendable {
     let share: Int
     /// "Other", merging several buckets.
     let folded: Bool?
+    /// Where the entry drills down to (categoryLinks.linkBuckets: its
+    /// category's page, or its group's; none for "Other"), and its spoken name.
+    let to: String?
+    let linkLabel: String?
 }
 
 struct TrendBar: Codable, Equatable, Sendable {
@@ -99,12 +103,15 @@ struct InsightsFigures: Codable, Equatable, Sendable {
         let trend = try core.json("insightsMath", "buildTrend", [spend, months, base, savingsIds])
         let index = picked ?? (list.count - 1)
         let key = list.indices.contains(index) ? (list[index]["key"] ?? .null) : .null
+        let monthLabel: String = try core.call("insightsMath", "pickedMonthLabel", [months, index, JSDate(now)])
+        let month = (list.indices.contains(index) ? list[index] : JSONValue.object([:])).with("label", .string(monthLabel))
+        let shares = try core.json("insightsMath", "spendingShares", [spend, key, base])
         return InsightsFigures(
             fetchFrom: from.stringValue ?? "",
             fetchTo: to.stringValue ?? "",
             picked: index,
-            monthLabel: try core.call("insightsMath", "pickedMonthLabel", [months, index, JSDate(now)]),
-            shares: try core.call("insightsMath", "spendingShares", [spend, key, base]),
+            monthLabel: monthLabel,
+            shares: try core.call("categoryLinks", "linkBuckets", [shares, spend, month]),
             hasTrend: try core.call("insightsMath", "hasTrendData", [trend]),
             bars: try core.call("insightsMath", "spendingBars", [trend, index, base]),
             income: try core.call("insightsMath", "incomeFigures", [trend, base]),

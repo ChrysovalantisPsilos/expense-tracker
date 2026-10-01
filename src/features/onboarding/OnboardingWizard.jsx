@@ -16,12 +16,13 @@ import { SHORT_LANDSCAPE } from '../../shared/lib/shortLandscape.js'
 import { createGroup } from '../groups/groups.js'
 import Logo from '../../shared/ui/Logo.jsx'
 import { startTour } from './tour.js'
+import { WIZARD_STEPS, basicsFields, finishFields, wizardProgress } from './onboardingMath.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import CurrencySelect from '../../shared/ui/CurrencySelect.jsx'
 
 // The wizard's steps: welcome, first group, stay in the loop, look around.
-const STEP_COUNT = 4
+const STEP_COUNT = WIZARD_STEPS.length
 
 // Post-signup setup wizard. Shows once per account (App gates on
 // profiles.onboarded_at). Collects the essentials, folds in the notification +
@@ -64,9 +65,8 @@ export default function OnboardingWizard({ profile, onDone }) {
   // A group made on the way is where things end up.
   async function finish({ tour = false } = {}) {
     setOpen(false) // release the modal's focus trap before the tour takes over
-    const fields = { onboarded_at: new Date().toISOString(), ...(tour ? {} : { tour_done: true }) }
     try {
-      await updateProfile(user.id, fields)
+      await updateProfile(user.id, finishFields(new Date().toISOString(), tour))
     } catch { /* non-fatal — App still unmounts us via the realtime refetch */ }
     // The wizard already covered these, so don't let the separate prompts re-ask.
     try {
@@ -81,7 +81,7 @@ export default function OnboardingWizard({ profile, onDone }) {
 
   async function saveBasics() {
     await run(async () => {
-      await updateProfile(user.id, { display_name: name.trim() || null, base_currency: currency })
+      await updateProfile(user.id, basicsFields(name, currency))
       window.dispatchEvent(new Event(EVENTS.profileUpdated))
       setStep(1)
     }, { errorTitle: t('wizard.welcome.failed') })
@@ -129,7 +129,7 @@ export default function OnboardingWizard({ profile, onDone }) {
             <IconButton aria-label={t('wizard.skipSetup')} size="sm" variant="ghost"
               icon={<X size={18} />} onClick={() => finish()} />
           </HStack>
-          <Progress value={((step + 1) / STEP_COUNT) * 100} size="xs" mt={3} />
+          <Progress value={wizardProgress(step)} size="xs" mt={3} />
         </ModalHeader>
 
         {/* One height for every step, so the buttons don’t jump about (except

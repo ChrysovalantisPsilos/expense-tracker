@@ -1,7 +1,8 @@
 // Push on this iPhone over a fake system and store: iOS's question asked
 // only from Settings or once after the first entry (never on the demo
 // login), the token saved with the build's environment, a refused or failed
-// registration saved nowhere, and the token forgotten on sign-out.
+// registration saved nowhere, the setup wizard's opt-in doing what the
+// switch does, and the token forgotten on sign-out.
 import XCTest
 @testable import Budgeer
 
@@ -89,6 +90,34 @@ final class PushModelTests: XCTestCase {
         await model(store, system).askAfterFirstAction()
         XCTAssertEqual(system.asked, 0)
         XCTAssertTrue(defaults.bool(forKey: PushModel.askedKey))
+    }
+
+    func testTheWizardsOptInIsSettingsSwitch() async {
+        let store = FakeStore()
+        store.profileResult = .success(["id": "u1", "notify_push": false])
+        let system = FakePushSystem()
+        system.answer = true
+        let push = model(store, system)
+        let status = await push.optIn()
+        XCTAssertEqual(status, "subscribed")
+        XCTAssertEqual(store.settingsWrites.last?.args, ["notify_push": true])
+        XCTAssertEqual(system.asked, 1)
+        XCTAssertEqual(store.deviceTokens, ["save:\(FakePushSystem.token):sandbox"])
+
+        let refused = FakeStore()
+        refused.profileResult = .success(["id": "u1"])
+        let no = FakePushSystem()
+        let denied = await model(refused, no).optIn()
+        XCTAssertEqual(denied, "denied")
+        XCTAssertEqual(refused.deviceTokens, [])
+
+        let demo = FakeStore()
+        demo.profileResult = .success(["id": "u1", "is_demo": true])
+        let untouched = FakePushSystem()
+        let onDemo = await model(demo, untouched).optIn()
+        XCTAssertEqual(onDemo, "error")
+        XCTAssertEqual(untouched.asked, 0)
+        XCTAssertTrue(demo.settingsWrites.isEmpty)
     }
 
     func testSignOutForgetsTheToken() async {

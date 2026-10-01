@@ -50,6 +50,7 @@ import {
   bonusChoices, extrasParts, inflationParts, payChartParts, payHeadline, projectionParts, raisesParts, salaryCardParts,
   yearsParts,
 } from '../src/features/salary/salaryText.js'
+import { linkBuckets } from '../src/shared/lib/categoryLinks.js'
 import { setLanguage } from './index.js'
 
 export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
@@ -170,12 +171,15 @@ export function insightsFigures({ profile, categories, rows, now, picked = null,
     { separateYearly: !!profile?.yearly_separate, salaryShift: salaryShiftOf(profile) })
   const trend = buildTrend(spend, months, baseCurrency, savingsIdsOf(categories))
   const index = picked ?? months.length - 1
+  const monthLabel = pickedMonthLabel(months, index, date)
   return {
     fetchFrom: from,
     fetchTo: to,
     picked: index,
-    monthLabel: pickedMonthLabel(months, index, date),
-    shares: spendingShares(spend, months[index].key, baseCurrency),
+    monthLabel,
+    // Each legend entry drills down to the month's expenses in it (linkBuckets), as Insights.jsx.
+    shares: linkBuckets(spendingShares(spend, months[index].key, baseCurrency), spend,
+      { ...months[index], label: monthLabel }),
     hasTrend: hasTrendData(trend),
     bars: spendingBars(trend, index, baseCurrency),
     income: incomeFigures(trend, baseCurrency),

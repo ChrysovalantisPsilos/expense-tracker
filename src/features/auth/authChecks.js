@@ -21,3 +21,10 @@ export function authErrors({ mode, email, password, accepted }) {
 export function consentError({ mode, accepted }) {
   return mode === 'signup' && !accepted ? t('auth:signup.consentError') : null
 }
+
+// "Send reset link" goes once the address looks like one (any@thing.tld); the
+// answer never says whether it has an account.
+const RESET_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export function canSendReset(email) {
+  return RESET_EMAIL.test(String(email ?? '').trim())
+}

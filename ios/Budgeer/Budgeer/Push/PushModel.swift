@@ -71,12 +71,23 @@ final class PushModel {
         return await registerDevice()
     }
 
+    /// The setup wizard's "Enable notifications" (WelcomeModel.pushOptIn):
+    /// what Settings › Notifications' switch does when turned on (the
+    /// account's notify_push on, iOS asked once, this iPhone registered),
+    /// answered in the web's enablePush words: 'subscribed', 'denied' or
+    /// 'error'. Never on the shared demo login, as its switch is off.
+    func optIn() async -> String {
+        if await isDemo() { return "error" }
+        try? await data.profile.updateProfile(["notify_push": .bool(true)])
+        if await enable() { return "subscribed" }
+        return permission == .denied ? "denied" : "error"
+    }
+
     /// After the first entry saved: iOS's question, once per install, and
     /// never on the shared demo login (it can't register a device).
     func askAfterFirstAction() async {
         guard !defaults.bool(forKey: PushModel.askedKey) else { return }
-        if let profile = try? await data.profile.profile(),
-           (try? core.call("demoAccount", "isDemoAccount", [profile]) as Bool) == true { return }
+        if await isDemo() { return }
         guard await system.permission() == .notDetermined else {
             defaults.set(true, forKey: PushModel.askedKey)
             return
@@ -90,6 +101,11 @@ final class PushModel {
         try? await data.profile.deleteDeviceToken(token)
         self.token = nil
         registered = false
+    }
+
+    private func isDemo() async -> Bool {
+        guard let profile = try? await data.profile.profile() else { return false }
+        return (try? core.call("demoAccount", "isDemoAccount", [profile]) as Bool) == true
     }
 
     private func registerDevice() async -> Bool {

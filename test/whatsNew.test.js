@@ -3,7 +3,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  pickRelease, createSeenTracker, ringVariant, releaseDay, releaseDate, releaseText, whatsNewList,
+  pickRelease, createSeenTracker, ringVariant, releaseDay, releaseDate, releaseText, whatsNewList, storyFor,
 } from '../src/features/whatsnew/whatsNewMath.js'
 import { RELEASES } from '../src/features/whatsnew/releases.js'
 import en from '../src/locales/en/index.js'
@@ -327,4 +327,18 @@ test('no environment checks in the feature, or where App mounts it', () => {
     assert.doesNotMatch(src, /import\.meta\.env/, `${f} reads import.meta.env`)
     assert.doesNotMatch(src, /\b(location\.host(name)?|CURRENT_ENV|isDev|isProd)\b/, `${f} checks the site`)
   }
+})
+
+test('storyFor: the release to show in words (the app\'s prompt), or only what to mark seen', () => {
+  assert.deepEqual(storyFor({ seenId: null, onboardedAt: null }, ALL), { story: null, markSeen: R3.id })
+  assert.deepEqual(storyFor({ seenId: R3.id, onboardedAt: OLD_USER }, ALL), { story: null, markSeen: null })
+  const first = RELEASES[0]
+  const { story, markSeen } = storyFor({ seenId: null, onboardedAt: OLD_USER })
+  assert.equal(markSeen, first.id)
+  assert.equal(story.id, first.id)
+  assert.equal(story.day, releaseDay(first.date))
+  const words = en.whatsnew.releases[first.id]
+  assert.deepEqual(story.pages.map((p) => [p.id, p.title, p.variant, p.action?.to ?? null]),
+    first.pages.map((p) => [p.id, words[p.id].title, ringVariant(p), p.action?.to ?? null]))
+  assert.deepEqual(story.pages[0].chips, first.pages[0].chips.map((c) => words[first.pages[0].id].chips[c]))
 })

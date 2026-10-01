@@ -16,6 +16,7 @@
 import { SUPPORT_EMAIL, PRIVACY_EMAIL } from '../../shared/lib/contact.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 import en from '../../locales/en/help.js'
+import { filterFaq } from './faqMath.js'
 
 const CONTACTS = { supportEmail: SUPPORT_EMAIL, privacyEmail: PRIVACY_EMAIL }
 
@@ -126,3 +127,9 @@ export const FAQ_SECTIONS = [
     { id: 'contact-support' },
   ]),
 ]
+
+// The sections whose questions match `query` (every section for an empty
+// one), each title, question, answer and step in the app's language.
+export function faqSections(query = '') {
+  return filterFaq(FAQ_SECTIONS, query)
+}

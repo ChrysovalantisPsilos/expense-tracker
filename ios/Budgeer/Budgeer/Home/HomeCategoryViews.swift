@@ -2,7 +2,7 @@
 // was spent in its middle, and a legend with each one's amount; and a
 // category's row on its See all page (amount, share and a thin bar). The
 // figures are the core's (categoryBars, bucketLabel, formatMoney); the
-// colours kitMath's.
+// colours kitMath's. Each row opens its category's page (BarLink).
 import Charts
 import SwiftUI
 
@@ -75,6 +75,7 @@ struct CategoryDonut: View {
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(legend.enumerated()), id: \.element.name) { index, bar in
+                    BarLink(bar: bar) {
                     HStack(spacing: 8) {
                         Circle().fill(NativeSwatch.color(index, bar.name)).frame(width: 9, height: 9)
                         Text(bar.label).font(.footnote).lineLimit(1)
@@ -85,8 +86,27 @@ struct CategoryDonut: View {
                             .contentTransition(.numericText(value: bar.value))
                     }
                     .accessibilityElement(children: .combine)
+                    }
                 }
             }
+        }
+    }
+}
+
+/// A bar's row opening its category's page for the period (or its group's),
+/// as the web's bars drill down (categoryLinks.linkBuckets); the folded
+/// "Other" and a mixed bucket have no link.
+struct BarLink<Label: View>: View {
+    let bar: HomeBar
+    @ViewBuilder let label: Label
+
+    var body: some View {
+        if let route = AppPaths.route(bar.to) {
+            NavigationLink(value: route) { label }
+                .buttonStyle(.plain)
+                .accessibilityHint(bar.linkLabel ?? "")
+        } else {
+            label
         }
     }
 }

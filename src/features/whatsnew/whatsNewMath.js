@@ -63,6 +63,24 @@ export function whatsNewList(releases = RELEASES) {
   }))
 }
 
+// The story to show this account, in the app's language, and the id to
+// remember (pickRelease over RELEASES): { story: { id, day, pages } | null,
+// markSeen }. Each page has its id, title, body, chips, ring variant and,
+// when it has one, its action { to, label }. The native app's prompt.
+export function storyFor({ seenId, onboardedAt } = {}, releases = RELEASES) {
+  const { show, markSeen } = pickRelease(releases, { seenId, onboardedAt })
+  if (!show) return { story: null, markSeen }
+  const text = releaseText(show, (key) => t(`whatsnew:${key}`))
+  return {
+    story: {
+      id: show.id,
+      day: releaseDay(show.date),
+      pages: text.pages.map((p) => ({ ...p, variant: ringVariant(p) })),
+    },
+    markSeen,
+  }
+}
+
 // Fixed English month names: Intl's short months differ by ICU version ("Sept").
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
   'August', 'September', 'October', 'November', 'December']

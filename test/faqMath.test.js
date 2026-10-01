@@ -5,7 +5,7 @@ import {
   normalizeText, filterFaq, countItems, anchorFromHash, openIndexes, applyOpenIndexes, questionLink,
   clipSources,
 } from '../src/features/help/faqMath.js'
-import { FAQ_SECTIONS } from '../src/features/help/faqContent.js'
+import { FAQ_SECTIONS, faqSections } from '../src/features/help/faqContent.js'
 
 const SECTIONS = [
   { id: 'money', title: 'Currencies', items: [
@@ -126,4 +126,16 @@ test('FAQ media is well formed: known install platforms, and every clip is on di
   }
   const platforms = items.filter((i) => i.media?.type === 'install').map((i) => i.media.platform)
   assert.deepEqual([...platforms].sort(), [...INSTALL_PLATFORMS].sort(), 'one install guide per platform')
+})
+
+test('faqSections: every section for no query, the matching ones in words for a query', () => {
+  assert.equal(faqSections(), FAQ_SECTIONS)
+  const found = faqSections('passkey')
+  assert.ok(found.length > 0 && found.every((s) => s.items.length > 0))
+  assert.ok(found.flatMap((s) => s.items).some((i) => i.id === 'passkeys'))
+  // As JSON (the native app's core): the words are there, not getters.
+  const json = JSON.parse(JSON.stringify(faqSections()))
+  assert.equal(json[0].title, FAQ_SECTIONS[0].title)
+  assert.equal(json[0].items[0].q, FAQ_SECTIONS[0].items[0].q)
+  assert.deepEqual(json[0].items[0].a, FAQ_SECTIONS[0].items[0].a)
 })

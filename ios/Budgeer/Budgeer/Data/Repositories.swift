@@ -99,6 +99,8 @@ protocol CategoriesRepository: Sendable {
     /// deleteCategory (delete_category): its entries moved to `moveTo` first
     /// (nil: left uncategorised); how many moved.
     func deleteCategory(id: String, moveTo: String?) async throws -> Int
+    /// ensureSeeded: the default categories (seed_default_categories) when the account has none.
+    func ensureDefaultCategories() async throws
 }
 
 protocol SavingsRepository: Sendable {

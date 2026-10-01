@@ -2,7 +2,8 @@
 // mark drawing itself as the website's loader does): email and password, then
 // "or continue with", the Google button (Google's own look: white, the
 // four-colour G, "Sign in with Google") and Apple's (its own button: black,
-// or white in dark mode). Passkeys stay the website's.
+// or white in dark mode); Forgot password and Sign up open their own pages
+// (AuthFlowView). Passkeys stay the website's.
 import BudgeerCore
 import SwiftUI
 
@@ -94,8 +95,9 @@ final class SignInViewModel {
 struct SignInView: View {
     @Bindable var model: SignInViewModel
     let session: SessionStore
-    /// The website (Forgot password and Sign up open there); nil leaves them out.
-    var site: String? = nil
+    /// Sign up and Forgot password (AuthFlowView's pages); nil leaves them out.
+    var onSignUp: (() -> Void)? = nil
+    var onForgot: (() -> Void)? = nil
     @Environment(AppLanguage.self) private var language
     @State private var showPassword = false
     @FocusState private var focus: Field?
@@ -137,7 +139,7 @@ struct SignInView: View {
                 // As on the web, Log in stays live; an empty form simply isn't sent.
                 .disabled(model.submitting || model.googleBusy || model.appleBusy)
                 .accessibilityIdentifier("signin.submit")
-                divider
+                AuthDivider()
                 Button {
                     Task { await model.signInWithGoogle(session: session) }
                 } label: {
@@ -157,11 +159,13 @@ struct SignInView: View {
                 .disabled(model.submitting || model.googleBusy || model.appleBusy)
                 .overlay { if model.appleBusy { ProgressView() } }
                 .accessibilityIdentifier("signin.apple")
-                if let site, let url = URL(string: site + "/login?signup=1") {
-                    Link(destination: url) {
-                        SignUpLine(nodes: (try? BudgeerCore.shared.json("translate", "parseRich", [language.t("auth:login.switch")]))
+                if let onSignUp {
+                    Button(action: onSignUp) {
+                        SwitchLine(nodes: (try? BudgeerCore.shared.json("translate", "parseRich", [language.t("auth:login.switch")]))
                                    ?? [.string(language.t("auth:login.switch"))])
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("signin.signup")
                 }
                 Text(language.t("common:hobby.disclaimer"))
                     .font(.caption)
@@ -218,16 +222,21 @@ struct SignInView: View {
             }
             .padding(.horizontal, 16)
             .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            if let site, let url = URL(string: site + "/forgot-password") {
-                Link(language.t("auth:login.forgot"), destination: url)
+            if let onForgot {
+                Button(language.t("auth:login.forgot"), action: onForgot)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(NativeStyle.tint)
+                    .accessibilityIdentifier("signin.forgot")
             }
         }
     }
+}
 
-    /// "or continue with" between hairlines.
-    private var divider: some View {
+/// "or continue with" between hairlines (sign-in and sign-up).
+struct AuthDivider: View {
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
         HStack(spacing: 12) {
             Rectangle().fill(Color.primary.opacity(0.12)).frame(height: 1)
             Text(language.t("auth:orContinue")).font(.caption).foregroundStyle(.secondary).fixedSize()
@@ -236,8 +245,9 @@ struct SignInView: View {
     }
 }
 
-/// "Don't have an account? Sign up": the words, the action in the accent.
-private struct SignUpLine: View {
+/// "Don't have an account? Sign up" (and sign-up's "Already have one? Log
+/// in"): the words, the action in the accent.
+struct SwitchLine: View {
     let nodes: JSONValue
 
     var body: some View {
