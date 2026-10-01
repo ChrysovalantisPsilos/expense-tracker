@@ -1,8 +1,8 @@
-// The More tab, after the web's: Money (Insights, Recurring: each a page
-// the tab pushes), the account (who is signed in, sign out), the language
-// (the web's "Follow my device" / English / Ελληνικά) and the build
-// (version, which Supabase project a Dev build talks to). Settings proper
-// come with their phase.
+// The More tab, after the web's More page: "More", then Money (Insights,
+// Recurring: the pages the app has) and Account (Settings), each a card of
+// links. Settings, after the web's: Profile (your picture, name and email),
+// Preferences (Appearance, Language: each its own page of choices), Sign
+// out, and the build (version, which Supabase project a Dev build talks to).
 import SwiftUI
 
 @MainActor
@@ -12,84 +12,29 @@ struct MoreView: View {
     let user: AuthUser
     /// Where a language chosen here is saved for the account (ProfileLanguage).
     let profiles: ProfileRepository
-    /// The Money section's pages, in the web's order.
-    var pages: [MorePage] = []
+    /// Open one of More's pages.
+    let open: (ShellRoute) -> Void
     @Environment(AppLanguage.self) private var language
 
-    /// The picker's selection: a choice applies here at once and is saved to
-    /// the profile, as Settings › Language on the web.
-    private var languageChoice: Binding<String> {
-        Binding(get: { language.preference }, set: { next in
-            guard next != language.preference else { return }
-            language.preference = next
-            Task { await ProfileLanguage.save(language, profiles: profiles) }
-        })
-    }
-
     var body: some View {
-        NavigationStack {
-            List {
-                if !pages.isEmpty {
-                    Section(language.t("shell:more.money")) {
-                        ForEach(pages) { page in
-                            NavigationLink {
-                                page.view
-                            } label: {
-                                HStack(spacing: Theme.Space.s3) {
-                                    IconTile(systemName: page.icon, tone: Theme.Colors.accentFg)
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(language.t("shell:nav.\(page.id)"))
-                                            .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
-                                            .foregroundStyle(Theme.Colors.textPrimary)
-                                        Text(language.t("shell:more.\(page.id)"))
-                                            .font(Theme.Fonts.body(13, lang: language.current))
-                                            .foregroundStyle(Theme.Colors.textMuted)
-                                    }
-                                }
-                            }
-                            .accessibilityIdentifier("more.\(page.id)")
-                        }
-                    }
+        Page {
+            PageHeader(title: language.t("shell:nav.more"))
+            NavList(label: language.t("shell:more.money")) {
+                NavRow(icon: .trendingUp, label: language.t("shell:nav.insights"), description: language.t("shell:more.insights")) {
+                    open(.insights)
                 }
-                Section(language.t("ios:more.account")) {
-                    if let email = user.email {
-                        Text(email)
-                            .font(Theme.Fonts.body(15, lang: language.current))
-                            .foregroundStyle(Theme.Colors.textPrimary)
-                    }
-                    Button(role: .destructive) {
-                        Task { await session.signOut() }
-                    } label: {
-                        Text(language.t("shell:signOut"))
-                            .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
-                    }
-                    .accessibilityIdentifier("more.signOut")
+                .accessibilityIdentifier("more.insights")
+                NavRow(icon: .repeat, label: language.t("shell:nav.recurring"), description: language.t("shell:more.recurring")) {
+                    open(.recurring)
                 }
-                Section(language.t("settings:language.title")) {
-                    Picker(language.t("settings:language.title"), selection: languageChoice) {
-                        Text(language.t("settings:language.system")).tag(AppLanguage.system)
-                        ForEach(AppLanguage.languages, id: \.self) { lang in
-                            Text(AppLanguage.nativeNames[lang] ?? lang).tag(lang)
-                        }
-                    }
-                    .pickerStyle(.inline)
-                    .labelsHidden()
-                }
-                Section(language.t("ios:more.about")) {
-                    Text(language.t("ios:more.version", ["version": .string(MoreView.version)]))
-                        .font(Theme.Fonts.body(15, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
-                    if config.environment == .dev {
-                        Text(language.t("ios:more.devProject"))
-                            .font(Theme.Fonts.body(13, lang: language.current))
-                            .foregroundStyle(Theme.Colors.warning)
-                    }
-                }
+                .accessibilityIdentifier("more.recurring")
             }
-            .scrollContentBackground(.hidden)
-            .background(Theme.Colors.canvas.ignoresSafeArea())
-            .navigationTitle(language.t("shell:nav.more"))
-            .navigationBarTitleDisplayMode(.inline)
+            NavList(label: language.t("shell:more.account")) {
+                NavRow(icon: .settings, label: language.t("shell:nav.settings"), description: language.t("shell:more.settings")) {
+                    open(.settings)
+                }
+                .accessibilityIdentifier("more.settings")
+            }
         }
     }
 
@@ -102,10 +47,144 @@ struct MoreView: View {
     }
 }
 
-/// A page the More tab opens: its id is the web's (shell:nav.<id>,
-/// shell:more.<id> name and describe it).
-struct MorePage: Identifiable {
-    let id: String
-    let icon: String
-    let view: AnyView
+/// Settings: what the app can set so far, laid out as the web's Settings.
+@MainActor
+struct SettingsView: View {
+    let config: AppConfig
+    let session: SessionStore
+    let user: AuthUser
+    /// The profile's name and initials (the frame's).
+    let name: String
+    let initials: String
+    let back: () -> Void
+    let open: (ShellRoute) -> Void
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        Page {
+            PageHeader(title: language.t("settings:title"), back: back)
+            NavList(label: language.t("settings:sections.profile")) {
+                NavRow(label: name.isEmpty ? (user.email ?? "") : name, description: name.isEmpty ? nil : user.email,
+                       chevron: false, action: {}) {
+                    ShellAvatar(initials: initials, size: 48)
+                }
+            }
+            NavList(label: language.t("settings:sections.preferences")) {
+                NavRow(icon: .palette, label: language.t("settings:rows.appearance.label"),
+                       description: language.t("settings:rows.appearance.desc")) { open(.appearance) }
+                    .accessibilityIdentifier("settings.appearance")
+                NavRow(icon: .languages, label: language.t("settings:rows.language.label"),
+                       description: language.t("settings:rows.language.desc")) { open(.language) }
+                    .accessibilityIdentifier("settings.language")
+            }
+            NavList {
+                NavRow(icon: .logOut, label: language.t("settings:rows.signOut.label"), chevron: false) {
+                    Task { await session.signOut() }
+                }
+                .accessibilityIdentifier("more.signOut")
+            }
+            VStack(alignment: .leading, spacing: Theme.Space.s1) {
+                SectionLabel(text: language.t("ios:more.about"))
+                Text(language.t("ios:more.version", ["version": .string(MoreView.version)]))
+                    .kitText(14, color: Theme.Colors.textMuted)
+                if config.environment == .dev {
+                    Text(language.t("ios:more.devProject")).kitText(12, color: Theme.Colors.warning)
+                }
+            }
+            .padding(.horizontal, Theme.Space.s1)
+        }
+    }
+}
+
+/// Settings › Language (LanguageSettings): Follow my device (and what it is
+/// now), English, Ελληνικά; a choice applies at once and is saved to the
+/// profile.
+@MainActor
+struct LanguageSettingsView: View {
+    let profiles: ProfileRepository
+    let back: () -> Void
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        Page {
+            PageHeader(title: language.t("settings:language.title"), eyebrow: language.t("settings:title"), back: back)
+            Text(language.t("settings:language.description")).kitText(14, color: Theme.Colors.textMuted)
+            ChoiceList(options: [AppLanguage.system] + AppLanguage.languages, value: language.preference) { value in
+                guard value != language.preference else { return }
+                language.preference = value
+                Task { await ProfileLanguage.save(language, profiles: profiles) }
+            } row: { value in
+                if value == AppLanguage.system {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: Theme.Space.s2) {
+                            LucideIcon(icon: .smartphone, size: 16)
+                            Text(language.t("settings:language.system"))
+                        }
+                        Text(language.t("settings:language.systemNow",
+                                        ["language": .string(AppLanguage.nativeNames[language.deviceLanguage] ?? "")]))
+                            .kitText(14, color: Theme.Colors.textMuted)
+                    }
+                } else {
+                    Text(AppLanguage.nativeNames[value] ?? value)
+                }
+            }
+        }
+    }
+}
+
+/// Settings › Appearance (AppearanceSettings): Light, Dark or System.
+@MainActor
+struct AppearanceSettingsView: View {
+    let back: () -> Void
+    @Environment(AppLanguage.self) private var language
+    @Environment(AppAppearance.self) private var appearance
+
+    var body: some View {
+        Page {
+            PageHeader(title: language.t("settings:appearance.title"), eyebrow: language.t("settings:title"), back: back)
+            Text(language.t("settings:appearance.description")).kitText(14, color: Theme.Colors.textMuted)
+            ChoiceList(options: ["light", "dark", "system"], value: appearance.stored ?? "system") { value in
+                appearance.set(value == "system" ? nil : value)
+            } row: { value in
+                HStack(spacing: Theme.Space.s2) {
+                    LucideIcon(icon: value == "light" ? .sun : value == "dark" ? .moon : .monitor, size: 16)
+                    Text(language.t("settings:appearance.\(value)"))
+                }
+            }
+        }
+    }
+}
+
+/// A card of choices (the settings' pickers): each a full-width row, the
+/// picked one on sand with a check.
+struct ChoiceList<Row: View>: View {
+    let options: [String]
+    let value: String
+    let pick: (String) -> Void
+    @ViewBuilder var row: (String) -> Row
+
+    var body: some View {
+        VStack(spacing: Theme.Space.s1) {
+            ForEach(options, id: \.self) { option in
+                let on = option == value
+                Button { pick(option) } label: {
+                    HStack(spacing: Theme.Space.s3) {
+                        row(option)
+                            .kitText(16, .semibold)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        if on { LucideIcon(icon: .check, size: 18).foregroundStyle(Theme.Colors.accentFg) }
+                    }
+                    .padding(.horizontal, Theme.Space.s3)
+                    .padding(.vertical, Theme.Space.s3)
+                    .background(on ? Theme.Colors.subtle : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(Theme.Space.s2)
+        .panelSurface()
+    }
 }

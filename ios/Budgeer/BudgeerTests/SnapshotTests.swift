@@ -1,8 +1,10 @@
-// Pictures of every screen (light, dark, Greek) with the fixture's fake
-// data, at an iPhone 15's size. Each PNG is attached to the test and, when
-// SNAPSHOT_DIR is set (CI passes it as TEST_RUNNER_SNAPSHOT_DIR), written
-// there for the workflow's artifact. Nothing is compared: these are for
-// looking at.
+// Pictures of every screen (light, dark, Greek) with the fixtures' fake
+// data, in the app's frame (the top bar, the bottom bar with the screen's
+// tab lit, the floating Add where the web has it) at an iPhone 15's width:
+// "<name>.png" the whole page, "<name>-top.png" what the phone shows first.
+// Each PNG is attached to the test and, when SNAPSHOT_DIR is set (CI passes
+// it as TEST_RUNNER_SNAPSHOT_DIR), written there for the workflow's
+// artifact. Nothing is compared: these are for looking at.
 import SwiftUI
 import XCTest
 import BudgeerCore
@@ -11,6 +13,9 @@ import BudgeerCore
 @MainActor
 final class SnapshotTests: XCTestCase {
     private static let size = CGSize(width: 393, height: 852)
+    private static let variants = [("en", false), ("en", true), ("el", false)]
+    private static let config = AppConfig(environment: .dev, supabaseURL: URL(string: "https://example.supabase.co")!,
+                                          supabaseAnonKey: "test")
 
     override func tearDown() {
         try? BudgeerCore.shared.setLanguage("en")
@@ -18,32 +23,44 @@ final class SnapshotTests: XCTestCase {
     }
 
     func testSignInSnapshots() throws {
-        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+        for (lang, dark) in SnapshotTests.variants {
             let language = language(lang)
             let session = SessionStore(auth: FakeAuthService())
-            let view = SignInView(model: SignInViewModel(), session: session).environment(language)
-            try snapshot(view, name: "signin-\(lang)\(dark ? "-dark" : "")", dark: dark)
+            let view = SignInView(model: SignInViewModel(), session: session, site: "https://dev.budgeer.com")
+            try shots(view, language, name: "signin", lang: lang, dark: dark, height: 1000)
         }
     }
 
     func testHomeSnapshots() async throws {
         let fixture = try HomeFixture.load()
-        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+        for (lang, dark) in SnapshotTests.variants {
             let language = language(lang)
             let now = fixture.now
             let store = FakeStore(home: fixture)
             store.oldest = .success("2020-03-15")
-            let model = HomeViewModel(data: store.data, core: .shared, now: { now })
+            store.vouchersResult = .success(HomeViewModelTests.vouchers)
+            store.budgetsByPeriod = ["2020-09-01": [HomeViewModelTests.groceriesCap]]
+            store.profileResult = .success(fixture.input.profile.with("ai_month_summary", true))
+            store.summaryResult = .success(["summary": ["lines": [
+                "You spent €319.30 so far, most of it on groceries.", "Eating out is close to its budget.",
+            ], "lang": .string(lang)], "stale": false, "empty": false])
+            let model = HomeViewModel(data: store.data, core: .shared, now: { now }, defaults: defaults())
             await model.load()
-            XCTAssertEqual(model.state, .loaded(try XCTUnwrap(fixture.thisMonth(lang))))
-            let view = HomeView(model: model).environment(language)
-            try snapshot(view, name: "home-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1700)
+            let view = ShellChrome(tab: .home, badge: "1", unreadCount: 1, initials: "SM", fab: true) {
+                NavigationStack { HomeView(model: model) }
+            }
+            try shots(view, language, name: "home", lang: lang, dark: dark, height: 3400)
+            // The overview in words.
+            model.pickTab("words")
+            let words = ShellChrome(tab: .home, initials: "SM", fab: true) { NavigationStack { HomeView(model: model) } }
+            try snapshot(words.environment(language).environment(appearance()), name: "home-words-\(suffix(lang, dark))",
+                         dark: dark, height: SnapshotTests.size.height)
         }
     }
 
     func testEntryFormSnapshots() async throws {
         let now = TestData.now
-        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+        for (lang, dark) in SnapshotTests.variants {
             let language = language(lang)
             let store = FakeStore()
             store.categoriesResult = .success(TestData.categories)
@@ -54,8 +71,9 @@ final class SnapshotTests: XCTestCase {
             add.setAmount("12.99")
             add.pickCategory("c-fun")
             add.setDescription("Streaming")
-            try snapshot(EntryFormView(model: add) { _ in }.environment(language),
-                         name: "add-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1500)
+            try shots(ShellChrome(tab: .transactions, initials: "SM") {
+                NavigationStack { EntryFormView(model: add) { _ in } }
+            }, language, name: "add", lang: lang, dark: dark, height: 1700)
             // Edit: a saved expense.
             let row: JSONValue = ["id": "t1", "kind": "expense", "amount_minor": 4250, "currency": "EUR",
                                   "exchange_rate": 1, "category_id": "c-food", "description": "Market", "notes": "Weekly shop",
@@ -63,15 +81,16 @@ final class SnapshotTests: XCTestCase {
                                   "savings_from_income": false, "paid_from_savings": false, "paid_with_vouchers": false]
             let edit = EntryFormModel(mode: .edit, transaction: row, data: store.data, core: .shared, now: { now })
             await edit.load()
-            try snapshot(EntryFormView(model: edit) { _ in }.environment(language),
-                         name: "edit-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1100)
+            try shots(ShellChrome(tab: .transactions, initials: "SM") {
+                NavigationStack { EntryFormView(model: edit) { _ in } }
+            }, language, name: "edit", lang: lang, dark: dark, height: 1400)
         }
     }
 
     func testTransactionsSnapshots() async throws {
         let fixture = try LedgerFixture.load()
         let now = fixture.now
-        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+        for (lang, dark) in SnapshotTests.variants {
             let language = language(lang)
             let store = FakeStore()
             store.profileResult = .success(fixture.input.profile)
@@ -81,44 +100,67 @@ final class SnapshotTests: XCTestCase {
             let model = LedgerModel(data: store.data, core: .shared, now: { now })
             await model.load()
             await model.setType("all")
-            try snapshot(TransactionsView(model: model).environment(language),
-                         name: "transactions-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1300)
+            try shots(ShellChrome(tab: .transactions, initials: "SM") {
+                NavigationStack { TransactionsView(model: model) }
+            }, language, name: "transactions", lang: lang, dark: dark, height: 1500)
         }
     }
 
     func testBudgetsSnapshots() async throws {
         let fixture = try BudgetsFixture.load()
         let now = fixture.now
-        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+        for (lang, dark) in SnapshotTests.variants {
             let language = language(lang)
             let model = BudgetsModel(data: fixture.store("own").data, core: .shared, now: { now })
             await model.load()
-            try snapshot(BudgetsView(model: model).environment(language),
-                         name: "budgets-\(lang)\(dark ? "-dark" : "")", dark: dark)
+            try shots(ShellChrome(tab: .budgets, initials: "SM", fab: true) {
+                NavigationStack { BudgetsView(model: model) }
+            }, language, name: "budgets", lang: lang, dark: dark, height: 1100)
         }
     }
 
     func testRecurringSnapshots() async throws {
         let fixture = try RecurringFixture.load()
-        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+        for (lang, dark) in SnapshotTests.variants {
             let language = language(lang)
             let model = RecurringModel(data: fixture.store().data, core: .shared)
             await model.load()
             model.group = "monthly"
-            try snapshot(NavigationStack { RecurringView(model: model) }.environment(language),
-                         name: "recurring-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1100)
+            try shots(ShellChrome(tab: .more, initials: "SM") {
+                NavigationStack { RecurringView(model: model, back: {}) }
+            }, language, name: "recurring", lang: lang, dark: dark, height: 1100)
         }
     }
 
     func testInsightsSnapshots() async throws {
         let fixture = try InsightsFixture.load()
         let now = fixture.now
-        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+        for (lang, dark) in SnapshotTests.variants {
             let language = language(lang)
             let model = InsightsModel(data: fixture.store().data, core: .shared, now: { now })
             await model.load()
-            try snapshot(NavigationStack { InsightsView(model: model) }.environment(language),
-                         name: "insights-\(lang)\(dark ? "-dark" : "")", dark: dark, height: 1100)
+            try shots(ShellChrome(tab: .more, initials: "SM") {
+                NavigationStack { InsightsView(model: model, back: {}) }
+            }, language, name: "insights", lang: lang, dark: dark, height: 1300)
+        }
+    }
+
+    func testMoreSnapshots() throws {
+        for (lang, dark) in SnapshotTests.variants {
+            let language = language(lang)
+            let session = SessionStore(auth: FakeAuthService(user: .sample))
+            let store = FakeStore()
+            try shots(ShellChrome(tab: .more, initials: "SM") {
+                NavigationStack {
+                    MoreView(config: SnapshotTests.config, session: session, user: .sample, profiles: store.data.profile) { _ in }
+                }
+            }, language, name: "more", lang: lang, dark: dark, height: SnapshotTests.size.height)
+            try shots(ShellChrome(tab: .more, initials: "SM") {
+                NavigationStack {
+                    SettingsView(config: SnapshotTests.config, session: session, user: .sample, name: "Sam Morgan",
+                                 initials: "SM", back: {}) { _ in }
+                }
+            }, language, name: "settings", lang: lang, dark: dark, height: SnapshotTests.size.height)
         }
     }
 
@@ -126,25 +168,27 @@ final class SnapshotTests: XCTestCase {
         let fixture = try GroupsFixture.load()
         let now = fixture.now
         let user = AuthUser.sample.id.uuidString.lowercased()
-        for (lang, dark) in [("en", false), ("en", true), ("el", false)] {
+        for (lang, dark) in SnapshotTests.variants {
             let language = language(lang)
-            let suffix = "\(lang)\(dark ? "-dark" : "")"
             let store = fixture.store()
             let live = LiveHub()
             // The Groups tab: an invite and two groups.
             let list = GroupsModel(data: store.data, userId: user)
             await list.load()
-            try snapshot(GroupsView(model: list, data: store.data, live: live, site: "https://dev.budgeer.com")
-                .environment(language), name: "groups-\(suffix)", dark: dark)
+            try shots(ShellChrome(tab: .groups, initials: "SM") {
+                GroupsView(model: list, data: store.data, live: live, site: "https://dev.budgeer.com", path: .constant([]))
+            }, language, name: "groups", lang: lang, dark: dark, height: SnapshotTests.size.height)
             // A group's page, seen by its owner.
             let group = GroupModel(groupId: fixture.groupId, userId: user, site: "https://dev.budgeer.com",
                                    data: store.data, now: { now })
             await group.load()
-            try snapshot(NavigationStack { GroupPageView(model: group, live: live) }.environment(language),
-                         name: "group-\(suffix)", dark: dark, height: 1500)
+            try shots(ShellChrome(tab: .groups, initials: "SM") {
+                NavigationStack { GroupPageView(model: group, live: live) }
+            }, language, name: "group", lang: lang, dark: dark, height: 1700)
             group.tab = "activity"
-            try snapshot(NavigationStack { GroupPageView(model: group, live: live) }.environment(language),
-                         name: "group-activity-\(suffix)", dark: dark, height: 1500)
+            try shots(ShellChrome(tab: .groups, initials: "SM") {
+                NavigationStack { GroupPageView(model: group, live: live) }
+            }, language, name: "group-activity", lang: lang, dark: dark, height: 1700)
             // Add an expense, split by amounts.
             let form = group.expenseForm(expenseId: nil)
             form.setDescription("Taxi")
@@ -152,15 +196,18 @@ final class SnapshotTests: XCTestCase {
             form.pickMode("exact")
             form.setShare("m1", "40")
             form.setShare("m2", "20")
-            try snapshot(NavigationStack { GroupExpenseView(model: form) { _ in } }.environment(language),
-                         name: "group-expense-\(suffix)", dark: dark, height: 1300)
+            try shots(ShellChrome(tab: .groups, initials: "SM") {
+                NavigationStack { GroupExpenseView(model: form) { _ in } }
+            }, language, name: "group-expense", lang: lang, dark: dark, height: 1500)
             // Settle up, on the biggest payment you're part of.
             let settle = try XCTUnwrap(group.settleUp())
-            try snapshot(NavigationStack { SettleUpView(model: settle) {} }.environment(language),
-                         name: "group-settle-\(suffix)", dark: dark, height: 1100)
+            try shots(ShellChrome(tab: .groups, initials: "SM") {
+                NavigationStack { SettleUpView(model: settle, onDone: {}, groupName: group.groupName) }
+            }, language, name: "group-settle", lang: lang, dark: dark, height: 1300)
             // Members, with a share link made.
-            try snapshot(NavigationStack { MembersView(model: group) }.environment(language),
-                         name: "group-members-\(suffix)", dark: dark, height: 1100)
+            try shots(ShellChrome(tab: .groups, initials: "SM") {
+                NavigationStack { MembersView(model: group) }
+            }, language, name: "group-members", lang: lang, dark: dark, height: 1300)
             // Add, with "Who's it for?" on a group: its quick form.
             let mine = MyGroupsModel(data: store.data, userId: user)
             await mine.load()
@@ -170,17 +217,41 @@ final class SnapshotTests: XCTestCase {
                                                                   "currencyPicked": false, "description": "Snacks",
                                                                   "spentAt": "2026-09-19"],
                                           quick: true, data: store.data, now: { now })
-            try snapshot(NavigationStack {
-                GroupExpenseView(model: quick) { _ in } lead: {
-                    WhoForChips(groups: mine.groups, value: "g-lisbon") { _ in }
+            try shots(ShellChrome(tab: .transactions, initials: "SM") {
+                NavigationStack {
+                    GroupExpenseView(model: quick, onDone: { _ in }, back: {}) {
+                        WhoForChips(groups: mine.groups, value: "g-lisbon") { _ in }
+                    }
                 }
-            }.environment(language), name: "add-group-\(suffix)", dark: dark, height: 1100)
+            }, language, name: "add-group", lang: lang, dark: dark, height: 1300)
         }
     }
 
+    // MARK: Helpers
+
     private func language(_ lang: String) -> AppLanguage {
-        let defaults = UserDefaults(suiteName: "SnapshotTests")!
-        return AppLanguage(preference: lang, defaults: defaults, deviceLanguages: ["en"])
+        AppLanguage(preference: lang, defaults: defaults(), deviceLanguages: ["en"])
+    }
+
+    private func defaults() -> UserDefaults { UserDefaults(suiteName: "SnapshotTests")! }
+
+    /// The frame's light/dark switch, left to the system (the window's style).
+    private func appearance() -> AppAppearance {
+        let appearance = AppAppearance(defaults: defaults())
+        appearance.set(nil)
+        return appearance
+    }
+
+    private func suffix(_ lang: String, _ dark: Bool) -> String { "\(lang)\(dark ? "-dark" : "")" }
+
+    /// The whole page (`height` tall) and the phone's first screenful.
+    private func shots<V: View>(_ view: V, _ language: AppLanguage, name: String, lang: String, dark: Bool,
+                                height: CGFloat) throws {
+        let dressed = view.environment(language).environment(appearance())
+        try snapshot(dressed, name: "\(name)-\(suffix(lang, dark))", dark: dark, height: height)
+        if height > SnapshotTests.size.height {
+            try snapshot(dressed, name: "\(name)-\(suffix(lang, dark))-top", dark: dark, height: SnapshotTests.size.height)
+        }
     }
 
     private func snapshot<V: View>(_ view: V, name: String, dark: Bool, height: CGFloat = SnapshotTests.size.height) throws {
@@ -195,7 +266,7 @@ final class SnapshotTests: XCTestCase {
         window.rootViewController = host
         window.makeKeyAndVisible()
         host.view.layoutIfNeeded()
-        // Let SwiftUI settle its first layout and the tab bar's rendering.
+        // Let SwiftUI settle its first layout.
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.6))
         let image = UIGraphicsImageRenderer(bounds: window.bounds).image { context in
             if !window.drawHierarchy(in: window.bounds, afterScreenUpdates: true) {

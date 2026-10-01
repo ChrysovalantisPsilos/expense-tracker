@@ -9,6 +9,8 @@ struct BudgeerApp: App {
     private let container: AppContainer?
     private let configError: String?
     @State private var language = AppLanguage()
+    /// Light or dark as the top bar's switch (or Settings › Appearance) left it.
+    @State private var appearance = AppAppearance()
 
     init() {
         do {
@@ -30,6 +32,8 @@ struct BudgeerApp: App {
                 }
             }
             .environment(language)
+            .environment(appearance)
+            .preferredColorScheme(appearance.scheme)
             .tint(Theme.Colors.accentFg)
         }
     }
@@ -42,8 +46,7 @@ struct ConfigErrorView: View {
 
     var body: some View {
         VStack(spacing: Theme.Space.s4) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 40))
+            LucideIcon(icon: .alertTriangle, size: 40)
                 .foregroundStyle(Theme.Colors.warning)
             Text(message)
                 .font(.system(size: 14, design: .monospaced))

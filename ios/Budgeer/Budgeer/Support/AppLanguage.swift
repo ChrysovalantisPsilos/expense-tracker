@@ -79,6 +79,11 @@ final class AppLanguage: @unchecked Sendable {
         return answer["push"]?.stringValue
     }
 
+    /// The language the device asks for (language.deviceLanguage): "Now: English".
+    var deviceLanguage: String {
+        (try? core.call("language", "deviceLanguage", [deviceLanguages])) ?? "en"
+    }
+
     /// profiles.language for the preference (language.profileValue): the
     /// language, or nil to follow the device.
     var profileValue: String? {

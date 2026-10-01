@@ -11,43 +11,37 @@ import SwiftUI
 @MainActor
 struct InsightsView: View {
     let model: InsightsModel
+    var back: (() -> Void)? = nil
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.Space.s4) {
-                switch model.state {
-                case .loading:
-                    Panel { ProgressView().frame(maxWidth: .infinity, minHeight: 160) }
-                case .failed(let message):
-                    Panel { LoadErrorBlock(message: message) { await model.load() } }
-                case .loaded(let figures):
-                    spending(figures)
-                    income(figures)
-                }
+        Page(refresh: { await model.load() }) {
+            PageHeader(title: language.t("insights:title"), back: back)
+            switch model.state {
+            case .loading:
+                Panel(title: language.t("insights:spending.title")) { SkeletonRows(count: 3) }
+            case .failed(let message):
+                Panel { LoadErrorBlock(message: message) { await model.load() } }
+            case .loaded(let figures):
+                spending(figures)
+                income(figures)
             }
-            .padding(Theme.Space.s4)
         }
-        .refreshable { await model.load() }
-        .background(Theme.Colors.canvas.ignoresSafeArea())
-        .navigationTitle(language.t("insights:title"))
-        .navigationBarTitleDisplayMode(.inline)
         .task(id: language.current) { await model.load() }
     }
 
     // MARK: Where your money went
 
     private func spending(_ figures: InsightsFigures) -> some View {
-        Panel {
-            VStack(alignment: .leading, spacing: Theme.Space.s4) {
-                CardTitle(title: language.t("insights:spending.title"), subtitle: figures.monthLabel)
+        Panel(title: language.t("insights:spending.title"), subtitle: figures.monthLabel) {
+            VStack(alignment: .leading, spacing: Theme.Space.s5) {
                 if figures.shares.isEmpty {
-                    Note(text: language.t("insights:spending.empty"))
+                    Text(language.t("insights:spending.empty")).kitText(14, color: Theme.Colors.textMuted)
                 } else {
                     StackedShares(items: figures.shares)
                 }
                 if figures.hasTrend {
-                    SectionHead(label: language.t("insights:lastMonths"), aside: figures.bars.aside)
+                    SectionLabel(text: language.t("insights:lastMonths"), aside: figures.bars.aside)
                     Chart {
                         ForEach(Array(figures.bars.bars.enumerated()), id: \.offset) { index, bar in
                             BarMark(x: .value("month", bar.label), y: .value("spent", bar.value), width: .ratio(0.6))
@@ -83,40 +77,24 @@ struct InsightsView: View {
     // MARK: Income vs expenses
 
     private func income(_ figures: InsightsFigures) -> some View {
-        Panel {
-            VStack(alignment: .leading, spacing: Theme.Space.s4) {
-                HStack(alignment: .firstTextBaseline) {
-                    CardTitle(title: language.t("insights:income.title"), subtitle: nil)
-                    Spacer(minLength: Theme.Space.s2)
-                    if let delta = figures.income.delta {
-                        HStack(spacing: 2) {
-                            Image(systemName: delta > 0 ? "arrow.up.right" : "arrow.down.right")
-                            Text("\(abs(delta))%")
-                            Text(language.t("insights:income.vsLastMonth"))
-                                .foregroundStyle(Theme.Colors.textMuted)
-                                .fontWeight(.regular)
-                        }
-                        .font(Theme.Fonts.body(13, weight: .bold, lang: language.current))
-                        .foregroundStyle(delta > 0 ? Theme.Colors.negative : Theme.Colors.positive)
+        Panel(title: language.t("insights:income.title")) {
+            VStack(alignment: .leading, spacing: Theme.Space.s5) {
+                VStack(alignment: .leading, spacing: Theme.Space.s3) {
+                    SectionLabel(text: language.t("insights:thisMonth"))
+                    HStack(spacing: Theme.Space.s2) {
+                        BalanceTile(label: language.t("insights:income.income"), value: figures.income.income, tone: .positive)
+                        BalanceTile(label: language.t("insights:income.spent"), value: figures.income.spent)
                     }
+                    // Figure, inline: the label, then the value at the end.
+                    HStack {
+                        Text(language.t("insights:income.leftOver")).kitText(14, color: Theme.Colors.textMuted)
+                        Spacer()
+                        Text(figures.income.net.text).kitHeading(16, color: Tone(name: figures.income.net.tone).color, tracking: 0)
+                    }
+                    .accessibilityElement(children: .combine)
                 }
-                SectionHead(label: language.t("insights:thisMonth"), aside: nil)
-                HStack(spacing: Theme.Space.s3) {
-                    BalanceTile(label: language.t("insights:income.income"), value: figures.income.income, tone: .positive)
-                    BalanceTile(label: language.t("insights:income.spent"), value: figures.income.spent)
-                }
-                HStack {
-                    Text(language.t("insights:income.leftOver"))
-                        .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
-                    Spacer()
-                    Text(figures.income.net.text)
-                        .font(Theme.Fonts.heading(18, weight: .bold, lang: language.current))
-                        .foregroundStyle(tone(figures.income.net.tone))
-                }
-                .accessibilityElement(children: .combine)
                 if figures.hasTrend {
-                    SectionHead(label: language.t("insights:lastMonths"), aside: nil)
+                    SectionLabel(text: language.t("insights:lastMonths"))
                     let income = language.t("insights:income.income")
                     let expenses = language.t("insights:income.expenses")
                     Chart {
@@ -146,65 +124,26 @@ struct InsightsView: View {
                     .chartLegend(position: .bottom)
                     .frame(height: 220)
                 } else {
-                    Note(text: language.t("insights:income.empty"))
+                    Text(language.t("insights:income.empty")).kitText(14, color: Theme.Colors.textMuted)
                 }
             }
-        }
-    }
-
-    private func tone(_ name: String) -> Color {
-        switch name {
-        case "positive": return Theme.Colors.positive
-        case "negative": return Theme.Colors.negative
-        default: return Theme.Colors.textMuted
+        } action: {
+            if let delta = figures.income.delta {
+                // SpendDelta: up is the bad direction for spending; the words drop on a phone.
+                HStack(spacing: 4) {
+                    LucideIcon(icon: delta > 0 ? .arrowUpRight : .arrowDownRight, size: 16)
+                    Text("\(abs(delta))%")
+                }
+                .font(Theme.Fonts.body(14, weight: .bold, lang: language.current))
+                .foregroundStyle(delta > 0 ? Theme.Colors.negative : Theme.Colors.positive)
+                .accessibilityLabel("\(abs(delta))% " + language.t("insights:income.vsLastMonth"))
+            }
         }
     }
 
     /// A y-axis tick in major units, worded by the core as the web's money charts word it.
     static func axisTick(_ amount: Double) -> String {
         (try? BudgeerCore.shared.call("chartAxis", "axisTick", [amount]) as String) ?? ""
-    }
-}
-
-/// A card's heading and its muted subtitle.
-private struct CardTitle: View {
-    let title: String
-    let subtitle: String?
-    @Environment(AppLanguage.self) private var language
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(Theme.Fonts.heading(16, weight: .semibold, lang: language.current))
-                .foregroundStyle(Theme.Colors.textPrimary)
-            if let subtitle {
-                Text(subtitle)
-                    .font(Theme.Fonts.body(13, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textMuted)
-            }
-        }
-    }
-}
-
-/// The web's SectionLabel: a small caps label with an aside at the end.
-private struct SectionHead: View {
-    let label: String
-    let aside: String?
-    @Environment(AppLanguage.self) private var language
-
-    var body: some View {
-        HStack {
-            Text(label.capsLabel)
-                .font(Theme.Fonts.body(11, weight: .bold, lang: language.current))
-                .kerning(0.6)
-                .foregroundStyle(Theme.Colors.textMuted)
-            Spacer(minLength: Theme.Space.s2)
-            if let aside {
-                Text(aside)
-                    .font(Theme.Fonts.body(13, weight: .semibold, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textPrimary)
-            }
-        }
     }
 }
 
@@ -232,13 +171,9 @@ private struct StackedShares: View {
                 ForEach(Array(items.enumerated()), id: \.offset) { index, item in
                     HStack(spacing: Theme.Space.s2) {
                         Circle().fill(StackedShares.swatch(index, item)).frame(width: 8, height: 8)
-                        Text(item.label)
-                            .font(Theme.Fonts.body(13, lang: language.current))
-                            .foregroundStyle(Theme.Colors.textPrimary)
-                            .lineLimit(1)
-                        Text("\(item.share)%")
-                            .font(Theme.Fonts.body(13, weight: .semibold, lang: language.current))
-                            .foregroundStyle(Theme.Colors.textMuted)
+                        Text(item.label).kitText(12, color: Theme.Colors.textMuted).lineLimit(1)
+                        Spacer(minLength: Theme.Space.s1)
+                        Text("\(item.share)%").kitText(12, .bold)
                     }
                     .accessibilityElement(children: .combine)
                 }

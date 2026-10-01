@@ -1,50 +1,44 @@
-// The Recurring page (from More), after the web's: Subscriptions | Income.
-// Subscriptions: one chip per frequency the user has (Weekly · Monthly ·
-// Quarterly · Yearly), each with its total per period (about how much a
-// month, the rates notes) and its rules; Income: what the income rules
-// bring in a month and the rules. Each rule has its pause switch; a tap
-// opens it in the entry form (Repeat always on); its menu removes it. No
-// "add" here, as on the web: a recurring entry is added from Add with
-// Repeat on (the empty tabs lead there).
+// The Recurring page (from More), after the web's: back and "Recurring",
+// then one card with Subscriptions | Income as line tabs. Subscriptions: a
+// pill per frequency the user has (Weekly · Monthly · Quarterly · Yearly),
+// each with its total per period (about how much a month, the rates notes)
+// and its rules; Income: what the income rules bring in a month and the
+// rules. A rule opens in the entry form (Repeat always on); its ⋮ menu
+// pauses or resumes it, edits or removes it. No "add" here, as on the web:
+// a recurring entry is added from Add with Repeat on (the empty tabs lead
+// there).
 import SwiftUI
 
 @MainActor
 struct RecurringView: View {
     @Bindable var model: RecurringModel
+    var back: (() -> Void)? = nil
     var onOpen: (JSONValue) -> Void = { _ in }
     var onAdd: (String) -> Void = { _ in }
     @Environment(AppLanguage.self) private var language
     @State private var removing: RuleRow?
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Theme.Space.s4) {
-                if let message = model.message { Note(text: message, tone: Theme.Colors.textPrimary) }
-                Panel {
-                    switch model.state {
-                    case .loading:
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 120)
-                    case .failed(let message):
-                        LoadErrorBlock(message: message) { await model.load() }
-                    case .loaded(let figures):
-                        VStack(alignment: .leading, spacing: Theme.Space.s4) {
-                            Picker("", selection: $model.tab) {
-                                Text(language.t("recurring:list.tabs.subscriptions")).tag("expense")
-                                Text(language.t("recurring:list.tabs.income")).tag("income")
-                            }
-                            .pickerStyle(.segmented)
+        Page(refresh: { await model.load() }) {
+            PageHeader(title: language.t("recurring:list.title"), back: back)
+            if let message = model.message { Note(text: message, tone: Theme.Colors.textPrimary, size: 14) }
+            Panel {
+                switch model.state {
+                case .loading:
+                    SkeletonRows(count: 5)
+                case .failed(let message):
+                    LoadErrorBlock(message: message) { await model.load() }
+                case .loaded(let figures):
+                    VStack(alignment: .leading, spacing: Theme.Space.s4) {
+                        LineTabs(options: [("expense", language.t("recurring:list.tabs.subscriptions")),
+                                           ("income", language.t("recurring:list.tabs.income"))],
+                                 value: model.tab) { model.tab = $0 }
                             .accessibilityIdentifier("recurring.tab")
-                            if model.tab == "income" { income(figures.income) } else { subscriptions(figures.groups) }
-                        }
+                        if model.tab == "income" { income(figures.income) } else { subscriptions(figures.groups) }
                     }
                 }
             }
-            .padding(Theme.Space.s4)
         }
-        .refreshable { await model.load() }
-        .background(Theme.Colors.canvas.ignoresSafeArea())
-        .navigationTitle(language.t("recurring:list.title"))
-        .navigationBarTitleDisplayMode(.inline)
         .task(id: language.current) { await model.load() }
         .confirmationDialog(language.t("recurring:list.remove.title"), isPresented: Binding(
             get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible) {
@@ -64,20 +58,8 @@ struct RecurringView: View {
         } else {
             let shown = groups.first { $0.key == model.group } ?? groups[0]
             if groups.count > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Space.s1) {
-                        ForEach(groups) { group in
-                            Button(group.label) { model.group = group.key }
-                                .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
-                                .foregroundStyle(group.key == shown.key ? Theme.Colors.accentFg : Theme.Colors.textMuted)
-                                .padding(.horizontal, Theme.Space.s3)
-                                .padding(.vertical, 6)
-                                .background(group.key == shown.key ? Theme.Colors.accentSubtle : Color.clear)
-                                .clipShape(Capsule())
-                        }
-                    }
-                }
-                .accessibilityLabel(language.t("recurring:list.byFrequency"))
+                PillTabs(options: groups.map { ($0.key, $0.label) }, value: shown.key) { model.group = $0 }
+                    .accessibilityLabel(language.t("recurring:list.byFrequency"))
             }
             TotalBlock(total: shown.total, positive: false)
             rows(shown.rows)
@@ -89,7 +71,7 @@ struct RecurringView: View {
             empty(title: "recurring:list.emptyIncome.title", text: "recurring:list.incomeIntro",
                   add: "recurring:list.emptyIncome.add", kind: "income")
         } else {
-            Note(text: language.t("recurring:list.incomeIntro"))
+            Text(language.t("recurring:list.incomeIntro")).kitText(14, color: Theme.Colors.textMuted)
             TotalBlock(total: income.total, label: language.t("recurring:list.recurringIncome"), positive: true)
             rows(income.rows)
         }
@@ -98,29 +80,30 @@ struct RecurringView: View {
     private func rows(_ rows: [RuleRow]) -> some View {
         VStack(spacing: 0) {
             ForEach(rows) { row in
-                RuleRowView(row: row, onToggle: { on in Task { await model.setActive(row, on) } },
-                            onRemove: { removing = row })
-                    .contentShape(Rectangle())
-                    .onTapGesture { if let rule = model.rule(id: row.id) { onOpen(rule) } }
-                if row.id != rows.last?.id { Divider().overlay(Theme.Colors.border) }
+                RuleRowView(row: row, actions: [
+                    RowAction(label: language.t(row.active ? "recurring:row.pause" : "recurring:row.resume"),
+                              icon: row.active ? .pause : .play) {
+                        Task { await model.setActive(row, !row.active) }
+                    },
+                    RowAction(label: language.t("common:actions.edit"), icon: .pencil) { open(row) },
+                    RowAction(label: language.t("common:actions.delete"), icon: .trash2, danger: true) { removing = row },
+                ])
+                .contentShape(Rectangle())
+                .onTapGesture { open(row) }
+                .accessibilityAddTraits(.isButton)
             }
         }
     }
 
+    private func open(_ row: RuleRow) {
+        if let rule = model.rule(id: row.id) { onOpen(rule) }
+    }
+
     private func empty(title: String, text: String, add: String, kind: String) -> some View {
-        VStack(spacing: Theme.Space.s3) {
-            Text(language.t(title))
-                .font(Theme.Fonts.heading(17, weight: .semibold, lang: language.current))
-                .foregroundStyle(Theme.Colors.textPrimary)
-            Text(language.t(text))
-                .font(Theme.Fonts.body(14, lang: language.current))
-                .foregroundStyle(Theme.Colors.textMuted)
-                .multilineTextAlignment(.center)
-            Button { onAdd(kind) } label: { Label(language.t(add), systemImage: "plus") }
-                .buttonStyle(PrimaryButtonStyle())
+        EmptyStateBlock(title: language.t(title), text: language.t(text)) {
+            Button { onAdd(kind) } label: { IconLabel(text: language.t(add), icon: .plus, size: 18) }
+                .buttonStyle(.kit(.solid, .md))
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Space.s4)
     }
 }
 
@@ -129,88 +112,43 @@ private struct TotalBlock: View {
     let total: RuleTotal
     var label: String? = nil
     let positive: Bool
-    @Environment(AppLanguage.self) private var language
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s1) {
-            HStack(alignment: .lastTextBaseline) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(label ?? total.label ?? "")
-                        .font(Theme.Fonts.body(13, weight: .semibold, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
-                    Text(total.value)
-                        .font(Theme.Fonts.heading(22, weight: .bold, lang: language.current))
-                        .foregroundStyle(positive ? Theme.Colors.positive : Theme.Colors.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
-                }
-                Spacer(minLength: Theme.Space.s2)
-                if let perMonth = total.perMonth { Note(text: perMonth) }
+            HStack(alignment: .bottom, spacing: Theme.Space.s3) {
+                Figure(label: label ?? total.label ?? "", value: total.value, tone: positive ? .positive : .default, size: .lg)
+                Spacer(minLength: 0)
+                if let perMonth = total.perMonth { Text(perMonth).kitText(14, color: Theme.Colors.textMuted) }
             }
             if let converted = total.converted { Note(text: converted) }
-            if let missing = total.missing { Note(text: missing, tone: Theme.Colors.warning) }
+            if let missing = total.missing { Note(text: missing) }
         }
         .accessibilityElement(children: .combine)
     }
 }
 
 /// One rule (RuleRow): badge, name, the muted line with the reminder and
-/// paused tags, the amount with its hint, the pause switch and a menu.
+/// paused tags, the amount with its hint, dimmed while paused, then ⋮.
 private struct RuleRowView: View {
     let row: RuleRow
-    let onToggle: (Bool) -> Void
-    let onRemove: () -> Void
-    @Environment(AppLanguage.self) private var language
+    let actions: [RowAction]
 
     var body: some View {
-        HStack(alignment: .center, spacing: Theme.Space.s3) {
-            HStack(alignment: .top, spacing: Theme.Space.s3) {
-                CategoryBadge(look: row.look)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(row.title)
-                        .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                    Text(row.meta.joined(separator: " · "))
-                        .font(Theme.Fonts.body(13, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
-                        .fixedSize(horizontal: false, vertical: true)
+        ItemRow(title: row.title, amount: row.amount, amountTone: row.tone == "positive" ? .positive : .default,
+                amountMeta: row.hint, dimmed: !row.active) {
+            CategoryBadge(look: row.look)
+        } meta: {
+            VStack(alignment: .leading, spacing: 3) {
+                MetaText(text: row.meta.joined(separator: " · "))
+                if row.remind != nil || row.paused != nil {
                     HStack(spacing: Theme.Space.s1) {
-                        if let remind = row.remind { tag(Label(remind, systemImage: "bell"), accent: true) }
-                        if let paused = row.paused { tag(Text(paused), accent: false) }
+                        if let remind = row.remind { KitTag(text: remind, tone: .accent, pill: true, icon: .bell) }
+                        if let paused = row.paused { KitTag(text: paused, tone: .muted, pill: true) }
                     }
                 }
-                Spacer(minLength: Theme.Space.s2)
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(row.amount)
-                        .font(Theme.Fonts.body(15, weight: .bold, lang: language.current))
-                        .foregroundStyle(row.tone == "positive" ? Theme.Colors.positive : Theme.Colors.textPrimary)
-                    if let hint = row.hint { Note(text: hint) }
-                }
             }
-            .opacity(row.active ? 1 : 0.55)
-            Toggle(language.t(row.active ? "recurring:row.pause" : "recurring:row.resume"),
-                   isOn: Binding(get: { row.active }, set: onToggle))
-                .labelsHidden()
-                .tint(Theme.Colors.accentSolid)
-            Menu {
-                Button(role: .destructive, action: onRemove) {
-                    Label(language.t("common:actions.delete"), systemImage: "trash")
-                }
-            } label: {
-                Image(systemName: "ellipsis").foregroundStyle(Theme.Colors.textMuted).frame(width: 24, height: 44)
-            }
-            .accessibilityLabel(language.t("common:actions.moreActions"))
+        } trailing: {
+            RowActionsMenu(actions: actions)
         }
-        .padding(.vertical, Theme.Space.s2)
-    }
-
-    private func tag<Content: View>(_ content: Content, accent: Bool) -> some View {
-        content
-            .font(Theme.Fonts.body(11, weight: .semibold, lang: language.current))
-            .foregroundStyle(accent ? Theme.Colors.accentFg : Theme.Colors.textMuted)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(accent ? Theme.Colors.accentSubtle : Theme.Colors.subtle)
-            .clipShape(Capsule())
     }
 }

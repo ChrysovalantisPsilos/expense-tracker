@@ -20,7 +20,7 @@ import FirstEntry from './FirstEntry.jsx'
 import { isFirstRun, ledgerSummary, listHeading } from './listHeading.js'
 import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
 import { useCategories, useSavingsIds } from '../../shared/lib/categories.js'
-import { isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS } from './txnFilter.js'
+import { isFiltering, filterTransactions, ledgerRead, netBaseMinor, EMPTY_FILTERS } from './txnFilter.js'
 import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { parseLedgerParams, withLedgerParams } from './ledgerLinks.js'
 import { addEntryLink } from '../../shared/lib/addLinks.js'
@@ -77,14 +77,7 @@ export default function LedgerPage() {
 
   const searching = isFiltering(text, filters)
   const month = monthRange()
-  const { rows, loading, error, reload, mutate } = useTransactions(searching ? {
-    kind,
-    from: filters.from || undefined,
-    to: filters.to || undefined,
-    // "No category" can't be asked of the server; filterTransactions refines it.
-    categoryId: filters.categoryId && filters.categoryId !== NO_CATEGORY ? filters.categoryId : undefined,
-    limit: 1000,
-  } : { kind, from: month.from, to: month.to })
+  const { rows, loading, error, reload, mutate } = useTransactions(ledgerRead({ kind, filters, searching, month }))
   const { categories, loading: categoriesLoading } = useCategories(kind)
   // Whether anything was ever logged (null: nothing; undefined: not known),
   // rechecked as the live rows change.

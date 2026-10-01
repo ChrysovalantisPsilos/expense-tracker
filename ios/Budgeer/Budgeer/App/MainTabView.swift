@@ -11,6 +11,9 @@ enum ShellRoute: Hashable {
     case entry(EntrySheet)
     case insights
     case recurring
+    case settings
+    case language
+    case appearance
 }
 
 /// Which page each tab shows; tapping a lit tab goes back to its first page.
@@ -72,6 +75,13 @@ final class ShellRouter {
         }
     }
 
+    /// The picture in the top bar: Settings, under More (as the web's /settings).
+    func openSettings() {
+        tab = .more
+        more = NavigationPath()
+        more.append(ShellRoute.settings)
+    }
+
     /// A web path (a notification's, bellMath.notificationPath) as a tab and page.
     func open(path: String) {
         if path == "/" { tab = .home; home = NavigationPath() }
@@ -104,36 +114,31 @@ struct MainTabView: View {
     private var userId: String { user.id.uuidString.lowercased() }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ShellHeader(unread: shell?.badge, unreadCount: shell?.unreadCount ?? 0, initials: shell?.initials ?? "",
-                        onBell: { bellOpen = true; Task { await shell?.opened() } },
-                        onAvatar: { router.select(.more) })
-                .popover(isPresented: $bellOpen, attachmentAnchor: .point(.topTrailing), arrowEdge: .top) {
-                    BellList(model: shell) { item in
-                        bellOpen = false
-                        if let path = item.path { router.open(path: path) }
-                    }
-                    .environment(language)
-                    .presentationCompactAdaptation(.popover)
-                }
-            ZStack(alignment: .bottomTrailing) {
-                ZStack {
-                    ForEach(AppTab.allCases, id: \.self) { tab in
-                        page(tab)
-                            .opacity(router.tab == tab ? 1 : 0)
-                            .allowsHitTesting(router.tab == tab)
-                            .accessibilityHidden(router.tab != tab)
-                    }
-                }
-                if router.atRoot, shell?.showsAdd(router.tab.path) ?? false {
-                    AddFab { router.push(.entry(EntrySheet.add(data: container.data))) }
-                        .padding(.trailing, Theme.Space.s4)
-                        .padding(.bottom, Theme.Space.s4)
+        ShellChrome(tab: router.tab, badge: shell?.badge, unreadCount: shell?.unreadCount ?? 0,
+                    initials: shell?.initials ?? "",
+                    fab: router.atRoot && (shell?.showsAdd(router.tab.path) ?? false),
+                    onBell: { bellOpen = true; Task { await shell?.opened() } },
+                    onAvatar: { router.openSettings() },
+                    onTab: { router.select($0) },
+                    onAdd: { router.push(.entry(EntrySheet.add(data: container.data))) }) {
+            ZStack {
+                ForEach(AppTab.allCases, id: \.self) { tab in
+                    page(tab)
+                        .opacity(router.tab == tab ? 1 : 0)
+                        .allowsHitTesting(router.tab == tab)
+                        .accessibilityHidden(router.tab != tab)
                 }
             }
-            BottomNav(selected: router.tab) { router.select($0) }
         }
-        .background(Theme.Colors.canvas.ignoresSafeArea())
+        // The bell's list, in place under the bar (NotificationBell's popover).
+        .popover(isPresented: $bellOpen, attachmentAnchor: .point(UnitPoint(x: 0.72, y: 0.04)), arrowEdge: .top) {
+            BellList(model: shell) { item in
+                bellOpen = false
+                if let path = item.path { router.open(path: path) }
+            }
+            .environment(language)
+            .presentationCompactAdaptation(.popover)
+        }
         .onAppear {
             if shell == nil { shell = ShellModel(data: container.data) }
             if home == nil { home = HomeViewModel(data: container.data) }
@@ -243,6 +248,14 @@ struct MainTabView: View {
                         await insights.load()
                     }
             }
+        case .settings:
+            SettingsView(config: container.config, session: container.session, user: user,
+                         name: shell?.name ?? "", initials: shell?.initials ?? "",
+                         back: { router.pop() }) { router.push($0) }
+        case .language:
+            LanguageSettingsView(profiles: container.data.profile) { router.pop() }
+        case .appearance:
+            AppearanceSettingsView { router.pop() }
         case .recurring:
             if let recurring {
                 RecurringView(model: recurring, back: { router.pop() },

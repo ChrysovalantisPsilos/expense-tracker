@@ -13,13 +13,20 @@ struct GroupExpenseView<Lead: View>: View {
     @Bindable var model: GroupExpenseModel
     /// Saved or deleted: the toast's words.
     let onDone: (ToastText?) -> Void
+    /// The header's back arrow (nil: back out of the group's stack).
+    var back: (() -> Void)? = nil
     @ViewBuilder var lead: () -> Lead
     @Environment(AppLanguage.self) private var language
+    @Environment(\.dismiss) private var dismiss
     @State private var confirmDelete = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: Theme.Space.s4) {
+        Page {
+            PageHeader(title: language.t(model.quick ? "transactions:page.title.shared"
+                                         : model.isEdit ? "groups:expensePage.titleEdit" : "groups:expensePage.titleAdd"),
+                       eyebrow: model.quick ? language.t("transactions:ledger.title") : model.groupName,
+                       back: { if let back { back() } else { dismiss() } })
+            VStack(spacing: Theme.Space.s5) {
                 if let notice = model.notice {
                     VStack(alignment: .leading, spacing: 2) {
                         Note(text: notice.title, tone: Theme.Colors.warning)
@@ -29,28 +36,24 @@ struct GroupExpenseView<Lead: View>: View {
                     .accessibilityIdentifier("groupExpense.notice")
                 }
                 Panel { model.quick ? AnyView(quickFields) : AnyView(fullFields) }
-                Button {
-                    Task { if await model.save() { onDone(model.saved) } }
-                } label: {
-                    if model.busy { ProgressView().tint(Theme.Colors.onAccent) } else { Text(saveLabel) }
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(model.busy)
-                .accessibilityIdentifier("groupExpense.save")
-                if model.isEdit {
-                    Button { confirmDelete = true } label: {
-                        Label(language.t("common:actions.delete"), systemImage: "trash")
+                VStack(spacing: Theme.Space.s3) {
+                    Button {
+                        Task { if await model.save() { onDone(model.saved) } }
+                    } label: {
+                        if model.busy { ProgressView().tint(Theme.Colors.onAccent) } else { Text(saveLabel) }
                     }
-                    .buttonStyle(DangerButtonStyle())
+                    .buttonStyle(PrimaryButtonStyle())
+                    .disabled(model.busy)
+                    .accessibilityIdentifier("groupExpense.save")
+                    if model.isEdit {
+                        Button { confirmDelete = true } label: {
+                            IconLabel(text: language.t("common:actions.delete"), icon: .trash2)
+                        }
+                        .buttonStyle(DangerButtonStyle())
+                    }
                 }
             }
-            .padding(Theme.Space.s4)
         }
-        .scrollDismissesKeyboard(.interactively)
-        .background(Theme.Colors.canvas.ignoresSafeArea())
-        .navigationTitle(language.t(model.quick ? "transactions:page.title.shared"
-                                    : model.isEdit ? "groups:expensePage.titleEdit" : "groups:expensePage.titleAdd"))
-        .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog(model.deleteTitle, isPresented: $confirmDelete, titleVisibility: .visible) {
             Button(language.t("common:actions.delete"), role: .destructive) {
                 Task { if await model.delete() { onDone(model.saved) } }
@@ -70,7 +73,7 @@ struct GroupExpenseView<Lead: View>: View {
     // MARK: Layouts
 
     private var fullFields: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s4) {
+        VStack(alignment: .leading, spacing: Theme.Space.s5) {
             descriptionField
             amountFields
             dateField
@@ -83,7 +86,7 @@ struct GroupExpenseView<Lead: View>: View {
     }
 
     private var quickFields: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s4) {
+        VStack(alignment: .leading, spacing: Theme.Space.s5) {
             lead()
             amountFields
             descriptionField
@@ -98,7 +101,7 @@ struct GroupExpenseView<Lead: View>: View {
     // MARK: Fields
 
     private var descriptionField: some View {
-        FormRow(label: language.t("groups:form.description") + " *", error: model.errors["description"]) {
+        FormRow(label: language.t("groups:form.description"), required: true, error: model.errors["description"]) {
             TextField(language.t("groups:form.descriptionHint"),
                       text: Binding(get: { model.form.description }, set: { model.setDescription($0) }))
                 .fieldStyle()
@@ -107,8 +110,8 @@ struct GroupExpenseView<Lead: View>: View {
     }
 
     @ViewBuilder private var amountFields: some View {
-        HStack(alignment: .top, spacing: Theme.Space.s3) {
-            FormRow(label: language.t("groups:form.amount") + " *", error: model.errors["amount"]) {
+        HStack(alignment: .top, spacing: Theme.Space.s2) {
+            FormRow(label: language.t("groups:form.amount"), required: true, error: model.errors["amount"]) {
                 TextField(model.amountHints.placeholder, text: Binding(get: { model.form.amount }, set: { model.setAmount($0) }))
                     .keyboardType(model.amountHints.whole ? .numberPad : .decimalPad)
                     .fieldStyle()
@@ -133,7 +136,7 @@ struct GroupExpenseView<Lead: View>: View {
     }
 
     private var payerField: some View {
-        FormRow(label: language.t("groups:form.paidBy") + " *", error: model.errors["paidBy"]) {
+        FormRow(label: language.t("groups:form.paidBy"), required: true, error: model.errors["paidBy"]) {
             let rows = model.memberRows
             Menu {
                 Picker(language.t("groups:form.paidBy"), selection: Binding(get: { model.form.paidBy }, set: { model.pickPayer($0) })) {
@@ -148,7 +151,7 @@ struct GroupExpenseView<Lead: View>: View {
                         Text(language.t("groups:form.choose")).foregroundStyle(Theme.Colors.placeholder)
                     }
                     Spacer(minLength: 0)
-                    Image(systemName: "chevron.down").font(.system(size: 11))
+                    LucideIcon(icon: .chevronDown, size: 16)
                 }
                 .fieldStyle()
             }
@@ -174,9 +177,7 @@ struct GroupExpenseView<Lead: View>: View {
                     .font(Theme.Fonts.body(14, lang: language.current))
                     .foregroundStyle(Theme.Colors.textMuted)
                     .fixedSize()
-                Toggle(language.t("groups:form.adjust"), isOn: $model.adjust)
-                    .labelsHidden()
-                    .tint(Theme.Colors.accentSolid)
+                KitSwitch(isOn: $model.adjust, label: language.t("groups:form.adjust"))
             }
             if model.adjust { SplitEditor(model: model) }
         }
@@ -186,8 +187,8 @@ struct GroupExpenseView<Lead: View>: View {
 }
 
 extension GroupExpenseView where Lead == EmptyView {
-    init(model: GroupExpenseModel, onDone: @escaping (ToastText?) -> Void) {
-        self.init(model: model, onDone: onDone, lead: { EmptyView() })
+    init(model: GroupExpenseModel, onDone: @escaping (ToastText?) -> Void, back: (() -> Void)? = nil) {
+        self.init(model: model, onDone: onDone, back: back, lead: { EmptyView() })
     }
 }
 
@@ -205,20 +206,22 @@ struct SplitEditor: View {
                     let on = model.form.mode == mode
                     Button { model.pickMode(mode) } label: {
                         Text(language.t("groups:form.modes.\(mode)"))
-                            .font(Theme.Fonts.body(13, weight: .semibold, lang: language.current))
+                            .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
                             .foregroundStyle(on ? Theme.Colors.onAccent : Theme.Colors.textPrimary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
-                            .frame(maxWidth: .infinity, minHeight: 34)
+                            .padding(.horizontal, Theme.Space.s3)
+                            .frame(minHeight: 32)
                             .background(on ? Theme.Colors.accentSolid : Theme.Colors.surface)
                     }
                     .buttonStyle(.plain)
                     .accessibilityAddTraits(on ? .isSelected : [])
-                    if mode != model.modes.last { Divider().frame(height: 34).overlay(Theme.Colors.border) }
+                    if mode != model.modes.last { Rectangle().fill(Theme.Colors.border).frame(width: 1, height: 32) }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).stroke(Theme.Colors.border, lineWidth: 1))
+            .fixedSize()
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous).stroke(Theme.Colors.border, lineWidth: 1))
             .accessibilityIdentifier("groupExpense.modes")
 
             ForEach(model.memberRows, id: \.id) { row in
@@ -226,9 +229,7 @@ struct SplitEditor: View {
                 HStack(spacing: Theme.Space.s2) {
                     Button { model.toggle(row.id) } label: {
                         HStack(spacing: Theme.Space.s2) {
-                            Image(systemName: on ? "checkmark.square.fill" : "square")
-                                .font(.system(size: 20))
-                                .foregroundStyle(on ? Theme.Colors.accentSolid : Theme.Colors.textMuted)
+                            KitCheckbox(on: on)
                             if let avatar = row.avatar { AvatarCircle(avatar: avatar) }
                             Text(row.name)
                                 .font(Theme.Fonts.body(15, lang: language.current))
@@ -273,5 +274,24 @@ struct SplitEditor: View {
                 .foregroundStyle(figures?.preview.complete == true ? Theme.Colors.positive : Theme.Colors.textMuted)
                 .accessibilityIdentifier("groupExpense.summary")
         }
+    }
+}
+
+/// Chakra's Checkbox (md, brand): a 16 pt box, sand.300 edge, filled
+/// brand.500 with a white check when on.
+struct KitCheckbox: View {
+    let on: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .fill(on ? Theme.Palette.brand500 : Color.clear)
+            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                .stroke(on ? Theme.Palette.brand500 : (scheme == .dark ? Theme.Palette.sand600 : Theme.Palette.sand300), lineWidth: 2)
+            if on { LucideIcon(icon: .check, size: 12).foregroundStyle(Color.white) }
+        }
+        .frame(width: 16, height: 16)
+        .padding(4)
     }
 }

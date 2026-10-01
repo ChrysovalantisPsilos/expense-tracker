@@ -23,6 +23,8 @@ struct BellItem: Identifiable, Equatable, Sendable {
 @Observable
 final class ShellModel {
     private(set) var initials = ""
+    /// The profile's name (Settings' Profile row).
+    private(set) var name = ""
     private(set) var items: [BellItem] = []
     private(set) var unreadCount = 0
     /// The badge's words ("3", "9+"), nil with nothing unread.
@@ -40,8 +42,9 @@ final class ShellModel {
     /// The profile's initials and the feed.
     func load() async {
         if let profile = try? await data.profile.profile() {
-            let name = profile["display_name"] ?? .null
-            initials = (try? core.call("avatarLook", "avatarInitials", [name])) ?? ""
+            let display = profile["display_name"] ?? .null
+            name = display.stringValue ?? ""
+            initials = (try? core.call("avatarLook", "avatarInitials", [display])) ?? ""
         }
         await loadFeed()
     }

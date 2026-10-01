@@ -87,6 +87,11 @@ final class BudgetsModel {
 
     var canSet: Bool { !formCategory.isEmpty && !formAmount.isEmpty && !busy }
 
+    /// The cap field's placeholder in the base currency (MoneyInput: moneyParse.amountFieldHints).
+    var amountPlaceholder: String {
+        (try? core.json("moneyParse", "amountFieldHints", [baseCurrency]))?["placeholder"]?.stringValue ?? ""
+    }
+
     /// "Set": edit_budget for this month (a carried month first gets its own copy).
     func setCap() async {
         guard canSet, let figures else { return }

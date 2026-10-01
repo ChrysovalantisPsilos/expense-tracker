@@ -87,6 +87,7 @@ enum Theme {
         static let s6: CGFloat = 24
         static let s8: CGFloat = 32
         static let s10: CGFloat = 40
+        static let s12: CGFloat = 48
     }
 
     // MARK: Shadows (theme.js `shadows`, the larger layer of each)

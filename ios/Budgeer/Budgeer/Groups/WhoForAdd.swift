@@ -23,8 +23,7 @@ struct WhoForChips: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: Theme.Space.s2) {
                         chip(id: nil, name: language.t("groups:whoFor.justMe")) {
-                            Image(systemName: "person")
-                                .font(.system(size: 13, weight: .semibold))
+                            LucideIcon(icon: .user, size: 14)
                                 .foregroundStyle(Theme.Colors.textMuted)
                                 .frame(width: 28, height: 28)
                                 .background(Theme.Colors.subtle)
@@ -69,7 +68,7 @@ struct WhoForChips: View {
     }
 }
 
-/// The Add sheet: the entry form, or a group's quick form once a group is picked.
+/// The Add page: the entry form, or a group's quick form once a group is picked.
 @MainActor
 struct AddEntryHost: View {
     let data: DataLayer
@@ -96,15 +95,7 @@ struct AddEntryHost: View {
     var body: some View {
         Group {
             if let groupForm {
-                NavigationStack {
-                    GroupExpenseView(model: groupForm, onDone: { _ in onDone() }) { lead }
-                        .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button(language.t("common:actions.cancel")) { onDone() }
-                            }
-                        }
-                }
-                .tint(Theme.Colors.accentFg)
+                GroupExpenseView(model: groupForm, onDone: { _ in onDone() }, back: onDone) { lead }
             } else {
                 EntryFormView(model: entry, who: offersGroups ? AnyView(chips) : nil) { _ in onDone() }
             }
@@ -118,14 +109,13 @@ struct AddEntryHost: View {
 
     /// The quick form's lead: Expense | Income (Income goes back to Just me), and the chips.
     private var lead: some View {
-        VStack(alignment: .leading, spacing: Theme.Space.s4) {
-            Picker(language.t("transactions:form.kind"), selection: Binding(get: { "expense" }, set: { kind in
+        VStack(alignment: .leading, spacing: Theme.Space.s5) {
+            SegmentedControl(options: [("expense", language.t("transactions:kinds.expense")),
+                                       ("income", language.t("transactions:kinds.income"))],
+                             value: "expense", size: .sm, fitted: true) { kind in
                 if kind == "income" { pick(nil, kind: "income") }
-            })) {
-                Text(language.t("transactions:kinds.expense")).tag("expense")
-                Text(language.t("transactions:kinds.income")).tag("income")
             }
-            .pickerStyle(.segmented)
+            .accessibilityLabel(language.t("transactions:form.kind"))
             chips
         }
     }

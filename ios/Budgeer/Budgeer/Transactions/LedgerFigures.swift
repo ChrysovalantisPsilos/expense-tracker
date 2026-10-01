@@ -49,15 +49,16 @@ struct LedgerFigures: Codable, Equatable, Sendable {
     /// - rows: my_transactions' answer for the view (the period's, or all history for a search)
     /// - kind: 'expense', 'income', or nil for all
     /// - oldest: the first transaction's date (nil: none); `oldestKnown` false when it couldn't be read
+    /// - filters: the Filters panel's (txnFilter.EMPTY_FILTERS' keys; all empty by default)
     static func compute(rows: JSONValue, profile: JSONValue, categories: JSONValue, kind: String?, periodLabel: String,
-                        text: String, oldest: String?, oldestKnown: Bool = true, page: Int = 1,
-                        core: BudgeerCore) throws -> LedgerFigures {
+                        text: String, filters: JSONValue = noFilters, oldest: String?, oldestKnown: Bool = true,
+                        page: Int = 1, core: BudgeerCore) throws -> LedgerFigures {
         let base = profile["base_currency"]?.stringValue ?? "EUR"
         let salaryShift = try core.json("salaryShift", "salaryShiftOf", [profile])
         let savingsIds = try core.json("savings", "savingsIdsOf", [categories])
-        let searching: Bool = try core.call("txnFilter", "isFiltering", [text, noFilters])
+        let searching: Bool = try core.call("txnFilter", "isFiltering", [text, filters])
         let shown = searching
-            ? try core.json("txnFilter", "filterTransactions", [rows, noFilters.with("text", .string(text)), base])
+            ? try core.json("txnFilter", "filterTransactions", [rows, filters.with("text", .string(text)), base])
             : rows
         let count = shown.arrayValue?.count ?? 0
         let net = try core.json("txnFilter", "netBaseMinor", [shown, base, savingsIds])

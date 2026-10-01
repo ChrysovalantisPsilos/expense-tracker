@@ -34,9 +34,9 @@ export const APP_ICONS = [
   'ChevronUp', 'CircleAlert', 'CircleHelp', 'Copy', 'CreditCard', 'ExternalLink', 'Eye', 'EyeOff', 'FileDown',
   'FileSpreadsheet', 'FileText', 'Globe', 'HandCoins', 'Info', 'KeyRound', 'Languages', 'LayoutDashboard',
   'Link2', 'Lock', 'LogIn', 'LogOut', 'Mail', 'MessageSquare', 'Minus', 'Monitor', 'Moon', 'MoreHorizontal',
-  'MoreVertical', 'Pause', 'Pencil', 'PiggyBank', 'Play', 'Plus', 'QrCode', 'Receipt', 'ReceiptText', 'Repeat',
-  'RotateCw', 'Scale', 'ScanText', 'Search', 'Send', 'Settings', 'Share2', 'SlidersHorizontal', 'Sparkle',
-  'Sparkles', 'Sun', 'Table', 'Tag', 'Target', 'Ticket', 'Trash2', 'TrendingDown', 'TrendingUp', 'Undo2',
+  'MoreVertical', 'Palette', 'Pause', 'Pencil', 'PiggyBank', 'Play', 'Plus', 'QrCode', 'Receipt', 'ReceiptText', 'Repeat',
+  'RotateCw', 'Scale', 'ScanText', 'Search', 'Send', 'Settings', 'Share2', 'ShieldCheck', 'SlidersHorizontal', 'Sparkle',
+  'Smartphone', 'Sparkles', 'Sun', 'Table', 'Tag', 'Target', 'Ticket', 'Trash2', 'TrendingDown', 'TrendingUp', 'Undo2',
   'User', 'UserCheck', 'UserMinus', 'UserPlus', 'UserRound', 'Users', 'Wallet', 'Wand2', 'WifiOff', 'X',
 ]
 
@@ -50,8 +50,18 @@ export const kebab = (name) => name
   .replace(/([0-9])([A-Z])/g, '$1-$2')
   .toLowerCase()
 
-// 'more-horizontal' → 'moreHorizontal' (a Swift case name).
-const camel = (name) => name.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase())
+// 'more-horizontal' → 'moreHorizontal' (a Swift case name; a Swift keyword
+// such as `repeat` in backticks).
+const SWIFT_KEYWORDS = new Set([
+  'as', 'break', 'case', 'class', 'continue', 'default', 'defer', 'do', 'else', 'enum', 'extension', 'false', 'for',
+  'func', 'guard', 'if', 'import', 'in', 'init', 'internal', 'is', 'let', 'nil', 'operator', 'private', 'protocol',
+  'public', 'repeat', 'return', 'self', 'static', 'struct', 'super', 'switch', 'throw', 'true', 'try', 'var', 'where',
+  'while',
+])
+const camel = (name) => {
+  const id = name.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase())
+  return SWIFT_KEYWORDS.has(id) ? `\`${id}\`` : id
+}
 
 // The category registry, read from the web's source: { key: 'Component' }.
 export async function categoryIcons() {

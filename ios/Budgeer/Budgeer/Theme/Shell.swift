@@ -33,8 +33,13 @@ final class AppAppearance {
 
     /// The switch: to the other of what is showing now.
     func toggle(from current: ColorScheme) {
-        stored = current == .dark ? "light" : "dark"
-        defaults.set(stored, forKey: AppAppearance.key)
+        set(current == .dark ? "light" : "dark")
+    }
+
+    /// Settings › Appearance: 'light', 'dark', or nil for the system's.
+    func set(_ value: String?) {
+        stored = value
+        defaults.set(value, forKey: AppAppearance.key)
     }
 }
 
@@ -338,5 +343,39 @@ extension UINavigationController: UIGestureRecognizerDelegate {
 
     public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
         viewControllers.count > 1
+    }
+}
+
+// MARK: The frame
+
+/// The phone frame around a tab's pages: the top bar, the page, the bottom
+/// bar with `tab` lit, and the floating Add when the page has it.
+struct ShellChrome<Content: View>: View {
+    let tab: AppTab
+    var badge: String? = nil
+    var unreadCount = 0
+    var initials = ""
+    var fab = false
+    var onBell: () -> Void = {}
+    var onAvatar: () -> Void = {}
+    var onTab: (AppTab) -> Void = { _ in }
+    var onAdd: () -> Void = {}
+    @ViewBuilder var content: () -> Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ShellHeader(unread: badge, unreadCount: unreadCount, initials: initials, onBell: onBell, onAvatar: onAvatar)
+            ZStack(alignment: .bottomTrailing) {
+                content()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if fab {
+                    AddFab(action: onAdd)
+                        .padding(.trailing, Theme.Space.s4)
+                        .padding(.bottom, Theme.Space.s4)
+                }
+            }
+            BottomNav(selected: tab, select: onTab)
+        }
+        .background(Theme.Colors.canvas.ignoresSafeArea())
     }
 }

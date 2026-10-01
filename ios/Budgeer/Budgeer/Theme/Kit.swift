@@ -969,3 +969,120 @@ struct EmptyStateBlock<Actions: View>: View {
         .padding(.vertical, Theme.Space.s6)
     }
 }
+
+// MARK: Info toggle (InfoToggle)
+
+/// The ⓘ button (xs ghost, Info 14): muted, the accent while its box is open.
+struct InfoButton: View {
+    @Binding var open: Bool
+    let label: String
+
+    var body: some View {
+        Button { open.toggle() } label: {
+            LucideIcon(icon: .info, size: 14)
+                .foregroundStyle(open ? Theme.Colors.accentFg : Theme.Colors.textMuted)
+                .frame(width: 24, height: 24)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityValue(open ? "1" : "0")
+    }
+}
+
+/// What the ⓘ opens: 12 pt muted lines on a sand box, 8 pt under it.
+struct InfoBox: View {
+    let lines: [String]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(lines, id: \.self) { Text($0).kitText(12, color: Theme.Colors.textMuted).fixedSize(horizontal: false, vertical: true) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Theme.Space.s3)
+        .padding(.vertical, Theme.Space.s2)
+        .background(Theme.Colors.subtle)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .padding(.top, Theme.Space.s2)
+    }
+}
+
+// MARK: NavList (More, Settings)
+
+/// A list of links in one card (NavList): the section's label over it, the
+/// rows divided by hairlines, nothing inside the card's edge.
+struct NavList<Rows: View>: View {
+    var label: String? = nil
+    @ViewBuilder var rows: () -> Rows
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s2) {
+            if let label { SectionLabel(text: label).padding(.horizontal, Theme.Space.s1) }
+            VStack(spacing: 0) {
+                _VariadicView.Tree(DividedRows()) { rows() }
+            }
+            .panelSurface()
+        }
+    }
+}
+
+/// Hairlines between a NavList's rows.
+private struct DividedRows: _VariadicView_MultiViewRoot {
+    func body(children: _VariadicView.Children) -> some View {
+        let last = children.last?.id
+        ForEach(children) { child in
+            child
+            if child.id != last { Rectangle().fill(Theme.Colors.border).frame(height: 1) }
+        }
+    }
+}
+
+/// One link (NavRow): the 40 pt tile (xl corners), the name (16 pt, 600) over
+/// its description (14 pt muted), and the chevron when it goes somewhere.
+struct NavRow<Media: View>: View {
+    let label: String
+    var description: String? = nil
+    var chevron = true
+    var tone: Color = Theme.Colors.textPrimary
+    let action: () -> Void
+    @ViewBuilder var media: () -> Media
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: Theme.Space.s3) {
+                media()
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(label).kitText(16, .semibold, color: tone)
+                    if let description { Text(description).kitText(14, color: Theme.Colors.textMuted) }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if chevron { LucideIcon(icon: .chevronRight, size: 18).foregroundStyle(Theme.Colors.textMuted) }
+            }
+            .padding(.horizontal, Theme.Space.s4)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+extension NavRow where Media == NavTile {
+    init(icon: Lucide, label: String, description: String? = nil, chevron: Bool = true,
+         tone: Color = Theme.Colors.textPrimary, action: @escaping () -> Void) {
+        self.init(label: label, description: description, chevron: chevron, tone: tone, action: action,
+                  media: { NavTile(icon: icon) })
+    }
+}
+
+/// A NavRow's tile: IconTile at 40 pt with xl corners.
+struct NavTile: View {
+    let icon: Lucide
+
+    var body: some View {
+        LucideIcon(icon: icon, size: 20)
+            .foregroundStyle(Theme.Colors.accentFg)
+            .frame(width: 40, height: 40)
+            .background(Theme.Colors.subtle)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
+    }
+}

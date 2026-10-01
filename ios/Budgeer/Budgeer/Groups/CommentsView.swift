@@ -7,23 +7,22 @@ import SwiftUI
 struct CommentsView: View {
     @Bindable var model: CommentsModel
     @Environment(AppLanguage.self) private var language
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ScrollView {
+        Page {
+            PageHeader(title: language.t("groups:comments.title"), eyebrow: model.label, back: { dismiss() })
             VStack(alignment: .leading, spacing: Theme.Space.s4) {
-                Text(model.label)
-                    .font(Theme.Fonts.body(13, weight: .semibold, lang: language.current))
-                    .foregroundStyle(Theme.Colors.textMuted)
-                if let message = model.message { Note(text: message, tone: Theme.Colors.negative) }
+                if let message = model.message { Note(text: message, tone: Theme.Colors.negative, size: 14) }
                 Panel {
                     switch model.state {
                     case .loading:
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 80)
+                        SkeletonRows(count: 2)
                     case .failed(let message):
                         LoadErrorBlock(message: message) { await model.load() }
                     case .loaded(let rows):
                         if rows.isEmpty {
-                            Note(text: language.t("groups:comments.empty"))
+                            Note(text: language.t("groups:comments.empty"), size: 14)
                         } else {
                             VStack(alignment: .leading, spacing: Theme.Space.s4) {
                                 ForEach(rows) { row in comment(row) }
@@ -39,9 +38,9 @@ struct CommentsView: View {
                             .fieldStyle()
                             .accessibilityLabel(language.t("groups:comments.write"))
                         Button { Task { await model.send() } } label: {
-                            Image(systemName: "paperplane.fill")
+                            LucideIcon(icon: .send, size: 18)
                                 .foregroundStyle(Theme.Colors.onAccent)
-                                .frame(width: 44, height: 44)
+                                .frame(width: 40, height: 40)
                                 .background(Theme.Colors.accentSolid)
                                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
                         }
@@ -50,15 +49,10 @@ struct CommentsView: View {
                         .accessibilityLabel(language.t("groups:comments.send"))
                     }
                 } else {
-                    Note(text: language.t("groups:comments.joinFirst"))
+                    Note(text: language.t("groups:comments.joinFirst"), size: 14)
                 }
             }
-            .padding(Theme.Space.s4)
         }
-        .scrollDismissesKeyboard(.interactively)
-        .background(Theme.Colors.canvas.ignoresSafeArea())
-        .navigationTitle(language.t("groups:comments.title"))
-        .navigationBarTitleDisplayMode(.inline)
         .task(id: language.current) { await model.load() }
     }
 
@@ -76,7 +70,7 @@ struct CommentsView: View {
                     Spacer(minLength: 0)
                     if row.canDelete {
                         Button { Task { await model.delete(row.id) } } label: {
-                            Image(systemName: "trash").font(.system(size: 13)).foregroundStyle(Theme.Colors.negative)
+                            LucideIcon(icon: .trash2, size: 14).foregroundStyle(Theme.Colors.negative)
                         }
                         .disabled(model.busy)
                         .accessibilityLabel(language.t("groups:comments.delete"))
