@@ -87,13 +87,16 @@ jobs:
         env:
           TEST_RUNNER_SNAPSHOT_DIR: ${{ github.workspace }}/snapshots
           TEST_RUNNER_TZ: UTC
-          SKIP: ${{ (github.event_name == 'workflow_dispatch' && inputs.snapshots) && '' || '-skip-testing:BudgeerTests/SnapshotTests' }}
-        run: >
-          set -o pipefail &&
-          xcodebuild test-without-building
-          -project "$PROJECT" -scheme "$SCHEME" -destination "$DESTINATION"
-          -derivedDataPath "$DERIVED" -resultBundlePath TestResults.xcresult
-          $SKIP
+          # 'true' only on a run by hand with "snapshots" ticked.
+          TAKE_SNAPSHOTS: ${{ github.event_name == 'workflow_dispatch' && inputs.snapshots }}
+        run: |
+          set -o pipefail
+          SKIP=""
+          if [ "$TAKE_SNAPSHOTS" != "true" ]; then SKIP="-skip-testing:BudgeerTests/SnapshotTests"; fi
+          xcodebuild test-without-building \
+            -project "$PROJECT" -scheme "$SCHEME" -destination "$DESTINATION" \
+            -derivedDataPath "$DERIVED" -resultBundlePath TestResults.xcresult \
+            $SKIP \
           | tee test.log | grep -E "error:|Test Case|Test Suite|Executed|\*\*"
       - name: Snapshots
         if: always()

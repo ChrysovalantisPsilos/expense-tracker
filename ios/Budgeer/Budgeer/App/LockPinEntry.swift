@@ -6,7 +6,7 @@
 // wait) is AppPin's; the words are the ios namespace's.
 import SwiftUI
 
-/// The lock screen's PIN slot: drop it under Unlock (LockView); it shows
+/// The lock screen's PIN slot: under Unlock on LockScreen; it shows
 /// nothing without a PIN.
 @MainActor
 struct LockPinEntry: View {

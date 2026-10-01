@@ -58,14 +58,14 @@ final class SnapshotTests: XCTestCase {
             let owner = FakeOwner()
             owner.answer = false
             let lock = SnapshotTests.lock("SnapshotTests.lock", owner: owner)
-            try await shots(LockView(lock: lock), name: "lock", lang: lang, dark: dark)
+            try await shots(LockScreen(lock: lock), name: "lock", lang: lang, dark: dark)
             // With an app PIN: "Use PIN" under Unlock; on a phone that can't check its owner, the pad itself.
             let withPin = SnapshotTests.lock("SnapshotTests.lock", owner: owner, pin: "2580")
-            try await shots(LockView(lock: withPin), name: "lock-pin-offer", lang: lang, dark: dark)
+            try await shots(LockScreen(lock: withPin), name: "lock-pin-offer", lang: lang, dark: dark)
             let noFaceID = FakeOwner()
             noFaceID.available = false
             let padOnly = SnapshotTests.lock("SnapshotTests.lock", owner: noFaceID, pin: "2580")
-            try await shots(LockView(lock: padOnly), name: "lock-pin", lang: lang, dark: dark)
+            try await shots(LockScreen(lock: padOnly), name: "lock-pin", lang: lang, dark: dark)
         }
     }
 
@@ -609,7 +609,7 @@ final class SnapshotTests: XCTestCase {
             await model.load()
             try await shots(framed(.home) { NavigationStack { VouchersView(model: model) { _ in } } },
                       name: "vouchers", lang: lang, dark: dark, long: 1900)
-            // Fix days, open in place.
+            // Edit days, open in place.
             model.startFix()
             model.step(-1)
             try await shots(framed(.home) { NavigationStack { VouchersView(model: model) { _ in } } },

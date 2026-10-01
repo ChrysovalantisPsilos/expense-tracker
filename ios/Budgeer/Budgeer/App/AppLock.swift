@@ -8,7 +8,6 @@
 import Foundation
 import LocalAuthentication
 import Observation
-import SwiftUI
 
 /// The device owner's check (LocalAuthentication), behind a seam for tests.
 protocol OwnerCheck {
@@ -141,59 +140,5 @@ final class AppLock {
             locked = false
             defaults.set(false, forKey: AppLock.key)
         }
-    }
-}
-
-/// The lock's screen: the mark, "Budgeer is locked", and Unlock in glass
-/// (it asks at once when it appears, as banking apps do).
-@MainActor
-struct LockView: View {
-    let lock: AppLock
-    @Environment(AppLanguage.self) private var language
-    @State private var tries = 0
-
-    var body: some View {
-        ZStack {
-            LinearGradient(colors: [Theme.Colors.accentSubtle, NativeStyle.canvas], startPoint: .top, endPoint: .center)
-                .ignoresSafeArea()
-            VStack(spacing: 14) {
-                Spacer()
-                BrandMark(size: 64)
-                    .frame(width: 104, height: 104)
-                    .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
-                Text(language.t("ios:native.lock.locked"))
-                    .font(NativeStyle.title(26, lang: language.current))
-                    .multilineTextAlignment(.center)
-                    .padding(.top, 12)
-                Text(language.t("ios:native.lock.note"))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                Spacer()
-                Image(systemName: "faceid")
-                    .font(.system(size: 58, weight: .light))
-                    .foregroundStyle(NativeStyle.tint)
-                    .padding(.bottom, 12)
-                    .accessibilityHidden(true)
-                if lock.locked {
-                    Button {
-                        tries += 1
-                    } label: {
-                        Text(language.t("ios:native.lock.unlock")).frame(maxWidth: .infinity)
-                    }
-                    .nativeGlassButton(prominent: true)
-                    .accessibilityIdentifier("lock.unlock")
-                    LockPinEntry(lock: lock)
-                }
-            }
-            .padding(.horizontal, 32)
-            .padding(.bottom, 24)
-        }
-        .task(id: tries) {
-            guard lock.locked, lock.deviceCheck else { return }
-            await lock.unlock(reason: language.t("ios:native.lock.reason"))
-        }
-        .sensoryFeedback(.success, trigger: lock.locked) { was, now in was && !now }
     }
 }

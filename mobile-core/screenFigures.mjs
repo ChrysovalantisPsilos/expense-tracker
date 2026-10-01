@@ -210,7 +210,7 @@ export function savingsFigures({ profile, categories, income, fromSavings, accou
 
 // The Meal vouchers page (Vouchers.jsx) and its setup (VoucherSetup.jsx)
 // for a setup and the expenses paid with vouchers: the card, the next
-// top-up, Fix days for the month it pays for, the history, and the form.
+// top-up, Edit days for the month it pays for, the history, and the form.
 export function voucherFigures({ settings, spends, profile, now, lang = 'en' }) {
   setLanguage(lang)
   const date = new Date(now)

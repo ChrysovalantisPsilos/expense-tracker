@@ -1,7 +1,7 @@
 // Home's figures, every one from the core: the web's Dashboard.jsx steps
 // (the period, salaryShiftOf, savingsIdsOf, spendRows, periodTotals,
 // periodProjection over the recurring rules at today's rates,
-// projectedTotals, categoryBars, bucketLabels, formatMoney, formatSigned,
+// projectedTotals, categoryBars (all of them, and the donut's top four), bucketLabels, formatMoney, formatSigned,
 // signTone, savingsLine, barLines, visibleBars, homeLists, listHeading,
 // rowParts.listParts, isFirstRun, homeCards) and its Recurring card's (SubscriptionsCard:
 // showsUpcoming, subscriptionGroups or chargedGroups, and each group's and
@@ -152,6 +152,8 @@ struct HomeFigures: Codable, Equatable, Sendable {
     let sum: NetSum
     let notes: [String]
     let bars: [HomeBar]
+    /// The donut's legend: the four biggest, then the rest as "Other" (categoryBars at legendTop).
+    let legend: [HomeBar]
     let fold: BarFold
     /// The cards in reading order (dashboardMath.homeCards: the first run's or the usual).
     let cards: [String]
@@ -162,6 +164,8 @@ struct HomeFigures: Codable, Equatable, Sendable {
     // categoryBars' `top`: the web passes Infinity (Home folds nothing);
     // JSON can't carry it, so a number no list reaches (homeFigures.mjs NO_FOLD).
     static let noFold = 1_000_000
+    /// The donut's legend keeps the four biggest (homeFigures.mjs LEGEND_TOP).
+    static let legendTop = 4
 
     /// The period a picker value names (this month for nil or an unknown one).
     static func period(_ value: String?, now: Date, core: BudgeerCore) throws -> JSONValue {
@@ -206,23 +210,27 @@ struct HomeFigures: Codable, Equatable, Sendable {
         let bucketRows = bucketPairs.map(\.value)
         let labels: JSONValue = try core.call("txnRollup", "bucketLabels", [JSONValue.array(bucketRows)])
         let byCategory = totals["byCategory"] ?? JSONValue.array([])
-        let ranked: [JSONValue] = try core.call("breakdown", "categoryBars", [byCategory, noFold])
-        let lines: [String] = try core.call("dashboardMath", "barLines", [JSONValue.array(ranked), spend, baseCurrency])
-        let linked = try core.json("categoryLinks", "linkBuckets", [JSONValue.array(ranked), spend, period]).arrayValue ?? []
-        let bars = try ranked.enumerated().map { index, c -> HomeBar in
-            let name = c["name"]?.stringValue ?? ""
-            let row = bucketPairs.first { $0.key.stringValue == name }?.value
-            let value = c["value"]?.doubleValue ?? 0
-            let label: String = try core.call("txnRollup", "bucketLabel", [c, labels])
-            let amount: String = try core.call("currency", "formatMoney", [value, baseCurrency])
-            return HomeBar(name: name, label: label, value: value,
-                           share: c["share"]?.intValue ?? 0, ratio: c["ratio"]?.doubleValue ?? 0, amount: amount,
-                           meta: index < lines.count ? lines[index] : amount,
-                           group: row?["group_expense_id"]?.stringValue != nil,
-                           look: try CategoryLook.of(row?["categories"], core: core),
-                           to: index < linked.count ? linked[index]["to"]?.stringValue : nil,
-                           linkLabel: index < linked.count ? linked[index]["linkLabel"]?.stringValue : nil)
+        let shape = { (ranked: [JSONValue]) throws -> [HomeBar] in
+            let lines: [String] = try core.call("dashboardMath", "barLines", [JSONValue.array(ranked), spend, baseCurrency])
+            let linked = try core.json("categoryLinks", "linkBuckets", [JSONValue.array(ranked), spend, period]).arrayValue ?? []
+            return try ranked.enumerated().map { index, c -> HomeBar in
+                let name = c["name"]?.stringValue ?? ""
+                let row = bucketPairs.first { $0.key.stringValue == name }?.value
+                let value = c["value"]?.doubleValue ?? 0
+                let label: String = try core.call("txnRollup", "bucketLabel", [c, labels])
+                let amount: String = try core.call("currency", "formatMoney", [value, baseCurrency])
+                return HomeBar(name: name, label: label, value: value,
+                               share: c["share"]?.intValue ?? 0, ratio: c["ratio"]?.doubleValue ?? 0, amount: amount,
+                               meta: index < lines.count ? lines[index] : amount,
+                               group: row?["group_expense_id"]?.stringValue != nil,
+                               look: try CategoryLook.of(row?["categories"], core: core),
+                               to: index < linked.count ? linked[index]["to"]?.stringValue : nil,
+                               linkLabel: index < linked.count ? linked[index]["linkLabel"]?.stringValue : nil)
+            }
         }
+        let ranked: [JSONValue] = try core.call("breakdown", "categoryBars", [byCategory, noFold])
+        let bars = try shape(ranked)
+        let legend = try shape(try core.call("breakdown", "categoryBars", [byCategory, legendTop]))
         let spentTotal = figures["spentTotal"]?.doubleValue ?? 0
         let earnedTotal = figures["earnedTotal"]?.doubleValue ?? 0
         let netTotal = figures["netTotal"]?.doubleValue ?? 0
@@ -264,6 +272,7 @@ struct HomeFigures: Codable, Equatable, Sendable {
             sum: try core.call("dashboardMath", "netSum", [figures, baseCurrency]),
             notes: try core.call("dashboardMath", "overviewNotes", [["proj": proj] as JSONValue, baseCurrency]),
             bars: bars,
+            legend: legend,
             fold: fold,
             cards: cards,
             expenseList: try list("expense"),

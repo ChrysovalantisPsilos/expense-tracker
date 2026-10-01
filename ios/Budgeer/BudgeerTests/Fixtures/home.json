@@ -601,6 +601,96 @@
             "linkLabel": "Show Subscriptions expenses for this month"
           }
         ],
+        "legend": [
+          {
+            "name": "Uncategorized",
+            "label": "Uncategorized",
+            "value": 12000,
+            "share": 38,
+            "ratio": 1,
+            "amount": "€120.00",
+            "meta": "€120.00",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/none?period=m%3A2020-9",
+            "linkLabel": "Show Uncategorized expenses for this month"
+          },
+          {
+            "name": "Groceries",
+            "label": "Groceries",
+            "value": 6149,
+            "share": 19,
+            "ratio": 0.5124166666666666,
+            "amount": "€61.49",
+            "meta": "€61.49",
+            "group": false,
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/33333333-3333-4333-8333-333333333333?period=m%3A2020-9",
+            "linkLabel": "Show Groceries expenses for this month"
+          },
+          {
+            "name": "Eating out",
+            "label": "Eating out",
+            "value": 5881,
+            "share": 19,
+            "ratio": 0.4900833333333333,
+            "amount": "€58.81",
+            "meta": "€58.81 · +€22.00 in Lisbon trip = €80.81",
+            "group": false,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "to": "/categories/44444444-4444-4444-8444-444444444444?period=m%3A2020-9",
+            "linkLabel": "Show Eating out expenses for this month"
+          },
+          {
+            "name": "Transport",
+            "label": "Transport",
+            "value": 4900,
+            "share": 15,
+            "ratio": 0.4083333333333333,
+            "amount": "€49.00",
+            "meta": "€49.00",
+            "group": false,
+            "look": {
+              "key": "transport",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/55555555-5555-4555-8555-555555555555?period=m%3A2020-9",
+            "linkLabel": "Show Transport expenses for this month"
+          },
+          {
+            "name": "Other",
+            "label": "Other",
+            "value": 3000,
+            "share": 9,
+            "ratio": 0.25,
+            "amount": "€30.00",
+            "meta": "€30.00",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": null,
+            "linkLabel": null
+          }
+        ],
         "fold": {
           "top": 5,
           "hidden": 1,
@@ -1052,6 +1142,25 @@
             "linkLabel": "Show Subscriptions expenses for August 2020"
           }
         ],
+        "legend": [
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 2099,
+            "share": 100,
+            "ratio": 1,
+            "amount": "€20.99",
+            "meta": "€20.99",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
+            "linkLabel": "Show Subscriptions expenses for August 2020"
+          }
+        ],
         "fold": {
           "top": 1,
           "hidden": 0,
@@ -1311,6 +1420,96 @@
             },
             "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-9",
             "linkLabel": "Δες τα έξοδα «Subscriptions» · Αυτός ο μήνας"
+          }
+        ],
+        "legend": [
+          {
+            "name": "Χωρίς κατηγορία",
+            "label": "Χωρίς κατηγορία",
+            "value": 12000,
+            "share": 38,
+            "ratio": 1,
+            "amount": "120,00 €",
+            "meta": "120,00 €",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/none?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Χωρίς κατηγορία» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Groceries",
+            "label": "Groceries",
+            "value": 6149,
+            "share": 19,
+            "ratio": 0.5124166666666666,
+            "amount": "61,49 €",
+            "meta": "61,49 €",
+            "group": false,
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/33333333-3333-4333-8333-333333333333?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Groceries» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Eating out",
+            "label": "Eating out",
+            "value": 5881,
+            "share": 19,
+            "ratio": 0.4900833333333333,
+            "amount": "58,81 €",
+            "meta": "58,81 € · +22,00 € στο Lisbon trip = 80,81 €",
+            "group": false,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "to": "/categories/44444444-4444-4444-8444-444444444444?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Eating out» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Transport",
+            "label": "Transport",
+            "value": 4900,
+            "share": 15,
+            "ratio": 0.4083333333333333,
+            "amount": "49,00 €",
+            "meta": "49,00 €",
+            "group": false,
+            "look": {
+              "key": "transport",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/55555555-5555-4555-8555-555555555555?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Transport» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Other",
+            "label": "Άλλα",
+            "value": 3000,
+            "share": 9,
+            "ratio": 0.25,
+            "amount": "30,00 €",
+            "meta": "30,00 €",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": null,
+            "linkLabel": null
           }
         ],
         "fold": {
@@ -1746,6 +1945,25 @@
         },
         "notes": [],
         "bars": [
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 2099,
+            "share": 100,
+            "ratio": 1,
+            "amount": "20,99 €",
+            "meta": "20,99 €",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
+            "linkLabel": "Δες τα έξοδα «Subscriptions» · Αύγουστος 2020"
+          }
+        ],
+        "legend": [
           {
             "name": "Subscriptions",
             "label": "Subscriptions",

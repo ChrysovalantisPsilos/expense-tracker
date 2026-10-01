@@ -30,6 +30,10 @@ export default {
       comingUp: 'Coming up',
       byCategory: 'By category',
     },
+    // Your salary's Against prices: the country and the year compared from, as one menu.
+    salary: {
+      pricesFrom: '{{country}} · since {{year}}',
+    },
     add: {
       pullUp: 'Pull up for repeat, notes and groups',
     },

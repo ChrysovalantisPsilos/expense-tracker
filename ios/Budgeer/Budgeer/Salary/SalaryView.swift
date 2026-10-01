@@ -3,8 +3,9 @@
 // regular pay's steps, the extras as bars under it), the raises, the extras
 // (each corrected in place: Holiday pay, 13th month, Bonus or Not an extra;
 // without a Bonus category, which one holds them), where the pay goes if
-// things go on (1–10 years, three ways, a yearly raise to try), the pay
-// against prices in Belgium or Greece, and the totals year by year. Before
+// things go on (1–10 years, three ways, a yearly raise to try) and the pay
+// against prices in Belgium or Greece (SalaryOutlook), and the
+// totals year by year. Before
 // there's a Salary category or any pay, it says how to start. Every figure
 // and word is SalaryModel's (the core's); Swift Charts draws the series.
 import Charts
@@ -16,8 +17,6 @@ struct SalaryView: View {
     /// Add, preset: income in `category`.
     let addIncome: (_ category: String?) -> Void
     @Environment(AppLanguage.self) private var language
-    @State private var projectionInfo = false
-    @State private var pricesInfo = false
 
     var body: some View {
         List {
@@ -40,8 +39,8 @@ struct SalaryView: View {
                     paySection(page)
                     raisesSection(page.raises)
                     extrasSection(page.extras, figures: figures)
-                    projectionSection(page)
-                    pricesSection(page.prices, country: figures.country)
+                    SalaryProjectionSection(model: model, projection: page.projection)
+                    SalaryPricesSection(model: model, prices: page.prices, country: figures.country)
                     yearsSection(page.years)
                 } else {
                     emptySection(title: "salary:empty.noEntriesTitle", text: "salary:empty.noEntries") {
@@ -258,114 +257,6 @@ struct SalaryView: View {
         }
     }
 
-    // MARK: If things go on
-
-    private func projectionSection(_ page: SalaryPageParts) -> some View {
-        let projection = page.projection
-        return Section {
-            Picker(language.t("salary:projection.horizon"),
-                   selection: Binding(get: { model.years }, set: { value in withAnimation(.snappy) { model.setYears(value) } })) {
-                ForEach(projection.horizons, id: \.value) { choice in Text(choice.label).tag(choice.value) }
-            }
-            .pickerStyle(.segmented)
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
-            if projectionInfo {
-                Text(language.t("salary:projection.info")).font(.footnote).foregroundStyle(.secondary)
-            }
-            ProjectionChartView(projection: projection)
-                .padding(.vertical, 8)
-            Text(projection.total).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-            ForEach(projection.ways) { way in
-                HStack(spacing: 12) {
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(SalaryView.wayColor(way.id))
-                        .frame(width: 18, height: 4)
-                        .frame(width: 32, height: 32)
-                        .background(Theme.Colors.subtle, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(way.title).font(.subheadline.weight(.semibold))
-                        Text(way.meta).font(.footnote).foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 6)
-                    VStack(alignment: .trailing, spacing: 0) {
-                        Text(way.total).font(.subheadline.weight(.bold)).monospacedDigit()
-                        Text(language.t("salary:projection.earned")).font(.caption).foregroundStyle(.secondary)
-                    }
-                }
-                .accessibilityElement(children: .combine)
-                if way.id == "whatIf" {
-                    HStack(spacing: 10) {
-                        Text(language.t("salary:projection.slider")).font(.footnote).foregroundStyle(.secondary)
-                        Slider(value: Binding(get: { model.whatIf }, set: { model.setWhatIf($0) }),
-                               in: projection.slider.min...projection.slider.max, step: projection.slider.step)
-                            .tint(NativeStyle.tint)
-                            .accessibilityValue(Text(projection.slider.value))
-                        Text(projection.slider.value)
-                            .font(.subheadline.weight(.bold))
-                            .monospacedDigit()
-                            .frame(width: 52, alignment: .trailing)
-                    }
-                    .padding(.leading, 44)
-                }
-            }
-            if let later = projection.trendLater {
-                Text(later).font(.footnote).foregroundStyle(.secondary)
-            }
-            Text(language.t("salary:projection.estimate")).font(.footnote).foregroundStyle(.secondary)
-        } header: {
-            infoHeader(language.t("salary:projection.title"), shown: $projectionInfo)
-        }
-        .listRowBackground(NativeStyle.card)
-    }
-
-    // MARK: Against prices
-
-    private func pricesSection(_ prices: SalaryPrices, country: String) -> some View {
-        Section {
-            Picker(language.t("salary:inflation.country"),
-                   selection: Binding(get: { country }, set: { value in Task { await model.setCountry(value) } })) {
-                ForEach(prices.countries, id: \.value) { choice in Text(choice.label).tag(choice.value) }
-            }
-            .pickerStyle(.segmented)
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 4, trailing: 0))
-            if let empty = prices.empty {
-                Text(empty).font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                if prices.choices.count > 1 {
-                    HStack {
-                        Text(language.t("salary:inflation.since")).font(.subheadline).foregroundStyle(.secondary)
-                        Picker(language.t("salary:inflation.since"),
-                               selection: Binding(get: { prices.from ?? 0 }, set: { model.setSince($0) })) {
-                            ForEach(prices.choices, id: \.value) { choice in Text(choice.label).tag(choice.value) }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-                }
-                if let headline = prices.headline {
-                    Text(headline).font(.body.weight(.semibold))
-                }
-                HStack(spacing: 8) {
-                    ForEach(prices.tiles, id: \.key) { tile in
-                        SalaryTile(label: tile.label, text: tile.text, tone: tile.tone, note: nil)
-                    }
-                }
-                .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
-                if let gap = prices.gap {
-                    NativeRich.text(model.rich(gap)).font(.subheadline).foregroundStyle(.secondary)
-                }
-            }
-            if pricesInfo {
-                Text(prices.info).font(.footnote).foregroundStyle(.secondary)
-            }
-        } header: {
-            infoHeader(language.t("salary:inflation.title"), shown: $pricesInfo)
-        }
-        .listRowBackground(NativeStyle.card)
-    }
-
     // MARK: Year by year
 
     private func yearsSection(_ years: [SalaryYear]) -> some View {
@@ -385,16 +276,6 @@ struct SalaryView: View {
             NativeSectionHeader(title: language.t("salary:years.title"))
         }
         .listRowBackground(NativeStyle.card)
-    }
-
-    /// A section's title with its ⓘ (opens the explanation in place).
-    private func infoHeader(_ title: String, shown: Binding<Bool>) -> some View {
-        HStack(spacing: 6) {
-            Text(title).font(.title3.weight(.semibold)).foregroundStyle(Color.primary)
-            NativeInfoButton(shown: shown)
-        }
-        .textCase(nil)
-        .padding(.horizontal, -4)
     }
 
     // MARK: Looks
@@ -662,6 +543,8 @@ func yearAxis(_ ticks: [YearTick], hidden: Bool) -> some AxisContent {
 /// If things go on: each way's monthly pay as a step line (what if dashed).
 struct ProjectionChartView: View {
     let projection: SalaryProjection
+    /// A way to light, the others faint (the way open in If things go on).
+    var focus: String? = nil
 
     var body: some View {
         Chart {
@@ -670,6 +553,7 @@ struct ProjectionChartView: View {
                     LineMark(x: .value("month", point.key), y: .value("pay", point.value), series: .value("way", way.id))
                         .interpolationMethod(.stepEnd)
                         .foregroundStyle(SalaryView.wayColor(way.id))
+                        .opacity(focus == nil || focus == way.id ? 1 : 0.25)
                         .lineStyle(StrokeStyle(lineWidth: way.id == "trend" ? 2.5 : 2, dash: way.id == "whatIf" ? [5, 4] : []))
                 }
             }
