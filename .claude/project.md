@@ -269,7 +269,9 @@ npm run dev       # Vite
   app, and on pull requests; a feature branch gets it by hand (Actions → Run
   workflow, or the API's workflow_dispatch) once its batch is ready. Newer
   pushes cancel older runs. Helpers commit locally and push checked batches,
-  never WIP. A commit that can't change a check (notes, workflow-only edits
+  never WIP. Snapshot pictures (~20 min of a ~27 min run) are taken only on
+  runs by hand with "snapshots" ticked; develop pushes and PRs skip them.
+  A commit that can't change a check (notes, workflow-only edits
   already checked) may carry `[skip ci]`.
 - **Feature parity (owner rule, 1 Oct 2026):** every feature the website
   offers must also be in the iOS app, and the other way round, before a
