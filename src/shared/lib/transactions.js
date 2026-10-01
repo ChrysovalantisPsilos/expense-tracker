@@ -6,7 +6,7 @@ import { supabase } from './supabase.js'
 import { useLiveQuery, useOwnedQuery } from './db.js'
 import { useProfile } from './ProfileProvider.jsx'
 import { fillPendingRates } from './fx.js'
-import { countedDate, shiftFetchFrom } from './salaryShift.js'
+import { newestCountedDate, shiftFetchFrom } from './salaryShift.js'
 import { nextMonthStart } from './periods.js'
 import { dbError } from './errors.js'
 import { announceChange } from './realtime.js'
@@ -126,8 +126,7 @@ export function useNewestCountedDate() {
     fetch: () => (categoryId ? newestIncome(categoryId, since) : []),
     deps: [categoryId, since],
   })
-  const newest = rows[0] ? countedDate(rows[0], salaryShift) : null
-  return newest && newest >= nextMonthStart() ? newest : null
+  return newestCountedDate(rows[0], salaryShift, nextMonthStart())
 }
 
 // The newest income row in `categoryId` paid on or after `since` ([] or one

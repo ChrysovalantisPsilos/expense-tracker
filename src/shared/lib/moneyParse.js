@@ -1,4 +1,5 @@
 import { minorFactor } from './currency.js'
+import { intlLocale } from './i18n/i18n.js'
 
 // Normalise free-typed money input to a raw numeric string ("1234.56").
 // Both "," and "." are accepted as the decimal separator — many locales'
@@ -32,4 +33,12 @@ export function sanitizeAmountInput(input, currency) {
 export function sanitizeSignedAmountInput(input, currency) {
   const negative = /^\s*[-−]/.test(input)
   return (negative ? '-' : '') + sanitizeAmountInput(input, currency)
+}
+
+// How a money field in `currency` asks for its amount: `whole` for a
+// zero-decimal currency (a numeric keypad, "0"), else the decimal keypad and
+// a placeholder with the app language's decimal mark (0.00, Greek 0,00).
+export function amountFieldHints(currency) {
+  const whole = !!currency && minorFactor(currency) === 1
+  return { whole, placeholder: whole ? '0' : (0).toLocaleString(intlLocale('en-US'), { minimumFractionDigits: 2 }) }
 }

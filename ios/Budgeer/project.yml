@@ -97,6 +97,11 @@ targets:
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         ITSAppUsesNonExemptEncryption: false
+        # budgeer://auth-callback: where Google sign-in returns (a Redirect URL
+        # in both Supabase projects; SupabaseAuthService.callback).
+        CFBundleURLTypes:
+          - CFBundleURLName: com.budgeer.app.auth
+            CFBundleURLSchemes: [budgeer]
         CFBundleLocalizations: [en, el]
         CFBundleDevelopmentRegion: en
         UIAppFonts:

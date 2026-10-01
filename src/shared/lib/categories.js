@@ -10,7 +10,7 @@ import { useOwnedQuery } from './db.js'
 import { useAuth } from '../auth/AuthProvider.jsx'
 import { UserError, dbError } from './errors.js'
 import { savingsIdsOf } from './savings.js'
-import { byDisplayName } from './categoryName.js'
+import { sortByDisplayName } from './categoryName.js'
 import { t } from './i18n/i18n.js'
 
 // The columns a category read returns (the page list adds created_at).
@@ -26,7 +26,7 @@ export function useCategories(kind) {
     deps: [kind],
   })
   // A–Z by the name shown (a default category in the app's language).
-  const sorted = useMemo(() => [...categories].sort(byDisplayName), [categories])
+  const sorted = useMemo(() => sortByDisplayName(categories), [categories])
   return { categories: sorted, loading, reload }
 }
 

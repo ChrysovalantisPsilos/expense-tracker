@@ -2,6 +2,7 @@ import { supabase } from '../../shared/lib/supabase.js'
 import { useOwnedQuery } from '../../shared/lib/db.js'
 import { monthRange } from '../../shared/lib/dates.js'
 import { dbError } from '../../shared/lib/errors.js'
+import { monthSets } from './budgetMath.js'
 
 // A month's budget rows for the signed-in user (live via realtime; defaults to
 // this month). Caps are encrypted at rest, so reads go through the decrypting
@@ -36,10 +37,7 @@ export function useBudgetSets(first, last) {
 }
 
 async function listBudgetSets(first, last) {
-  if (first && first === last) {
-    const rows = await listBudgets(first)
-    return rows.length ? [{ period: rows[0].period_start, rows }] : []
-  }
+  if (first && first === last) return monthSets(await listBudgets(first))
   const periods = (await budgetPeriods()).filter((p) => p <= last)
   // From the latest month at or before `first` (whose caps it carries).
   const from = first ? Math.max(0, periods.findLastIndex((p) => p <= first)) : 0

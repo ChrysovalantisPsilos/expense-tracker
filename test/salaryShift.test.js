@@ -6,7 +6,7 @@ import assert from 'node:assert/strict'
 import {
   salaryShiftOf, isShifted, countedDate, countedRow, countedInWindow, shiftFetchFrom, countsFor,
 } from '../supabase/functions/_shared/salaryShift.ts'
-import { countsForLabel } from '../src/shared/lib/salaryShift.js'
+import { countsForLabel, newestCountedDate } from '../src/shared/lib/salaryShift.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 import { spendRows, paidInWindow } from '../src/shared/lib/spread.js'
 import { periodTotals, periodProjection } from '../src/features/dashboard/dashboardMath.js'
@@ -265,4 +265,12 @@ test('countedInWindow: a late-month salary is listed in the month it counts for'
   // Setting off, or all time: by the real date / everything.
   assert.deepEqual(countedInWindow(rows, '2026-08-01', '2026-08-31', null), rows)
   assert.deepEqual(countedInWindow(rows, null, null, shift), rows)
+})
+
+test('newestCountedDate: a salary in that counts next month brings next month into the pickers', () => {
+  const shift = salaryShiftOf({ salary_shift_from_day: 25, salary_category_id: 'pay' })
+  const pay = (spentAt) => ({ kind: 'income', category_id: 'pay', spent_at: spentAt })
+  assert.equal(newestCountedDate(pay('2026-09-27'), shift, '2026-10-01'), '2026-10-01')
+  assert.equal(newestCountedDate(pay('2026-09-20'), shift, '2026-10-01'), null)
+  assert.equal(newestCountedDate(undefined, shift, '2026-10-01'), null)
 })

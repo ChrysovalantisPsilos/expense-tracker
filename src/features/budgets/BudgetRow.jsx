@@ -1,9 +1,8 @@
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
-import { formatMoney } from '../../shared/lib/currency.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { categoryLink } from '../../shared/lib/categoryLinks.js'
-import { budgetPercent } from './budgetMath.js'
+import { budgetRowParts } from './budgetMath.js'
 
 // One budget from useBudgetProgress as a kit ProgressRow: category icon,
 // "€312.40 of €400.00", the percent (or an Over budget pill) and a bar in
@@ -14,12 +13,11 @@ import { budgetPercent } from './budgetMath.js'
 export default function BudgetRow({ item, currency, actions, period }) {
   const t = useT('budgets')
   const link = categoryLink(item.name, item.categoryId, period ?? { label: t('thisMonth') })
+  const p = budgetRowParts(item, currency)
   return (
     <ProgressRow role="listitem" media={<CategoryBadge category={item.category} size={32} />}
       to={link.to} linkLabel={link.label}
-      title={item.name}
-      meta={t('progress', { spent: formatMoney(item.spent, currency), limit: formatMoney(item.limit, currency) })}
-      percent={budgetPercent(item.spent, item.limit)} tone={item.tone}
-      over={item.tone === 'negative'} actions={actions} actionSize="lg" />
+      title={p.name} meta={p.meta} percent={p.percent} tone={p.tone ?? undefined}
+      over={p.over} actions={actions} actionSize="lg" />
   )
 }

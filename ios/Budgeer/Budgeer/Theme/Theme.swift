@@ -56,6 +56,7 @@ enum Theme {
             ? UIColor(red: 242 / 255, green: 145 / 255, blue: 127 / 255, alpha: 0.14) : UIColor(hex: 0xFDF1EE) })
         static let warning = dynamic(0xB45709, 0xFBB324)         // status.warning (amber.700 | amber.400)
         static let placeholder = dynamic(0x9A8B72, 0x9A8B72)     // chakra-placeholder-color (sand.500)
+        static let trendRest = dynamic(0xFFE3DB, 0x7C6F59)       // TrendBars' other months (brand.100 | sand.600)
         static let fill = Palette.brand500                       // a progress bar's normal fill (kitMath FILL_TONE.brand)
         static let onAccent = Color.white
     }
@@ -145,6 +146,20 @@ enum Theme {
 extension Color {
     init(hex: UInt32) {
         self.init(uiColor: UIColor(hex: hex))
+    }
+
+    /// "#RRGGBB" or "#RRGGBBAA" (a category's tint from the core); nil for
+    /// anything else.
+    init?(hexString: String) {
+        var text = hexString
+        if text.hasPrefix("#") { text.removeFirst() }
+        guard text.count == 6 || text.count == 8, let value = UInt64(text, radix: 16) else { return nil }
+        let rgba = text.count == 6 ? (value << 8) | 0xFF : value
+        self.init(.sRGB,
+                  red: Double((rgba >> 24) & 0xFF) / 255,
+                  green: Double((rgba >> 16) & 0xFF) / 255,
+                  blue: Double((rgba >> 8) & 0xFF) / 255,
+                  opacity: Double(rgba & 0xFF) / 255)
     }
 }
 

@@ -9,19 +9,19 @@ import { CardEmptyState } from '../../shared/ui/EmptyState.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import SectionLabel from '../../shared/ui/kit/SectionLabel.jsx'
 import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
-import { formatMoney } from '../../shared/lib/currency.js'
-import { shortDate, today } from '../../shared/lib/dates.js'
+import { today } from '../../shared/lib/dates.js'
 import { paidInWindow } from '../../shared/lib/spread.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { usePaged } from '../../shared/ui/usePaged.js'
 import Paginator from '../../shared/ui/Paginator.jsx'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
-import { isPastPeriod, isMonthPeriod } from '../../shared/lib/periods.js'
-import { chargedGroups, chargedWording, frequencyLabel, subscriptionGroups } from './recurringMath.js'
-import { GroupTabs, GroupTotal, baseHint } from './SubscriptionGroups.jsx'
+import {
+  chargeParts, chargedGroups, chargedHeadline, chargedWording, groupNote, nextChargeParts, showsUpcoming,
+  subscriptionGroups, upcomingToggle,
+} from './recurringMath.js'
+import { GroupTabs, GroupTotal } from './SubscriptionGroups.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { entryName } from '../../shared/lib/categoryName.js'
 
 // Home's "Recurring" card, following Home's `period` (periods.js):
 //  * this month (and next month, once its salary is in): today's view — the
@@ -39,7 +39,7 @@ import { entryName } from '../../shared/lib/categoryName.js'
 // yearly-subscription setting is set (the Yearly tab just says how those count).
 export default function SubscriptionsCard({ rules, fx, loading, error, onRetry, baseCurrency, period, charges }) {
   const t = useT('recurring')
-  const upcoming = !period || (isMonthPeriod(period) && !isPastPeriod(period, today()))
+  const upcoming = showsUpcoming(period, today())
   return (
     <Panel data-tour="subscriptions" icon={Repeat} title={t('list.title')}
       subtitle={upcoming ? undefined : chargedWording(period).subtitle}
@@ -52,15 +52,12 @@ export default function SubscriptionsCard({ rules, fx, loading, error, onRetry, 
   )
 }
 
-// The yearly-subscriptions note under the Yearly tab's total.
-function YearlyNote() {
-  const t = useT('recurring')
+// A group's note under its total (the Yearly tab's: how yearly
+// subscriptions count).
+function GroupNote({ group }) {
   const { separateYearly } = useProfile()
-  return (
-    <Text fontSize="xs" color="text.muted" mt={1}>
-      {t(separateYearly ? 'card.yearlySeparate' : 'card.yearlySpread')}
-    </Text>
-  )
+  const note = groupNote(group.key, separateYearly)
+  return note && <Text fontSize="xs" color="text.muted" mt={1}>{note}</Text>
 }
 
 function Upcoming({ rules, rates, loading, error, onRetry, baseCurrency }) {
@@ -81,22 +78,23 @@ function Upcoming({ rules, rates, loading, error, onRetry, baseCurrency }) {
       {(g) => (
         <>
           <GroupTotal group={g} baseCurrency={baseCurrency} />
-          {g.key === 'yearly' && <YearlyNote />}
+          <GroupNote group={g} />
           <SectionLabel mt={4} mb={1}>{t('card.nextCharges')}</SectionLabel>
           <Box as="ul" listStyleType="none" id={`next-charges-${g.key}`}>
-            {(showAll ? g.live : g.next).map((r) => (
-              <ItemRow as="li" key={r.id} py={2.5}
-                media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-                title={entryName(r, t('kinds.expense'))}
-                meta={`${shortDate(r.next_run)} · ${frequencyLabel(r)}`}
-                amount={formatMoney(r.amount_minor, r.currency)} amountMeta={baseHint(r, baseCurrency, rates)} />
-            ))}
+            {(showAll ? g.live : g.next).map((r) => {
+              const p = nextChargeParts(r, baseCurrency, rates)
+              return (
+                <ItemRow as="li" key={r.id} py={2.5}
+                  media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
+                  title={p.title} meta={p.meta} amount={p.amount} amountMeta={p.hint ?? undefined} />
+              )
+            })}
           </Box>
-          {g.count > g.next.length && (
+          {upcomingToggle(g) && (
             <Button size="sm" variant="outline" colorScheme="gray" w="full" mt={2}
               aria-controls={`next-charges-${g.key}`} aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}
               rightIcon={showAll ? <ChevronUp size={16} /> : <ChevronDown size={16} />}>
-              {showAll ? t('card.showNext', { n: g.next.length }) : t('card.showAll', { n: g.count })}
+              {showAll ? upcomingToggle(g).showNext : upcomingToggle(g).showAll}
             </Button>
           )}
         </>
@@ -117,8 +115,8 @@ function Charged({ period, rows = [], loading, error, onRetry, baseCurrency }) {
     <GroupTabs groups={groups} label={t('card.chargedByFrequency')}>
       {(g) => (
         <>
-          <Figure label={t(`groups.charged.${g.key}`)} size="lg" value={formatMoney(g.total, baseCurrency)} />
-          {g.key === 'yearly' && <YearlyNote />}
+          <Figure label={chargedHeadline(g, baseCurrency).label} size="lg" value={chargedHeadline(g, baseCurrency).value} />
+          <GroupNote group={g} />
           <SectionLabel mt={4} mb={1}>{t('card.charges', { count: g.charges.length })}</SectionLabel>
           <ChargeList charges={g.charges} resetKey={`${period.value}|${g.key}`} />
         </>
@@ -129,18 +127,18 @@ function Charged({ period, rows = [], loading, error, onRetry, baseCurrency }) {
 
 // A group's charges (date, name, amount as paid), 10 a page.
 function ChargeList({ charges, resetKey }) {
-  const t = useT('recurring')
   const { page, setPage, count, pageItems } = usePaged(charges, 10, resetKey)
   return (
     <>
       <Box as="ul" listStyleType="none">
-        {pageItems.map((r) => (
-          <ItemRow as="li" key={r.id} py={2.5}
-            media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-            title={entryName(r, t('kinds.expense'))}
-            meta={`${shortDate(r.spent_at)} · ${frequencyLabel(r.recurring ?? { frequency: 'monthly' })}`}
-            amount={formatMoney(r.amount_minor, r.currency)} />
-        ))}
+        {pageItems.map((r) => {
+          const p = chargeParts(r)
+          return (
+            <ItemRow as="li" key={r.id} py={2.5}
+              media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
+              title={p.title} meta={p.meta} amount={p.amount} />
+          )
+        })}
       </Box>
       <Paginator page={page} count={count} onPage={setPage} />
     </>

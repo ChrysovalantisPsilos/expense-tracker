@@ -14,14 +14,12 @@ import MetaLine from '../../shared/ui/MetaLine.jsx'
 import EmptyState from '../../shared/ui/EmptyState.jsx'
 import PageHeader from '../../shared/ui/PageHeader.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
-import { formatMoney } from '../../shared/lib/currency.js'
-import { shortDate } from '../../shared/lib/dates.js'
 import { useRecurring, useRuleRates, setRecurringActive, deleteRecurring } from './recurring.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
 import {
-  frequencyLabel, incomePerMonth, monthlyBudgetShare, subscriptionGroups,
+  incomePerMonth, incomeRules, incomeTotalParts, ruleRowParts, subscriptionGroups,
 } from './recurringMath.js'
-import { GroupTabs, GroupTotal, RatesNote, baseHint } from './SubscriptionGroups.jsx'
+import { GroupTabs, GroupTotal, RatesNote } from './SubscriptionGroups.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { userMessage } from '../../shared/lib/errors.js'
 import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
@@ -41,7 +39,7 @@ const TABS = ['expense', 'income']
 // rule's page lands on it.
 export default function Recurring() {
   const t = useT('recurring')
-  const { baseCurrency = 'EUR' } = useProfile()
+  const { baseCurrency = 'EUR', separateYearly } = useProfile()
   const { rules, loading: rulesLoading, error, reload } = useRecurring()
   // Totals count foreign rules at today's ECB rate; rows keep their currency.
   const { rates, loading: ratesLoading } = useRuleRates(rules, baseCurrency)
@@ -54,7 +52,7 @@ export default function Recurring() {
   const [removing, setRemoving] = useState(null)
 
   const groups = useMemo(() => subscriptionGroups(rules, baseCurrency, { rates }), [rules, baseCurrency, rates])
-  const income = useMemo(() => rules.filter((r) => r.kind === 'income'), [rules])
+  const income = useMemo(() => incomeRules(rules), [rules])
   // Recurring savings are listed with the income rules but not summed as income.
   const { savingsIds } = useSavingsIds()
   const incomeMonthly = useMemo(
@@ -85,7 +83,7 @@ export default function Recurring() {
     <List spacing={0}>
       {rows.map((r) => (
         <ListItem key={r.id}>
-          <RuleRow rule={r} hint={baseHint(r, baseCurrency, rates)} onToggle={() => toggle(r)} onEdit={() => openEdit(r)} onRemove={() => setRemoving(r)} />
+          <RuleRow rule={r} parts={ruleRowParts(r, { baseCurrency, rates, separateYearly })} onToggle={() => toggle(r)} onEdit={() => openEdit(r)} onRemove={() => setRemoving(r)} />
         </ListItem>
       ))}
     </List>
@@ -135,7 +133,7 @@ export default function Recurring() {
                     <Text fontSize="sm" color="text.muted" mb={4}>{t('list.incomeIntro')}</Text>
                     <Box mb={3}>
                       <Figure label={t('list.recurringIncome')} size="lg" tone="positive"
-                        value={t('groups.aboutPerMonth', { amount: formatMoney(incomeMonthly.perMonth, baseCurrency) })} />
+                        value={incomeTotalParts(incomeMonthly, baseCurrency).value} />
                       <RatesNote converted={incomeMonthly.converted} missing={incomeMonthly.missing} mt={1} />
                     </Box>
                     {list(income)}
@@ -155,16 +153,17 @@ export default function Recurring() {
 }
 
 // One rule: what it charges, how often and when next, with pause/edit/delete.
-// `hint`: a foreign rule's charge in the base currency at today's rate.
-function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
+// `parts` is ruleRowParts (the hint: a foreign rule's charge in the base
+// currency at today's rate).
+function RuleRow({ rule: r, parts: p, onToggle, onEdit, onRemove }) {
   const t = useT('recurring')
   return (
     <ItemRow py={2.5} dimmed={!r.is_active} onClick={onEdit}
       media={<CategoryBadge category={r.categories} kind={r.kind} size={32} />}
-      title={entryName(r, t(`kinds.${r.kind === 'income' ? 'income' : 'expense'}`))}
-      meta={<RuleMeta rule={r} />}
-      amount={formatMoney(r.amount_minor, r.currency)} amountMeta={hint}
-      amountTone={r.kind === 'income' ? 'positive' : 'default'}
+      title={p.title}
+      meta={<RuleMeta parts={p} />}
+      amount={p.amount} amountMeta={p.hint ?? undefined}
+      amountTone={p.tone}
       trailing={
         <Box display={{ base: 'none', sm: 'block' }} flexShrink={0}>
           <Switch isChecked={r.is_active} onChange={onToggle} aria-label={t(r.is_active ? 'row.pause' : 'row.resume')} />
@@ -178,30 +177,21 @@ function RuleRow({ rule: r, hint, onToggle, onEdit, onRemove }) {
   )
 }
 
-// The muted line under a rule's title: frequency · next date, what a yearly
-// expense counts per month in budgets (unless the user keeps yearly
-// subscriptions out of monthly spending), plus reminder/paused tags.
-function RuleMeta({ rule: r }) {
-  const t = useT('recurring')
-  const { separateYearly } = useProfile()
-  const share = separateYearly ? null : monthlyBudgetShare(r)
+// The muted line under a rule's title (ruleRowParts): frequency · next date,
+// what a yearly expense counts per month in budgets (unless the user keeps
+// yearly subscriptions out of monthly spending), plus reminder/paused tags.
+function RuleMeta({ parts: p }) {
   return (
     <MetaLine>
-      <Text whiteSpace="nowrap">{frequencyLabel(r)}</Text>
-      <Text whiteSpace="nowrap">{t('row.next', { date: shortDate(r.next_run) })}</Text>
-      {share && (
-        <Text whiteSpace="nowrap">
-          {share.exact ? '' : '≈ '}{t('row.budgetShare', { amount: formatMoney(share.perMonth, r.currency) })}
-        </Text>
-      )}
-      {r.remind_days_before != null && (
+      {p.meta.map((part) => <Text key={part} whiteSpace="nowrap">{part}</Text>)}
+      {p.remind && (
         <MetaLine.Bare>
           <Tag size="sm" colorScheme="brand" borderRadius="full" px={2}>
-            <Bell size={10} style={{ marginRight: 3 }} /> {t('row.remindDays', { days: r.remind_days_before })}
+            <Bell size={10} style={{ marginRight: 3 }} /> {p.remind}
           </Tag>
         </MetaLine.Bare>
       )}
-      {!r.is_active && <MetaLine.Bare><Tag size="sm" borderRadius="full">{t('row.paused')}</Tag></MetaLine.Bare>}
+      {p.paused && <MetaLine.Bare><Tag size="sm" borderRadius="full">{p.paused}</Tag></MetaLine.Bare>}
     </MetaLine>
   )
 }

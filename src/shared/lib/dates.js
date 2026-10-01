@@ -54,7 +54,9 @@ export function monthHeading(key, now = new Date()) {
 }
 
 // The last `n` calendar months, oldest → newest, each as
-// { key: 'YYYY-MM', label: 'Jan', from, to }.
+// { key: 'YYYY-MM', label: 'Jan', from, to }. The label is shortMonth's
+// fixed abbreviation: Intl's short month differs between engines (Greek
+// May is «Μαΐ» in Chrome, «Μάι» in Safari; English September can be «Sept»).
 export function lastMonths(n, d = new Date()) {
   const out = []
   for (let i = n - 1; i >= 0; i--) {
@@ -62,7 +64,7 @@ export function lastMonths(n, d = new Date()) {
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 0)
     out.push({
       key: isoDate(start).slice(0, 7),
-      label: start.toLocaleDateString(intlLocale('en-US'), { month: 'short' }),
+      label: shortMonth(start.getMonth()),
       from: isoDate(start), to: isoDate(end),
     })
   }

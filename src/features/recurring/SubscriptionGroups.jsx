@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { Box, HStack, Tab, TabList, TabPanel, TabPanels, Tabs, Text } from '@chakra-ui/react'
 import Figure from '../../shared/ui/kit/Figure.jsx'
-import { formatMoney } from '../../shared/lib/currency.js'
-import { missingRatesNote, ruleInBase } from '../../shared/lib/ruleFx.js'
-import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import { groupTotalParts, ratesNotes } from './recurringMath.js'
 
 // Frequency chips over subscriptionGroups() (recurringMath.js) — Home's
 // Recurring card and the Recurring page's Subscriptions tab. One tab per
@@ -32,17 +30,12 @@ export function GroupTabs({ groups, label, children }) {
 // currencies count at today's rate (subscriptionGroups); the line under it
 // says so, and names any left out for want of a rate.
 export function GroupTotal({ group: g, baseCurrency, ...props }) {
-  const t = useT('recurring')
+  const p = groupTotalParts(g, baseCurrency)
   return (
     <Box {...props}>
       <HStack justify="space-between" align="end" spacing={3} flexWrap="wrap">
-        <Figure label={t(`groups.total.${g.key}`)} size="lg"
-          value={t(`groups.perUnit.${g.unit}`, { amount: formatMoney(g.total, baseCurrency) })} />
-        {g.unit !== 'month' && (
-          <Text fontSize="sm" color="text.muted">
-            {t('groups.aboutPerMonth', { amount: formatMoney(g.perMonth, baseCurrency) })}
-          </Text>
-        )}
+        <Figure label={p.label} size="lg" value={p.value} />
+        {p.perMonth && <Text fontSize="sm" color="text.muted">{p.perMonth}</Text>}
       </HStack>
       <RatesNote converted={g.converted} missing={g.missing} mt={1} />
     </Box>
@@ -52,21 +45,12 @@ export function GroupTotal({ group: g, baseCurrency, ...props }) {
 // The notes under a total built from rules: foreign ones converted at today's
 // rate, and those left out because there's no rate right now.
 export function RatesNote({ converted, missing, ...props }) {
-  const t = useT('recurring')
-  const left = missingRatesNote(missing, formatMoney, (amounts) => t('rates.missing', { amounts }))
-  if (!converted && !left) return null
+  const notes = ratesNotes(converted, missing)
+  if (!notes.converted && !notes.missing) return null
   return (
     <Box fontSize="xs" color="text.muted" {...props}>
-      {converted && <Text>{t('rates.converted')}</Text>}
-      {left && <Text>{left}</Text>}
+      {notes.converted && <Text>{notes.converted}</Text>}
+      {notes.missing && <Text>{notes.missing}</Text>}
     </Box>
   )
-}
-
-// What a foreign rule's charge is in the base currency at today's rate
-// ("≈ €6.98"), shown under its own amount; undefined for a base-currency rule
-// or one with no rate.
-export function baseHint(rule, baseCurrency, rates) {
-  const b = rule.currency !== baseCurrency && ruleInBase(rule, baseCurrency, rates)
-  return b ? `≈ ${formatMoney(b.amount_minor, baseCurrency)}` : undefined
 }

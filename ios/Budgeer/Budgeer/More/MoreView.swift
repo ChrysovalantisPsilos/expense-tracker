@@ -1,7 +1,8 @@
-// The More tab: the account (who is signed in, sign out), the language (the
-// web's "Follow my device" / English / Ελληνικά) and the build (version,
-// which Supabase project a Dev build talks to). Settings proper come with
-// their phase.
+// The More tab, after the web's: Money (Insights, Recurring: each a page
+// the tab pushes), the account (who is signed in, sign out), the language
+// (the web's "Follow my device" / English / Ελληνικά) and the build
+// (version, which Supabase project a Dev build talks to). Settings proper
+// come with their phase.
 import SwiftUI
 
 @MainActor
@@ -9,12 +10,36 @@ struct MoreView: View {
     let config: AppConfig
     let session: SessionStore
     let user: AuthUser
+    /// The Money section's pages, in the web's order.
+    var pages: [MorePage] = []
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
         @Bindable var language = language
         NavigationStack {
             List {
+                if !pages.isEmpty {
+                    Section(language.t("shell:more.money")) {
+                        ForEach(pages) { page in
+                            NavigationLink {
+                                page.view
+                            } label: {
+                                HStack(spacing: Theme.Space.s3) {
+                                    IconTile(systemName: page.icon, tone: Theme.Colors.accentFg)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(language.t("shell:nav.\(page.id)"))
+                                            .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
+                                            .foregroundStyle(Theme.Colors.textPrimary)
+                                        Text(language.t("shell:more.\(page.id)"))
+                                            .font(Theme.Fonts.body(13, lang: language.current))
+                                            .foregroundStyle(Theme.Colors.textMuted)
+                                    }
+                                }
+                            }
+                            .accessibilityIdentifier("more.\(page.id)")
+                        }
+                    }
+                }
                 Section(language.t("ios:more.account")) {
                     if let email = user.email {
                         Text(email)
@@ -64,4 +89,12 @@ struct MoreView: View {
         let build = info["CFBundleVersion"] as? String ?? "0"
         return "\(short) (\(build))"
     }
+}
+
+/// A page the More tab opens: its id is the web's (shell:nav.<id>,
+/// shell:more.<id> name and describe it).
+struct MorePage: Identifiable {
+    let id: String
+    let icon: String
+    let view: AnyView
 }

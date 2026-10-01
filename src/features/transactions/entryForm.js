@@ -8,7 +8,7 @@
 // inputs can be empty mid-edit; `date` is the entry's date on Add and the next
 // charge on a rule's page; `paidFrom` is 'bank' | 'savings' | 'vouchers'.
 import { minorToInput, toMinor } from '../../shared/lib/currency.js'
-import { paidFromOf } from '../../shared/lib/savings.js'
+import { paidFromOf, paidFromSources } from '../../shared/lib/savings.js'
 import { amountError, fieldErrors, requiredError } from '../../shared/lib/formChecks.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 
@@ -54,6 +54,41 @@ export function entryErrors({ amount, date }) {
     amount: amountError(amount),
     date: requiredError(date, t('transactions:form.pickDate')),
   })
+}
+
+// What the fields show for a form state (useEntryFields, the native form):
+//   isSavings    income in a savings category (0084): "Taken from my income"
+//   sources      "Paid from"'s choices for an expense ([] when the bank is
+//                the only one): savings once the user has a savings category,
+//                meal vouchers when `vouchersOn` and `allowVouchers` (not for
+//                a rule, nor an entry set to repeat); the one the entry was
+//                saved with (`startPaidFrom`) stays offered
+//   from         the choice shown: the form's, or the bank when it isn't offered
+//   amountMinor  the amount in minor units (0 while empty or not above zero)
+// `savingsIds` is the Set of the user's savings categories.
+export function entryDerived(form, { savingsIds, vouchersOn = false, allowVouchers = true, startPaidFrom = 'bank' }) {
+  const sources = form.kind === 'expense' ? paidFromSources({
+    savings: savingsIds.size > 0 || startPaidFrom === 'savings',
+    vouchers: allowVouchers && (vouchersOn || startPaidFrom === 'vouchers'),
+  }) : []
+  return {
+    isSavings: form.kind === 'income' && savingsIds.has(form.categoryId),
+    sources,
+    from: sources.includes(form.paidFrom) ? form.paidFrom : 'bank',
+    amountMinor: Number(form.amount) > 0 ? toMinor(form.amount, form.currency) : 0,
+  }
+}
+
+// What Add/Edit saves for a transaction: the shared columns, the rate
+// captured now (so a balance never shifts with later rates), the notes and
+// the date. `values` is the form with "Paid from" as shown.
+export function entrySaveFields(values, { isSavings = false, rate, notes = '' }) {
+  return {
+    ...entryColumns(values, { isSavings }),
+    exchange_rate: rate,
+    notes: notes || null,
+    spent_at: values.date,
+  }
 }
 
 // The form → the columns a transaction and a rule share. An empty description

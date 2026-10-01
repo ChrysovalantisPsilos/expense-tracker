@@ -217,6 +217,8 @@ test('formatting: Greek reads 1.234,56 € and 26 Σεπ 2026', async () => {
     assert.equal(monthTitle(now), 'Σεπτέμβριος 2026')
     assert.equal(monthName(now), 'Σεπτέμβριος')
     assert.equal(lastMonths(1, now)[0].label, 'Σεπ')
+    // The fixed abbreviations every engine shows alike (Intl's May varies: Μαΐ, Μάι).
+    assert.deepEqual(lastMonths(5, now).map((m) => m.label), ['Μαΐ', 'Ιουν', 'Ιουλ', 'Αυγ', 'Σεπ'])
   } finally {
     await loadLanguage('en')
   }

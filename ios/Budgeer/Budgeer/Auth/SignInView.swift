@@ -1,6 +1,6 @@
-// Email and password sign-in, the web's Login page's words. Google, Apple
-// and passkeys have their place below the form (a divider "or continue
-// with") but no buttons until their phase.
+// Sign-in, the web's Login page's words and order: email and password, then
+// "or continue with" and the Google button (Google's own look: white, the
+// four-colour G, "Sign in with Google"). Passkeys come with their phase.
 import SwiftUI
 
 @MainActor
@@ -9,10 +9,14 @@ final class SignInViewModel {
     var email = ""
     var password = ""
     private(set) var submitting = false
+    /// Google's sheet is open (or its answer is being checked).
+    private(set) var googleBusy = false
     /// A "ns:key" of the message to show, or nil.
     private(set) var errorKey: String?
 
-    var canSubmit: Bool { !submitting && !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty }
+    var canSubmit: Bool {
+        !submitting && !googleBusy && !email.trimmingCharacters(in: .whitespaces).isEmpty && !password.isEmpty
+    }
 
     func submit(session: SessionStore) async {
         guard canSubmit else { return }
@@ -21,6 +25,22 @@ final class SignInViewModel {
         defer { submitting = false }
         do {
             try await session.signIn(email: email.trimmingCharacters(in: .whitespaces), password: password)
+        } catch {
+            errorKey = SignInViewModel.messageKey(for: error)
+        }
+    }
+
+    /// "Sign in with Google": the legal check follows as for email. Closing
+    /// Google's sheet is no error.
+    func signInWithGoogle(session: SessionStore) async {
+        guard !submitting, !googleBusy else { return }
+        googleBusy = true
+        errorKey = nil
+        defer { googleBusy = false }
+        do {
+            try await session.signIn(with: .google)
+        } catch SignInError.cancelled {
+            // The user changed their mind.
         } catch {
             errorKey = SignInViewModel.messageKey(for: error)
         }
@@ -39,7 +59,7 @@ final class SignInViewModel {
             default: return "auth:serverError"
             }
         case .network: return "common:errors.connection"
-        case .unsupported: return "common:errors.generic"
+        case .unsupported, .cancelled: return "common:errors.generic"
         }
     }
 }
@@ -59,7 +79,6 @@ struct SignInView: View {
             VStack(spacing: Theme.Space.s6) {
                 header
                 form
-                methods
                 Text(language.t("common:hobby.disclaimer"))
                     .font(Theme.Fonts.body(12, lang: language.current))
                     .foregroundStyle(Theme.Colors.textMuted)
@@ -150,6 +169,22 @@ struct SignInView: View {
             .buttonStyle(PrimaryButtonStyle())
             .disabled(!model.canSubmit)
             .accessibilityIdentifier("signin.submit")
+            divider
+            Button {
+                Task { await model.signInWithGoogle(session: session) }
+            } label: {
+                HStack(spacing: Theme.Space.s2) {
+                    if model.googleBusy {
+                        ProgressView().tint(Color(hex: 0x2D3748))
+                    } else {
+                        GoogleMark(size: 20)
+                    }
+                    Text(language.t("auth:login.google"))
+                }
+            }
+            .buttonStyle(GoogleButtonStyle())
+            .disabled(model.submitting || model.googleBusy)
+            .accessibilityIdentifier("signin.google")
         }
         .padding(Theme.Space.s5)
         .background(Theme.Colors.surface)
@@ -158,8 +193,8 @@ struct SignInView: View {
         .shadow(color: Theme.Shadow.softColor, radius: Theme.Shadow.softRadius, y: Theme.Shadow.softY)
     }
 
-    /// Where Google and passkeys go in a later phase (SignInMethod).
-    private var methods: some View {
+    /// "or continue with" between hairlines.
+    private var divider: some View {
         HStack(spacing: Theme.Space.s3) {
             Rectangle().fill(Theme.Colors.border).frame(height: 1)
             Text(language.t("auth:orContinue"))
@@ -168,6 +203,24 @@ struct SignInView: View {
                 .fixedSize()
             Rectangle().fill(Theme.Colors.border).frame(height: 1)
         }
-        .opacity(0.6)
+    }
+}
+
+/// Google's button, as the web draws it: white in both themes (the mark is
+/// made for a light surface), Chakra's gray.700 text and gray.300 hairline.
+struct GoogleButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(AppLanguage.self) private var language
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(Theme.Fonts.body(16, weight: .semibold, lang: language.current))
+            .foregroundStyle(Color(hex: 0x2D3748))
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .background(configuration.isPressed ? Color(hex: 0xEDF2F7) : Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .stroke(Color(hex: 0xCBD5E0), lineWidth: 1))
+            .opacity(isEnabled ? 1 : 0.6)
     }
 }

@@ -4,6 +4,7 @@ import {
   buildTrend, hasTrendData, spendDelta, netWorth, spendingShares, foreignSpending,
 } from '../src/features/insights/insightsMath.js'
 import { axisTick } from '../src/shared/ui/chartAxis.js'
+import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 
 const months = [
   { key: '2026-01', label: 'Jan' },
@@ -45,6 +46,16 @@ test('axisTick: compact labels that stay distinct between neighbouring ticks', (
   assert.equal(axisTick(120000), '120k')
   assert.equal(axisTick(1500000), '1.5M')
   assert.equal(axisTick(250), '250')
+})
+
+test('axisTick in Greek: thousands and millions in Greek words', async () => {
+  await loadLanguage('el')
+  try {
+    assert.deepEqual([0, 800, 1600, 3000].map(axisTick), ['0', '800', '1,6 χιλ.', '3 χιλ.'])
+    assert.equal(axisTick(1500000), '1,5 εκ.')
+  } finally {
+    await loadLanguage('en')
+  }
 })
 
 const tx = (o) => ({ kind: 'expense', exchange_rate: 1, currency: 'EUR', ...o })
@@ -119,4 +130,30 @@ test('hasTrendData: any income or spending in any month', () => {
   assert.equal(hasTrendData([{ label: 'Jan', income: 0, expense: 0 }, { label: 'Feb', income: 0, expense: 0 }]), false)
   assert.equal(hasTrendData([{ label: 'Jan', income: 0, expense: 12.5 }]), true)
   assert.equal(hasTrendData([{ label: 'Jan', income: 3250, expense: 0 }]), true)
+})
+
+import { incomeFigures, pickedMonthLabel, spendingBars, trendMoney } from '../src/features/insights/insightsMath.js'
+
+test('trendMoney, spendingBars and incomeFigures word the trend', () => {
+  assert.equal(trendMoney(1635, 'EUR'), '€1,635.00')
+  assert.equal(trendMoney(12.345, 'EUR'), '€12.35')
+  assert.equal(trendMoney(1800, 'JPY'), '¥1,800')
+  const trend = [
+    { label: 'Aug', income: 2500, expense: 1000, net: 1500 },
+    { label: 'Sep', income: 2500, expense: 2750.5, net: -250.5 },
+  ]
+  const { aside, bars } = spendingBars(trend, 0, 'EUR')
+  assert.equal(aside, 'Aug: €1,000.00')
+  assert.deepEqual(bars[1], { label: 'Sep', value: 2750.5, ariaLabel: 'Sep: €2,750.50. Show this month' })
+  assert.deepEqual(incomeFigures(trend, 'EUR'), {
+    income: '€2,500.00', spent: '€2,750.50', net: { text: '−€250.50', tone: 'negative' }, delta: 175,
+  })
+})
+
+test('pickedMonthLabel: this month, or the tapped one by name', () => {
+  const ms = [{ key: '2025-12' }, { key: '2026-08' }, { key: '2026-09' }]
+  const now = new Date(2026, 8, 20)
+  assert.equal(pickedMonthLabel(ms, 2, now), 'This month')
+  assert.equal(pickedMonthLabel(ms, 1, now), 'August')
+  assert.equal(pickedMonthLabel(ms, 0, now), 'December 2025')
 })

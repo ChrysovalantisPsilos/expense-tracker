@@ -1,0 +1,1352 @@
+{
+  "input": {
+    "now": "2020-09-15T10:00:00.000Z",
+    "profile": {
+      "base_currency": "EUR",
+      "yearly_separate": false,
+      "salary_shift_from_day": 25,
+      "salary_category_id": "11111111-1111-4111-8111-111111111111"
+    },
+    "categories": [
+      {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "kind": "income",
+        "is_savings": true
+      }
+    ],
+    "rows": [
+      {
+        "id": "a1",
+        "spent_at": "2020-09-14",
+        "kind": "expense",
+        "amount_minor": 4250,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "33333333-3333-4333-8333-333333333333",
+        "categories": {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "name": "Groceries",
+          "kind": "expense",
+          "icon": null,
+          "color": null,
+          "default_key": "groceries"
+        },
+        "description": "Market",
+        "notes": "weekly shop",
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "a2",
+        "spent_at": "2020-09-12",
+        "kind": "expense",
+        "amount_minor": 1899,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "33333333-3333-4333-8333-333333333333",
+        "categories": {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "name": "Groceries",
+          "kind": "expense",
+          "icon": null,
+          "color": null,
+          "default_key": "groceries"
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "a3",
+        "spent_at": "2020-09-10",
+        "kind": "expense",
+        "amount_minor": 3600,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "44444444-4444-4444-8444-444444444444",
+        "categories": {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "name": "Eating out",
+          "kind": "expense",
+          "icon": null,
+          "color": "teal"
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "a4",
+        "spent_at": "2020-09-09",
+        "kind": "expense",
+        "amount_minor": 2500,
+        "currency": "USD",
+        "exchange_rate": 0.9123,
+        "category_id": "44444444-4444-4444-8444-444444444444",
+        "categories": {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "name": "Eating out",
+          "kind": "expense",
+          "icon": null,
+          "color": "teal"
+        },
+        "description": "Diner",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "a5",
+        "spent_at": "2020-09-08",
+        "kind": "expense",
+        "amount_minor": 2200,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "44444444-4444-4444-8444-444444444444",
+        "categories": {
+          "id": "44444444-4444-4444-8444-444444444444",
+          "name": "Eating out",
+          "kind": "expense",
+          "icon": null,
+          "color": "teal"
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": "g1",
+        "group_expenses": {
+          "groups": {
+            "name": "Lisbon trip"
+          }
+        },
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "a6",
+        "spent_at": "2020-09-05",
+        "kind": "expense",
+        "amount_minor": 1299,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "description": "Music",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": {
+          "frequency": "monthly",
+          "interval_n": 1,
+          "is_active": true
+        },
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "a7",
+        "spent_at": "2020-09-03",
+        "kind": "expense",
+        "amount_minor": 12000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": null,
+        "categories": null,
+        "description": "New bike",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": true,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "a8",
+        "spent_at": "2020-09-02",
+        "kind": "income",
+        "amount_minor": 30000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "22222222-2222-4222-8222-222222222222",
+        "categories": {
+          "id": "22222222-2222-4222-8222-222222222222",
+          "name": "Savings",
+          "kind": "income",
+          "icon": null,
+          "color": null
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": true,
+        "spread_months": null
+      },
+      {
+        "id": "a9",
+        "spent_at": "2020-09-01",
+        "kind": "expense",
+        "amount_minor": 9600,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "66666666-6666-4666-8666-666666666666",
+        "categories": {
+          "id": "66666666-6666-4666-8666-666666666666",
+          "name": "Subscriptions",
+          "kind": "expense",
+          "icon": null,
+          "color": null
+        },
+        "description": "Cloud storage",
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": 12
+      },
+      {
+        "id": "b1",
+        "spent_at": "2020-08-27",
+        "kind": "income",
+        "amount_minor": 250000,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "11111111-1111-4111-8111-111111111111",
+        "categories": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Salary",
+          "kind": "income",
+          "icon": null,
+          "color": null,
+          "default_key": "salary"
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "recurring": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      }
+    ],
+    "oldest": "2020-03-15",
+    "views": [
+      {
+        "name": "all",
+        "kind": null,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "labels": {
+            "en": "September 2020",
+            "el": "Σεπτέμβριος 2020"
+          }
+        },
+        "text": ""
+      },
+      {
+        "name": "expenses",
+        "kind": "expense",
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "labels": {
+            "en": "September 2020",
+            "el": "Σεπτέμβριος 2020"
+          }
+        },
+        "text": ""
+      },
+      {
+        "name": "search",
+        "kind": null,
+        "period": {
+          "value": "m:2020-9",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "labels": {
+            "en": "September 2020",
+            "el": "Σεπτέμβριος 2020"
+          }
+        },
+        "text": "music"
+      }
+    ]
+  },
+  "expected": {
+    "en": {
+      "all": {
+        "title": "All transactions",
+        "subtitle": "September 2020 · 10 entries",
+        "firstRun": false,
+        "pages": 1,
+        "position": "Page 1 of 1",
+        "rows": [
+          {
+            "id": "a1",
+            "title": "Market",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "14 Sep 2020",
+              "Groceries"
+            ],
+            "notes": "weekly shop",
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€42.50",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a2",
+            "title": "Groceries",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "12 Sep 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€18.99",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a3",
+            "title": "Eating out",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "10 Sep 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€36.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a4",
+            "title": "Diner",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "9 Sep 2020",
+              "Eating out"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "$25.00",
+            "tone": "default",
+            "approx": "≈ €22.81",
+            "rate": "0.9123",
+            "estimated": null
+          },
+          {
+            "id": "a5",
+            "title": "Eating out",
+            "shared": true,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "8 Sep 2020"
+            ],
+            "notes": null,
+            "group": "Lisbon trip",
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€22.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a6",
+            "title": "Music",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "5 Sep 2020",
+              "Subscriptions"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": "Repeats every month",
+            "spread": null,
+            "countsFor": null,
+            "amount": "€12.99",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a7",
+            "title": "New bike",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "3 Sep 2020",
+              "from savings"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€120.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a8",
+            "title": "Savings",
+            "shared": false,
+            "kind": "income",
+            "look": {
+              "key": "savings",
+              "tone": "positive",
+              "tint": null
+            },
+            "meta": [
+              "2 Sep 2020",
+              "from income"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "+€300.00",
+            "tone": "positive",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a9",
+            "title": "Cloud storage",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "1 Sep 2020",
+              "Subscriptions"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": "€8.00/month over 12 months",
+            "countsFor": null,
+            "amount": "€96.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "b1",
+            "title": "Salary",
+            "shared": false,
+            "kind": "income",
+            "look": {
+              "key": "salary",
+              "tone": "positive",
+              "tint": null
+            },
+            "meta": [
+              "27 Aug 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": "Counts for September",
+            "amount": "+€2,500.00",
+            "tone": "positive",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "expenses": {
+        "title": "Expenses",
+        "subtitle": "September 2020 · 8 entries",
+        "firstRun": false,
+        "pages": 1,
+        "position": "Page 1 of 1",
+        "rows": [
+          {
+            "id": "a1",
+            "title": "Market",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "14 Sep 2020",
+              "Groceries"
+            ],
+            "notes": "weekly shop",
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€42.50",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a2",
+            "title": "Groceries",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "12 Sep 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€18.99",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a3",
+            "title": "Eating out",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "10 Sep 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€36.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a4",
+            "title": "Diner",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "9 Sep 2020",
+              "Eating out"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "$25.00",
+            "tone": "default",
+            "approx": "≈ €22.81",
+            "rate": "0.9123",
+            "estimated": null
+          },
+          {
+            "id": "a5",
+            "title": "Eating out",
+            "shared": true,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "8 Sep 2020"
+            ],
+            "notes": null,
+            "group": "Lisbon trip",
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€22.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a6",
+            "title": "Music",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "5 Sep 2020",
+              "Subscriptions"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": "Repeats every month",
+            "spread": null,
+            "countsFor": null,
+            "amount": "€12.99",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a7",
+            "title": "New bike",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "3 Sep 2020",
+              "from savings"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "€120.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a9",
+            "title": "Cloud storage",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "1 Sep 2020",
+              "Subscriptions"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": "€8.00/month over 12 months",
+            "countsFor": null,
+            "amount": "€96.00",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "search": {
+        "title": "Search results",
+        "subtitle": "1 result · Net −€12.99",
+        "firstRun": false,
+        "pages": 1,
+        "position": "Page 1 of 1",
+        "rows": [
+          {
+            "id": "a6",
+            "title": "Music",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "5 Sep 2020",
+              "Subscriptions"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": "Repeats every month",
+            "spread": null,
+            "countsFor": null,
+            "amount": "€12.99",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      }
+    },
+    "el": {
+      "all": {
+        "title": "Όλες οι κινήσεις",
+        "subtitle": "Σεπτέμβριος 2020 · 10 καταχωρίσεις",
+        "firstRun": false,
+        "pages": 1,
+        "position": "Σελίδα 1 από 1",
+        "rows": [
+          {
+            "id": "a1",
+            "title": "Market",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "14 Σεπ 2020",
+              "Σούπερ μάρκετ"
+            ],
+            "notes": "weekly shop",
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "42,50 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a2",
+            "title": "Σούπερ μάρκετ",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "12 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "18,99 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a3",
+            "title": "Eating out",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "10 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "36,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a4",
+            "title": "Diner",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "9 Σεπ 2020",
+              "Eating out"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "25,00 $",
+            "tone": "default",
+            "approx": "≈ 22,81 €",
+            "rate": "0,9123",
+            "estimated": null
+          },
+          {
+            "id": "a5",
+            "title": "Eating out",
+            "shared": true,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "8 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": "Lisbon trip",
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "22,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a6",
+            "title": "Music",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "5 Σεπ 2020",
+              "Subscriptions"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": "Επαναλαμβάνεται κάθε μήνα",
+            "spread": null,
+            "countsFor": null,
+            "amount": "12,99 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a7",
+            "title": "New bike",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "3 Σεπ 2020",
+              "από αποταμιεύσεις"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "120,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a8",
+            "title": "Savings",
+            "shared": false,
+            "kind": "income",
+            "look": {
+              "key": "savings",
+              "tone": "positive",
+              "tint": null
+            },
+            "meta": [
+              "2 Σεπ 2020",
+              "από το εισόδημα"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "+300,00 €",
+            "tone": "positive",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a9",
+            "title": "Cloud storage",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "1 Σεπ 2020",
+              "Subscriptions"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": "8,00 €/μήνα για 12 μήνες",
+            "countsFor": null,
+            "amount": "96,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "b1",
+            "title": "Μισθός",
+            "shared": false,
+            "kind": "income",
+            "look": {
+              "key": "salary",
+              "tone": "positive",
+              "tint": null
+            },
+            "meta": [
+              "27 Αυγ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": "Στα έσοδα Σεπτεμβρίου",
+            "amount": "+2.500,00 €",
+            "tone": "positive",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "expenses": {
+        "title": "Έξοδα",
+        "subtitle": "Σεπτέμβριος 2020 · 8 καταχωρίσεις",
+        "firstRun": false,
+        "pages": 1,
+        "position": "Σελίδα 1 από 1",
+        "rows": [
+          {
+            "id": "a1",
+            "title": "Market",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "14 Σεπ 2020",
+              "Σούπερ μάρκετ"
+            ],
+            "notes": "weekly shop",
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "42,50 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a2",
+            "title": "Σούπερ μάρκετ",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "12 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "18,99 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a3",
+            "title": "Eating out",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "10 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "36,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a4",
+            "title": "Diner",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "9 Σεπ 2020",
+              "Eating out"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "25,00 $",
+            "tone": "default",
+            "approx": "≈ 22,81 €",
+            "rate": "0,9123",
+            "estimated": null
+          },
+          {
+            "id": "a5",
+            "title": "Eating out",
+            "shared": true,
+            "kind": "expense",
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "meta": [
+              "8 Σεπ 2020"
+            ],
+            "notes": null,
+            "group": "Lisbon trip",
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "22,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a6",
+            "title": "Music",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "5 Σεπ 2020",
+              "Subscriptions"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": "Επαναλαμβάνεται κάθε μήνα",
+            "spread": null,
+            "countsFor": null,
+            "amount": "12,99 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a7",
+            "title": "New bike",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "3 Σεπ 2020",
+              "από αποταμιεύσεις"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": null,
+            "countsFor": null,
+            "amount": "120,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          },
+          {
+            "id": "a9",
+            "title": "Cloud storage",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "1 Σεπ 2020",
+              "Subscriptions"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": null,
+            "spread": "8,00 €/μήνα για 12 μήνες",
+            "countsFor": null,
+            "amount": "96,00 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      },
+      "search": {
+        "title": "Αποτελέσματα αναζήτησης",
+        "subtitle": "1 αποτέλεσμα · Καθαρό −12,99 €",
+        "firstRun": false,
+        "pages": 1,
+        "position": "Σελίδα 1 από 1",
+        "rows": [
+          {
+            "id": "a6",
+            "title": "Music",
+            "shared": false,
+            "kind": "expense",
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "meta": [
+              "5 Σεπ 2020",
+              "Subscriptions"
+            ],
+            "notes": null,
+            "group": null,
+            "repeats": "Επαναλαμβάνεται κάθε μήνα",
+            "spread": null,
+            "countsFor": null,
+            "amount": "12,99 €",
+            "tone": "default",
+            "approx": null,
+            "rate": null,
+            "estimated": null
+          }
+        ]
+      }
+    }
+  }
+}

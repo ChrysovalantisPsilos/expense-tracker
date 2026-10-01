@@ -3,6 +3,9 @@
 // client; the app never sees the tokens. The legal check is the same RPC
 // the web calls (my_legal_status, migration 0072).
 import Foundation
+#if canImport(AuthenticationServices)
+import AuthenticationServices
+#endif
 import Supabase
 
 final class SupabaseAuthService: AuthService {
@@ -48,9 +51,35 @@ final class SupabaseAuthService: AuthService {
             } catch {
                 throw SignInError.network(error.localizedDescription)
             }
-        case .google, .apple, .passkey:
+        case .google:
+            return try await signInWithGoogle()
+        case .apple, .passkey:
             throw SignInError.unsupported(method)
         }
+    }
+
+    /// Where Google sends the user back to (registered as a Redirect URL in
+    /// both Supabase projects; the `budgeer` scheme is the app's, project.yml).
+    static let callback = URL(string: "budgeer://auth-callback")!
+
+    /// Google's consent in the system's web sheet (ASWebAuthenticationSession,
+    /// which hands the callback back itself), then the code exchanged for a
+    /// session: supabase-swift's OAuth flow, as the web's signInWithOAuth.
+    private func signInWithGoogle() async throws -> AuthUser {
+        #if canImport(AuthenticationServices)
+        do {
+            let session = try await client.auth.signInWithOAuth(provider: .google, redirectTo: SupabaseAuthService.callback)
+            return AuthUser(session.user)
+        } catch let error as ASWebAuthenticationSessionError where error.code == .canceledLogin {
+            throw SignInError.cancelled
+        } catch let error as AuthError {
+            throw SignInError.rejected(code: error.errorCode.rawValue, message: error.message)
+        } catch {
+            throw SignInError.network(error.localizedDescription)
+        }
+        #else
+        throw SignInError.unsupported(.google)
+        #endif
     }
 
     func signOut() async throws {

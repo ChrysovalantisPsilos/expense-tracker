@@ -2,10 +2,14 @@
 import {
   monthlyMinor, monthlyShare, perYearMinor, ruleSpreadMonths, ruleCountsMonthly, spreadDates, spreadPart,
 } from '../../shared/lib/spread.js'
-import { toBaseMinor } from '../../shared/lib/currency.js'
-import { rulesInBase } from '../../shared/lib/ruleFx.js'
+import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
+import { shortDate } from '../../shared/lib/dates.js'
+import { isMonthPeriod, isPastPeriod } from '../../shared/lib/periods.js'
+import { missingRatesNote, ruleInBase, rulesInBase } from '../../shared/lib/ruleFx.js'
 import { countedDate } from '../../shared/lib/salaryShift.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
+import { entryName } from '../../shared/lib/categoryName.js'
+import { categoryLook } from '../../shared/lib/categoryStyle.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 
 // A rule's cost in monthly minor units (shared with the statement).
@@ -32,6 +36,9 @@ export function choiceToRule(choice, n = 1) {
     ? { frequency: 'monthly', interval_n: 3 }
     : { frequency: choice, interval_n: every(n) }
 }
+
+// The choices as a picker lists them: [{ value, label }] in the app's language.
+export const repeatChoiceOptions = () => REPEAT_CHOICES.map(([value, key]) => ({ value, label: t(key) }))
 
 // The other way: a stored rule → { choice, n } for the form.
 export function ruleToChoice(rule) {
@@ -162,6 +169,28 @@ export function repeatDraft(rule, { fromDate } = {}) {
     remindDays: String(rule?.remind_days_before ?? 3),
     active: rule?.is_active ?? true,
   }
+}
+
+// The line under the Repeat section's next charge on Add (a new rule made
+// from the entry): when the first repeat is due, or that it is already past
+// (it is charged on the next run); null for an entry already in a series or
+// with Repeat off.
+export function repeatNextHelp({ rule, repeat, draft, todayISO }) {
+  if (rule || !repeat) return null
+  return t(draft.nextRun < todayISO ? 'transactions:form.nextHelpMissed' : 'transactions:form.nextHelp',
+    { date: shortDate(draft.nextRun) })
+}
+
+// What a yearly expense counts in each month's budgets, under the Repeat
+// choice, or null: not spread, no amount yet, or yearly subscriptions kept
+// out of monthly spending (Settings).
+export function repeatShareLine({ choice, n, kind, amountMinor, currency, separateYearly = false }) {
+  if (!(amountMinor > 0) || separateYearly) return null
+  const { frequency, interval_n } = choiceToRule(choice, n)
+  const share = monthlyBudgetShare({ kind, frequency, interval_n, amount_minor: amountMinor })
+  return share && t(share.exact ? 'recurring:repeat.countsAs' : 'recurring:repeat.countsAsAbout', {
+    amount: formatMoney(share.perMonth, currency), months: share.months,
+  })
 }
 
 // Apply `changes` to a draft. While the next charge follows the entry's date
@@ -346,4 +375,127 @@ export function incomePerMonth(rules, savingsIds = new Set(), baseCurrency = 'EU
   const fx = rulesInBase(rules.filter((r) => r.kind === 'income' && upcoming(r) && !isSavingsRow(r, savingsIds)),
     baseCurrency, rates)
   return { perMonth: fx.rules.reduce((s, r) => s + monthlyMinor(r), 0), converted: fx.converted, missing: fx.missing }
+}
+
+// ---- The Recurring page's words (Recurring.jsx, SubscriptionGroups.jsx, the
+// native app) ------------------------------------------------------------------
+
+// The income rules (the page's Income tab), savings ones included.
+export const incomeRules = (rules) => rules.filter((r) => r.kind === 'income')
+
+// What a foreign rule's charge is in the base currency at today's rate
+// ("≈ €6.98"), shown under its own amount; null for a base-currency rule or
+// one with no rate.
+export function baseHint(rule, baseCurrency, rates) {
+  const b = rule.currency !== baseCurrency && ruleInBase(rule, baseCurrency, rates)
+  return b ? `≈ ${formatMoney(b.amount_minor, baseCurrency)}` : null
+}
+
+// The notes under a total built from rules: foreign ones converted at
+// today's rate, and those left out for want of a rate: { converted, missing }
+// (each a line, or null).
+export function ratesNotes(converted, missing) {
+  return {
+    converted: converted ? t('recurring:rates.converted') : null,
+    missing: missingRatesNote(missing, formatMoney, (amounts) => t('recurring:rates.missing', { amounts })),
+  }
+}
+
+// A frequency group's headline (GroupTotal): its label ("Monthly total"),
+// what it costs per period ("€29.97/month"), about how much a month for the
+// other periods, and the rates notes.
+export function groupTotalParts(group, baseCurrency) {
+  return {
+    label: t(`recurring:groups.total.${group.key}`),
+    value: t(`recurring:groups.perUnit.${group.unit}`, { amount: formatMoney(group.total, baseCurrency) }),
+    perMonth: group.unit === 'month' ? null
+      : t('recurring:groups.aboutPerMonth', { amount: formatMoney(group.perMonth, baseCurrency) }),
+    ...ratesNotes(group.converted, group.missing),
+  }
+}
+
+// One rule as the Recurring page lists it (RuleRow): its name and badge,
+// the muted line (how often, the next charge, a yearly expense's monthly
+// budget share unless kept separate), the reminder and paused tags, and
+// its amount in its own currency with the base-currency hint.
+export function ruleRowParts(rule, { baseCurrency, rates = {}, separateYearly = false }) {
+  const kind = rule.kind === 'income' ? 'income' : 'expense'
+  const share = separateYearly ? null : monthlyBudgetShare(rule)
+  return {
+    id: rule.id,
+    title: entryName(rule, t(`recurring:kinds.${kind}`)),
+    look: categoryLook(rule.categories, rule.kind),
+    active: !!rule.is_active,
+    meta: [
+      frequencyLabel(rule),
+      t('recurring:row.next', { date: shortDate(rule.next_run) }),
+      share && `${share.exact ? '' : '≈ '}${t('recurring:row.budgetShare', { amount: formatMoney(share.perMonth, rule.currency) })}`,
+    ].filter(Boolean),
+    remind: rule.remind_days_before != null ? t('recurring:row.remindDays', { days: rule.remind_days_before }) : null,
+    paused: rule.is_active ? null : t('recurring:row.paused'),
+    amount: formatMoney(rule.amount_minor, rule.currency),
+    hint: baseHint(rule, baseCurrency, rates),
+    tone: kind === 'income' ? 'positive' : 'default',
+  }
+}
+
+// The Income tab's headline: about how much the income rules bring in a
+// month (incomePerMonth), with the rates notes.
+export function incomeTotalParts(income, baseCurrency) {
+  return {
+    value: t('recurring:groups.aboutPerMonth', { amount: formatMoney(income.perMonth, baseCurrency) }),
+    ...ratesNotes(income.converted, income.missing),
+  }
+}
+
+// ---- Home's Recurring card (SubscriptionsCard, the native Home) -------------
+
+// Whether the card shows today's rules (this month, and next month once its
+// salary is in) rather than what was charged in a past period.
+export const showsUpcoming = (period, todayISO) => !period || (isMonthPeriod(period) && !isPastPeriod(period, todayISO))
+
+// A group's note: the Yearly tab says how yearly payments count in monthly
+// spending; the others have none (null).
+export const groupNote = (key, separateYearly) => (key !== 'yearly' ? null
+  : t(separateYearly ? 'recurring:card.yearlySeparate' : 'recurring:card.yearlySpread'))
+
+// The button under a group's next charges, when it has more to come than
+// it shows: { showAll: "Show all 5 charges", showNext: "Show the next 3" },
+// or null.
+export function upcomingToggle(group) {
+  return group.count > group.next.length ? {
+    showAll: t('recurring:card.showAll', { n: group.count }),
+    showNext: t('recurring:card.showNext', { n: group.next.length }),
+  } : null
+}
+
+// One of the next charges: its name and badge, "3 Oct · every month", the
+// amount in its own currency and its base-currency hint.
+export function nextChargeParts(rule, baseCurrency, rates) {
+  return {
+    id: rule.id,
+    title: entryName(rule, t('recurring:kinds.expense')),
+    look: categoryLook(rule.categories, rule.kind),
+    meta: `${shortDate(rule.next_run)} · ${frequencyLabel(rule)}`,
+    amount: formatMoney(rule.amount_minor, rule.currency),
+    hint: baseHint(rule, baseCurrency, rates),
+  }
+}
+
+// One charge a past period saw: its name and badge, "3 Sep · every month"
+// and the amount as paid.
+export function chargeParts(row) {
+  return {
+    id: row.id,
+    title: entryName(row, t('recurring:kinds.expense')),
+    look: categoryLook(row.categories, row.kind),
+    meta: `${shortDate(row.spent_at)} · ${frequencyLabel(row.recurring ?? { frequency: 'monthly' })}`,
+    amount: formatMoney(row.amount_minor, row.currency),
+    hint: null,
+  }
+}
+
+// A charged group's headline ("Monthly charged", "€42.00").
+export function chargedHeadline(group, baseCurrency) {
+  return { label: t(`recurring:groups.charged.${group.key}`), value: formatMoney(group.total, baseCurrency) }
 }

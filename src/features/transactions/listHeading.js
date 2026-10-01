@@ -4,6 +4,7 @@
 // search, how many results. Pure, so the three screens word it the same way,
 // in the app's language (transactions:heading.*).
 import { t } from '../../shared/lib/i18n/i18n.js'
+import { formatSigned } from '../../shared/lib/currency.js'
 
 // A list of one kind is titled by it; any other list is "All transactions".
 const titleOf = (kind, savings) => (savings && kind === 'income' ? 'savings'
@@ -40,4 +41,13 @@ export function listHeading({
 // first-entry empty state shows then, instead of "No expenses in this period".
 export function isFirstRun({ loading, failed, count, oldest, searching = false }) {
   return !loading && !failed && !searching && count === 0 && oldest === null
+}
+
+// The Transactions page's heading line: the heading's subtitle, and a
+// search's net once its rows are in ("3 results · Net −€12.00"). `net` is
+// txnFilter.netBaseMinor of the rows shown, in the base currency.
+export function ledgerSummary(subtitle, { searching, loading = false, count, net, baseCurrency }) {
+  return searching && !loading && count > 0
+    ? `${subtitle} · ${t('transactions:ledger.net', { amount: formatSigned(net, baseCurrency) })}`
+    : subtitle
 }

@@ -26,11 +26,15 @@ export const CORE_MODULES = {
   ruleFx: 'src/shared/lib/ruleFx.js',
   salaryShift: 'src/shared/lib/salaryShift.js',
   categoryName: 'src/shared/lib/categoryName.js',
+  categoryStyle: 'src/shared/lib/categoryStyle.js',
   paginate: 'src/shared/lib/paginate.js',
   savings: 'src/shared/lib/savings.js',
   formChecks: 'src/shared/lib/formChecks.js',
+  fxPreview: 'src/shared/lib/fxPreview.js',
   // The design kit's pure rules (a signed amount's tone, a bar's width).
   kitMath: 'src/shared/ui/kit/kitMath.js',
+  // The money charts' y-axis tick labels ("1.6k", "1,6 χιλ.").
+  chartAxis: 'src/shared/ui/chartAxis.js',
 
   // supabase/functions/_shared (the client ↔ edge-function parity modules).
   sharedMoney: 'supabase/functions/_shared/money.ts',
@@ -69,6 +73,7 @@ export const CORE_MODULES = {
   aiMath: 'src/features/ai/aiMath.js',
   entryForm: 'src/features/transactions/entryForm.js',
   txnFilter: 'src/features/transactions/txnFilter.js',
+  rowParts: 'src/features/transactions/rowParts.js',
   listHeading: 'src/features/transactions/listHeading.js',
 }
 

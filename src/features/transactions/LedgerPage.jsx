@@ -17,7 +17,7 @@ import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import SegmentedControl from '../../shared/ui/SegmentedControl.jsx'
 import TransactionList from './TransactionList.jsx'
 import FirstEntry from './FirstEntry.jsx'
-import { isFirstRun, listHeading } from './listHeading.js'
+import { isFirstRun, ledgerSummary, listHeading } from './listHeading.js'
 import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
 import { useCategories, useSavingsIds } from '../../shared/lib/categories.js'
 import { isFiltering, filterTransactions, netBaseMinor, EMPTY_FILTERS } from './txnFilter.js'
@@ -25,7 +25,6 @@ import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.
 import { parseLedgerParams, withLedgerParams } from './ledgerLinks.js'
 import { addEntryLink } from '../../shared/lib/addLinks.js'
 import { monthRange } from '../../shared/lib/dates.js'
-import { formatSigned } from '../../shared/lib/currency.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
@@ -114,9 +113,9 @@ export default function LedgerPage() {
 
   // The list's heading line: "This month · 13 entries", with the net of a
   // search.
-  const summary = searching && !loading && !savingsLoading && shown.length > 0
-    ? `${head.subtitle} · ${t('ledger.net', { amount: formatSigned(net, baseCurrency) })}`
-    : head.subtitle
+  const summary = ledgerSummary(head.subtitle, {
+    searching, loading: loading || savingsLoading, count: shown.length, net, baseCurrency,
+  })
   const clear = searching && (
     <Button size="xs" variant="ghost" leftIcon={<X size={14} />} onClick={clearAll}>
       {t('actions.clear')}

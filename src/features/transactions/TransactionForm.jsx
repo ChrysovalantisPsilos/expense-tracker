@@ -3,10 +3,10 @@ import { Button, Stack, Text, useToast } from '@chakra-ui/react'
 import { Trash2 } from 'lucide-react'
 import { toMinor, minorToInput, keptRate, effectiveRate, CURRENCIES } from '../../shared/lib/currency.js'
 import { useFxRate } from '../../shared/lib/fx.js'
-import { today, shortDate } from '../../shared/lib/dates.js'
+import { today } from '../../shared/lib/dates.js'
 import { insertTransaction, updateTransaction } from '../../shared/lib/transactions.js'
 import { saveRecurring, deleteRecurring } from '../recurring/recurring.js'
-import { editRepeat, planRepeat, repeatDraft } from '../recurring/recurringMath.js'
+import { editRepeat, planRepeat, repeatDraft, repeatNextHelp } from '../recurring/recurringMath.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import RepeatFields, { RepeatPanel } from '../recurring/RepeatFields.jsx'
 import ReceiptScanner from '../../shared/ui/ReceiptScanner.jsx'
@@ -16,7 +16,7 @@ import { userMessage } from '../../shared/lib/errors.js'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 import EntryFields from './EntryFields.jsx'
 import { useEntryFields } from './useEntryFields.js'
-import { entryColumns, formFromRow, newForm } from './entryForm.js'
+import { entrySaveFields, formFromRow, newForm } from './entryForm.js'
 
 // The body of the transaction page: one expense or income, new or
 // (`transaction`) existing — the entry form every page shares (EntryFields) —
@@ -111,12 +111,7 @@ export default function TransactionForm({
       return
     }
     // Capture the FX rate at entry time so historical balances never shift.
-    const fields = {
-      ...entryColumns(f.values(), { isSavings: f.isSavings }),
-      exchange_rate: rate,
-      notes: notes || null,
-      spent_at: spentAt,
-    }
+    const fields = entrySaveFields(f.values(), { isSavings: f.isSavings, rate, notes })
     setBusy(true)
     try {
       if (isEdit) await updateTransaction(transaction.id, fields)
@@ -135,10 +130,7 @@ export default function TransactionForm({
     onSaved?.()
   }
 
-  const firstNext = !rule && repeat
-  const nextHelp = firstNext
-    ? t(draft.nextRun < today() ? 'form.nextHelpMissed' : 'form.nextHelp', { date: shortDate(draft.nextRun) })
-    : undefined
+  const nextHelp = repeatNextHelp({ rule, repeat, draft, todayISO: today() }) ?? undefined
 
   return (
     <PageForm bare onSubmit={submit} noValidate busy={busy} submitProps={{ isDisabled: !rate || f.savingsLoading }}

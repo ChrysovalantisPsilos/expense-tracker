@@ -1,8 +1,8 @@
 // Sign-in, the session and the legal check, behind one protocol so the view
-// models can be tested with a fake. Email and password is the one method
-// wired so far; Google, Apple and passkeys are cases the service refuses
-// until their phase (the web has Google and passkeys; Apple was dropped by
-// the owner), so the screens can be laid out for them now.
+// models can be tested with a fake. Email and password and Google are wired
+// (Google through the system's web sheet, as the web's OAuth redirect);
+// Apple and passkeys are cases the service refuses until their phase (the
+// web has passkeys; Apple was dropped by the owner).
 import Foundation
 
 /// A way into an account.
@@ -46,6 +46,8 @@ enum SignInError: Error, Equatable, Sendable {
     /// (invalid_credentials, email_not_confirmed, …) and its message.
     case rejected(code: String?, message: String)
     case network(String)
+    /// The user closed the provider's sheet: nothing to report.
+    case cancelled
 }
 
 protocol AuthService: Sendable {

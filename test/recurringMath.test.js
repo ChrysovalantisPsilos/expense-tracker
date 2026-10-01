@@ -375,3 +375,73 @@ test('chargedWording: subtitle and empty line per period', () => {
   assert.deepEqual(chargedWording(periodFromValue('all', d)),
     { subtitle: 'Charged so far', empty: 'No recurring charges yet.' })
 })
+
+import {
+  baseHint, groupTotalParts, incomeRules, incomeTotalParts, ratesNotes, ruleRowParts,
+} from '../src/features/recurring/recurringMath.js'
+
+const ruleOf = (extra = {}) => ({
+  id: 'r1', kind: 'expense', amount_minor: 1299, currency: 'EUR', frequency: 'monthly', interval_n: 1,
+  next_run: '2020-10-03', end_date: null, is_active: true, remind_days_before: null, description: 'Music',
+  categories: { name: 'Subscriptions', icon: null, color: null }, ...extra,
+})
+
+test('ruleRowParts: name, how often, next charge, tags, amount and hint', () => {
+  assert.deepEqual(ruleRowParts(ruleOf(), { baseCurrency: 'EUR' }), {
+    id: 'r1', title: 'Music', look: { key: 'streaming', tone: 'accent', tint: null }, active: true,
+    meta: ['every month', 'next 3 Oct 2020'], remind: null, paused: null, amount: '€12.99', hint: null, tone: 'default',
+  })
+  const yearly = ruleRowParts(ruleOf({ frequency: 'yearly', amount_minor: 9600, remind_days_before: 3, is_active: false }),
+    { baseCurrency: 'EUR' })
+  assert.deepEqual(yearly.meta, ['every year', 'next 3 Oct 2020', '€8.00/mo in budgets'])
+  assert.equal(yearly.remind, '3d')
+  assert.equal(yearly.paused, 'Paused')
+  assert.deepEqual(ruleRowParts(ruleOf({ frequency: 'yearly', amount_minor: 9600 }), { baseCurrency: 'EUR', separateYearly: true }).meta,
+    ['every year', 'next 3 Oct 2020'])
+  const usd = ruleRowParts(ruleOf({ currency: 'USD', kind: 'income', description: null, categories: null }),
+    { baseCurrency: 'EUR', rates: { USD: 0.9 } })
+  assert.equal(usd.title, 'Income')
+  assert.equal(usd.hint, '≈ €11.69')
+  assert.equal(usd.tone, 'positive')
+  assert.equal(baseHint(ruleOf({ currency: 'PLN' }), 'EUR', {}), null)
+})
+
+test('groupTotalParts and ratesNotes: the headline and its notes', () => {
+  assert.deepEqual(groupTotalParts({ key: 'monthly', unit: 'month', total: 2997, perMonth: 2997, converted: false, missing: [] }, 'EUR'),
+    { label: 'Monthly total', value: '€29.97/month', perMonth: null, converted: null, missing: null })
+  const yearly = groupTotalParts({ key: 'yearly', unit: 'year', total: 9600, perMonth: 800, converted: true,
+    missing: [{ amount_minor: 2999, currency: 'PLN' }] }, 'EUR')
+  assert.equal(yearly.value, '€96.00/year')
+  assert.equal(yearly.perMonth, '≈ €8.00/month')
+  assert.equal(yearly.converted, 'Other currencies converted at today’s rate.')
+  assert.match(yearly.missing, /PLN.*29\.99 not included/)
+  assert.deepEqual(ratesNotes(false, []), { converted: null, missing: null })
+  assert.deepEqual(incomeRules([ruleOf(), ruleOf({ id: 'r2', kind: 'income' })]).map((r) => r.id), ['r2'])
+  assert.deepEqual(incomeTotalParts({ perMonth: 250000, converted: false, missing: [] }, 'EUR'),
+    { value: '≈ €2,500.00/month', converted: null, missing: null })
+})
+
+import {
+  chargeParts, chargedHeadline, groupNote, nextChargeParts, showsUpcoming, upcomingToggle,
+} from '../src/features/recurring/recurringMath.js'
+
+test('Home\'s Recurring card: upcoming or charged, its rows, notes and toggle', () => {
+  const d = new Date(2020, 8, 15)
+  assert.equal(showsUpcoming(periodFromValue('m:2020-9', d), '2020-09-15'), true)
+  assert.equal(showsUpcoming(periodFromValue('m:2020-10', d), '2020-09-15'), true)
+  assert.equal(showsUpcoming(periodFromValue('m:2020-8', d), '2020-09-15'), false)
+  assert.equal(showsUpcoming(periodFromValue('y:2020', d), '2020-09-15'), false)
+  assert.equal(showsUpcoming(null, '2020-09-15'), true)
+  assert.deepEqual(nextChargeParts(ruleOf({ currency: 'USD' }), 'EUR', { USD: 0.9 }), {
+    id: 'r1', title: 'Music', look: { key: 'streaming', tone: 'accent', tint: null },
+    meta: '3 Oct 2020 · every month', amount: '$12.99', hint: '≈ €11.69',
+  })
+  assert.equal(chargeParts({ id: 't1', kind: 'expense', spent_at: '2020-09-03', amount_minor: 1299, currency: 'EUR',
+    description: null, categories: null, recurring: { frequency: 'yearly', interval_n: 1 } }).meta, '3 Sep 2020 · every year')
+  assert.deepEqual(chargedHeadline({ key: 'monthly', total: 4200 }, 'EUR'), { label: 'Monthly charged', value: '€42.00' })
+  assert.equal(groupNote('monthly', false), null)
+  assert.equal(groupNote('yearly', false), 'Each counts in your monthly spending a twelfth at a time.')
+  assert.match(groupNote('yearly', true), /Kept out/)
+  assert.equal(upcomingToggle({ count: 3, next: [1, 2, 3] }), null)
+  assert.deepEqual(upcomingToggle({ count: 5, next: [1, 2, 3] }), { showAll: 'Show all 5 charges', showNext: 'Show the next 3' })
+})

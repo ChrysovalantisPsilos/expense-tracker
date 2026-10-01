@@ -1,6 +1,6 @@
-// The fakes the view-model tests run against: an auth service and a Home
-// repository whose answers the test sets, and the parity fixture's inputs
-// (Fixtures/home.json, written by mobile-core/homeFigures.mjs).
+// The fakes the view-model tests run against: an auth service and a data
+// store (FakeStore) whose answers the test sets, and the parity fixtures'
+// inputs (Fixtures/*.json, written from the web's functions by mobile-core/).
 import Foundation
 import XCTest
 @testable import Budgeer
@@ -60,48 +60,59 @@ struct FakeError: Error, CustomStringConvertible {
     let description: String
 }
 
-final class FakeHomeRepository: HomeRepository, @unchecked Sendable {
-    var profileResult: Result<JSONValue, Error>
-    var categoriesResult: Result<JSONValue, Error>
-    var rowsResult: Result<JSONValue, Error>
-    private(set) var windows: [(from: String?, to: String?)] = []
+/// A fixture file (Fixtures/<name>.json) from the test bundle.
+func fixtureData(_ name: String) throws -> Data {
+    let url = try XCTUnwrap(Bundle(for: FakeStore.self).url(forResource: name, withExtension: "json"), "\(name).json")
+    return try Data(contentsOf: url)
+}
 
-    init(fixture: HomeFixture) {
+extension FakeStore {
+    /// A store answering Home's reads with the fixture's inputs.
+    convenience init(home fixture: HomeFixture) {
+        self.init()
         profileResult = .success(fixture.input.profile)
-        categoriesResult = .success(fixture.input.categories)
+        savingsResult = .success(fixture.input.categories)
         rowsResult = .success(fixture.input.rows)
-    }
-
-    func profile() async throws -> JSONValue { try profileResult.get() }
-    func savingsCategories() async throws -> JSONValue { try categoriesResult.get() }
-    func transactions(from: String?, to: String?) async throws -> JSONValue {
-        windows.append((from, to))
-        return try rowsResult.get()
+        rulesResult = .success(fixture.input.rules)
+        for (currency, rate) in fixture.input.rates.objectValue ?? [:] {
+            if let value = rate.doubleValue { rates["\(currency)>EUR"] = value }
+        }
     }
 }
 
-/// Fixtures/home.json: the inputs and the figures the web's functions give.
+/// Fixtures/home.json: the inputs and, per language and view (this month,
+/// a past month), the figures the web's functions give.
 struct HomeFixture: Decodable {
+    struct View: Decodable {
+        let name: String
+        let periodValue: String?
+    }
     struct Input: Decodable {
         let now: String
         let profile: JSONValue
         let categories: JSONValue
         let rows: JSONValue
+        let rules: JSONValue
+        let rates: JSONValue
+        let views: [View]
     }
     let input: Input
-    let expected: [String: HomeFigures]
+    let expected: [String: [String: HomeFigures]]
 
     static func load() throws -> HomeFixture {
-        let url = try XCTUnwrap(Bundle(for: FakeHomeRepository.self).url(forResource: "home", withExtension: "json"))
-        return try JSONDecoder().decode(HomeFixture.self, from: Data(contentsOf: url))
+        try JSONDecoder().decode(HomeFixture.self, from: fixtureData("home"))
     }
 
     var now: Date {
         ISO8601DateFormatter.fractional.date(from: input.now)!
     }
 
-    var homeInput: HomeInput {
-        HomeInput(rows: input.rows, profile: input.profile, categories: input.categories, now: now)
+    /// This month's figures in `lang`.
+    func thisMonth(_ lang: String = "en") -> HomeFigures? { expected[lang]?["thisMonth"] }
+
+    func homeInput(periodValue: String? = nil) -> HomeInput {
+        HomeInput(rows: input.rows, profile: input.profile, categories: input.categories, rules: input.rules,
+                  rates: input.rates, now: now, periodValue: periodValue)
     }
 }
 

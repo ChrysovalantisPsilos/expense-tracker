@@ -11,7 +11,6 @@ import { useCategories } from '../../shared/lib/categories.js'
 import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useLanguage } from '../../shared/lib/i18n/I18nProvider.jsx'
-import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { today } from '../../shared/lib/dates.js'
 import {
   AI_SWITCHES, applySuggestions, categoryLabels, helpersOn, monthStartOf, shouldAutoWrite, suggestionRequest, summaryState,
@@ -43,7 +42,7 @@ async function callAiHelper(body) {
 // their names as the app shows them).
 export async function fillFromText(text, categories) {
   const data = await callAiHelper({
-    action: 'parse_entry', text, today: today(), labels: categoryLabels(categories, categoryDisplayName),
+    action: 'parse_entry', text, today: today(), labels: categoryLabels(categories),
   })
   return data.entry
 }
@@ -53,7 +52,7 @@ export async function fillFromText(text, categories) {
 // itself; only the line and the category names as the app shows them go up.
 export async function planWhatIf(text, categories) {
   const data = await callAiHelper({
-    action: 'plan_whatif', text, labels: categoryLabels(categories, categoryDisplayName),
+    action: 'plan_whatif', text, labels: categoryLabels(categories),
   })
   return data.whatif
 }
@@ -63,7 +62,7 @@ export async function planWhatIf(text, categories) {
 export async function suggestCategories(groups, categories) {
   const { ids, merchants } = suggestionRequest(groups)
   const data = await callAiHelper({
-    action: 'suggest_categories', merchants, labels: categoryLabels(categories, categoryDisplayName),
+    action: 'suggest_categories', merchants, labels: categoryLabels(categories),
   })
   return { ids, suggestions: data.suggestions ?? [] }
 }
@@ -103,7 +102,7 @@ export function useMonthSummary() {
   const [writeFailed, setWriteFailed] = useState(false)
   const attempted = useRef(null) // the month already written (or tried) this visit
   const labels = useRef({})
-  labels.current = categoryLabels(categories, categoryDisplayName)
+  labels.current = categoryLabels(categories)
 
   const write = useCallback(async () => {
     attempted.current = month

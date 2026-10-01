@@ -1,7 +1,7 @@
 // The signed-in app: five tabs after the web's bottom navigation (Home,
-// Transactions, Groups, Budgets, More). Home is real; Transactions, Groups
-// and Budgets say "coming soon" until their phase; More holds the account
-// (sign out), the language and the build's details.
+// Transactions, Groups, Budgets, More). Groups says "coming soon" until its
+// phase; More holds Recurring, Insights, the account, the language and the
+// build. The entry form opens over any tab (Add from "+", Edit from a row).
 import SwiftUI
 
 @MainActor
@@ -9,29 +9,95 @@ struct MainTabView: View {
     let container: AppContainer
     let user: AuthUser
     @Environment(AppLanguage.self) private var language
+    @Environment(\.scenePhase) private var scenePhase
     @State private var home: HomeViewModel?
+    @State private var ledger: LedgerModel?
+    @State private var budgets: BudgetsModel?
+    @State private var recurring: RecurringModel?
+    @State private var insights: InsightsModel?
+    /// The entry form, when open.
+    @State private var entry: EntrySheet?
+
+    /// More's Money pages (the web's order: Insights, then Recurring).
+    private var morePages: [MorePage] {
+        var pages: [MorePage] = []
+        if let insights {
+            pages.append(MorePage(id: "insights", icon: "chart.bar.xaxis", view: AnyView(
+                InsightsView(model: insights)
+                    .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
+                        await insights.load()
+                    })))
+        }
+        if let recurring {
+            pages.append(MorePage(id: "recurring", icon: "repeat", view: AnyView(
+                RecurringView(model: recurring,
+                              onOpen: { rule in entry = EntrySheet.rule(rule, data: container.data) },
+                              onAdd: { kind in entry = EntrySheet.add(kind: kind, repeats: true, data: container.data) })
+                    .liveRefresh(container.live, tables: ["recurring_rules", "categories", "profiles"]) {
+                        await recurring.load()
+                    })))
+        }
+        return pages
+    }
 
     var body: some View {
         TabView {
             Group {
                 if let home {
-                    HomeView(model: home)
+                    HomeView(model: home, onAdd: { entry = EntrySheet.add(data: container.data) })
+                        .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
+                            await home.refresh()
+                        }
                 } else {
                     LoadingView()
                 }
             }
             .tabItem { Label(language.t("shell:nav.home"), systemImage: "house") }
-            ComingSoonView(title: language.t("shell:nav.transactions"))
+            Group {
+                if let ledger {
+                    TransactionsView(model: ledger,
+                                     onAdd: { kind in entry = EntrySheet.add(kind: kind, data: container.data) },
+                                     onOpen: { row in entry = EntrySheet.edit(row, data: container.data) })
+                        .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
+                            await ledger.reloadRows()
+                        }
+                } else {
+                    LoadingView()
+                }
+            }
                 .tabItem { Label(language.t("shell:nav.transactions"), systemImage: "list.bullet.rectangle") }
             ComingSoonView(title: language.t("shell:nav.groups"))
                 .tabItem { Label(language.t("shell:nav.groups"), systemImage: "person.2") }
-            ComingSoonView(title: language.t("shell:nav.budgets"))
+            Group {
+                if let budgets {
+                    BudgetsView(model: budgets)
+                        .liveRefresh(container.live, tables: ["budgets", "transactions", "categories", "profiles"]) {
+                            await budgets.load()
+                        }
+                } else {
+                    LoadingView()
+                }
+            }
                 .tabItem { Label(language.t("shell:nav.budgets"), systemImage: "chart.pie") }
-            MoreView(config: container.config, session: container.session, user: user)
+            MoreView(config: container.config, session: container.session, user: user, pages: morePages)
                 .tabItem { Label(language.t("shell:nav.more"), systemImage: "ellipsis.circle") }
         }
+        .sheet(item: $entry) { sheet in
+            EntryFormView(model: sheet.model) { _ in entry = nil }
+                .environment(language)
+        }
         .onAppear {
-            if home == nil { home = HomeViewModel(repository: container.home) }
+            if home == nil { home = HomeViewModel(data: container.data) }
+            if ledger == nil { ledger = LedgerModel(data: container.data) }
+            if budgets == nil { budgets = BudgetsModel(data: container.data) }
+            if recurring == nil { recurring = RecurringModel(data: container.data) }
+            if insights == nil { insights = InsightsModel(data: container.data) }
+        }
+        // Live updates for this account while the app is open; back in the
+        // foreground, everything catches up on what realtime missed.
+        .task(id: user.id) { await container.feed.start(userId: user.id) }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { container.live.catchUp() }
         }
     }
 }

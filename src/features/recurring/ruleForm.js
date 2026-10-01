@@ -3,6 +3,7 @@
 // unit-tested in test/entryForm.test.js.
 import { entryColumns, formFromRow } from '../transactions/entryForm.js'
 import { repeatDraft, repeatRuleFields } from './recurringMath.js'
+import { t } from '../../shared/lib/i18n/i18n.js'
 
 // A saved rule → { form, draft }: the entry fields (the date field is its next
 // charge) and the Repeat section's draft.
@@ -24,4 +25,10 @@ export function ruleFromForm(form, draft, { isSavings = false } = {}) {
     ...repeatRuleFields(draft),
     next_run: form.date,
   }
+}
+
+// The line under a rule's next charge: a date already past is charged on
+// the next run (null otherwise).
+export function nextChargeHelp(date, todayISO) {
+  return date && date < todayISO ? t('recurring:form.nextMissed') : null
 }

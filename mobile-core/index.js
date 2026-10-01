@@ -23,10 +23,13 @@ import * as txnRollup from '../src/shared/lib/txnRollup.js'
 import * as ruleFx from '../src/shared/lib/ruleFx.js'
 import * as salaryShift from '../src/shared/lib/salaryShift.js'
 import * as categoryName from '../src/shared/lib/categoryName.js'
+import * as categoryStyle from '../src/shared/lib/categoryStyle.js'
 import * as paginate from '../src/shared/lib/paginate.js'
 import * as savings from '../src/shared/lib/savings.js'
 import * as formChecks from '../src/shared/lib/formChecks.js'
+import * as fxPreview from '../src/shared/lib/fxPreview.js'
 import * as kitMath from '../src/shared/ui/kit/kitMath.js'
+import * as chartAxis from '../src/shared/ui/chartAxis.js'
 import * as sharedMoney from '../supabase/functions/_shared/money.ts'
 import * as sharedSavings from '../supabase/functions/_shared/savings.ts'
 import * as sharedSalaryShift from '../supabase/functions/_shared/salaryShift.ts'
@@ -61,6 +64,7 @@ import * as insightsMath from '../src/features/insights/insightsMath.js'
 import * as aiMath from '../src/features/ai/aiMath.js'
 import * as entryForm from '../src/features/transactions/entryForm.js'
 import * as txnFilter from '../src/features/transactions/txnFilter.js'
+import * as rowParts from '../src/features/transactions/rowParts.js'
 import * as listHeading from '../src/features/transactions/listHeading.js'
 
 // The language every wording function answers in. English is the default and
@@ -84,10 +88,13 @@ export const modules = {
   ruleFx,
   salaryShift,
   categoryName,
+  categoryStyle,
   paginate,
   savings,
   formChecks,
+  fxPreview,
   kitMath,
+  chartAxis,
   sharedMoney,
   sharedSavings,
   sharedSalaryShift,
@@ -122,6 +129,7 @@ export const modules = {
   aiMath,
   entryForm,
   txnFilter,
+  rowParts,
   listHeading,
 }
 

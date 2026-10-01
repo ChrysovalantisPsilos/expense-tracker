@@ -144,41 +144,75 @@ device build) go in `Config/Local.xcconfig`, which is not tracked.
 
 ```
 ios/Budgeer/
-  project.yml            the XcodeGen spec (targets, schemes, packages)
+  project.yml            the XcodeGen spec (targets, schemes, packages, the budgeer:// URL scheme)
   Config/                Base / Dev / Prod xcconfig
   scripts/prebuild.sh    core + strings before a build
   Budgeer/
     BudgeerApp.swift     the entry: AppConfig → AppContainer → RootView
-    App/                 AppContainer (the one client, the stores), RootView (per session state), MainTabView
-    Auth/                AuthService (protocol) + SupabaseAuthService, SessionStore, SignInView, LegalGateView
-    Home/                HomeRepository (the web's reads), HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView
-    More/                MoreView (account, sign out, language, build)
-    Theme/               Theme (tokens from palette.js / theme.js), Kit (Panel, Figure, BalanceTile, ProgressRow, buttons, fields)
-    Support/             AppLanguage, L10n (the generated strings), JSONValue
+    App/                 AppContainer (the client, the data layer, the cache, the live feed), RootView,
+                         MainTabView (tabs, the Add sheet, More's pages), LiveRefresh
+    Auth/                AuthService + SupabaseAuthService (email, Google), SessionStore, SignInView, LegalGateView
+    Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables),
+                         QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
+                         refetch), FxRates (ECB rates as fx.js), PeriodSource (the period pickers' options)
+    Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView
+    Transactions/        EntryFormModel + EntryFormView + EntrySheet (Add/Edit), LedgerFigures + LedgerModel +
+                         TransactionsView + EntryRowView (the list)
+    Budgets/             BudgetFigures, BudgetsModel, BudgetsView
+    Recurring/           RecurringFigures, RecurringModel, RecurringView
+    Insights/            InsightsFigures, InsightsModel, InsightsView (Swift Charts draws, the core computes)
+    More/                MoreView (Money pages, account, sign out, language, build)
+    Theme/               Theme (tokens), Kit (Panel, Figure, ProgressRow, buttons), FormKit (form rows, fields),
+                         CategoryBadge (the web's icons as SF Symbols, the category colour)
+    Support/             AppLanguage, L10n (the generated strings), JSONValue, CoreHelpers, CategoryLook, ISODay
     Resources/Fonts/     Poppins, Nunito Sans, Manrope (OFL, static TTFs)
     Resources/Generated/ <lang>.lproj/Localizable.strings — generated, not committed
-  BudgeerTests/          view models over fakes, Home's parity, the strings, snapshots
-    Fixtures/home.json   the web's Home figures for fake inputs (npm run ios:fixture)
+  BudgeerTests/          view models over FakeStore, the parity tests, the strings, snapshots
+    Fixtures/*.json      the web's figures for fake inputs: home, ledger, budgets, recurring, insights
+                         (npm run ios:fixture)
 ```
 
-### What is real and what is not (phase 1b)
+### What is real and what is not (phase 2)
 
-- **Sign-in** with email and password (supabase-swift, pinned to 2.49.0: the
-  last release on Swift tools 5.10, which Xcode 15.4 builds). The session
-  lives in the Keychain (the client's own store) and sign-out works. Google,
-  Apple and passkeys are `SignInMethod` cases the service refuses until
-  their phase; the screen leaves them room.
-- **The legal gate**: `my_legal_status` after every sign-in, failing closed
-  as the web does. The app cannot record consent yet: the gate says to
-  accept on the website, then "Retry".
-- **Home**: the web's reads (`profiles`, `categories` with `is_savings`,
-  `my_transactions` with `p_spread` from the shifted fetch start) and the
-  web's figures — Spent, Income, Net with its sign and tone, the savings
-  line, spending by category — each from a core call, in `HomeFigures.swift`.
-  Pull to refresh. Not yet: recurring rules in the projection, pending FX
-  rates (`fillPendingRates`), the period picker, the lists.
-- **Transactions, Groups, Budgets**: "Coming to the app soon".
-- **More**: who is signed in, sign out, the language, the version.
+Every figure, label, grouping, validation and form ↔ row mapping below is
+a core call (the web's function); Swift reads, lays out and draws.
+
+- **Sign-in** with email and password, or **Google** (`signInWithOAuth`
+  through `ASWebAuthenticationSession`, back to `budgeer://auth-callback`;
+  a cancelled sheet is not an error). supabase-swift is pinned to 2.49.0,
+  the last release on Swift tools 5.10, which Xcode 15.4 builds. The
+  session lives in the Keychain. Apple and passkeys are still refused.
+- **The legal gate**: `my_legal_status` after every sign-in, failing
+  closed; the app cannot record consent yet (the gate says to accept on the
+  website, then "Retry").
+- **The data layer** (`Data/`): repositories over the web's RPCs and
+  tables, every read cached on disk (per account, cleared on sign-out) and
+  served when offline, and one realtime channel whose changes refetch the
+  open screens (debounced, plus a catch-up when the app comes to the
+  foreground), as `useLiveRefetch` does.
+- **Add / Edit an entry** (the "+" on Home and Transactions; a row opens
+  Edit): the web's fields in its order and words, Type it when the AI
+  switch is on (`ai-helper` `parse_entry`), Repeat, foreign currency with
+  the ECB preview, savings and meal-voucher sources; saved with
+  `save_transactions` / `update_transaction` / `save_recurring_rule`,
+  deleted after a confirm. Not yet: receipts, splitting with a group.
+- **Transactions**: the month picker, search, the rows and their
+  "Counts for October" notes, 20 at a time. Not yet: the advanced filters.
+- **Budgets**: this month's bars and tones, set or change a budget inline
+  (the web's RPC), the carried-over label, copy last month's.
+- **Recurring** (from More): Subscriptions and Income, the totals per
+  frequency, pause, tap to edit the rule. Rules are added from Add with
+  Repeat on, as on the web.
+- **Insights** (from More): "Where your money went" (tap a month in the
+  last six) and "Income vs expenses". Not yet: spending abroad, net worth,
+  the statement, the other cards.
+- **Home**: the period picker (months, years, all time, next month once its
+  salary is in), the overview with the recurring payments still to come,
+  pending rates filled, spending by category and the Recurring card ("Show
+  all N charges"). Not yet: the categories' "Show all", the vouchers card,
+  In words.
+- **Groups**: "Coming to the app soon". **More**: the Money pages, who is
+  signed in, sign out, the language, the version.
 
 ### Strings
 
@@ -213,18 +247,26 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   -destination "platform=iOS Simulator,name=iPhone 15,OS=17.5"
 ```
 
-- `SessionStoreTests`, `SignInViewModelTests`, `HomeViewModelTests`: the
-  view models over `FakeAuthService` and `FakeHomeRepository`.
-- `HomeParityTests`: the fixture's inputs through `HomeFigures` must give
-  the figures the web's Dashboard functions wrote into `Fixtures/home.json`,
-  in English and Greek. `npm run ios:fixture` rewrites the fixture from the
-  web's source; `test/iosHome.test.js` (in `npm test`) fails when the
-  committed file no longer matches the web.
+- View models over fakes (`FakeStore` behind every repository,
+  `FakeAuthService`): `SessionStoreTests`, `SignInViewModelTests` (email and
+  Google: success, cancelled, failed), `DataLayerTests` (the cache, live
+  refresh), `EntryFormModelTests`, `LedgerTests`, `BudgetsTests`,
+  `RecurringTests`, `InsightsTests`, `HomeViewModelTests`,
+  `CategoryBadgeTests`.
+- Parity: each screen's fixture inputs through its `…Figures` (every step a
+  core call) must give what the web's functions wrote into
+  `Fixtures/{home,ledger,budgets,recurring,insights}.json`, in English and
+  Greek. `npm run ios:fixture` (`mobile-core/homeFigures.mjs`,
+  `mobile-core/screenFigures.mjs`) rewrites them from the web's source;
+  `test/iosHome.test.js` and `test/iosScreens.test.js` (in `npm test`) fail
+  when a committed file no longer matches the web.
 - `L10nTests`: both languages bundled, the web's keys, the fallback, the
   language preference.
-- `SnapshotTests`: PNGs of Sign-in and Home (light, dark, Greek) with the
-  fixture's data, attached to the test run and written to `SNAPSHOT_DIR`
-  when set (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
+- `SnapshotTests`: PNGs of Sign-in, Home (with the picker and the Recurring
+  card), Add (an expense with Repeat on), Edit, Transactions, Budgets,
+  Recurring and Insights, each light, dark and Greek, with the fixtures'
+  data; attached to the test run and written to `SNAPSHOT_DIR` when set
+  (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
 
 CI is `.github/workflows/ios-app.yml` (macos-14, Xcode 15.4): XcodeGen, a
 Simulator build, the tests, and the snapshots as the `snapshots` artifact.

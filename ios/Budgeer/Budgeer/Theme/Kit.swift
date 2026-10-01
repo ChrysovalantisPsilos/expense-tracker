@@ -125,49 +125,79 @@ struct BalanceTile: View {
 
 // MARK: ProgressRow
 
-/// A ranked bar: title and amount over a coral bar sized by `ratio`, with
-/// the share at the end. Identity is the label, not a colour.
-struct ProgressRow: View {
+/// A ranked bar: title and amount over a bar sized by `ratio`, with the share
+/// at the end, and the row's badge (`media`) in front. Identity is the label,
+/// not a colour; `fill` colours the bar (a budget's tone), coral by default.
+struct ProgressRow<Media: View>: View {
     let title: String
     let meta: String
-    /// 0…1, the bar's length relative to the largest row.
+    /// 0…1, the bar's length relative to the largest row (or to the cap).
     let ratio: Double
     let valueLabel: String
-    var systemImage = "tag"
+    var fill: Color = Theme.Colors.fill
+    var valueTone: Color = Theme.Colors.textMuted
+    /// A red pill under the title (a budget's "Over budget").
+    var pill: String? = nil
+    @ViewBuilder var media: () -> Media
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Space.s3) {
-            IconTile(systemName: systemImage)
+            media()
             VStack(alignment: .leading, spacing: Theme.Space.s1) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(title)
-                        .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textPrimary)
-                        .lineLimit(1)
-                    Spacer(minLength: Theme.Space.s2)
-                    Text(meta)
-                        .font(Theme.Fonts.body(13, weight: .regular, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
-                        .lineLimit(1)
+                // Name and amount side by side; stacked when both don't fit
+                // (a long Greek "312,40 € από 400,00 €"), never cut short.
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline) {
+                        titleText
+                        Spacer(minLength: Theme.Space.s2)
+                        metaText
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        titleText
+                        metaText
+                    }
+                }
+                if let pill {
+                    Text(pill)
+                        .font(Theme.Fonts.body(11, weight: .bold, lang: language.current))
+                        .foregroundStyle(Theme.Colors.negative)
+                        .padding(.horizontal, Theme.Space.s2)
+                        .padding(.vertical, 2)
+                        .background(Theme.Colors.negativeSubtle)
+                        .clipShape(Capsule())
                 }
                 HStack(spacing: Theme.Space.s2) {
                     GeometryReader { geometry in
                         ZStack(alignment: .leading) {
                             Capsule().fill(Theme.Colors.subtle)
-                            Capsule().fill(Theme.Colors.fill)
+                            Capsule().fill(fill)
                                 .frame(width: geometry.size.width * barFraction)
                         }
                     }
                     .frame(height: 8)
                     Text(valueLabel)
                         .font(Theme.Fonts.body(12, weight: .semibold, lang: language.current))
-                        .foregroundStyle(Theme.Colors.textMuted)
+                        .foregroundStyle(valueTone)
                         .frame(minWidth: 34, alignment: .trailing)
                 }
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private var titleText: some View {
+        Text(title)
+            .font(Theme.Fonts.body(15, weight: .semibold, lang: language.current))
+            .foregroundStyle(Theme.Colors.textPrimary)
+            .lineLimit(1)
+    }
+
+    private var metaText: some View {
+        Text(meta)
+            .font(Theme.Fonts.body(13, weight: .regular, lang: language.current))
+            .foregroundStyle(Theme.Colors.textMuted)
+            .lineLimit(1)
     }
 
     // kitMath.barWidth: clamped to 0…100%; a sliver stays visible (the web's
@@ -240,5 +270,26 @@ struct FieldLabel: View {
         Text(text)
             .font(Theme.Fonts.body(14, weight: .semibold, lang: language.current))
             .foregroundStyle(Theme.Colors.textPrimary)
+    }
+}
+
+// MARK: AddButton
+
+/// The "+" in a screen's bar that opens the entry form: the web's coral Add.
+struct AddButton: View {
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "plus")
+                .font(.system(size: 15, weight: .bold))
+                .foregroundStyle(Theme.Colors.onAccent)
+                .frame(width: 32, height: 32)
+                .background(Theme.Colors.accentSolid)
+                .clipShape(Circle())
+        }
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("add")
     }
 }

@@ -43,4 +43,10 @@ final class L10nTests: XCTestCase {
         XCTAssertEqual(remembered.preference, "en")
         XCTAssertEqual(remembered.current, "en")
     }
+
+    func testCapsLabelsDropTheTonosAsBrowsersDo() {
+        XCTAssertEqual("Επόμενες χρεώσεις".capsLabel, "ΕΠΟΜΕΝΕΣ ΧΡΕΩΣΕΙΣ")
+        XCTAssertEqual("Προϋπολογισμοί".capsLabel, "ΠΡΟΫΠΟΛΟΓΙΣΜΟΙ")
+        XCTAssertEqual("Next charges".capsLabel, "NEXT CHARGES")
+    }
 }

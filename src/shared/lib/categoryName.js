@@ -26,6 +26,9 @@ export function byDisplayName(a, b) {
   return categoryDisplayName(a).localeCompare(categoryDisplayName(b), undefined, { sensitivity: 'base' })
 }
 
+// A copy of `categories` in that order (the category pickers' lists).
+export const sortByDisplayName = (categories) => [...(categories ?? [])].sort(byDisplayName)
+
 // `categoryId` value for personal expenses with no category — the breakdowns'
 // "Uncategorized" bucket (a group share buckets under its group instead). The
 // server can't filter on "no category", so the client refines it.

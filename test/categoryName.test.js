@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { byDisplayName, categoryDisplayName, entryName } from '../src/shared/lib/categoryName.js'
+import { byDisplayName, categoryDisplayName, entryName, sortByDisplayName } from '../src/shared/lib/categoryName.js'
 import { bucketLabel, bucketLabels } from '../src/shared/lib/txnRollup.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 import en from '../src/locales/en/common.js'
@@ -29,6 +29,10 @@ test('categoryDisplayName: a default shows its translated name, anything else it
     const sorted = [{ name: 'Salary', default_key: 'salary' }, { name: 'Bonus', default_key: 'bonus' },
       { name: 'Άλφα' }].sort(byDisplayName).map(categoryDisplayName)
     assert.deepEqual(sorted, ['Άλφα', 'Μισθός', 'Μπόνους'])
+    const input = [{ name: 'Salary', default_key: 'salary' }, { name: 'Άλφα' }]
+    assert.deepEqual(sortByDisplayName(input).map(categoryDisplayName), ['Άλφα', 'Μισθός'])
+    assert.equal(input[0].name, 'Salary', 'a copy: the input keeps its order')
+    assert.deepEqual(sortByDisplayName(null), [])
   } finally {
     await loadLanguage('en')
   }
