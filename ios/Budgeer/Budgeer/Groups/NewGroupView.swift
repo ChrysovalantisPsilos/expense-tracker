@@ -232,9 +232,15 @@ struct NewGroupView: View {
             Divider().padding(.leading, 42)
             HStack(spacing: 12) {
                 NativeIconTile(symbol: "dollarsign.arrow.circlepath", color: Color(hex: 0x2E9B62), size: 30)
+                // Outside a Form a menu picker drops its label: the label is its own text.
+                Text(language.t("groups:create.currency"))
+                Spacer(minLength: 12)
                 Picker(language.t("groups:create.currency"), selection: $model.currency) {
                     ForEach(model.currencyOptions, id: \.self) { Text(verbatim: $0).tag($0) }
                 }
+                .pickerStyle(.menu)
+                .labelsHidden()
+                .fixedSize()
                 .tint(NativeStyle.tint)
             }
             .frame(minHeight: 52)

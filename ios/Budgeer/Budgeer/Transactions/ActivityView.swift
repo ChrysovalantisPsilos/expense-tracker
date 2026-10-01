@@ -97,8 +97,9 @@ struct ActivityView: View {
                     .listRowSeparator(.hidden)
                     .accessibilityIdentifier("activity.header")
                 }
-                ActivityChips(model: model)
-                    .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 8, trailing: 0))
+                // The chips' row runs edge to edge, with room for the glass's shadow.
+                ActivityChips(model: model, inset: option == .a ? 4 : 16)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                 Text(figures.subtitle)
@@ -380,6 +381,8 @@ private struct RunningLine: View {
 @MainActor
 struct ActivityChips: View {
     let model: LedgerModel
+    /// The row's lead-in before the first chip.
+    var inset: CGFloat = 16
     @Environment(AppLanguage.self) private var language
 
     var body: some View {
@@ -404,8 +407,8 @@ struct ActivityChips: View {
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 2)
+            .padding(.horizontal, inset)
+            .padding(.vertical, 10)
         }
         .scrollClipDisabled()
         .sensoryFeedback(.selection, trigger: model.type)
@@ -438,7 +441,7 @@ private struct DayCardHeader: View {
             Text(day.title).font(.headline).foregroundStyle(Color.primary)
             Spacer()
             if let spent = day.spent {
-                Text(spent).font(.subheadline).foregroundStyle(.secondary).monospacedDigit()
+                Text(spent).font(.subheadline).foregroundStyle(Theme.Colors.textMuted).monospacedDigit()
             }
         }
         .textCase(nil)
@@ -454,8 +457,8 @@ private struct DayGlassHeader: View {
         HStack(spacing: 8) {
             Text(day.title).font(.subheadline.weight(.semibold)).foregroundStyle(Color.primary)
             if let spent = day.spent {
-                Text(verbatim: "·").foregroundStyle(.secondary)
-                Text(spent).font(.subheadline).foregroundStyle(.secondary).monospacedDigit()
+                Text(verbatim: "·").foregroundStyle(Theme.Colors.textMuted)
+                Text(spent).font(.subheadline).foregroundStyle(Theme.Colors.textMuted).monospacedDigit()
             }
         }
         .lineLimit(1)

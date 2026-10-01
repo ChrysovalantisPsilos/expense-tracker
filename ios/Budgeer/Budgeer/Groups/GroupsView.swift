@@ -136,15 +136,17 @@ struct InviteBanner: View {
                 Spacer(minLength: 0)
             }
             HStack(spacing: 10) {
-                Button(language.t("groups:actions.decline")) {
+                Button {
                     Task { _ = await model.respond(invite, accept: false) }
+                } label: {
+                    Text(language.t("groups:actions.decline")).frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
                 .nativeGlassButton()
-                Button(language.t("groups:actions.accept")) {
+                Button {
                     Task { _ = await model.respond(invite, accept: true) }
+                } label: {
+                    Text(language.t("groups:actions.accept")).frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
                 .nativeGlassButton(prominent: true)
             }
             .disabled(model.busy)
@@ -161,17 +163,21 @@ struct InviteBanner: View {
 }
 
 /// A group's picture filling its shape: the photo, or the brand's gradient
-/// with the group's letters.
+/// with the group's letters (none at size 0), raised by `lift`.
 struct GroupCover: View {
     let card: GroupCard
     var letters: CGFloat = 40
+    var lift: CGFloat = 0
 
     var body: some View {
         ZStack {
             GroupCoverArt.gradient(0)
-            Text(verbatim: card.initials)
-                .font(.custom("Poppins-Bold", size: letters))
-                .foregroundStyle(Color.white.opacity(0.95))
+            if letters > 0 {
+                Text(verbatim: card.initials)
+                    .font(.custom("Poppins-Bold", size: letters))
+                    .foregroundStyle(Color.white.opacity(0.95))
+                    .offset(y: -lift)
+            }
             if let imageUrl = card.imageUrl, let url = URL(string: imageUrl) {
                 AsyncImage(url: url) { image in
                     image.resizable().scaledToFill()
@@ -210,7 +216,10 @@ struct GroupSquareCard: View {
     var body: some View {
         Color.clear
             .aspectRatio(1, contentMode: .fit)
-            .overlay { GroupCover(card: card, letters: 46).offset(y: card.imageUrl == nil ? -22 : 0) }
+            .overlay { GroupCover(card: card, letters: 44, lift: 20) }
+            .overlay(alignment: .topTrailing) {
+                if let balance = card.balance { BalanceChip(balance: balance).padding(10) }
+            }
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(card.name)
@@ -221,11 +230,12 @@ struct GroupSquareCard: View {
                     HStack(spacing: 6) {
                         if let avatars = card.avatars {
                             NativeAvatarStack(stack: avatars, size: 22, ring: Color.white.opacity(0.9))
-                        } else {
-                            Text(card.members).font(.caption).foregroundStyle(Color.white.opacity(0.85))
                         }
-                        Spacer(minLength: 4)
-                        if let balance = card.balance { BalanceChip(balance: balance) }
+                        Text(card.members)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.white.opacity(0.9))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                 }
                 .padding(12)
@@ -313,9 +323,9 @@ struct GroupWalletCard: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            GroupCover(card: card, letters: 120)
+            GroupCover(card: card, letters: 0)
                 .overlay {
-                    LinearGradient(colors: [Color.black.opacity(0.05), Color.black.opacity(0.45)], startPoint: .top,
+                    LinearGradient(colors: [Color.black.opacity(0), Color.black.opacity(0.28)], startPoint: .top,
                                    endPoint: .bottom)
                 }
             VStack(alignment: .leading, spacing: 0) {
