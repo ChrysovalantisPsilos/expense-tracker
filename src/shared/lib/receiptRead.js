@@ -114,11 +114,13 @@ export function receiptText(boxes) {
 }
 
 // What was read, as the check's fields (strings; '' for nothing read).
-export function receiptFields(read) {
+export function receiptFields(read, formCurrency = 'EUR') {
+  // The total as an amount field shows it: the currency's decimals ("13.30").
+  const cur = CURRENCIES.includes(read?.currency) ? read.currency : formCurrency
   return {
     merchant: read?.merchant ?? '',
     date: read?.date ?? '',
-    total: read?.total != null ? String(read.total) : '',
+    total: read?.total != null ? minorToInput(toMinor(read.total, cur), cur) : '',
     currency: read?.currency ?? '',
   }
 }

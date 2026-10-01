@@ -42,7 +42,8 @@ final class ReceiptTests: XCTestCase {
         receipt.read(boxes: ReceiptTests.boxes)
         XCTAssertEqual(receipt.stage, .check)
         XCTAssertEqual(receipt.merchant, "THE BEAN HOUSE")
-        XCTAssertEqual(receipt.total, "13.3")
+        // The read total as an amount field shows it: the currency's decimals.
+        XCTAssertEqual(receipt.total, "13.30")
         XCTAssertEqual(receipt.currency, "GBP")
         XCTAssertEqual(receipt.date, "2026-09-14")
         XCTAssertEqual(receipt.note, "Correct anything that was misread, then use these details.")
