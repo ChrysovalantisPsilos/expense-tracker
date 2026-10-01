@@ -12,6 +12,8 @@ enum Theme {
         static let brand500 = Color(hex: 0xF95D38) // the mark, charts
         static let amber200 = Color(hex: 0xFDDF8A)
         static let amber400 = Color(hex: 0xFBB324)
+        /// theme.js chart.6, the salary chart's 13th month and its series 5.
+        static let chart6 = Color(hex: 0xC2703D)
     }
 
     // MARK: Semantic tokens (theme.js `semanticTokens`), light | dark
@@ -29,6 +31,7 @@ enum Theme {
         static let negative = dynamic(0xC2372B, 0xF2917F)        // status.negative (red.500 | red.200)
         static let warning = dynamic(0xB45709, 0xFBB324)         // status.warning (amber.700 | amber.400)
         static let trendRest = dynamic(0xFFE3DB, 0x7C6F59)       // TrendBars' other months (brand.100 | sand.600)
+        static let chart7 = dynamic(0x7C6F59, 0xB8AB94)          // chart.7 (sand.600 | sand.400): a bonus, indexation
     }
 
     // MARK: Helpers

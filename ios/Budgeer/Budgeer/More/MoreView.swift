@@ -1,8 +1,8 @@
 // More, as an iOS Settings-style list: you at the top (Settings), then the
-// pages the tabs don't hold: Money (Budgets, Savings, Recurring, Categories,
-// and Meal vouchers once they're set up, as on the web) and Insights. Plan
-// and Your salary join here as their pages are built. Settings is its own
-// page (Settings/SettingsView).
+// pages the tabs don't hold: Money (Budgets, Savings, Recurring, Plan,
+// Categories, and Meal vouchers once they're set up, as on the web) and
+// Insights (Your salary opens from its card there, as on the web). Settings
+// is its own page (Settings/SettingsView).
 import SwiftUI
 
 @MainActor
@@ -43,6 +43,8 @@ struct MoreView: View {
                     subtitle: "shell:more.savings", id: "more.savings")
                 row(.recurring, symbol: "arrow.triangle.2.circlepath", color: Color(hex: 0x8558D0),
                     title: "shell:nav.recurring", subtitle: "shell:more.recurring", id: "more.recurring")
+                row(.plan, symbol: "slider.horizontal.3", color: Color(hex: 0x3A78D4), title: "shell:nav.plan",
+                    subtitle: "shell:more.plan", id: "more.plan")
                 row(.categoryList, symbol: "tag.fill", color: Color(hex: 0x16939A), title: "settings:rows.categories.label",
                     subtitle: "settings:rows.categories.desc", id: "more.categories")
                 if vouchers {

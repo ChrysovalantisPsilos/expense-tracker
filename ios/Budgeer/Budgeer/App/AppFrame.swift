@@ -39,6 +39,11 @@ enum AppRoute: Hashable {
     /// Meal vouchers, and Settings › Meal vouchers.
     case vouchers
     case voucherSetup
+    /// Plan mode, Your salary, a net-worth account's page and a new one.
+    case plan
+    case salary
+    case netWorthAccount(String)
+    case newNetWorthAccount
 }
 
 /// What the Add sheet opens on.
@@ -90,6 +95,7 @@ final class AppRouter {
             tab = .more
             more = NavigationPath()
             more.append(AppRoute.recurring)
+
         } else if path == "/groups" {
             tab = .groups
             groups = NavigationPath()
@@ -138,6 +144,8 @@ final class AppModels {
     let categories: CategoriesModel
     let savings: SavingsModel
     let vouchers: VouchersModel
+    let plan: PlanModel
+    let salary: SalaryModel
 
     init(data: DataLayer, userId: String, security accountSecurity: AccountSecurity,
          signOut: @escaping @MainActor () async -> Void) {
@@ -156,6 +164,8 @@ final class AppModels {
         categories = CategoriesModel(data: data)
         savings = SavingsModel(data: data)
         vouchers = VouchersModel(data: data)
+        plan = PlanModel(data: data)
+        salary = SalaryModel(data: data)
     }
 }
 
@@ -295,9 +305,31 @@ struct AppFrame: View {
                 }
         case .insights:
             InsightsView(model: models.insights)
-                .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
+                .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "accounts", "meal_vouchers"]) {
                     await models.insights.load()
                 }
+        case .plan:
+            PlanView(model: models.plan,
+                     add: { kind in router.add = AddRequest(model: EntryFormModel(mode: .add, kind: kind, repeats: true,
+                                                                                 data: container.data)) },
+                     openRule: { rule in router.add = AddRequest(model: EntryFormModel(mode: .rule, rule: rule,
+                                                                                      data: container.data)) })
+                .liveRefresh(container.live, tables: ["recurring_rules", "categories", "profiles", "transactions", "budgets"]) {
+                    await models.plan.load()
+                }
+        case .salary:
+            SalaryView(model: models.salary,
+                       addIncome: { category in
+                           router.add = AddRequest(model: EntryFormModel(mode: .add, kind: "income", preset: category,
+                                                                         data: container.data))
+                       })
+                .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "meal_vouchers"]) {
+                    await models.salary.load()
+                }
+        case .netWorthAccount(let id):
+            AccountEditHost(insights: models.insights, id: id, data: container.data)
+        case .newNetWorthAccount:
+            AccountEditHost(insights: models.insights, id: nil, data: container.data)
         case .categories:
             HomeCategoriesPage(model: models.home)
         case .settings:

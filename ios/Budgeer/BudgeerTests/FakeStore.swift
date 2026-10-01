@@ -5,7 +5,7 @@ import Foundation
 
 final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepository, RecurringRepository,
     BudgetsRepository, FxRepository, AiRepository, GroupsRepository, PrivacyRepository, SavingsRepository,
-    @unchecked Sendable {
+    PlanRepository, InsightsRepository, @unchecked Sendable {
     // The groups' reads (GroupsRepository, in FakeStore+Groups.swift).
     var groupsResult: Result<JSONValue, Error> = .success([])
     var invitesResult: Result<JSONValue, Error> = .success([])
@@ -82,6 +82,19 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     var goalRows: JSONValue = []
     /// What the savings' and vouchers' writes did, in order: "saveGoal", "deleteGoal", "saveMealVouchers" plus the argument.
     var savingsWrites: [(name: String, args: JSONValue)] = []
+
+    // Plan mode, the salary page and the statement (FakeStore+Plan.swift).
+    /// The plan the server holds (my_recurring_plan's `plan`), and the last apply (its `undo`).
+    var savedPlan: JSONValue = .null
+    var planUndo: JSONValue = .null
+    var planReadError: Error?
+    /// What those writes did, in order: "save", "clear", "apply", "undo", "salary", "statement" plus the argument.
+    var planWrites: [(name: String, args: JSONValue)] = []
+    /// ai-helper plan_whatif's answer, and the lines asked.
+    var whatIfResult: Result<JSONValue, Error> = .success(.null)
+    var whatIfLines: [String] = []
+    /// my_salary_history's answer (a save becomes it).
+    var salaryNotes: JSONValue = .null
 
     init() {}
 

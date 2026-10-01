@@ -362,7 +362,129 @@ final class SnapshotTests: XCTestCase {
             let model = InsightsModel(data: fixture.store().data, core: .shared, now: { now })
             await model.load()
             try await shots(framed(.more) { NavigationStack { InsightsView(model: model) } },
-                      name: "insights", lang: lang, dark: dark, long: 1600)
+                      name: "insights", lang: lang, dark: dark, long: 3400)
+        }
+    }
+
+    func testNetWorthSnapshots() async throws {
+        let fixture = try NetWorthFixture.load()
+        let now = TestData.now
+        for (lang, dark) in SnapshotTests.variants {
+            _ = language(lang)
+            // Insights with accounts (the pot line), then with a savings account.
+            for view in ["accounts", "savings"] {
+                let model = InsightsModel(data: fixture.store(view).data, core: .shared, now: { now })
+                await model.load()
+                try await shots(framed(.more) { NavigationStack { InsightsView(model: model) } },
+                                name: "insights-\(view)", lang: lang, dark: dark, long: 3400)
+            }
+            // An account's page, and a new one.
+            let account = fixture.view("accounts").accounts.arrayValue?[1]
+            let edit = AccountEditorModel(account: account, data: fixture.store().data, core: .shared)
+            await edit.load()
+            try await shots(framed(.more) { NavigationStack { AccountEditView(model: edit) } },
+                            name: "account", lang: lang, dark: dark)
+            let fresh = AccountEditorModel(account: nil, data: fixture.store().data, core: .shared)
+            await fresh.load()
+            try await shots(framed(.more) { NavigationStack { AccountEditView(model: fresh) } },
+                            name: "account-new", lang: lang, dark: dark)
+        }
+    }
+
+    // MARK: Plan
+
+    func testPlanSnapshots() async throws {
+        let fixture = try PlanFixture.load()
+        let now = fixture.now
+        for (lang, dark) in SnapshotTests.variants {
+            _ = language(lang)
+            let store = fixture.store()
+            store.profileResult = .success(fixture.input.profile.with("ai_plan_whatif", true))
+            store.whatIfResult = .success(fixture.input.whatif)
+            let model = PlanModel(data: store.data, core: .shared, now: { now }, saveDelayMs: 60_000)
+            await model.load()
+            let page = { NavigationStack { PlanView(model: model, add: { _ in }, openRule: { _ in }) } }
+            try await shots(framed(.more, page), name: "plan", lang: lang, dark: dark, long: 2800)
+            // A row's editor, open in place with a lower price typed.
+            if let spotify = model.page?.groups.flatMap(\.rows).first(where: { $0.name == "Spotify" }) {
+                model.toggleOpen(spotify.id)
+                model.setAmount("8.99")
+            }
+            try await shots(framed(.more, page), name: "plan-edit", lang: lang, dark: dark, long: 3000)
+            model.close()
+            // An overlap's picker, one ticked.
+            if let overlap = model.page?.ideas.cards.first(where: { $0.action == "pick" }) {
+                model.tryIdea(overlap)
+                if let last = model.pick?.rows.last { model.togglePick(last.id) }
+            }
+            try await shots(framed(.more, page), name: "plan-pick", lang: lang, dark: dark, long: 3000)
+            model.close()
+            // What if I add…: a gym.
+            model.toggleOpen("new")
+            model.setAddName("Gym")
+            model.setAddAmount("39.90")
+            try await shots(framed(.more, page), name: "plan-add", lang: lang, dark: dark, long: 3400)
+            model.close()
+            // Type a what-if: the preview to check.
+            model.whatIfText = "cancel apple music, add a gym at 40 a month"
+            await model.askWhatIf()
+            try await shots(framed(.more, page), name: "plan-whatif", lang: lang, dark: dark, long: 3400)
+            // A plan with changes, then the Apply sheet.
+            let changed = PlanModel(data: fixture.store("changes").data, core: .shared, now: { now }, saveDelayMs: 60_000)
+            await changed.load()
+            let changes = { NavigationStack { PlanView(model: changed, add: { _ in }, openRule: { _ in }) } }
+            try await shots(framed(.more, changes), name: "plan-changes", lang: lang, dark: dark, long: 3000)
+            changed.openApply()
+            try await shots(framed(.more, changes), name: "plan-apply", lang: lang, dark: dark, settle: 1.6)
+            changed.closeApply()
+            // Just applied: Undo for 24 hours.
+            let appliedStore = fixture.store()
+            appliedStore.planUndo = ["applied_at": "2020-09-15T09:00:00.000Z", "change_count": 2]
+            let applied = PlanModel(data: appliedStore.data, core: .shared, now: { now }, saveDelayMs: 60_000)
+            await applied.load()
+            try await shots(framed(.more) {
+                NavigationStack { PlanView(model: applied, add: { _ in }, openRule: { _ in }) }
+            }, name: "plan-applied", lang: lang, dark: dark)
+            // The salary from the entries; no income at all; nothing to plan.
+            for name in ["derived", "payments"] {
+                let other = PlanModel(data: fixture.store(name).data, core: .shared, now: { now }, saveDelayMs: 60_000)
+                await other.load()
+                try await shots(framed(.more) {
+                    NavigationStack { PlanView(model: other, add: { _ in }, openRule: { _ in }) }
+                }, name: "plan-\(name)", lang: lang, dark: dark, long: 2600)
+            }
+            let emptyStore = fixture.store()
+            emptyStore.rulesResult = .success([])
+            let empty = PlanModel(data: emptyStore.data, core: .shared, now: { now }, saveDelayMs: 60_000)
+            await empty.load()
+            try await shots(framed(.more) {
+                NavigationStack { PlanView(model: empty, add: { _ in }, openRule: { _ in }) }
+            }, name: "plan-empty", lang: lang, dark: dark)
+        }
+    }
+
+    // MARK: Your salary
+
+    func testSalarySnapshots() async throws {
+        let fixture = try SalaryFixture.load()
+        let now = fixture.now
+        for (lang, dark) in SnapshotTests.variants {
+            _ = language(lang)
+            let model = SalaryModel(data: fixture.store().data, core: .shared, now: { now })
+            await model.load()
+            let page = { NavigationStack { SalaryView(model: model) { _ in } } }
+            try await shots(framed(.more, page), name: "salary", lang: lang, dark: dark, long: 3600)
+            // An extra corrected in place.
+            if let row = model.figures?.page?.extras.first?.rows.first {
+                model.startFix(row)
+                model.pickFix("thirteenth")
+            }
+            try await shots(framed(.more, page), name: "salary-fix", lang: lang, dark: dark, long: 3600)
+            // Before any pay.
+            let empty = SalaryModel(data: fixture.store(empty: true).data, core: .shared, now: { now })
+            await empty.load()
+            try await shots(framed(.more) { NavigationStack { SalaryView(model: empty) { _ in } } },
+                            name: "salary-empty", lang: lang, dark: dark)
         }
     }
 
@@ -432,7 +554,7 @@ final class SnapshotTests: XCTestCase {
                     MoreView(name: "Sam Morgan", email: "sam@example.com", initials: "SM", vouchers: true,
                              chrome: SnapshotTests.chrome)
                 }
-            }, name: "more-vouchers", lang: lang, dark: dark, long: 1200)
+            }, name: "more-vouchers", lang: lang, dark: dark, long: 1300)
         }
     }
 

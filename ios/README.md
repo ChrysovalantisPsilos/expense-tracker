@@ -158,7 +158,9 @@ ios/Budgeer/
                          password, linking Google)
     Data/                Repositories (the protocols, DataLayer), SupabaseStore (the web's RPCs and tables;
                          +Groups, +Settings: the profile, the payment details, the photo, categories, privacy;
-                         +Savings: the net-worth accounts, the goals, the meal vouchers' setup),
+                         +Savings: the net-worth accounts, the goals, the meal vouchers' setup; +Plan: the
+                         plan, apply and undo, the what-if helper, the salary's corrections, saving and removing
+                         a net-worth account, the statement),
                          QueryCache (offline reads on disk), RealtimeFeed + LiveHub (postgres_changes → debounced
                          refetch), FxRates (ECB rates as fx.js), PeriodSource (the period pickers' options)
     Home/                HomeFigures (Dashboard's steps as core calls), HomeViewModel, HomeView (the month pager,
@@ -168,7 +170,15 @@ ios/Budgeer/
                          day, the month pill, search, swipes), TransactionWords (the delete question)
     Budgets/             BudgetFigures, BudgetsModel, BudgetsView
     Recurring/           RecurringFigures, RecurringModel, RecurringView
-    Insights/            InsightsFigures, InsightsModel, InsightsView (Swift Charts draws, the core computes)
+    Insights/            InsightsFigures, InsightsModel, InsightsView (Swift Charts draws, the core computes; the
+                         salary card, net worth, the statement and its share sheet), NetWorthFigures,
+                         AccountEditorModel + AccountEditView (+ AccountEditHost: a net-worth account's page)
+    Plan/                PlanFigures (Plan.jsx's steps as core calls), PlanModel (the page, the edits, the save,
+                         apply and undo, the what-if), PlanView (the header, the notices, the ideas, the rows,
+                         Your changes), PlanEditors (a row's editor, What if I add…, the overlap picker, Type a
+                         what-if, the Apply sheet)
+    Salary/              SalaryFigures (salary.js's steps), SalaryModel, SalaryView (the pay and its chart, the
+                         raises, the extras with Fix, If things go on, Against prices, year by year)
     Savings/             SavingsFigures (Savings.jsx's steps as core calls), SavingsModel, SavingsView (the pot and
                          its line, This month, the goals, the history), GoalEditorModel + GoalEditView (+ GoalEditHost)
     Vouchers/            VoucherFigures (Vouchers.jsx's steps), VouchersModel + VouchersView (the card, the next top-up
@@ -178,7 +188,8 @@ ios/Budgeer/
                          GroupTimeline + GroupPageView (a group's page, its timeline), BalancesView,
                          GroupExpenseModel + SettleUpModel + GroupForms (the expense sheet and Add's quick group
                          form, Settle up, Members), CommentsModel, MyGroupsModel (Add's "Who's it for?")
-    More/                MoreView (your profile, Money (Savings; Meal vouchers once set up), Insights)
+    More/                MoreView (your profile, Money (Budgets, Savings, Recurring, Plan, Categories; Meal vouchers
+                         once set up), Insights)
     Settings/            SettingsView (the list, its rows, the demo note), AccountModel + AccountView,
                          PreferencesModel + PreferencesViews (Monthly spending, Notifications, Appearance, AI
                          helpers), SecurityModel + SecurityView (+ DeleteAccountSheet), PrivacyModel +
@@ -201,7 +212,7 @@ ios/Budgeer/
     Resources/Generated/ <lang>.lproj/Localizable.strings and InfoPlist.strings — generated, not committed
   BudgeerTests/          view models over FakeStore, the parity tests, the strings, snapshots
     Fixtures/*.json      the web's figures for fake inputs: home, ledger, budgets, recurring, insights,
-                         savings, vouchers, groups (npm run ios:fixture)
+                         savings, vouchers, groups, plan, salary, networth (npm run ios:fixture)
 ```
 
 ### What is real and what is not
@@ -264,8 +275,66 @@ a core call (the web's function); Swift reads, lays out and draws.
 - **Recurring** (from More): Subscriptions and Income, the totals per
   frequency, pause, tap to edit the rule, add one (Add with Repeat on).
 - **Insights** (from More): "Where your money went" (tap a month in the
-  last six), "Income vs expenses" and Spending abroad. Not yet: your
-  salary, net worth, the statement.
+  last six), "Income vs expenses", Spending abroad, then the web's other
+  cards: **Your salary** (the regular pay, the last raise and a small step
+  line of the pay; it opens the salary page, or says how it works before any
+  pay), **Net worth** (Assets and Debts, the savings accounts with "See
+  savings ›", the savings pot's line when there are none (red, "More paid
+  from savings than saved", below zero), the other accounts, the net worth;
+  "+ Account" and a tap open an account's page: its name, what it is (an
+  asset, a debt, savings, with the savings note), its balance in its own
+  currency, Add account / Save changes, Delete; a delete asks first, from
+  the page or a swipe, which the web doesn't) and **Export statement** (From
+  and To, this month by default; Export PDF or Excel, off before anything
+  was logged; the file comes from the `generate-report` edge function, the
+  same builder (`statementFile.ts`) the website runs on the device, named as
+  the web names it (`statementFilename`), then the share sheet, and a Share
+  row to send it again). Reads: my_accounts, every income entry and expense
+  paid from savings (the pot), every category, my_salary_history,
+  my_meal_vouchers, the oldest entry; writes: save_account, deleting an
+  account.
+- **Plan** (More › Money), as the web's page: the header (what's left over
+  a month or a year after the plan, Month / Year, the move as a chip, "was"
+  struck through, what goes into savings; the ⓘ opens how it adds up in
+  place, each step with today's figure struck through where the plan moves
+  it), the last apply ("Applied 2 changes", Undo for 24 hours after a
+  question, View Recurring; then the quiet note), "Your recurring changed
+  since you planned" with OK, the ideas to save as cards you swipe through
+  (an overlap's Try it opens its picker in place: tick which to cancel, the
+  saving follows the ticks; a price rise on an essential opens the payment
+  to try a lower price; × dismisses), the rows by group (Income, Savings,
+  Bills, Subscriptions; the switch keeps or cancels, a tap opens the row's
+  editor in place: the amount with the live delta, how often, keep or
+  cancel, Reset, Done; a Salary or Savings row from the entries stays
+  monthly and says its change is only in the plan), "What if I add…" (a
+  cost, income or savings, its name, amount and currency, how often, the
+  start, the category, the live delta), "Type a what-if" when its helper is
+  on (`ai-helper` `plan_whatif`: the proposals to check, untick or edit in
+  place, Add to plan, Undo), then Your changes (each with what it does a
+  month and a year, Undo this change or Remove, Open payment for a real
+  rule; the total; Apply, a sheet with every change ticked, the figure
+  after, the warning, Apply N changes or Not now; Clear plan after a
+  question). One editor is open at a time. The plan is read once and saved
+  800 ms after the last edit (save_recurring_plan, or clear_recurring_plan
+  for an empty one), and at once when the page goes; a failed save says so
+  with Try again. Every figure, word, edit and selection is the core's
+  (planMath, planPage, planText, whatIfMath); the page refreshes on the
+  rules, categories, budgets and entries.
+- **Your salary** (Insights' card), as the web's page: the regular pay with
+  its last raise; the pay chart (each month's pay a dot over the regular
+  pay's steps, hollow off the level; the extras as stacked bars under it; a
+  tick a year; the legend), the raises (since the last, the average a year,
+  each change newest first, Show all), the extras by year (Guessed / You set
+  this; Fix opens the four kinds in place, then Save or Cancel; without a
+  Bonus category, which income category holds them; Show older), If things
+  go on (1, 3, 5 or 10 years, the three ways as step lines with what each
+  adds up to, the yearly raise on a slider, the estimate's note behind the
+  ⓘ), Against prices (Belgium or Greece, saved; since which year; the three
+  tiles and the monthly gap) and year by year. Before a Salary category or
+  any pay it says how to start (a new income category; Add income in the
+  Salary category). Corrections (an extra's kind, the country, the Bonus
+  category) are saved whole with save_salary_history, shown at once and put
+  back when the save fails, as on the web.
 - **Groups**: the tab shows the invites as banner cards (Accept /
   Decline), then the groups as a grid of square cards: the picture (or the
   group's own colour with its letters; groupCover.groupColour, as on the
@@ -310,8 +379,10 @@ a core call (the web's function); Swift reads, lays out and draws.
   Set a goal, How savings work and Make it automatic (Add with Repeat on).
   Reads: every income entry, the expenses paid from savings, my_accounts,
   my_goals, the rules; writes: save_goal, deleting a goal or an entry. The
-  net-worth accounts themselves are Insights' (not yet here): Savings only
-  sums their savings ones, as on the web.
+  net-worth accounts themselves are Insights': Savings only sums their
+  savings ones, as on the web. A goal's page says what's missing only once
+  Save is tapped, and stops saying it as soon as the form is edited (the
+  web's toast).
 - **Meal vouchers** (Home's card, More › Money once set up): what's on the
   card (red below zero) with this month's top-ups and spending, the next
   top-up and why, Fix days in place (a stepper, "× €8.00 = **€160.00**",
@@ -325,8 +396,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   expenses keep their flag). save_meal_vouchers with voucherMath's
   newSettings / withDays.
 - **More**: your profile (to Settings), Money (Budgets, Savings, Recurring,
-  Categories, and Meal vouchers once set up, as on the web) and Insights.
-  The web's Plan and Salary pages are not built yet and are not offered.
+  Plan, Categories, and Meal vouchers once set up, as on the web) and
+  Insights (Your salary opens from its card there, as on the web).
 - **Settings** (from More or your initials), as iOS's own Settings, the
   web's groups in its order, every page pushed and edited in place
   (a sheet only to confirm deleting):
@@ -445,10 +516,15 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   list, archive, delete with a move, adding and editing), `SavingsModelTests` (the web's reads, the
   filter without a read, savings accounts as the total, the first run, Show older, a goal's quick
   add, deleting goals and entries, a goal's page), `VouchersModelTests` (the card, Fix days and the
-  calendar's count, no setup, the setup's form, turning vouchers off).
+  calendar's count, no setup, the setup's form, turning vouchers off),
+  `PlanModelTests` (the web's reads, a row's editor and the save, a failed save, What if I add…, the
+  ideas and the picker, Apply and Undo, Clear plan, the salary from the entries, Type a what-if,
+  the year view), `SalaryModelTests` (the reads, the cards refigured without reading, before any pay,
+  a correction saved whole and put back), `InsightsCardsTests` (net worth, the salary card, the
+  statement's file, an account's page).
 - Parity: each screen's fixture inputs through its `…Figures` (every step a
   core call) must give what the web's functions wrote into
-  `Fixtures/{home,ledger,budgets,recurring,insights,savings,vouchers,groups}.json`, in
+  `Fixtures/{home,ledger,budgets,recurring,insights,savings,vouchers,groups,plan,salary,networth}.json`, in
   English and Greek. `npm run ios:fixture` (`mobile-core/homeFigures.mjs`,
   `mobile-core/screenFigures.mjs`, `mobile-core/groupFigures.mjs`) rewrites
   them from the web's source; `test/iosHome.test.js`,
@@ -470,9 +546,14 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   Privacy and its request), Categories (both kinds, a category's page, a
   new one with a name taken, deleting), the notifications, Budgets,
   Recurring and Insights, Savings (from the entries, from savings accounts,
-  before anything was saved, a goal's page, a new goal missing its name),
+  before anything was saved, a goal's page, a new goal as it opens),
   Meal vouchers (the page, Fix days open, no setup, the setup, More with
-  their row), each light, dark and Greek, with the fixtures'
+  their row), Plan (the page, a row's editor, the overlap picker, What if I
+  add…, Type a what-if, a plan with changes and its Apply sheet, just
+  applied, the salary from the entries, no income, nothing to plan), Your
+  salary (the page, an extra being fixed, before any pay), Insights' net
+  worth (accounts with the pot line, a savings account) and an account's
+  page (and a new one), each light, dark and Greek, with the fixtures'
   data (`<name>-<variant>.png`, and `-long` for the pages worth seeing
   whole); attached to the test run and written to `SNAPSHOT_DIR` when set
   (`TEST_RUNNER_SNAPSHOT_DIR=… xcodebuild test`).
