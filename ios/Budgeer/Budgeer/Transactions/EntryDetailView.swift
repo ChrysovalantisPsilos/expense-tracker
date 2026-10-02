@@ -105,20 +105,35 @@ struct EntryDetailView: View {
     }
 
     /// Edit, Duplicate, Split (an expense) and Delete, as on the row's swipes.
+    /// One row when the words fit whole (a narrow column, longer Greek words: two rows).
     private var actions: some View {
-        HStack(spacing: 10) {
-            action("common:actions.edit", symbol: "pencil") { if let saved = model.row(id: row.id) { edit(saved) } }
-            action("ios:native.activity.duplicate", symbol: "plus.square.on.square") {
-                if let saved = model.row(id: row.id) { duplicate(saved) }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                firstActions
+                lastActions
             }
-            if row.kind == "expense" {
-                action("ios:native.activity.split", symbol: "person.2.fill") {
-                    if let saved = model.row(id: row.id) { split(saved) }
-                }
+            VStack(spacing: 10) {
+                HStack(spacing: 10) { firstActions }
+                HStack(spacing: 10) { lastActions }
             }
-            action("common:actions.delete", symbol: "trash") { confirmDelete = true }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder private var firstActions: some View {
+        action("common:actions.edit", symbol: "pencil") { if let saved = model.row(id: row.id) { edit(saved) } }
+        action("ios:native.activity.duplicate", symbol: "plus.square.on.square") {
+            if let saved = model.row(id: row.id) { duplicate(saved) }
+        }
+    }
+
+    @ViewBuilder private var lastActions: some View {
+        if row.kind == "expense" {
+            action("ios:native.activity.split", symbol: "person.2.fill") {
+                if let saved = model.row(id: row.id) { split(saved) }
+            }
+        }
+        action("common:actions.delete", symbol: "trash") { confirmDelete = true }
     }
 
     private func action(_ key: String, symbol: String, run: @escaping () -> Void) -> some View {
