@@ -33,7 +33,8 @@ final class EntryCategoryBoxTests: XCTestCase {
         // a1: Market, Groceries, 14 Sep 2020 (the fixture's "now" is 15 Sep).
         let entry = try XCTUnwrap(model.row(id: "a1"))
         SnapshotTests.entryBox(store, rows: fixture.input.rows, entry: entry, month: "2020-09-01")
-        let box = try XCTUnwrap(await model.categoryBox(entryId: "a1"))
+        let read = await model.categoryBox(entryId: "a1")
+        let box = try XCTUnwrap(read)
         XCTAssertEqual(box.title, "Groceries · This month")
         XCTAssertEqual(AppPaths.route(box.path), .categoryPage("33333333-3333-4333-8333-333333333333", "m:2020-9"))
         XCTAssertEqual(box.seeAll, "See all")
@@ -49,7 +50,8 @@ final class EntryCategoryBoxTests: XCTestCase {
                                                       categoryId: "33333333-3333-4333-8333-333333333333", spread: true)))
         // In Greek, the web's words.
         try BudgeerCore.shared.setLanguage("el")
-        let greek = try XCTUnwrap(await model.categoryBox(entryId: "a1"))
+        let greekRead = await model.categoryBox(entryId: "a1")
+        let greek = try XCTUnwrap(greekRead)
         XCTAssertEqual(greek.seeAll, "Όλα")
         XCTAssertTrue(greek.title.hasSuffix("Αυτός ο μήνας"), greek.title)
     }
