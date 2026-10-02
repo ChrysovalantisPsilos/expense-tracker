@@ -17,7 +17,7 @@ import { daysFor, nextTopUp, setupDraft, voucherHistory, voucherSummary } from '
 import {
   countryOptions, daysFixParts, nextTopUpText, voucherHistoryParts, voucherPageParts,
 } from '../src/features/vouchers/voucherText.js'
-import { EMPTY_FILTERS, filterTransactions, isFiltering, netBaseMinor } from '../src/features/transactions/txnFilter.js'
+import { EMPTY_FILTERS, isFiltering, ledgerShown, netBaseMinor } from '../src/features/transactions/txnFilter.js'
 import { isFirstRun, ledgerSummary, listHeading } from '../src/features/transactions/listHeading.js'
 import { dayGroups, monthPulse } from '../src/features/transactions/rowParts.js'
 import { isMonthPeriod, isPastPeriod, periodFromValue, thisMonthPeriod } from '../src/shared/lib/periods.js'
@@ -68,7 +68,8 @@ export function ledgerFigures({ rows, profile, categories, kind = null, period, 
   const salaryShift = salaryShiftOf(profile)
   const savingsIds = savingsIdsOf(categories)
   const searching = isFiltering(text, EMPTY_FILTERS)
-  const shown = searching ? filterTransactions(rows, { text, ...EMPTY_FILTERS }, baseCurrency) : rows
+  const month = searching ? null : { from: period.from, to: period.to }
+  const shown = ledgerShown(rows, { text, searching, month, salaryShift }, baseCurrency)
   const net = netBaseMinor(shown, baseCurrency, savingsIds)
   const head = listHeading({ kind, periodLabel: period.label, count: shown.length, searching })
   return {
@@ -77,8 +78,7 @@ export function ledgerFigures({ rows, profile, categories, kind = null, period, 
     firstRun: isFirstRun({ loading: false, failed: false, count: shown.length, oldest, searching }),
     days: dayGroups(shown, { kind, baseCurrency, salaryShift, savingsIds }, isoDate(new Date(now))),
     // The month's header: the picked month's days, none for a search.
-    pulse: monthPulse(shown, { kind, baseCurrency, savingsIds }, searching ? null : { from: period.from, to: period.to },
-      isoDate(new Date(now))),
+    pulse: monthPulse(shown, { kind, baseCurrency, savingsIds, salaryShift }, month, isoDate(new Date(now))),
   }
 }
 

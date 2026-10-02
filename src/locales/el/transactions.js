@@ -31,6 +31,8 @@ export default {
     today: 'Σήμερα',
     yesterday: 'Χθες',
     daySpent: 'Έξοδα {{amount}}',
+    dayNet: 'Καθαρό {{amount}}',
+    dayBar: '{{day}} · {{amount}}',
     types: {
       expense: 'Έξοδα',
       income: 'Έσοδα',

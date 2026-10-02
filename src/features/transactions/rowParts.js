@@ -82,10 +82,14 @@ export function dayTitle(day, todayISO) {
 }
 
 // A list's rows by day, newest day first (the native app's Activity): each
-// day's heading (dayTitle), what was spent that day in the base currency
-// ("€45.55 spent", null without an expense), and its rows (rowParts,
-// without the date the heading already says).
+// day's heading (dayTitle), what the day comes to in the base currency, and
+// its rows (rowParts, without the date the heading already says). A day
+// that only spent says so (`spent`: "€45.55 spent", null without an
+// expense); a day with income (as the month's Income counts it: not
+// savings) says its net instead (`net`: { text: "+€1.00 net", tone }, the
+// month's Net for the day: txnFilter.netBaseMinor), and `spent` is null.
 export function dayGroups(rows, options, todayISO) {
+  const savingsIds = options.savingsIds ?? new Set()
   const sorted = [...(rows ?? [])].sort((a, b) => String(b.spent_at).localeCompare(String(a.spent_at)))
   const days = []
   for (const row of sorted) {
@@ -95,13 +99,18 @@ export function dayGroups(rows, options, todayISO) {
     else days.push({ key, rows: [row] })
   }
   return days.map(({ key, rows: list }) => {
-    const spent = list
-      .filter((r) => (r.kind ?? options.kind) !== 'income')
-      .reduce((sum, r) => sum + toBaseMinor(r.amount_minor, r.exchange_rate ?? 1, r.currency, options.baseCurrency), 0)
+    const base = (r) => toBaseMinor(r.amount_minor, r.exchange_rate ?? 1, r.currency, options.baseCurrency)
+    const isIncome = (r) => (r.kind ?? options.kind) === 'income'
+    const spent = list.filter((r) => !isIncome(r)).reduce((sum, r) => sum + base(r), 0)
+    const earned = list.some((r) => isIncome(r) && rowEffect(r, savingsIds) === 'income')
+    const net = earned
+      ? signedAmount(netBaseMinor(list, options.baseCurrency, savingsIds), (m) => formatMoney(m, options.baseCurrency))
+      : null
     return {
       key,
       title: dayTitle(key, todayISO),
-      spent: spent > 0 ? t('transactions:ledger.daySpent', { amount: formatMoney(spent, options.baseCurrency) }) : null,
+      spent: !net && spent > 0 ? t('transactions:ledger.daySpent', { amount: formatMoney(spent, options.baseCurrency) }) : null,
+      net: net ? { text: t('transactions:ledger.dayNet', { amount: net.text }), tone: net.tone } : null,
       rows: list.map((row) => {
         const parts = rowParts(row, options)
         return { ...parts, meta: row.spent_at ? parts.meta.slice(1) : parts.meta }
@@ -129,7 +138,11 @@ function monthDays({ from, to }) {
 // ({ from, to }): the day's amount of the list's kind (income for Income,
 // spending otherwise) as a share of the biggest day's (`bar`, 0…1), and
 // whether the day is today or still ahead. `peak` words the biggest day. `month` null
-// (a search over all history): no days.
+// (a search over all history): no days. A day with a bar that isn't ahead
+// opens its day in the list: `spoken` is the bar's name as a button
+// ("2 Oct · €89.00"), null for a day that doesn't open. A late salary that
+// counts in the month (txnFilter.ledgerShown lists it) is in the month's
+// income and net; its bar is on its real day, last month, so none here.
 export function monthPulse(rows, { kind, baseCurrency, savingsIds = new Set() }, month, todayISO) {
   const list = rows ?? []
   const base = (r) => toBaseMinor(r.amount_minor, r.exchange_rate ?? 1, r.currency, baseCurrency)
@@ -150,13 +163,20 @@ export function monthPulse(rows, { kind, baseCurrency, savingsIds = new Set() },
   const peakKey = [...byDay.entries()].filter(([key]) => keys.includes(key))
     .reduce((best, entry) => (!best || entry[1] > best[1] ? entry : best), null)
   const most = peakKey?.[1] ?? 0
-  const days = keys.map((key) => ({
-    key,
-    label: String(Number(key.slice(8))),
-    bar: most > 0 ? (byDay.get(key) ?? 0) / most : 0,
-    today: key === todayISO,
-    future: key > todayISO,
-  }))
+  const today = localDay(todayISO)
+  const days = keys.map((key) => {
+    const amount = byDay.get(key) ?? 0
+    return {
+      key,
+      label: String(Number(key.slice(8))),
+      bar: most > 0 ? amount / most : 0,
+      today: key === todayISO,
+      future: key > todayISO,
+      spoken: amount > 0 && key <= todayISO
+        ? t('transactions:ledger.dayBar', { day: shortDate(key, today), amount: money(amount) })
+        : null,
+    }
+  })
   return {
     spent: kind === 'income' ? null : { label: t('dashboard:overview.spent'), amount: money(spent) },
     income: kind === 'expense' ? null
@@ -166,7 +186,7 @@ export function monthPulse(rows, { kind, baseCurrency, savingsIds = new Set() },
     days,
     peak: peakKey && most > 0
       ? t(kind === 'income' ? 'ios:native.activity.peakIncome' : 'ios:native.activity.peak', {
-        day: shortDate(peakKey[0], localDay(todayISO)), amount: money(most),
+        day: shortDate(peakKey[0], today), amount: money(most),
       })
       : null,
   }

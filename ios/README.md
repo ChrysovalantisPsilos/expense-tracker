@@ -477,8 +477,12 @@ a core call (the web's function); Swift reads, lays out and draws.
   when a search or a filter hides it), chips for the kind and the
   categories (and Groups: only your shares of group expenses, txnFilter's
   shared filter), then the month's entries by day, each day in its own card
-  with what it spent; a floating glass pill for the month; search over all
-  history.
+  with what it spent (or its net, in its tone, on a day with income;
+  rowParts.dayGroups); a bar that isn't ahead is a button that scrolls to
+  its day's card and lights it for a moment; last month's late salary
+  listed and counted in the month it counts for, as on Home
+  (txnFilter.ledgerRead/ledgerShown); a floating glass pill for the month;
+  search over all history.
   Swipe left to Delete (after the web's question), right to Duplicate (Add
   with today's date) or Split with a group (the group's quick form; the
   personal entry goes once the group's is saved); a tap opens Edit.
