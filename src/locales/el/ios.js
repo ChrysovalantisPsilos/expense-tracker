@@ -13,9 +13,6 @@ export default {
       openSettings: 'Άνοιγμα Ρυθμίσεων',
     },
     profile: 'Προφίλ και ρυθμίσεις',
-    more: {
-      accountSettings: 'Λογαριασμός και ρυθμίσεις',
-    },
     insights: {
       export: 'Εξαγωγή',
     },

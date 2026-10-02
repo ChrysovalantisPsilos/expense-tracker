@@ -18,12 +18,10 @@ export default {
   toggleTheme: 'Toggle theme',
   more: {
     money: 'Money',
-    account: 'Account',
     insights: 'Trends & net worth',
     savings: 'Your pot, goals & history',
     recurring: 'Subscriptions & recurring bills',
     plan: 'Try changes to your recurring, safely',
     vouchers: 'Your card’s balance & top-ups',
-    settings: 'Account, notifications & security',
   },
 }

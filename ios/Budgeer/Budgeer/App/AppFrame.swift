@@ -425,8 +425,7 @@ struct AppFrame: View {
             .environment(\.addSlot, router.slots[.groups])
         case .more:
             NavigationStack(path: $router.more) {
-                MoreView(name: models.shell.name, email: user.email ?? "", avatar: models.shell.avatar,
-                         vouchers: models.shell.vouchersOn, chrome: chrome(models))
+                MoreView(vouchers: models.shell.vouchersOn, chrome: chrome(models))
                     .navigationDestination(for: AppRoute.self) { destination($0, models) }
             }
             .environment(\.addSlot, router.slots[.more])

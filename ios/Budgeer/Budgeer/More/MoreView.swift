@@ -9,10 +9,6 @@ import SwiftUI
 
 @MainActor
 struct MoreView: View {
-    let name: String
-    let email: String
-    /// Your circle: the photo, or the initials in the accent.
-    let avatar: Avatar?
     /// Meal vouchers are set up: their page joins Money.
     var vouchers = false
     let chrome: PageChrome
@@ -20,30 +16,6 @@ struct MoreView: View {
 
     var body: some View {
         List {
-            Section {
-                NavigationLink(value: AppRoute.settings) {
-                    HStack(spacing: 14) {
-                        if let avatar {
-                            NativeAvatar(avatar: avatar, size: 58)
-                        } else {
-                            Circle().fill(Theme.Colors.subtle).frame(width: 58, height: 58)
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(name.isEmpty ? email : name).font(.title3.weight(.semibold)).lineLimit(1)
-                            if !name.isEmpty { Text(email).font(.subheadline).foregroundStyle(.secondary).lineLimit(1) }
-                            Label(language.t("ios:native.more.accountSettings"), systemImage: "gearshape.fill")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(NativeTone.coral)
-                                .labelStyle(.titleAndIcon)
-                                .padding(.top, 2)
-                        }
-                    }
-                    .padding(.vertical, 6)
-                }
-                .accessibilityIdentifier("more.settings")
-            }
-            .listRowBackground(NativeStyle.card)
-
             Section {
                 row(.budgets, symbol: "chart.pie.fill", title: "shell:nav.budgets", id: "more.budgets")
                 row(.savings, symbol: "banknote.fill", tone: NativeTone.green, title: "shell:nav.savings",

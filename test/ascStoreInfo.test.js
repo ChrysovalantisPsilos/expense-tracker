@@ -111,7 +111,8 @@ test('the review notes point at real places in the app', () => {
   const ios = read('src/locales/en/ios.js')
   assert.match(ios, /setting: 'Face ID lock'/)
   assert.match(read('src/locales/en/settings.js'), /AI helpers/)
-  assert.match(ios, /accountSettings: 'Account & settings'/)
+  // Settings is the picture at the top right (its label), not a row in More.
+  assert.match(ios, /profile: 'Profile and settings'/)
 })
 
 // ---- Secrets -------------------------------------------------------------

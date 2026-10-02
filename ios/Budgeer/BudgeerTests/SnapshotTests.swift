@@ -285,8 +285,7 @@ final class SnapshotTests: XCTestCase {
             let lock = SnapshotTests.lock("SnapshotTests.settings", owner: owner)
             try await shots(framed(.more) {
                 NavigationStack {
-                    MoreView(name: "Sam Morgan", email: "sam@example.com", avatar: SnapshotTests.avatar,
-                             chrome: SnapshotTests.chrome)
+                    MoreView(chrome: SnapshotTests.chrome)
                 }
             }, name: "more", lang: lang, dark: dark)
             let account = AccountModel(data: SnapshotTests.settingsStore().data)
@@ -633,7 +632,7 @@ final class SnapshotTests: XCTestCase {
             // More with the vouchers' page in Money.
             try await shots(framed(.more) {
                 NavigationStack {
-                    MoreView(name: "Sam Morgan", email: "sam@example.com", avatar: SnapshotTests.avatar, vouchers: true,
+                    MoreView(vouchers: true,
                              chrome: SnapshotTests.chrome)
                 }
             }, name: "more-vouchers", lang: lang, dark: dark, long: 1300)
