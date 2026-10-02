@@ -446,8 +446,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   about 700 pt and up, is `AppLayout.sidebar`). A wide window (an iPad full
   screen, a wide Split View or Stage Manager window) gets `SidebarFrame`, a
   `NavigationSplitView` like the website's desktop sidebar: the mark and
-  wordmark, then Home, Activity and Groups (with how many you're in),
-  Budgets, Recurring and Plan, Insights, Savings and Meal vouchers (once set
+  wordmark, then the website's order and blocks (`test/iosSidebar.test.js`): Home, Activity, Groups (with how many you're in),
+  Budgets, then Insights, Savings, Recurring, Plan and Meal vouchers (once set
   up), and Settings with your picture, name and email at its foot, in the
   web's words (`shell:nav.*`; Activity is the tab's word) and the website's
   icons' nearest SF Symbols (`SidebarSection`). The page sits beside it with
@@ -456,12 +456,15 @@ a core call (the web's function); Swift reads, lays out and draws.
   opens whole as a form sheet with the number pad beside the details
   (`AddSheet(wide:)`). Home lays its cards in two columns under the overview
   (By category and the month in words left; Coming up, Budgets and Meal
-  vouchers right; `HomeView.wideCards`); Activity and Groups take three
+  vouchers right, Coming up as a list as on the website's desktop; `HomeView.wideCards`;
+  the columns draw nothing under iPadOS 26's floating sidebar, `clearOfSidebar`); Activity and Groups take three
   columns, the list between the sidebar and what's picked in it: Activity's
   month (its header card, chips and days; `ActivityView(picked:)`) beside the
   entry (`EntryDetailView`: the row's badge, name, amount and day, Edit,
   Duplicate, Split, Delete after the web's question, and the row's facts, all
-  the row's words), Groups' list (`GroupListColumn`: invites, a row per
+  the row's words, then the box the website's entry page shows: its category in the month it was paid, that
+  month's budget bar and the category's other entries with See all, `LedgerModel.categoryBox` over
+  `categoryMath.entryCategoryBox`), Groups' list (`GroupListColumn`: invites, a row per
   group with its balance chip, New group, Join with a link) beside the
   group's page; nothing picked shows a hint (`ios:native.wide.*`). Every
   other page is its own view at a readable width (`wideColumn`, 860 pt) with

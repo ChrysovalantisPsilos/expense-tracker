@@ -26,13 +26,13 @@ final class AppLayoutTests: XCTestCase {
 
     func testTheSidebarsItemsInTheWebsitesOrder() {
         XCTAssertEqual(SidebarSection.items(vouchers: false),
-                       [.home, .activity, .groups, .budgets, .recurring, .plan, .insights, .savings])
+                       [.home, .activity, .groups, .budgets, .insights, .savings, .recurring, .plan])
         XCTAssertEqual(SidebarSection.items(vouchers: true),
-                       [.home, .activity, .groups, .budgets, .recurring, .plan, .insights, .savings, .vouchers])
-        // Three blocks, as the website's sidebar draws them; Settings is the foot's.
+                       [.home, .activity, .groups, .budgets, .insights, .savings, .recurring, .plan, .vouchers])
+        // Two blocks, as the website's sidebar draws them (PRIMARY, SECONDARY); Settings is the foot's.
         XCTAssertEqual(SidebarSection.blocks(SidebarSection.items(vouchers: true)),
-                       [[.home, .activity, .groups], [.budgets, .recurring, .plan], [.insights, .savings, .vouchers]])
-        XCTAssertEqual(SidebarSection.blocks(SidebarSection.items(vouchers: false)).last, [.insights, .savings])
+                       [[.home, .activity, .groups, .budgets], [.insights, .savings, .recurring, .plan, .vouchers]])
+        XCTAssertEqual(SidebarSection.blocks(SidebarSection.items(vouchers: false)).last, [.insights, .savings, .recurring, .plan])
         // The web's words (the shell's nav), Activity as the app's tab calls it.
         XCTAssertEqual(SidebarSection.home.titleKey, "shell:nav.home")
         XCTAssertEqual(SidebarSection.activity.titleKey, "ios:native.tabs.activity")
@@ -59,7 +59,8 @@ final class AppLayoutTests: XCTestCase {
         XCTAssertEqual(SidebarSection.shortcut(.settings, in: items), ",")
         let without = SidebarSection.items(vouchers: false)
         XCTAssertNil(SidebarSection.shortcut(.vouchers, in: without))
-        XCTAssertEqual(SidebarSection.shortcut(.savings, in: without), "8")
+        XCTAssertEqual(SidebarSection.shortcut(.plan, in: without), "8")
+        XCTAssertEqual(SidebarSection.shortcut(.insights, in: without), "5")
     }
 
     func testTabsBecomeTheSidebarsPlaces() {

@@ -4,10 +4,11 @@ import { readFileSync } from 'node:fs'
 import {
   CATEGORY_NAME_MAX, categoryNameError, sortCategories, moveTargets, sameKindOthers,
   categoryPatch, categoryPeriod, NEW_DEFAULT_CATEGORIES, NEW_TAG_MS, isNewCategory, categoryDraft,
-  categoryPageHead, categoryBudget,
+  categoryPageHead, categoryBudget, entryCategoryBox, entryMonth,
 } from '../src/features/categories/categoryMath.js'
 import { NO_CATEGORY, presetCategoryId, newCategoryRow, categoryUpdateRow } from '../src/shared/lib/categoryName.js'
 import { latestSql } from './migrations.js'
+import { setLanguage } from '../mobile-core/index.js'
 import {
   CATEGORY_ICON_KEYS, CATEGORY_ICON_LABELS, CATEGORY_ICON_GROUPS, CATEGORY_COLOR_KEYS,
   CATEGORY_COLORS, categoryTile, categoryIconKey, categoryLook, categoryPicker,
@@ -311,4 +312,78 @@ test('categoryBudget: monthly only, the bar with a carried cap, set this month, 
   assert.deepEqual(categoryBudget({ ...base, budget: null }), { state: 'set', text: 'Set a budget' })
   assert.deepEqual(categoryBudget({ ...base, canEdit: false, budget: null, period: { ...period, label: 'August 2026' } }),
     { state: 'none', text: 'No budget in August 2026.' })
+})
+
+test('entryMonth: the month an entry was paid in, labelled as the pickers do', () => {
+  const now = new Date(2026, 8, 18)
+  assert.deepEqual(entryMonth({ spent_at: '2026-09-17' }, now),
+    { value: 'm:2026-9', label: 'This month', from: '2026-09-01', to: '2026-09-30' })
+  assert.equal(entryMonth({ spent_at: '2026-08-03' }, now).value, 'm:2026-8')
+  assert.equal(entryMonth({ spent_at: '2026-08-03' }, now).label, 'August 2026')
+  // Without a readable day: this month.
+  assert.equal(entryMonth({ spent_at: null }, now).value, 'm:2026-9')
+})
+
+test('entryCategoryBox: the category this month, its budget and its other entries, newest first', () => {
+  const now = new Date(2026, 8, 18)
+  const category = { id: 'c1', name: 'Groceries', kind: 'expense' }
+  const row = (o) => ({
+    id: 'x', kind: 'expense', category_id: 'c1', amount_minor: 1000, exchange_rate: 1, currency: 'EUR',
+    spent_at: '2026-09-10', spread_months: null, description: 'Market', ...o,
+  })
+  const entry = row({ id: 'e', amount_minor: 4250, spent_at: '2026-09-17' })
+  const rows = [
+    entry,
+    row({ id: 'a', amount_minor: 6135, spent_at: '2026-09-12' }),
+    row({ id: 'b', amount_minor: 4875, spent_at: '2026-09-05' }),
+    row({ id: 'c', amount_minor: 2000, spent_at: '2026-09-14', currency: 'USD', exchange_rate: 0.9, description: '' }),
+    row({ id: 'd', amount_minor: 500, spent_at: '2026-09-01' }),
+    row({ id: 'aug', spent_at: '2026-08-31' }),
+  ]
+  const budget = { category_id: 'c1', amount_minor: 25000, period_start: '2026-09-01' }
+  const box = entryCategoryBox({ entry, category, rows, budget, baseCurrency: 'EUR' }, now)
+  assert.equal(box.title, 'Groceries · This month')
+  assert.equal(box.path, '/categories/c1?period=m%3A2026-9')
+  assert.equal(box.seeAll, 'See all')
+  // The month's spend against its cap: 42.50 + 61.35 + 48.75 + 18.00 + 5.00 = €175.60.
+  assert.deepEqual(box.budget, {
+    state: 'bar', title: 'Budget', meta: '€175.60 of €250.00', percent: 70, tone: null, over: false, carried: null,
+    valueLabel: '70%',
+  })
+  // The others, newest first, the entry itself left out; three of them; a foreign one in its own currency.
+  assert.deepEqual(box.others, [
+    { id: 'c', name: 'Groceries', date: '14 Sep', amount: '$20.00' },
+    { id: 'a', name: 'Market', date: '12 Sep', amount: '€61.35' },
+    { id: 'b', name: 'Market', date: '5 Sep', amount: '€48.75' },
+  ])
+  assert.equal(box.empty, null)
+  assert.equal(entryCategoryBox({ entry, category, rows, budget, baseCurrency: 'EUR', limit: 10 }, now).others.length, 4)
+
+  // No budget (or an income category): no bar. Alone in its month: the words for none.
+  const alone = entryCategoryBox({ entry, category, rows: [entry], baseCurrency: 'EUR' }, now)
+  assert.equal(alone.budget, null)
+  assert.deepEqual(alone.others, [])
+  assert.equal(alone.empty, 'No other entries · This month')
+  // In Greek, the web's words and amounts.
+  setLanguage('el')
+  try {
+    const el = entryCategoryBox({ entry, category, rows, budget, baseCurrency: 'EUR' }, now)
+    assert.equal(el.title, 'Groceries · Αυτός ο μήνας')
+    assert.equal(el.seeAll, 'Όλα')
+    assert.match(el.others[1].amount, /^61,35\s€$/)
+  } finally {
+    setLanguage('en')
+  }
+  const pay = { id: 'i1', name: 'Salary', kind: 'income' }
+  const salary = row({ id: 's', kind: 'income', category_id: 'i1' })
+  assert.equal(entryCategoryBox({ entry: salary, category: pay, rows: [salary], budget, baseCurrency: 'EUR' }, now).budget, null)
+
+  // A past month says its name.
+  const past = row({ id: 'p', spent_at: '2026-08-20' })
+  assert.equal(entryCategoryBox({ entry: past, category, rows: [past], baseCurrency: 'EUR' }, now).title, 'Groceries · August 2026')
+
+  // No box: no category, another category's row, a group's share.
+  assert.equal(entryCategoryBox({ entry: row({ category_id: null }), category, rows, baseCurrency: 'EUR' }, now), null)
+  assert.equal(entryCategoryBox({ entry, category: { ...category, id: 'c2' }, rows, baseCurrency: 'EUR' }, now), null)
+  assert.equal(entryCategoryBox({ entry: { ...entry, group_expense_id: 'g' }, category, rows, baseCurrency: 'EUR' }, now), null)
 })

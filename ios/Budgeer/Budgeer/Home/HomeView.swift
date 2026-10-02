@@ -299,6 +299,14 @@ struct HomeView: View {
             HomeCard(title: comingUpTitle(card), seeAll: language.t("ios:native.seeAll"), route: .recurring) {
                 Text(card.empty).font(.subheadline).foregroundStyle(.secondary)
             }
+        } else if sizeClass == .regular {
+            // Beside the sidebar, a list as the website's desktop card has it (no strip cut at the column's edge).
+            HomeCard(title: comingUpTitle(card), seeAll: language.t("ios:native.seeAll"), route: .recurring) {
+                ForEach(Array(rows.prefix(5).enumerated()), id: \.element.id) { index, row in
+                    if index > 0 { Divider().padding(.leading, 48) }
+                    ChargeRowView(row: row)
+                }
+            }
         } else {
             HomeCard(title: comingUpTitle(card), seeAll: language.t("ios:native.seeAll"), route: .recurring,
                      bare: true) {

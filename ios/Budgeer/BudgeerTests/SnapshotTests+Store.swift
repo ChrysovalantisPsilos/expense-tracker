@@ -84,6 +84,10 @@ extension SnapshotTests {
         ledgerStore.rowsFor = { query in ledger.rows(kind: query.kind) }
         let activity = LedgerModel(data: ledgerStore.data, core: .shared, now: { now })
         await activity.load()
+        // The iPad's entry detail: the first entry's category this month.
+        SnapshotTests.entryBox(ledgerStore, rows: ledger.input.rows,
+                               entry: SnapshotTests.firstEntry(activity).flatMap { activity.row(id: $0) },
+                               month: sample.day("2020-09-01"))
 
         // Add, split with a group: "Who's it for?".
         let form = try formStore(sample)

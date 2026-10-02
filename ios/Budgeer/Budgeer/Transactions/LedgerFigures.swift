@@ -47,6 +47,36 @@ struct EntryDay: Codable, Equatable, Identifiable, Sendable {
     var id: String { key }
 }
 
+/// The box under an entry (categoryMath.entryCategoryBox): its category in
+/// the month it was paid ("Groceries · This month"), the category page's
+/// link, that month's budget bar when it has one, and the category's other
+/// entries that month, newest first, or the words for none.
+struct EntryCategoryBox: Codable, Equatable, Sendable {
+    /// categoryBudget's bar: "€152.60 of €250.00", the percent, the tone.
+    struct Budget: Codable, Equatable, Sendable {
+        let title: String
+        let meta: String
+        let percent: Int
+        /// "61%".
+        let valueLabel: String
+        let tone: String?
+        let over: Bool
+    }
+    struct Other: Codable, Equatable, Identifiable, Sendable {
+        let id: String
+        let name: String
+        let date: String
+        let amount: String
+    }
+    let title: String
+    /// The category's page for the month (/categories/<id>?period=…; AppPaths).
+    let path: String
+    let seeAll: String
+    let budget: Budget?
+    let others: [Other]
+    let empty: String?
+}
+
 /// The month at a glance over the list (rowParts.monthPulse): spent,
 /// income and net in their words, a bar per day.
 struct MonthPulse: Codable, Equatable, Sendable {

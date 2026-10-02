@@ -20,6 +20,23 @@ extension SnapshotTests {
     /// The bar's bell and Add, beside the sidebar.
     static var wideChrome: PageChrome { chrome.wide {} }
 
+    /// What the entry box reads: the rows' categories (as every category) and a
+    /// €250.00 budget for the entry's category in `month`.
+    static func entryBox(_ store: FakeStore, rows: JSONValue, entry: JSONValue?, month: String) {
+        var seen = Set<String>()
+        var categories: [JSONValue] = []
+        for row in rows.arrayValue ?? [] {
+            if let category = row["categories"], let id = category["id"]?.stringValue, seen.insert(id).inserted {
+                categories.append(category)
+            }
+        }
+        store.allCategoriesResult = .success(.array(categories))
+        if let id = entry?["category_id"]?.stringValue {
+            store.budgetsByPeriod[month] = [["category_id": .string(id), "amount_minor": 25000, "currency": "EUR",
+                                             "period_start": .string(month)]]
+        }
+    }
+
     private func onIPad() throws {
         try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .pad, "The iPad's pictures are taken on an iPad.")
     }
@@ -63,6 +80,9 @@ extension SnapshotTests {
             let activity = LedgerModel(data: store.data, core: .shared, now: { now })
             await activity.load()
             let picked = SnapshotTests.firstEntry(activity)
+            // The picked entry's category this month: its budget and its other entries.
+            SnapshotTests.entryBox(store, rows: ledger.input.rows, entry: picked.flatMap { activity.row(id: $0) },
+                                   month: "2020-09-01")
             try await shots(sidebar(.activity) {
                 ActivityView(model: activity, chrome: .hidden, picked: picked, open: { _ in }, duplicate: { _ in },
                              split: { _ in })

@@ -20,6 +20,7 @@ import WhoForChips from '../groups/WhoForChips.jsx'
 import GroupExpenseForm from '../groups/GroupExpenseForm.jsx'
 import { useTransaction, deleteTransaction } from '../../shared/lib/transactions.js'
 import TransactionForm from './TransactionForm.jsx'
+import EntryCategoryBox from './EntryCategoryBox.jsx'
 import { kindOptions } from './EntryFields.jsx'
 import { parseAddParams } from '../../shared/lib/addLinks.js'
 import DeleteTransactionDialog from '../../shared/ui/DeleteTransactionDialog.jsx'
@@ -36,7 +37,9 @@ import { entryName } from '../../shared/lib/categoryName.js'
 //   /transactions/:id                       an existing one (the list passes
 //                                           the row in router state)
 // The back arrow — and saving or deleting — returns to wherever the user came
-// from, or to /transactions when the page was opened directly. A group share
+// from, or to /transactions when the page was opened directly. An existing
+// entry with a category shows that category in its month under the form
+// (EntryCategoryBox: its budget and other entries). A group share
 // is read-only here: it's edited in its group.
 //
 // A new expense asks "Who's it for?" when the user is in any group: "Just
@@ -187,8 +190,12 @@ export default function TransactionPage() {
     )
   } else {
     body = (
-      <TransactionForm key={row.id} kind={kind} baseCurrency={baseCurrency}
-        transaction={row} rule={rule} onSaved={back} onDelete={() => setConfirming(true)} />
+      <>
+        <TransactionForm key={row.id} kind={kind} baseCurrency={baseCurrency}
+          transaction={row} rule={rule} onSaved={back} onDelete={() => setConfirming(true)} />
+        {/* Its category in the month it was paid: the budget and the other entries. */}
+        {row.category_id && <EntryCategoryBox entry={row} />}
+      </>
     )
   }
 

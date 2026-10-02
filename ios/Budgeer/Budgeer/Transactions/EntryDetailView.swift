@@ -41,6 +41,8 @@ struct EntryDetailView: View {
     @Environment(AppLanguage.self) private var language
     @State private var confirmDelete = false
     @State private var failed = false
+    /// Its category in the month it was paid (as the website's entry page shows it).
+    @State private var box: EntryCategoryBox?
 
     var body: some View {
         ScrollView {
@@ -49,6 +51,7 @@ struct EntryDetailView: View {
                 if !row.shared { actions }
                 if failed { NativeNotice(text: language.t("transactions:list.notDeleted"), warning: true) }
                 if !facts.isEmpty { factsCard }
+                if let box { categoryCard(box) }
             }
             .frame(maxWidth: 620)
             .padding(.horizontal, 24)
@@ -59,6 +62,8 @@ struct EntryDetailView: View {
         .background(NativeStyle.canvas.ignoresSafeArea())
         .navigationTitle(row.title)
         .navigationBarTitleDisplayMode(.inline)
+        // Read again whenever the entry changes (an edit saved, another month).
+        .task(id: row) { box = await model.categoryBox(entryId: row.id) }
         .confirmationDialog(model.deleteWords(id: row.id).title, isPresented: $confirmDelete, titleVisibility: .visible) {
             Button(language.t("common:actions.delete"), role: .destructive) {
                 Task {
@@ -155,6 +160,59 @@ struct EntryDetailView: View {
         }
         .padding(.horizontal, 18)
         .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+    }
+}
+
+extension EntryDetailView {
+    /// The category in the month it was paid: its title with See all (the
+    /// category's page), the month's budget bar, the other entries.
+    func categoryCard(_ box: EntryCategoryBox) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(box.title).font(.headline)
+                Spacer(minLength: 8)
+                if let route = AppPaths.route(box.path) {
+                    NavigationLink(value: route) {
+                        Text(box.seeAll).font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(NativeStyle.tint)
+                    .accessibilityIdentifier("activity.detail.seeAll")
+                }
+            }
+            if let budget = box.budget {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(budget.meta).font(.subheadline).foregroundStyle(.secondary).monospacedDigit()
+                        Spacer(minLength: 8)
+                        Text(budget.valueLabel)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(budget.tone == nil ? Color.primary : NativeStyle.tone(budget.tone))
+                            .monospacedDigit()
+                    }
+                    NativeBar(fraction: Double(budget.percent) / 100, color: NativeStyle.tone(budget.tone))
+                }
+                .accessibilityElement(children: .combine)
+            }
+            ForEach(Array(box.others.enumerated()), id: \.element.id) { index, other in
+                if index > 0 || box.budget != nil { Divider() }
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(other.name).font(.body).lineLimit(1)
+                        Text(other.date).font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Text(other.amount).font(.body.weight(.semibold)).monospacedDigit()
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if let empty = box.empty {
+                Text(empty).font(.subheadline).foregroundStyle(.secondary)
+            }
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(NativeStyle.card, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .accessibilityIdentifier("activity.detail.category")
     }
 }
 

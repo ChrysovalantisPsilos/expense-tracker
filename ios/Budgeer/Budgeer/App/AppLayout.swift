@@ -16,11 +16,12 @@ enum AppLayout: Equatable {
     static func of(regular: Bool) -> AppLayout { regular ? .sidebar : .tabs }
 }
 
-/// The sidebar's places, in its order: Home, Activity and Groups (the
-/// tabs' own), the money pages, then Insights, Savings and Meal vouchers
-/// (once set up); Settings sits at its foot with your profile.
+/// The sidebar's places in the website's order and blocks (AppShell.jsx: PRIMARY
+/// Home, Transactions, Groups, Budgets; then SECONDARY Insights, Savings,
+/// Recurring, Plan and Meal vouchers once set up); Settings sits at its foot
+/// with your profile.
 enum SidebarSection: String, CaseIterable, Hashable, Identifiable {
-    case home, activity, groups, budgets, recurring, plan, insights, savings, vouchers, settings
+    case home, activity, groups, budgets, insights, savings, recurring, plan, vouchers, settings
 
     var id: String { rawValue }
 
@@ -73,13 +74,13 @@ enum SidebarSection: String, CaseIterable, Hashable, Identifiable {
     /// Activity and Groups: a list, with what's picked in it beside it.
     var hasList: Bool { self == .activity || self == .groups }
 
-    /// The sidebar's block: 0 the tabs' places, 1 the money pages, 2 the rest.
+    /// The sidebar's block, as the website's: 0 its primary places (the phone's tabs and
+    /// Budgets), 1 the rest (More's on a phone), 2 Settings at the foot.
     var block: Int {
         switch self {
-        case .home, .activity, .groups: return 0
-        case .budgets, .recurring, .plan: return 1
-        case .insights, .savings, .vouchers: return 2
-        case .settings: return 3
+        case .home, .activity, .groups, .budgets: return 0
+        case .insights, .savings, .recurring, .plan, .vouchers: return 1
+        case .settings: return 2
         }
     }
 

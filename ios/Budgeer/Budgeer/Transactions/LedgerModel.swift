@@ -221,6 +221,39 @@ final class LedgerModel {
         rows.arrayValue?.first { $0["id"]?.stringValue == id }
     }
 
+    /// The box under an entry (categoryMath.entryCategoryBox, as on the
+    /// website's entry page): its category in the month it was paid, that
+    /// month's budget and the category's other entries. The category page's
+    /// reads (every category, the month's entries of the category, the
+    /// month's budgets); nil when it doesn't apply or a read fails.
+    func categoryBox(entryId: String) async -> EntryCategoryBox? {
+        guard let entry = row(id: entryId), let categoryId = entry["category_id"]?.stringValue else { return nil }
+        do {
+            let instant = now()
+            let month = try core.json("categoryMath", "entryMonth", [entry, JSDate(instant)])
+            let categories = try await data.categories.allCategories()
+            let read = try await data.transactions.transactions(TxnQuery(from: month["from"]?.stringValue,
+                                                                         to: month["to"]?.stringValue,
+                                                                         categoryId: categoryId, spread: true))
+            let monthRows = try await FxRates.fillPending(read, base: baseCurrency, today: try core.isoDate(instant),
+                                                          fx: data.fx, core: core)
+            let budgets = try await data.budgets.budgets(period: month["from"]?.stringValue ?? "")
+            let input: JSONValue = [
+                "entry": entry,
+                "category": categories.arrayValue?.first { $0["id"]?.stringValue == categoryId } ?? .null,
+                "rows": monthRows,
+                "budget": budgets.arrayValue?.first { $0["category_id"]?.stringValue == categoryId } ?? .null,
+                "baseCurrency": .string(baseCurrency),
+                "separateYearly": .bool(profile["yearly_separate"]?.boolValue ?? false),
+                "salaryShift": try core.json("salaryShift", "salaryShiftOf", [profile]),
+            ]
+            let box: EntryCategoryBox? = try core.call("categoryMath", "entryCategoryBox", [input, JSDate(instant)])
+            return box
+        } catch {
+            return nil
+        }
+    }
+
     /// A shown entry and its day (beside the sidebar, the entry picked in the
     /// list), nil when the list doesn't show it (another month, a search).
     func entry(id: String) -> (row: EntryRow, day: EntryDay)? {
