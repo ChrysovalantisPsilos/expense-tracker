@@ -89,7 +89,7 @@ settings:
     TARGETED_DEVICE_FAMILY: "1"
     # The version people see; the build number is the CI run's
     # (ios-testflight.yml passes CURRENT_PROJECT_VERSION), 1 locally.
-    MARKETING_VERSION: "0.1.0"
+    MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
 
 targets:
