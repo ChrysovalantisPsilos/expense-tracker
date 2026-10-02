@@ -64,6 +64,8 @@ struct HomeView: View {
             .animation(HomeCardStyle.spring, value: model.vouchers)
             .animation(HomeCardStyle.spring, value: model.words)
         }
+        // Beside the sidebar: no soft edge drawn from the cards along the floating sidebar (iOS 26).
+        .leadingEdgeEffectHidden(sizeClass == .regular)
         .background {
             ZStack {
                 NativeStyle.canvas

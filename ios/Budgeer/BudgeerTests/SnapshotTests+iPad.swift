@@ -16,6 +16,8 @@ extension SnapshotTests {
     /// An iPad Pro 13-inch's screen in points.
     static let iPadLandscape = CGSize(width: 1376, height: 1032)
     static let iPadPortrait = CGSize(width: 1032, height: 1376)
+    // Home's cards spring in as the split view settles its columns: its pictures wait for the
+    // springs to finish (2.5 s), or the moving cards are caught mid cross-fade.
     static let profile = SidebarProfile(name: "Sam Morgan", email: "sam@example.com", initials: "SM")
     /// The bar's bell and Add, beside the sidebar.
     static var wideChrome: PageChrome { chrome.wide {} }
@@ -64,10 +66,11 @@ extension SnapshotTests {
             let homePage = sidebar(.home) { EmptyView() } detail: {
                 NavigationStack { HomeView(model: home, chrome: wide) }
             }
-            try await shots(homePage, name: "ipad-home", lang: lang, dark: dark, screen: screen)
+            try await shots(homePage, name: "ipad-home", lang: lang, dark: dark, settle: 2.5, screen: screen)
             try await shots(sidebar(.home, columns: .detailOnly) { EmptyView() } detail: {
                 NavigationStack { HomeView(model: home, chrome: wide) }
-            }, name: "ipad-home-portrait", lang: lang, dark: dark, screen: SnapshotTests.iPadPortrait)
+            }, name: "ipad-home-portrait", lang: lang, dark: dark, settle: 2.5,
+                      screen: SnapshotTests.iPadPortrait)
 
             // Activity: the month's list beside the entry picked in it.
             let store = FakeStore()
@@ -118,7 +121,7 @@ extension SnapshotTests {
             try await shots(homePage.sheet(isPresented: .constant(true)) {
                 AddSheet(request: AddRequest(model: add), data: form.data, userId: SnapshotTests.user, groups: myGroups,
                          wide: true)
-            }, name: "ipad-add", lang: lang, dark: dark, settle: 1.8, screen: screen)
+            }, name: "ipad-add", lang: lang, dark: dark, settle: 2.5, screen: screen)
 
             // Budgets, centred at a readable width.
             let budgets = BudgetsModel(data: budgetsFixture.store("own").data, core: .shared, now: { budgetsFixture.now })
@@ -148,7 +151,7 @@ extension SnapshotTests {
             let homePage = sidebar(.home, profile: profile) { EmptyView() } detail: {
                 NavigationStack { HomeView(model: screens.home, chrome: wide) }
             }
-            try await storeShot("ipad-home", lang, homePage, screen: screen)
+            try await storeShot("ipad-home", lang, homePage, settle: 2.5, screen: screen)
             try await storeShot("ipad-activity", lang, sidebar(.activity, columns: .doubleColumn, profile: profile) {
                 ActivityView(model: screens.activity, chrome: .hidden, picked: screens.firstEntry, open: { _ in },
                              duplicate: { _ in }, split: { _ in })
