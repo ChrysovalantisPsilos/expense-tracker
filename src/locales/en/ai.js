@@ -25,7 +25,7 @@ export default {
     monthSummary: {
       label: 'Month in plain words',
       hint: 'A short summary of your month on Home.',
-      more: 'Sent: your total per category for the month and the six before, and your budgets. No entries, descriptions or notes. The summary is kept with your account, encrypted, and deleted when you turn this off.',
+      more: 'Sent: your total per category for the month and the six before, your budgets, and the recurring payments and income still due this month (category, amount and day). No entries, descriptions or notes. The summary is kept with your account, encrypted, and deleted when you turn this off.',
     },
     planWhatIf: {
       label: 'What-if in your own words',
