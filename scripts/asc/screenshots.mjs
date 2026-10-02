@@ -38,9 +38,17 @@ export function pngSize(buffer) {
 
 export const md5 = (buffer) => createHash('md5').update(buffer).digest('hex')
 
+// The folder a locale's screenshots come from: its own when there is one,
+// else (the app's primary language, en-GB) the English or Greek set, as
+// listing.mjs's withPrimaryLocale does for the texts.
+export function screenshotFolder(locale, dir = SCREENSHOT_DIR) {
+  if (existsSync(path.join(dir, locale))) return locale
+  return locale.startsWith('el') ? 'el' : 'en-US'
+}
+
 // The local screenshots for one locale, grouped by display type.
 export function localScreenshots(locale, dir = SCREENSHOT_DIR) {
-  const folder = path.join(dir, locale)
+  const folder = path.join(dir, screenshotFolder(locale, dir))
   if (!existsSync(folder)) return {}
   const groups = {}
   for (const fileName of readdirSync(folder).filter((f) => f.toLowerCase().endsWith('.png')).sort()) {
