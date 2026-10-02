@@ -457,7 +457,8 @@ a core call (the web's function); Swift reads, lays out and draws.
   (`AddSheet(wide:)`). Home lays its cards in two columns under the overview
   (By category and the month in words left; Coming up, Budgets and Meal
   vouchers right, Coming up as a list as on the website's desktop; `HomeView.wideCards`;
-  the columns draw nothing under iPadOS 26's floating sidebar, `clearOfSidebar`); Activity and Groups take three
+  the sidebar is the opaque canvas and the hero pager and Activity's chips clip at their column there, so
+  nothing shows through iPadOS 26's floating glass); Activity and Groups take three
   columns, the list between the sidebar and what's picked in it: Activity's
   month (its header card, chips and days; `ActivityView(picked:)`) beside the
   entry (`EntryDetailView`: the row's badge, name, amount and day, Edit,

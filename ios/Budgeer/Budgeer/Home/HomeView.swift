@@ -173,6 +173,9 @@ struct HomeView: View {
             .scrollPosition(id: $month)
             .defaultScrollAnchor(.trailing)
             .frame(height: 200)
+            // Beside the sidebar, the neighbouring months stay out of sight (iPadOS 26 draws a
+            // scroll view's content on under the floating sidebar); a phone shows its edges whole.
+            .clipShape(Rectangle().inset(by: sizeClass == .regular ? 0 : -400))
             .accessibilityIdentifier("home.hero")
 
             if months.count > 1 {

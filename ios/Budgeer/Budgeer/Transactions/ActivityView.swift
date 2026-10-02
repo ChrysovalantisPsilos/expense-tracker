@@ -377,6 +377,7 @@ private struct PeakLabelStyle: LabelStyle {
 struct ActivityChips: View {
     let model: LedgerModel
     @Environment(AppLanguage.self) private var language
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -407,7 +408,8 @@ struct ActivityChips: View {
             .padding(.horizontal, 4)
             .padding(.vertical, 10)
         }
-        .scrollClipDisabled()
+        // Room for the chips' shadow; beside the sidebar, nothing drawn past the column.
+        .scrollClipDisabled(sizeClass != .regular)
         .sensoryFeedback(.selection, trigger: model.type)
         .accessibilityIdentifier("activity.chips")
     }

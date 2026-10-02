@@ -47,16 +47,15 @@ struct SidebarFrame<ListColumn: View, Detail: View>: View {
                     sidebar
                 } content: {
                     list()
-                        .clearOfSidebar()
                         .navigationSplitViewColumnWidth(min: 320, ideal: 380, max: 440)
                 } detail: {
-                    detail().clearOfSidebar()
+                    detail()
                 }
             } else {
                 NavigationSplitView(columnVisibility: $columns) {
                     sidebar
                 } detail: {
-                    detail().clearOfSidebar()
+                    detail()
                 }
             }
         }
@@ -95,7 +94,11 @@ struct SidebarList: View {
             }
         }
         .listStyle(.sidebar)
-        .safeAreaInset(edge: .bottom, spacing: 0) { foot }
+        // The canvas, opaque: iPadOS 26's floating glass would otherwise show
+        // (and bend at its edge) whatever the columns draw beneath it.
+        .scrollContentBackground(.hidden)
+        .background(NativeStyle.canvas)
+        .safeAreaInset(edge: .bottom, spacing: 0) { foot.background(NativeStyle.canvas) }
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -160,29 +163,7 @@ struct SidebarList: View {
     }
 }
 
-/// iPadOS 26's sidebar floats in glass over the columns, which lay their
-/// content out under it (the leading safe area): a horizontal pager's
-/// neighbouring page, a strip drawn past its clip, the column's own edge
-/// then showed through the glass as faint ghosts. A column draws nothing
-/// under the sidebar: its content is masked to the part the sidebar leaves
-/// (on iOS 17–18, where the sidebar sits beside the columns, the inset is 0
-/// and nothing changes).
-private struct ClearOfSidebar: ViewModifier {
-    func body(content: Content) -> some View {
-        content.mask {
-            GeometryReader { proxy in
-                Rectangle().padding(.leading, proxy.safeAreaInsets.leading)
-            }
-            .ignoresSafeArea()
-        }
-    }
-}
-
 extension View {
-    fileprivate func clearOfSidebar() -> some View {
-        modifier(ClearOfSidebar())
-    }
-
     /// Beside the sidebar, a page that would stretch across a wide window
     /// keeps a readable width, centred on the canvas.
     func wideColumn(_ width: CGFloat = 860) -> some View {
