@@ -141,6 +141,7 @@ struct EntryDetailView: View {
             Label(language.t(key), systemImage: symbol)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
+                .fixedSize()
                 .padding(.horizontal, 4)
         }
         .nativeGlassButton()
