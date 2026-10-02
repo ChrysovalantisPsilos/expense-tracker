@@ -8,6 +8,25 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-10-05': {
+      summary: {
+        title: 'A clearer month in plain words',
+        body: 'The summary on Home now counts your salary in the month it’s for, compares each category with a usual month and with last month, and keeps to what’s worth knowing, in three short lines at most. To do that it now also uses the recurring payments and income still due this month (category, amount and day).',
+        chips: { salary: 'Salary is in', usual: 'Like for like' },
+        action: 'Open AI helpers',
+      },
+      salary: {
+        title: 'Your salary where it counts',
+        body: 'Transactions now lists a salary paid at the end of a month in the month it counts for, with its note, so the totals match Home. In the iPhone app, a day with money in shows its net, and tapping a bar in the month’s chart takes you to that day.',
+        chips: { counts: 'Counts for October', net: '+€1.00 net' },
+        action: 'Open Transactions',
+      },
+      more: {
+        title: 'And a few more',
+        body: 'Settings now opens only from your picture at the top right, so More no longer repeats it. The iPhone app is now version 1.0.',
+        chips: { picture: 'Your picture', version: '1.0' },
+      },
+    },
     '2026-10-04': {
       widgets: {
         title: 'Widgets on your iPhone',
