@@ -8,6 +8,19 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-10-06': {
+      ipad: {
+        title: 'Budgeer on iPad',
+        body: 'The app now has an iPad layout like the website on a computer: a sidebar with every page, Activity and Groups as a list beside the details, keyboard shortcuts, and larger This month widgets. In a narrow window it switches to the iPhone layout.',
+        chips: { sidebar: 'Sidebar', widgets: 'Large widgets' },
+      },
+      entryBox: {
+        title: 'Your category, next to the entry',
+        body: 'Opening an entry now shows its category for that month: how much of the budget is used and the category’s other entries, with a link to see them all.',
+        chips: { budget: '61% of budget', others: 'Other entries' },
+        action: 'Open Transactions',
+      },
+    },
     '2026-10-05': {
       summary: {
         title: 'A clearer month in plain words',

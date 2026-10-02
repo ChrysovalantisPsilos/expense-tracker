@@ -17,6 +17,14 @@
 // Greek wording follows docs/i18n-glossary-el.md).
 export const RELEASES = [
   {
+    id: '2026-10-06',
+    date: '2026-10-06',
+    pages: [
+      { id: 'ipad', chips: ['sidebar', 'widgets'], variant: 'start' },
+      { id: 'entryBox', chips: ['budget', 'others'], variant: 'update', action: { to: '/transactions' } },
+    ],
+  },
+  {
     id: '2026-10-05',
     date: '2026-10-05',
     pages: [

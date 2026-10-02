@@ -262,9 +262,16 @@ test('whatsNewList: the releases with pages, newest first, dated and worded', ()
 
 test('the recent releases: their pages, and the actions and words that matter', () => {
   const release = (id) => inEnglish(RELEASES.find((x) => x.id === id))
-  // This release (2026-10-05): the month summary (opens AI helpers), the
-  // salary where it counts (opens Transactions), and More / version 1.0.
-  const r5 = inEnglish(RELEASES[0])
+  // This release (2026-10-06): the iPad, and the entry's category box
+  // (opens Transactions).
+  const r6 = inEnglish(RELEASES[0])
+  assert.equal(r6.id, '2026-10-06')
+  assert.deepEqual(r6.pages.map((p) => p.action?.to), [undefined, '/transactions'])
+  assert.match(r6.pages[0].body, /iPad layout/)
+
+  // 2026-10-05: the month summary (opens AI helpers), the salary where it
+  // counts (opens Transactions), and More / version 1.0.
+  const r5 = release('2026-10-05')
   assert.equal(r5.id, '2026-10-05')
   assert.deepEqual(r5.pages.map((p) => p.action?.to), ['/settings/ai', '/transactions', undefined])
   assert.match(r5.pages[0].body, /recurring payments and income still due this month/)
