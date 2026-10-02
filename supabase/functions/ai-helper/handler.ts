@@ -11,10 +11,11 @@
 // the answer is validated (_shared/aiHelper.ts) before it's returned.
 
 import {
-  type Ask, type AskResult, HELPERS, categoryChoices, normaliseEntry, normaliseSuggestions, normaliseSummary,
-  normaliseWhatIf, parseEntryAsk, planPayments, readParseRequest, readSuggestRequest, readSummaryRequest,
-  readWhatIfRequest, suggestAsk, summaryAsk, whatIfAsk,
+  type Ask, type AskResult, HELPERS, categoryChoices, normaliseEntry, normaliseSuggestions, normaliseWhatIf,
+  parseEntryAsk, planPayments, readParseRequest, readSuggestRequest, readSummaryRequest, readWhatIfRequest,
+  suggestAsk, whatIfAsk,
 } from '../_shared/aiHelper.ts'
+import { normaliseSummary, summaryAsk } from '../_shared/monthFacts.ts'
 import { paidFromSources, savingsIdsOf } from '../_shared/savings.ts'
 
 // The few Supabase client calls used here (supabase-js, typed loosely).
@@ -138,7 +139,9 @@ export async function handle(req: Request, deps: Deps): Promise<Reply> {
     return whatif ? { status: 200, body: { whatif } } : fail(422, 'unreadable', 'Couldn’t read that.')
   }
 
-  // month_summary: the totals come from the database, never from the request.
+  // month_summary: the totals come from the database, never from the request,
+  // and what's still due this month from the caller's own recurring rules
+  // (my_recurring_rules, RLS; unreadable counts as none).
   const r = readSummaryRequest(body)
   if (!r.ok) return BAD
   const { data: state, error } = await asUser.rpc('my_month_summary', { p_month: r.value.month })
@@ -152,8 +155,12 @@ export async function handle(req: Request, deps: Deps): Promise<Reply> {
   if (!deps.ask) return NOT_CONFIGURED
   const s = await start(asUser, action)
   if ('status' in s) return s
-  const categories = await myCategories(asUser, body.labels)
-  const ask = summaryAsk({ totals: state.totals, lang: r.value.lang, categories, today: deps.today() })
+  const categoryRows = await myCategoryRows(asUser)
+  const { data: rules, error: rulesError } = await asUser.rpc('my_recurring_rules', {})
+  const ask = summaryAsk({
+    totals: state.totals, lang: r.value.lang, categories: categoryChoices(categoryRows, body.labels), today: deps.today(),
+    rules: rulesError ? [] : rules ?? [], categoryRows,
+  })
   const res = await deps.ask(ask)
   if (!res.ok) return askReply(res.problem, false)
   const lines = normaliseSummary(res.json, ask.check)
