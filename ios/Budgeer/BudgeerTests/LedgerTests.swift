@@ -98,7 +98,8 @@ final class LedgerModelTests: XCTestCase {
         XCTAssertEqual(model.periods.first?.value, "m:2020-9")
         XCTAssertTrue(model.periods.contains { $0.value == "all" })
         XCTAssertEqual(model.type, "all")
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-09-01", to: "2020-09-30"))
+        // Back to August's late salary, which counts in September (the salary setting from the 25th).
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-25", to: "2020-09-30"))
 
         await model.setType("expense")
         XCTAssertEqual(store.queries.last, TxnQuery(kind: "expense", from: "2020-09-01", to: "2020-09-30"))
@@ -114,7 +115,7 @@ final class LedgerModelTests: XCTestCase {
         await model.setPeriod("m:2020-9")
 
         await model.setType("all")
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-09-01", to: "2020-09-30"))
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-25", to: "2020-09-30"))
         XCTAssertEqual(model.row(id: "a4")?["description"], "Diner")
         // The Filters panel: a date range searches all history between them (ledgerRead).
         await model.setFilter("from", "2020-08-01")
@@ -122,7 +123,33 @@ final class LedgerModelTests: XCTestCase {
         XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-01", limit: 1000))
         await model.clearAll()
         XCTAssertFalse(model.searching)
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-09-01", to: "2020-09-30"))
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-25", to: "2020-09-30"))
+    }
+
+    func testLastMonthsLateSalaryIsListedAndCountedInTheMonthItCountsFor() async throws {
+        let fixture = try LedgerFixture.load()
+        let store = store(fixture)
+        // my_transactions as the server answers it: the kind and the dates.
+        store.rowsFor = { query in
+            .array((fixture.rows(kind: query.kind).arrayValue ?? []).filter { row in
+                let day = row["spent_at"]?.stringValue ?? ""
+                return (query.from.map { day >= $0 } ?? true) && (query.to.map { day <= $0 } ?? true)
+            })
+        }
+        let now = fixture.now
+        let model = LedgerModel(data: store.data, core: .shared, now: { now })
+        await model.load()
+        guard case .loaded(let september) = model.state else { return XCTFail("\(model.state)") }
+        // 27 Aug's salary counts for September: listed on its day with its note, in the income and the net.
+        let salary = september.days.flatMap(\.rows).first { $0.id == "b1" }
+        XCTAssertEqual(salary?.countsFor, "Counts for September")
+        XCTAssertEqual(september.pulse.income?.amount, "+€2,500.00")
+        XCTAssertEqual(september.pulse, fixture.expected["en"]?["all"]?.pulse)
+        // August doesn't list it: it counts in September.
+        await model.setPeriod("m:2020-8")
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-07-25", to: "2020-08-31"))
+        guard case .loaded(let august) = model.state else { return XCTFail("\(model.state)") }
+        XCTAssertFalse(august.days.flatMap(\.rows).contains { $0.id == "b1" })
     }
 
     func testTheGroupsChipKeepsOnlyYourGroupShares() async throws {

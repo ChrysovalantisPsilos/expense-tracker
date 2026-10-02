@@ -1,6 +1,7 @@
 // Activity's state, after the web's LedgerPage: Expenses | Income | All,
 // the picked month's entries (this month by default; the floating pill
-// steps through the months), and the search, which spans all history as on
+// steps through the months; a late salary in the month it counts for, as
+// on Home), and the search, which spans all history as on
 // the web (up to 1,000 rows, the read from txnFilter.ledgerRead, refined by
 // its filterTransactions). Reads through the data layer, pending rates
 // filled as fx.js does, the figures from the core (LedgerFigures).
@@ -103,11 +104,13 @@ final class LedgerModel {
     /// The rows for the current view, then the figures.
     func reloadRows() async {
         do {
-            // ledgerRead: the picked month, or all history narrowed by the server's filters.
+            // ledgerRead: the picked month (back to last month's late salary, which counts in
+            // it), or all history narrowed by the server's filters.
             let month: HomePeriod = try period ?? core.call("periods", "thisMonthPeriod", [JSDate(now())])
+            let salaryShift = try core.json("salaryShift", "salaryShiftOf", [profile])
             let read = try core.json("txnFilter", "ledgerRead", [[
                 "kind": kind.json, "filters": filters, "searching": .bool(searching),
-                "month": ["from": month.from.json, "to": month.to.json],
+                "month": ["from": month.from.json, "to": month.to.json], "salaryShift": salaryShift,
             ] as JSONValue])
             let query = TxnQuery(kind: read["kind"]?.stringValue, from: read["from"]?.stringValue, to: read["to"]?.stringValue,
                                  categoryId: read["categoryId"]?.stringValue, limit: read["limit"]?.intValue)

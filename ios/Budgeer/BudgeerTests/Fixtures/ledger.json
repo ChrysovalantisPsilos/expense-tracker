@@ -328,6 +328,7 @@
             "key": "2020-09-14",
             "title": "Yesterday",
             "spent": "€42.50 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a1",
@@ -359,6 +360,7 @@
             "key": "2020-09-12",
             "title": "12 Sep",
             "spent": "€18.99 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a2",
@@ -388,6 +390,7 @@
             "key": "2020-09-10",
             "title": "10 Sep",
             "spent": "€36.00 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a3",
@@ -420,6 +423,7 @@
             "key": "2020-09-09",
             "title": "9 Sep",
             "spent": "€22.81 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a4",
@@ -454,6 +458,7 @@
             "key": "2020-09-08",
             "title": "8 Sep",
             "spent": "€22.00 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a5",
@@ -486,6 +491,7 @@
             "key": "2020-09-05",
             "title": "5 Sep",
             "spent": "€12.99 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a6",
@@ -517,6 +523,7 @@
             "key": "2020-09-03",
             "title": "3 Sep",
             "spent": "€120.00 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a7",
@@ -548,6 +555,7 @@
             "key": "2020-09-02",
             "title": "2 Sep",
             "spent": null,
+            "net": null,
             "rows": [
               {
                 "id": "a8",
@@ -579,6 +587,7 @@
             "key": "2020-09-01",
             "title": "1 Sep",
             "spent": "€96.00 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a9",
@@ -610,6 +619,10 @@
             "key": "2020-08-27",
             "title": "27 Aug",
             "spent": null,
+            "net": {
+              "text": "+€2,500.00 net",
+              "tone": "positive"
+            },
             "rows": [
               {
                 "id": "b1",
@@ -656,210 +669,240 @@
               "label": "1",
               "bar": 0.8,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "1 Sep · €96.00"
             },
             {
               "key": "2020-09-02",
               "label": "2",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-03",
               "label": "3",
               "bar": 1,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "3 Sep · €120.00"
             },
             {
               "key": "2020-09-04",
               "label": "4",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-05",
               "label": "5",
               "bar": 0.10825,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "5 Sep · €12.99"
             },
             {
               "key": "2020-09-06",
               "label": "6",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-07",
               "label": "7",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-08",
               "label": "8",
               "bar": 0.18333333333333332,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "8 Sep · €22.00"
             },
             {
               "key": "2020-09-09",
               "label": "9",
               "bar": 0.19008333333333333,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "9 Sep · €22.81"
             },
             {
               "key": "2020-09-10",
               "label": "10",
               "bar": 0.3,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "10 Sep · €36.00"
             },
             {
               "key": "2020-09-11",
               "label": "11",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-12",
               "label": "12",
               "bar": 0.15825,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "12 Sep · €18.99"
             },
             {
               "key": "2020-09-13",
               "label": "13",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-14",
               "label": "14",
               "bar": 0.3541666666666667,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "14 Sep · €42.50"
             },
             {
               "key": "2020-09-15",
               "label": "15",
               "bar": 0,
               "today": true,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-16",
               "label": "16",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-17",
               "label": "17",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-18",
               "label": "18",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-19",
               "label": "19",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-20",
               "label": "20",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-21",
               "label": "21",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-22",
               "label": "22",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-23",
               "label": "23",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-24",
               "label": "24",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-25",
               "label": "25",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-26",
               "label": "26",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-27",
               "label": "27",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-28",
               "label": "28",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-29",
               "label": "29",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-30",
               "label": "30",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             }
           ],
           "peak": "Biggest day: 3 Sep · €120.00"
@@ -874,6 +917,7 @@
             "key": "2020-09-14",
             "title": "Yesterday",
             "spent": "€42.50 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a1",
@@ -905,6 +949,7 @@
             "key": "2020-09-12",
             "title": "12 Sep",
             "spent": "€18.99 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a2",
@@ -934,6 +979,7 @@
             "key": "2020-09-10",
             "title": "10 Sep",
             "spent": "€36.00 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a3",
@@ -966,6 +1012,7 @@
             "key": "2020-09-09",
             "title": "9 Sep",
             "spent": "€22.81 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a4",
@@ -1000,6 +1047,7 @@
             "key": "2020-09-08",
             "title": "8 Sep",
             "spent": "€22.00 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a5",
@@ -1032,6 +1080,7 @@
             "key": "2020-09-05",
             "title": "5 Sep",
             "spent": "€12.99 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a6",
@@ -1063,6 +1112,7 @@
             "key": "2020-09-03",
             "title": "3 Sep",
             "spent": "€120.00 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a7",
@@ -1094,6 +1144,7 @@
             "key": "2020-09-01",
             "title": "1 Sep",
             "spent": "€96.00 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a9",
@@ -1135,210 +1186,240 @@
               "label": "1",
               "bar": 0.8,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "1 Sep · €96.00"
             },
             {
               "key": "2020-09-02",
               "label": "2",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-03",
               "label": "3",
               "bar": 1,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "3 Sep · €120.00"
             },
             {
               "key": "2020-09-04",
               "label": "4",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-05",
               "label": "5",
               "bar": 0.10825,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "5 Sep · €12.99"
             },
             {
               "key": "2020-09-06",
               "label": "6",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-07",
               "label": "7",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-08",
               "label": "8",
               "bar": 0.18333333333333332,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "8 Sep · €22.00"
             },
             {
               "key": "2020-09-09",
               "label": "9",
               "bar": 0.19008333333333333,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "9 Sep · €22.81"
             },
             {
               "key": "2020-09-10",
               "label": "10",
               "bar": 0.3,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "10 Sep · €36.00"
             },
             {
               "key": "2020-09-11",
               "label": "11",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-12",
               "label": "12",
               "bar": 0.15825,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "12 Sep · €18.99"
             },
             {
               "key": "2020-09-13",
               "label": "13",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-14",
               "label": "14",
               "bar": 0.3541666666666667,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "14 Sep · €42.50"
             },
             {
               "key": "2020-09-15",
               "label": "15",
               "bar": 0,
               "today": true,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-16",
               "label": "16",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-17",
               "label": "17",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-18",
               "label": "18",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-19",
               "label": "19",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-20",
               "label": "20",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-21",
               "label": "21",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-22",
               "label": "22",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-23",
               "label": "23",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-24",
               "label": "24",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-25",
               "label": "25",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-26",
               "label": "26",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-27",
               "label": "27",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-28",
               "label": "28",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-29",
               "label": "29",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-30",
               "label": "30",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             }
           ],
           "peak": "Biggest day: 3 Sep · €120.00"
@@ -1353,6 +1434,7 @@
             "key": "2020-09-05",
             "title": "5 Sep",
             "spent": "€12.99 spent",
+            "net": null,
             "rows": [
               {
                 "id": "a6",
@@ -1410,6 +1492,7 @@
             "key": "2020-09-14",
             "title": "Χθες",
             "spent": "Έξοδα 42,50 €",
+            "net": null,
             "rows": [
               {
                 "id": "a1",
@@ -1441,6 +1524,7 @@
             "key": "2020-09-12",
             "title": "12 Σεπ",
             "spent": "Έξοδα 18,99 €",
+            "net": null,
             "rows": [
               {
                 "id": "a2",
@@ -1470,6 +1554,7 @@
             "key": "2020-09-10",
             "title": "10 Σεπ",
             "spent": "Έξοδα 36,00 €",
+            "net": null,
             "rows": [
               {
                 "id": "a3",
@@ -1502,6 +1587,7 @@
             "key": "2020-09-09",
             "title": "9 Σεπ",
             "spent": "Έξοδα 22,81 €",
+            "net": null,
             "rows": [
               {
                 "id": "a4",
@@ -1536,6 +1622,7 @@
             "key": "2020-09-08",
             "title": "8 Σεπ",
             "spent": "Έξοδα 22,00 €",
+            "net": null,
             "rows": [
               {
                 "id": "a5",
@@ -1568,6 +1655,7 @@
             "key": "2020-09-05",
             "title": "5 Σεπ",
             "spent": "Έξοδα 12,99 €",
+            "net": null,
             "rows": [
               {
                 "id": "a6",
@@ -1599,6 +1687,7 @@
             "key": "2020-09-03",
             "title": "3 Σεπ",
             "spent": "Έξοδα 120,00 €",
+            "net": null,
             "rows": [
               {
                 "id": "a7",
@@ -1630,6 +1719,7 @@
             "key": "2020-09-02",
             "title": "2 Σεπ",
             "spent": null,
+            "net": null,
             "rows": [
               {
                 "id": "a8",
@@ -1661,6 +1751,7 @@
             "key": "2020-09-01",
             "title": "1 Σεπ",
             "spent": "Έξοδα 96,00 €",
+            "net": null,
             "rows": [
               {
                 "id": "a9",
@@ -1692,6 +1783,10 @@
             "key": "2020-08-27",
             "title": "27 Αυγ",
             "spent": null,
+            "net": {
+              "text": "Καθαρό +2.500,00 €",
+              "tone": "positive"
+            },
             "rows": [
               {
                 "id": "b1",
@@ -1738,210 +1833,240 @@
               "label": "1",
               "bar": 0.8,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "1 Σεπ · 96,00 €"
             },
             {
               "key": "2020-09-02",
               "label": "2",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-03",
               "label": "3",
               "bar": 1,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "3 Σεπ · 120,00 €"
             },
             {
               "key": "2020-09-04",
               "label": "4",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-05",
               "label": "5",
               "bar": 0.10825,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "5 Σεπ · 12,99 €"
             },
             {
               "key": "2020-09-06",
               "label": "6",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-07",
               "label": "7",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-08",
               "label": "8",
               "bar": 0.18333333333333332,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "8 Σεπ · 22,00 €"
             },
             {
               "key": "2020-09-09",
               "label": "9",
               "bar": 0.19008333333333333,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "9 Σεπ · 22,81 €"
             },
             {
               "key": "2020-09-10",
               "label": "10",
               "bar": 0.3,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "10 Σεπ · 36,00 €"
             },
             {
               "key": "2020-09-11",
               "label": "11",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-12",
               "label": "12",
               "bar": 0.15825,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "12 Σεπ · 18,99 €"
             },
             {
               "key": "2020-09-13",
               "label": "13",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-14",
               "label": "14",
               "bar": 0.3541666666666667,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "14 Σεπ · 42,50 €"
             },
             {
               "key": "2020-09-15",
               "label": "15",
               "bar": 0,
               "today": true,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-16",
               "label": "16",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-17",
               "label": "17",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-18",
               "label": "18",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-19",
               "label": "19",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-20",
               "label": "20",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-21",
               "label": "21",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-22",
               "label": "22",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-23",
               "label": "23",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-24",
               "label": "24",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-25",
               "label": "25",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-26",
               "label": "26",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-27",
               "label": "27",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-28",
               "label": "28",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-29",
               "label": "29",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-30",
               "label": "30",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             }
           ],
           "peak": "Μεγαλύτερη μέρα: 3 Σεπ · 120,00 €"
@@ -1956,6 +2081,7 @@
             "key": "2020-09-14",
             "title": "Χθες",
             "spent": "Έξοδα 42,50 €",
+            "net": null,
             "rows": [
               {
                 "id": "a1",
@@ -1987,6 +2113,7 @@
             "key": "2020-09-12",
             "title": "12 Σεπ",
             "spent": "Έξοδα 18,99 €",
+            "net": null,
             "rows": [
               {
                 "id": "a2",
@@ -2016,6 +2143,7 @@
             "key": "2020-09-10",
             "title": "10 Σεπ",
             "spent": "Έξοδα 36,00 €",
+            "net": null,
             "rows": [
               {
                 "id": "a3",
@@ -2048,6 +2176,7 @@
             "key": "2020-09-09",
             "title": "9 Σεπ",
             "spent": "Έξοδα 22,81 €",
+            "net": null,
             "rows": [
               {
                 "id": "a4",
@@ -2082,6 +2211,7 @@
             "key": "2020-09-08",
             "title": "8 Σεπ",
             "spent": "Έξοδα 22,00 €",
+            "net": null,
             "rows": [
               {
                 "id": "a5",
@@ -2114,6 +2244,7 @@
             "key": "2020-09-05",
             "title": "5 Σεπ",
             "spent": "Έξοδα 12,99 €",
+            "net": null,
             "rows": [
               {
                 "id": "a6",
@@ -2145,6 +2276,7 @@
             "key": "2020-09-03",
             "title": "3 Σεπ",
             "spent": "Έξοδα 120,00 €",
+            "net": null,
             "rows": [
               {
                 "id": "a7",
@@ -2176,6 +2308,7 @@
             "key": "2020-09-01",
             "title": "1 Σεπ",
             "spent": "Έξοδα 96,00 €",
+            "net": null,
             "rows": [
               {
                 "id": "a9",
@@ -2217,210 +2350,240 @@
               "label": "1",
               "bar": 0.8,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "1 Σεπ · 96,00 €"
             },
             {
               "key": "2020-09-02",
               "label": "2",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-03",
               "label": "3",
               "bar": 1,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "3 Σεπ · 120,00 €"
             },
             {
               "key": "2020-09-04",
               "label": "4",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-05",
               "label": "5",
               "bar": 0.10825,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "5 Σεπ · 12,99 €"
             },
             {
               "key": "2020-09-06",
               "label": "6",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-07",
               "label": "7",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-08",
               "label": "8",
               "bar": 0.18333333333333332,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "8 Σεπ · 22,00 €"
             },
             {
               "key": "2020-09-09",
               "label": "9",
               "bar": 0.19008333333333333,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "9 Σεπ · 22,81 €"
             },
             {
               "key": "2020-09-10",
               "label": "10",
               "bar": 0.3,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "10 Σεπ · 36,00 €"
             },
             {
               "key": "2020-09-11",
               "label": "11",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-12",
               "label": "12",
               "bar": 0.15825,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "12 Σεπ · 18,99 €"
             },
             {
               "key": "2020-09-13",
               "label": "13",
               "bar": 0,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-14",
               "label": "14",
               "bar": 0.3541666666666667,
               "today": false,
-              "future": false
+              "future": false,
+              "spoken": "14 Σεπ · 42,50 €"
             },
             {
               "key": "2020-09-15",
               "label": "15",
               "bar": 0,
               "today": true,
-              "future": false
+              "future": false,
+              "spoken": null
             },
             {
               "key": "2020-09-16",
               "label": "16",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-17",
               "label": "17",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-18",
               "label": "18",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-19",
               "label": "19",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-20",
               "label": "20",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-21",
               "label": "21",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-22",
               "label": "22",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-23",
               "label": "23",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-24",
               "label": "24",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-25",
               "label": "25",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-26",
               "label": "26",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-27",
               "label": "27",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-28",
               "label": "28",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-29",
               "label": "29",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             },
             {
               "key": "2020-09-30",
               "label": "30",
               "bar": 0,
               "today": false,
-              "future": true
+              "future": true,
+              "spoken": null
             }
           ],
           "peak": "Μεγαλύτερη μέρα: 3 Σεπ · 120,00 €"
@@ -2435,6 +2598,7 @@
             "key": "2020-09-05",
             "title": "5 Σεπ",
             "spent": "Έξοδα 12,99 €",
+            "net": null,
             "rows": [
               {
                 "id": "a6",

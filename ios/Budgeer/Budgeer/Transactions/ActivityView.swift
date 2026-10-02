@@ -1,11 +1,12 @@
 // Activity (the web's Transactions): the picked month at a glance (spent,
 // income and net, a bar per day, the biggest day), a row of chips that
 // filter by kind and category, then the month's entries by day, each day in
-// its own card; search over all history in the bar, and a floating glass
-// pill that steps through the months. Swipe left to delete (it asks
-// first); swipe right to duplicate or split with a group; tap a row to edit
-// it in the Add sheet. A group's share is read-only here (it's edited in the
-// group). Every figure and word is LedgerModel's (the core's).
+// its own card (a day's bar opens its card in the list); search over all
+// history in the bar, and a floating glass pill that steps through the
+// months. Swipe left to delete (it asks first); swipe right to duplicate
+// or split with a group; tap a row to edit it in the Add sheet. A group's
+// share is read-only here (it's edited in the group). Every figure and
+// word is LedgerModel's (the core's).
 import SwiftUI
 
 @MainActor
@@ -22,26 +23,13 @@ struct ActivityView: View {
     @State private var pendingDelete: String?
     @State private var deleted = 0
     @State private var notice: String?
+    /// The day a bar just opened: its card glows for a moment.
+    @State private var lit: String?
 
     var body: some View {
-        List {
-            switch model.state {
-            case .loading:
-                NativeLoading().listRowSeparator(.hidden).listRowBackground(Color.clear)
-            case .failed(let message):
-                NativeFailed(message: message) { await model.load() }
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-            case .loaded(let figures):
-                loaded(figures)
-            }
+        ScrollViewReader { proxy in
+            list(proxy)
         }
-        .listStyle(.insetGrouped)
-        .listSectionSpacing(14)
-        .scrollContentBackground(.hidden)
-        .background(NativeStyle.canvas)
-        // Every change of the list (a month, a chip, a search) moves smoothly.
-        .animation(.smooth(duration: 0.35), value: model.state)
         .searchable(text: Binding(get: { model.text }, set: { model.setText($0) }),
                     placement: .navigationBarDrawer(displayMode: .automatic),
                     prompt: language.t("transactions:ledger.search"))
@@ -71,10 +59,43 @@ struct ActivityView: View {
             Text(model.deleteWords(id: id).body)
         }
         .sensoryFeedback(.success, trigger: deleted)
+        .sensoryFeedback(.selection, trigger: lit)
+    }
+
+    private func list(_ proxy: ScrollViewProxy) -> some View {
+        List {
+            switch model.state {
+            case .loading:
+                NativeLoading().listRowSeparator(.hidden).listRowBackground(Color.clear)
+            case .failed(let message):
+                NativeFailed(message: message) { await model.load() }
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            case .loaded(let figures):
+                loaded(figures) { key in scrollToDay(key, in: figures, proxy) }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .listSectionSpacing(14)
+        .scrollContentBackground(.hidden)
+        .background(NativeStyle.canvas)
+        // Every change of the list (a month, a chip, a search) moves smoothly.
+        .animation(.smooth(duration: 0.35), value: model.state)
+    }
+
+    /// A bar tapped: scroll its day's card to the top, and light the card up for a moment.
+    private func scrollToDay(_ key: String, in figures: LedgerFigures, _ proxy: ScrollViewProxy) {
+        guard figures.days.contains(where: { $0.key == key }) else { return }
+        withAnimation(.smooth(duration: 0.45)) { proxy.scrollTo(DayAnchor(key: key), anchor: .top) }
+        lit = key
+        Task {
+            try? await Task.sleep(nanoseconds: 1_400_000_000)
+            if lit == key { withAnimation(.easeOut(duration: 0.5)) { lit = nil } }
+        }
     }
 
     @ViewBuilder
-    private func loaded(_ figures: LedgerFigures) -> some View {
+    private func loaded(_ figures: LedgerFigures, openDay: @escaping (String) -> Void) -> some View {
         if let notice {
             NativeNotice(text: notice, warning: true).listRowSeparator(.hidden)
         }
@@ -86,7 +107,7 @@ struct ActivityView: View {
             Section {
                 if !figures.pulse.days.isEmpty {
                     // A search or a filter folds the card away (and back) smoothly.
-                    MonthBarsCard(pulse: figures.pulse, period: model.period?.label ?? "")
+                    MonthBarsCard(pulse: figures.pulse, period: model.period?.label ?? "", open: openDay)
                         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 6, trailing: 16))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
@@ -108,10 +129,11 @@ struct ActivityView: View {
             }
             ForEach(figures.days) { day in
                 Section {
-                    ForEach(day.rows) { row in rowView(row) }
+                    ForEach(day.rows) { row in rowView(row, lit: lit == day.key) }
                 } header: {
                     DayCardHeader(day: day)
                 }
+                .id(DayAnchor(key: day.key))
             }
             // Room for the last day to scroll clear of the month pill and the tab bar.
             Color.clear
@@ -123,16 +145,16 @@ struct ActivityView: View {
     }
 
     @ViewBuilder
-    private func rowView(_ row: EntryRow) -> some View {
+    private func rowView(_ row: EntryRow, lit: Bool) -> some View {
         if row.shared {
-            rowChrome(EntryRowView(row: row))
+            rowChrome(EntryRowView(row: row), lit: lit)
         } else {
             rowChrome(Button {
                 if let saved = model.row(id: row.id) { open(saved) }
             } label: {
                 EntryRowView(row: row)
             }
-            .foregroundStyle(Color.primary))
+            .foregroundStyle(Color.primary), lit: lit)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 Button(role: .destructive) {
                     pendingDelete = row.id
@@ -160,10 +182,14 @@ struct ActivityView: View {
         }
     }
 
-    /// A row's place on its day's card, the hairline starting under the words.
-    private func rowChrome<Content: View>(_ content: Content) -> some View {
+    /// A row's place on its day's card, the hairline starting under the words; `lit`: the
+    /// day a bar just opened, its card washed in the tint for a moment.
+    private func rowChrome<Content: View>(_ content: Content, lit: Bool) -> some View {
         content
-            .listRowBackground(NativeStyle.card)
+            .listRowBackground(ZStack {
+                NativeStyle.card
+                NativeStyle.tint.opacity(lit ? 0.14 : 0)
+            })
             .listRowSeparatorTint(Color.primary.opacity(0.08))
             .alignmentGuide(.listRowSeparatorLeading) { _ in 56 }
     }
@@ -237,6 +263,8 @@ private struct MonthSideFigures: View {
 struct MonthBarsCard: View {
     let pulse: MonthPulse
     let period: String
+    /// A day's bar tapped: its key ('YYYY-MM-DD'), to open its day in the list.
+    var open: (String) -> Void = { _ in }
 
     /// A day's place in the row: the longest month's days.
     private static let places = 31
@@ -270,24 +298,42 @@ struct MonthBarsCard: View {
             HStack(alignment: .bottom, spacing: 0) {
                 ForEach(0..<MonthBarsCard.places, id: \.self) { index in
                     let day: MonthPulse.Day? = pulse.days.indices.contains(index) ? pulse.days[index] : nil
-                    VStack(spacing: 4) {
-                        Capsule()
-                            .fill(day.map(color) ?? Color.clear)
-                            .frame(width: max(3, place * 0.6), height: barHeight(day))
-                            .frame(height: MonthBarsCard.barHeight, alignment: .bottom)
-                        Text(day?.label ?? "")
-                            .font(.system(size: 8, weight: day?.today == true ? .bold : .regular))
-                            .foregroundStyle(day?.today == true ? NativeStyle.tint : Color.secondary)
-                            .opacity(day.map(showsLabel) == true ? 1 : 0)
-                            .fixedSize()
-                            .frame(height: 10)
-                    }
-                    .frame(width: place)
+                    column(day, place: place)
                 }
             }
         }
         .frame(height: MonthBarsCard.barHeight + 14)
-        .accessibilityHidden(true)
+    }
+
+    /// A day's place: its bar over its number. A day with a bar that isn't ahead is a button
+    /// that opens its day in the list (VoiceOver reads "2 Oct · €89.00"); the others are only drawn.
+    @ViewBuilder
+    private func column(_ day: MonthPulse.Day?, place: CGFloat) -> some View {
+        if let day, let spoken = day.spoken {
+            Button { open(day.key) } label: {
+                bar(day, place: place).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(spoken)
+        } else {
+            bar(day, place: place).accessibilityHidden(true)
+        }
+    }
+
+    private func bar(_ day: MonthPulse.Day?, place: CGFloat) -> some View {
+        VStack(spacing: 4) {
+            Capsule()
+                .fill(day.map(color) ?? Color.clear)
+                .frame(width: max(3, place * 0.6), height: barHeight(day))
+                .frame(height: MonthBarsCard.barHeight, alignment: .bottom)
+            Text(day?.label ?? "")
+                .font(.system(size: 8, weight: day?.today == true ? .bold : .regular))
+                .foregroundStyle(day?.today == true ? NativeStyle.tint : Color.secondary)
+                .opacity(day.map(showsLabel) == true ? 1 : 0)
+                .fixedSize()
+                .frame(height: 10)
+        }
+        .frame(width: place)
     }
 
     /// A day's bar: its share of the biggest day's height (a sliver at least); none past the month's end.
@@ -379,7 +425,12 @@ struct ActivityChips: View {
 
 // MARK: The days
 
-/// A day's heading over its card: the day, then what it spent.
+/// A day's card in the list, as a bar scrolls to it.
+private struct DayAnchor: Hashable {
+    let key: String
+}
+
+/// A day's heading over its card: the day, then what it spent, or its net (in its tone) when money came in.
 private struct DayCardHeader: View {
     let day: EntryDay
 
@@ -387,7 +438,10 @@ private struct DayCardHeader: View {
         HStack(alignment: .firstTextBaseline) {
             Text(day.title).font(.headline).foregroundStyle(Color.primary)
             Spacer()
-            if let spent = day.spent {
+            if let net = day.net {
+                Text(net.text).font(.subheadline.weight(.semibold)).foregroundStyle(NativeStyle.tone(net.tone))
+                    .monospacedDigit()
+            } else if let spent = day.spent {
                 Text(spent).font(.subheadline).foregroundStyle(Theme.Colors.textMuted).monospacedDigit()
             }
         }
