@@ -8,6 +8,7 @@ import { generateKeyPairSync, verify } from 'node:crypto'
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { runCertificates } from '../scripts/asc/certificates.mjs'
 import { legalVersions, signInState, signUpBody, supabaseFromXcconfig } from '../scripts/asc/reviewer.mjs'
 import { AUDIENCE, AscError, createClient, errorText, makeToken, normalisePem, tokenParts } from '../scripts/asc/api.mjs'
 import {
@@ -411,4 +412,16 @@ test('the reviewer account: the app\'s project, the sign-up the website sends, w
   assert.equal(signInState(200, {}), 'ready')
   assert.equal(signInState(400, { error_code: 'email_not_confirmed', msg: 'Email not confirmed' }), 'unconfirmed')
   assert.equal(signInState(400, { error_code: 'invalid_credentials', msg: 'Invalid login credentials' }), 'missing')
+})
+
+test('a TestFlight run frees only the development certificates earlier runs made', () => {
+  const cert = (id, certificateType, name) => ({ id, attributes: { certificateType, name, displayName: name } })
+  const list = [
+    cert('a', 'DEVELOPMENT', 'Apple Development: Created via API (Z9KGWP5G82)'),
+    cert('b', 'IOS_DEVELOPMENT', 'iOS Development: Created via API'),
+    cert('c', 'DEVELOPMENT', 'Apple Development: Chrysovalantis Psilos (ABCDE12345)'),
+    cert('d', 'DISTRIBUTION', 'Apple Distribution: Created via API'),
+    cert('e', 'IOS_DISTRIBUTION', 'iOS Distribution: Budgeer'),
+  ]
+  assert.deepEqual(runCertificates(list).map((c) => c.id), ['a', 'b'])
 })

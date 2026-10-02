@@ -321,6 +321,10 @@ npm run dev       # Vite
   in the developer portal and assigned to each app's and `.widgets` App ID,
   or the archive fails with "Provisioning profile … doesn't match … the
   com.apple.security.application-groups entitlement".
+  Every run's fresh machine makes an "Apple Development: Created via API"
+  certificate; the workflow revokes the earlier runs' ones before archiving
+  (`scripts/asc/certificates.mjs`; never a person's own or a distribution
+  one), and uploads run one at a time, or Apple's limit stops the archive.
 - **Push (APNs):** the app asks only from Settings › Notifications or once
   after the first entry saved (`Push/PushModel.swift`), stores the token with
   `save_apns_token` (0108: `apns_devices`, demo refused, 20/hour, 10 installs

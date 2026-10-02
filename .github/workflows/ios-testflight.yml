@@ -39,7 +39,9 @@ permissions:
 # One upload per app at a time; a second run waits rather than cancelling an
 # upload half-way.
 concurrency:
-  group: ios-testflight-${{ inputs.app }}
+  # One upload at a time across both apps: a run frees the certificates the
+  # earlier ones made, never one another run is still signing with.
+  group: ios-testflight
   cancel-in-progress: false
 
 env:
@@ -119,6 +121,15 @@ jobs:
           </dict>
           </plist>
           EOF
+      # Each run's machine is new, so signing makes a development certificate
+      # every time; the earlier runs' ones go first, or Apple's limit stops
+      # the archive (scripts/asc/certificates.mjs; never a person's own).
+      - name: Free the development certificate slots
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: node scripts/asc/certificates.mjs
       - name: Archive
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
