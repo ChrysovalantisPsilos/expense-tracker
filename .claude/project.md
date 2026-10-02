@@ -315,7 +315,12 @@ npm run dev       # Vite
   ("invalidPEMDocument" = it doesn't). The app is iPhone-only: keep
   `TARGETED_DEVICE_FAMILY: "1"` on the Budgeer target itself (XcodeGen's
   preset sets "1,2" per target, and a portrait-only iPad build is refused,
-  error 90474).
+  error 90474). Cloud signing creates App IDs and turns capabilities on, but
+  it can't create an App Group: `group.com.budgeer.app` and
+  `group.com.budgeer.app.dev` (the widgets' snapshot) are registered by hand
+  in the developer portal and assigned to each app's and `.widgets` App ID,
+  or the archive fails with "Provisioning profile … doesn't match … the
+  com.apple.security.application-groups entitlement".
 - **Push (APNs):** the app asks only from Settings › Notifications or once
   after the first entry saved (`Push/PushModel.swift`), stores the token with
   `save_apns_token` (0108: `apns_devices`, demo refused, 20/hour, 10 installs
