@@ -57,7 +57,6 @@ private struct WelcomeLayer: ViewModifier {
             }) {
                 PasskeyAskView(welcome: welcome)
                     .environment(language)
-                    .presentationDetents([.medium, .large])
             }
             .task(id: welcome.passkeyAsk && welcome.story == nil && !welcome.wizard) {
                 guard welcome.passkeyAsk, welcome.story == nil, !welcome.wizard else {
@@ -98,6 +97,8 @@ private struct WelcomeLayer: ViewModifier {
 private struct PasskeyAskView: View {
     @Bindable var welcome: WelcomeModel
     @Environment(AppLanguage.self) private var language
+    /// The sheet is as tall as what it says, not half the screen.
+    @State private var height: CGFloat = 300
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -117,7 +118,6 @@ private struct PasskeyAskView: View {
             if let problem = welcome.passkeyAskProblem {
                 Text(problem).font(.footnote.weight(.semibold)).foregroundStyle(NativeStyle.negative)
             }
-            Spacer(minLength: 0)
             HStack(spacing: 10) {
                 Button {
                     Task { await welcome.closePasskeyAsk() }
@@ -144,8 +144,13 @@ private struct PasskeyAskView: View {
             }
         }
         .padding(24)
+        .padding(.top, 8)
+        .fixedSize(horizontal: false, vertical: true)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(NativeStyle.canvas.ignoresSafeArea())
+        .presentationDetents([.height(height)])
+        .presentationDragIndicator(.visible)
     }
 }
 
