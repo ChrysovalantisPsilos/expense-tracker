@@ -38,6 +38,9 @@ export default {
     today: 'Today',
     yesterday: 'Yesterday',
     daySpent: '{{amount}} spent',
+    dayNet: '{{amount}} net',
+    // A bar of Activity's month (rowParts.monthPulse) as a button: its day and amount.
+    dayBar: '{{day}} · {{amount}}',
     types: {
       expense: 'Expenses',
       income: 'Income',

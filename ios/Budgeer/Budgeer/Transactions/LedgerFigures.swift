@@ -31,12 +31,18 @@ struct EntryRow: Codable, Equatable, Identifiable, Sendable {
     let estimated: String?
 }
 
-/// One day of the list (rowParts.dayGroups): "Today", what was spent, its rows.
+/// One day of the list (rowParts.dayGroups): "Today", what it comes to, its rows.
 struct EntryDay: Codable, Equatable, Identifiable, Sendable {
+    /// A day with income: its net ("+€1.00 net") in its tone.
+    struct Net: Codable, Equatable, Sendable {
+        let text: String
+        let tone: String
+    }
     let key: String
     let title: String
-    /// "€45.55 spent", nil without an expense that day.
+    /// "€45.55 spent" on a day that only spent; nil without an expense, or with income (`net`).
     let spent: String?
+    let net: Net?
     let rows: [EntryRow]
     var id: String { key }
 }
@@ -61,6 +67,8 @@ struct MonthPulse: Codable, Equatable, Sendable {
         let bar: Double
         let today: Bool
         let future: Bool
+        /// The bar as a button that opens its day in the list ("2 Oct · €89.00"); nil when it doesn't open.
+        let spoken: String?
         var id: String { key }
     }
     let spent: Figure?
@@ -96,9 +104,11 @@ struct LedgerFigures: Codable, Equatable, Sendable {
         let salaryShift = try core.json("salaryShift", "salaryShiftOf", [profile])
         let savingsIds = try core.json("savings", "savingsIdsOf", [categories])
         let searching: Bool = try core.call("txnFilter", "isFiltering", [text, filters])
-        let shown = searching
-            ? try core.json("txnFilter", "filterTransactions", [rows, filters.with("text", .string(text)), base])
-            : rows
+        // A search's matches, else the month's rows by the month each counts in (a late salary in the next).
+        let shown = try core.json("txnFilter", "ledgerShown", [rows, [
+            "text": .string(text), "filters": filters, "searching": .bool(searching), "month": month,
+            "salaryShift": salaryShift,
+        ] as JSONValue, .string(base)])
         let count = shown.arrayValue?.count ?? 0
         let net = try core.json("txnFilter", "netBaseMinor", [shown, base, savingsIds])
         let head = try core.json("listHeading", "listHeading", [[

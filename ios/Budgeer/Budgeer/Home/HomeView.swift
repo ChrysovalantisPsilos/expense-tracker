@@ -49,6 +49,9 @@ struct HomeView: View {
                 .padding(.horizontal, 16)
             }
             .padding(.bottom, 28)
+            // The large title follows this scroll view, not the months' pager: it folds away
+            // as the page scrolls, with nothing of the hero behind it.
+            .background(NavigationScrollAnchor().frame(width: 0, height: 0).accessibilityHidden(true))
             // Cards come and go, and figures change, with one soft spring.
             .animation(HomeCardStyle.spring, value: model.state)
             .animation(HomeCardStyle.spring, value: model.budgets)
