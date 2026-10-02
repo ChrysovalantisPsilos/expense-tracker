@@ -170,6 +170,18 @@ test('month_summary: stale, or another language, writes a new one from the serve
   }
 })
 
+test('month_summary: what\'s still due comes from the caller\'s own recurring rules (none when unreadable)', async () => {
+  const lastDay = new Date(Date.UTC(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0)).toISOString().slice(0, 10)
+  const due = { id: '00000000-0000-4000-8000-0000000000c1', kind: 'expense', category_id: FOOD, amount_minor: 4500, currency: 'EUR',
+    frequency: 'monthly', interval_n: 1, next_run: lastDay, is_active: true, end_date: null }
+  const s = stubs({ summary: state(), rules: [due], reply: { ok: true, json: { lines: ['Food: €45.00 is due.'] } } })
+  const r = await handle(post({ action: 'month_summary', month, lang: 'en' }), s.deps)
+  assert.equal(r.status, 200)
+  assert.ok(s.calls.rpc.some(([fn]) => fn === 'my_recurring_rules'))
+  assert.deepEqual(JSON.parse(s.calls.asks[0].user).coming_up, [{ name: 'Food', kind: 'payment', amount: '€45.00', day: Number(lastDay.slice(8)) }])
+  assert.deepEqual(r.body.summary.lines, ['Food: €45.00 is due.'])
+})
+
 test('month_summary: switched off while writing — nothing kept, 403', async () => {
   const s = stubs({ summary: state(), reply: { ok: true, json: { lines: ['x'] } }, save: { error: { message: 'AI helper is off' } } })
   const r = await handle(post({ action: 'month_summary', month, lang: 'en' }), s.deps)

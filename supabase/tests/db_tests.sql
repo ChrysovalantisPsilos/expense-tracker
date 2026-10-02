@@ -7320,11 +7320,75 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 119. 0109: the month summary counts income as Home does. A salary paid
+--      from day D (the salary shift) counts in the next month: last month's
+--      late salary is this month's income, this month's late one isn't, an
+--      early one stays in its own month. salary_counted_date is the SQL twin
+--      of salaryShift.countedDate (D clamped to the month's length) and is
+--      closed to clients; the totals carry the salary setting.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; sal uuid; food uuid; st jsonb; c jsonb;
+        m0 date := date_trunc('month', current_date)::date;
+begin
+  begin
+    if public.salary_counted_date('income', '00000000-0000-4000-8000-000000000001', '2026-02-28', 31, '00000000-0000-4000-8000-000000000001') <> '2026-03-01'
+       or public.salary_counted_date('income', '00000000-0000-4000-8000-000000000001', '2026-04-29', 31, '00000000-0000-4000-8000-000000000001') <> '2026-04-29'
+       or public.salary_counted_date('income', '00000000-0000-4000-8000-000000000001', '2026-12-30', 25, '00000000-0000-4000-8000-000000000001') <> '2027-01-01'
+       or public.salary_counted_date('expense', '00000000-0000-4000-8000-000000000001', '2026-09-28', 25, '00000000-0000-4000-8000-000000000001') <> '2026-09-28'
+       or public.salary_counted_date('income', '00000000-0000-4000-8000-000000000002', '2026-09-28', 25, '00000000-0000-4000-8000-000000000001') <> '2026-09-28'
+       or public.salary_counted_date('income', '00000000-0000-4000-8000-000000000001', '2026-09-28', null, '00000000-0000-4000-8000-000000000001') <> '2026-09-28' then
+      raise exception 'salary_counted_date disagrees with countedDate';
+    end if;
+    if has_function_privilege('authenticated', 'public.salary_counted_date(text,uuid,date,int,uuid)', 'execute')
+       or has_function_privilege('anon', 'public.salary_counted_date(text,uuid,date,int,uuid)', 'execute') then
+      raise exception 'salary_counted_date is callable by clients';
+    end if;
+
+    u1 := pg_temp.zz_user('aishift');
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZ Salary', 'income') returning id into sal;
+    insert into public.categories (user_id, name, kind) values (u1, 'ZZ Food', 'expense') returning id into food;
+    update public.profiles set ai_month_summary = true, salary_shift_from_day = 25, salary_category_id = sal where id = u1;
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u1, 'income', sal, 'EUR', 1, (m0 - interval '1 month')::date + 27, public.enc_minor(250000)),  -- last month's 28th: this month's
+           (u1, 'income', sal, 'EUR', 1, (m0 - interval '1 month')::date + 9, public.enc_minor(100000)),   -- last month's 10th: last month's
+           (u1, 'income', sal, 'EUR', 1, m0 + 27, public.enc_minor(260000)),                              -- this month's 28th: next month's
+           (u1, 'expense', food, 'EUR', 1, m0, public.enc_minor(1200));
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    st := public.my_month_summary(m0);
+    execute 'reset role';
+    select e into c from jsonb_array_elements(st->'totals'->'categories') e where e->>'id' = sal::text;
+    if c->'totals' is distinct from '[250000, 100000, 0, 0, 0, 0, 0]'::jsonb then
+      raise exception 'salary not counted as Home counts it: %', c;
+    end if;
+    if st->'totals'->>'salary_category_id' is distinct from sal::text
+       or (st->'totals'->>'salary_shift_from_day')::int is distinct from 25 then
+      raise exception 'totals miss the salary setting: %', st->'totals';
+    end if;
+    -- Without the shift, each salary is in the month it was paid.
+    update public.profiles set salary_shift_from_day = null where id = u1;
+    execute 'set local role authenticated';
+    st := public.my_month_summary(m0);
+    execute 'reset role';
+    select e into c from jsonb_array_elements(st->'totals'->'categories') e where e->>'id' = sal::text;
+    if c->'totals' is distinct from '[260000, 350000, 0, 0, 0, 0, 0]'::jsonb then
+      raise exception 'unshifted salary wrong: %', c;
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: month summary counts a late salary in the month it counts for (salary_counted_date, closed to clients)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: month summary salary shift — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 119; f int; p int;  -- tests 1–118 + B-0059
+declare expected_tests constant int := 120; f int; p int;  -- tests 1–119 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

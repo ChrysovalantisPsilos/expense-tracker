@@ -19,10 +19,11 @@
 // case. A fetch for a window starting on the 1st must reach back into the
 // previous month to find the salary that counts in it (shiftFetchFrom).
 //
-// No SQL twin: nothing on the server sums income by month (budget alerts, the
-// weekly digest and send-reminders read expenses or recurring rules only). If
-// a server-side income-by-month figure is ever added, give it a lockstep SQL
-// copy of isShifted/countedDate.
+// One SQL twin: public.salary_counted_date (0109), which the month summary's
+// totals (ai_month_totals) count income by; keep the two in lockstep (DB test
+// 119 checks the edge cases). Nothing else on the server sums income by month
+// (budget alerts, the weekly digest and send-reminders read expenses or
+// recurring rules only).
 
 // deno-lint-ignore no-explicit-any
 type Row = any
