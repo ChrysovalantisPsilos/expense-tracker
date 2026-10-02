@@ -17,8 +17,8 @@ struct BrandIntro: View {
     @State private var start: Date?
     @State private var finished = false
 
-    /// One draw's frames at 60 a second, from the core.
-    private static let intro: Intro = (try? BudgeerCore.shared.call("loaderTiming", "ringIntro", [108]))
+    /// One draw's frames at 60 a second, from the core (its wordmark is the sidebar's too).
+    static let intro: Intro = (try? BudgeerCore.shared.call("loaderTiming", "ringIntro", [108]))
         ?? Intro(wordmark: "budgeer", cycleMs: 1800, frames: [.full])
 
     struct Intro: Codable {

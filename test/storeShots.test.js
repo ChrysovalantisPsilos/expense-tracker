@@ -1,6 +1,7 @@
 // The App Store pictures (scripts/store-shots): the captions in both
 // languages fit the frame's rules, the committed pictures are one per frame
-// at the 6.9" size, and the store sample data (the iOS snapshot fixtures as
+// at the 6.9" iPhone and the 13" iPad sizes (each from its own snapshots, in
+// its own folder), and the store sample data (the iOS snapshot fixtures as
 // the pictures show them, ios/Budgeer/BudgeerTests/Fixtures/store-sample.json)
 // only names categories that exist and words the fixtures really hold.
 import test from 'node:test'
@@ -9,9 +10,10 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  FRAMES, LANGS, MAX_TITLE, SIZE, STORE_DIR, captionProblems, headlineParts, outputFile, readCaptions,
+  DEVICES, FRAMES, LANGS, MAX_TITLE, SIZE, STORE_DIR, captionProblems, headlineParts, outputFile, readCaptions, shotFile,
+  shotSets,
 } from '../scripts/store-shots/frames.mjs'
-import { pngSize } from '../scripts/asc/screenshots.mjs'
+import { displayTypeFor, pngSize } from '../scripts/asc/screenshots.mjs'
 import en from '../src/locales/en/index.js'
 import el from '../src/locales/el/index.js'
 
@@ -50,15 +52,43 @@ test('frames sort in the store’s order and land in the upload’s locale folde
   assert.equal(outputFile('el', FRAMES[5]), path.join(STORE_DIR, 'screenshots/el/6-savings.png'))
 })
 
-test('the committed pictures are one per frame, 1320×2868', () => {
-  for (const locale of Object.values(LANGS)) {
-    const dir = path.join(STORE_DIR, 'screenshots', locale)
-    if (!existsSync(dir)) continue
-    assert.deepEqual(readdirSync(dir).sort(), FRAMES.map((f) => `${f.id}.png`), locale)
-    for (const file of readdirSync(dir)) {
-      assert.deepEqual(pngSize(readFileSync(path.join(dir, file))), SIZE, `${locale}/${file}`)
+test('the committed pictures are one per frame, at each device’s store size', () => {
+  assert.deepEqual(SIZE, { width: 1320, height: 2868 })
+  assert.deepEqual(DEVICES.ipad.size, { width: 2064, height: 2752 })
+  for (const [device, { folder, size }] of Object.entries(DEVICES)) {
+    // Each size is the one scripts/asc/screenshots.mjs uploads for that device.
+    assert.equal(displayTypeFor(size.width, size.height), device === 'ipad' ? 'APP_IPAD_PRO_3GEN_129' : 'APP_IPHONE_67')
+    for (const locale of Object.values(LANGS)) {
+      const dir = path.join(STORE_DIR, folder, locale)
+      if (!existsSync(dir)) continue
+      assert.deepEqual(readdirSync(dir).sort(), FRAMES.map((f) => `${f.id}.png`), `${device} ${locale}`)
+      for (const file of readdirSync(dir)) {
+        assert.deepEqual(pngSize(readFileSync(path.join(dir, file))), size, `${device} ${locale}/${file}`)
+      }
     }
   }
+})
+
+test('the iPad’s screens come from its own snapshots and go in its own folders', () => {
+  const frame = FRAMES[0]
+  assert.equal(shotFile('/s', frame, 'en'), path.join('/s', 'store-home-en.png'))
+  assert.equal(shotFile('/s', frame, 'el', 'ipad'), path.join('/s', 'store-ipad-home-el.png'))
+  assert.equal(outputFile('en', frame, 'ipad'), path.join(STORE_DIR, 'screenshots-ipad/en-US/1-home.png'))
+  // The iPad's snapshots are its 13-inch screen at 2x: the store's size itself.
+  assert.deepEqual(DEVICES.ipad.shot, DEVICES.ipad.size)
+})
+
+test('a snapshots folder frames each device whose screens are all there', () => {
+  const all = (device) => Object.keys(LANGS).flatMap((lang) => FRAMES.map((f) => shotFile('/s', f, lang, device)))
+  const has = (files) => (file) => files.includes(file)
+  assert.deepEqual(shotSets('/s', has([...all('iphone'), ...all('ipad')])), { devices: ['iphone', 'ipad'], problems: [] })
+  // An artifact from before the iPad's pictures: the iPhone's only.
+  assert.deepEqual(shotSets('/s', has(all('iphone'))), { devices: ['iphone'], problems: [] })
+  // Some of a set missing: each one named.
+  const partial = shotSets('/s', has([...all('iphone'), ...all('ipad').slice(1)]))
+  assert.deepEqual(partial.devices, ['iphone'])
+  assert.deepEqual(partial.problems, [`missing ${all('ipad')[0]}`])
+  assert.match(shotSets('/s', () => false).problems.join(), /no store snapshots in \/s/)
 })
 
 test('the store sample moves 2020 to a year with the same weekdays', () => {

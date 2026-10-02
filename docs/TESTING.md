@@ -82,7 +82,11 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 2. **Same-day ordering**: add two expenses dated today → the most recently
    added sits on top.
 3. **Edit** an expense's amount → list updates in place. **Delete** it →
-   gone; check the dashboard totals moved.
+   gone; check the dashboard totals moved. Under the form, the entry's
+   category in its month ("Groceries · This month"): the month's budget bar
+   when it has one, the category's other entries newest first (three), See
+   all opening the category's page for that month; none for an entry without
+   a category or a group's share. The iPad's entry detail shows the same box.
 4. **Receipt scan**: add expense → scan a photo → amount/date pre-fill; after
    saving, the row has no attachment (receipts are not stored).
 5. **Multi-currency**: add a USD expense dated last month with EUR as the

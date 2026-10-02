@@ -171,6 +171,7 @@ struct DeleteCategorySheet: View {
                         model.deleting = nil
                         dismiss()
                     }
+                    .keyboardShortcut(.cancelAction)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(role: .destructive) {

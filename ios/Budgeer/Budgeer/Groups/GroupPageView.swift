@@ -644,6 +644,7 @@ struct DeleteGroupSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(language.t("common:actions.cancel")) { dismiss() }
+                        .keyboardShortcut(.cancelAction)
                 }
             }
         }

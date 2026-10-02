@@ -3,8 +3,13 @@
 // add, AddSlot), each tab its own stack of pages under a large
 // title, the bell and your initials in every first page's top-right corner,
 // Add (and Edit, and a recurring rule) as a sheet, and the notifications as
-// a page pushed on the tab you're on. Live: each page refreshes when its tables change, and coming
-// back to the foreground catches up on what realtime missed.
+// a page pushed on the tab you're on. In a regular-width window (an iPad,
+// a wide Split View or Stage Manager window) the same pages sit beside a
+// sidebar instead (SidebarFrame: the website's desktop sidebar), Activity
+// and Groups as a list beside the picked entry or group, with the bell and
+// Add in the bar; changing the window's width keeps your place (AppRouter).
+// Live: each page refreshes when its tables change, and coming back to the
+// foreground catches up on what realtime missed.
 import SwiftUI
 
 /// A page a tab pushes.
@@ -71,98 +76,6 @@ struct AddRequest: Identifiable {
     var splitting: JSONValue? = nil
 }
 
-/// Which page each tab shows, the open sheet, and where a notification leads.
-@MainActor
-@Observable
-final class AppRouter {
-    var tab: NativeTab = .home
-    var home = NavigationPath()
-    var activity = NavigationPath()
-    var groups = NavigationPath()
-    var more = NavigationPath()
-    var add: AddRequest?
-    /// The kind of entry a link asked Add for ('expense', 'income'), until the frame opens it.
-    var addKind: String?
-    /// Each tab's Add slot: what Add does while a page there lends it (AddSlot).
-    let slots: [NativeTab: AddSlot] = [.home: AddSlot(), .activity: AddSlot(), .groups: AddSlot(), .more: AddSlot()]
-
-    /// The current tab's Add slot.
-    var slot: AddSlot? { slots[tab == .add ? .home : tab] }
-
-    /// Push a page on the current tab.
-    func push(_ route: AppRoute) {
-        switch tab {
-        case .home, .add: home.append(route)
-        case .activity: activity.append(route)
-        case .groups: groups.append(route)
-        case .more: more.append(route)
-        }
-    }
-
-    /// Your initials: Settings, under More.
-    func openSettings() {
-        tab = .more
-        more = NavigationPath()
-        more.append(AppRoute.settings)
-    }
-
-    /// The bell: the notifications, pushed on the tab you're on.
-    func openBell() {
-        switch tab {
-        case .home, .add: home.append(AppRoute.notifications)
-        case .activity: activity.append(AppRoute.notifications)
-        case .groups: groups.append(AppRoute.notifications)
-        case .more: more.append(AppRoute.notifications)
-        }
-    }
-
-    /// An invite link opened from outside: the join page on the Groups tab.
-    func openJoin(_ token: String) {
-        tab = .groups
-        groups = NavigationPath()
-        groups.append(AppRoute.join(token))
-    }
-
-    /// A web path (a notification's, bellMath.notificationPath; What's new's
-    /// actions; the tour's stops; a widget's) as a tab and its pages
-    /// (AppPaths), or Add (/transactions/new).
-    func open(path: String) {
-        if let kind = AppPaths.addKind(path) {
-            addKind = kind
-            return
-        }
-        guard let place = AppPaths.place(path) else { return }
-        var stack = NavigationPath()
-        for route in place.routes { stack.append(route) }
-        tab = place.tab
-        switch place.tab {
-        case .home, .add: home = stack
-        case .activity: activity = stack
-        case .groups: groups = stack
-        case .more: more = stack
-        }
-    }
-}
-
-/// What every tab's first page shows in its top-right corner.
-struct PageChrome {
-    let initials: String
-    /// Your picture (the photo, or the initials in the accent).
-    var avatar: Avatar? = nil
-    /// The bell's badge words (bellMath.badgeText), nil with nothing unread.
-    let badge: String?
-    let onBell: () -> Void
-    let onProfile: () -> Void
-}
-
-extension View {
-    func pageChrome(_ chrome: PageChrome) -> some View {
-        toolbar {
-            NativeAccountItems(initials: chrome.initials, avatar: chrome.avatar, badge: chrome.badge, onBell: chrome.onBell,
-                               onProfile: chrome.onProfile)
-        }
-    }
-}
 
 /// The screens' models, made once per signed-in session.
 @MainActor
@@ -234,6 +147,7 @@ struct AppFrame: View {
     let lock: AppLock
     @Environment(AppLanguage.self) private var language
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var router = AppRouter()
     @State private var models: AppModels?
 
@@ -243,26 +157,32 @@ struct AppFrame: View {
     var body: some View {
         Group {
             if let models {
-                NativeTabs(tab: $router.tab, onAdd: { add(models) }) { tab in
-                    page(tab, models)
-                }
-                .sheet(item: $router.add) { request in
-                    AddSheet(request: request, data: container.data, userId: userId, groups: models.myGroups) {
-                        // The first entry saved is the moment to ask about notifications (once).
-                        Task { await container.push.askAfterFirstAction() }
+                layout(models)
+                    .sheet(item: $router.add) { request in
+                        AddSheet(request: request, data: container.data, userId: userId, groups: models.myGroups,
+                                 wide: router.layout == .sidebar) {
+                            // The first entry saved is the moment to ask about notifications (once).
+                            Task { await container.push.askAfterFirstAction() }
+                        }
+                        .environment(language)
                     }
-                    .environment(language)
-                }
-                .welcomeLayer(welcome: models.welcome, tour: models.tour, router: router)
-                .task(id: user.id) { await models.shell.load() }
-                .liveRefresh(container.live, tables: ["notifications", "profiles", "meal_vouchers"]) {
-                    await models.shell.load()
-                }
+                    .welcomeLayer(welcome: models.welcome, tour: models.tour, router: router)
+                    .task(id: user.id) { await models.shell.load() }
+                    .liveRefresh(container.live, tables: ["notifications", "profiles", "meal_vouchers"]) {
+                        await models.shell.load()
+                    }
+                    .onChange(of: models.shell.vouchersOn, initial: true) { _, on in router.vouchersOn = on }
+                    // ⌘N (AppCommands): what the toolbar's or the tab bar's Add does.
+                    .onChange(of: router.addPresses) { _, _ in if router.add == nil { add(models) } }
             } else {
                 NativeLoading()
             }
         }
         .tint(NativeStyle.tint)
+        // The frame follows the window's width (an iPad's Split View, Stage
+        // Manager), keeping the place you were at.
+        .onChange(of: sizeClass, initial: true) { _, size in router.adapt(to: .of(regular: size == .regular)) }
+        .focusedSceneValue(\.appRouter, router)
         .onAppear {
             if models == nil {
                 let session = container.session
@@ -322,11 +242,32 @@ struct AppFrame: View {
         }
     }
 
+    /// The tabs, or the sidebar beside the pages (a regular-width window).
+    @ViewBuilder private func layout(_ models: AppModels) -> some View {
+        if router.layout == .sidebar {
+            SidebarFrame(section: Binding(get: { router.section }, set: { router.go($0) }), items: router.sections,
+                         groups: models.groups.figures?.cards.count,
+                         profile: SidebarProfile(name: models.shell.name, email: user.email ?? "",
+                                                 initials: models.shell.initials, avatar: models.shell.avatar)) {
+                wideList(models)
+            } detail: {
+                wideDetail(models)
+            }
+            .environment(\.addSlot, router.wideSlot)
+            // The Groups row's count, and Groups' list.
+            .task(id: user.id) { await models.groups.load() }
+            .liveRefresh(container.live, tables: LiveHub.shared.union(["profiles"])) { await models.groups.load() }
+        } else {
+            NativeTabs(tab: $router.tab, onAdd: { add(models) }) { tab in
+                page(tab, models)
+            }
+        }
+    }
+
     /// An import's "View transactions": Activity over the imported entries' days
     /// (the web's /transactions?type=all&from&to).
     private func viewImported(from: String?, to: String?, _ models: AppModels) {
-        router.tab = .activity
-        router.activity = NavigationPath()
+        router.showActivity()
         Task {
             await models.ledger.clearAll()
             await models.ledger.setType("all")
@@ -348,7 +289,8 @@ struct AppFrame: View {
         router.add = AddRequest(model: EntryFormModel(mode: .add, data: container.data))
     }
 
-    /// The floating Add: what the page on top lends it (AddSlot), else a new entry.
+    /// The floating Add (or the bar's, beside the sidebar): what the page on
+    /// top lends it (AddSlot), else a new entry.
     private func add(_ models: AppModels) {
         switch router.slot?.action {
         case .some(.run(let action)):
@@ -360,6 +302,19 @@ struct AppFrame: View {
         }
     }
 
+    /// Edit, Duplicate and Split: a saved entry in the Add sheet.
+    private func edit(_ row: JSONValue) {
+        router.add = AddRequest(model: EntryFormModel(mode: .edit, transaction: row, data: container.data))
+    }
+
+    private func duplicate(_ row: JSONValue) {
+        router.add = AddRequest(model: EntryFormModel(mode: .add, transaction: row, data: container.data))
+    }
+
+    private func split(_ row: JSONValue) {
+        router.add = AddRequest(model: EntryFormModel(mode: .add, transaction: row, data: container.data), splitting: row)
+    }
+
     private func chrome(_ models: AppModels) -> PageChrome {
         PageChrome(initials: models.shell.initials, avatar: models.shell.avatar, badge: models.shell.badge,
                    onBell: {
@@ -369,6 +324,23 @@ struct AppFrame: View {
                    onProfile: { router.openSettings() })
     }
 
+    /// Activity's ⋯ menu (the web's): Import a file (a bank statement).
+    private var activityMenu: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Menu {
+                Button {
+                    router.push(.importStatement)
+                } label: {
+                    Label(language.t("transactions:ledger.importFile"), systemImage: "tablecells")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .accessibilityLabel(language.t("transactions:ledger.moreActions"))
+            .accessibilityIdentifier("activity.more")
+        }
+    }
+
     // MARK: The tabs
 
     @ViewBuilder private func page(_ tab: NativeTab, _ models: AppModels) -> some View {
@@ -376,40 +348,15 @@ struct AppFrame: View {
         case .home, .add:
             NavigationStack(path: $router.home) {
                 HomeView(model: models.home, chrome: chrome(models)) { addFirstEntry() }
-                    .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "budgets", "recurring_rules",
-                                                          "meal_vouchers"]) {
-                        await models.home.refresh()
-                    }
+                    .liveRefresh(container.live, tables: HomeView.tables) { await models.home.refresh() }
                     .navigationDestination(for: AppRoute.self) { destination($0, models) }
             }
             .environment(\.addSlot, router.slots[.home])
         case .activity:
             NavigationStack(path: $router.activity) {
-                ActivityView(model: models.ledger, chrome: chrome(models),
-                             open: { row in router.add = AddRequest(model: EntryFormModel(mode: .edit, transaction: row,
-                                                                                         data: container.data)) },
-                             duplicate: { row in router.add = AddRequest(model: EntryFormModel(mode: .add, transaction: row,
-                                                                                              data: container.data)) },
-                             split: { row in router.add = AddRequest(model: EntryFormModel(mode: .add, transaction: row,
-                                                                                          data: container.data),
-                                                                    splitting: row) },
-                             addFirst: { addFirstEntry() })
-                    // The web's ⋯ menu: Import a file (a bank statement).
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Menu {
-                                Button {
-                                    router.activity.append(AppRoute.importStatement)
-                                } label: {
-                                    Label(language.t("transactions:ledger.importFile"), systemImage: "tablecells")
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis.circle")
-                            }
-                            .accessibilityLabel(language.t("transactions:ledger.moreActions"))
-                            .accessibilityIdentifier("activity.more")
-                        }
-                    }
+                ActivityView(model: models.ledger, chrome: chrome(models), open: edit, duplicate: duplicate, split: split,
+                             addFirst: { addFirstEntry() }, searchPresses: router.searchPresses)
+                    .toolbar { activityMenu }
                     .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
                         await models.ledger.reloadRows()
                     }
@@ -429,6 +376,69 @@ struct AppFrame: View {
                     .navigationDestination(for: AppRoute.self) { destination($0, models) }
             }
             .environment(\.addSlot, router.slots[.more])
+        }
+    }
+
+    // MARK: Beside the sidebar
+
+    /// Activity's and Groups' list column.
+    @ViewBuilder private func wideList(_ models: AppModels) -> some View {
+        switch router.section {
+        case .activity:
+            ActivityView(model: models.ledger, chrome: .hidden, picked: router.pickedEntry,
+                         open: { row in router.pick(entry: row["id"]?.stringValue) },
+                         duplicate: duplicate, split: split, addFirst: { addFirstEntry() },
+                         searchPresses: router.searchPresses)
+                .toolbar { activityMenu }
+                .liveRefresh(container.live, tables: ["transactions", "categories", "profiles"]) {
+                    await models.ledger.reloadRows()
+                }
+        case .groups:
+            GroupListColumn(model: models.groups, picked: router.pickedGroup,
+                            pick: { router.pick(group: $0) }, open: { router.push($0) })
+        default:
+            EmptyView()
+        }
+    }
+
+    /// The section's page (or the entry or group picked), with the pages pushed over it.
+    private func wideDetail(_ models: AppModels) -> some View {
+        NavigationStack(path: $router.detail) {
+            wideRoot(models, chrome: chrome(models).wide { add(models) })
+                .navigationDestination(for: AppRoute.self) { destination($0, models).wideColumn() }
+        }
+        .id(router.section)
+    }
+
+    @ViewBuilder private func wideRoot(_ models: AppModels, chrome: PageChrome) -> some View {
+        switch router.section {
+        case .home:
+            HomeView(model: models.home, chrome: chrome) { addFirstEntry() }
+                .liveRefresh(container.live, tables: HomeView.tables) { await models.home.refresh() }
+        case .activity:
+            EntryPane(model: models.ledger, id: router.pickedEntry, edit: edit, duplicate: duplicate, split: split) {
+                router.pick(entry: nil)
+            }
+            .pageChrome(chrome)
+        case .groups:
+            if let id = router.pickedGroup {
+                GroupPageHost(groupId: id, userId: userId, data: container.data, live: container.live,
+                              site: container.config.siteURL) {
+                    router.closeGroup()
+                    Task { await models.groups.load() }
+                }
+                .id(id)
+                .pageChrome(chrome)
+            } else {
+                WidePlaceholder(symbol: "person.2", text: language.t("ios:native.wide.pickGroup"))
+                    .pageChrome(chrome)
+            }
+        default:
+            if let route = router.section.route {
+                destination(route, models)
+                    .wideColumn()
+                    .pageChrome(chrome)
+            }
         }
     }
 
@@ -507,7 +517,7 @@ struct AppFrame: View {
             SecurityView(model: models.security)
         case .privacy:
             PrivacyView(model: models.privacy, preferences: models.preferences) {
-                router.tab = .activity
+                router.showActivity()
             }
         case .privacyRequest:
             PrivacyRequestView(model: models.privacy)
@@ -563,19 +573,17 @@ struct AppFrame: View {
         case .group(let id):
             GroupPageHost(groupId: id, userId: userId, data: container.data, live: container.live,
                           site: container.config.siteURL) {
-                router.groups = NavigationPath()
+                router.closeGroup()
                 Task { await models.groups.load() }
             }
         case .newGroup:
             NewGroupHost(data: container.data, site: container.config.siteURL) { id in
-                router.groups = NavigationPath()
-                router.groups.append(AppRoute.group(id))
+                router.showGroup(id)
                 Task { await models.groups.load() }
             }
         case .join(let token):
             JoinHost(token: token, data: container.data) { id in
-                router.groups = NavigationPath()
-                router.groups.append(AppRoute.group(id))
+                router.showGroup(id)
                 Task { await models.groups.load() }
             }
         case .categoryPage(let id, let period):

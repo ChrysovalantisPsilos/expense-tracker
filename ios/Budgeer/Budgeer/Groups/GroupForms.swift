@@ -34,6 +34,7 @@ struct GroupExpenseSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .keyboardShortcut(.cancelAction)
                         .accessibilityLabel(language.t("common:actions.cancel"))
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -339,6 +340,7 @@ struct SettleUpView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { dismiss() } label: { Image(systemName: "xmark") }
+                        .keyboardShortcut(.cancelAction)
                         .accessibilityLabel(language.t("common:actions.cancel"))
                 }
             }

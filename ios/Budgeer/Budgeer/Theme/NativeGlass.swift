@@ -102,3 +102,19 @@ struct NativeFallbackGlassButtonStyle: ButtonStyle {
             .animation(.snappy(duration: 0.2), value: configuration.isPressed)
     }
 }
+
+extension View {
+    /// iOS 26 softens a scroll view's content along a floating sidebar (the
+    /// scroll edge effect); `hidden` turns that edge off (nothing earlier).
+    @ViewBuilder func leadingEdgeEffectHidden(_ hidden: Bool) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            scrollEdgeEffectHidden(hidden, for: .leading)
+        } else {
+            self
+        }
+        #else
+        self
+        #endif
+    }
+}

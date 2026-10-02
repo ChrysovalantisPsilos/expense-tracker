@@ -185,7 +185,8 @@ The store information (TestFlight's test details, What to Test, the public
 "Public" group, Beta App Review, and the App Store page, never submitted) is
 `.github/workflows/ios-store-info.yml` → `scripts/asc/store-info.mjs`, with
 the texts in `ios/store/` and screenshots, once there are some, in
-`ios/store/screenshots/<locale>/` (`.claude/project.md`, iOS app).
+`ios/store/screenshots/<locale>/` (the iPhone's) and `ios/store/screenshots-ipad/<locale>/` (the
+iPad's) (`.claude/project.md`, iOS app).
 
 ### Layout
 
@@ -200,7 +201,10 @@ ios/Budgeer/
                          link waiting, where an opened link leads), AppLinks (AppLink: a Universal Link or
                          budgeer:// as an invite, an auth email's link or a page), RootView (sign-in, the legal
                          gate, a reset link's new password, the frame, the lock over it, opened links), AppFrame (the tabs, each tab's
-                         stack of pages (AppRoute), the Add sheet, AppRouter), AddSlot (what Add does on a page
+                         stack of pages (AppRoute), the Add sheet; beside the sidebar the section's page), AppRouter (where you are in
+                         either frame, adapt(to:)), AppLayout (the frame by the window's width, SidebarSection,
+                         AppLayoutRules), SidebarFrame (the iPad's sidebar, wideColumn), AppCommands (⌘N, ⌘F,
+                         ⌘1…⌘9, ⌘,), AddSlot (what Add does on a page
                          that lends it its own add), NotificationsView (the bell's page), AppLock (Face ID; its screen
                          is Lock/LockScreen), AppPin (the lock's PIN: rules, backoff) + PinKeychain (the Keychain item, PBKDF2) +
                          LockPinEntry (the lock screen's "Use PIN" slot, PinPad), ShellModel (your picture, the
@@ -236,7 +240,8 @@ ios/Budgeer/
                          ReceiptModel + ReceiptCard + ReceiptReader (Scan a receipt: Vision on the device, the
                          check, CameraPicker),
                          LedgerFigures + LedgerModel + ActivityView (the month's header, the chips, the rows by
-                         day, the month pill, search, swipes), TransactionWords (the delete question)
+                         day, the month pill, search, swipes), EntryDetailView (beside the sidebar, the entry
+                         picked in the list: EntryPane, WidePlaceholder), TransactionWords (the delete question)
     Budgets/             BudgetFigures, BudgetsModel, BudgetsView
     Recurring/           RecurringFigures, RecurringModel, RecurringView
     Insights/            InsightsFigures, InsightsModel, InsightsView (Swift Charts draws, the core computes; the
@@ -253,7 +258,8 @@ ios/Budgeer/
     Vouchers/            VoucherFigures (Vouchers.jsx's steps), VouchersModel + VouchersView (the card, the next top-up
                          with Edit days, the history), VoucherSetupModel + VoucherSetupView (Settings › Meal vouchers)
     Groups/              GroupFigures (the groups' figures as core calls), GroupsModel + GroupsView (the tab's
-                         grid, Join with a link), NewGroupModel + NewGroupView (the new-group flow; the cover
+                         grid, Join with a link; GroupListColumn: the list beside a group, beside the sidebar),
+                         NewGroupModel + NewGroupView (the new-group flow; the cover
                          picker and its upload, GroupCoverPicker + GroupCoverFile), GroupModel (+ GroupInvite) +
                          GroupTimeline + GroupPageView (a group's page, its timeline, the statement),
                          EditGroupView (the name and the picture), BalancesView, GroupExpenseModel +
@@ -435,6 +441,50 @@ a core call (the web's function); Swift reads, lays out and draws.
   it's a new entry. Things open and close in place on one spring
   (`NativeMotion`), every ⓘ opens its explanation the same way, and figures
   roll their digits when they change.
+- **The iPad** (design A, "Sidebar"): the frame follows the window's width,
+  not the device (`App/AppLayout.swift`: a regular horizontal size class,
+  about 700 pt and up, is `AppLayout.sidebar`). A wide window (an iPad full
+  screen, a wide Split View or Stage Manager window) gets `SidebarFrame`, a
+  `NavigationSplitView` like the website's desktop sidebar: the mark and
+  wordmark, then the website's order and blocks (`test/iosSidebar.test.js`): Home, Activity, Groups (with how many you're in),
+  Budgets, then Insights, Savings, Recurring, Plan and Meal vouchers (once set
+  up), and Settings with your picture, name and email at its foot, in the
+  web's words (`shell:nav.*`; Activity is the tab's word) and the website's
+  icons' nearest SF Symbols (`SidebarSection`). The page sits beside it with
+  the bell and **+ Add** in its bar (`PageChrome.wide`, `NativeWideItems`;
+  Add does what the page lends it, `AppRouter.wideSlot`), and the Add sheet
+  opens whole as a form sheet with the number pad beside the details
+  (`AddSheet(wide:)`). Home lays its cards in two columns under the overview
+  (By category and the month in words left; Coming up, Budgets and Meal
+  vouchers right, Coming up as a list as on the website's desktop; `HomeView.wideCards`;
+  the sidebar is the opaque canvas and the hero pager and Activity's chips clip at their column there, so
+  nothing shows through iPadOS 26's floating glass); Activity and Groups take three
+  columns, the list between the sidebar and what's picked in it: Activity's
+  month (its header card, chips and days; `ActivityView(picked:)`) beside the
+  entry (`EntryDetailView`: the row's badge, name, amount and day, Edit,
+  Duplicate, Split, Delete after the web's question, and the row's facts, all
+  the row's words, then the box the website's entry page shows: its category in the month it was paid, that
+  month's budget bar and the category's other entries with See all, `LedgerModel.categoryBox` over
+  `categoryMath.entryCategoryBox`), Groups' list (`GroupListColumn`: invites, a row per
+  group with its balance chip, New group, Join with a link) beside the
+  group's page; nothing picked shows a hint (`ios:native.wide.*`). Every
+  other page is its own view at a readable width (`wideColumn`, 860 pt) with
+  the pages it pushes. In portrait the sidebar tucks behind its button. A
+  narrow window (Slide Over, a narrow Split View or Stage Manager window, an
+  iPhone) keeps the tab bar exactly as above. Changing the width keeps your
+  place (`AppRouter.adapt(to:)` through `AppLayoutRules`): a page that is a
+  section of its own becomes that section (Budgets under Home, Plan under
+  More), a group's page the group picked beside the list, the pages pushed
+  over it stay; back in the tab bar each section returns to the tab
+  `AppPaths` keeps it under (More's own list, which a sidebar doesn't need,
+  becomes Home). Links, notifications, the tour and What's new open their
+  place in either frame. **Keyboard** (`AppCommands`, in the ⌘-hold overlay
+  and iPadOS 26's menu bar): ⌘N Add, ⌘F Activity's search (the cursor in the
+  field on iOS 18+, `searchFocused`), ⌘1…⌘9 the sidebar's places in order
+  (`SidebarSection.shortcut`), ⌘, Settings, Esc a sheet's close or Cancel
+  (`.cancelAction`). The iPad turns every way (`UISupportedInterfaceOrientations~ipad`)
+  and multitasks (no `UIRequiresFullScreen`); the iPhone stays upright. The
+  app and its widgets are built for both (`TARGETED_DEVICE_FAMILY` "1,2").
 - **Add / Edit an entry** (Add; a row in Activity; a rule in Recurring), a
   sheet: the amount first, on a keypad, the category chips and the day; pull
   it up for the rest, in the web's words: Type it when the AI switch is on
@@ -643,7 +693,14 @@ a core call (the web's function); Swift reads, lays out and draws.
   and Net with their dots (Net in `kitMath.signTone`'s colour); the medium
   one adds By category as a share bar with the top three and "Other" in
   `kitMath.shareSwatch`'s colours (Home's donut's) and a + that opens Add as
-  an expense. Always this month (`periods.thisMonthPeriod`), never Home's
+  an expense; the large one puts the overview over By category with the top
+  five and "Other"; the extra-large one (the iPad's) sets the overview, By
+  category (top five) and Budgets side by side (Home's card's first four:
+  each one's name, share of its cap, bar in the card's tone and "€X of €Y",
+  or the card's words when the month has none; `WidgetSync` reads the card
+  as Home does, `HomeViewModel.budgetCard`, and the snapshot carries
+  `wideBars`, `budgets` and `budgetsEmpty`, optional so an older snapshot
+  still reads). Always this month (`periods.thisMonthPeriod`), never Home's
   picked period. On the Lock Screen: the rectangle (This month, Spent and
   Net), the line over the clock (Spent) and a "+ Add" circle; the amounts
   are privacy-sensitive, so the Lock Screen hides them while the iPhone is
@@ -888,7 +945,12 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   `ShellModelTests` (the bell's feed, opening it), `WidgetSyncTests` (Home's fixture through
   the core as this month's snapshot in both languages, written from the app's reads and from
   Home's this-month reads only, unchanged writes not reloading, the month check, cleared on
-  sign-out, the widgets' links and words), `AppLockTests` (off by default, the
+  sign-out, the widgets' links and words, the large widgets' top five and Home's budgets, an
+  older snapshot still read), `AppLayoutTests` (the frame by the window's width, the sidebar's
+  items, order, blocks, words and Meal vouchers, ⌘'s numbers, a tab's place as the sidebar's and
+  back where AppPaths keeps it, a width change keeping the place, the group and the pages over
+  it, picking in the lists, links, the bell and Settings in either frame, ⌘N, ⌘F and ⌘1…⌘9 through
+  the router), `AppLockTests` (off by default, the
   owner's check, locked on launch and after the grace, off unlocks), `SettingsModelTests`
   (Account, the switches, Security over `FakeSecurity`, Privacy), `CategoriesModelTests` (the
   list, archive, delete with a move, adding and editing), `SavingsModelTests` (the web's reads, the
@@ -963,7 +1025,7 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   rules (the list, a rule's page, none yet), Your data, Export backup (as
   it opens, the file ready) and Restore (the file to pick, a sealed one's
   password, what's in one, done, not a backup), the widgets (small, medium and the Lock
-  Screen's three with this month's figures, and without: open the app), each light, dark and
+  Screen's three with this month's figures, and without: open the app; the large one), each light, dark and
   Greek, with the fixtures'
   data (`<name>-<variant>.png`, and `-long` for the pages worth seeing
   whole); attached to the test run and written to `SNAPSHOT_DIR` when set
@@ -972,9 +1034,20 @@ xcodebuild test -project ios/Budgeer/Budgeer.xcodeproj -scheme "Budgeer Dev" \
   for?", a group, Budgets and Savings as `store-<screen>-<en|el>.png`, light, from the same
   fixtures moved to 2026 and in the picture's language (`StoreSample`, `Fixtures/store-sample.json`).
   `npm run store:shots -- <unzipped snapshots>` frames them into `ios/store/screenshots/`.
+- The iPad's (`SnapshotTests+iPad.swift`, taken only on an iPad; an iPhone run skips them): beside
+  the sidebar on an iPad Pro 13-inch in landscape (1376×1032), Home in two columns (and in
+  portrait with the sidebar tucked away), Activity's list beside an entry, Groups' list beside a
+  group's page, the Add sheet over Home and Budgets, light, dark and Greek, as
+  `ipad-<name>-<variant>.png`; the large and extra-large widgets (`ipad-widgets`); and the App
+  Store's iPad screens in portrait (1032×1376 points, 2064×2752 pixels) as
+  `store-ipad-<screen>-<en|el>.png`, which `npm run store:shots` frames in a tablet into
+  `ios/store/screenshots-ipad/<en-US|el>/` (the same captions; `scripts/asc/screenshots.mjs`
+  uploads them as `APP_IPAD_PRO_3GEN_129`).
 
 CI is `.github/workflows/ios-app.yml` (macos-26, Xcode 26.5, iPhone 17 on iOS 26.5): the core's
-replay, XcodeGen, a Simulator build, the tests, and the snapshots as the `snapshots` artifact. It runs
+replay, XcodeGen, a Simulator build, the tests, and the snapshots as the `snapshots` artifact; with
+snapshots, the same build also runs the two iPad snapshot tests on an iPad Pro 13-inch simulator
+(the newest iOS 26 one; the unit tests run once, on the iPhone). It runs
 on develop and pull requests; a feature branch runs it by hand (Actions → ios-app → Run workflow).
 
 ### Running on a device

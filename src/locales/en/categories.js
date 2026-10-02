@@ -125,6 +125,13 @@ export default {
     budgetChange: 'Changes this month’s cap and the months after it. Clear it to remove the budget.',
     budgetPast: 'Budgets can be changed from this month’s view.',
   },
+  // categoryMath.entryCategoryBox: the box under an entry (its page, the
+  // iPad's entry detail): its category in the month it was paid.
+  entry: {
+    title: '{{name}} · {{period}}',
+    seeAll: 'See all',
+    none: 'No other entries · {{period}}',
+  },
   // categoryLinks.js: drill-down links' accessible names.
   links: {
     show: 'Show {{name}} expenses for {{period}}',

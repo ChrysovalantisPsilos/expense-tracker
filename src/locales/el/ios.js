@@ -20,6 +20,11 @@ export default {
       activity: 'Κινήσεις',
       add: 'Προσθήκη',
     },
+    wide: {
+      go: 'Μετάβαση',
+      pickEntry: 'Διάλεξε μια κίνηση για να τη δεις εδώ',
+      pickGroup: 'Διάλεξε μια ομάδα για να τη δεις εδώ',
+    },
     home: {
       comingUp: 'Έρχονται',
       byCategory: 'Ανά κατηγορία',

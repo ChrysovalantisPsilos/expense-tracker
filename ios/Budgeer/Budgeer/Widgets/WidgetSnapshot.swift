@@ -5,8 +5,8 @@
 // sign-in. Compiled into the app and the extension alike.
 import Foundation
 
-/// This month's overview and its By category, every string as the app's
-/// core wrote it in the app's language.
+/// This month's overview, its By category and its budgets, every string as
+/// the app's core wrote it in the app's language.
 struct WidgetSnapshot: Codable, Equatable, Sendable {
     /// A share of the spending (categoryBars' top three, then "Other").
     struct Bar: Codable, Equatable, Sendable {
@@ -16,6 +16,19 @@ struct WidgetSnapshot: Codable, Equatable, Sendable {
         let share: Int
         /// kitMath.shareSwatch's token for its place (Theme.swatch).
         let swatch: String
+    }
+
+    /// A budget as Home's Budgets card shows it (budgetMath.budgetRowParts).
+    struct Budget: Codable, Equatable, Sendable {
+        let name: String
+        /// "€312.40 of €400.00".
+        let meta: String
+        /// "78%".
+        let valueLabel: String
+        /// Spend as a whole percent of the cap (the bar's length, unclamped).
+        let percent: Int
+        /// The bar's tone: nil (brand), 'warning' from 80%, 'negative' over.
+        let tone: String?
     }
 
     /// When the app wrote it.
@@ -31,6 +44,13 @@ struct WidgetSnapshot: Codable, Equatable, Sendable {
     let net: String
     let netTone: String
     let bars: [Bar]
+    /// The large widgets' By category: the top five, then "Other" (nil in a
+    /// snapshot written before there were large widgets).
+    var wideBars: [Bar]? = nil
+    /// The extra-large widget's Budgets (Home's card, its first four), and
+    /// the card's words when the month has none (nil before they're read).
+    var budgets: [Budget]? = nil
+    var budgetsEmpty: String? = nil
 
     /// Whether `day` (an ISO day, yyyy-MM-dd) falls in its month: anything
     /// else shows "open the app" rather than an old month's figures.
@@ -42,6 +62,7 @@ struct WidgetSnapshot: Codable, Equatable, Sendable {
     func sameAs(_ other: WidgetSnapshot) -> Bool {
         from == other.from && to == other.to && language == other.language && spent == other.spent
             && income == other.income && net == other.net && netTone == other.netTone && bars == other.bars
+            && wideBars == other.wideBars && budgets == other.budgets && budgetsEmpty == other.budgetsEmpty
     }
 
     /// `date` as the calendar day the phone is on (yyyy-MM-dd).

@@ -57,6 +57,26 @@ struct HomeCard<Content: View>: View {
 
 /// A charge as a tile in Coming up's strip: its badge, its name over when
 /// and how often, the amount.
+/// A charge as a list row (Coming up beside the sidebar, as the website's
+/// desktop card lists them): its badge, name and when, the amount.
+struct ChargeRowView: View {
+    let row: ChargeRow
+
+    var body: some View {
+        HStack(spacing: 12) {
+            CategoryBadge(look: row.look, size: 36)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.title).font(.subheadline.weight(.semibold)).lineLimit(1)
+                Text(row.meta).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            Text(row.amount).font(.subheadline.weight(.semibold)).monospacedDigit().lineLimit(1)
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct ChargeTile: View {
     let row: ChargeRow
 

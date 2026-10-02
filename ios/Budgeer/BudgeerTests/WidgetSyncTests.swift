@@ -68,6 +68,45 @@ final class WidgetSyncTests: XCTestCase {
         XCTAssertEqual(en.bars.last?.amount, "€79.00") // Transport and the rest
     }
 
+    func testTheLargeWidgetsKeepTheTopFiveAndHomesBudgets() throws {
+        let fixture = try HomeFixture.load()
+        let home = try XCTUnwrap(fixture.thisMonth())
+        let snapshot = try WidgetSync.snapshot(fixture.homeInput(), written: fixture.now, core: .shared)
+        let wide = try XCTUnwrap(snapshot.wideBars)
+        // Up to five shares before "Other" (fewer when the month has fewer), adding up to 100.
+        XCTAssertLessThanOrEqual(wide.count, WidgetSync.wideTop + 1)
+        XCTAssertGreaterThanOrEqual(wide.count, snapshot.bars.count)
+        XCTAssertEqual(wide.first?.label, home.legend.first?.label)
+        XCTAssertEqual(wide.map(\.share).reduce(0, +), 100)
+        // Not read yet: no budgets (the widget says to open the app).
+        XCTAssertNil(snapshot.budgets)
+        XCTAssertNil(snapshot.budgetsEmpty)
+        // Home's card: its first four rows as they're worded there, or its empty words.
+        let item = BudgetItem(id: "b1", categoryId: "c1", name: "Groceries",
+                                  look: CategoryLook(key: "groceries", tone: "accent", tint: nil),
+                                  meta: "€152.60 of €250.00", percent: 61, valueLabel: "61%", tone: nil, over: false,
+                                  overLabel: nil)
+        let card = BudgetCardFigures(subtitle: "", empty: "No budgets", canSet: true,
+                                     items: Array(repeating: item, count: 6), held: nil)
+        let withBudgets = try WidgetSync.snapshot(fixture.homeInput(), budgets: card, written: fixture.now, core: .shared)
+        XCTAssertEqual(withBudgets.budgets?.count, WidgetSync.budgetRows)
+        XCTAssertEqual(withBudgets.budgets?.first, WidgetSnapshot.Budget(name: "Groceries", meta: "€152.60 of €250.00",
+                                                                         valueLabel: "61%", percent: 61, tone: nil))
+        XCTAssertNil(withBudgets.budgetsEmpty)
+        XCTAssertFalse(withBudgets.sameAs(snapshot))
+        let none = BudgetCardFigures(subtitle: "", empty: "No budgets", canSet: true, items: [], held: nil)
+        let empty = try WidgetSync.snapshot(fixture.homeInput(), budgets: none, written: fixture.now, core: .shared)
+        XCTAssertEqual(empty.budgets, [])
+        XCTAssertEqual(empty.budgetsEmpty, "No budgets")
+        // A snapshot written before the large widgets still reads (their parts empty).
+        let old = try JSONDecoder().decode(WidgetSnapshot.self, from: JSONSerialization.data(withJSONObject: [
+            "written": 0, "from": "2020-09-01", "to": "2020-09-30", "language": "en", "spent": "€1.00",
+            "income": "€0.00", "net": "−€1.00", "netTone": "negative", "bars": [] as [Any],
+        ]))
+        XCTAssertNil(old.wideBars)
+        XCTAssertNil(old.budgets)
+    }
+
     func testTheMonthCheck() throws {
         let fixture = try HomeFixture.load()
         let snapshot = try WidgetSync.snapshot(fixture.homeInput(), written: fixture.now, core: .shared)
@@ -92,7 +131,12 @@ final class WidgetSyncTests: XCTestCase {
         // This month's rows, from the shifted salary's start, as Home reads them.
         XCTAssertEqual(store.queries.first, TxnQuery(from: "2020-08-25", to: "2020-09-30", spread: true))
         let written = try XCTUnwrap(shelf.read())
-        XCTAssertTrue(written.sameAs(try WidgetSync.snapshot(fixture.homeInput(), written: fixture.now, core: .shared)))
+        // With this month's Budgets card, read as Home reads it.
+        let card = try await HomeViewModel.budgetCard(data: store.data, profile: try await store.data.profile.profile(),
+                                                      periodValue: nil, now: fixture.now, core: .shared)
+        XCTAssertTrue(written.sameAs(try WidgetSync.snapshot(fixture.homeInput(), budgets: card, written: fixture.now,
+                                                             core: .shared)))
+        XCTAssertNotNil(written.budgets)
         XCTAssertEqual(reloads, 1)
         // Nothing changed: the widgets aren't reloaded again.
         await sync.refresh()

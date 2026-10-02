@@ -17,12 +17,15 @@ struct HomeView: View {
     /// Nothing logged yet: Add your first expense.
     let addFirst: () -> Void
     @Environment(AppLanguage.self) private var language
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var month: String?
     @State private var showSum = false
     @State private var refreshes = 0
     @State private var celebrating = false
 
     private static let celebratedKey = "budgeer.celebratedMonths"
+    /// The tables whose changes refresh Home (the frame's liveRefresh).
+    static let tables: Set<String> = ["transactions", "categories", "profiles", "budgets", "recurring_rules", "meal_vouchers"]
 
     init(model: HomeViewModel, chrome: PageChrome, addFirst: @escaping () -> Void = {}) {
         self.model = model
@@ -43,11 +46,14 @@ struct HomeView: View {
                     case .failed(let message):
                         NativeFailed(message: message) { await model.load() }
                     case .loaded(let figures):
-                        cards(figures)
+                        if sizeClass == .regular { wideCards(figures) } else { cards(figures) }
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, sizeClass == .regular ? 24 : 16)
             }
+            // A wide window (beside the sidebar) keeps the page to a readable width.
+            .frame(maxWidth: sizeClass == .regular ? 1180 : CGFloat.infinity)
+            .frame(maxWidth: .infinity)
             .padding(.bottom, 28)
             // The large title follows this scroll view, not the months' pager: it folds away
             // as the page scrolls, with nothing of the hero behind it.
@@ -58,6 +64,8 @@ struct HomeView: View {
             .animation(HomeCardStyle.spring, value: model.vouchers)
             .animation(HomeCardStyle.spring, value: model.words)
         }
+        // Beside the sidebar: no soft edge drawn from the cards along the floating sidebar (iOS 26).
+        .leadingEdgeEffectHidden(sizeClass == .regular)
         .background {
             ZStack {
                 NativeStyle.canvas
@@ -86,6 +94,39 @@ struct HomeView: View {
     /// The cards under the hero: the month in words, what's coming, where
     /// it went, the budgets and the vouchers.
     @ViewBuilder private func cards(_ figures: HomeFigures) -> some View {
+        notices
+        wordsCard
+        firstEntry(figures)
+        // The tour's stops point at these cards (tourTarget).
+        comingUpCard(figures.recurring).tourTarget("subscriptions")
+        categoriesCard(figures).tourTarget("categories")
+        budgetsCard.tourTarget("budgets")
+        vouchersCard
+    }
+
+    /// A regular-width window (beside the sidebar): the same cards in two
+    /// columns, By category and the month in words on the left, Coming up,
+    /// Budgets and Meal vouchers on the right.
+    @ViewBuilder private func wideCards(_ figures: HomeFigures) -> some View {
+        notices
+        firstEntry(figures)
+        HStack(alignment: .top, spacing: 18) {
+            VStack(spacing: 18) {
+                categoriesCard(figures).tourTarget("categories")
+                wordsCard
+            }
+            .frame(maxWidth: .infinity)
+            VStack(spacing: 18) {
+                comingUpCard(figures.recurring).tourTarget("subscriptions")
+                budgetsCard.tourTarget("budgets")
+                vouchersCard
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    /// A failed refresh's error, and a past month that kept every budget.
+    @ViewBuilder private var notices: some View {
         if let error = model.refreshError {
             NativeNotice(text: error, warning: true)
                 .padding(14)
@@ -97,17 +138,18 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Theme.Colors.accentSubtle, in: HomeCardStyle.shape)
         }
-        wordsCard
-        // Nothing logged yet (dashboardMath.homeCards): the two ways to start.
+    }
+
+    /// Nothing logged yet (dashboardMath.homeCards): the two ways to start.
+    @ViewBuilder private func firstEntry(_ figures: HomeFigures) -> some View {
         if figures.cards.contains("firstEntry") {
             FirstEntryView(add: addFirst)
                 .background(NativeStyle.card, in: HomeCardStyle.shape)
                 .transition(HomeCardStyle.transition)
         }
-        // The tour's stops point at these cards (tourTarget).
-        comingUpCard(figures.recurring).tourTarget("subscriptions")
-        categoriesCard(figures).tourTarget("categories")
-        budgetsCard.tourTarget("budgets")
+    }
+
+    @ViewBuilder private var vouchersCard: some View {
         if let vouchers = model.vouchers {
             VoucherWallet(card: vouchers).transition(HomeCardStyle.transition)
         }
@@ -133,6 +175,9 @@ struct HomeView: View {
             .scrollPosition(id: $month)
             .defaultScrollAnchor(.trailing)
             .frame(height: 200)
+            // Beside the sidebar, the neighbouring months stay out of sight (iPadOS 26 draws a
+            // scroll view's content on under the floating sidebar); a phone shows its edges whole.
+            .clipShape(Rectangle().inset(by: sizeClass == .regular ? 0 : -400))
             .accessibilityIdentifier("home.hero")
 
             if months.count > 1 {
@@ -259,6 +304,14 @@ struct HomeView: View {
             HomeCard(title: comingUpTitle(card), seeAll: language.t("ios:native.seeAll"), route: .recurring) {
                 Text(card.empty).font(.subheadline).foregroundStyle(.secondary)
             }
+        } else if sizeClass == .regular {
+            // Beside the sidebar, a list as the website's desktop card has it (no strip cut at the column's edge).
+            HomeCard(title: comingUpTitle(card), seeAll: language.t("ios:native.seeAll"), route: .recurring) {
+                ForEach(Array(rows.prefix(5).enumerated()), id: \.element.id) { index, row in
+                    if index > 0 { Divider().padding(.leading, 48) }
+                    ChargeRowView(row: row)
+                }
+            }
         } else {
             HomeCard(title: comingUpTitle(card), seeAll: language.t("ios:native.seeAll"), route: .recurring,
                      bare: true) {
@@ -323,6 +376,7 @@ struct HomeView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(language.t("common:actions.done")) { showSum = false }
+                        .keyboardShortcut(.cancelAction)
                 }
             }
         }

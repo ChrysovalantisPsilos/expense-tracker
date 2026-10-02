@@ -7,7 +7,10 @@
 import { paidInWindow, spendRows } from '../../shared/lib/spread.js'
 import { toBaseMinor } from '../../shared/lib/currency.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
-import { NO_CATEGORY, byDisplayName, categoryDisplayName } from '../../shared/lib/categoryName.js'
+import { NO_CATEGORY, byDisplayName, categoryDisplayName, entryName } from '../../shared/lib/categoryName.js'
+import { categoryPath } from '../../shared/lib/categoryLinks.js'
+import { shortDate } from '../../shared/lib/dates.js'
+import { periodFromValue, thisMonthPeriod } from '../../shared/lib/periods.js'
 import { categoryIconKey } from '../../shared/lib/categoryStyle.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { budgetPercent, budgetTone, carriedLabel } from '../budgets/budgetMath.js'
@@ -145,6 +148,50 @@ export function categoryBudget({ budget, spent, month, canEdit, period, baseCurr
   return canEdit
     ? { state: 'set', text: t('categories:page.setBudget') }
     : { state: 'none', text: t('categories:page.noBudget', { period: period.label }) }
+}
+
+// The month an entry was paid in, as a period ({ value, label, from, to };
+// "This month" when it's now's): where its page's category box reads from.
+export function entryMonth(entry, now = new Date()) {
+  const [y, m] = String(entry?.spent_at ?? '').slice(0, 7).split('-').map(Number)
+  return (y && m ? periodFromValue(`m:${y}-${m}`, now) : null) ?? thisMonthPeriod(now)
+}
+
+// The box under an entry (the website's entry page, the iPad's entry
+// detail): its category in the month it was paid — that month's budget when
+// it has one (categoryBudget's bar: spent of the cap, the percent, the tone)
+// and the category's other entries paid that month, newest first (`limit`
+// of them), each with its day and amount; "See all" opens the category's
+// page for the month. Null for an entry without a category or a group's
+// share (edited in its group). `now` (a Date) names this month and the
+// days' years.
+//   rows   — my_transactions for the category in entryMonth (spread)
+//   budget — my_budgets' row for the category in that month, or null
+export function entryCategoryBox({
+  entry, category, rows, budget = null, baseCurrency, separateYearly = false, salaryShift = null,
+  limit = 3,
+}, now = new Date()) {
+  if (!entry?.category_id || entry.group_expense_id || !category || category.id !== entry.category_id) return null
+  const period = entryMonth(entry, now)
+  const name = categoryDisplayName(category)
+  const { listed, total } = categoryPeriod(rows, {
+    categoryId: category.id, from: period.from, to: period.to, baseCurrency, separateYearly, salaryShift,
+  })
+  const others = listed.filter((r) => r.id !== entry.id)
+    .sort((a, b) => String(b.spent_at ?? '').localeCompare(String(a.spent_at ?? '')))
+  const bar = category.kind === 'expense' && budget
+    ? categoryBudget({ budget, spent: total, month: true, canEdit: false, period, baseCurrency })
+    : null
+  return {
+    title: t('categories:entry.title', { name, period: period.label }),
+    path: categoryPath(category.id, period.value),
+    seeAll: t('categories:entry.seeAll'),
+    budget: bar && { ...bar, valueLabel: `${bar.percent}%` },
+    others: others.slice(0, limit).map((r) => ({
+      id: r.id, name: entryName(r, name), date: shortDate(r.spent_at, now), amount: formatMoney(r.amount_minor, r.currency),
+    })),
+    empty: others.length ? null : t('categories:entry.none', { period: period.label }),
+  }
 }
 
 // The default income categories added since 0081: new accounts are seeded

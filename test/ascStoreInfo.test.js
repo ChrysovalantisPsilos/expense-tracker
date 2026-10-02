@@ -21,7 +21,8 @@ import {
   primaryCategoryBody, reviewDetailAttributes, submissionAction, versionLocalizationAttributes,
 } from '../scripts/asc/requests.mjs'
 import {
-  commitBody, displayTypeFor, localScreenshots, md5, pngSize, reserveBody, screenshotFolder, screenshotPlan, uploadRequests,
+  SCREENSHOT_DIRS, commitBody, displayTypeFor, localScreenshots, md5, pngSize, reserveBody, screenshotFolder, screenshotPlan,
+  uploadRequests,
 } from '../scripts/asc/screenshots.mjs'
 import { marketingVersion, parseArgs } from '../scripts/asc/store-info.mjs'
 
@@ -306,7 +307,34 @@ test('screenshot sizes map to Apple’s display types', () => {
   assert.equal(displayTypeFor(1290, 2796), 'APP_IPHONE_67')
   assert.equal(displayTypeFor(2796, 1290), 'APP_IPHONE_67')
   assert.equal(displayTypeFor(1284, 2778), 'APP_IPHONE_65')
+  // The 13" iPad's slot: the iPad Pro 13-inch's portrait size, the older 12.9" one, and turned.
+  assert.equal(displayTypeFor(2064, 2752), 'APP_IPAD_PRO_3GEN_129')
+  assert.equal(displayTypeFor(2048, 2732), 'APP_IPAD_PRO_3GEN_129')
+  assert.equal(displayTypeFor(2752, 2064), 'APP_IPAD_PRO_3GEN_129')
+  assert.equal(displayTypeFor(1668, 2388), null)
   assert.equal(displayTypeFor(390, 844), null)
+})
+
+test('the iPhone’s and the iPad’s folders give one locale its two sets', () => {
+  const phone = mkdtempSync(path.join(tmpdir(), 'asc-shots-'))
+  const pad = mkdtempSync(path.join(tmpdir(), 'asc-shots-ipad-'))
+  assert.deepEqual(SCREENSHOT_DIRS.map((d) => path.basename(d)), ['screenshots', 'screenshots-ipad'])
+  // Only the iPhone's so far: one set.
+  mkdirSync(path.join(phone, 'en-US'))
+  writeFileSync(path.join(phone, 'en-US', '1-home.png'), fakePng(1320, 2868))
+  writeFileSync(path.join(phone, 'en-US', '2-activity.png'), fakePng(1320, 2868))
+  assert.deepEqual(Object.keys(localScreenshots('en-US', [phone, pad])), ['APP_IPHONE_67'])
+  // The iPad's beside them: its own set, in name order, the same file names allowed.
+  mkdirSync(path.join(pad, 'en-US'))
+  writeFileSync(path.join(pad, 'en-US', '2-activity.png'), fakePng(2064, 2752))
+  writeFileSync(path.join(pad, 'en-US', '1-home.png'), fakePng(2064, 2752))
+  const groups = localScreenshots('en-GB', [phone, pad])
+  assert.deepEqual(Object.keys(groups), ['APP_IPHONE_67', 'APP_IPAD_PRO_3GEN_129'])
+  assert.deepEqual(groups.APP_IPAD_PRO_3GEN_129.map((f) => f.fileName), ['1-home.png', '2-activity.png'])
+  assert.equal(groups.APP_IPAD_PRO_3GEN_129[0].checksum, md5(fakePng(2064, 2752)))
+  // An iPad picture of another size is refused, naming it.
+  writeFileSync(path.join(pad, 'en-US', '3-small.png'), fakePng(1668, 2388))
+  assert.throws(() => localScreenshots('en-US', [phone, pad]), /3-small\.png is 1668×2388, not an iPhone 6\.9" or 6\.5" or an iPad 13"/)
 })
 
 test('a locale folder is read in name order; a missing one means no screenshots', () => {
