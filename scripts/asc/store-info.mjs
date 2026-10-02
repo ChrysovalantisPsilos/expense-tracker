@@ -100,8 +100,15 @@ async function testFlight({ client, app, appKey, config, listings, secrets, subm
     const state = beta?.attributes?.externalBuildState
     const action = submissionAction(state)
     if (action === 'submit') {
-      await client.post('/v1/betaAppReviewSubmissions', betaSubmissionBody(build.id))
-      log('Beta App Review: build submitted')
+      try {
+        await client.post('/v1/betaAppReviewSubmissions', betaSubmissionBody(build.id))
+        log('Beta App Review: build submitted')
+      } catch (e) {
+        // One build per version in review at a time: this one goes once the
+        // earlier one is through (run this again then).
+        if (!(e instanceof AscError) || !/ANOTHER_BUILD_IN_REVIEW/.test(e.message)) throw e
+        warn('Beta App Review: an earlier build of this version is still in review; run this again once it is through.')
+      }
     } else if (action === 'already') log(`Beta App Review: nothing to do (${state})`)
     else warn(`Beta App Review: this build can't be submitted now (${state ?? 'unknown state'}).`)
   } else log('Beta App Review: not submitted (run with submit to send it)')
