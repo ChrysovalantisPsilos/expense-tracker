@@ -59,6 +59,9 @@ this file current, so add project facts here, not in the skills.
 - **Auto-update:** open apps reload within a minute of any deploy
   (`src/app/AutoUpdate.jsx`), so batch small pushes while the owner is
   testing.
+- **Preview builds:** Vercel builds only `main` and `develop`
+  (`vercel.json` `ignoreCommand`); other branches are skipped, so helper
+  branches don't fill the free plan's deployment storage.
 - **Status page:** status.budgeer.com is a Cloudflare Worker (`status/`),
   deployed by `.github/workflows/status-deploy.yml`.
 - **Demo account:** dev only (`demo@budgeer.com`, migration 0090), reset

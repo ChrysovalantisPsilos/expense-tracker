@@ -56,3 +56,14 @@ test('sitemap.xml lists the public pages', () => {
   const locs = [...read('public/sitemap.xml').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])
   assert.deepEqual(locs, ['/', '/help', '/privacy', '/terms'].map((p) => `https://www.budgeer.com${p}`))
 })
+
+test('vercel.json: only main and develop are built (other branches skip, saving deployment storage)', async () => {
+  const { execFileSync } = await import('node:child_process')
+  // Vercel skips the build when ignoreCommand exits 0, builds when it exits 1.
+  const builds = (ref) => {
+    try { execFileSync('sh', ['-c', vercel.ignoreCommand], { env: { ...process.env, VERCEL_GIT_COMMIT_REF: ref } }); return false } catch { return true }
+  }
+  assert.equal(builds('main'), true)
+  assert.equal(builds('develop'), true)
+  assert.equal(builds('ios-ipad'), false)
+})
