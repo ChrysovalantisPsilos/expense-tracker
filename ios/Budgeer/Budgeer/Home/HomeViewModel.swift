@@ -196,28 +196,36 @@ final class HomeViewModel {
     /// BudgetsCard for the picked period (useBudgetProgress, useBudgetSets).
     private func loadBudgets(profile: JSONValue) async {
         do {
-            let instant = now()
-            let span = try BudgetFigures.cardWindow(periodValue: periodValue, now: instant, core: core)
-            let first = span["first"] ?? .null
-            let last = span["last"] ?? .null
-            let sets: JSONValue
-            if let month = first.stringValue, first == last {
-                sets = try core.json("budgetMath", "monthSets", [try await data.budgets.budgets(period: month)])
-            } else {
-                let months: [String] = try core.call("budgetMath", "setPeriods", [try await data.budgets.budgetPeriods(), first, last])
-                var list: [JSONValue] = []
-                for month in months {
-                    list.append(["period": .string(month), "rows": try await data.budgets.budgets(period: month)])
-                }
-                sets = .array(list)
-            }
-            let spend = try await data.transactions.transactions(TxnQuery(
-                kind: "expense", from: span["from"]?.stringValue, to: span["to"]?.stringValue, spread: true))
-            budgets = .loaded(try BudgetFigures.card(profile: profile, sets: sets, rows: spend, periodValue: periodValue,
-                                                     now: instant, core: core))
+            budgets = .loaded(try await HomeViewModel.budgetCard(data: data, profile: profile, periodValue: periodValue,
+                                                                 now: now(), core: core))
         } catch {
             budgets = .failed(String(describing: error))
         }
+    }
+
+    /// The Budgets card's reads and figures for a period (nil: this month):
+    /// the period's caps (one month's, or each month's of a longer period)
+    /// and its expenses. Home's card, and the widgets' (WidgetSync).
+    static func budgetCard(data: DataLayer, profile: JSONValue, periodValue: String?, now instant: Date,
+                           core: BudgeerCore) async throws -> BudgetCardFigures {
+        let span = try BudgetFigures.cardWindow(periodValue: periodValue, now: instant, core: core)
+        let first = span["first"] ?? .null
+        let last = span["last"] ?? .null
+        let sets: JSONValue
+        if let month = first.stringValue, first == last {
+            sets = try core.json("budgetMath", "monthSets", [try await data.budgets.budgets(period: month)])
+        } else {
+            let months: [String] = try core.call("budgetMath", "setPeriods", [try await data.budgets.budgetPeriods(), first, last])
+            var list: [JSONValue] = []
+            for month in months {
+                list.append(["period": .string(month), "rows": try await data.budgets.budgets(period: month)])
+            }
+            sets = .array(list)
+        }
+        let spend = try await data.transactions.transactions(TxnQuery(
+            kind: "expense", from: span["from"]?.stringValue, to: span["to"]?.stringValue, spread: true))
+        return try BudgetFigures.card(profile: profile, sets: sets, rows: spend, periodValue: periodValue, now: instant,
+                                      core: core)
     }
 
     /// useMonthSummary: this month's summary while the helper is on; the

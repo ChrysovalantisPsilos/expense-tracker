@@ -233,7 +233,9 @@ npm run dev       # Vite
   subline, the real iOS screen in a phone frame; EN and EL, 1320×2868.
   Regenerate: run ios-app.yml by hand with "snapshots", unzip the artifact,
   `npm run store:shots -- <dir>`, check every picture, commit
-  `ios/store/screenshots/`.
+  `ios/store/screenshots/` and `ios/store/screenshots-ipad/` (the iPad's set: the
+  same captions, the iPad Pro 13-inch's portrait screen beside the sidebar in a
+  tablet frame, 2064×2752; taken by the same run on an iPad simulator).
 - **Link previews:** the live OG image is `https://www.budgeer.com/og-image.png`
   (1200×630). Invite links (`/join/…`) currently share the generic preview.
 - **Rule:** the landing copy never opens with "Free app".
@@ -301,7 +303,8 @@ npm run dev       # Vite
   description, keywords, promotional text, support/marketing URLs,
   copyright, App Review details, and screenshots once
   `ios/store/screenshots/<locale>/*.png` exists (6.9" = `APP_IPHONE_67`,
-  name order, ≤ 10). It writes only what differs, so re-run it freely (the
+  name order, ≤ 10) and the iPad's once `ios/store/screenshots-ipad/<locale>/*.png`
+  does (13" = `APP_IPAD_PRO_3GEN_129`, 2064×2752). It writes only what differs, so re-run it freely (the
   public link only goes live after Beta App Review: run it again then).
   The texts are `ios/store/listing.{en,el}.json`, the settings and review
   notes `ios/store/config.json`; `test/ascStoreInfo.test.js` checks limits,
@@ -312,10 +315,12 @@ npm run dev       # Vite
   availability and the age-rating's final check stay by hand in App Store
   Connect.
   `ASC_KEY_P8` holds the whole .p8 text, BEGIN/END lines included
-  ("invalidPEMDocument" = it doesn't). The app is iPhone-only: keep
-  `TARGETED_DEVICE_FAMILY: "1"` on the Budgeer target itself (XcodeGen's
-  preset sets "1,2" per target, and a portrait-only iPad build is refused,
-  error 90474). Cloud signing creates App IDs and turns capabilities on, but
+  ("invalidPEMDocument" = it doesn't). The app runs on iPhone and iPad
+  (Oct 2026): `TARGETED_DEVICE_FAMILY: "1,2"` on the project, the Budgeer
+  target and BudgeerWidgets each (XcodeGen's presets set it per target);
+  the iPad build must turn every way (`UISupportedInterfaceOrientations~ipad`,
+  all four) with no `UIRequiresFullScreen`, or App Store Connect refuses it
+  (error 90474); the iPhone stays portrait. Cloud signing creates App IDs and turns capabilities on, but
   it can't create an App Group: `group.com.budgeer.app` and
   `group.com.budgeer.app.dev` (the widgets' snapshot) are registered by hand
   in the developer portal and assigned to each app's and `.widgets` App ID,
@@ -365,7 +370,8 @@ npm run dev       # Vite
   workflow, or the API's workflow_dispatch) once its batch is ready. Newer
   pushes cancel older runs. Helpers commit locally and push checked batches,
   never WIP. Snapshot pictures (~20 min of a ~27 min run) are taken only on
-  runs by hand with "snapshots" ticked; develop pushes and PRs skip them.
+  runs by hand with "snapshots" ticked (then also the iPad's, on an iPad Pro
+  13-inch simulator, the same build); develop pushes and PRs skip them.
   A commit that can't change a check (notes, workflow-only edits
   already checked) may carry `[skip ci]`.
 - **Universal Links and passkeys (Oct 2026):** the site serves
@@ -384,6 +390,18 @@ npm run dev       # Vite
   (widgets, Siri, Face ID lock, push on iOS) are fine. A release to PROD
   ships both: budgeer.com and the two TestFlight apps (Budgeer on PROD,
   Budgeer Dev on TEST).
+- **iPad (Oct 2026, design A "Sidebar" picked by the owner):** the frame
+  follows the window's width, not the device: a regular-width window gets
+  a sidebar like the website's desktop one (same places, the web's words),
+  a narrow one (Slide Over, a narrow Split View, an iPhone) the iPhone's tab
+  bar unchanged; a width change keeps the place. Activity and Groups are
+  list + detail; other pages are their own views at a readable width. iPad:
+  all four orientations and multitasking; iPhone: portrait only. Widgets
+  add large (top five) and, on the iPad, extra large (with Budgets). The
+  iPad's pictures come from an iPad Pro 13-inch simulator in the same
+  ios-app.yml run (snapshots only; unit tests once, on the iPhone). App
+  Store Connect needs the 13" iPad screenshots (`APP_IPAD_PRO_3GEN_129`)
+  before an iPad-capable version can be submitted.
 - **The owner builds and runs the app with Xcode 27** on their Mac (with the
   paid developer team in `Config/Local.xcconfig`), while CI builds with Xcode 26.5 (macos-26, iPhone 17
   on iOS 26.5; moved from 15.4 for Liquid Glass). Every package pin

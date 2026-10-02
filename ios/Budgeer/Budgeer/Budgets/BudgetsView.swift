@@ -135,6 +135,7 @@ struct BudgetsView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button { editing = false } label: { Image(systemName: "xmark") }
+                        .keyboardShortcut(.cancelAction)
                         .accessibilityLabel(language.t("common:actions.cancel"))
                 }
                 ToolbarItem(placement: .confirmationAction) {

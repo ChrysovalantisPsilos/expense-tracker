@@ -1,5 +1,6 @@
 // Budgeer's widgets (the BudgeerWidgets app extension): "This month" on the
-// Home Screen (small and medium) and on the Lock Screen (the rectangle and
+// Home Screen (small, medium, large and, on an iPad, extra large) and on the
+// Lock Screen (the rectangle and
 // the line over the clock), and the Lock Screen's "+ Add". They show the
 // snapshot the app leaves in the App Group (WidgetShelf, written by
 // WidgetSync); this extension runs no core, reads no server and holds no
@@ -55,14 +56,21 @@ struct MonthEntryView: View {
         content
             .widgetURL(WidgetLinks.home)
             .containerBackground(for: .widget) {
-                if family == .systemSmall || family == .systemMedium { Theme.Colors.surface } else { Color.clear }
+                if MonthEntryView.homeScreen.contains(family) { Theme.Colors.surface } else { Color.clear }
             }
     }
+
+    /// The Home Screen's sizes (the card's surface behind them).
+    private static let homeScreen: [WidgetFamily] = [.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge]
 
     @ViewBuilder private var content: some View {
         switch family {
         case .systemMedium:
             MonthWidgetView(figures: entry.figures, words: entry.words, size: .medium)
+        case .systemLarge:
+            MonthWidgetView(figures: entry.figures, words: entry.words, size: .large)
+        case .systemExtraLarge:
+            MonthWidgetView(figures: entry.figures, words: entry.words, size: .extraLarge)
         case .accessoryRectangular:
             LockMonthView(figures: entry.figures, words: entry.words)
         case .accessoryInline:
@@ -79,7 +87,9 @@ struct MonthWidget: Widget {
             MonthEntryView(entry: entry)
         }
         .configurationDisplayName(Text(verbatim: WidgetWords(language: WidgetShelf.shared.read()?.language).thisMonth))
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline])
+        // Extra large is the iPad's (an iPhone doesn't offer it).
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .systemExtraLarge, .accessoryRectangular,
+                            .accessoryInline])
     }
 }
 

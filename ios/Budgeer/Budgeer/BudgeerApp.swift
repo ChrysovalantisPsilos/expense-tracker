@@ -37,6 +37,8 @@ struct BudgeerApp: App {
             .environment(language)
             .tint(NativeStyle.tint)
         }
+        // ⌘N, ⌘F, ⌘1…⌘9 and ⌘, (the keyboard's commands; AppCommands).
+        .commands { AppCommands(language: language) }
     }
 }
 

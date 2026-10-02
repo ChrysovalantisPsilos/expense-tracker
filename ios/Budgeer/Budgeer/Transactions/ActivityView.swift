@@ -13,12 +13,16 @@ import SwiftUI
 struct ActivityView: View {
     let model: LedgerModel
     let chrome: PageChrome
-    /// A row's saved transaction, to edit, duplicate or split.
+    /// Beside the sidebar: the entry shown beside the list (its row stays lit).
+    var picked: String? = nil
+    /// A row's saved transaction, to edit (beside the sidebar: to show), duplicate or split.
     let open: (JSONValue) -> Void
     let duplicate: (JSONValue) -> Void
     let split: (JSONValue) -> Void
     /// Nothing logged yet: Add your first expense.
     var addFirst: () -> Void = {}
+    /// ⌘F's presses (AppRouter): each one puts the cursor in the search field.
+    var searchPresses = 0
     @Environment(AppLanguage.self) private var language
     @State private var pendingDelete: String?
     @State private var deleted = 0
@@ -33,6 +37,7 @@ struct ActivityView: View {
         .searchable(text: Binding(get: { model.text }, set: { model.setText($0) }),
                     placement: .navigationBarDrawer(displayMode: .automatic),
                     prompt: language.t("transactions:ledger.search"))
+        .searchFocus(on: searchPresses)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             ActivityPill(model: model).padding(.bottom, 8)
         }
@@ -129,7 +134,7 @@ struct ActivityView: View {
             }
             ForEach(figures.days) { day in
                 Section {
-                    ForEach(day.rows) { row in rowView(row, lit: lit == day.key) }
+                    ForEach(day.rows) { row in rowView(row, lit: lit == day.key || picked == row.id) }
                 } header: {
                     DayCardHeader(day: day)
                 }
@@ -564,5 +569,40 @@ struct ActivityPill: View {
         .foregroundStyle(next == nil ? Color.secondary : NativeStyle.tint)
         .disabled(next == nil)
         .accessibilityLabel(language.t(label))
+    }
+}
+
+// MARK: ⌘F
+
+extension View {
+    /// Each of ⌘F's presses puts the cursor in the search field of the
+    /// `.searchable` this follows (iOS 18's searchFocused; on iOS 17 the press
+    /// only opens Activity, which has no way to focus its field).
+    func searchFocus(on presses: Int) -> some View {
+        modifier(SearchFocus(presses: presses))
+    }
+}
+
+private struct SearchFocus: ViewModifier {
+    let presses: Int
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.modifier(SearchFieldFocus(presses: presses))
+        } else {
+            content
+        }
+    }
+}
+
+@available(iOS 18.0, *)
+private struct SearchFieldFocus: ViewModifier {
+    let presses: Int
+    @FocusState private var focused: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .searchFocused($focused)
+            .onChange(of: presses) { _, _ in focused = true }
     }
 }

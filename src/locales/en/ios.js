@@ -28,6 +28,14 @@ export default {
       activity: 'Activity',
       add: 'Add',
     },
+    // An iPad (a wide window): the sidebar's frame. `go` names the keyboard's
+    // menu of the sidebar's places (⌘1…⌘9); the hints fill a list's page
+    // before anything is picked in it.
+    wide: {
+      go: 'Go',
+      pickEntry: 'Pick an entry to see it here',
+      pickGroup: 'Pick a group to see it here',
+    },
     home: {
       comingUp: 'Coming up',
       byCategory: 'By category',

@@ -2,7 +2,10 @@
 // the app (whose snapshot tests draw them): Home's overview for this month
 // (Spent big, then Income and Net, Net in kitMath.signTone's colour; the
 // medium one adds By category's share bar, its top three and "Other" in
-// kitMath.shareSwatch's colours, and a + that opens Add), the Lock Screen's
+// kitMath.shareSwatch's colours, and a + that opens Add; the large one puts
+// the overview over By category's top five and "Other"; the extra-large
+// one, on an iPad, sets the overview, By category and Home's Budgets side
+// by side), the Lock Screen's
 // rectangle (Spent and Net) and line (Spent), and its "+ Add" circle. Every
 // figure and name is the snapshot's (the app's core wrote them); every word
 // is the web's (src/locales) in the snapshot's language. Amounts are
@@ -26,15 +29,20 @@ struct WidgetWords: Equatable {
     var income: String { t("dashboard:overview.income") }
     var net: String { t("dashboard:overview.net") }
     var byCategory: String { t("ios:native.home.byCategory") }
+    var budgets: String { t("shell:nav.budgets") }
     var add: String { t("ios:native.tabs.add") }
     /// No figures for this month on the phone (signed out, or a new month).
     var stale: String { t("ios:native.widget.stale") }
 }
 
-/// The home-screen widget's sizes.
+/// The home-screen widget's sizes: small (the overview), medium (and By
+/// category's top three), large (the overview over By category's top five)
+/// and, on an iPad, extra large (the overview, By category and Budgets).
 enum MonthWidgetSize {
     case small
     case medium
+    case large
+    case extraLarge
 }
 
 /// "This month" with the mark, in the tint.
@@ -61,7 +69,9 @@ private struct Dot: View {
     }
 }
 
-/// The home-screen widget: small (the overview) or medium (and By category).
+/// The home-screen widget: small (the overview), medium (and By category),
+/// large (the overview over By category's top five) or extra large (the
+/// overview, By category and Budgets).
 struct MonthWidgetView: View {
     /// This month's figures, or nil: open the app.
     let figures: WidgetSnapshot?
@@ -70,13 +80,28 @@ struct MonthWidgetView: View {
 
     var body: some View {
         if let figures {
-            HStack(alignment: .top, spacing: 12) {
-                overview(figures)
-                    .frame(width: size == .medium ? 126 : nil)
-                    .frame(maxWidth: size == .medium ? nil : .infinity, alignment: .leading)
-                if size == .medium {
-                    Rectangle().fill(Theme.Colors.subtle).frame(width: 1)
-                    categories(figures)
+            switch size {
+            case .small:
+                overview(figures).frame(maxWidth: .infinity, alignment: .leading)
+            case .medium:
+                HStack(alignment: .top, spacing: 12) {
+                    overview(figures).frame(width: 126)
+                    divider
+                    categories(figures.bars)
+                }
+            case .large:
+                VStack(alignment: .leading, spacing: 14) {
+                    overview(figures).frame(height: 128)
+                    Rectangle().fill(Theme.Colors.subtle).frame(height: 1)
+                    categories(figures.wideBars ?? figures.bars)
+                }
+            case .extraLarge:
+                HStack(alignment: .top, spacing: 16) {
+                    overview(figures).frame(width: 170).frame(maxHeight: 150, alignment: .top)
+                    divider
+                    categories(figures.wideBars ?? figures.bars)
+                    divider
+                    budgets(figures)
                 }
             }
         } else {
@@ -134,8 +159,12 @@ struct MonthWidgetView: View {
         .font(.system(size: 12))
     }
 
-    /// By category: the share bar, the top three and "Other", and the + (Add).
-    private func categories(_ figures: WidgetSnapshot) -> some View {
+    private var divider: some View {
+        Rectangle().fill(Theme.Colors.subtle).frame(width: 1)
+    }
+
+    /// By category: the share bar, the top shares and "Other", and the + (Add).
+    private func categories(_ bars: [WidgetSnapshot.Bar]) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(words.byCategory)
@@ -153,10 +182,10 @@ struct MonthWidgetView: View {
                 .accessibilityLabel(Text(words.add))
             }
             .frame(height: 30)
-            WidgetShareBar(bars: figures.bars)
+            WidgetShareBar(bars: bars)
                 .padding(.top, 6)
                 .padding(.bottom, 2)
-            ForEach(Array(figures.bars.enumerated()), id: \.offset) { _, bar in
+            ForEach(Array(bars.enumerated()), id: \.offset) { _, bar in
                 let other = bar.swatch == "text.muted"
                 HStack(spacing: 6) {
                     Dot(color: Theme.swatch(bar.swatch))
@@ -172,12 +201,75 @@ struct MonthWidgetView: View {
                         .privacySensitive()
                 }
                 .font(.system(size: 12.5))
-                .padding(.top, 6)
+                .padding(.top, size == .large ? 9 : 6)
                 .accessibilityElement(children: .combine)
             }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Budgets (Home's card): each one's name and share of its cap, its bar
+    /// in the card's tone and what it has spent of the cap; or the card's
+    /// words when the month has none.
+    private func budgets(_ figures: WidgetSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(words.budgets)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Theme.Colors.textMuted)
+                .lineLimit(1)
+                .frame(height: 30, alignment: .leading)
+            if let rows = figures.budgets, !rows.isEmpty {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(row.name).lineLimit(1)
+                            Spacer(minLength: 4)
+                            Text(row.valueLabel)
+                                .font(NativeStyle.money(12.5, relativeTo: .caption))
+                                .monospacedDigit()
+                                .foregroundStyle(row.tone == nil ? Color.primary : NativeStyle.tone(row.tone))
+                        }
+                        .font(.system(size: 12.5))
+                        WidgetBudgetBar(fraction: Double(row.percent) / 100, color: NativeStyle.tone(row.tone))
+                        Text(row.meta)
+                            .font(.system(size: 11))
+                            .foregroundStyle(Theme.Colors.textMuted)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .privacySensitive()
+                    }
+                    .padding(.top, 8)
+                    .accessibilityElement(children: .combine)
+                }
+            } else {
+                Text(figures.budgetsEmpty ?? words.stale)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(Theme.Colors.textMuted)
+                    .lineLimit(4)
+                    .padding(.top, 6)
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// A budget's bar: its share of the cap (a sliver at least, full past it).
+private struct WidgetBudgetBar: View {
+    let fraction: Double
+    let color: Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            Capsule()
+                .fill(color)
+                .frame(width: max(4, proxy.size.width * min(1, max(0, fraction))))
+        }
+        .frame(height: 5)
+        .background(Theme.Colors.subtle, in: Capsule())
+        .accessibilityHidden(true)
     }
 }
 

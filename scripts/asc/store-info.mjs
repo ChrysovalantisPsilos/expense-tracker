@@ -3,7 +3,8 @@
 // newest build's What to Test, the "Public" external group (public link) and,
 // with --submit, the build's beta review submission; then the App Store page
 // (name, subtitle, category, age rating, the version's texts, copyright, the
-// review details, and screenshots when ios/store/screenshots/<locale>/
+// review details, and screenshots when ios/store/screenshots/<locale>/ (the
+// iPhone's) or ios/store/screenshots-ipad/<locale>/ (the iPad's)
 // exists). It never submits the App Store version. Every step reads first and
 // writes only what differs, so a run can be repeated.
 //
@@ -234,7 +235,7 @@ async function appStore({ client, app, appKey, config, listings, secrets }) {
 
   const withShots = Object.keys(listings).map((locale) => [locale, localScreenshots(locale)]).filter(([, g]) => Object.keys(g).length)
   if (!withShots.length) {
-    log('Screenshots: none in ios/store/screenshots/<locale>/ yet, skipped')
+    log('Screenshots: none in ios/store/screenshots{,-ipad}/<locale>/ yet, skipped')
     return
   }
   const current = await client.all(locPath)

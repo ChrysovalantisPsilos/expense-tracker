@@ -357,6 +357,7 @@ struct DeleteAccountSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(language.t("common:actions.cancel")) { dismiss() }
+                        .keyboardShortcut(.cancelAction)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(role: .destructive) {

@@ -6,10 +6,10 @@
 <!--
   One App Store frame: the brand's cream canvas, the mark and wordmark, the
   headline (its highlighted phrase in the accent), a subline, and the app's
-  screen in a phone frame below. build.mjs opens this page at the store size,
-  adds the fonts (@fontsource, from node_modules) and calls render(). Every
-  length is in --u (canvas width / 1320); the phone takes the room the
-  headline leaves.
+  screen in a phone frame below (a tablet's for the iPad). build.mjs opens this
+  page at the store size, adds the fonts (@fontsource, from node_modules) and
+  calls render(). Every length is in --u (canvas width / 1320, or / 1760 for
+  the iPad); the device takes the room the headline leaves.
 -->
 <style>
   :root {
@@ -41,6 +41,13 @@
   .glass img { display: block; width: 100%; height: 100%; }
   .island { position: absolute; top: calc(30 * var(--u)); left: 50%; transform: translateX(-50%);
     width: calc(300 * var(--u)); height: calc(88 * var(--u)); background: #000; border-radius: calc(44 * var(--u)); }
+  /* The iPad's frame: the same page on a wider canvas (a smaller unit, so the
+     words keep their weight), the screen in a tablet: an even bezel, gentler
+     corners, no island. */
+  body[data-device="tablet"] { --u: calc(100vw / 1760); }
+  body[data-device="tablet"] .phone { border-radius: calc(84 * var(--u)); }
+  body[data-device="tablet"] .glass { border-radius: calc(56 * var(--u)); }
+  body[data-device="tablet"] .island { display: none; }
   .glow { position: absolute; left: 50%; bottom: calc(-500 * var(--u)); transform: translateX(-50%); z-index: -1;
     width: calc(1700 * var(--u)); height: calc(1500 * var(--u)); border-radius: 50%;
     background: radial-gradient(closest-side, rgba(251, 179, 36, .28), rgba(249, 93, 56, .10) 60%, transparent); }
@@ -61,10 +68,13 @@
   <div class="head"><h1 id="title"></h1><p class="sub" id="sub"></p></div>
   <div class="phone" id="phone"><div class="glass"><img id="screen" alt=""><div class="island"></div></div></div>
 <script>
-  // render({ lang, parts: [{ text, em }], sub, shot (a file URL), shotSize: { width, height } })
-  // fills the frame, sizes the phone to the room left, and answers what doesn't fit.
-  window.render = async ({ lang, parts, sub, shot, shotSize }) => {
+  // render({ lang, parts: [{ text, em }], sub, shot (a file URL), shotSize: { width, height },
+  // device: 'phone' | 'tablet' }) fills the frame, sizes the device to the room left, and
+  // answers what doesn't fit.
+  window.render = async ({ lang, parts, sub, shot, shotSize, device = 'phone' }) => {
     document.documentElement.lang = lang
+    document.body.dataset.device = device
+    const tablet = device === 'tablet'
     const title = document.getElementById('title')
     title.replaceChildren(...parts.map((p) => {
       if (!p.em) return document.createTextNode(p.text)
@@ -78,12 +88,14 @@
     await Promise.all([...[...document.fonts].map((f) => f.load()), img.decode()])
     await document.fonts.ready
 
-    const u = innerWidth / 1320
+    const u = innerWidth / (tablet ? 1760 : 1320)
     const top = document.querySelector('.head').getBoundingClientRect().bottom
-    const gap = 75 * u, bottom = 95 * u, bezel = 24 * u
+    const gap = 75 * u, bottom = 95 * u, bezel = (tablet ? 30 : 24) * u
+    const widest = (tablet ? 1560 : 1100) * u
+    document.getElementById('phone').style.padding = `${bezel}px`
     let h = innerHeight - top - gap - bottom
     let w = (h - 2 * bezel) * shotSize.width / shotSize.height + 2 * bezel
-    if (w > 1100 * u) { w = 1100 * u; h = (w - 2 * bezel) * shotSize.height / shotSize.width + 2 * bezel }
+    if (w > widest) { w = widest; h = (w - 2 * bezel) * shotSize.height / shotSize.width + 2 * bezel }
     const phone = document.getElementById('phone')
     Object.assign(phone.style, { width: `${w}px`, height: `${h}px`, marginTop: `${gap}px` })
 

@@ -1,6 +1,7 @@
 // What every tab's page carries around its content: the bell and your
-// initials in the bar's top-right corner, and the confetti burst a settled
-// group or a month that kept every budget plays once.
+// initials in the bar's top-right corner (beside the sidebar, the bell and
+// Add), and the confetti burst a settled group or a month that kept every
+// budget plays once.
 import SwiftUI
 
 /// Every tab's top-right corner: the bell (badged when something is
@@ -16,27 +17,74 @@ struct NativeAccountItems: ToolbarContent {
 
     var body: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
-            Button(action: onBell) {
-                Image(systemName: badge == nil ? "bell" : "bell.badge")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(NativeStyle.tint, Color.primary)
-            }
-            .accessibilityLabel(language.t("notifications:bell.title"))
-            .accessibilityValue(badge ?? "")
-            .accessibilityIdentifier("bar.bell")
+            NativeBellButton(badge: badge, onBell: onBell)
             Button(action: onProfile) {
-                if let avatar {
-                    NativeAvatar(avatar: avatar, size: 30)
-                } else {
-                    Text(initials)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Color.white)
-                        .frame(width: 30, height: 30)
-                        .background(NativeStyle.solid, in: Circle())
-                }
+                NativeProfileCircle(initials: initials, avatar: avatar, size: 30)
             }
             .accessibilityLabel(language.t("ios:native.profile"))
             .accessibilityIdentifier("bar.profile")
+        }
+    }
+}
+
+/// Beside the sidebar, a page's top-right corner: the bell and Add (your
+/// picture is the sidebar's foot). Add does what the page lends it (AddSlot).
+struct NativeWideItems: ToolbarContent {
+    let badge: String?
+    let onBell: () -> Void
+    let onAdd: () -> Void
+    @Environment(AppLanguage.self) private var language
+
+    var body: some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            NativeBellButton(badge: badge, onBell: onBell)
+            Button(action: onAdd) {
+                Label(language.t("ios:native.tabs.add"), systemImage: "plus")
+                    .labelStyle(.titleAndIcon)
+                    .font(.body.weight(.semibold))
+            }
+            .buttonStyle(.borderedProminent)
+            .buttonBorderShape(.capsule)
+            .tint(NativeStyle.solid)
+            .accessibilityIdentifier("bar.add")
+        }
+    }
+}
+
+/// The bell, badged when something is unread.
+struct NativeBellButton: View {
+    /// The unread count's words ("3", "9+"), nil with nothing unread.
+    let badge: String?
+    let onBell: () -> Void
+    @Environment(AppLanguage.self) private var language
+
+    var body: some View {
+        Button(action: onBell) {
+            Image(systemName: badge == nil ? "bell" : "bell.badge")
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(NativeStyle.tint, Color.primary)
+        }
+        .accessibilityLabel(language.t("notifications:bell.title"))
+        .accessibilityValue(badge ?? "")
+        .accessibilityIdentifier("bar.bell")
+    }
+}
+
+/// Your circle: the photo, or the initials in the accent.
+struct NativeProfileCircle: View {
+    let initials: String
+    var avatar: Avatar? = nil
+    var size: CGFloat = 30
+
+    var body: some View {
+        if let avatar {
+            NativeAvatar(avatar: avatar, size: size)
+        } else {
+            Text(initials)
+                .font(.system(size: size * 0.4, weight: .semibold))
+                .foregroundStyle(Color.white)
+                .frame(width: size, height: size)
+                .background(NativeStyle.solid, in: Circle())
         }
     }
 }

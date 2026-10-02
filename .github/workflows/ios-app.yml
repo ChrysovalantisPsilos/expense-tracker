@@ -15,7 +15,10 @@
 # run (~20 of ~27 minutes), so they run only when pictures are wanted: a run
 # by hand with "snapshots" ticked (the default for runs by hand). Pushes to
 # develop and pull requests run the build, the core replay and every other
-# test, in a few minutes.
+# test, in a few minutes. With snapshots, the same build also runs on an iPad
+# Pro 13-inch simulator for the iPad's pictures only (the sidebar's frame,
+# the iPad widgets and the App Store's iPad screens; SnapshotTests+iPad.swift):
+# no second build, and the unit tests run once, on the iPhone.
 name: ios-app
 on:
   push:
@@ -47,7 +50,7 @@ jobs:
   app:
     runs-on: macos-26
     # A hung Simulator would otherwise burn up to six hours of macOS minutes.
-    timeout-minutes: 40
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -98,6 +101,30 @@ jobs:
             -derivedDataPath "$DERIVED" -resultBundlePath TestResults.xcresult \
             $SKIP \
           | tee test.log | grep -E "error:|Test Case|Test Suite|Executed|\*\*"
+      # The iPad's pictures: the same build on an iPad Pro 13-inch simulator
+      # (the newest iOS 26 runtime's), only its two snapshot tests.
+      - name: iPad snapshots
+        if: github.event_name == 'workflow_dispatch' && inputs.snapshots
+        env:
+          TEST_RUNNER_SNAPSHOT_DIR: ${{ github.workspace }}/snapshots
+          TEST_RUNNER_TZ: UTC
+        run: |
+          set -o pipefail
+          UDID=$(xcrun simctl list devices available -j | node -e '
+            const { devices } = JSON.parse(require("fs").readFileSync(0, "utf8"))
+            const pads = Object.entries(devices).filter(([runtime]) => runtime.includes("iOS-26"))
+              .flatMap(([runtime, list]) => list.map((d) => ({ ...d, runtime })))
+              .filter((d) => d.name.startsWith("iPad Pro 13-inch"))
+              .sort((a, b) => b.runtime.localeCompare(a.runtime, "en", { numeric: true }))
+            if (!pads.length) { console.error("No iPad Pro 13-inch simulator on iOS 26"); process.exit(1) }
+            console.error(`iPad: ${pads[0].name} (${pads[0].runtime})`)
+            console.log(pads[0].udid)')
+          xcodebuild test-without-building \
+            -project "$PROJECT" -scheme "$SCHEME" -destination "id=$UDID" \
+            -derivedDataPath "$DERIVED" -resultBundlePath TestResults-iPad.xcresult \
+            -only-testing:BudgeerTests/SnapshotTests/testIPadSnapshots \
+            -only-testing:BudgeerTests/SnapshotTests/testIPadStoreSnapshots \
+          | tee test-ipad.log | grep -E "error:|Test Case|Test Suite|Executed|\*\*"
       - name: Snapshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -113,3 +140,4 @@ jobs:
           path: |
             build.log
             test.log
+            test-ipad.log

@@ -69,17 +69,24 @@ struct AddSheet: View {
     @State private var takingPhoto = false
     @State private var pickingPhoto = false
 
+    /// Over the sidebar's frame: whole from the start, the number pad kept beside the details.
+    private let wide: Bool
+
     /// After a save (the frame asks about push once, after the first).
     private let onSaved: () -> Void
 
-    init(request: AddRequest, data: DataLayer, userId: String, groups: MyGroupsModel, onSaved: @escaping () -> Void = {}) {
+    /// - wide: over the sidebar's frame (an iPad), where the sheet is a form
+    ///   sheet that can't be pulled up: it opens whole, the details showing.
+    init(request: AddRequest, data: DataLayer, userId: String, groups: MyGroupsModel, wide: Bool = false,
+         onSaved: @escaping () -> Void = {}) {
         self.request = request
         self.data = data
         self.userId = userId
         self.groups = groups
         self.onSaved = onSaved
+        self.wide = wide
         _entry = State(initialValue: request.model)
-        let collapsed = request.model.mode == .add && request.splitting == nil
+        let collapsed = !wide && request.model.mode == .add && request.splitting == nil
         _detent = State(initialValue: collapsed ? .nativeAdd : .large)
     }
 
@@ -134,6 +141,8 @@ struct AddSheet: View {
         ToolbarItem(placement: .cancellationAction) {
             Button { dismiss() } label: { Image(systemName: "xmark") }
                 .accessibilityLabel(language.t("common:actions.cancel"))
+                // Esc on a keyboard closes it.
+                .keyboardShortcut(.cancelAction)
         }
         if entry.mode == .add {
             ToolbarItem(placement: .principal) {
@@ -185,7 +194,7 @@ struct AddSheet: View {
                 } else if let line = entry.fxLine {
                     FxLineView(line: line, manual: $entry.manualRate).padding(.horizontal, 16)
                 }
-                if !expanded {
+                if !expanded || wide {
                     NumberPad(whole: entry.amountHints.whole) { entry.press($0) }
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }

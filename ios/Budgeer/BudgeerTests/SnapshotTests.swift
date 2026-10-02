@@ -14,7 +14,7 @@ import BudgeerCore
 
 @MainActor
 final class SnapshotTests: XCTestCase {
-    private static let size = CGSize(width: 402, height: 874)
+    static let size = CGSize(width: 402, height: 874)
     static let variants = [("en", false), ("en", true), ("el", false)]
     private static let config = AppConfig(environment: .dev, supabaseURL: URL(string: "https://example.supabase.co")!,
                                           supabaseAnonKey: "test")
@@ -688,7 +688,7 @@ final class SnapshotTests: XCTestCase {
 
     /// The groups' fixture with two more groups (one settled, one just made),
     /// so the gallery has a full page.
-    private static func galleryStore(_ fixture: GroupsFixture) -> FakeStore {
+    static func galleryStore(_ fixture: GroupsFixture) -> FakeStore {
         let store = fixture.store()
         let alex = JSONValue.string(SnapshotTests.user)
         let extra: [JSONValue] = [
@@ -768,18 +768,22 @@ final class SnapshotTests: XCTestCase {
         }
     }
 
-    /// The phone's screen, and the whole page when `long` is given.
+    /// The phone's screen (or `screen`'s: an iPad's), and the whole page when `long` is given.
     func shots<V: View>(_ view: V, name: String, lang: String, dark: Bool, long: CGFloat? = nil,
-                                settle: TimeInterval = 0.8) async throws {
+                        settle: TimeInterval = 0.8, screen: CGSize = SnapshotTests.size) async throws {
+        // The width's size class, as the window's would be (the frame and Home follow it).
         let dressed = view.environment(language(lang)).tint(NativeStyle.tint)
+            .environment(\.horizontalSizeClass, screen.width >= 700 ? .regular : .compact)
         let variant = "\(lang)\(dark ? "-dark" : "")"
-        try await snapshot(dressed, name: "\(name)-\(variant)", dark: dark, height: SnapshotTests.size.height, settle: settle)
+        try await snapshot(dressed, name: "\(name)-\(variant)", dark: dark,
+                           size: CGSize(width: screen.width, height: screen.height), settle: settle)
         if let long {
-            try await snapshot(dressed, name: "\(name)-\(variant)-long", dark: dark, height: long, settle: settle)
+            try await snapshot(dressed, name: "\(name)-\(variant)-long", dark: dark,
+                               size: CGSize(width: screen.width, height: long), settle: settle)
         }
     }
 
-    private func snapshot<V: View>(_ view: V, name: String, dark: Bool, height: CGFloat,
+    private func snapshot<V: View>(_ view: V, name: String, dark: Bool, size: CGSize,
                                    settle: TimeInterval) async throws {
         let host = UIHostingController(rootView: view)
         host.overrideUserInterfaceStyle = dark ? .dark : .light
@@ -787,7 +791,7 @@ final class SnapshotTests: XCTestCase {
         // drawHierarchy has something to draw.
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         let window = scene.map { UIWindow(windowScene: $0) } ?? UIWindow(frame: .zero)
-        window.frame = CGRect(origin: .zero, size: CGSize(width: SnapshotTests.size.width, height: height))
+        window.frame = CGRect(origin: .zero, size: size)
         window.overrideUserInterfaceStyle = dark ? .dark : .light
         window.rootViewController = host
         window.makeKeyAndVisible()

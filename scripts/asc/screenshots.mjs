@@ -1,23 +1,30 @@
-// App Store screenshots: the PNGs in ios/store/screenshots/<locale>/ (in
-// file-name order, at most 10 per display size) replace a version
+// App Store screenshots: the PNGs in ios/store/screenshots/<locale>/ (the
+// iPhone's) and ios/store/screenshots-ipad/<locale>/ (the iPad's), each
+// device's in file-name order, at most 10 per display size, replace a version
 // localization's set when they differ from what is there. Apple's flow:
 // reserve (POST appScreenshots with the name and size) → PUT each upload
 // operation's bytes → commit (PATCH uploaded + the file's MD5).
 //
 // Display types (ScreenshotDisplayType): APP_IPHONE_67 is the 6.9"/6.7"
-// slot (1320×2868, 1290×2796, 1260×2736), the one size an iPhone-only app
-// must supply; APP_IPHONE_65 is the 6.5" one.
+// slot (1320×2868, 1290×2796, 1260×2736), the one iPhone size an app must
+// supply; APP_IPHONE_65 is the 6.5" one; APP_IPAD_PRO_3GEN_129 is the 13"
+// iPad slot (2064×2752, 2048×2732), the one iPad size an app that runs on
+// the iPad must supply.
 import { createHash } from 'node:crypto'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { STORE_DIR } from './listing.mjs'
 
 export const SCREENSHOT_DIR = path.join(STORE_DIR, 'screenshots')
+export const IPAD_SCREENSHOT_DIR = path.join(STORE_DIR, 'screenshots-ipad')
+// Every device's folder, the iPhone's first.
+export const SCREENSHOT_DIRS = [SCREENSHOT_DIR, IPAD_SCREENSHOT_DIR]
 export const MAX_PER_SET = 10
 
 const SIZES = {
   APP_IPHONE_67: [[1320, 2868], [1290, 2796], [1260, 2736]],
   APP_IPHONE_65: [[1284, 2778], [1242, 2688]],
+  APP_IPAD_PRO_3GEN_129: [[2064, 2752], [2048, 2732]],
 }
 
 export function displayTypeFor(width, height) {
@@ -46,17 +53,22 @@ export function screenshotFolder(locale, dir = SCREENSHOT_DIR) {
   return locale.startsWith('el') ? 'el' : 'en-US'
 }
 
-// The local screenshots for one locale, grouped by display type.
-export function localScreenshots(locale, dir = SCREENSHOT_DIR) {
-  const folder = path.join(dir, screenshotFolder(locale, dir))
-  if (!existsSync(folder)) return {}
+// The local screenshots for one locale, from each device's folder (`dirs`:
+// one folder or several), grouped by display type.
+export function localScreenshots(locale, dirs = SCREENSHOT_DIRS) {
   const groups = {}
-  for (const fileName of readdirSync(folder).filter((f) => f.toLowerCase().endsWith('.png')).sort()) {
-    const bytes = readFileSync(path.join(folder, fileName))
-    const { width, height } = pngSize(bytes)
-    const type = displayTypeFor(width, height)
-    if (!type) throw new Error(`${locale}/${fileName} is ${width}×${height}, not an iPhone 6.9" or 6.5" screenshot size`)
-    ;(groups[type] ??= []).push({ fileName, fileSize: bytes.length, checksum: md5(bytes), bytes })
+  for (const dir of [dirs].flat()) {
+    const folder = path.join(dir, screenshotFolder(locale, dir))
+    if (!existsSync(folder)) continue
+    for (const fileName of readdirSync(folder).filter((f) => f.toLowerCase().endsWith('.png')).sort()) {
+      const bytes = readFileSync(path.join(folder, fileName))
+      const { width, height } = pngSize(bytes)
+      const type = displayTypeFor(width, height)
+      if (!type) {
+        throw new Error(`${locale}/${fileName} is ${width}×${height}, not an iPhone 6.9" or 6.5" or an iPad 13" screenshot size`)
+      }
+      ;(groups[type] ??= []).push({ fileName, fileSize: bytes.length, checksum: md5(bytes), bytes })
+    }
   }
   for (const [type, files] of Object.entries(groups)) {
     if (files.length > MAX_PER_SET) throw new Error(`${locale}: ${files.length} screenshots for ${type} (at most ${MAX_PER_SET})`)

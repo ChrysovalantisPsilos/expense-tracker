@@ -220,4 +220,14 @@ final class LedgerModel {
     func row(id: String) -> JSONValue? {
         rows.arrayValue?.first { $0["id"]?.stringValue == id }
     }
+
+    /// A shown entry and its day (beside the sidebar, the entry picked in the
+    /// list), nil when the list doesn't show it (another month, a search).
+    func entry(id: String) -> (row: EntryRow, day: EntryDay)? {
+        guard case .loaded(let figures) = state else { return nil }
+        for day in figures.days {
+            if let row = day.rows.first(where: { $0.id == id }) { return (row, day) }
+        }
+        return nil
+    }
 }
