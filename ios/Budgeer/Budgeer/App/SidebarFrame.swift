@@ -81,6 +81,11 @@ struct SidebarList: View {
         List(selection: Binding<SidebarSection?>(get: { section }, set: { picked in
             if let picked { section = picked }
         })) {
+            // The brand heads the list (a bar item would be clipped to its glass).
+            brand
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .selectionDisabled()
             ForEach(Array(SidebarSection.blocks(items).enumerated()), id: \.offset) { _, block in
                 Section {
                     ForEach(block) { item in row(item) }
@@ -89,9 +94,6 @@ struct SidebarList: View {
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom, spacing: 0) { foot }
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) { brand }
-        }
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -110,7 +112,9 @@ struct SidebarList: View {
                 .font(.custom("Poppins-Bold", size: 22, relativeTo: .title2))
                 .tracking(-0.44)
                 .foregroundStyle(Color.primary)
+                .fixedSize()
         }
+        .padding(.vertical, 4)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: "Budgeer"))
         .accessibilityAddTraits(.isHeader)

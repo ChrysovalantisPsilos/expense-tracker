@@ -39,9 +39,13 @@ struct NativeWideItems: ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
             NativeBellButton(badge: badge, onBell: onBell)
             Button(action: onAdd) {
-                Label(language.t("ios:native.tabs.add"), systemImage: "plus")
-                    .labelStyle(.titleAndIcon)
-                    .font(.body.weight(.semibold))
+                // An icon and its word (a bar's Label would show the icon alone).
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                    Text(language.t("ios:native.tabs.add")).fixedSize()
+                }
+                .font(.body.weight(.semibold))
+                .padding(.horizontal, 4)
             }
             .buttonStyle(.borderedProminent)
             .buttonBorderShape(.capsule)
