@@ -262,8 +262,15 @@ test('whatsNewList: the releases with pages, newest first, dated and worded', ()
 
 test('the recent releases: their pages, and the actions and words that matter', () => {
   const release = (id) => inEnglish(RELEASES.find((x) => x.id === id))
-  // This release (2026-10-09): Net counts the money groups really moved (opens Groups).
-  const r9 = inEnglish(RELEASES[0])
+  // This release (2026-10-10): pay months (opens the salary setting), Start
+  // fresh (opens Your data) and the smaller things.
+  const r10 = inEnglish(RELEASES[0])
+  assert.equal(r10.id, '2026-10-10')
+  assert.deepEqual(r10.pages.map((p) => p.action?.to), ['/settings/spending', '/settings/data', undefined])
+  assert.match(r10.pages[0].body, /day your salary arrives/)
+
+  // 2026-10-09: Net counts the money groups really moved (opens Groups).
+  const r9 = release('2026-10-09')
   assert.equal(r9.id, '2026-10-09')
   assert.deepEqual(r9.pages.map((p) => p.action?.to), ['/groups'])
   assert.match(r9.pages[0].body, /Spent still shows only your share/)

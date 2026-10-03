@@ -8,6 +8,25 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-10-10': {
+      payMonths: {
+        title: 'Months that start on payday',
+        body: 'With the salary setting on, a month now runs from the day your salary arrives to the day before the next one, so the app matches your bank. Spending after payday counts in the new month everywhere: Home, Activity, budgets, Insights, the month in words and your statements.',
+        chips: { payday: 'From payday', bank: 'Matches your bank' },
+        action: 'Open the salary setting',
+      },
+      startFresh: {
+        title: 'Start fresh',
+        body: 'Settings › Your data › Start fresh clears your own entries, recurring payments, budgets, plans and savings, and puts your categories back to the defaults. Your account, settings and groups stay. It offers a backup first and asks you to sign in again.',
+        chips: { wipe: 'Your data cleared', keep: 'Account kept' },
+        action: 'Open Your data',
+      },
+      smaller: {
+        title: 'Smaller things',
+        body: 'In the iPhone app, + on Plan adds a cost or income to your plan. A recurring entry has one date when you edit it, and a passed one reads “due … · added tonight”. There is a credit card icon for categories, and a short group name stays on one line.',
+        chips: { plan: '+ on Plan', card: 'Credit card icon' },
+      },
+    },
     '2026-10-09': {
       groupNet: {
         title: 'Net follows the money that moved',
