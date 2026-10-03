@@ -17,7 +17,7 @@
 -- test that is skipped, or never reaches its PASS line, fails the suite.
 
 drop table if exists _t;
-create temp table _t (fails int not null default 0, passes int not null default 0);
+create temp table _t (fails int not null default 0, passes int not null default 0, failed text[] not null default '{}');
 insert into _t values (0, 0);
 
 -- A throwaway signed-up user (the signup trigger gives it a profile). Only call
@@ -68,7 +68,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: rejoin reclaims member slot';
-    else update _t set fails = fails + 1; raise notice 'FAIL: rejoin reclaims member slot — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: rejoin reclaims member slot — %s', sqlerrm); raise notice 'FAIL: rejoin reclaims member slot — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -108,7 +108,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: member_joined + silent/loud leave';
-    else update _t set fails = fails + 1; raise notice 'FAIL: member_joined + silent/loud leave — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: member_joined + silent/loud leave — %s', sqlerrm); raise notice 'FAIL: member_joined + silent/loud leave — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -153,7 +153,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: budget threshold alerts (encrypted amounts)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: budget threshold alerts — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: budget threshold alerts — %s', sqlerrm); raise notice 'FAIL: budget threshold alerts — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -178,7 +178,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: weekly digest';
-    else update _t set fails = fails + 1; raise notice 'FAIL: weekly digest — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: weekly digest — %s', sqlerrm); raise notice 'FAIL: weekly digest — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -213,7 +213,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: nudge delivery + self-nudge guard';
-    else update _t set fails = fails + 1; raise notice 'FAIL: nudge delivery + self-nudge guard — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: nudge delivery + self-nudge guard — %s', sqlerrm); raise notice 'FAIL: nudge delivery + self-nudge guard — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -239,7 +239,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: transactions RLS isolation';
-    else update _t set fails = fails + 1; raise notice 'FAIL: transactions RLS isolation — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: transactions RLS isolation — %s', sqlerrm); raise notice 'FAIL: transactions RLS isolation — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -276,7 +276,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: settled-up guard blocks unsettled leave';
-    else update _t set fails = fails + 1; raise notice 'FAIL: settled-up guard blocks unsettled leave — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: settled-up guard blocks unsettled leave — %s', sqlerrm); raise notice 'FAIL: settled-up guard blocks unsettled leave — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -331,7 +331,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: payment info encrypted at rest + co-member access + outsider guard';
-    else update _t set fails = fails + 1; raise notice 'FAIL: payment info co-member access + outsider guard — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: payment info co-member access + outsider guard — %s', sqlerrm); raise notice 'FAIL: payment info co-member access + outsider guard — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -388,7 +388,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: settlement writes via RPC only + created_by forced + delete restricted';
-    else update _t set fails = fails + 1; raise notice 'FAIL: settlement guard — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: settlement guard — %s', sqlerrm); raise notice 'FAIL: settlement guard — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -428,7 +428,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: expense_splits insert restricted to creator/owner';
-    else update _t set fails = fails + 1; raise notice 'FAIL: expense_splits insert guard — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: expense_splits insert guard — %s', sqlerrm); raise notice 'FAIL: expense_splits insert guard — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -468,7 +468,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: balances/budgets/goals encrypted at rest + owner round-trip';
-    else update _t set fails = fails + 1; raise notice 'FAIL: balances/budgets/goals encryption — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: balances/budgets/goals encryption — %s', sqlerrm); raise notice 'FAIL: balances/budgets/goals encryption — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -496,7 +496,7 @@ begin
   if unpinned is null and no_temp is null then
     update _t set passes = passes + 1; raise notice 'PASS: every public function pins search_path (definers with pg_temp)';
   else
-    update _t set fails = fails + 1;
+    update _t set fails = fails + 1, failed = failed || format('FAIL: search_path not pinned on: %s / definers without pg_temp: %s', unpinned, no_temp);
     raise notice 'FAIL: search_path not pinned on: % / definers without pg_temp: %', unpinned, no_temp;
   end if;
 end $$;
@@ -522,7 +522,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: receipts bucket + receipt_path columns gone';
-    else update _t set fails = fails + 1; raise notice 'FAIL: receipts removal — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: receipts removal — %s', sqlerrm); raise notice 'FAIL: receipts removal — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -603,7 +603,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: transactions encrypted at rest + owner round-trip + outsider rejected';
-    else update _t set fails = fails + 1; raise notice 'FAIL: transactions encryption — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: transactions encryption — %s', sqlerrm); raise notice 'FAIL: transactions encryption — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -725,7 +725,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: group ledger encrypted at rest + member round-trip + balances + outsider rejected';
-    else update _t set fails = fails + 1; raise notice 'FAIL: group ledger encryption — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: group ledger encryption — %s', sqlerrm); raise notice 'FAIL: group ledger encryption — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -778,7 +778,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: recurring rules encrypted at rest + owner round-trip + materializer + outsider rejected';
-    else update _t set fails = fails + 1; raise notice 'FAIL: recurring rules encryption — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: recurring rules encryption — %s', sqlerrm); raise notice 'FAIL: recurring rules encryption — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -842,7 +842,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: invite policies per-verb + created_by/expires_at forced';
-    else update _t set fails = fails + 1; raise notice 'FAIL: invite policies — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: invite policies — %s', sqlerrm); raise notice 'FAIL: invite policies — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -893,7 +893,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: anon group_preview is minimal (no members/expenses/balances)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: group_preview minimal — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: group_preview minimal — %s', sqlerrm); raise notice 'FAIL: group_preview minimal — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -920,7 +920,7 @@ begin
              and format('%s(%s)', p.proname, oidvectortypes(p.proargtypes)) <> all (anon_ok)))
     and has_function_privilege(r.rolname, p.oid, 'execute');
   if bad is null then update _t set passes = passes + 1; raise notice 'PASS: crypto helpers closed; no definer function open to anon beyond the allow-list';
-  else update _t set fails = fails + 1; raise notice 'FAIL: over-granted functions: %', bad; end if;
+  else update _t set fails = fails + 1, failed = failed || format('FAIL: over-granted functions: %s', bad); raise notice 'FAIL: over-granted functions: %', bad; end if;
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -967,7 +967,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: rate_limit closed to API roles + consume_quota scoped to caller';
-    else update _t set fails = fails + 1; raise notice 'FAIL: rate_limit lock-down — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: rate_limit lock-down — %s', sqlerrm); raise notice 'FAIL: rate_limit lock-down — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1019,7 +1019,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: invite_user_to_group returns a status and every lookup is rate-limited';
-    else update _t set fails = fails + 1; raise notice 'FAIL: invite status / rate limit — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: invite status / rate limit — %s', sqlerrm); raise notice 'FAIL: invite status / rate limit — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1085,7 +1085,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: no FOR ALL policies left + own-row/own-folder semantics kept';
-    else update _t set fails = fails + 1; raise notice 'FAIL: per-verb policies — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: per-verb policies — %s', sqlerrm); raise notice 'FAIL: per-verb policies — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1159,7 +1159,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: no decryption oracle (direct ciphertext writes closed, dec_minor silent, *_enc keys ignored)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: decryption oracle — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: decryption oracle — %s', sqlerrm); raise notice 'FAIL: decryption oracle — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1192,7 +1192,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: 500-row import into a budgeted category in % ms, one alert', ms;
-    else update _t set fails = fails + 1; raise notice 'FAIL: bulk import / budget alert — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: bulk import / budget alert — %s', sqlerrm); raise notice 'FAIL: bulk import / budget alert — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1231,7 +1231,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: recurring next_run clamped + 200-rule cap';
-    else update _t set fails = fails + 1; raise notice 'FAIL: recurring limits — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: recurring limits — %s', sqlerrm); raise notice 'FAIL: recurring limits — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1271,7 +1271,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: expense edit leaves former members'' copies alone';
-    else update _t set fails = fails + 1; raise notice 'FAIL: former member copy — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: former member copy — %s', sqlerrm); raise notice 'FAIL: former member copy — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1327,7 +1327,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: foreign category/account ids rejected + names not leaked';
-    else update _t set fails = fails + 1; raise notice 'FAIL: foreign category refs — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: foreign category refs — %s', sqlerrm); raise notice 'FAIL: foreign category refs — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1349,7 +1349,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: invite token is server-generated';
-    else update _t set fails = fails + 1; raise notice 'FAIL: invite token — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: invite token — %s', sqlerrm); raise notice 'FAIL: invite token — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1403,7 +1403,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: groups with expenses can be deleted (delete_group + owner account deletion)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: delete_group with expenses — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: delete_group with expenses — %s', sqlerrm); raise notice 'FAIL: delete_group with expenses — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1430,7 +1430,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: passkey_reminder_off owner-only';
-    else update _t set fails = fails + 1; raise notice 'FAIL: passkey_reminder_off — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: passkey_reminder_off — %s', sqlerrm); raise notice 'FAIL: passkey_reminder_off — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1476,7 +1476,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: notifications insert blocked, only read_at updatable';
-    else update _t set fails = fails + 1; raise notice 'FAIL: notifications lockdown — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: notifications lockdown — %s', sqlerrm); raise notice 'FAIL: notifications lockdown — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1553,7 +1553,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: owners can''t rewrite members/ownership; guards pin identity; RPCs still work';
-    else update _t set fails = fails + 1; raise notice 'FAIL: group owner lockdown — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: group owner lockdown — %s', sqlerrm); raise notice 'FAIL: group owner lockdown — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1606,7 +1606,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: push endpoint allowlist + 10-device cap + no re-binding without keys';
-    else update _t set fails = fails + 1; raise notice 'FAIL: push subscriptions — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: push subscriptions — %s', sqlerrm); raise notice 'FAIL: push subscriptions — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1652,7 +1652,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: join rate limit + join/leave loop notifies once';
-    else update _t set fails = fails + 1; raise notice 'FAIL: join/leave throttling — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: join/leave throttling — %s', sqlerrm); raise notice 'FAIL: join/leave throttling — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1693,7 +1693,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: settlements need the caller as a party (or the owner)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: settlement party check — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: settlement party check — %s', sqlerrm); raise notice 'FAIL: settlement party check — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1788,7 +1788,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: storage limits + group_images policies + own-storage image URLs';
-    else update _t set fails = fails + 1; raise notice 'FAIL: storage / image URLs — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: storage / image URLs — %s', sqlerrm); raise notice 'FAIL: storage / image URLs — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1845,7 +1845,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: name limits + signup trim + invite email quotas';
-    else update _t set fails = fails + 1; raise notice 'FAIL: names / invite quotas — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: names / invite quotas — %s', sqlerrm); raise notice 'FAIL: names / invite quotas — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1888,7 +1888,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: zero-decimal (¥) spend converts correctly in budget alerts + digest';
-    else update _t set fails = fails + 1; raise notice 'FAIL: zero-decimal conversion — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: zero-decimal conversion — %s', sqlerrm); raise notice 'FAIL: zero-decimal conversion — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -1970,7 +1970,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: grants, dead RPCs, FK indexes, per-statement auth.uid(), profile column grants';
-    else update _t set fails = fails + 1; raise notice 'FAIL: grants / hygiene — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: grants / hygiene — %s', sqlerrm); raise notice 'FAIL: grants / hygiene — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2002,7 +2002,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: comment notifications carry no comment text';
-    else update _t set fails = fails + 1; raise notice 'FAIL: comment notification plaintext — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: comment notification plaintext — %s', sqlerrm); raise notice 'FAIL: comment notification plaintext — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2026,7 +2026,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: rate_limits retention';
-    else update _t set fails = fails + 1; raise notice 'FAIL: rate_limits retention — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: rate_limits retention — %s', sqlerrm); raise notice 'FAIL: rate_limits retention — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2097,7 +2097,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: foreign-currency rows need a positive rate; ISK zero-decimal';
-    else update _t set fails = fails + 1; raise notice 'FAIL: exchange rate required — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: exchange rate required — %s', sqlerrm); raise notice 'FAIL: exchange rate required — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2183,7 +2183,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: budget period keys repaired, merged and normalised';
-    else update _t set fails = fails + 1; raise notice 'FAIL: budget period keys — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: budget period keys — %s', sqlerrm); raise notice 'FAIL: budget period keys — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2290,7 +2290,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: category management (guard, rules, delete with move)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: category management — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: category management — %s', sqlerrm); raise notice 'FAIL: category management — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2374,7 +2374,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: budgets roll forward (+edit/delete/copy, alerts use rollover)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: budget rollover — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: budget rollover — %s', sqlerrm); raise notice 'FAIL: budget rollover — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2513,7 +2513,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: foreign-currency group expense (split, balances, audit, mirrors at member rates)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: group expense currency — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: group expense currency — %s', sqlerrm); raise notice 'FAIL: group expense currency — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2569,7 +2569,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: ECB cache parser + foreign recurring rules at the cached rate';
-    else update _t set fails = fails + 1; raise notice 'FAIL: fx cache / recurring — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: fx cache / recurring — %s', sqlerrm); raise notice 'FAIL: fx cache / recurring — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2625,7 +2625,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: PayPal.me handle encrypted, co-member only, validated';
-    else update _t set fails = fails + 1; raise notice 'FAIL: PayPal handle — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: PayPal handle — %s', sqlerrm); raise notice 'FAIL: PayPal handle — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2708,7 +2708,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: make recurring links the source row; materialised rows carry their rule';
-    else update _t set fails = fails + 1; raise notice 'FAIL: make recurring — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: make recurring — %s', sqlerrm); raise notice 'FAIL: make recurring — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2856,7 +2856,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: yearly subscriptions spread over their months (rows, split, alerts, reads)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: yearly spread — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: yearly spread — %s', sqlerrm); raise notice 'FAIL: yearly spread — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2939,7 +2939,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: yearly_separate owner-only; budget alerts skip yearly rows when kept separate';
-    else update _t set fails = fails + 1; raise notice 'FAIL: yearly_separate — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: yearly_separate — %s', sqlerrm); raise notice 'FAIL: yearly_separate — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -2990,7 +2990,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: tour_done owner-only (not other users, not anon); onboarded accounts backfilled as seen';
-    else update _t set fails = fails + 1; raise notice 'FAIL: tour_done — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: tour_done — %s', sqlerrm); raise notice 'FAIL: tour_done — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3066,7 +3066,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: weekly digest counts yearly parts dated this week, or none when kept separate';
-    else update _t set fails = fails + 1; raise notice 'FAIL: digest yearly — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: digest yearly — %s', sqlerrm); raise notice 'FAIL: digest yearly — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3148,7 +3148,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: consents — sign-up/accept paths only, own rows only, server clock';
-    else update _t set fails = fails + 1; raise notice 'FAIL: consents — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: consents — %s', sqlerrm); raise notice 'FAIL: consents — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3205,7 +3205,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: weekly digest opt-in (off by default) + switch changes logged';
-    else update _t set fails = fails + 1; raise notice 'FAIL: digest opt-in — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: digest opt-in — %s', sqlerrm); raise notice 'FAIL: digest opt-in — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3282,7 +3282,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: export_my_data returns only the caller''s data, decrypted';
-    else update _t set fails = fails + 1; raise notice 'FAIL: export_my_data — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: export_my_data — %s', sqlerrm); raise notice 'FAIL: export_my_data — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3354,7 +3354,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: retention purge deletes exactly what is past each threshold';
-    else update _t set fails = fails + 1; raise notice 'FAIL: retention purge — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: retention purge — %s', sqlerrm); raise notice 'FAIL: retention purge — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3418,7 +3418,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: inactive-account selection (warn at 23 months, delete at 24 after notice)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: inactive accounts — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: inactive accounts — %s', sqlerrm); raise notice 'FAIL: inactive accounts — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3557,7 +3557,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: account deletion anonymises the group history left behind';
-    else update _t set fails = fails + 1; raise notice 'FAIL: deletion anonymisation — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: deletion anonymisation — %s', sqlerrm); raise notice 'FAIL: deletion anonymisation — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3611,7 +3611,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: is_developer defaults false, owner-readable, not client-writable (own row, other rows, anon)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: is_developer — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: is_developer — %s', sqlerrm); raise notice 'FAIL: is_developer — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3684,7 +3684,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: consent-switch changes queue one coalesced email (15 min), lease/finish/back-off';
-    else update _t set fails = fails + 1; raise notice 'FAIL: consent email queue — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: consent email queue — %s', sqlerrm); raise notice 'FAIL: consent email queue — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3728,7 +3728,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: data export queues a coalesced security email (at most hourly)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: export email queue — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: export email queue — %s', sqlerrm); raise notice 'FAIL: export email queue — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3784,7 +3784,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: legal update sweep selects only users not yet emailed for the versions in force';
-    else update _t set fails = fails + 1; raise notice 'FAIL: legal update selection — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: legal update selection — %s', sqlerrm); raise notice 'FAIL: legal update selection — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3853,7 +3853,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: privacy email queue and legal stamps are server-only; sweep functions not client-callable';
-    else update _t set fails = fails + 1; raise notice 'FAIL: privacy email lockdown — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: privacy email lockdown — %s', sqlerrm); raise notice 'FAIL: privacy email lockdown — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3911,7 +3911,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: a saved entry keeps its kind; other edits still work';
-    else update _t set fails = fails + 1; raise notice 'FAIL: transaction kind fixed — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: transaction kind fixed — %s', sqlerrm); raise notice 'FAIL: transaction kind fixed — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -3979,7 +3979,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: splits can''t be deleted over REST; RPC edits and expense deletes still work';
-    else update _t set fails = fails + 1; raise notice 'FAIL: split delete lockdown — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: split delete lockdown — %s', sqlerrm); raise notice 'FAIL: split delete lockdown — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4028,7 +4028,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: settlements can''t be deleted over REST';
-    else update _t set fails = fails + 1; raise notice 'FAIL: settlement delete lockdown — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: settlement delete lockdown — %s', sqlerrm); raise notice 'FAIL: settlement delete lockdown — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4067,7 +4067,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: invite recipient quota is server-only';
-    else update _t set fails = fails + 1; raise notice 'FAIL: invite recipient quota — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: invite recipient quota — %s', sqlerrm); raise notice 'FAIL: invite recipient quota — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4132,7 +4132,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: base currency fixed once there are entries';
-    else update _t set fails = fails + 1; raise notice 'FAIL: base currency lock — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: base currency lock — %s', sqlerrm); raise notice 'FAIL: base currency lock — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4217,7 +4217,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: operator sign-up digest counts, once per day, service-only';
-    else update _t set fails = fails + 1; raise notice 'FAIL: operator sign-up digest — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: operator sign-up digest — %s', sqlerrm); raise notice 'FAIL: operator sign-up digest — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4304,7 +4304,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: salary shift owner-only, own income category, day 1–31';
-    else update _t set fails = fails + 1; raise notice 'FAIL: salary shift — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: salary shift — %s', sqlerrm); raise notice 'FAIL: salary shift — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4342,7 +4342,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: default categories include Friends & family and Bonus';
-    else update _t set fails = fails + 1; raise notice 'FAIL: default categories — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: default categories — %s', sqlerrm); raise notice 'FAIL: default categories — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4382,7 +4382,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: is_savings only on income categories';
-    else update _t set fails = fails + 1; raise notice 'FAIL: is_savings income only — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: is_savings income only — %s', sqlerrm); raise notice 'FAIL: is_savings income only — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4409,7 +4409,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: seed gives Savings marked as savings';
-    else update _t set fails = fails + 1; raise notice 'FAIL: seed Savings — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: seed Savings — %s', sqlerrm); raise notice 'FAIL: seed Savings — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4450,7 +4450,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: is_savings owner-only (RLS)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: is_savings owner-only — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: is_savings owner-only — %s', sqlerrm); raise notice 'FAIL: is_savings owner-only — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4533,7 +4533,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: savings_from_income round-trips, owner-only, income-only';
-    else update _t set fails = fails + 1; raise notice 'FAIL: savings_from_income — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: savings_from_income — %s', sqlerrm); raise notice 'FAIL: savings_from_income — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4584,7 +4584,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: recurring savings_from_income stored, materialized, owner-only';
-    else update _t set fails = fails + 1; raise notice 'FAIL: recurring savings_from_income — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: recurring savings_from_income — %s', sqlerrm); raise notice 'FAIL: recurring savings_from_income — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4673,7 +4673,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: paid_from_savings round-trips, owner-only, expense-only';
-    else update _t set fails = fails + 1; raise notice 'FAIL: paid_from_savings — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: paid_from_savings — %s', sqlerrm); raise notice 'FAIL: paid_from_savings — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4732,7 +4732,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: recurring paid_from_savings stored, materialized, owner-only';
-    else update _t set fails = fails + 1; raise notice 'FAIL: recurring paid_from_savings — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: recurring paid_from_savings — %s', sqlerrm); raise notice 'FAIL: recurring paid_from_savings — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4772,7 +4772,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: latest_fx_rates (today''s ECB rates, well-formed codes only, authenticated only)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: latest_fx_rates — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: latest_fx_rates — %s', sqlerrm); raise notice 'FAIL: latest_fx_rates — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4826,7 +4826,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: whats_new_seen owner-only (not other users, not anon), release ids only';
-    else update _t set fails = fails + 1; raise notice 'FAIL: whats_new_seen — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: whats_new_seen — %s', sqlerrm); raise notice 'FAIL: whats_new_seen — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -4936,7 +4936,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: delete_group refused while others are in (owner/non-owner), works alone; account deletion unaffected';
-    else update _t set fails = fails + 1; raise notice 'FAIL: delete_group needs an empty group — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: delete_group needs an empty group — %s', sqlerrm); raise notice 'FAIL: delete_group needs an empty group — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5012,7 +5012,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: restore write paths keep the savings flags and salary shift; export_my_data includes them';
-    else update _t set fails = fails + 1; raise notice 'FAIL: backup/export coverage — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: backup/export coverage — %s', sqlerrm); raise notice 'FAIL: backup/export coverage — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5072,7 +5072,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: status_snapshot callable by anon only, expected keys, aggregates only (no ids/emails)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: status_snapshot — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: status_snapshot — %s', sqlerrm); raise notice 'FAIL: status_snapshot — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5128,7 +5128,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: is_demo is server-only; demo_accounts has no client access';
-    else update _t set fails = fails + 1; raise notice 'FAIL: is_demo is server-only — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: is_demo is server-only — %s', sqlerrm); raise notice 'FAIL: is_demo is server-only — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5223,7 +5223,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: demo refused invites, links, joins, nudges, push and message switches; regular user unaffected';
-    else update _t set fails = fails + 1; raise notice 'FAIL: demo refusals — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: demo refusals — %s', sqlerrm); raise notice 'FAIL: demo refusals — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5288,7 +5288,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: demo reset/registration are definer, pinned and not client-callable; nightly job scheduled';
-    else update _t set fails = fails + 1; raise notice 'FAIL: demo machinery is server-only — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: demo machinery is server-only — %s', sqlerrm); raise notice 'FAIL: demo machinery is server-only — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5395,7 +5395,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: reset_demo_accounts seeds the demo and restores email, password, data and sessions';
-    else update _t set fails = fails + 1; raise notice 'FAIL: reset_demo_accounts — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: reset_demo_accounts — %s', sqlerrm); raise notice 'FAIL: reset_demo_accounts — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5449,7 +5449,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: demo skipped by legal/inactivity emails, uploads refused, auth guard in place';
-    else update _t set fails = fails + 1; raise notice 'FAIL: demo emails/uploads — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: demo emails/uploads — %s', sqlerrm); raise notice 'FAIL: demo emails/uploads — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5509,7 +5509,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: profiles.language owner-only (not other users, not anon), en/el/null only, exported';
-    else update _t set fails = fails + 1; raise notice 'FAIL: profiles.language — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: profiles.language — %s', sqlerrm); raise notice 'FAIL: profiles.language — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5553,7 +5553,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: savings accounts saved and read back; unknown types refused; save_account pinned, not anon';
-    else update _t set fails = fails + 1; raise notice 'FAIL: savings accounts — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: savings accounts — %s', sqlerrm); raise notice 'FAIL: savings accounts — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5624,7 +5624,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: import rules stamped, own categories only, not movable, trimmed; owner-only read/edit/delete';
-    else update _t set fails = fails + 1; raise notice 'FAIL: import rules guard — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: import rules guard — %s', sqlerrm); raise notice 'FAIL: import rules guard — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5690,7 +5690,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: categories.default_key seeded, cleared on rename, kept on edits, never client-set, read and exported';
-    else update _t set fails = fails + 1; raise notice 'FAIL: categories.default_key — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: categories.default_key — %s', sqlerrm); raise notice 'FAIL: categories.default_key — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5815,7 +5815,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: plan is own-only, encrypted, closed to API roles and anon, shape-checked, cleared by Start over';
-    else update _t set fails = fails + 1; raise notice 'FAIL: plan isolation — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: plan isolation — %s', sqlerrm); raise notice 'FAIL: plan isolation — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5905,7 +5905,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: apply refuses another user''s rule; cancel keeps the rule inactive; edit and add work; rest of the plan kept';
-    else update _t set fails = fails + 1; raise notice 'FAIL: apply_recurring_plan — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: apply_recurring_plan — %s', sqlerrm); raise notice 'FAIL: apply_recurring_plan — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -5982,7 +5982,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: undo restores exactly and removes created rules, once, within 24 hours; export carries the plan';
-    else update _t set fails = fails + 1; raise notice 'FAIL: undo_recurring_plan — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: undo_recurring_plan — %s', sqlerrm); raise notice 'FAIL: undo_recurring_plan — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6029,7 +6029,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: demo_wipe and account deletion clear the plan and its undo record, only for those users';
-    else update _t set fails = fails + 1; raise notice 'FAIL: plan cleanup — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: plan cleanup — %s', sqlerrm); raise notice 'FAIL: plan cleanup — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6073,7 +6073,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: plan salary edit kept on its own, malformed salary refused, empty plan still removed';
-    else update _t set fails = fails + 1; raise notice 'FAIL: plan salary edit — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: plan salary edit — %s', sqlerrm); raise notice 'FAIL: plan salary edit — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6125,7 +6125,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: paid_with_vouchers only on expenses, never beside savings; saved, updated, read and filtered';
-    else update _t set fails = fails + 1; raise notice 'FAIL: paid_with_vouchers — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: paid_with_vouchers — %s', sqlerrm); raise notice 'FAIL: paid_with_vouchers — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6195,7 +6195,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: meal voucher setup encrypted, owner-only, validated, removable; table closed to clients';
-    else update _t set fails = fails + 1; raise notice 'FAIL: meal voucher setup — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: meal voucher setup — %s', sqlerrm); raise notice 'FAIL: meal voucher setup — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6229,7 +6229,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: voucher setup exported, cleared by demo_wipe and account deletion, only for those users';
-    else update _t set fails = fails + 1; raise notice 'FAIL: voucher setup cleanup — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: voucher setup cleanup — %s', sqlerrm); raise notice 'FAIL: voucher setup cleanup — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6306,7 +6306,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: transfer_owned_groups hands groups to the earliest member in one call, service role only';
-    else update _t set fails = fails + 1; raise notice 'FAIL: transfer_owned_groups — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: transfer_owned_groups — %s', sqlerrm); raise notice 'FAIL: transfer_owned_groups — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6378,7 +6378,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: two accounts deleted in one statement (either order) leave an anonymised history';
-    else update _t set fails = fails + 1; raise notice 'FAIL: two accounts in one statement — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: two accounts in one statement — %s', sqlerrm); raise notice 'FAIL: two accounts in one statement — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6404,7 +6404,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: new public functions start closed to public/anon/authenticated';
-    else update _t set fails = fails + 1; raise notice 'FAIL: default function privileges — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: default function privileges — %s', sqlerrm); raise notice 'FAIL: default function privileges — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6421,7 +6421,7 @@ begin
     and not c.relrowsecurity
     and not exists (select 1 from pg_depend d where d.objid = c.oid and d.deptype = 'e');
   if bad is null then update _t set passes = passes + 1; raise notice 'PASS: RLS enabled on every public table';
-  else update _t set fails = fails + 1; raise notice 'FAIL: RLS off on: %', bad; end if;
+  else update _t set fails = fails + 1, failed = failed || format('FAIL: RLS off on: %s', bad); raise notice 'FAIL: RLS off on: %', bad; end if;
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -6462,7 +6462,7 @@ begin
   ) t
   where not (t.in_wipe and t.in_export);
   if bad is null then update _t set passes = passes + 1; raise notice 'PASS: every per-user table is in demo_wipe and the data export (or exempt)';
-  else update _t set fails = fails + 1; raise notice 'FAIL: per-user tables not covered: %', bad; end if;
+  else update _t set fails = fails + 1, failed = failed || format('FAIL: per-user tables not covered: %s', bad); raise notice 'FAIL: per-user tables not covered: %', bad; end if;
 end $$;
 
 -- ---------------------------------------------------------------------------
@@ -6538,7 +6538,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: salary notes encrypted, owner-only, validated, removable; table closed to clients';
-    else update _t set fails = fails + 1; raise notice 'FAIL: salary notes — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: salary notes — %s', sqlerrm); raise notice 'FAIL: salary notes — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6571,7 +6571,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: salary notes exported, cleared by demo_wipe and account deletion, only for those users';
-    else update _t set fails = fails + 1; raise notice 'FAIL: salary notes cleanup — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: salary notes cleanup — %s', sqlerrm); raise notice 'FAIL: salary notes cleanup — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6640,7 +6640,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: AI helper switches off by default, owner-only, consent-logged, the demo too';
-    else update _t set fails = fails + 1; raise notice 'FAIL: AI helper switches — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: AI helper switches — %s', sqlerrm); raise notice 'FAIL: AI helper switches — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6697,7 +6697,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: ai_helper_start checks the switch, returns the base currency, rate-limits per user, refuses anon';
-    else update _t set fails = fails + 1; raise notice 'FAIL: ai_helper_start — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: ai_helper_start — %s', sqlerrm); raise notice 'FAIL: ai_helper_start — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6828,7 +6828,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: month summary: server totals, service-role save, encrypted, owner-only, stale on change, deleted when off';
-    else update _t set fails = fails + 1; raise notice 'FAIL: month summary — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: month summary — %s', sqlerrm); raise notice 'FAIL: month summary — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6863,7 +6863,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: month summaries exported, cleared by demo_wipe and account deletion, only for those users';
-    else update _t set fails = fails + 1; raise notice 'FAIL: month summaries cleanup — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: month summaries cleanup — %s', sqlerrm); raise notice 'FAIL: month summaries cleanup — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6937,7 +6937,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: what-if switch off by default, owner-only, consent-logged, the demo too; gate checks it and allows 30 an hour';
-    else update _t set fails = fails + 1; raise notice 'FAIL: what-if switch — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: what-if switch — %s', sqlerrm); raise notice 'FAIL: what-if switch — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -6989,7 +6989,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: the demo gate is open, capped at 100 calls a day across helpers; regular accounts unaffected';
-    else update _t set fails = fails + 1; raise notice 'FAIL: demo AI cap — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: demo AI cap — %s', sqlerrm); raise notice 'FAIL: demo AI cap — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -7042,7 +7042,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: the demo reset turns the four AI helpers back on, with a clean consent history and no summaries';
-    else update _t set fails = fails + 1; raise notice 'FAIL: demo reset AI helpers — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: demo reset AI helpers — %s', sqlerrm); raise notice 'FAIL: demo reset AI helpers — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -7116,7 +7116,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: apply edits a savings rule keeping its category and flag, adds savings from income, undo restores; a bad savings flag is refused';
-    else update _t set fails = fails + 1; raise notice 'FAIL: plan savings apply — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: plan savings apply — %s', sqlerrm); raise notice 'FAIL: plan savings apply — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -7163,7 +7163,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: plan savings edit kept on its own and beside the salary one, malformed savings refused, empty plan still removed';
-    else update _t set fails = fails + 1; raise notice 'FAIL: plan savings edit — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: plan savings edit — %s', sqlerrm); raise notice 'FAIL: plan savings edit — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -7260,7 +7260,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: apns_devices: own rows only, validated, moved on re-save, demo refused, writes only through the definer';
-    else update _t set fails = fails + 1; raise notice 'FAIL: apns_devices — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: apns_devices — %s', sqlerrm); raise notice 'FAIL: apns_devices — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -7316,7 +7316,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: apns_devices capped at 10, rate-limited, exported without tokens, wiped with demo and account';
-    else update _t set fails = fails + 1; raise notice 'FAIL: apns_devices cap/limit/export/deletion — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: apns_devices cap/limit/export/deletion — %s', sqlerrm); raise notice 'FAIL: apns_devices cap/limit/export/deletion — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -7380,7 +7380,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: month summary counts a late salary in the month it counts for (salary_counted_date, closed to clients)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: month summary salary shift — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: month summary salary shift — %s', sqlerrm); raise notice 'FAIL: month summary salary shift — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -7463,7 +7463,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: my_group_flow returns only the caller''s group moves (paid, shares, settlements), windowed, closed to anon';
-    else update _t set fails = fails + 1; raise notice 'FAIL: my_group_flow — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: my_group_flow — %s', sqlerrm); raise notice 'FAIL: my_group_flow — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -7637,7 +7637,8 @@ begin
                      and pending_events = 1 and due_at <= now()) then
       raise exception 'no start_fresh email queued';
     end if;
-    if exists (select 1 from public.privacy_email_queue where user_id in (u2, u3)) then
+    -- (Setting up the users queues their consent emails; only a start_fresh one would be wrong.)
+    if exists (select 1 from public.privacy_email_queue where user_id in (u2, u3) and kind = 'start_fresh') then
       raise exception 'another user''s email queue changed';
     end if;
     -- The other user is untouched: 2 entries (one a group share) and one row of each of the rest.
@@ -7678,7 +7679,7 @@ begin
     raise exception 'ROLLBACK_OK';
   exception when others then
     if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: start_fresh wipes only the caller''s personal data, keeps the account and groups, re-seeds the defaults, emails the owner (fresh sign-in, no demo, 3 a day, closed to anon)';
-    else update _t set fails = fails + 1; raise notice 'FAIL: start_fresh — %', sqlerrm; end if;
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: start_fresh — %s', sqlerrm); raise notice 'FAIL: start_fresh — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -7690,7 +7691,8 @@ do $$
 declare expected_tests constant int := 122; f int; p int;  -- tests 1–121 + B-0059
 begin
   select fails, passes into f, p from _t;
-  if f > 0 then raise exception '% test(s) FAILED', f; end if;
+  -- The failures' own messages too: the SQL Editor shows only this error, not the notices.
+  if f > 0 then raise exception '% test(s) FAILED: %', f, (select array_to_string(failed, ' | ') from _t); end if;
   if p <> expected_tests then raise exception 'only % of % tests passed', p, expected_tests; end if;
   raise notice 'ALL DATABASE TESTS PASSED (% tests)', p;
 end $$;
