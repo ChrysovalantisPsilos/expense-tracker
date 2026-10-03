@@ -64,10 +64,12 @@ final class CoreLoadTests: XCTestCase {
     func testDateAndUndefinedArgumentsTravel() throws {
         let core = try BudgeerCore()
         // periods.thisMonthPeriod(now): the month of a Date (2026-09-21 in UTC).
-        let period: [String: String] = try core.call("periods", "thisMonthPeriod", [JSDate(Date(timeIntervalSince1970: 1_790_000_000))])
-        XCTAssertEqual(period["from"], "2026-09-01")
-        XCTAssertEqual(period["to"], "2026-09-30")
-        XCTAssertEqual(period["label"], "This month")
+        // (A period also says whether the month is still open: a Bool among the strings.)
+        struct Period: Decodable { let from: String; let to: String; let label: String }
+        let period: Period = try core.call("periods", "thisMonthPeriod", [JSDate(Date(timeIntervalSince1970: 1_790_000_000))])
+        XCTAssertEqual(period.from, "2026-09-01")
+        XCTAssertEqual(period.to, "2026-09-30")
+        XCTAssertEqual(period.label, "This month")
         // currency.minorFactor(undefined) takes the default currency.
         let factor: Int = try core.call("currency", "minorFactor", [JSUndefined()])
         XCTAssertEqual(factor, 100)
