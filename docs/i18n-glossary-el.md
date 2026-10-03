@@ -32,6 +32,7 @@ Conventions for keys and code are in [`I18N.md`](I18N.md).
 | --- | --- | --- |
 | expense | έξοδο (τα έξοδα) | «Νέο έξοδο» for Add expense |
 | income | έσοδο (τα έσοδα) | |
+| pay month | μήνας μισθού | a month that runs from payday to payday (Settings › Monthly spending); «οι μήνες ξεκινούν από μισθό σε μισθό» |
 | net | καθαρό (υπόλοιπο) | label «Καθαρό»; the figure «Καθαρό υπόλοιπο» where there is room |
 | spent | ξόδεψες / έξοδα | label «Έξοδα»; in a sentence «ξόδεψες 120 €» |
 | budget / budgets | προϋπολογισμός / προϋπολογισμοί | in the tab bar «Προϋπολογισμοί» fits; don't shorten to «Budget» |
