@@ -92,6 +92,11 @@ struct AddSheet: View {
 
     private var expanded: Bool { detent == .large }
 
+    /// Pulled up on a phone, a tap on the amount lowers the sheet to the number pad.
+    private var padBack: (() -> Void)? {
+        expanded && !wide ? { detent = .nativeAdd } : nil
+    }
+
     /// "Who's it for?" is offered on a new expense to someone in a group.
     private var offersGroups: Bool {
         entry.mode == .add && entry.kind == "expense" && !groups.groups.isEmpty
@@ -101,7 +106,7 @@ struct AddSheet: View {
         NavigationStack {
             Group {
                 if let groupForm {
-                    GroupExpenseForm(model: groupForm, compact: !expanded) { whoFor }
+                    GroupExpenseForm(model: groupForm, compact: !expanded || wide, onAmountTap: padBack) { whoFor }
                 } else if entry.ready {
                     form
                 } else if let error = entry.loadError {
@@ -178,7 +183,7 @@ struct AddSheet: View {
                 if let warning = entry.repeatWarning { NativeNotice(text: warning, warning: true).padding(.horizontal, 16) }
                 AmountHeader(text: entry.amountText, value: Double(entry.amountMinor),
                              color: entry.kind == "income" ? NativeStyle.positive : Color.primary,
-                             error: entry.errors["amount"], suggested: entry.marks.contains("amount")) {
+                             error: entry.errors["amount"], suggested: entry.marks.contains("amount"), onTap: padBack) {
                     DayPill(iso: Binding(get: { entry.date }, set: { entry.changeDate($0) }))
                     CurrencyPill(options: entry.currencyOptions, value: entry.currency) { entry.pickCurrency($0) }
                     if entry.offersReceipt, entry.receipt.stage == .idle {
@@ -387,19 +392,31 @@ struct AmountHeader<Pills: View>: View {
     var color: Color = .primary
     var error: String? = nil
     var suggested = false
+    /// A tap on the figures brings the number pad back (nil: the pad is showing).
+    var onTap: (() -> Void)? = nil
     @ViewBuilder var pills: () -> Pills
 
     var body: some View {
         VStack(spacing: 8) {
-            NativeMoney(text: text, value: value, font: NativeStyle.money(54), color: color)
-                .padding(.horizontal, 20)
-                .overlay(alignment: .topTrailing) {
-                    if suggested { Image(systemName: "sparkles").foregroundStyle(NativeStyle.tint).offset(x: 4, y: -2) }
+            Group {
+                if let onTap {
+                    Button(action: onTap) { figures }.buttonStyle(.plain)
+                } else {
+                    figures
                 }
-                .accessibilityIdentifier("add.amount")
+            }
+            .accessibilityIdentifier("add.amount")
             if let error { Text(error).font(.footnote).foregroundStyle(NativeStyle.negative) }
             HStack(spacing: 8) { pills() }
         }
+    }
+
+    private var figures: some View {
+        NativeMoney(text: text, value: value, font: NativeStyle.money(54), color: color)
+            .padding(.horizontal, 20)
+            .overlay(alignment: .topTrailing) {
+                if suggested { Image(systemName: "sparkles").foregroundStyle(NativeStyle.tint).offset(x: 4, y: -2) }
+            }
     }
 }
 

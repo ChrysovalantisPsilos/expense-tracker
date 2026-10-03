@@ -18,10 +18,13 @@ struct GroupExpenseSheet: View {
     @Environment(AppLanguage.self) private var language
     @Environment(\.dismiss) private var dismiss
     @State private var confirmDelete = false
+    /// The number pad: open on a new expense, on an edit once the amount is tapped.
+    @State private var padOpen: Bool?
 
     var body: some View {
         NavigationStack {
-            GroupExpenseForm(model: model, compact: false) {
+            GroupExpenseForm(model: model, compact: padOpen ?? !model.isEdit,
+                             onAmountTap: (padOpen ?? !model.isEdit) ? nil : { padOpen = true }) {
                 if model.isEdit {
                     Button(role: .destructive) { confirmDelete = true } label: {
                         Label(language.t("common:actions.delete"), systemImage: "trash").frame(maxWidth: .infinity)
@@ -76,6 +79,8 @@ struct GroupExpenseForm<Extra: View>: View {
     @Bindable var model: GroupExpenseModel
     /// Add's collapsed sheet: the number pad shows.
     var compact: Bool
+    /// While the pad is hidden: a tap on the amount brings it back.
+    var onAmountTap: (() -> Void)? = nil
     @ViewBuilder var extra: () -> Extra
     @Environment(AppLanguage.self) private var language
     /// The receipt's photo (in memory for its thumbnail, never saved) and its pickers.
@@ -91,7 +96,8 @@ struct GroupExpenseForm<Extra: View>: View {
                         .padding(.horizontal, 16)
                         .accessibilityIdentifier("groupExpense.notice")
                 }
-                AmountHeader(text: model.amountText, value: Double(model.amountMinor), error: model.errors["amount"]) {
+                AmountHeader(text: model.amountText, value: Double(model.amountMinor), error: model.errors["amount"],
+                             onTap: onAmountTap) {
                     DayPill(iso: Binding(get: { model.form.spentAt }, set: { model.setDate($0) }))
                     CurrencyPill(options: model.currencyOptions, value: model.form.paidCurrency) { model.pickCurrency($0) }
                     if model.offersReceipt, model.receipt.stage == .idle {
