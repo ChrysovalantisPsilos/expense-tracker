@@ -62,7 +62,9 @@ final class RecurringModelTests: XCTestCase {
 
     func testTheRulesAtTodaysRates() async throws {
         let fixture = try RecurringFixture.load()
-        let model = RecurringModel(data: fixture.store().data, core: .shared)
+        // Before every rule's next charge, so each reads "next …" as in the web's fixture.
+        let model = RecurringModel(data: fixture.store().data, core: .shared,
+                                   now: { ISO8601DateFormatter().date(from: "2020-09-20T12:00:00Z")! })
         await model.load()
         XCTAssertEqual(model.state, .loaded(try XCTUnwrap(fixture.expected["en"])))
         XCTAssertEqual(model.rule(id: "r2")?["description"], "Rent")
