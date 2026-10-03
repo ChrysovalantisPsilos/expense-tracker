@@ -15,9 +15,9 @@ const normalise = (sql) => sql.replace(/^(?:--[^\n]*\n)+/, '').replace(/\s+/g, '
 
 test('the canonical function files are there', () => {
   assert.deepEqual(files, [
-    'demo_wipe.sql', 'export_my_data.sql', 'materialize_recurring_rules.sql', 'my_recurring_rules.sql',
-    'my_transactions.sql', 'notify_budget_threshold.sql', 'save_recurring_rule.sql',
-    'save_transactions.sql', 'send_weekly_digests.sql', 'update_transaction.sql',
+    'ai_month_totals.sql', 'demo_wipe.sql', 'export_my_data.sql', 'materialize_recurring_rules.sql',
+    'my_recurring_rules.sql', 'my_transactions.sql', 'notify_budget_threshold.sql', 'pay_month_windows.sql',
+    'save_recurring_rule.sql', 'save_transactions.sql', 'send_weekly_digests.sql', 'update_transaction.sql',
   ])
 })
 

@@ -38,8 +38,8 @@ as $$
     and (p_kind is null or t.kind::text = p_kind)
     and (p_from is null or t.spent_at >= p_from
          or (p_spread and t.kind = 'expense' and t.spread_months is not null
-             and t.spent_at >= (p_from - interval '119 months')::date
-             and date_trunc('month', t.spent_at) + make_interval(months => t.spread_months) > p_from))
+             and t.spent_at >= (p_from - interval '120 months')::date
+             and date_trunc('month', t.spent_at) + make_interval(months => t.spread_months + 1) > p_from))
     and (p_to is null or t.spent_at <= p_to)
     and (p_category is null or t.category_id = p_category)
     and (not coalesce(p_paid_from_savings, false) or t.paid_from_savings)
