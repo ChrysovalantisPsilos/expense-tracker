@@ -97,6 +97,7 @@ export default {
     pause: 'Pause',
     resume: 'Resume',
     next: 'next {{date}}',
+    due: 'due {{date}} · added tonight',
     budgetShare: '{{amount}}/mo in budgets',
     remindDays: '{{days}}d',
     paused: 'Paused',

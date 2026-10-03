@@ -184,7 +184,10 @@ struct AddSheet: View {
                 AmountHeader(text: entry.amountText, value: Double(entry.amountMinor),
                              color: entry.kind == "income" ? NativeStyle.positive : Color.primary,
                              error: entry.errors["amount"], suggested: entry.marks.contains("amount"), onTap: padBack) {
-                    DayPill(iso: Binding(get: { entry.date }, set: { entry.changeDate($0) }))
+                    // A rule's date is its next charge, set once in the details' Next charge row.
+                    if entry.mode != .rule {
+                        DayPill(iso: Binding(get: { entry.date }, set: { entry.changeDate($0) }))
+                    }
                     CurrencyPill(options: entry.currencyOptions, value: entry.currency) { entry.pickCurrency($0) }
                     if entry.offersReceipt, entry.receipt.stage == .idle {
                         ReceiptPill(camera: { takingPhoto = true }, library: { pickingPhoto = true })

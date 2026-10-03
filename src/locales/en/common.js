@@ -308,6 +308,7 @@ export default {
       transfer: 'Savings transfer',
       business: 'Business expenses',
       electronics: 'Electronics',
+      'credit-card': 'Credit card',
     },
     groups: {
       everyday: 'Everyday',

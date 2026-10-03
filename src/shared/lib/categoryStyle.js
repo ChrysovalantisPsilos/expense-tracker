@@ -15,7 +15,7 @@ export const CATEGORY_ICON_KEYS = [
   'parking', 'bus', 'taxi', 'bike', 'flights', 'hotel', 'bars', 'games', 'music', 'books',
   'sports', 'hobbies',
   'freelance', 'investments', 'refunds', 'gifts-received', 'cash', 'transfer', 'business',
-  'electronics',
+  'electronics', 'credit-card',
 ]
 
 // A read-only table whose values are translated when read (each is a getter),
@@ -47,7 +47,7 @@ export const CATEGORY_ICON_GROUPS = [
   {
     id: 'money',
     keys: ['salary', 'freelance', 'business', 'electronics', 'savings', 'transfer',
-      'investments', 'refunds', 'gifts-received', 'cash'],
+      'investments', 'refunds', 'gifts-received', 'cash', 'credit-card'],
   },
 ].map(({ id, keys }) => Object.assign(translated([['label', `common:categoryIcons.groups.${id}`]]), { keys }))
 
@@ -97,6 +97,7 @@ const NAME_HINTS = [
   [/gift|present/i, 'gifts'],
   [/refund|reimburs|cashback/i, 'refunds'],
   [/\bcash\b|\batm\b|withdraw/i, 'cash'],
+  [/credit|\bcards?\b/i, 'credit-card'],
   [/transfer/i, 'transfer'],
   [/invest|stock|crypto|dividend/i, 'investments'],
   [/saving/i, 'savings'],

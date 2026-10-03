@@ -279,10 +279,15 @@ struct GroupPageView: View {
             }
             .transition(.opacity)
         } else {
+            // A name that fits on one line shrinks to stay on it ("Saturday 03-Oct-2026" across
+            // the space beside the picture, not broken at a hyphen); a longer one takes two lines.
+            let oneLine = figures.name.count <= 22
             Text(figures.name)
                 .font(font)
-                .lineLimit(2)
-                .minimumScaleFactor(0.75)
+                .lineLimit(oneLine ? 1 : 2)
+                .minimumScaleFactor(oneLine ? 0.6 : 0.75)
+                .allowsTightening(true)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityAddTraits(figures.isOwner ? [.isHeader, .isButton] : .isHeader)
                 .accessibilityIdentifier("group.title")
                 .onTapGesture {
