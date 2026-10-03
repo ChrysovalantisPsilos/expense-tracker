@@ -151,6 +151,11 @@ protocol PrivacyRepository: Sendable {
     /// deleteMyAccount: the delete-account edge function (the password for a
     /// password account, which the server checks again).
     func deleteAccount(password: String?) async throws
+    /// startFresh (profile.js): start_fresh wipes this account's own data and
+    /// keeps the account, after a sign-in in the last few minutes; a password
+    /// account signs in again with `password` first (that is the fresh
+    /// sign-in), and a wrong one throws CurrentPasswordInvalid.
+    func startFresh(password: String?) async throws
 }
 
 protocol TransactionsRepository: Sendable {

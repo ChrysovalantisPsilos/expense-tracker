@@ -1,5 +1,5 @@
 import { supabase } from './supabase.js'
-import { dbError, edgeFunctionError } from './errors.js'
+import { UserError, dbError, edgeFunctionError } from './errors.js'
 
 // Profile and account data access (shared: settings, onboarding, backup and
 // the ProfileProvider all use it).
@@ -82,4 +82,18 @@ export async function deleteMyAccount({ password } = {}) {
   const body = password != null ? { password } : {}
   const { error } = await supabase.functions.invoke('delete-account', { body })
   if (error) throw await edgeFunctionError(error)
+}
+
+// Start fresh (Settings › Your data): the server wipes the caller's own data
+// and keeps the account (start_fresh, 0112), only after a sign-in in the last
+// few minutes. A password account gives its password, which signs in anew
+// (as changing the password does): that fresh sign-in is what the server
+// checks. A wrong password stops here, with `wrongPassword` as its message.
+export async function startFresh({ email, password = null, wrongPassword }) {
+  if (password != null) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error.code === 'invalid_credentials' ? new UserError(wrongPassword) : error
+  }
+  const { error } = await supabase.rpc('start_fresh')
+  if (error) throw dbError(error)
 }

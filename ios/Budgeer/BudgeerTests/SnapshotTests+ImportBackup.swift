@@ -98,9 +98,16 @@ extension SnapshotTests {
         let sealed = String(decoding: try fixtureData("backup-sealed"), as: UTF8.self)
         for (lang, dark) in SnapshotTests.variants {
             _ = language(lang)
-            try await shots(framed(.more) { NavigationStack { YourDataView() } }, name: "data", lang: lang, dark: dark)
-            // Export: as it opens, then the file made and ready to share.
             let store = FakeStore()
+            let fresh = StartFreshModel(data: store.data, security: FakeSecurity(), signOut: {}, now: { now })
+            await fresh.load()
+            try await shots(framed(.more) { NavigationStack { YourDataView(startFresh: fresh, data: store.data, userId: "u-1") } },
+                            name: "data", lang: lang, dark: dark)
+            // Start fresh's confirmation, the phrase typed (a password account).
+            fresh.phrase = "START FRESH"
+            try await shots(framed(.more) { StartFreshSheet(model: fresh, data: store.data, userId: "u-1") },
+                            name: "start-fresh", lang: lang, dark: dark)
+            // Export: as it opens, then the file made and ready to share.
             store.allCategoriesResult = .success(TestData.categories)
             let export = ExportBackupModel(data: store.data, userId: "u-1", now: { now })
             try await shots(framed(.more) { NavigationStack { ExportBackupView(model: export) } },

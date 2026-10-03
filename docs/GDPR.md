@@ -106,6 +106,7 @@ creation/refresh (an installed PWA refreshes its session when opened).
 | Access / portability (15/20) | Settings → Privacy → Download my data | `export_my_data()` (0074/0076/0095; caller only, decrypted, rate-limited 10/h; each download emails a security notice) |
 | Rectification (16) | Settings → Account; edit any record | normal RLS writes |
 | Erasure (17) | Settings → Security → Delete account | edge `delete-account` → `_shared/accountDeletion.ts` (shared groups handed over in one transaction by `transfer_owned_groups`, 0099) + `anonymise_departing_user` trigger |
+| Erasure of the personal records, account kept (17) | Settings → Your data → Start fresh (after a backup offer, START FRESH typed and a fresh sign-in) | `start_fresh()` (0112): in one transaction deletes the caller's own transactions (not group shares), recurring rules, budgets, import rules, accounts, savings goals, Plan and its undo, salary corrections, meal vouchers, AI month summaries and notifications; re-seeds the default categories; clears `salary_category_id`. Keeps the account, profile, consents, push devices and every group table. Needs a sign-in in the last 10 min (`signed_in_recently`), refuses the demo login, 3/day |
 | Restriction / objection (18/21), other | Settings → Privacy → Send a request, or email | edge `privacy-request` → privacy@ via Resend (3/day) |
 | Withdraw consent (7(3)) | Settings → Notifications or Privacy (switches) | `log_preference_consent` trigger records history |
 | Consent history | Settings → Privacy | `consents` (RLS select own) |

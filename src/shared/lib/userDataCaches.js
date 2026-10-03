@@ -32,6 +32,13 @@ export const EXPIRATION_DB = 'workbox-expiration'
 // connection).
 export async function clearUserDataCaches({ caches, indexedDB, localStorage } = globalThis) {
   try { localStorage?.removeItem(STORAGE_KEYS.legalAccepted) } catch { /* unavailable */ }
+  await clearCachedReads({ caches, indexedDB })
+}
+
+// Delete only the cached reads (and their expiry timestamps), keeping the
+// session's other notes: after Start fresh, whose account stays signed in.
+// Never throws, like clearUserDataCaches.
+export async function clearCachedReads({ caches, indexedDB } = globalThis) {
   try { indexedDB?.deleteDatabase(EXPIRATION_DB) } catch { /* unavailable */ }
   if (!caches) return
   await Promise.all([REST_CACHE, RPC_CACHE].map((name) => caches.delete(name).catch(() => false)))

@@ -7467,11 +7467,205 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 121. 0112: start_fresh() wipes the caller's own data and keeps the account.
+--      Closed to anon (and signed_in_recently to every client); refused for
+--      a stale sign-in and for the demo login, with nothing touched; a fresh
+--      run empties the caller's entries, rules, budgets, import rules,
+--      accounts, goals, Plan, salary corrections, vouchers, AI summaries and
+--      notifications, re-seeds the default categories and clears the salary
+--      pointer, while the profile, consents, groups, the mirrored group
+--      shares (moved to the new default category) and another user's rows all
+--      stay; three runs a day.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; u3 uuid; u uuid; gid uuid; m1 uuid; m2 uuid; food1 uuid; sal1 uuid; cat uuid;
+        mirror1 uuid; n int; msg text;
+begin
+  begin
+    if has_function_privilege('anon', 'public.start_fresh()', 'execute') then
+      raise exception 'start_fresh is callable by anon';
+    end if;
+    if not has_function_privilege('authenticated', 'public.start_fresh()', 'execute') then
+      raise exception 'start_fresh is not callable by authenticated';
+    end if;
+    if has_function_privilege('authenticated', 'public.signed_in_recently(jsonb,integer)', 'execute')
+       or has_function_privilege('anon', 'public.signed_in_recently(jsonb,integer)', 'execute') then
+      raise exception 'signed_in_recently is callable by clients';
+    end if;
+    -- The SQL twin of reauth.isRecentClaims: the newest amr wins over iat.
+    if not public.signed_in_recently(jsonb_build_object('amr', jsonb_build_array(
+             jsonb_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint - 30))))
+       or public.signed_in_recently(jsonb_build_object('iat', extract(epoch from now())::bigint,
+             'amr', jsonb_build_array(jsonb_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint - 3600))))
+       or not public.signed_in_recently(jsonb_build_object('iat', extract(epoch from now())::bigint - 60))
+       or public.signed_in_recently(jsonb_build_object('iat', extract(epoch from now())::bigint + 600))
+       or public.signed_in_recently('{}'::jsonb)
+       or public.signed_in_recently(null) then
+      raise exception 'signed_in_recently disagrees with isRecentClaims';
+    end if;
+
+    u1 := pg_temp.zz_user('fresha');
+    u2 := pg_temp.zz_user('freshb');
+    u3 := pg_temp.zz_user('freshdemo');
+    -- The same personal data for both, written as each user (the owner
+    -- guards file a row under the caller).
+    foreach u in array array[u1, u2] loop
+      perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+      execute 'set local role authenticated';
+      perform public.seed_default_categories();
+      perform public.save_account(null, 'ZZ acct', 'savings', 1000, 'EUR');
+      perform public.save_goal(null, 'ZZ goal', 5000, 100, 'EUR', null);
+      execute 'reset role';
+      insert into public.categories (user_id, name, kind) values (u, 'ZZ custom', 'expense') returning id into cat;
+      insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+      values (u, 'expense', cat, 'EUR', 1, current_date, public.enc_minor(1200));
+      insert into public.recurring_rules (user_id, amount_enc, next_run, is_active)
+      values (u, public.enc_minor(900), current_date + 30, true);
+      insert into public.budgets (user_id, category_id, amount_enc, currency, period_start)
+      values (u, cat, extensions.pgp_sym_encrypt('10000', public.app_enc_key()), 'EUR', date_trunc('month', current_date)::date);
+      insert into public.category_rules (user_id, pattern, category_id) values (u, 'zzshop', cat);
+      insert into public.recurring_plans (user_id, payload_enc) values (u, public.enc_text('{}'));
+      insert into public.recurring_plan_undo (user_id, snapshot_enc, change_count) values (u, public.enc_text('{}'), 1);
+      insert into public.meal_vouchers (user_id, payload_enc) values (u, public.enc_text('{}'));
+      insert into public.salary_history (user_id, payload_enc) values (u, public.enc_text('{}'));
+      insert into public.ai_month_summaries (user_id, month, payload_enc, fingerprint)
+      values (u, date_trunc('month', current_date)::date, public.enc_text('{}'), md5('zz'));
+      insert into public.notifications (user_id, type, title) values (u, 'expense', 'ZZ note');
+      insert into public.consents (user_id, purpose, granted, source) values (u, 'weekly_digest', true, 'settings');
+    end loop;
+    select id into food1 from public.categories where user_id = u1 and default_key = 'food';
+    select id into sal1 from public.categories where user_id = u1 and default_key = 'salary';
+    update public.profiles set salary_category_id = sal1, display_name = 'ZZ Keep', salary_shift_from_day = 25 where id = u1;
+
+    -- A group of the two with an expense split between them: each gets a mirrored share.
+    insert into public.groups (name, owner_id, currency) values ('ZZT fresh', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role) values (gid, u1, 'Owner', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name) values (gid, u2, 'Member') returning id into m2;
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.create_group_expense_v2(gid, 'ZZ dinner', 4000, 'EUR', m1, current_date, array[m1, m2], null, 'equal');
+    execute 'reset role';
+    select id into mirror1 from public.transactions where user_id = u1 and group_expense_id is not null;
+    if mirror1 is null then raise exception 'no mirrored share to keep'; end if;
+    update public.transactions set category_id = food1 where id = mirror1;
+
+    -- A stale sign-in is refused, and nothing is touched.
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated',
+      'iat', extract(epoch from now())::bigint - 3600)::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.start_fresh();
+      msg := null;
+    exception when others then msg := sqlerrm;
+    end;
+    execute 'reset role';
+    if msg is distinct from 'For your security, please sign in again to start fresh.' then
+      raise exception 'stale sign-in not refused: %', msg;
+    end if;
+    if not exists (select 1 from public.transactions where user_id = u1 and group_expense_id is null) then
+      raise exception 'a refused run deleted entries';
+    end if;
+
+    -- The demo login is refused even with a fresh sign-in.
+    update public.profiles set is_demo = true where id = u3;
+    perform set_config('request.jwt.claims', json_build_object('sub', u3, 'role', 'authenticated', 'amr',
+      json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
+    execute 'set local role authenticated';
+    begin
+      perform public.start_fresh();
+      msg := null;
+    exception when others then msg := sqlerrm;
+    end;
+    execute 'reset role';
+    if msg is distinct from 'That isn’t available on the demo account.' then
+      raise exception 'demo not refused: %', msg;
+    end if;
+
+    -- A fresh sign-in: u1 starts fresh.
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated', 'amr',
+      json_build_array(json_build_object('method', 'password', 'timestamp', extract(epoch from now())::bigint)))::text, true);
+    execute 'set local role authenticated';
+    perform public.start_fresh();
+    execute 'reset role';
+
+    select (select count(*) from public.transactions where user_id = u1 and group_expense_id is null)
+         + (select count(*) from public.recurring_rules where user_id = u1)
+         + (select count(*) from public.budgets where user_id = u1)
+         + (select count(*) from public.category_rules where user_id = u1)
+         + (select count(*) from public.accounts where user_id = u1)
+         + (select count(*) from public.savings_goals where user_id = u1)
+         + (select count(*) from public.recurring_plans where user_id = u1)
+         + (select count(*) from public.recurring_plan_undo where user_id = u1)
+         + (select count(*) from public.meal_vouchers where user_id = u1)
+         + (select count(*) from public.salary_history where user_id = u1)
+         + (select count(*) from public.ai_month_summaries where user_id = u1)
+         + (select count(*) from public.notifications where user_id = u1)
+      into n;
+    if n <> 0 then raise exception '% personal rows left', n; end if;
+    -- The defaults are back, and nothing else.
+    select count(*) into n from public.categories where user_id = u1;
+    if n <> 13 or exists (select 1 from public.categories where user_id = u1 and default_key is null) then
+      raise exception 'categories not reset to the defaults: %', n;
+    end if;
+    -- The group, its expense and the mirrored share stay; the share is in the new Food & Dining.
+    if not exists (select 1 from public.groups where id = gid)
+       or (select count(*) from public.group_expenses where group_id = gid) <> 1 then
+      raise exception 'the group was touched';
+    end if;
+    if not exists (select 1 from public.transactions t join public.categories c on c.id = t.category_id
+                    where t.id = mirror1 and c.user_id = u1 and c.default_key = 'food' and c.id <> food1) then
+      raise exception 'mirrored share not kept in the new default category';
+    end if;
+    -- The account stays (profile, settings, consents); the salary pointer is cleared.
+    if not exists (select 1 from public.profiles where id = u1 and display_name = 'ZZ Keep'
+                     and salary_shift_from_day = 25 and salary_category_id is null) then
+      raise exception 'profile not kept as it should be';
+    end if;
+    if not exists (select 1 from public.consents where user_id = u1) then raise exception 'consents wiped'; end if;
+    -- The other user is untouched: 2 entries (one a group share) and one row of each of the rest.
+    select (select count(*) from public.transactions where user_id = u2)
+         + (select count(*) from public.recurring_rules where user_id = u2)
+         + (select count(*) from public.budgets where user_id = u2)
+         + (select count(*) from public.category_rules where user_id = u2)
+         + (select count(*) from public.accounts where user_id = u2)
+         + (select count(*) from public.savings_goals where user_id = u2)
+         + (select count(*) from public.recurring_plans where user_id = u2)
+         + (select count(*) from public.recurring_plan_undo where user_id = u2)
+         + (select count(*) from public.meal_vouchers where user_id = u2)
+         + (select count(*) from public.salary_history where user_id = u2)
+         + (select count(*) from public.ai_month_summaries where user_id = u2)
+      into n;
+    if n <> 12 or (select count(*) from public.categories where user_id = u2) <> 14
+       or not exists (select 1 from public.notifications where user_id = u2 and title = 'ZZ note') then
+      raise exception 'another user''s rows were touched (% rows)', n;
+    end if;
+
+    -- Three runs a day: two more pass, the fourth is refused.
+    execute 'set local role authenticated';
+    perform public.start_fresh();
+    perform public.start_fresh();
+    begin
+      perform public.start_fresh();
+      msg := null;
+    exception when others then msg := sqlerrm;
+    end;
+    execute 'reset role';
+    if msg is distinct from 'Too many fresh starts — please try again tomorrow.' then
+      raise exception 'fourth run not rate-limited: %', msg;
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: start_fresh wipes only the caller''s personal data, keeps the account and groups, re-seeds the defaults (fresh sign-in, no demo, 3 a day, closed to anon)';
+    else update _t set fails = fails + 1; raise notice 'FAIL: start_fresh — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 121; f int; p int;  -- tests 1–120 + B-0059
+declare expected_tests constant int := 122; f int; p int;  -- tests 1–121 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;

@@ -259,3 +259,110 @@ final class RestoreBackupModel {
         }
     }
 }
+
+/// startFreshCheck: what Start fresh asks for, and whether it can be pressed.
+struct StartFreshCheck: Decodable, Equatable {
+    let password: Bool
+    let needsReauth: Bool
+    let phraseOk: Bool
+    let canSubmit: Bool
+}
+
+/// Settings › Your data's Start fresh, after the web's StartFresh: wipe this
+/// account's own data and keep the account (start_fresh). A backup is offered
+/// first, then START FRESH typed and the password (or a sign-in in the last
+/// few minutes: reauth.isRecentClaims), as Delete account asks. Afterwards
+/// the frame forgets what this phone kept and shows Home (`onDone`). Hidden
+/// on the shared demo login, which the server refuses anyway.
+@MainActor
+@Observable
+final class StartFreshModel {
+    private(set) var isDemo = false
+    /// Whether this session signed in within the last few minutes.
+    private(set) var recent = false
+    private(set) var busy = false
+    /// Why the last try failed, nil when it didn't.
+    private(set) var failed: String?
+    var phrase = "" { didSet { failed = nil } }
+    var password = "" { didSet { failed = nil } }
+    /// After a run: the offline copies, the widgets' figures and every screen
+    /// start over, at Home (AppFrame sets it).
+    var onDone: @MainActor () async -> Void = {}
+
+    private var user: JSONValue = [:]
+    private let data: DataLayer
+    private let security: AccountSecurity
+    private let signOut: @MainActor () async -> Void
+    private let core: BudgeerCore
+    private let now: @Sendable () -> Date
+
+    init(data: DataLayer, security: AccountSecurity, signOut: @escaping @MainActor () async -> Void,
+         core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() }) {
+        self.data = data
+        self.security = security
+        self.signOut = signOut
+        self.core = core
+        self.now = now
+    }
+
+    func load() async {
+        if let profile = try? await data.profile.profile() {
+            isDemo = (try? core.call("demoAccount", "isDemoAccount", [profile])) ?? false
+        }
+        if let fresh = try? await security.accountUser() { user = fresh }
+        await checkRecent()
+    }
+
+    /// The confirmation for what's typed now (startFreshCheck).
+    var check: StartFreshCheck? {
+        let args: JSONValue = ["user": user, "recent": .bool(recent), "phrase": .string(phrase), "password": .string(password)]
+        guard let check: StartFreshCheck = try? core.call("startFreshMath", "startFreshCheck", [args]) else { return nil }
+        return check
+    }
+
+    /// The phrase to type (START_FRESH_PHRASE), the field's placeholder.
+    var phraseHint: String { (try? core.call("startFreshMath", "START_FRESH_PHRASE", [])) ?? "" }
+
+    /// What goes and what stays (startFreshScope): the two lists.
+    var scope: (wiped: [String], kept: [String]) {
+        let scope = try? core.json("startFreshMath", "startFreshScope", [])
+        let lines = { (list: String) -> [String] in (scope?[list]?.arrayValue ?? []).compactMap(\.stringValue) }
+        return (lines("wiped"), lines("kept"))
+    }
+
+    /// Start fresh: the server wipes, then the frame starts this phone over (onDone).
+    @discardableResult
+    func startFresh() async -> Bool {
+        await checkRecent()
+        guard let check, check.canSubmit else { return false }
+        busy = true
+        defer { busy = false }
+        do {
+            try await data.privacy.startFresh(password: check.password ? password : nil)
+        } catch is CurrentPasswordInvalid {
+            failed = core.text("backup:startFresh.wrongPassword")
+            return false
+        } catch {
+            failed = UserMessage.of(error, fallback: core.text("backup:startFresh.failed"), core: core)
+            return false
+        }
+        phrase = ""
+        password = ""
+        await onDone()
+        return true
+    }
+
+    /// "Log in again": signed out, so the next sign-in is a fresh one.
+    func logInAgain() async {
+        await signOut()
+    }
+
+    private func checkRecent() async {
+        guard let claims = await security.tokenClaims() else {
+            recent = false
+            return
+        }
+        let ms = (now().timeIntervalSince1970 * 1000).rounded()
+        recent = (try? core.call("reauth", "isRecentClaims", [claims, JSONValue.double(ms)])) ?? false
+    }
+}

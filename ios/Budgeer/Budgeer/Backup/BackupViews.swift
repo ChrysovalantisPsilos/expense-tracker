@@ -11,7 +11,12 @@ import UniformTypeIdentifiers
 
 @MainActor
 struct YourDataView: View {
+    @Bindable var startFresh: StartFreshModel
+    /// For the backup Start fresh offers first (Export backup, in its sheet).
+    let data: DataLayer
+    let userId: String
     @Environment(AppLanguage.self) private var language
+    @State private var confirming = false
 
     var body: some View {
         List {
@@ -44,12 +49,139 @@ struct YourDataView: View {
                 NativeCapsHeader(title: language.t("backup:restore.title"))
             }
             .listRowBackground(NativeStyle.card)
+
+            if !startFresh.isDemo {
+                Section {
+                    Text(language.t("backup:startFresh.lead")).font(.subheadline).foregroundStyle(.secondary)
+                    Button(role: .destructive) {
+                        startFresh.phrase = ""
+                        startFresh.password = ""
+                        confirming = true
+                    } label: {
+                        Label(language.t("backup:startFresh.open"), systemImage: "arrow.counterclockwise")
+                    }
+                    .accessibilityIdentifier("data.startFresh")
+                } header: {
+                    Text(language.t("backup:startFresh.title").capsLabel)
+                        .textCase(nil)
+                        .foregroundStyle(NativeStyle.negative)
+                }
+                .listRowBackground(NativeStyle.card)
+            }
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(NativeStyle.canvas)
         .nativeTabBarRoom()
         .navigationTitle(language.t("settings:rows.data.label"))
+        .task { await startFresh.load() }
+        .sheet(isPresented: $confirming) {
+            StartFreshSheet(model: startFresh, data: data, userId: userId).environment(language)
+        }
+    }
+}
+
+/// Start fresh? What goes and what stays, a backup first, then START FRESH
+/// and the password (or a fresh sign-in), and Start fresh.
+@MainActor
+struct StartFreshSheet: View {
+    @Bindable var model: StartFreshModel
+    let data: DataLayer
+    let userId: String
+    @Environment(AppLanguage.self) private var language
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text(language.t("backup:startFresh.warning")).font(.subheadline)
+                }
+                .listRowBackground(NativeStyle.card)
+                Section {
+                    ForEach(model.scope.wiped, id: \.self) { line in
+                        Label(line, systemImage: "minus.circle").font(.subheadline)
+                    }
+                } header: {
+                    NativeCapsHeader(title: language.t("backup:startFresh.wipedList"))
+                }
+                .listRowBackground(NativeStyle.card)
+                Section {
+                    ForEach(model.scope.kept, id: \.self) { line in
+                        Label(line, systemImage: "checkmark.circle").font(.subheadline)
+                    }
+                } header: {
+                    NativeCapsHeader(title: language.t("backup:startFresh.keptList"))
+                }
+                .listRowBackground(NativeStyle.card)
+                Section {
+                    BackupNote(symbol: "square.and.arrow.down", warning: true, text: language.t("backup:startFresh.backupLead"))
+                    // Export backup, in this sheet; Back returns here once the file is shared.
+                    NavigationLink {
+                        BackupHost(page: .export, data: data, userId: userId, email: nil)
+                    } label: {
+                        Label(language.t("backup:startFresh.backup"), systemImage: "square.and.arrow.down.fill")
+                    }
+                    .accessibilityIdentifier("startFresh.backup")
+                } header: {
+                    NativeCapsHeader(title: language.t("backup:startFresh.backupTitle"))
+                }
+                .listRowBackground(NativeStyle.card)
+                if let check = model.check {
+                    Section {
+                        TextField(model.phraseHint, text: $model.phrase)
+                            .textInputAutocapitalization(.characters)
+                            .autocorrectionDisabled()
+                            .accessibilityIdentifier("startFresh.phrase")
+                    } header: {
+                        NativeCapsHeader(title: language.t("backup:startFresh.phraseLabel"))
+                    }
+                    .listRowBackground(NativeStyle.card)
+                    Section {
+                        if check.password {
+                            SecureField(language.t("backup:startFresh.passwordPlaceholder"), text: $model.password)
+                                .textContentType(.password)
+                                .accessibilityIdentifier("startFresh.password")
+                        } else if check.needsReauth {
+                            ReauthRow(text: language.t("common:errors.reauth.startFresh")) {
+                                dismiss()
+                                Task { await model.logInAgain() }
+                            }
+                        }
+                    } header: {
+                        if check.password { NativeCapsHeader(title: language.t("backup:startFresh.passwordLabel")) }
+                    } footer: {
+                        if let failed = model.failed { Text(failed).foregroundStyle(NativeStyle.negative) }
+                    }
+                    .listRowBackground(NativeStyle.card)
+                }
+            }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(NativeStyle.canvas)
+            .navigationTitle(language.t("backup:startFresh.confirmTitle"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(language.t("common:actions.cancel")) { dismiss() }
+                        .keyboardShortcut(.cancelAction)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(role: .destructive) {
+                        Task { if await model.startFresh() { dismiss() } }
+                    } label: {
+                        if model.busy {
+                            ProgressView()
+                        } else {
+                            Text(language.t("backup:startFresh.submit")).fontWeight(.semibold)
+                        }
+                    }
+                    .tint(NativeStyle.negative)
+                    .disabled(!(model.check?.canSubmit ?? false) || model.busy)
+                    .accessibilityIdentifier("startFresh.confirm")
+                }
+            }
+        }
     }
 }
 
