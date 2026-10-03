@@ -46,6 +46,7 @@ final class InsightsModel {
     private var profile: JSONValue = [:]
     private var savings: JSONValue = []
     private var rows: JSONValue = []
+    private var moves: JSONValue = []
     private let data: DataLayer
     private let core: BudgeerCore
     private let now: @Sendable () -> Date
@@ -67,6 +68,9 @@ final class InsightsModel {
             // One read after another: the data layer's reads are not run side by side.
             let read = try await data.transactions.transactions(query)
             rows = try await FxRates.fillPending(read, base: base, today: today, fx: data.fx, core: core)
+            // The money groups really moved in the six months (the trend's net counts it), pending rates filled.
+            let flow = try await data.groups.groupFlow(from: query.from, to: query.to)
+            moves = try await FxRates.fillPending(flow, base: base, today: today, fx: data.fx, core: core)
             savings = try await data.categories.savingsCategories()
             try refigure()
             await loadCards(base: base, today: today, now: instant)
@@ -125,7 +129,7 @@ final class InsightsModel {
     }
 
     private func refigure() throws {
-        state = .loaded(try InsightsFigures.compute(profile: profile, categories: savings, rows: rows, now: now(),
+        state = .loaded(try InsightsFigures.compute(profile: profile, categories: savings, rows: rows, moves: moves, now: now(),
                                                     picked: picked, core: core))
     }
 

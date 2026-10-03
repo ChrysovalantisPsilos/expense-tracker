@@ -135,6 +135,12 @@ export function groupFlow(moves, baseCurrency, { from = null, to = null } = {}) 
   return out
 }
 
+// What a groupFlow does to the net: + paid for you + paid back to you − paid
+// for others − paid back by you (Home's Net, the Insights trend's net).
+export function groupFlowNet({ groupsFronted = 0, groupsCovered = 0, settledIn = 0, settledOut = 0 } = {}) {
+  return groupsCovered + settledIn - groupsFronted - settledOut
+}
+
 // Headline figures: actual totals (periodTotals) plus the projection
 // (periodProjection), and the net — income − expenses paid from income −
 // savings taken from income (received savings and expenses paid from savings
@@ -153,7 +159,7 @@ export function projectedTotals(totals, proj, flow = NO_GROUP_FLOW) {
     groupsCovered,
     settledIn,
     settledOut,
-    netTotal: totals.net + proj.net + groupsCovered + settledIn - groupsFronted - settledOut,
+    netTotal: totals.net + proj.net + groupFlowNet({ groupsFronted, groupsCovered, settledIn, settledOut }),
   }
 }
 

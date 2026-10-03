@@ -25,6 +25,7 @@ import { SkeletonBlock, SkeletonRegion, SkeletonRows } from '../../shared/ui/Ske
 import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
 import { linkBuckets } from '../../shared/lib/categoryLinks.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
+import { useGroupFlow } from '../groups/groups.js'
 import { lastMonths, monthHeading } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { spendRows } from '../../shared/lib/spread.js'
@@ -55,11 +56,16 @@ export default function Insights() {
   // Savings entries (0084) are neither income nor spending: the trend leaves
   // them out, and waits for the savings categories so it never counts them.
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
-  const loading = rowsLoading || savingsLoading
+  // The money groups really moved in the six months: the trend's net counts
+  // it, as Home's Net does.
+  const { data: moves, loading: movesLoading, error: movesError, reload: reloadMoves } = useGroupFlow({ from, to })
+  const loading = rowsLoading || savingsLoading || movesLoading
   const spend = useMemo(
     () => spendRows(rows, baseCurrency, from, to, { separateYearly, salaryShift }),
     [rows, baseCurrency, from, to, separateYearly, salaryShift])
-  const failed = error ? <QueryError error={error} onRetry={reload} what={t('what')} /> : null
+  const failed = error || movesError
+    ? <QueryError error={error ?? movesError} onRetry={() => Promise.all([reload(), reloadMoves()])} what={t('what')} />
+    : null
   const thisMonth = months[months.length - 1].key
   // The month "Where your money went" splits: this one, or the bar tapped.
   const [picked, setPicked] = useState(months.length - 1)
@@ -69,7 +75,7 @@ export default function Insights() {
   // Trend values are major units (chart axis); `money` converts back to minor.
   const money = (major) => trendMoney(major, baseCurrency)
   const trend = useMemo(
-    () => buildTrend(spend, months, baseCurrency, savingsIds), [spend, months, baseCurrency, savingsIds])
+    () => buildTrend(spend, months, baseCurrency, savingsIds, moves), [spend, months, baseCurrency, savingsIds, moves])
   // Each legend entry drills down to the month's expenses in it (a group share
   // to its group); the folded "Other" merges several buckets, so it has no link.
   const shares = useMemo(() => linkBuckets(

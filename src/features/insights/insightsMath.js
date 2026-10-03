@@ -6,6 +6,7 @@ import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { bucketLabel, bucketLabels, bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { isSavingsAccount, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { categoryBars } from '../dashboard/categoryBars.js'
+import { groupFlow, groupFlowNet } from '../dashboard/dashboardMath.js'
 import { entryName } from '../../shared/lib/categoryName.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 
@@ -16,8 +17,10 @@ import { t } from '../../shared/lib/i18n/i18n.js'
 // monthly share in each month. Savings entries (in `savingsIds`, 0084) are
 // neither income nor spending; `net` (what's left over: income − expenses −
 // savings taken from income) is the one figure they touch. An expense paid
-// from savings (0085) is spending, but leaves `net` alone.
-export function buildTrend(rows, months, baseCurrency, savingsIds = new Set()) {
+// from savings (0085) is spending, but leaves `net` alone. `moves` (my_group_flow's
+// rows, 0110) adjust each month's `net` by the money groups really moved in
+// it, as Home's Net does (dashboardMath.groupFlow).
+export function buildTrend(rows, months, baseCurrency, savingsIds = new Set(), moves = []) {
   const factor = minorFactor(baseCurrency)
   const by = new Map(months.map((m) => [m.key, { label: m.label, income: 0, expense: 0, net: 0 }]))
   for (const r of rows) {
@@ -29,6 +32,10 @@ export function buildTrend(rows, months, baseCurrency, savingsIds = new Set()) {
     if (effect === 'income') bucket.income += base
     else if (isSpending(effect)) bucket.expense += base
     bucket.net += netSign(effect) * base
+  }
+  for (const [key, bucket] of by) {
+    const inMonth = (moves ?? []).filter((m) => String(m.spent_at).slice(0, 7) === key)
+    bucket.net += groupFlowNet(groupFlow(inMonth, baseCurrency)) / factor
   }
   return [...by.values()]
 }

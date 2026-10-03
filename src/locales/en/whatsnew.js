@@ -8,6 +8,14 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-10-09': {
+      groupNet: {
+        title: 'Net follows the money that moved',
+        body: 'When you pay for a group, your Net now drops by all you paid, and goes back up as people pay you back. When someone else pays, your Net waits until you pay them. Spent still shows only your share. Tap ⓘ next to Net to see each step; the Insights trend works the same way.',
+        chips: { paid: 'Paid for others', back: 'Paid back to you' },
+        action: 'Open Groups',
+      },
+    },
     '2026-10-08': {
       amount: {
         title: 'Type the amount of a shared expense',

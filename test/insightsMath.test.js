@@ -25,6 +25,24 @@ test('buildTrend: buckets income/expense per month in major base units', () => {
   ])
 })
 
+test('buildTrend: each month\'s net counts the money groups really moved in it (0110)', () => {
+  const rows = [
+    { spent_at: '2026-01-10', kind: 'expense', amount_minor: 1500, exchange_rate: 1, currency: 'EUR', group_expense_id: 'g1' },
+  ]
+  const moves = [
+    // Brunch €30 I paid, my share €15 (in Spent): €15 more left me.
+    { kind: 'expense', spent_at: '2026-01-10', amount_minor: 3000, share_minor: 1500, currency: 'EUR', exchange_rate: 1, paid_by_me: true },
+    // Paid back in February.
+    { kind: 'settlement', spent_at: '2026-02-03', amount_minor: 1500, share_minor: null, currency: 'EUR', exchange_rate: 1, paid_by_me: false },
+    // Outside the months: ignored.
+    { kind: 'settlement', spent_at: '2025-12-20', amount_minor: 999, share_minor: null, currency: 'EUR', exchange_rate: 1, paid_by_me: false },
+  ]
+  const t = buildTrend(rows, months, 'EUR', new Set(), moves)
+  assert.deepEqual(t.map((m) => [m.expense, m.net]), [[15, -30], [0, 15]])
+  // Without moves the net is the entries' alone.
+  assert.deepEqual(buildTrend(rows, months, 'EUR').map((m) => m.net), [-15, 0])
+})
+
 test('spendDelta: percent change vs previous month, null when not computable', () => {
   assert.equal(spendDelta([{ expense: 100 }, { expense: 150 }]), 50)
   assert.equal(spendDelta([{ expense: 200 }, { expense: 100 }]), -50)

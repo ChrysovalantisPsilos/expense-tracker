@@ -464,7 +464,8 @@ struct AppFrame: View {
                 }
         case .insights:
             InsightsView(model: models.insights)
-                .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "accounts", "meal_vouchers"]) {
+                .liveRefresh(container.live, tables: ["transactions", "categories", "profiles", "accounts", "meal_vouchers",
+                                                         "group_expenses", "settlements"]) {
                     await models.insights.load()
                 }
         case .plan:

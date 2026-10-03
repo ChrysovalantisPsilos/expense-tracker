@@ -89,8 +89,9 @@ struct InsightsFigures: Codable, Equatable, Sendable {
 
     /// - rows: my_transactions over the six months with p_spread
     /// - picked: the month tapped (an index into the six), nil for this one
-    static func compute(profile: JSONValue, categories: JSONValue, rows: JSONValue, now: Date, picked: Int?,
-                        core: BudgeerCore) throws -> InsightsFigures {
+    /// - moves: my_group_flow over the six months (the trend's net counts them, as Home's Net does)
+    static func compute(profile: JSONValue, categories: JSONValue, rows: JSONValue, moves: JSONValue = [], now: Date,
+                        picked: Int?, core: BudgeerCore) throws -> InsightsFigures {
         let base = profile["base_currency"]?.stringValue ?? "EUR"
         let months = try months(now: now, core: core)
         let list = months.arrayValue ?? []
@@ -100,7 +101,7 @@ struct InsightsFigures: Codable, Equatable, Sendable {
                                   "salaryShift": try core.json("salaryShift", "salaryShiftOf", [profile])]
         let spend = try core.json("spread", "spendRows", [rows, base, from, to, options])
         let savingsIds = try core.json("savings", "savingsIdsOf", [categories])
-        let trend = try core.json("insightsMath", "buildTrend", [spend, months, base, savingsIds])
+        let trend = try core.json("insightsMath", "buildTrend", [spend, months, base, savingsIds, moves])
         let index = picked ?? (list.count - 1)
         let key = list.indices.contains(index) ? (list[index]["key"] ?? .null) : .null
         let monthLabel: String = try core.call("insightsMath", "pickedMonthLabel", [months, index, JSDate(now)])
