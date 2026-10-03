@@ -25,7 +25,8 @@ struct HomeView: View {
 
     private static let celebratedKey = "budgeer.celebratedMonths"
     /// The tables whose changes refresh Home (the frame's liveRefresh).
-    static let tables: Set<String> = ["transactions", "categories", "profiles", "budgets", "recurring_rules", "meal_vouchers"]
+    static let tables: Set<String> = ["transactions", "categories", "profiles", "budgets", "recurring_rules", "meal_vouchers",
+                                      "group_expenses", "settlements"]
 
     init(model: HomeViewModel, chrome: PageChrome, addFirst: @escaping () -> Void = {}) {
         self.model = model

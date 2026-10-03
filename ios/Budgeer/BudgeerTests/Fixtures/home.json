@@ -429,6 +429,35 @@
     "rates": {
       "USD": 0.9
     },
+    "groupMoves": [
+      {
+        "kind": "expense",
+        "spent_at": "2020-09-08",
+        "amount_minor": 6600,
+        "share_minor": 2200,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "paid_by_me": true
+      },
+      {
+        "kind": "settlement",
+        "spent_at": "2020-09-12",
+        "amount_minor": 1000,
+        "share_minor": null,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "paid_by_me": true
+      },
+      {
+        "kind": "settlement",
+        "spent_at": "2020-08-20",
+        "amount_minor": 1500,
+        "share_minor": null,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "paid_by_me": false
+      }
+    ],
     "views": [
       {
         "name": "thisMonth",
@@ -452,10 +481,10 @@
         "fetchFrom": "2020-08-25",
         "spentTotal": 34128,
         "earnedTotal": 255000,
-        "netTotal": 202872,
+        "netTotal": 197472,
         "spent": "€341.28",
         "income": "€2,550.00",
-        "net": "+€2,028.72",
+        "net": "+€1,974.72",
         "netTone": "positive",
         "saved": "+€300.00 in · −€120.00 out",
         "sum": {
@@ -480,11 +509,21 @@
               "key": "toSavings",
               "label": "Put into savings",
               "value": "−€300.00"
+            },
+            {
+              "key": "groupsFronted",
+              "label": "Paid for others in groups",
+              "value": "−€44.00"
+            },
+            {
+              "key": "settledOut",
+              "label": "You paid back",
+              "value": "−€10.00"
             }
           ],
           "total": {
             "label": "Net",
-            "value": "+€2,028.72",
+            "value": "+€1,974.72",
             "tone": "positive"
           }
         },
@@ -1096,10 +1135,10 @@
         "fetchFrom": "2020-07-25",
         "spentTotal": 2099,
         "earnedTotal": 0,
-        "netTotal": -2099,
+        "netTotal": -599,
         "spent": "€20.99",
         "income": "€0.00",
-        "net": "−€20.99",
+        "net": "−€5.99",
         "netTone": "negative",
         "saved": null,
         "sum": {
@@ -1114,11 +1153,16 @@
               "key": "spent",
               "label": "Spent",
               "value": "−€20.99"
+            },
+            {
+              "key": "settledIn",
+              "label": "Paid back to you",
+              "value": "+€15.00"
             }
           ],
           "total": {
             "label": "Net",
-            "value": "−€20.99",
+            "value": "−€5.99",
             "tone": "negative"
           }
         },
@@ -1273,10 +1317,10 @@
         "fetchFrom": "2020-08-25",
         "spentTotal": 34128,
         "earnedTotal": 255000,
-        "netTotal": 202872,
+        "netTotal": 197472,
         "spent": "341,28 €",
         "income": "2.550,00 €",
-        "net": "+2.028,72 €",
+        "net": "+1.974,72 €",
         "netTone": "positive",
         "saved": "+300,00 € μέσα · −120,00 € έξω",
         "sum": {
@@ -1301,11 +1345,21 @@
               "key": "toSavings",
               "label": "Στις αποταμιεύσεις",
               "value": "−300,00 €"
+            },
+            {
+              "key": "groupsFronted",
+              "label": "Πλήρωσες για άλλους σε ομάδες",
+              "value": "−44,00 €"
+            },
+            {
+              "key": "settledOut",
+              "label": "Επέστρεψες",
+              "value": "−10,00 €"
             }
           ],
           "total": {
             "label": "Καθαρό",
-            "value": "+2.028,72 €",
+            "value": "+1.974,72 €",
             "tone": "positive"
           }
         },
@@ -1917,10 +1971,10 @@
         "fetchFrom": "2020-07-25",
         "spentTotal": 2099,
         "earnedTotal": 0,
-        "netTotal": -2099,
+        "netTotal": -599,
         "spent": "20,99 €",
         "income": "0,00 €",
-        "net": "−20,99 €",
+        "net": "−5,99 €",
         "netTone": "negative",
         "saved": null,
         "sum": {
@@ -1935,11 +1989,16 @@
               "key": "spent",
               "label": "Έξοδα",
               "value": "−20,99 €"
+            },
+            {
+              "key": "settledIn",
+              "label": "Σου επέστρεψαν",
+              "value": "+15,00 €"
             }
           ],
           "total": {
             "label": "Καθαρό",
-            "value": "−20,99 €",
+            "value": "−5,99 €",
             "tone": "negative"
           }
         },

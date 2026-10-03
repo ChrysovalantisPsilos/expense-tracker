@@ -1,5 +1,9 @@
 import { supabase } from '../../shared/lib/supabase.js'
 import { useLiveQuery } from '../../shared/lib/db.js'
+import { useAuth } from '../../shared/auth/AuthProvider.jsx'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
+import { fillPendingRates } from '../../shared/lib/fx.js'
+import { queryCacheKey } from '../../shared/lib/queryCache.js'
 import { saveBlob, toBlob } from '../../shared/lib/download.js'
 import { FILE_TYPES, groupStatementFilename } from '../../../supabase/functions/_shared/files.ts'
 import { dbError, edgeFunctionError } from '../../shared/lib/errors.js'
@@ -60,6 +64,35 @@ export function useGroup(groupId, { activity = false } = {}) {
       { table: 'group_members', filter: `group_id=eq.${groupId}` },
     ],
     deps: [groupId, activity],
+  })
+}
+
+// The signed-in user's group money moves dated in [from, to] (either end
+// undefined = open): my_group_flow (0110), the expenses they paid or have a
+// share of and the settlements from or to them, for Home's Net
+// (dashboardMath.groupFlow). Pending rates are filled like the
+// transactions'. Live: a group expense or settlement in any of their groups,
+// or a change to their own entries (a mirrored share), refetches it.
+// Returns useLiveQuery's { data: rows, loading, error, reload }.
+export function useGroupFlow({ from, to } = {}) {
+  const { user } = useAuth()
+  const uid = user?.id ?? null
+  const { baseCurrency } = useProfile()
+  return useLiveQuery(async () => {
+    const { data, error } = await supabase.rpc('my_group_flow', { p_from: from ?? null, p_to: to ?? null })
+    if (error) throw dbError(error)
+    return fillPendingRates(data ?? [], baseCurrency)
+  }, {
+    key: uid ? 'group-flow' : null,
+    specs: [
+      { table: 'transactions', filter: uid ? `user_id=eq.${uid}` : undefined },
+      { table: 'group_expenses' },
+      { table: 'settlements' },
+    ],
+    deps: [uid, from, to, baseCurrency],
+    enabled: !!uid,
+    initial: [],
+    cacheKey: uid ? queryCacheKey('group-flow', [uid, from, to, baseCurrency]) : null,
   })
 }
 

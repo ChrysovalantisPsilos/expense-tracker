@@ -18,6 +18,7 @@ extension FakeStore {
     }
 
     func groupActivity(id: String) async throws -> JSONValue { activityRows }
+    func groupFlow(from: String?, to: String?) async throws -> JSONValue { groupMoves }
     func groupCommentCounts(id: String) async throws -> JSONValue { commentCountRows }
     func groupComments(groupId: String, targetId: String) async throws -> JSONValue { commentRows }
     func memberPaymentInfo(memberId: String) async throws -> JSONValue { paymentInfo }

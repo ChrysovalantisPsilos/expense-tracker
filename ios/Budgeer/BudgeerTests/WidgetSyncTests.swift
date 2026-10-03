@@ -63,7 +63,7 @@ final class WidgetSyncTests: XCTestCase {
         try BudgeerCore.shared.setLanguage("en")
         let en = try WidgetSync.snapshot(fixture.homeInput(), written: fixture.now, core: .shared)
         XCTAssertEqual(en.spent, "€341.28")
-        XCTAssertEqual(en.net, "+€2,028.72")
+        XCTAssertEqual(en.net, "+€1,974.72") // less the group dinner paid for others and €10 paid back
         XCTAssertEqual(en.netTone, "positive")
         XCTAssertEqual(en.bars.last?.amount, "€79.00") // Transport and the rest
     }

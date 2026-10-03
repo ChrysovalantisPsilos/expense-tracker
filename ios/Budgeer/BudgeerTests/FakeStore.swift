@@ -17,6 +17,8 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     var commentCountRows: JSONValue = []
     var commentRows: JSONValue = []
     var paymentInfo: JSONValue = [:]
+    /// my_group_flow's answer (Home's Net).
+    var groupMoves: JSONValue = []
     /// What the groups' writes did, in order: "rpc-name" plus its arguments.
     var groupWrites: [(name: String, args: JSONValue)] = []
     /// invite_user_to_group's answer.
