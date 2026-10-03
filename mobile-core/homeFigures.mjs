@@ -20,7 +20,7 @@ import { savingsIdsOf } from '../src/shared/lib/savings.js'
 import { paidInWindow, spendRows } from '../src/shared/lib/spread.js'
 import { rulesInBase } from '../src/shared/lib/ruleFx.js'
 import {
-  periodTotals, periodProjection, projectedTotals, savingsLine, barLines, homeLists, visibleBars, homeCards, netSum,
+  periodTotals, periodProjection, projectedTotals, groupFlow, savingsLine, barLines, homeLists, visibleBars, homeCards, netSum,
   overviewNotes,
 } from '../src/features/dashboard/dashboardMath.js'
 import { isFirstRun, listHeading } from '../src/features/transactions/listHeading.js'
@@ -100,7 +100,11 @@ export function homeList(kind, items, { periodLabel, baseCurrency, salaryShift, 
 // the recurring rules (the projection of what's still to come, and the
 // Recurring card) and today's rates for the foreign ones. `oldest` is the
 // first transaction's date (null: none at all), for the first-run cards.
-export function homeFigures({ rows, profile, categories, rules = [], rates = {}, now, periodValue = null, oldest, lang = 'en' }) {
+// `groupMoves` are my_group_flow's rows for the period (the money groups
+// really moved, which the Net counts).
+export function homeFigures({
+  rows, profile, categories, rules = [], rates = {}, groupMoves = [], now, periodValue = null, oldest, lang = 'en',
+}) {
   setLanguage(lang)
   const date = new Date(now)
   const period = (periodValue && periodFromValue(periodValue, date)) || thisMonthPeriod(date)
@@ -113,7 +117,7 @@ export function homeFigures({ rows, profile, categories, rules = [], rates = {},
   const totals = periodTotals(spend, baseCurrency, savingsIds)
   const proj = periodProjection(rulesInBase(rules, baseCurrency, rates).rules, { from: period.from, to: period.to },
     todayISO, separateYearly, salaryShift, savingsIds)
-  const figures = projectedTotals(totals, proj)
+  const figures = projectedTotals(totals, proj, groupFlow(groupMoves, baseCurrency, { from: period.from, to: period.to }))
   const labels = bucketLabels([...totals.bucketRow.values()])
   // Each bar's badge as Dashboard's BucketIcon draws it: a group's share
   // wears the people icon, anything else its category's look.
@@ -227,6 +231,14 @@ export const FIXTURE_INPUT = {
     rule('r5', 1500, 'weekly', '2020-09-21', EATING, { description: 'Lunch club', is_active: false }),
   ],
   rates: { USD: 0.9 },
+  // The group money behind the Net (my_group_flow): the Lisbon trip's €66
+  // dinner I paid (€22 of it mine, b1), €10 I paid back on the 12th, and €15
+  // paid back to me in August.
+  groupMoves: [
+    { kind: 'expense', spent_at: '2020-09-08', amount_minor: 6600, share_minor: 2200, currency: 'EUR', exchange_rate: 1, paid_by_me: true },
+    { kind: 'settlement', spent_at: '2020-09-12', amount_minor: 1000, share_minor: null, currency: 'EUR', exchange_rate: 1, paid_by_me: true },
+    { kind: 'settlement', spent_at: '2020-08-20', amount_minor: 1500, share_minor: null, currency: 'EUR', exchange_rate: 1, paid_by_me: false },
+  ],
   views: [{ name: 'thisMonth', periodValue: null }, { name: 'august', periodValue: 'm:2020-8' }],
 }
 

@@ -38,6 +38,12 @@ extension SupabaseStore {
         }
     }
 
+    func groupFlow(from: String?, to: String?) async throws -> JSONValue {
+        try await cached("group-flow", "\(from ?? "")|\(to ?? "")") {
+            try await client.rpc("my_group_flow", params: ["p_from": from.json, "p_to": to.json]).execute().value
+        }
+    }
+
     func groupDetail(id: String) async throws -> JSONValue {
         try await cached("group", id) {
             async let group: JSONValue = client.from("groups").select("*").eq("id", value: id).single().execute().value

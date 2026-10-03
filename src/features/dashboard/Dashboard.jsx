@@ -13,6 +13,7 @@ import { buildPeriods, isThisMonth, thisMonthPeriod } from '../../shared/lib/per
 import { linkBuckets } from '../../shared/lib/categoryLinks.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
 import { usePrefetchMyGroups } from '../groups/myGroups.js'
+import { useGroupFlow } from '../groups/groups.js'
 import { monthName, today } from '../../shared/lib/dates.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring, useRuleRates } from '../recurring/recurring.js'
@@ -36,7 +37,7 @@ import SumSteps from '../../shared/ui/SumSteps.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import {
-  periodTotals, periodProjection, projectedTotals, overviewNotes, netSum, savingsLine, barLines, homeLists, visibleBars,
+  periodTotals, periodProjection, projectedTotals, groupFlow, overviewNotes, netSum, savingsLine, barLines, homeLists, visibleBars,
   TOP_CATEGORIES, homeCards, homeStacks,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
@@ -85,10 +86,20 @@ export default function Dashboard() {
   const { rows, loading: rowsLoading, error, reload, mutate } = useTransactions({
     from: period.from ?? undefined, to: period.to ?? undefined, spread: true,
   })
+  // The money groups really moved in the period (paid for others, paid for
+  // you, settlements): the Net counts it (dashboardMath.groupFlow).
+  const { data: moves, loading: movesLoading, error: movesError, reload: reloadMoves } = useGroupFlow({
+    from: period.from ?? undefined, to: period.to ?? undefined,
+  })
   // Savings entries (0084) aren't income: every figure below waits for the
   // user's savings categories so none flashes with them counted.
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
   const loading = rowsLoading || savingsLoading
+  // The overview's figures also wait for the group moves (one error, one
+  // Retry for both reads).
+  const overviewLoading = loading || movesLoading
+  const overviewError = error ?? movesError
+  const reloadOverview = () => Promise.all([reload(), reloadMoves()])
   // Warm the Add form's "Who's it for?" groups once Home has loaded.
   usePrefetchMyGroups(!loading)
   // Recheck whenever the (live) transaction rows change, so importing older
@@ -131,7 +142,9 @@ export default function Dashboard() {
     () => periodProjection(rulesInBase(rules, baseCurrency, ruleFx.rates).rules, { from: period.from, to: period.to },
       todayISO, separateYearly, salaryShift, savingsIds),
     [rules, baseCurrency, ruleFx.rates, period.from, period.to, todayISO, separateYearly, salaryShift, savingsIds])
-  const figures = projectedTotals(totals, proj)
+  const flow = useMemo(() => groupFlow(moves, baseCurrency, { from: period.from, to: period.to }),
+    [moves, baseCurrency, period.from, period.to])
+  const figures = projectedTotals(totals, proj, flow)
   const { spentTotal, earnedTotal, netTotal } = figures
   const net = signedAmount(netTotal, (m) => formatMoney(m, baseCurrency))
   const saved = savingsLine(totals.saved, figures.fromSavingsTotal, period, baseCurrency)
@@ -165,10 +178,10 @@ export default function Dashboard() {
 
   // Every card by id; homeCards / homeStacks decide which show, and where.
   const card = {
-    overview: error ? (
-        // One error (with Retry) for the transactions every card below needs,
-        // instead of €0.00 totals that look real.
-        <Panel data-tour="overview"><QueryError error={error} onRetry={reload} what={t('what')} /></Panel>
+    overview: overviewError ? (
+        // One error (with Retry) for the reads the figures need, instead of
+        // €0.00 totals that look real (the cards below say so for theirs).
+        <Panel data-tour="overview"><QueryError error={overviewError} onRetry={reloadOverview} what={t('what')} /></Panel>
       ) : (
       <Panel data-tour="overview">
         {/* With "Month in plain words" on, This month offers Numbers | In
@@ -185,7 +198,7 @@ export default function Dashboard() {
         )}
         <Grid>
           <Box gridArea="1 / 1" minW={0} visibility={words.words ? 'hidden' : undefined}>
-            {loading ? <OverviewSkeleton grid={overviewGrid} /> : (
+            {overviewLoading ? <OverviewSkeleton grid={overviewGrid} /> : (
             <SimpleGrid {...overviewGrid} spacing={4} alignItems="center">
               {/* What Spent, Income and the Net fold in sits behind the ⓘ
                   (overviewNotes, netSum). */}
@@ -210,7 +223,7 @@ export default function Dashboard() {
               </SimpleGrid>
             </SimpleGrid>
             )}
-            {!loading && (
+            {!overviewLoading && (
               <InfoBox info={info}>
                 <SumSteps {...netSum(figures, baseCurrency)} />
                 {overviewNotes({ proj }, baseCurrency).map((line) => <Text key={line} mt={2}>{line}</Text>)}

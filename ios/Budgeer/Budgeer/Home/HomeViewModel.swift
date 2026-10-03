@@ -2,8 +2,9 @@
 // first because it says where the period's rows start (the salary shift),
 // the pickers' periods (from the first transaction; next month once its
 // salary is in), the recurring rules and today's rates for their foreign
-// currencies, then the period's rows (pending rates filled) and the savings
-// categories, then the figures from the core (HomeFigures). Then the cards
+// currencies, then the period's rows (pending rates filled), the savings
+// categories and the group money moves (the Net counts them), then the
+// figures from the core (HomeFigures). Then the cards
 // with reads of their own, as the web's cards load on their own: Meal
 // vouchers (the setup and the expenses paid with them), Budgets (the
 // period's caps and expenses) and, with its switch on, the month in plain
@@ -147,7 +148,8 @@ final class HomeViewModel {
 
     /// The reads behind a period's figures (nil: this month), given the
     /// profile: the rules and today's rates, the period's rows (from the
-    /// shifted start, pending rates filled) and the savings categories.
+    /// shifted start, pending rates filled), the savings categories and the
+    /// group money moves (my_group_flow, pending rates filled).
     static func input(data: DataLayer, profile: JSONValue, periodValue: String?, now instant: Date,
                       core: BudgeerCore) async throws -> HomeInput {
         let window = try HomeFigures.window(profile: profile, periodValue: periodValue, now: instant, core: core)
@@ -159,9 +161,13 @@ final class HomeViewModel {
         // One read after another, as every model here does.
         let read = try await data.transactions.transactions(TxnQuery(from: window.fetchFrom, to: window.period.to, spread: true))
         let categories = try await data.categories.savingsCategories()
-        let rows = try await FxRates.fillPending(read, base: base, today: try core.isoDate(instant), fx: data.fx, core: core)
+        let today = try core.isoDate(instant)
+        let rows = try await FxRates.fillPending(read, base: base, today: today, fx: data.fx, core: core)
+        // The money groups really moved in the period (the Net counts it), pending rates filled the same way.
+        let flow = try await data.groups.groupFlow(from: window.period.from, to: window.period.to)
+        let moves = try await FxRates.fillPending(flow, base: base, today: today, fx: data.fx, core: core)
         return HomeInput(rows: rows, profile: profile, categories: categories, rules: rules, rates: rates,
-                         now: instant, periodValue: periodValue)
+                         groupMoves: moves, now: instant, periodValue: periodValue)
     }
 
     // MARK: The cards with reads of their own

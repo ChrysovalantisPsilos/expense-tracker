@@ -7,7 +7,7 @@ import { jwtClaims } from '../../../supabase/functions/_shared/reauth.ts'
 
 const OFFLINE_READ_RPCS = new Set([
   'my_transactions', 'my_recurring_rules', 'my_budgets', 'my_accounts', 'my_goals',
-  'my_payment_info', 'list_my_group_invites', 'my_meal_vouchers', 'my_salary_history',
+  'my_payment_info', 'list_my_group_invites', 'my_meal_vouchers', 'my_salary_history', 'my_group_flow',
   'group_ledger', 'group_balances', 'group_audit_entries', 'group_comments_for',
   'group_comment_counts', 'group_member_avatars', 'member_payment_info',
   // The statements made on the device read the latest ECB rates for foreign

@@ -228,6 +228,9 @@ protocol GroupsRepository: Sendable {
     func previewLinkInvite(token: String) async throws -> JSONValue
     /// group-report: the group's statement as a PDF, its bytes.
     func groupStatement(groupId: String) async throws -> Data
+    /// my_group_flow: the user's group money moves dated in [from, to] (nil =
+    /// open), for Home's Net (groups.js useGroupFlow).
+    func groupFlow(from: String?, to: String?) async throws -> JSONValue
 
     /// create_group: the new group's id.
     func createGroup(name: String, currency: String) async throws -> String

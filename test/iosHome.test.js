@@ -29,8 +29,12 @@ test('ios home fixture: the figures fold in the web\'s rules', () => {
   // on the 20th and $9.99 at today's 0.9 on the 25th.
   assert.equal(f.spentTotal, 31930 + 1299 + 899)
   // The savings entry is not income, and one taken from income lowers the net;
-  // an expense paid from savings is spending that leaves the net alone.
-  assert.equal(f.netTotal, 255000 - (31930 + 1299 + 899) + 12000 - 30000)
+  // an expense paid from savings is spending that leaves the net alone. The
+  // group dinner I paid takes the rest of it (€44) and what I paid back (€10).
+  assert.equal(f.netTotal, 255000 - (31930 + 1299 + 899) + 12000 - 30000 - 4400 - 1000)
+  assert.deepEqual(f.sum.steps.slice(-2).map((s) => s.key), ['groupsFronted', 'settledOut'])
+  // August's figures get only August's move: €15 paid back to me.
+  assert.equal(fixture.expected.en.august.sum.steps.at(-1).key, 'settledIn')
   assert.equal(f.saved, '+€300.00 in · −€120.00 out')
   assert.equal(f.netTone, 'positive')
   // A yearly subscription paid in March counts a twelfth; the group expense

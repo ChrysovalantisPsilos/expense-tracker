@@ -2,6 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   periodTotals, periodProjection, projectedTotals, visibleBars, TOP_CATEGORIES, homeCards, homeStacks, homeLists, barLines, netSum,
+  groupFlow, netSteps,
 } from '../src/features/dashboard/dashboardMath.js'
 
 const rows = [
@@ -45,7 +46,8 @@ test('projectedTotals adds the projection and nets income − spend', () => {
   const totals = { spent: 3000, spentFromSavings: 0, spentWithVouchers: 0, earned: 1000, savedFromIncome: 0, net: -2000 }
   const proj = { expense: 500, income: 200, expenseFromSavings: 0, savedFromIncome: 0, net: -300 }
   assert.deepEqual(projectedTotals(totals, proj),
-    { spentTotal: 3500, earnedTotal: 1200, fromIncomeTotal: 0, fromSavingsTotal: 0, withVouchersTotal: 0, netTotal: -2300 })
+    { spentTotal: 3500, earnedTotal: 1200, fromIncomeTotal: 0, fromSavingsTotal: 0, withVouchersTotal: 0,
+      groupsFronted: 0, groupsCovered: 0, settledIn: 0, settledOut: 0, netTotal: -2300 })
 })
 
 // ---- Yearly subscriptions kept separate (0068) -------------------------------
@@ -125,4 +127,98 @@ test('netSum: How Net adds up, worded', () => {
   assert.equal(sum.steps[0].value, '+€3,430.00')
   assert.equal(sum.steps[1].value, '−€3,207.51')
   assert.deepEqual(sum.total, { label: 'Net', value: '+€1,121.49', tone: 'positive' })
+})
+
+// ---- Groups: Net counts what really moved (0110) ------------------------------
+// my_group_flow's rows: amounts in the group currency, the user's rate.
+const move = (kind, spent_at, amount_minor, paid_by_me, extra = {}) => ({
+  kind, spent_at, amount_minor, share_minor: kind === 'expense' ? 0 : null, currency: 'EUR', exchange_rate: 1,
+  paid_by_me, ...extra,
+})
+// Brunch €30 I paid, split two ways (my €15 is a mirrored expense row);
+// Sanex €7.49 the other member paid, €3.75 of it mine.
+const brunch = move('expense', '2026-09-05', 3000, true, { share_minor: 1500 })
+const sanex = move('expense', '2026-09-06', 749, false, { share_minor: 375 })
+const shareRows = [
+  { kind: 'expense', amount_minor: 1500, currency: 'EUR', exchange_rate: 1, spent_at: '2026-09-05', group_expense_id: 'e1',
+    group_expenses: { groups: { name: 'Flat' } } },
+  { kind: 'expense', amount_minor: 375, currency: 'EUR', exchange_rate: 1, spent_at: '2026-09-06', group_expense_id: 'e2',
+    group_expenses: { groups: { name: 'Flat' } } },
+]
+const NOTHING = { expense: 0, income: 0, expenseFromSavings: 0, savedFromIncome: 0, net: 0 }
+const homeNet = (rowsIn, moves, window = {}) =>
+  projectedTotals(periodTotals(rowsIn, 'EUR'), NOTHING, groupFlow(moves, 'EUR', window))
+
+test('groupFlow: an expense I paid lowers the net by all of it, one someone else paid leaves it alone', () => {
+  assert.deepEqual(groupFlow([brunch], 'EUR'), { groupsFronted: 1500, groupsCovered: 0, settledIn: 0, settledOut: 0 })
+  assert.deepEqual(groupFlow([sanex], 'EUR'), { groupsFronted: 0, groupsCovered: 375, settledIn: 0, settledOut: 0 })
+  // Spent stays the share (€15); the net drops by the €30 paid.
+  const paid = homeNet([shareRows[0]], [brunch])
+  assert.equal(paid.spentTotal, 1500)
+  assert.equal(paid.netTotal, -3000)
+  // Sanex: €3.75 in Spent, but the net is unchanged until I pay.
+  const owed = homeNet([shareRows[1]], [sanex])
+  assert.equal(owed.spentTotal, 375)
+  assert.equal(owed.netTotal, 0)
+  // Paid wholly for others (no share of mine): all of it, nothing in Spent.
+  assert.equal(groupFlow([move('expense', '2026-09-07', 500, true)], 'EUR').groupsFronted, 500)
+})
+
+test('groupFlow: money paid back to me raises the net, money I pay back lowers it', () => {
+  assert.deepEqual(groupFlow([move('settlement', '2026-09-10', 1500, false)], 'EUR'),
+    { groupsFronted: 0, groupsCovered: 0, settledIn: 1500, settledOut: 0 })
+  assert.deepEqual(groupFlow([move('settlement', '2026-09-11', 375, true)], 'EUR'),
+    { groupsFronted: 0, groupsCovered: 0, settledIn: 0, settledOut: 375 })
+})
+
+test('groupFlow: once everything is settled the adjustments cancel out', () => {
+  const settled = [brunch, sanex, move('settlement', '2026-09-10', 1500, false), move('settlement', '2026-09-11', 375, true)]
+  const f = groupFlow(settled, 'EUR')
+  assert.equal(f.groupsCovered + f.settledIn - f.groupsFronted - f.settledOut, 0)
+  // The net is then just the shares spent: −€18.75.
+  assert.equal(homeNet(shareRows, settled).netTotal, -1875)
+})
+
+test('groupFlow: each move counts in the period of its date', () => {
+  const late = move('settlement', '2026-10-02', 1500, false)
+  const sept = { from: '2026-09-01', to: '2026-09-30' }
+  const oct = { from: '2026-10-01', to: '2026-10-31' }
+  assert.deepEqual(groupFlow([brunch, late], 'EUR', sept), { groupsFronted: 1500, groupsCovered: 0, settledIn: 0, settledOut: 0 })
+  assert.deepEqual(groupFlow([brunch, late], 'EUR', oct), { groupsFronted: 0, groupsCovered: 0, settledIn: 1500, settledOut: 0 })
+  // All time (no ends) takes everything.
+  assert.equal(groupFlow([brunch, late], 'EUR').settledIn, 1500)
+  assert.deepEqual(groupFlow(undefined, 'EUR'), { groupsFronted: 0, groupsCovered: 0, settledIn: 0, settledOut: 0 })
+})
+
+test('groupFlow: a group in another currency converts at the user\'s rate, the share exactly as in Spent', () => {
+  // A GBP group: £40 paid by me, £20 mine at 1.15; £10 back to me at 1.17;
+  // a JPY group's ¥1,000 share others paid at 0.0062 (zero-decimal).
+  const moves = [
+    move('expense', '2026-09-05', 4000, true, { share_minor: 2000, currency: 'GBP', exchange_rate: 1.15 }),
+    move('settlement', '2026-09-08', 1000, false, { currency: 'GBP', exchange_rate: 1.17 }),
+    move('expense', '2026-09-09', 1000, false, { share_minor: 1000, currency: 'JPY', exchange_rate: 0.0062 }),
+  ]
+  assert.deepEqual(groupFlow(moves, 'EUR'), { groupsFronted: 4600 - 2300, groupsCovered: 620, settledIn: 1170, settledOut: 0 })
+  // My share in Spent (£20 → €23.00) plus the rest makes the full €46.00.
+  const spent = [{ kind: 'expense', amount_minor: 2000, currency: 'GBP', exchange_rate: 1.15, group_expense_id: 'e' }]
+  assert.equal(homeNet(spent, moves.slice(0, 1)).netTotal, -4600)
+})
+
+test('netSteps: the group steps show only when they happened and add up to the Net', () => {
+  const settled = [brunch, sanex, move('settlement', '2026-09-10', 1500, false), move('settlement', '2026-09-11', 375, true)]
+  const income = { kind: 'income', amount_minor: 200000, currency: 'EUR', exchange_rate: 1 }
+  for (const moves of [[], [brunch], [sanex], settled]) {
+    const figures = homeNet([income, ...shareRows], moves)
+    const steps = netSteps(figures)
+    assert.equal(steps.reduce((s, x) => s + x.minor, 0), figures.netTotal)
+    assert.ok(steps.slice(2).every((x) => x.minor !== 0))
+  }
+  assert.deepEqual(netSteps(homeNet(shareRows, settled)).map((s) => [s.key, s.minor]), [
+    ['income', 0], ['spent', -1875], ['groupsFronted', -1500], ['groupsCovered', 375], ['settledIn', 1500], ['settledOut', -375],
+  ])
+  const sum = netSum(homeNet(shareRows, [brunch, sanex]), 'EUR')
+  assert.deepEqual(sum.steps.map((s) => [s.label, s.value]), [
+    ['Income', '€0.00'], ['Spent', '−€18.75'], ['Paid for others in groups', '−€15.00'], ['Paid for you in groups', '+€3.75'],
+  ])
+  assert.equal(sum.total.value, '−€30.00')
 })

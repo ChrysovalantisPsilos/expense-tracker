@@ -1,6 +1,6 @@
 // Home's figures, every one from the core: the web's Dashboard.jsx steps
 // (the period, salaryShiftOf, savingsIdsOf, spendRows, periodTotals,
-// periodProjection over the recurring rules at today's rates,
+// periodProjection over the recurring rules at today's rates, groupFlow,
 // projectedTotals, categoryBars (all of them, and the donut's top four), bucketLabels, formatMoney, formatSigned,
 // signTone, savingsLine, barLines, visibleBars, homeLists, listHeading,
 // rowParts.listParts, isFirstRun, homeCards) and its Recurring card's (SubscriptionsCard:
@@ -14,14 +14,16 @@ import BudgeerCore
 
 /// What the reads give: the rows as my_transactions returns them, the
 /// profile columns, the savings categories, the recurring rules and today's
-/// rates for their foreign currencies, the instant "now" and the period
-/// picked ('m:2026-9', …; nil for this month).
+/// rates for their foreign currencies, the group money moves (my_group_flow,
+/// for the Net), the instant "now" and the period picked ('m:2026-9', …; nil
+/// for this month).
 struct HomeInput: Equatable, Sendable {
     let rows: JSONValue
     let profile: JSONValue
     let categories: JSONValue
     var rules: JSONValue = []
     var rates: JSONValue = [:]
+    var groupMoves: JSONValue = []
     let now: Date
     var periodValue: String?
     /// The first transaction's date (nil: none at all), and whether it could be read.
@@ -204,7 +206,9 @@ struct HomeFigures: Codable, Equatable, Sendable {
         let inBase = try core.json("ruleFx", "rulesInBase", [input.rules, baseCurrency, input.rates])
         let proj: JSONValue = try core.call("dashboardMath", "periodProjection",
                                             [inBase["rules"] ?? [], range, todayISO, separateYearly, salaryShift, savingsIds])
-        let figures: JSONValue = try core.call("dashboardMath", "projectedTotals", [totals, proj])
+        // The money groups really moved in the period (groupFlow), which the Net counts.
+        let flow: JSONValue = try core.call("dashboardMath", "groupFlow", [input.groupMoves, baseCurrency, range])
+        let figures: JSONValue = try core.call("dashboardMath", "projectedTotals", [totals, proj, flow])
         // bucketRow is a Map (tagged {"$":"map","v":[[key, row], …]}); its rows
         // label the bars and give each its badge.
         let bucketPairs = JSONValue.mapPairs(totals["bucketRow"])

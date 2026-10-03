@@ -103,19 +103,57 @@ function dayBefore(iso) {
   return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10)
 }
 
+const NO_GROUP_FLOW = { groupsFronted: 0, groupsCovered: 0, settledIn: 0, settledOut: 0 }
+
+// The money groups really moved in a period, for the net ("count what really
+// moved", 0110): Spent counts the user's share of every group expense, as if
+// everyone had already paid each other back, so the net adjusts by
+//   `groupsFronted` — the rest of an expense the user paid (the total less
+//                     their share): it left them too;
+//   `groupsCovered` — their share of an expense someone else paid: in Spent,
+//                     but no money has left them yet;
+//   `settledIn` / `settledOut` — settlements paid to / by them.
+// Positive minor units in the base currency; the net is
+// + groupsCovered + settledIn − groupsFronted − settledOut. Once everything is
+// settled they cancel out. `moves` are my_group_flow's rows (amounts in the
+// group currency with the user's rate, pending ones filled like the
+// transactions'); each counts in the period of its date ({ from, to },
+// either end null = open).
+export function groupFlow(moves, baseCurrency, { from = null, to = null } = {}) {
+  const out = { ...NO_GROUP_FLOW }
+  for (const m of moves ?? []) {
+    if ((from && m.spent_at < from) || (to && m.spent_at > to)) continue
+    const base = (minor) => toBaseMinor(Number(minor ?? 0), m.exchange_rate, m.currency, baseCurrency)
+    if (m.kind === 'expense') {
+      if (m.paid_by_me) out.groupsFronted += base(m.amount_minor) - base(m.share_minor)
+      else out.groupsCovered += base(m.share_minor)
+    } else if (m.kind === 'settlement') {
+      if (m.paid_by_me) out.settledOut += base(m.amount_minor)
+      else out.settledIn += base(m.amount_minor)
+    }
+  }
+  return out
+}
+
 // Headline figures: actual totals (periodTotals) plus the projection
 // (periodProjection), and the net — income − expenses paid from income −
 // savings taken from income (received savings and expenses paid from savings
-// or with meal vouchers leave it alone). `fromIncomeTotal`,
-// `fromSavingsTotal` and `withVouchersTotal` feed the ⓘ (overviewInfo).
-export function projectedTotals(totals, proj) {
+// or with meal vouchers leave it alone), adjusted by the money groups really
+// moved (`flow`: groupFlow). `fromIncomeTotal`, `fromSavingsTotal`,
+// `withVouchersTotal` and the flow's four feed the ⓘ (netSteps).
+export function projectedTotals(totals, proj, flow = NO_GROUP_FLOW) {
+  const { groupsFronted, groupsCovered, settledIn, settledOut } = { ...NO_GROUP_FLOW, ...flow }
   return {
     spentTotal: totals.spent + proj.expense,
     earnedTotal: totals.earned + proj.income,
     fromIncomeTotal: totals.savedFromIncome + proj.savedFromIncome,
     fromSavingsTotal: totals.spentFromSavings + proj.expenseFromSavings,
     withVouchersTotal: totals.spentWithVouchers,
-    netTotal: totals.net + proj.net,
+    groupsFronted,
+    groupsCovered,
+    settledIn,
+    settledOut,
+    netTotal: totals.net + proj.net + groupsCovered + settledIn - groupsFronted - settledOut,
   }
 }
 
@@ -131,16 +169,26 @@ export function overviewNotes({ proj }, currency) {
 
 // Part two, "How Net adds up": the steps from Income to Net, signed minor
 // units — Income, − Spent, + what was paid from savings or with meal
-// vouchers (spending, but not from income), − savings taken from income.
-// Income and Spent always show; the others only when they happened. They add
-// up to `netTotal` exactly (projectedTotals' figures).
-export function netSteps({ earnedTotal, spentTotal, fromSavingsTotal = 0, withVouchersTotal = 0, fromIncomeTotal = 0 }) {
+// vouchers (spending, but not from income), − savings taken from income,
+// then the money groups really moved (groupFlow): − the rest of what the user
+// paid for others, + their share others paid, + what was paid back to them,
+// − what they paid back. Income and Spent always show; the others only when
+// they happened. They add up to `netTotal` exactly (projectedTotals' figures).
+export function netSteps({
+  earnedTotal, spentTotal, fromSavingsTotal = 0, withVouchersTotal = 0, fromIncomeTotal = 0,
+  groupsFronted = 0, groupsCovered = 0, settledIn = 0, settledOut = 0,
+}) {
+  const step = (key, minor) => (minor ? [{ key, minor }] : [])
   return [
     { key: 'income', minor: earnedTotal },
     { key: 'spent', minor: -spentTotal },
-    ...(fromSavingsTotal ? [{ key: 'fromSavings', minor: fromSavingsTotal }] : []),
-    ...(withVouchersTotal ? [{ key: 'vouchers', minor: withVouchersTotal }] : []),
-    ...(fromIncomeTotal ? [{ key: 'toSavings', minor: -fromIncomeTotal }] : []),
+    ...step('fromSavings', fromSavingsTotal),
+    ...step('vouchers', withVouchersTotal),
+    ...step('toSavings', -fromIncomeTotal),
+    ...step('groupsFronted', -groupsFronted),
+    ...step('groupsCovered', groupsCovered),
+    ...step('settledIn', settledIn),
+    ...step('settledOut', -settledOut),
   ]
 }
 

@@ -17,7 +17,8 @@ import WidgetKit
 @MainActor
 final class WidgetSync {
     /// What the figures depend on (LiveHub's tables).
-    static let tables: Set<String> = ["transactions", "categories", "recurring_rules", "profiles", "budgets"]
+    static let tables: Set<String> = ["transactions", "categories", "recurring_rules", "profiles", "budgets",
+                                      "group_expenses", "settlements"]
     /// By category keeps three before "Other" (Home's donut keeps four); the large widgets five.
     static let top = 3
     static let wideTop = 5

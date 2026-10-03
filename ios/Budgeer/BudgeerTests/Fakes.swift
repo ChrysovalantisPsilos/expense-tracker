@@ -147,6 +147,7 @@ extension FakeStore {
         savingsResult = .success(fixture.input.categories)
         rowsResult = .success(fixture.input.rows)
         rulesResult = .success(fixture.input.rules)
+        groupMoves = fixture.input.groupMoves
         for (currency, rate) in fixture.input.rates.objectValue ?? [:] {
             if let value = rate.doubleValue { rates["\(currency)>EUR"] = value }
         }
@@ -168,6 +169,7 @@ struct HomeFixture: Decodable {
         let rows: JSONValue
         let rules: JSONValue
         let rates: JSONValue
+        let groupMoves: JSONValue
         let views: [View]
     }
     let input: Input
@@ -186,7 +188,8 @@ struct HomeFixture: Decodable {
 
     func homeInput(periodValue: String? = nil) -> HomeInput {
         HomeInput(rows: input.rows, profile: input.profile, categories: input.categories, rules: input.rules,
-                  rates: input.rates, now: now, periodValue: periodValue, oldest: input.oldest)
+                  rates: input.rates, groupMoves: input.groupMoves, now: now, periodValue: periodValue,
+                  oldest: input.oldest)
     }
 }
 

@@ -99,6 +99,15 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
    in place, what they fold in ("Spent includes €X of recurring payments
    still to come", "… paid from savings") and what the Net is; tapping it
    again closes it. No captions under the figures.
+6b. Groups and the Net (count what really moved): in a two-person group,
+   add Brunch €30 paid by you, split equally. Home's Spent rises by €15 (your
+   share) and the Net drops by €30; "How Net adds up" shows "Paid for others
+   in groups −€15.00". The other member adds €7.49 paid by them (€3.75
+   yours): Spent +€3.75, Net unchanged ("Paid for you in groups +€3.75").
+   They record paying you back €15: Net +€15 ("Paid back to you"); you pay
+   them €3.75: Net −€3.75 ("You paid back"). The steps always add up to the
+   Net; a settlement dated in another month counts in that month. The same
+   on the iPhone's Home and its widgets.
 6a. New expense (and a recurring payment), with a savings category set up:
    "Paid from" offers Bank · Savings, starts on Bank, and its ⓘ explains
    both; Savings saves the expense as paid from savings. A savings entry's
