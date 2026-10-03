@@ -412,6 +412,41 @@ final class PlanModel {
         await save()
     }
 
+    /// After Start fresh: the server's plan is gone, so this copy is too.
+    /// Nothing waiting is saved (it would bring the wiped plan back), every
+    /// editor closes, and the next load reads the saved plan anew.
+    func forget() {
+        saveTask?.cancel()
+        saveTask = nil
+        dirty = false
+        saveStatus = .saved
+        plan = nil
+        undo = .null
+        figures = nil
+        state = .loading
+        open = nil
+        editor = nil
+        editText = ""
+        addForm = nil
+        draft = [:]
+        pick = nil
+        picked = []
+        applySheet = nil
+        applyOff = []
+        message = nil
+        warning = false
+        whatIfText = ""
+        whatIf = .idle
+        whatIfPreview = nil
+        whatIfEditing = nil
+        whatIfEditor = nil
+        whatIfEditText = ""
+        whatIfRows = []
+        whatIfPicked = []
+        whatIfNotFound = []
+        whatIfUndo = .null
+    }
+
     // MARK: Apply and undo
 
     /// The Apply sheet, every change ticked.

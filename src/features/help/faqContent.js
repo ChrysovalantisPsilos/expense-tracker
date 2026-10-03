@@ -105,6 +105,7 @@ export const FAQ_SECTIONS = [
   section('reports-backups', [
     { id: 'statements' },
     { id: 'backups' },
+    { id: 'start-fresh' },
   ]),
   section('account-security', [
     { id: 'passkeys' },

@@ -24,10 +24,12 @@ final class RecurringModel {
     private var rules: JSONValue = []
     private let data: DataLayer
     private let core: BudgeerCore
+    private let now: @Sendable () -> Date
 
-    init(data: DataLayer, core: BudgeerCore = .shared) {
+    init(data: DataLayer, core: BudgeerCore = .shared, now: @escaping @Sendable () -> Date = { Date() }) {
         self.data = data
         self.core = core
+        self.now = now
     }
 
     func load() async {
@@ -38,7 +40,7 @@ final class RecurringModel {
             let savings = try await data.categories.savingsCategories()
             let rates = try await FxRates.latest(for: rules, base: base, fx: data.fx, core: core)
             state = .loaded(try RecurringFigures.compute(profile: profile, categories: savings, rules: rules,
-                                                         rates: rates, today: try core.isoDate(Date()), core: core))
+                                                         rates: rates, today: try core.isoDate(now()), core: core))
         } catch {
             if case .loaded = state { return }
             state = .failed(String(describing: error))

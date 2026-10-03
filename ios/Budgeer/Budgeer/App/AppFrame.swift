@@ -99,6 +99,8 @@ final class AppModels {
     let plan: PlanModel
     let salary: SalaryModel
     let importRules: ImportRulesModel
+    /// Settings › Your data's Start fresh.
+    let startFresh: StartFreshModel
     /// The account's language, lined up with this device's (Settings › Language saves through it).
     let profileLanguage: ProfileLanguage
     /// The wizard, What's new and the tour.
@@ -131,6 +133,7 @@ final class AppModels {
         plan = PlanModel(data: data)
         salary = SalaryModel(data: data)
         importRules = ImportRulesModel(data: data)
+        startFresh = StartFreshModel(data: data, security: accountSecurity, signOut: signOut)
         profileLanguage = ProfileLanguage(language: language, profiles: data.profile)
         welcome = WelcomeModel(data: data)
         tour = TourModel(data: data)
@@ -193,6 +196,22 @@ struct AppFrame: View {
                 built.welcome.pushOptIn = { await push.optIn() }
                 // Its "Add a passkey", and the ask after signing in, are Settings › Security's Add.
                 built.welcome.passkeyKit = PasskeyKit(security: container.security, sheet: built.passkeySheet)
+                // After Start fresh: nothing this phone kept of the old data
+                // shows again (the offline copies, the widgets' figures), every
+                // tab is back at its first page, and every screen reloads.
+                // Plan keeps its own copy of the saved plan (read once, then
+                // saved whole), so it forgets it rather than writing it back.
+                let router = router
+                let cache = container.cache
+                let live = container.live
+                let plan = built.plan
+                built.startFresh.onDone = {
+                    plan.forget()
+                    await cache.clear()
+                    WidgetSync.signedOut()
+                    router.startOver()
+                    live.changed(LiveHub.tables.union(["meal_vouchers"]))
+                }
                 models = built
             }
         }
@@ -535,7 +554,7 @@ struct AppFrame: View {
         case .importRule(let id):
             ImportRuleHost(rules: models.importRules, id: id)
         case .yourData:
-            YourDataView()
+            YourDataView(startFresh: models.startFresh, data: container.data, userId: userId)
         case .exportBackup:
             BackupHost(page: .export, data: container.data, userId: userId, email: user.email)
         case .restoreBackup:

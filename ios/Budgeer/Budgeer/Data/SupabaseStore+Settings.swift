@@ -2,7 +2,7 @@
 // shared/lib/profile.js (the profile's columns, the payment details, the
 // photo), shared/lib/categories.js (adding, editing and deleting a category)
 // and features/privacy/privacyData.js (the consent history, the data export,
-// a privacy request, deleting the account): the same tables, RPCs, bucket
+// a privacy request, deleting the account, starting fresh): the same tables, RPCs, bucket
 // and edge functions, argument for argument. Each write is announced so the
 // screens showing its table refresh at once; a refusal comes back in the
 // web's shape (refusal), so the core's errors.userMessage says what to show.
@@ -144,5 +144,17 @@ extension SupabaseStore: PrivacyRepository {
             try await client.functions.invoke("delete-account", options: FunctionInvokeOptions(body: body))
             return
         }
+    }
+
+    func startFresh(password: String?) async throws {
+        if let password {
+            guard let email = client.auth.currentUser?.email else { throw CurrentPasswordInvalid() }
+            do {
+                _ = try await client.auth.signIn(email: email, password: password)
+            } catch {
+                throw CurrentPasswordInvalid()
+            }
+        }
+        _ = try await refusal { try await client.rpc("start_fresh").execute() }
     }
 }

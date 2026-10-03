@@ -428,7 +428,8 @@ final class SnapshotTests: XCTestCase {
         let fixture = try RecurringFixture.load()
         for (lang, dark) in SnapshotTests.variants {
             _ = language(lang)
-            let model = RecurringModel(data: fixture.store().data, core: .shared)
+            let model = RecurringModel(data: fixture.store().data, core: .shared,
+                                       now: { ISO8601DateFormatter().date(from: "2020-09-20T12:00:00Z")! })
             await model.load()
             try await shots(framed(.more) { NavigationStack { RecurringView(model: model, open: { _ in }, add: { _ in }) } },
                       name: "recurring", lang: lang, dark: dark, long: 1400)

@@ -217,7 +217,7 @@ export default {
         name: 'Erasure (Art. 17)',
         inApp: 'Settings → Security → Delete account. This permanently deletes your account, sign-in details and passkeys, profile and picture, payment details, expenses and income, categories and rules, accounts, budgets, goals, recurring payments, notifications (yours, and the ones other members received about something you did), push subscriptions, consent history, and the group comments you wrote. Groups you own pass to another member; a group with no other members is deleted with its picture.',
         whatStays: 'Group expenses, splits and settlements you were part of stay for the other members, because their balances depend on them — but your name there is replaced by “Former member” with no link to you, as it is in the group change log and its texts. The notifications other members received about something you did are deleted. A name you used before renaming yourself may still appear in older change-log texts until they are deleted after the periods above.',
-        byEmail: 'Or ask us to delete specific data.',
+        byEmail: 'To delete only your own data and keep the account and your groups, use Settings → Your data → Start fresh. Or ask us to delete specific data.',
       },
       restriction: {
         name: 'Restriction (Art. 18)',

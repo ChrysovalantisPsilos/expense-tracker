@@ -169,6 +169,20 @@ final class AppRouter {
         }
     }
 
+    /// Home with every tab back at its first page and nothing picked (after
+    /// Start fresh: the pages showed what's gone).
+    func startOver() {
+        home = []
+        activity = []
+        groups = []
+        more = []
+        detail = []
+        pickedGroup = nil
+        pickedEntry = nil
+        tab = .home
+        section = .home
+    }
+
     /// Activity at its first page (an import's "View transactions", Privacy's link).
     func showActivity() {
         go(.activity)

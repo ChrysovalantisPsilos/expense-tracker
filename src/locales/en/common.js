@@ -66,6 +66,7 @@ export default {
       disconnectApple: 'For your security, please sign in again to disconnect Apple.',
       addPasskey: 'For your security, please sign in again to add a passkey.',
       deleteAccount: 'For your security, please sign in again to delete your account.',
+      startFresh: 'For your security, please sign in again to start fresh.',
     },
     passkey: {
       cancelled: 'The passkey request was cancelled or timed out.',
@@ -121,6 +122,7 @@ export default {
       tooManyComments: 'Too many comments — please slow down.',
       tooManyExpenses: 'Too many expenses added — please slow down.',
       tooManyExports: 'Too many exports — please try again later.',
+      tooManyFreshStarts: 'Too many fresh starts — please try again tomorrow.',
       tooManyGroups: 'Too many groups joined — please try again later.',
       tooManyInvites: 'Too many invites — please slow down.',
       tooManyRequests: 'Too many requests — please try again later.',

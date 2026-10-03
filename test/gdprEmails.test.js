@@ -5,7 +5,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   accountDeletedEmail, consentChangeEmail, dataExportEmail, formatDateTimeUTC, inactiveAccountDeletedEmail,
-  inactivityWarningEmail, legalUpdateEmail, privacyReceiptEmail, requestDeadline,
+  inactivityWarningEmail, legalUpdateEmail, privacyReceiptEmail, requestDeadline, startFreshEmail,
 } from '../supabase/functions/_shared/gdprEmails.ts'
 import {
   DEFAULT_NOTICE_FROM, DEFAULT_ORIGIN, eachPaced, normalizeOrigin, sendEmail,
@@ -23,6 +23,7 @@ const all = () => [
   accountDeletedEmail(ctx, { deletedAt: AT }),
   inactiveAccountDeletedEmail(ctx, { deletedAt: AT, warnedAt: new Date('2026-08-17T04:45:00Z') }),
   dataExportEmail(ctx, { lastAt: AT, count: 1 }),
+  startFreshEmail(ctx, { lastAt: AT, count: 1 }),
   consentChangeEmail(ctx, { changedAt: AT, switches: { notify_digest: true, notify_email: false, notify_push: true } }),
   privacyReceiptEmail(ctx, { kindLabel: 'Restrict processing (Art. 18)', receivedAt: AT, message: 'Please restrict processing of my data.' }),
   inactivityWarningEmail(ctx, { deleteOn: '12 October 2026' }),
@@ -101,6 +102,16 @@ test('data download email: time, repeat count, what to do if it wasn’t you', (
   assert.ok(one.text.includes('change your password'))
   assert.ok(one.text.includes('https://dev.budgeer.com/settings/security'))
   assert.ok(dataExportEmail(ctx, { lastAt: AT, count: 3 }).text.includes('downloaded 3 times since our last email'))
+})
+
+test('start fresh email: when, repeat count, what went and stayed, what to do if it wasn’t you', () => {
+  const one = startFreshEmail(ctx, { lastAt: AT, count: 1 })
+  assert.equal(one.subject, 'Your Budgeer data was cleared')
+  assert.ok(one.text.includes('was cleared on 14 September 2026 at 09:05 UTC (Settings → Your data → Start fresh)'))
+  assert.ok(one.text.includes('Your account, settings and groups stay.'))
+  assert.ok(one.text.includes('change your password'))
+  assert.ok(one.text.includes('https://dev.budgeer.com/settings/security'))
+  assert.ok(startFreshEmail(ctx, { lastAt: AT, count: 2 }).text.includes('cleared 2 times since our last email'))
 })
 
 test('consent email lists the final state of every switch and links to Settings → Privacy', () => {

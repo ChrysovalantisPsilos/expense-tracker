@@ -280,8 +280,8 @@ ios/Budgeer/
     Import/              ImportModel + ImportView (+ ImportHost: the statement import, step by step),
                          ImportRulesModel (+ ImportRuleEditor) + ImportRulesView (+ ImportRuleView, ImportRuleHost)
     Backup/              BackupData (backup.js's reads, the document, the restore), BackupSeal (the password:
-                         PBKDF2 and AES-GCM with CommonCrypto and CryptoKit), BackupModels (Export and Restore),
-                         BackupViews (Your data, Export backup, Restore from backup; BackupHost)
+                         PBKDF2 and AES-GCM with CommonCrypto and CryptoKit), BackupModels (Export, Restore, Start fresh),
+                         BackupViews (Your data, Export backup, Restore from backup, Start fresh; BackupHost)
     Theme/               Theme (the web's colour tokens), NativeStyle (the coral tint, Poppins titles and money
                          figures), NativeAppearance (the bars' title faces), NativeGlass (Liquid Glass on iOS 26,
                          the standard material on iOS 17–18), NativeTabs (the floating tab bar with Add beside
@@ -869,7 +869,14 @@ a core call (the web's function); Swift reads, lays out and draws.
   kept, `restoreSummary`; a stop says why and keeps what was added). The
   file is the web's own: a backup made on the website restores here and
   the other way round (`BackupTests` opens a file the website's WebCrypto
-  sealed).
+  sealed). **Start fresh** (`StartFreshModel`, `StartFreshSheet`: what goes
+  and what stays by `startFreshMath.startFreshScope`, Export backup offered
+  first inside the sheet, START FRESH typed and the password or a recent
+  sign-in by `startFreshCheck`, then `start_fresh`; afterwards the frame
+  clears the offline cache and the widgets' snapshot, has Plan forget its
+  copy of the saved plan (`PlanModel.forget`, so nothing waiting writes it
+  back), puts every tab back at its first page on Home and reloads every
+  screen; not on the demo login).
 
 ### Strings
 

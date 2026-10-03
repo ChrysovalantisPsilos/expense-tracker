@@ -4,9 +4,11 @@ import { Download, Upload } from 'lucide-react'
 import SettingsSubPage from '../../shared/ui/SettingsSubPage.jsx'
 import Panel from '../../shared/ui/kit/Panel.jsx'
 import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
+import StartFresh from './StartFresh.jsx'
 
 // Settings → Your data: download a backup of the account, or merge one back
-// in. Each opens its own page (ExportBackupPage, RestoreBackupPage).
+// in (each opens its own page: ExportBackupPage, RestoreBackupPage), or start
+// fresh (StartFresh: wipe your own data, keep the account).
 export default function YourData() {
   const t = useT('backup')
   return (
@@ -23,6 +25,7 @@ export default function YourData() {
           {t('restore.title')}
         </Button>
       </Panel>
+      <StartFresh />
     </SettingsSubPage>
   )
 }

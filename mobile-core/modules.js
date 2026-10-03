@@ -91,6 +91,8 @@ export const CORE_MODULES = {
   // restore's plans (backupCrypto.js is the web's WebCrypto; the app seals
   // with CryptoKit by backupMath.SEAL).
   backupMath: 'src/features/backup/backupMath.js',
+  // Start fresh: the phrase, what the confirmation asks for, what goes and stays.
+  startFreshMath: 'src/features/backup/startFreshMath.js',
   recurringMath: 'src/features/recurring/recurringMath.js',
   ruleForm: 'src/features/recurring/ruleForm.js',
   planMath: 'src/features/plan/planMath.js',

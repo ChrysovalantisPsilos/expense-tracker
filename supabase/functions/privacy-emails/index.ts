@@ -5,7 +5,9 @@
 //         consent_change  the notification switches' final state, at most one
 //                         email per user per 15 minutes;
 //         data_export     "a copy of your data was downloaded", at most one
-//                         per user per hour.
+//                         per user per hour;
+//         start_fresh     "your data was cleared" (start_fresh, 0114), at
+//                         most one per user per hour.
 //   { "mode": "legal" } hourly, only when someone is due (run_legal_update_sweep):
 //       one email per user per new Privacy Notice / Terms version, to those who
 //       signed up before it and haven't accepted it yet; stamped per user
@@ -19,7 +21,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { requireCronSecret } from '../_shared/cron.ts'
 import { PRIVACY_EMAIL } from '../_shared/contact.ts'
 import { appOrigin, eachPaced, noticeSender, sendEmail } from '../_shared/sendEmail.ts'
-import { consentChangeEmail, dataExportEmail, legalUpdateEmail } from '../_shared/gdprEmails.ts'
+import { consentChangeEmail, dataExportEmail, legalUpdateEmail, startFreshEmail } from '../_shared/gdprEmails.ts'
 import { LEGAL_VERSIONS, currentLegalChange } from '../_shared/legal.ts'
 
 const admin = createClient(
@@ -31,7 +33,7 @@ const MAX_QUEUE = 60
 const MAX_LEGAL = 100
 
 interface QueueRow {
-  user_id: string; kind: 'consent_change' | 'data_export'; email: string | null
+  user_id: string; kind: 'consent_change' | 'data_export' | 'start_fresh'; email: string | null
   last_event_at: string; pending_events: number
   notify_digest: boolean; notify_email: boolean; notify_push: boolean
 }
@@ -62,9 +64,12 @@ Deno.serve(async (req) => {
       let ok = false
       if (r.email) {
         const at = new Date(r.last_event_at)
+        const count = Math.max(1, r.pending_events)
         const mail = r.kind === 'consent_change'
           ? consentChangeEmail(ctx, { changedAt: at, switches: r })
-          : dataExportEmail(ctx, { lastAt: at, count: Math.max(1, r.pending_events) })
+          : r.kind === 'start_fresh'
+            ? startFreshEmail(ctx, { lastAt: at, count })
+            : dataExportEmail(ctx, { lastAt: at, count })
         ok = (await sendEmail(sender, { to: r.email, ...mail })).ok
       }
       const { error: fErr } = await admin.rpc('finish_privacy_email', {
