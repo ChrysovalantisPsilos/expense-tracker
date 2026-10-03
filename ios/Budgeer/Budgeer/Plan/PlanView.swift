@@ -21,8 +21,11 @@ struct PlanView: View {
     @State private var info = false
     @State private var confirmClear = false
     @State private var confirmUndo = false
+    /// The floating Add's choice: a cost or income, added to the plan.
+    @State private var choosingAdd = false
 
     var body: some View {
+        ScrollViewReader { proxy in
         List {
             switch model.state {
             case .loading:
@@ -63,6 +66,26 @@ struct PlanView: View {
             Text([language.t("plan:undo.body"), language.t("plan:undo.entries")].joined(separator: "\n\n"))
         }
         .sensoryFeedback(.selection, trigger: model.open)
+        // The floating Add adds to the plan here ("What if I add…" with the kind picked); with
+        // nothing to plan yet it adds a recurring entry, as the empty page's buttons do.
+        .lendsAdd(.run {
+            if case .loaded(let page) = model.state, !page.empty { choosingAdd = true } else { add("expense") }
+        })
+        .confirmationDialog(language.t("plan:whatIf.title"), isPresented: $choosingAdd, titleVisibility: .visible) {
+            Button(language.t("plan:add.cost")) { startAdd("expense", proxy) }
+            Button(language.t("plan:add.income")) { startAdd("income", proxy) }
+            Button(language.t("common:actions.cancel"), role: .cancel) {}
+        }
+        }
+    }
+
+    /// "What if I add…" opened with `kind` picked, scrolled into view.
+    private func startAdd(_ kind: String, _ proxy: ScrollViewProxy) {
+        withAnimation(NativeMotion.expand) {
+            if model.open != "new" { model.openEditor("new") }
+            model.setAddKind(kind)
+        }
+        withAnimation { proxy.scrollTo("plan.whatIf", anchor: .top) }
     }
 
     // MARK: Nothing to plan yet
@@ -375,6 +398,7 @@ struct PlanView: View {
             }
             .foregroundStyle(Color.primary)
             .accessibilityIdentifier("plan.whatIf")
+            .id("plan.whatIf")
             if model.open == "new", let form = model.addForm { PlanAddFormView(model: model, form: form) }
         }
         .listRowBackground(NativeStyle.card)
