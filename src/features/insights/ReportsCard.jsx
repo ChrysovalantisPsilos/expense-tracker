@@ -14,7 +14,8 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 // Financial-statement export (PDF/Excel) for a date range, on the Insights page.
 // `noEntries`: nothing has been logged yet, so the buttons are off with a hint.
 // The range starts as this month's window (the pay month with the salary
-// setting on); left as it is, the statement is asked for as that month.
+// setting on); left as it is with the setting on, the statement is asked for
+// as that pay month (without it, the plain range as before).
 export default function ReportsCard({ noEntries = false }) {
   const { payCalendar: cal } = useProfile()
   const month = thisMonthPeriod(new Date(), cal)
@@ -23,7 +24,7 @@ export default function ReportsCard({ noEntries = false }) {
   const to = picked.to ?? month.to
   const setFrom = (v) => setPicked((p) => ({ ...p, from: v }))
   const setTo = (v) => setPicked((p) => ({ ...p, to: v }))
-  const asMonth = from === month.from && to === month.to ? month.key : null
+  const asMonth = cal && from === month.from && to === month.to ? month.key : null
   const [busy, setBusy] = useState(null) // 'xlsx' | 'pdf' | null
   const [page, setPage] = useState(null) // the PDF page being made, once known
   const toast = useToast()

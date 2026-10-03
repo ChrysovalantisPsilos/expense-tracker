@@ -221,9 +221,7 @@ struct HomeFigures: Codable, Equatable, Sendable {
                 let hints = try core.json("payCalendar", "paydayHints", [input.rules, shift, input.lastPayDay])
                 end = try core.json("payCalendar", "expectedEnd", [win, cal, hints])
             }
-            // A monthly charge already paid in this pay month isn't due again.
-            let paid = try core.json("dashboardMath", "paidRuleIds", [input.rows, range])
-            projOptions = .object(["cal": cal, "paidRules": paid])
+            projOptions = .object(["cal": cal])
         }
         // Foreign rules count at today's rate (rulesInBase), one without a rate left out.
         let inBase = try core.json("ruleFx", "rulesInBase", [input.rules, baseCurrency, input.rates])

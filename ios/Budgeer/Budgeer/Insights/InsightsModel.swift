@@ -178,8 +178,9 @@ final class InsightsModel {
         statementError = nil
         defer { exporting = nil }
         do {
-            // Left as this month's window, the statement is asked for as that month (its heading names it).
-            let month = statementMonth.flatMap { $0.from == statementFrom && $0.to == statementTo ? $0.key : nil }
+            // Left as this month's window with the salary setting on, the statement is asked
+            // for as that pay month (its heading names it); without it, the plain range as before.
+            let month = cal.isNull ? nil : statementMonth.flatMap { $0.from == statementFrom && $0.to == statementTo ? $0.key : nil }
             let bytes = try await data.insights.statement(from: statementFrom, to: statementTo, month: month, format: format)
             let name: String = try core.call("reportFiles", "statementFilename", [statementFrom, statementTo, format])
             let file = FileManager.default.temporaryDirectory.appendingPathComponent(name)

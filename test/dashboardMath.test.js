@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   periodTotals, periodProjection, projectedTotals, visibleBars, TOP_CATEGORIES, homeCards, homeStacks, homeLists, barLines, netSum,
-  groupFlow, netSteps, paidRuleIds,
+  groupFlow, netSteps,
 } from '../src/features/dashboard/dashboardMath.js'
 import { expectedEnd, payCalendar, payMonthWindow } from '../src/shared/lib/payCalendar.js'
 import { spendRows } from '../src/shared/lib/spread.js'
@@ -251,25 +251,36 @@ test('pay months: October counts what was paid from its payday, as a calendar mo
   assert.deepEqual([cal.earned, cal.spent], [0, 7875])
 })
 
-test('pay months: the projection ends the day before the next salary, and a charge paid this pay month is not due again', () => {
+test('pay months: the projection ends the day before the next salary', () => {
   const rule = (id, next_run, amount_minor, extra = {}) => ({ id, kind: 'expense', frequency: 'monthly', interval_n: 1,
     is_active: true, next_run, amount_minor, currency: 'EUR', ...extra })
   const rules = [
-    rule('rent', '2026-10-30', 95000), // paid 30 Sep, in October already
+    rule('rent', '2026-10-30', 95000), // paid 30 Sep; the next one is November's
     rule('phone', '2026-10-12', 2000),
     rule('gym', '2026-10-29', 3000), // due on payday: November's
     rule('salary', '2026-10-29', 250000, { kind: 'income', category_id: 'salary' }),
   ]
   const end = expectedEnd(OCT, CAL, { ruleNextRun: '2026-10-29' })
   assert.equal(end, '2026-10-28')
-  const paid = paidRuleIds([{ spent_at: '2026-09-30', recurring_rule_id: 'rent' }, { spent_at: '2026-09-20', recurring_rule_id: 'phone' }],
-    OCT)
-  assert.deepEqual([...paid], ['rent'])
-  const proj = periodProjection(rules, { from: OCT.from, to: end }, '2026-10-03', false, undefined, { cal: CAL, paidRules: paid })
+  const proj = periodProjection(rules, { from: OCT.from, to: end }, '2026-10-03', false, undefined, { cal: CAL })
   assert.equal(proj.expense, 2000)
   assert.equal(proj.income, 0)
-  // Without the paid rules (the setting off), the rent would count twice.
+  // The setting off: the calendar month to its end.
   assert.equal(periodProjection(rules, { from: OCT.from, to: '2026-10-31' }, '2026-10-03').expense, 95000 + 2000 + 3000)
+})
+
+test('pay months: a monthly charge paid early in a long pay month still counts again before the next salary', () => {
+  // Paid 29 Sep (in October's pay month, 29 Sep - 31 Oct); the salary is expected 31 Oct.
+  const rules = [
+    { id: 'rent', kind: 'expense', frequency: 'monthly', interval_n: 1, is_active: true, next_run: '2026-10-29',
+      amount_minor: 90000, currency: 'EUR' },
+    { id: 'salary', kind: 'income', category_id: 'salary', frequency: 'monthly', interval_n: 1, is_active: true,
+      next_run: '2026-10-31', amount_minor: 250000, currency: 'EUR' },
+  ]
+  const proj = periodProjection(rules, { from: '2026-09-29', to: '2026-10-30' }, '2026-10-03', false, undefined,
+    { cal: CAL })
+  assert.equal(proj.expense, 90000)
+  assert.equal(proj.income, 0)
 })
 
 test('pay months: groupFlow over the pay window', () => {

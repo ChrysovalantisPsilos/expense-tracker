@@ -20,7 +20,7 @@ import { savingsIdsOf } from '../src/shared/lib/savings.js'
 import { paidInWindow, spendRows } from '../src/shared/lib/spread.js'
 import { rulesInBase } from '../src/shared/lib/ruleFx.js'
 import {
-  periodTotals, periodProjection, paidRuleIds, projectedTotals, groupFlow, savingsLine, barLines, homeLists, visibleBars, homeCards, netSum,
+  periodTotals, periodProjection, projectedTotals, groupFlow, savingsLine, barLines, homeLists, visibleBars, homeCards, netSum,
   overviewNotes,
 } from '../src/features/dashboard/dashboardMath.js'
 import { isFirstRun, listHeading } from '../src/features/transactions/listHeading.js'
@@ -124,7 +124,7 @@ export function homeFigures({
     ? expectedEnd(payMonthWindow(period.key, cal), cal, paydayHints(rules, shift, payDays.at(-1) ?? null)) : period.to
   const proj = periodProjection(rulesInBase(rules, baseCurrency, rates).rules, { from: period.from, to: end },
     todayISO, separateYearly, savingsIds,
-    cal ? { cal, paidRules: paidRuleIds(rows, { from: period.from, to: period.to }) } : undefined)
+    { cal })
   const figures = projectedTotals(totals, proj, groupFlow(groupMoves, baseCurrency, { from: period.from, to: period.to }))
   const labels = bucketLabels([...totals.bucketRow.values()])
   // Each bar's badge as Dashboard's BucketIcon draws it: a group's share

@@ -68,19 +68,17 @@ const NOTHING_AHEAD = { expense: 0, income: 0, expenseFromSavings: 0, savedFromI
 // savings (0085) are upcoming spending (`expense`, of which
 // `expenseFromSavings`). `net` is what they all do to the net (netSign).
 //
-// With pay months on, pass `cal` (a yearly charge's parts by pay month) and
-// `paidRules` (paidRuleIds): the rules with a charge
-// already paid in the period. A pay month can be longer than a calendar
-// month (29 Sep → 31 Oct), so a monthly charge paid on 30 Sep would
-// otherwise be counted again as due on 30 Oct: a rule charged at most once a
-// month that already has its charge in the period adds nothing more.
+// With pay months on, pass `cal` (a yearly charge's parts by pay month). A
+// pay month can be longer than a calendar month (29 Sep → 31 Oct), so a
+// monthly rule may really be charged twice in it: every charge up to `to`
+// (expectedEnd, the day before the next salary) counts, and the next cycle's
+// stays out because `to` ends before it.
 export function periodProjection(rules, { from = null, to = null } = {}, todayISO, separateYearly = false,
-  savingsIds = NO_SAVINGS, { paidRules = NO_RULES, cal = null } = {}) {
+  savingsIds = NO_SAVINGS, { cal = null } = {}) {
   if (!to || to < todayISO) return NOTHING_AHEAD
   const start = from && from > todayISO ? from : todayISO
-  const due = rules.filter((r) => !(paidRules.has(r.id) && ONCE_A_MONTH.has(r.frequency)))
   const by = Object.fromEntries(EFFECTS.map((effect) => {
-    const list = due.filter((r) => rowEffect(r, savingsIds) === effect)
+    const list = rules.filter((r) => rowEffect(r, savingsIds) === effect)
     const sum = list.length ? expectedInWindow(list, start, to, separateYearly, cal) : null
     return [effect, sum ? sum.income + sum.expense : 0]
   }))
@@ -92,14 +90,6 @@ export function periodProjection(rules, { from = null, to = null } = {}, todayIS
     net: EFFECTS.reduce((sum, effect) => sum + netSign(effect) * by[effect], 0),
   }
 }
-
-const NO_RULES = new Set()
-const ONCE_A_MONTH = new Set(['monthly', 'yearly'])
-
-// The rules with a charge paid in [from, to] (rows: the period's
-// transactions), for periodProjection's `paidRules`.
-export const paidRuleIds = (rows, { from = null, to = null } = {}) =>
-  new Set(paidInWindow(rows, from, to).map((r) => r.recurring_rule_id).filter(Boolean))
 
 const NO_GROUP_FLOW = { groupsFronted: 0, groupsCovered: 0, settledIn: 0, settledOut: 0 }
 

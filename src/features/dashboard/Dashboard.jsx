@@ -38,7 +38,7 @@ import SumSteps from '../../shared/ui/SumSteps.jsx'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { categoryBars } from './categoryBars.js'
 import {
-  periodTotals, periodProjection, paidRuleIds, projectedTotals, groupFlow, overviewNotes, netSum, savingsLine, barLines, homeLists, visibleBars,
+  periodTotals, periodProjection, projectedTotals, groupFlow, overviewNotes, netSum, savingsLine, barLines, homeLists, visibleBars,
   TOP_CATEGORIES, homeCards, homeStacks,
 } from './dashboardMath.js'
 import BudgetsCard from '../budgets/BudgetsCard.jsx'
@@ -134,16 +134,15 @@ export default function Dashboard() {
   // but only for periods that are still ongoing (end today or later). Past
   // periods and "all time" stay purely actual. With pay months the
   // projection ends the day before the next salary is expected
-  // (payCalendar.expectedEnd), and a monthly charge already paid in this pay
-  // month isn't counted again (paidRuleIds).
+  // (payCalendar.expectedEnd).
   const todayISO = useMemo(() => today(), [])
   const proj = useMemo(() => {
     const end = cal && period.open
       ? expectedEnd(payMonthWindow(period.key, cal), cal, paydayHints(rules, salaryShift, lastPayDay)) : period.to
     return periodProjection(rulesInBase(rules, baseCurrency, ruleFx.rates).rules, { from: period.from, to: end },
       todayISO, separateYearly, savingsIds,
-      cal ? { cal, paidRules: paidRuleIds(rows, { from: period.from, to: period.to }) } : undefined)
-  }, [rules, baseCurrency, ruleFx.rates, period, todayISO, separateYearly, savingsIds, cal, salaryShift, lastPayDay, rows])
+      { cal })
+  }, [rules, baseCurrency, ruleFx.rates, period, todayISO, separateYearly, savingsIds, cal, salaryShift, lastPayDay])
   const flow = useMemo(() => groupFlow(moves, baseCurrency, { from: period.from, to: period.to }),
     [moves, baseCurrency, period.from, period.to])
   const figures = projectedTotals(totals, proj, flow)
