@@ -8,6 +8,14 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-10-08': {
+      amount: {
+        title: 'Type the amount of a shared expense',
+        body: 'In the iPhone app, adding an expense from a group now opens with the number pad, so you can type its amount. When you edit an expense, tap the amount to bring the pad back.',
+        chips: { pad: 'Number pad', edit: 'Tap to edit' },
+        action: 'Open Groups',
+      },
+    },
     '2026-10-07': {
       fixes: {
         title: 'Fixes in the iPhone app',
