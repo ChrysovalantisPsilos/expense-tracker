@@ -44,7 +44,8 @@ final class WidgetSyncTests: XCTestCase {
             for periodValue in [nil, "m:2020-9"] as [String?] {
                 let snapshot = try WidgetSync.snapshot(fixture.homeInput(periodValue: periodValue), written: fixture.now,
                                                        core: .shared)
-                XCTAssertEqual(snapshot.from, "2020-09-01", lang)
+                // September is a pay month: from the day its salary arrived (28 Aug).
+                XCTAssertEqual(snapshot.from, "2020-08-28", lang)
                 XCTAssertEqual(snapshot.to, "2020-09-30", lang)
                 XCTAssertEqual(snapshot.language, lang)
                 XCTAssertEqual(snapshot.spent, home.spent, lang)
@@ -164,7 +165,7 @@ final class WidgetSyncTests: XCTestCase {
         XCTAssertEqual(reloads, 1)
         // August on Home: the widgets keep September.
         await home.setPeriod("m:2020-8")
-        XCTAssertEqual(shelf.read()?.from, "2020-09-01")
+        XCTAssertEqual(shelf.read()?.from, "2020-08-28")
         XCTAssertEqual(reloads, 1)
     }
 
