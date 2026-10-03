@@ -20,7 +20,7 @@ import { START_FRESH_PHRASE, startFreshCheck, startFreshScope } from './startFre
 import Note from './Note.jsx'
 
 // Settings › Your data's Start fresh: wipe your own data and keep the account
-// (start_fresh, 0112). Hidden on the shared demo login, which the server
+// (start_fresh, 0114). Hidden on the shared demo login, which the server
 // refuses anyway. The confirmation offers a backup first, then asks for START
 // FRESH and the password (or a recent sign-in), as Delete account does.
 export default function StartFresh() {

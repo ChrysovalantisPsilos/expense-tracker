@@ -186,6 +186,34 @@ final class PlanModelTests: XCTestCase {
         XCTAssertEqual(store.planWrites.last?.name, "clear")
     }
 
+    func testStartFreshForgetsThePlanAndNeverWritesItBack() async throws {
+        let fixture = try PlanFixture.load()
+        let store = fixture.store("changes")
+        let plan = model(store, fixture)
+        await plan.load()
+        XCTAssertNotNil(plan.page?.changes)
+        // An edit waiting to be saved when the server wipes the plan.
+        plan.toggle(try row(plan, "Netflix").id)
+        plan.toggleOpen(try row(plan, "Spotify").id)
+        XCTAssertEqual(plan.saveStatus, .saving)
+        let writes = store.planWrites.count
+        store.savedPlan = .null
+        store.planUndo = .null
+        plan.forget()
+        XCTAssertNil(plan.page)
+        XCTAssertNil(plan.open)
+        XCTAssertEqual(plan.saveStatus, .saved)
+        await plan.flush()
+        XCTAssertEqual(store.planWrites.count, writes)
+        // The next load shows the server's empty plan.
+        await plan.load()
+        XCTAssertNil(plan.page?.changes)
+        let fresh = model(store, fixture)
+        await fresh.load()
+        XCTAssertEqual(plan.page, fresh.page)
+        XCTAssertEqual(store.planWrites.count, writes)
+    }
+
     func testAFailedSaveSaysSoAndTriesAgain() async throws {
         let fixture = try PlanFixture.load()
         let store = fixture.store()

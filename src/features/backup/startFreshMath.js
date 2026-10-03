@@ -1,5 +1,5 @@
 // Start fresh (Settings › Your data): wipe your own data and keep the account
-// (start_fresh, migration 0112). The rules both apps follow (the iOS app
+// (start_fresh, migration 0114). The rules both apps follow (the iOS app
 // through the core): the phrase typed to confirm, what the confirmation asks
 // for, and what goes and what stays, in the app's language.
 import { t } from '../../shared/lib/i18n/i18n.js'
@@ -33,7 +33,7 @@ export function startFreshCheck({ user, recent, phrase, password }) {
 }
 
 // What goes and what stays (backup:startFresh.scope.*), in the order shown;
-// the server's list is start_fresh's header in 0112.
+// the server's list is start_fresh's header in 0114.
 const SCOPE = {
   wiped: ['entries', 'plans', 'savings', 'salary', 'rules', 'notifications', 'categories'],
   kept: ['account', 'settings', 'groups'],

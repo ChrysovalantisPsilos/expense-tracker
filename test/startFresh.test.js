@@ -1,4 +1,4 @@
-// Start fresh (Settings › Your data, start_fresh in 0112): the phrase, what
+// Start fresh (Settings › Your data, start_fresh in 0114): the phrase, what
 // the confirmation asks for, what goes and what stays, and the server's
 // lockstep with the app (the sign-in window, the refusals' words, the tables).
 import { test } from 'node:test'

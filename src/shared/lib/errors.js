@@ -116,7 +116,7 @@ function isNetworkError(error) {
 export const SQL_USER_MESSAGES = new Map([
   // Signed out mid-session (every definer function checks auth.uid()).
   ['not authenticated', 'sessionExpired'],
-  // Start fresh (0112) without a sign-in in the last few minutes (_shared/reauth.ts' window).
+  // Start fresh (0114) without a sign-in in the last few minutes (_shared/reauth.ts' window).
   ['For your security, please sign in again to start fresh.', 'reauth.startFresh'],
   // Permissions and membership
   ['not allowed', 'sql.notAllowed'],

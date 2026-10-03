@@ -872,8 +872,10 @@ a core call (the web's function); Swift reads, lays out and draws.
   and what stays by `startFreshMath.startFreshScope`, Export backup offered
   first inside the sheet, START FRESH typed and the password or a recent
   sign-in by `startFreshCheck`, then `start_fresh`; afterwards the frame
-  clears the offline cache and the widgets' snapshot, puts every tab back
-  at its first page on Home and reloads every screen; not on the demo login).
+  clears the offline cache and the widgets' snapshot, has Plan forget its
+  copy of the saved plan (`PlanModel.forget`, so nothing waiting writes it
+  back), puts every tab back at its first page on Home and reloads every
+  screen; not on the demo login).
 
 ### Strings
 

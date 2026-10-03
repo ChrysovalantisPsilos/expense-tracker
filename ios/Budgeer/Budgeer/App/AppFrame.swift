@@ -199,10 +199,14 @@ struct AppFrame: View {
                 // After Start fresh: nothing this phone kept of the old data
                 // shows again (the offline copies, the widgets' figures), every
                 // tab is back at its first page, and every screen reloads.
+                // Plan keeps its own copy of the saved plan (read once, then
+                // saved whole), so it forgets it rather than writing it back.
                 let router = router
                 let cache = container.cache
                 let live = container.live
+                let plan = built.plan
                 built.startFresh.onDone = {
+                    plan.forget()
                     await cache.clear()
                     WidgetSync.signedOut()
                     router.startOver()

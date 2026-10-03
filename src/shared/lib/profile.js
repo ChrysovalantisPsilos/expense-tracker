@@ -85,7 +85,7 @@ export async function deleteMyAccount({ password } = {}) {
 }
 
 // Start fresh (Settings › Your data): the server wipes the caller's own data
-// and keeps the account (start_fresh, 0112), only after a sign-in in the last
+// and keeps the account (start_fresh, 0114), only after a sign-in in the last
 // few minutes. A password account gives its password, which signs in anew
 // (as changing the password does): that fresh sign-in is what the server
 // checks. A wrong password stops here, with `wrongPassword` as its message.

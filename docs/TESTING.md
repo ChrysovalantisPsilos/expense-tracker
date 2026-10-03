@@ -52,7 +52,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Smart statement import (CSV/XLSX): auto-mapped columns, duplicate-proof re-imports, learned merchant→category rules
 - Branded PDF statements (personal + per-group) and an Excel export of your own statement
 - Backup & restore (Settings → Your data): one JSON file, optionally password-encrypted in the browser; restore merges and skips duplicates
-- Start fresh (Settings → Your data): wipes your own entries, recurring payments, budgets, Plan, accounts and goals, salary corrections, meal vouchers, import rules, AI summaries and notifications, resets the categories to the defaults; keeps the account, profile, settings, consents, push devices and groups (with your group shares); after a backup offer, START FRESH typed and a fresh sign-in (`start_fresh`, 0112)
+- Start fresh (Settings → Your data): wipes your own entries, recurring payments, budgets, Plan, accounts and goals, salary corrections, meal vouchers, import rules, AI summaries and notifications, resets the categories to the defaults; keeps the account, profile, settings, consents, push devices and groups (with your group shares); after a backup offer, START FRESH typed and a fresh sign-in (`start_fresh`, 0114)
 
 **Groups**
 - Groups with invites via link, email, or in-app; join/decline inbox
@@ -332,6 +332,11 @@ the app stays scrollable, and the file downloads within seconds.
     the widgets show an empty month. A fourth run in a day is refused
     ("Too many fresh starts"). Not shown on the demo login. The other account
     in the group sees nothing change. Restoring the backup brings it back.
+    Within ten minutes the account's address gets "Your Budgeer data was
+    cleared" (the time in UTC, what to do if it wasn't you); three runs in
+    an hour are one email that counts them. On iOS, open Plan before
+    starting fresh: afterwards it shows an empty plan, and editing it does
+    not bring the old rows back.
 
 ### K. Navigation
 34. Phone width: the bottom bar is exactly Home · Transactions · Groups ·

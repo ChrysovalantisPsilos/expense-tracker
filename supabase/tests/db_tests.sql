@@ -7468,7 +7468,7 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 121. 0112: start_fresh() wipes the caller's own data and keeps the account.
+-- 121. 0114: start_fresh() wipes the caller's own data and keeps the account.
 --      Closed to anon (and signed_in_recently to every client); refused for
 --      a stale sign-in and for the demo login, with nothing touched; a fresh
 --      run empties the caller's entries, rules, budgets, import rules,
@@ -7476,7 +7476,10 @@ end $$;
 --      notifications, re-seeds the default categories and clears the salary
 --      pointer, while the profile, consents, groups, the mirrored group
 --      shares (moved to the new default category) and another user's rows all
---      stay; three runs a day.
+--      stay; three runs a day. A committed run queues one 'start_fresh'
+--      service email for the caller (coalesced: 3 runs → 3 events); a
+--      refused run (stale sign-in, demo, rate limit) queues nothing, and no
+--      one else's queue changes.
 -- ---------------------------------------------------------------------------
 do $$
 declare u1 uuid; u2 uuid; u3 uuid; u uuid; gid uuid; m1 uuid; m2 uuid; food1 uuid; sal1 uuid; cat uuid;
@@ -7566,6 +7569,9 @@ begin
     if not exists (select 1 from public.transactions where user_id = u1 and group_expense_id is null) then
       raise exception 'a refused run deleted entries';
     end if;
+    if exists (select 1 from public.privacy_email_queue where user_id = u1 and kind = 'start_fresh') then
+      raise exception 'a refused run queued an email';
+    end if;
 
     -- The demo login is refused even with a fresh sign-in.
     update public.profiles set is_demo = true where id = u3;
@@ -7580,6 +7586,9 @@ begin
     execute 'reset role';
     if msg is distinct from 'That isn’t available on the demo account.' then
       raise exception 'demo not refused: %', msg;
+    end if;
+    if exists (select 1 from public.privacy_email_queue where user_id = u3) then
+      raise exception 'the refused demo run queued an email';
     end if;
 
     -- A fresh sign-in: u1 starts fresh.
@@ -7623,6 +7632,14 @@ begin
       raise exception 'profile not kept as it should be';
     end if;
     if not exists (select 1 from public.consents where user_id = u1) then raise exception 'consents wiped'; end if;
+    -- The owner is told: one 'start_fresh' email queued, due now; no one else's.
+    if not exists (select 1 from public.privacy_email_queue where user_id = u1 and kind = 'start_fresh'
+                     and pending_events = 1 and due_at <= now()) then
+      raise exception 'no start_fresh email queued';
+    end if;
+    if exists (select 1 from public.privacy_email_queue where user_id in (u2, u3)) then
+      raise exception 'another user''s email queue changed';
+    end if;
     -- The other user is untouched: 2 entries (one a group share) and one row of each of the rest.
     select (select count(*) from public.transactions where user_id = u2)
          + (select count(*) from public.recurring_rules where user_id = u2)
@@ -7654,9 +7671,13 @@ begin
     if msg is distinct from 'Too many fresh starts — please try again tomorrow.' then
       raise exception 'fourth run not rate-limited: %', msg;
     end if;
+    -- Three committed runs, one coalesced email; the refused fourth added nothing.
+    if (select pending_events from public.privacy_email_queue where user_id = u1 and kind = 'start_fresh') <> 3 then
+      raise exception 'start_fresh email events not 3';
+    end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: start_fresh wipes only the caller''s personal data, keeps the account and groups, re-seeds the defaults (fresh sign-in, no demo, 3 a day, closed to anon)';
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: start_fresh wipes only the caller''s personal data, keeps the account and groups, re-seeds the defaults, emails the owner (fresh sign-in, no demo, 3 a day, closed to anon)';
     else update _t set fails = fails + 1; raise notice 'FAIL: start_fresh — %', sqlerrm; end if;
   end;
 end $$;
