@@ -162,7 +162,10 @@ struct HomeView: View {
         let shown = months.firstIndex { $0.value == (month ?? model.currentValue) } ?? (months.count - 1)
         return VStack(spacing: 10) {
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 0) {
+                // Every month laid out (one light page each): a lazy stack opened at its
+                // trailing end can draw nothing until swiped on an account with years of
+                // months, a blank gap where This month belongs.
+                HStack(spacing: 0) {
                     ForEach(months, id: \.value) { period in
                         HomeHero(period: period, figures: figures(for: period), onSum: { showSum = true })
                             .containerRelativeFrame(.horizontal)
