@@ -199,10 +199,12 @@ struct SalaryFigures: Codable, Equatable, Sendable {
 
     /// - categories: every category; income: every income entry; notes: my_salary_history
     /// - vouchers: my_meal_vouchers (its country); language: the app's
+    /// - cal: the pay calendar (null with the salary setting off): every entry counts in its pay month
     static func report(profile: JSONValue, categories: JSONValue, income: JSONValue, notes: JSONValue,
-                       vouchers: JSONValue, language: String, now: Date, core: BudgeerCore) throws -> Report {
+                       vouchers: JSONValue, language: String, now: Date, cal: JSONValue = .null,
+                       core: BudgeerCore) throws -> Report {
         let base = JSONValue.string(profile["base_currency"]?.stringValue ?? "EUR")
-        let nowKey: String = try core.call("salaryMath", "monthOf", [try core.isoDate(now)])
+        let nowKey: String = try core.call("payCalendar", "payMonthOf", [try core.isoDate(now), cal])
         let kept = try core.json("salaryMath", "normaliseNotes", [notes])
         let salaryId = try core.json("planMath", "salaryCategoryId", [profile, categories])
         let bonusId = try core.json("salaryMath", "bonusCategoryId", [categories, kept])
@@ -211,7 +213,7 @@ struct SalaryFigures: Codable, Equatable, Sendable {
         ] as JSONValue])
         let report = try core.json("salaryMath", "salaryReport", [income, [
             "salaryId": salaryId, "bonusId": bonusId, "currency": base, "notes": kept,
-            "shift": try core.json("salaryShift", "salaryShiftOf", [profile]), "nowKey": .string(nowKey),
+            "cal": cal, "nowKey": .string(nowKey),
         ] as JSONValue])
         return Report(notes: kept, salaryId: salaryId, bonusId: bonusId, country: country, nowKey: nowKey, report: report)
     }

@@ -20,10 +20,14 @@ struct CategoryFixture: Decodable {
         let now: String
         let profile: JSONValue
         let categories: JSONValue
+        let payDays: JSONValue?
         let views: [View]
     }
     let input: Input
     let expected: [String: [String: CategoryPageFigures]]
+
+    /// The pay months the page is cut by (my_pay_calendar's dates).
+    var cal: JSONValue { payCal(profile: input.profile, payDays: input.payDays, now: now) }
 
     static func load() throws -> CategoryFixture {
         try JSONDecoder().decode(CategoryFixture.self, from: fixtureData("category"))
@@ -42,6 +46,7 @@ struct CategoryFixture: Decodable {
         store.rowsResult = .success(chosen.rows)
         store.budgetsByPeriod = ["2020-09-01": chosen.budgets, "2020-08-01": chosen.budgets]
         store.oldest = .success("2020-03-15")
+        store.payCalendarResult = ["days": input.payDays ?? [], "today": .null]
         return store
     }
 }
@@ -60,7 +65,7 @@ final class CategoryPageParityTests: XCTestCase {
                 let figures = try CategoryPageFigures.compute(
                     profile: fixture.input.profile, categories: fixture.input.categories, rows: view.rows,
                     budgets: view.budgets, categoryId: view.categoryId, periodValue: view.periodValue, now: fixture.now,
-                    core: .shared)
+                    cal: fixture.cal, core: .shared)
                 let expected = try XCTUnwrap(fixture.expected[lang]?[view.name])
                 XCTAssertEqual(figures.rows, expected.rows, "\(lang) \(view.name)")
                 XCTAssertEqual(figures, expected, "\(lang) \(view.name)")
@@ -86,7 +91,8 @@ final class CategoryPageModelTests: XCTestCase {
         XCTAssertEqual(page.state, .loaded(try XCTUnwrap(fixture.expected["en"]?["groceries"])))
         let read = try XCTUnwrap(store.queries.last)
         XCTAssertEqual(read.categoryId, fixture.view("groceries").categoryId)
-        XCTAssertEqual(read.from, "2020-09-01")
+        // September as a pay month, from the 28 Aug payday.
+        XCTAssertEqual(read.from, "2020-08-28")
         XCTAssertEqual(read.to, "2020-09-30")
         XCTAssertTrue(read.spread)
         XCTAssertNil(read.kind)

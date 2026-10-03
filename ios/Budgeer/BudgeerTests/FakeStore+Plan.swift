@@ -54,9 +54,10 @@ extension FakeStore {
         savingsWrites.append(("deleteAccount", .string(id)))
     }
 
-    func statement(from: String, to: String, format: String) async throws -> Data {
+    func statement(from: String, to: String, month: String?, format: String) async throws -> Data {
         if let writeError { throw writeError }
-        planWrites.append(("statement", ["from": .string(from), "to": .string(to), "format": .string(format)]))
+        planWrites.append(("statement", ["from": .string(from), "to": .string(to), "month": month.json,
+                                         "format": .string(format)]))
         return Data("%PDF-1.7 fake".utf8)
     }
 }

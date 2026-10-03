@@ -26,6 +26,7 @@ struct PlanFixture: Decodable {
         let income: JSONValue
         let charges: JSONValue
         let rates: JSONValue
+        let payDays: JSONValue?
         let views: [View]
         let whatif: JSONValue
     }
@@ -62,6 +63,7 @@ struct PlanFixture: Decodable {
         store.allCategoriesResult = .success(input.categories)
         store.rowsFor = { query in query.kind == "income" ? income : charges }
         store.rates = ["USD>EUR": 0.9]
+        store.payCalendarResult = ["days": input.payDays ?? [], "today": .null]
         return store
     }
 }
@@ -75,6 +77,7 @@ final class PlanParityTests: XCTestCase {
     func testThePageEqualsTheWebsInBothLanguages() throws {
         let fixture = try PlanFixture.load()
         let core = BudgeerCore.shared
+        let cal = payCal(profile: fixture.input.profile, payDays: fixture.input.payDays, now: fixture.now)
         for lang in ["en", "el"] {
             try core.setLanguage(lang)
             for view in fixture.input.views {
@@ -83,9 +86,9 @@ final class PlanParityTests: XCTestCase {
                     profile: fixture.input.profile, rules: view.rules, plan: plan, undo: .null,
                     categories: fixture.input.categories, savingsCategories: fixture.input.savingsCategories,
                     income: view.income ?? fixture.input.income, charges: fixture.input.charges, budgetSets: [],
-                    rates: fixture.input.rates, view: view.view, now: fixture.now, core: core)
+                    rates: fixture.input.rates, view: view.view, now: fixture.now, cal: cal, core: core)
                 let expected = try XCTUnwrap(fixture.expected[lang]?[view.name])
-                XCTAssertEqual(try PlanFigures.reads(profile: fixture.input.profile, now: fixture.now, core: core),
+                XCTAssertEqual(try PlanFigures.reads(now: fixture.now, cal: cal, core: core),
                                expected.reads, "\(lang) \(view.name)")
                 XCTAssertEqual(figures.page.header, expected.parts.header, "\(lang) \(view.name)")
                 XCTAssertEqual(figures.page.groups, expected.parts.groups, "\(lang) \(view.name)")

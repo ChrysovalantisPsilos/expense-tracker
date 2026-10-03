@@ -24,6 +24,7 @@ struct SavingsFixture: Decodable {
         let fromSavings: JSONValue
         let rules: JSONValue
         let goals: JSONValue
+        let payDays: JSONValue?
         let views: [View]
     }
     let input: Input
@@ -57,6 +58,7 @@ struct SavingsFixture: Decodable {
         store.rulesResult = .success(input.rules)
         store.accountRows = view.accounts
         store.goalRows = input.goals
+        store.payCalendarResult = ["days": input.payDays ?? [], "today": .null]
         return store
     }
 }
@@ -77,7 +79,9 @@ final class SavingsParityTests: XCTestCase {
                     profile: fixture.input.profile, categories: fixture.input.categories,
                     income: empty ? [] : fixture.input.income, fromSavings: empty ? [] : fixture.input.fromSavings,
                     accounts: view.accounts, rules: fixture.input.rules, goals: fixture.input.goals, filter: view.filter,
-                    now: fixture.now, core: .shared)
+                    now: fixture.now,
+                    cal: payCal(profile: fixture.input.profile, payDays: fixture.input.payDays, now: fixture.now),
+                    core: .shared)
                 let expected = try XCTUnwrap(fixture.expected[lang]?[view.name])
                 XCTAssertEqual(figures.pot, expected.pot, "\(lang) \(view.name)")
                 XCTAssertEqual(figures.month, expected.month, "\(lang) \(view.name)")

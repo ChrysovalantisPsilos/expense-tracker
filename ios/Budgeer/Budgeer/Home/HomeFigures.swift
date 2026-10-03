@@ -1,6 +1,7 @@
 // Home's figures, every one from the core: the web's Dashboard.jsx steps
-// (the period, salaryShiftOf, savingsIdsOf, spendRows, periodTotals,
-// periodProjection over the recurring rules at today's rates, groupFlow,
+// (the period, by pay month with the salary setting on (payCalendar),
+// savingsIdsOf, spendRows, periodTotals, periodProjection over the recurring
+// rules at today's rates up to payCalendar.expectedEnd, groupFlow,
 // projectedTotals, categoryBars (all of them, and the donut's top four), bucketLabels, formatMoney, formatSigned,
 // signTone, savingsLine, barLines, visibleBars, homeLists, listHeading,
 // rowParts.listParts, isFirstRun, homeCards) and its Recurring card's (SubscriptionsCard:
@@ -29,13 +30,23 @@ struct HomeInput: Equatable, Sendable {
     /// The first transaction's date (nil: none at all), and whether it could be read.
     var oldest: String? = nil
     var oldestKnown = true
+    /// The user's pay calendar (PeriodSource.calendar; null with the salary
+    /// setting off) and their newest payday (for the projection's end).
+    var cal: JSONValue = .null
+    var lastPayDay: JSONValue = .null
 }
 
 struct HomePeriod: Codable, Equatable, Sendable {
     let value: String
+    /// The month's label ('YYYY-MM'; nil for a year or all time).
+    var key: String? = nil
     let from: String?
     let to: String?
     let label: String
+    /// The pay window when it isn't the calendar month ("from 29 Sep").
+    var range: String? = nil
+    /// Whether the month hasn't ended (the next one hasn't begun).
+    var open: Bool? = nil
 }
 
 struct HomeBar: Codable, Equatable, Sendable {
@@ -138,8 +149,9 @@ struct RecurringCard: Codable, Equatable, Sendable {
 
 struct HomeFigures: Codable, Equatable, Sendable {
     let period: HomePeriod
-    /// Where the rows were fetched from (before the period with a salary shift; nil for all time).
-    let fetchFrom: String?
+    /// Where this month's projection ends (payCalendar.expectedEnd: the day
+    /// before the next salary with pay months; nil for all time).
+    let projectionEnd: String?
     let spentTotal: Double
     let earnedTotal: Double
     let netTotal: Double
@@ -169,43 +181,55 @@ struct HomeFigures: Codable, Equatable, Sendable {
     /// The donut's legend keeps the four biggest (homeFigures.mjs LEGEND_TOP).
     static let legendTop = 4
 
-    /// The period a picker value names (this month for nil or an unknown one).
-    static func period(_ value: String?, now: Date, core: BudgeerCore) throws -> JSONValue {
-        if let value, let named = try? core.json("periods", "periodFromValue", [value, JSDate(now)]), !named.isNull {
+    /// The period a picker value names (this month for nil or an unknown
+    /// one), cut by the pay calendar (`cal`, null with the setting off).
+    static func period(_ value: String?, now: Date, cal: JSONValue = .null, core: BudgeerCore) throws -> JSONValue {
+        if let value, let named = try? core.json("periods", "periodFromValue", [value, JSDate(now), cal]), !named.isNull {
             return named
         }
-        return try core.json("periods", "thisMonthPeriod", [JSDate(now)])
+        return try core.json("periods", "thisMonthPeriod", [JSDate(now), cal])
     }
 
-    /// The period and where to fetch its rows from, given the profile (a
-    /// shifted salary is read from late in the month before).
-    static func window(profile: JSONValue, periodValue: String? = nil, now: Date,
-                       core: BudgeerCore) throws -> (period: HomePeriod, fetchFrom: String?) {
-        let period = try period(periodValue, now: now, core: core)
-        let salaryShift: JSONValue = try core.call("salaryShift", "salaryShiftOf", [profile])
-        let from = period["from"] ?? .null
-        let fetchFrom: JSONValue = try core.call("salaryShift", "shiftFetchFrom", [from, salaryShift])
-        return (try period.decode(), fetchFrom.stringValue ?? from.stringValue)
+    /// The period whose rows to fetch (its window: a pay month's with `cal`).
+    static func window(periodValue: String? = nil, now: Date, cal: JSONValue = .null,
+                       core: BudgeerCore) throws -> HomePeriod {
+        try period(periodValue, now: now, cal: cal, core: core).decode()
     }
 
     /// `legendTop`: how many the legend keeps before "Other" (the widgets keep three).
     static func compute(_ input: HomeInput, legendTop: Int = HomeFigures.legendTop, core: BudgeerCore) throws -> HomeFigures {
-        let period = try period(input.periodValue, now: input.now, core: core)
+        let cal = input.cal
+        let period = try period(input.periodValue, now: input.now, cal: cal, core: core)
         let from = period["from"] ?? .null
         let to = period["to"] ?? .null
         let baseCurrency = input.profile["base_currency"]?.stringValue ?? "EUR"
         let separateYearly = input.profile["yearly_separate"]?.boolValue ?? false
-        let salaryShift: JSONValue = try core.call("salaryShift", "salaryShiftOf", [input.profile])
+        let shift: JSONValue = try core.call("payCalendar", "salaryShiftOf", [input.profile])
         let savingsIds: JSONValue = try core.call("savings", "savingsIdsOf", [input.categories])
-        let options: JSONValue = .object(["separateYearly": .bool(separateYearly), "salaryShift": salaryShift])
+        let options: JSONValue = .object(["separateYearly": .bool(separateYearly), "cal": cal])
         let spend: JSONValue = try core.call("spread", "spendRows", [input.rows, baseCurrency, from, to, options])
         let totals: JSONValue = try core.call("dashboardMath", "periodTotals", [spend, baseCurrency, savingsIds])
         let todayISO = try core.isoDate(input.now)
         let range: JSONValue = .object(["from": from, "to": to])
+        // This month's projection ends the day before the next salary is
+        // expected with pay months (expectedEnd), else with the period.
+        var end = to
+        var projOptions: JSONValue = .object([:])
+        if !cal.isNull {
+            if period["open"]?.boolValue == true {
+                let win = try core.json("payCalendar", "payMonthWindow", [period["key"] ?? .null, cal])
+                let hints = try core.json("payCalendar", "paydayHints", [input.rules, shift, input.lastPayDay])
+                end = try core.json("payCalendar", "expectedEnd", [win, cal, hints])
+            }
+            // A monthly charge already paid in this pay month isn't due again.
+            let paid = try core.json("dashboardMath", "paidRuleIds", [input.rows, range])
+            projOptions = .object(["cal": cal, "paidRules": paid])
+        }
         // Foreign rules count at today's rate (rulesInBase), one without a rate left out.
         let inBase = try core.json("ruleFx", "rulesInBase", [input.rules, baseCurrency, input.rates])
         let proj: JSONValue = try core.call("dashboardMath", "periodProjection",
-                                            [inBase["rules"] ?? [], range, todayISO, separateYearly, salaryShift, savingsIds])
+                                            [inBase["rules"] ?? [], JSONValue.object(["from": from, "to": end]), todayISO,
+                                             separateYearly, savingsIds, projOptions])
         // The money groups really moved in the period (groupFlow), which the Net counts.
         let flow: JSONValue = try core.call("dashboardMath", "groupFlow", [input.groupMoves, baseCurrency, range])
         let figures: JSONValue = try core.call("dashboardMath", "projectedTotals", [totals, proj, flow])
@@ -239,7 +263,6 @@ struct HomeFigures: Codable, Equatable, Sendable {
         let spentTotal = figures["spentTotal"]?.doubleValue ?? 0
         let earnedTotal = figures["earnedTotal"]?.doubleValue ?? 0
         let netTotal = figures["netTotal"]?.doubleValue ?? 0
-        let fetchFrom: JSONValue = try core.call("salaryShift", "shiftFetchFrom", [from, salaryShift])
         let saved: JSONValue = try core.call("dashboardMath", "savingsLine",
                                              [totals["saved"] ?? JSONValue.int(0), figures["fromSavingsTotal"] ?? JSONValue.int(0), period, baseCurrency])
         // "Show all": the rows shown folded and the button's words.
@@ -250,12 +273,12 @@ struct HomeFigures: Codable, Equatable, Sendable {
                            showTop: core.text("dashboard:categories.showTop", ["n": .int(top)]))
         // The Expenses and Income cards (homeLists), and which cards show.
         let lists = try core.json("dashboardMath", "homeLists", [input.rows, [
-            "from": from, "to": to, "savingsIds": savingsIds, "salaryShift": salaryShift,
+            "from": from, "to": to, "savingsIds": savingsIds,
         ] as JSONValue])
         let periodLabel = period["label"]?.stringValue ?? ""
         let list = { (kind: String) throws -> HomeList in
             try homeList(kind, lists[kind == "income" ? "income" : "expenses"] ?? [], periodLabel: periodLabel,
-                         baseCurrency: baseCurrency, salaryShift: salaryShift, savingsIds: savingsIds, core: core)
+                         baseCurrency: baseCurrency, savingsIds: savingsIds, core: core)
         }
         var run: JSONValue = ["loading": false, "failed": false, "count": .int(input.rows.arrayValue?.count ?? 0)]
         if input.oldestKnown { run = run.with("oldest", input.oldest.json) }
@@ -265,7 +288,7 @@ struct HomeFigures: Codable, Equatable, Sendable {
                                      baseCurrency: baseCurrency, rates: input.rates, separateYearly: separateYearly, core: core)
         return HomeFigures(
             period: try period.decode(),
-            fetchFrom: fetchFrom.stringValue ?? from.stringValue,
+            projectionEnd: end.stringValue,
             spentTotal: spentTotal,
             earnedTotal: earnedTotal,
             netTotal: netTotal,
@@ -288,12 +311,11 @@ struct HomeFigures: Codable, Equatable, Sendable {
     /// One list card (homeFigures.mjs homeList): listHeading over the period
     /// and the count, the empty line, and every row's words.
     static func homeList(_ kind: String, _ items: JSONValue, periodLabel: String, baseCurrency: String,
-                         salaryShift: JSONValue, savingsIds: JSONValue, core: BudgeerCore) throws -> HomeList {
+                         savingsIds: JSONValue, core: BudgeerCore) throws -> HomeList {
         let head = try core.json("listHeading", "listHeading", [[
             "kind": .string(kind), "periodLabel": .string(periodLabel), "count": .int(items.arrayValue?.count ?? 0),
         ] as JSONValue])
-        let options: JSONValue = ["kind": .string(kind), "baseCurrency": .string(baseCurrency), "salaryShift": salaryShift,
-                                  "savingsIds": savingsIds]
+        let options: JSONValue = ["kind": .string(kind), "baseCurrency": .string(baseCurrency), "savingsIds": savingsIds]
         let rows: [EntryRow] = try core.call("rowParts", "listParts", [items, options])
         return HomeList(title: head["title"]?.stringValue ?? "", subtitle: head["subtitle"]?.stringValue ?? "",
                         empty: core.text(kind == "income" ? "dashboard:noIncome" : "dashboard:noExpenses"), rows: rows)

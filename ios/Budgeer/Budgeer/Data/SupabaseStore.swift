@@ -22,7 +22,7 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
 
     /// The profile columns the screens read (ProfileProvider's figures, the helpers' and the messages' switches,
     /// the setup wizard's, the tour's and What's new's marks).
-    static let profileColumns = "id, base_currency, yearly_separate, salary_shift_from_day, salary_category_id, "
+    static let profileColumns = "id, base_currency, yearly_separate, salary_shift_from_day, salary_category_id, time_zone, "
         + "ai_quick_entry, ai_import_categories, ai_month_summary, ai_plan_whatif, language, is_demo, display_name, avatar_url, "
         + "notify_email, notify_push, notify_digest, onboarded_at, tour_done, whats_new_seen"
     /// shared/lib/categories.js CATEGORY_COLUMNS.
@@ -68,6 +68,11 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
             try await client.from("profiles").select(SupabaseStore.profileColumns)
                 .eq("id", value: uid).single().execute().value
         }
+    }
+
+    func saveTimeZone(_ zone: String) async throws {
+        // The server only writes a zone that changed; nothing on screen shows it.
+        try await client.rpc("save_time_zone", params: ["p_tz": JSONValue.string(zone)]).execute()
     }
 
     func saveLanguage(_ language: String?) async throws {
@@ -140,11 +145,9 @@ final class SupabaseStore: ProfileRepository, CategoriesRepository, Transactions
         return rows.arrayValue?.first?["spent_at"]?.stringValue
     }
 
-    func newestIncome(categoryId: String, since: String) async throws -> JSONValue {
-        try await cached("newest-income", "\(categoryId)|\(since)") {
-            try await client.from("transactions").select("kind, category_id, spent_at")
-                .eq("kind", value: "income").eq("category_id", value: categoryId).gte("spent_at", value: since)
-                .order("spent_at", ascending: false).limit(1).execute().value
+    func payCalendar() async throws -> JSONValue {
+        try await cached("pay-calendar") {
+            try await client.rpc("my_pay_calendar").execute().value
         }
     }
 

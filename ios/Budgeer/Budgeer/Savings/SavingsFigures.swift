@@ -121,9 +121,10 @@ struct SavingsFigures: Codable, Equatable, Sendable {
     /// - income: my_transactions(kind income); fromSavings: my_transactions(expense, p_paid_from_savings)
     /// - accounts: my_accounts; rules: my_recurring_rules; goals: my_goals
     /// - filter: the history's 'all', 'in' or 'out'
+    /// - cal: the pay calendar (null with the salary setting off): the pot's line by pay month
     static func compute(profile: JSONValue, categories: JSONValue, income: JSONValue, fromSavings: JSONValue,
                         accounts: JSONValue, rules: JSONValue, goals: JSONValue, filter: String, now: Date,
-                        core: BudgeerCore) throws -> SavingsFigures {
+                        cal: JSONValue = .null, core: BudgeerCore) throws -> SavingsFigures {
         let base = JSONValue.string(profile["base_currency"]?.stringValue ?? "EUR")
         let ids = try core.json("savings", "savingsIdsOf", [categories])
         let rows = JSONValue.array((income.arrayValue ?? []) + (fromSavings.arrayValue ?? []))
@@ -133,6 +134,7 @@ struct SavingsFigures: Codable, Equatable, Sendable {
         let date = try JSONValue.from(JSDate(now))
         let page = try core.json("savingsMath", "savingsPage", [[
             "moves": moves, "total": total, "savingsIds": ids, "baseCurrency": base, "rules": rules, "now": date,
+            "cal": cal,
         ] as JSONValue])
         let history: SavingsHistoryFigures = try core.call("savingsMath", "savingsHistory",
                                                            [moves, ids, base, JSONValue.string(filter), date])

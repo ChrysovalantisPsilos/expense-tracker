@@ -62,8 +62,8 @@ final class WidgetSyncTests: XCTestCase {
         }
         try BudgeerCore.shared.setLanguage("en")
         let en = try WidgetSync.snapshot(fixture.homeInput(), written: fixture.now, core: .shared)
-        XCTAssertEqual(en.spent, "€341.28")
-        XCTAssertEqual(en.net, "+€1,974.72") // less the group dinner paid for others and €10 paid back
+        XCTAssertEqual(en.spent, "€356.28") // the pay month's, with the €15.00 paid on 30 Aug
+        XCTAssertEqual(en.net, "+€1,959.72") // less the group dinner paid for others and €10 paid back
         XCTAssertEqual(en.netTone, "positive")
         XCTAssertEqual(en.bars.last?.amount, "€79.00") // Transport and the rest
     }
@@ -110,9 +110,11 @@ final class WidgetSyncTests: XCTestCase {
     func testTheMonthCheck() throws {
         let fixture = try HomeFixture.load()
         let snapshot = try WidgetSync.snapshot(fixture.homeInput(), written: fixture.now, core: .shared)
-        XCTAssertTrue(snapshot.covers("2020-09-01"))
+        // The open pay month: from its payday (28 Aug) to the last day of September.
+        XCTAssertEqual([snapshot.from, snapshot.to], ["2020-08-28", "2020-09-30"])
+        XCTAssertTrue(snapshot.covers("2020-08-31"))
         XCTAssertTrue(snapshot.covers("2020-09-30"))
-        XCTAssertFalse(snapshot.covers("2020-08-31"))
+        XCTAssertFalse(snapshot.covers("2020-08-27"))
         XCTAssertFalse(snapshot.covers("2020-10-01"))
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = try XCTUnwrap(TimeZone(identifier: "Europe/Brussels"))
@@ -128,8 +130,8 @@ final class WidgetSyncTests: XCTestCase {
         let sync = makeSync(store, fixture)
         XCTAssertNil(shelf.read())
         await sync.refresh()
-        // This month's rows, from the shifted salary's start, as Home reads them.
-        XCTAssertEqual(store.queries.first, TxnQuery(from: "2020-08-25", to: "2020-09-30", spread: true))
+        // This month's rows, from its payday, as Home reads them.
+        XCTAssertEqual(store.queries.first, TxnQuery(from: "2020-08-28", to: "2020-09-30", spread: true))
         let written = try XCTUnwrap(shelf.read())
         // With this month's Budgets card, read as Home reads it.
         let card = try await HomeViewModel.budgetCard(data: store.data, profile: try await store.data.profile.profile(),

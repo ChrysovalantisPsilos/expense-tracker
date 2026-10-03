@@ -510,7 +510,7 @@ struct EntryRowView: View {
 
     /// The muted line's parts in the web's order, " · " between them.
     private var line: String {
-        (row.meta + [row.notes, row.spread, row.countsFor].compactMap { $0 }).joined(separator: " · ")
+        (row.meta + [row.notes, row.spread].compactMap { $0 }).joined(separator: " · ")
     }
 }
 

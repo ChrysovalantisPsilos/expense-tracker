@@ -1,7 +1,7 @@
 // Activity's state, after the web's LedgerPage: Expenses | Income | All,
-// the picked month's entries (this month by default; the floating pill
-// steps through the months; a late salary in the month it counts for, as
-// on Home), and the search, which spans all history as on
+// the picked month's entries (this month by default: the pay month with
+// the salary setting on, as on Home; the floating pill steps through the
+// months), and the search, which spans all history as on
 // the web (up to 1,000 rows, the read from txnFilter.ledgerRead, refined by
 // its filterTransactions). Reads through the data layer, pending rates
 // filled as fx.js does, the figures from the core (LedgerFigures).
@@ -34,6 +34,8 @@ final class LedgerModel {
     private var rows: JSONValue = []
     private var oldest: String?
     private var oldestKnown = false
+    /// The pay calendar the months are cut by (null: the salary setting is off).
+    private var cal: JSONValue = .null
     private var searchTask: Task<Void, Never>?
 
     private let data: DataLayer
@@ -88,8 +90,9 @@ final class LedgerModel {
             periods = options.periods
             oldest = options.oldest
             oldestKnown = options.oldestKnown
+            cal = options.cal
             // This month is every picker's default (and stays picked while it exists).
-            let thisMonth: HomePeriod = try core.call("periods", "thisMonthPeriod", [JSDate(instant)])
+            let thisMonth: HomePeriod = try core.call("periods", "thisMonthPeriod", [JSDate(instant), cal])
             if periodValue.isEmpty || !periods.contains(where: { $0.value == periodValue }) {
                 periodValue = thisMonth.value
             }
@@ -104,13 +107,12 @@ final class LedgerModel {
     /// The rows for the current view, then the figures.
     func reloadRows() async {
         do {
-            // ledgerRead: the picked month (back to last month's late salary, which counts in
-            // it), or all history narrowed by the server's filters.
-            let month: HomePeriod = try period ?? core.call("periods", "thisMonthPeriod", [JSDate(now())])
-            let salaryShift = try core.json("salaryShift", "salaryShiftOf", [profile])
+            // ledgerRead: the picked month's window (one for every kind), or
+            // all history narrowed by the server's filters.
+            let month: HomePeriod = try period ?? core.call("periods", "thisMonthPeriod", [JSDate(now()), cal])
             let read = try core.json("txnFilter", "ledgerRead", [[
                 "kind": kind.json, "filters": filters, "searching": .bool(searching),
-                "month": ["from": month.from.json, "to": month.to.json], "salaryShift": salaryShift,
+                "month": ["from": month.from.json, "to": month.to.json],
             ] as JSONValue])
             let query = TxnQuery(kind: read["kind"]?.stringValue, from: read["from"]?.stringValue, to: read["to"]?.stringValue,
                                  categoryId: read["categoryId"]?.stringValue, limit: read["limit"]?.intValue)
@@ -126,9 +128,8 @@ final class LedgerModel {
 
     private func refigure() throws {
         let figures = try LedgerFigures.compute(rows: rows, profile: profile, categories: savings, kind: kind,
-                                                periodLabel: period?.label ?? "", text: text, filters: filters,
+                                                period: period, text: text, filters: filters,
                                                 oldest: oldest, oldestKnown: oldestKnown, today: try core.isoDate(now()),
-                                                month: ["from": period?.from.json ?? .null, "to": period?.to.json ?? .null],
                                                 core: core)
         state = .loaded(figures)
     }
@@ -230,14 +231,16 @@ final class LedgerModel {
         guard let entry = row(id: entryId), let categoryId = entry["category_id"]?.stringValue else { return nil }
         do {
             let instant = now()
-            let month = try core.json("categoryMath", "entryMonth", [entry, JSDate(instant)])
+            let month = try core.json("categoryMath", "entryMonth", [entry, JSDate(instant), cal])
             let categories = try await data.categories.allCategories()
             let read = try await data.transactions.transactions(TxnQuery(from: month["from"]?.stringValue,
                                                                          to: month["to"]?.stringValue,
                                                                          categoryId: categoryId, spread: true))
             let monthRows = try await FxRates.fillPending(read, base: baseCurrency, today: try core.isoDate(instant),
                                                           fx: data.fx, core: core)
-            let budgets = try await data.budgets.budgets(period: month["from"]?.stringValue ?? "")
+            // Budgets are keyed by the month's label (periodMonth), never its window's first day.
+            let budgetMonth: String = try core.call("periods", "periodMonth", [month])
+            let budgets = try await data.budgets.budgets(period: budgetMonth)
             let input: JSONValue = [
                 "entry": entry,
                 "category": categories.arrayValue?.first { $0["id"]?.stringValue == categoryId } ?? .null,
@@ -245,7 +248,7 @@ final class LedgerModel {
                 "budget": budgets.arrayValue?.first { $0["category_id"]?.stringValue == categoryId } ?? .null,
                 "baseCurrency": .string(baseCurrency),
                 "separateYearly": .bool(profile["yearly_separate"]?.boolValue ?? false),
-                "salaryShift": try core.json("salaryShift", "salaryShiftOf", [profile]),
+                "cal": cal,
             ]
             let box: EntryCategoryBox? = try core.call("categoryMath", "entryCategoryBox", [input, JSDate(instant)])
             return box

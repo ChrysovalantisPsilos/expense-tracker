@@ -19,11 +19,12 @@ final class HomeParityTests: XCTestCase {
         for lang in ["en", "el"] {
             try BudgeerCore.shared.setLanguage(lang)
             for view in fixture.input.views {
-                let figures = try HomeFigures.compute(fixture.homeInput(periodValue: view.periodValue), core: .shared)
+                let figures = try HomeFigures.compute(fixture.homeInput(periodValue: view.periodValue, profile: view.profile),
+                                                      core: .shared)
                 let expected = try XCTUnwrap(fixture.expected[lang]?[view.name])
                 let label = "\(lang) \(view.name)"
                 XCTAssertEqual(figures.period, expected.period, label)
-                XCTAssertEqual(figures.fetchFrom, expected.fetchFrom, label)
+                XCTAssertEqual(figures.projectionEnd, expected.projectionEnd, label)
                 XCTAssertEqual(figures.spent, expected.spent, label)
                 XCTAssertEqual(figures.income, expected.income, label)
                 XCTAssertEqual(figures.net, expected.net, label)
@@ -39,11 +40,14 @@ final class HomeParityTests: XCTestCase {
     func testTheFixtureFoldsInTheWebsRules() throws {
         let fixture = try HomeFixture.load()
         let en = try XCTUnwrap(fixture.thisMonth())
-        // A shifted salary (25th) is fetched from late August and counts in September.
-        XCTAssertEqual(en.fetchFrom, "2020-08-25")
+        // A pay month: September from the 28 Aug payday, its salary in it.
+        XCTAssertEqual(en.period.from, "2020-08-28")
+        XCTAssertEqual(en.period.range, "from 28 Aug")
         XCTAssertEqual(en.earnedTotal, 255_000)
-        // Logged spending plus the rules still to come this month.
-        XCTAssertEqual(en.spentTotal, 31_930 + 1_299 + 899)
+        // Logged spending (with the 30 Aug expense) plus the rules still to
+        // come before the next payday (expected on the 28th).
+        XCTAssertEqual(en.projectionEnd, "2020-09-27")
+        XCTAssertEqual(en.spentTotal, 31_930 + 1_500 + 1_299 + 899)
         XCTAssertEqual(en.bars.map(\.share).reduce(0, +), 100)
         XCTAssertEqual(en.bars.first { $0.name == "Subscriptions" }?.value, 800)
         XCTAssertEqual(en.recurring.groups.first?.toggle, nil)
@@ -51,19 +55,20 @@ final class HomeParityTests: XCTestCase {
         XCTAssertEqual(fixture.expected["en"]?["august"]?.recurring.upcoming, false)
     }
 
-    func testTheWindowIsTheFetchStart() throws {
+    func testTheWindowIsThePayMonth() throws {
         let fixture = try HomeFixture.load()
         try BudgeerCore.shared.setLanguage("en")
-        let window = try HomeFigures.window(profile: fixture.input.profile, now: fixture.now, core: .shared)
-        XCTAssertEqual(window.fetchFrom, "2020-08-25")
-        XCTAssertEqual(window.period, try XCTUnwrap(fixture.thisMonth()).period)
-        // A past month from the picker, and without a salary shift the fetch starts with the month.
-        let august = try HomeFigures.window(profile: fixture.input.profile, periodValue: "m:2020-8", now: fixture.now, core: .shared)
-        XCTAssertEqual(august.fetchFrom, "2020-07-25")
-        let plain = try HomeFigures.window(profile: .object(["base_currency": .string("EUR")]), now: fixture.now, core: .shared)
-        XCTAssertEqual(plain.fetchFrom, "2020-09-01")
+        let cal = fixture.homeInput().cal
+        let window = try HomeFigures.window(now: fixture.now, cal: cal, core: .shared)
+        XCTAssertEqual(window.from, "2020-08-28")
+        XCTAssertEqual(window, try XCTUnwrap(fixture.thisMonth()).period)
+        // A past month from the picker: its own pay window; without the setting, the calendar month.
+        let august = try HomeFigures.window(periodValue: "m:2020-8", now: fixture.now, cal: cal, core: .shared)
+        XCTAssertEqual([august.from, august.to], ["2020-07-28", "2020-08-27"])
+        let plain = try HomeFigures.window(now: fixture.now, core: .shared)
+        XCTAssertEqual(plain.from, "2020-09-01")
         // All time reads from the start.
-        let all = try HomeFigures.window(profile: fixture.input.profile, periodValue: "all", now: fixture.now, core: .shared)
-        XCTAssertNil(all.fetchFrom)
+        let all = try HomeFigures.window(periodValue: "all", now: fixture.now, cal: cal, core: .shared)
+        XCTAssertNil(all.from)
     }
 }

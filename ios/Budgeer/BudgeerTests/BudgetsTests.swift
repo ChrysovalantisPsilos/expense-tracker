@@ -23,6 +23,7 @@ struct BudgetsFixture: Decodable {
         let now: String
         let profile: JSONValue
         let rows: JSONValue
+        let payDays: JSONValue?
         let views: [View]
         let cards: [CardView]
     }
@@ -37,6 +38,9 @@ struct BudgetsFixture: Decodable {
 
     var now: Date { ISO8601DateFormatter.fractional.date(from: input.now)! }
 
+    /// The pay months the figures are cut by (my_pay_calendar's dates).
+    var cal: JSONValue { payCal(profile: input.profile, payDays: input.payDays, now: now) }
+
     /// A store answering the page's reads for `view`.
     func store(_ view: String) -> FakeStore {
         let store = FakeStore()
@@ -45,6 +49,7 @@ struct BudgetsFixture: Decodable {
         store.budgetsByPeriod = ["2020-09-01": chosen.budgets, "2020-08-01": chosen.previous]
         store.rowsResult = .success(input.rows)
         store.categoriesResult = .success(TestData.categories)
+        store.payCalendarResult = ["days": input.payDays ?? [], "today": .null]
         return store
     }
 }
@@ -62,7 +67,7 @@ final class BudgetsParityTests: XCTestCase {
             for view in fixture.input.views {
                 let figures = try BudgetFigures.compute(profile: fixture.input.profile, budgets: view.budgets,
                                                         previous: view.previous, rows: fixture.input.rows,
-                                                        now: fixture.now, core: .shared)
+                                                        now: fixture.now, cal: fixture.cal, core: .shared)
                 let expected = try XCTUnwrap(fixture.expected[lang]?[view.name])
                 XCTAssertEqual(figures.items, expected.items, "\(lang) \(view.name)")
                 XCTAssertEqual(figures, expected, "\(lang) \(view.name)")
@@ -78,7 +83,8 @@ final class BudgetsParityTests: XCTestCase {
                 let view = try XCTUnwrap(fixture.input.views.first { $0.name == card.view })
                 let sets = try card.sets ?? BudgeerCore.shared.json("budgetMath", "monthSets", [view.budgets])
                 let figures = try BudgetFigures.card(profile: fixture.input.profile, sets: sets, rows: fixture.input.rows,
-                                                     periodValue: card.periodValue, now: fixture.now, core: .shared)
+                                                     periodValue: card.periodValue, now: fixture.now, cal: fixture.cal,
+                                                     core: .shared)
                 XCTAssertEqual(figures, try XCTUnwrap(fixture.cards[lang]?[card.name]), "\(lang) \(card.name)")
             }
         }
@@ -103,7 +109,7 @@ final class BudgetsModelTests: XCTestCase {
         let fixture = try BudgetsFixture.load()
         let store = fixture.store("own")
         let model = await model(store, fixture)
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: "expense", from: "2020-09-01", to: "2020-09-30", spread: true))
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: "expense", from: "2020-08-27", to: "2020-09-30", spread: true))
         XCTAssertEqual(model.figures, fixture.expected["en"]?["own"])
         XCTAssertEqual(model.categoryOptions.map(\.id), ["c-food", "c-fun"])
         XCTAssertEqual(model.copyBody, "This month’s 3 caps are replaced by last month’s 1.")

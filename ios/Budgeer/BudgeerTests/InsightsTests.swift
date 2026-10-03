@@ -20,10 +20,14 @@ struct InsightsFixture: Decodable {
         let profile: JSONValue
         let categories: JSONValue
         let rows: JSONValue
+        let payDays: JSONValue?
         let views: [View]
     }
     let input: Input
     let expected: [String: [String: InsightsFigures]]
+
+    /// The pay months the figures are cut by (my_pay_calendar's dates).
+    var cal: JSONValue { payCal(profile: input.profile, payDays: input.payDays, now: now) }
 
     static func load() throws -> InsightsFixture {
         try JSONDecoder().decode(InsightsFixture.self, from: fixtureData("insights"))
@@ -36,6 +40,7 @@ struct InsightsFixture: Decodable {
         store.profileResult = .success(input.profile)
         store.savingsResult = .success(input.categories)
         store.rowsResult = .success(input.rows)
+        store.payCalendarResult = ["days": input.payDays ?? [], "today": .null]
         return store
     }
 }
@@ -53,7 +58,7 @@ final class InsightsParityTests: XCTestCase {
             for view in fixture.input.views {
                 let figures = try InsightsFigures.compute(profile: fixture.input.profile, categories: fixture.input.categories,
                                                           rows: fixture.input.rows, now: fixture.now, picked: view.picked,
-                                                          core: .shared)
+                                                          cal: fixture.cal, core: .shared)
                 let expected = try XCTUnwrap(fixture.expected[lang]?[view.name])
                 XCTAssertEqual(figures.shares, expected.shares, "\(lang) \(view.name)")
                 XCTAssertEqual(figures.bars, expected.bars, "\(lang) \(view.name)")
@@ -226,7 +231,7 @@ final class InsightsCardsTests: XCTestCase {
         model.setStatementFrom("2026-01-01")
         await model.export("pdf")
         XCTAssertEqual(store.planWrites.last?.name, "statement")
-        XCTAssertEqual(store.planWrites.last?.args, ["from": "2026-01-01", "to": "2026-09-30", "format": "pdf"])
+        XCTAssertEqual(store.planWrites.last?.args, ["from": "2026-01-01", "to": "2026-09-30", "month": .null, "format": "pdf"])
         let file = try XCTUnwrap(model.statementFile)
         XCTAssertEqual(file.lastPathComponent, "financial-statement_2026-01-01_2026-09-30.pdf")
         XCTAssertEqual(try Data(contentsOf: file), Data("%PDF-1.7 fake".utf8))

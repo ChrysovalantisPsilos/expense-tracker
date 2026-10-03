@@ -10,9 +10,18 @@ import BudgeerCore
 struct LedgerFixture: Decodable {
     struct Period: Decodable {
         let value: String
+        let key: String?
         let from: String
         let to: String
+        let open: Bool?
         let labels: [String: String]
+        let ranges: [String: String]?
+
+        /// The period as the picker gives it, in `lang`.
+        func period(_ lang: String) -> HomePeriod {
+            HomePeriod(value: value, key: key, from: from, to: to, label: labels[lang] ?? "", range: ranges?[lang],
+                       open: open)
+        }
     }
     struct View: Decodable {
         let name: String
@@ -26,6 +35,7 @@ struct LedgerFixture: Decodable {
         let categories: JSONValue
         let rows: JSONValue
         let oldest: String?
+        let payDays: JSONValue
         let views: [View]
     }
     let input: Input
@@ -57,9 +67,8 @@ final class LedgerParityTests: XCTestCase {
             for view in fixture.input.views {
                 let figures = try LedgerFigures.compute(
                     rows: fixture.rows(kind: view.kind), profile: fixture.input.profile, categories: fixture.input.categories,
-                    kind: view.kind, periodLabel: view.period.labels[lang] ?? "", text: view.text,
-                    oldest: fixture.input.oldest, today: try BudgeerCore.shared.isoDate(fixture.now),
-                    month: ["from": .string(view.period.from), "to": .string(view.period.to)], core: .shared)
+                    kind: view.kind, period: view.period.period(lang), text: view.text,
+                    oldest: fixture.input.oldest, today: try BudgeerCore.shared.isoDate(fixture.now), core: .shared)
                 let expected = try XCTUnwrap(fixture.expected[lang]?[view.name])
                 XCTAssertEqual(figures.title, expected.title, "\(lang) \(view.name)")
                 XCTAssertEqual(figures.subtitle, expected.subtitle, "\(lang) \(view.name)")
@@ -84,6 +93,7 @@ final class LedgerModelTests: XCTestCase {
         store.savingsResult = .success(fixture.input.categories)
         store.oldest = .success(fixture.input.oldest)
         store.rowsFor = { query in fixture.rows(kind: query.kind) }
+        store.payCalendarResult = ["days": fixture.input.payDays, "today": "2020-09-15"]
         return store
     }
 
@@ -98,24 +108,24 @@ final class LedgerModelTests: XCTestCase {
         XCTAssertEqual(model.periods.first?.value, "m:2020-9")
         XCTAssertTrue(model.periods.contains { $0.value == "all" })
         XCTAssertEqual(model.type, "all")
-        // Back to August's late salary, which counts in September (the salary setting from the 25th).
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-25", to: "2020-09-30"))
+        // September as a pay month: from the 27 Aug payday (the salary setting from the 25th).
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-27", to: "2020-09-30"))
 
         await model.setType("expense")
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: "expense", from: "2020-09-01", to: "2020-09-30"))
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: "expense", from: "2020-08-27", to: "2020-09-30"))
         guard case .loaded(let figures) = model.state else { return XCTFail("\(model.state)") }
         XCTAssertEqual(figures.title, "Expenses")
-        XCTAssertEqual(figures.subtitle, "This month · 8 entries")
+        XCTAssertEqual(figures.subtitle, "This month · from 27 Aug · 8 entries")
 
         // The pill: the month before, and back.
         XCTAssertNil(model.neighbour(1))
         XCTAssertEqual(model.neighbour(-1)?.value, "m:2020-8")
         await model.setPeriod("m:2020-8")
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: "expense", from: "2020-08-01", to: "2020-08-31"))
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: "expense", from: "2020-07-28", to: "2020-08-26"))
         await model.setPeriod("m:2020-9")
 
         await model.setType("all")
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-25", to: "2020-09-30"))
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-27", to: "2020-09-30"))
         XCTAssertEqual(model.row(id: "a4")?["description"], "Diner")
         // The Filters panel: a date range searches all history between them (ledgerRead).
         await model.setFilter("from", "2020-08-01")
@@ -123,10 +133,10 @@ final class LedgerModelTests: XCTestCase {
         XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-01", limit: 1000))
         await model.clearAll()
         XCTAssertFalse(model.searching)
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-25", to: "2020-09-30"))
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-08-27", to: "2020-09-30"))
     }
 
-    func testLastMonthsLateSalaryIsListedAndCountedInTheMonthItCountsFor() async throws {
+    func testThePaydayOpensItsPayMonthAndIsListedInIt() async throws {
         let fixture = try LedgerFixture.load()
         let store = store(fixture)
         // my_transactions as the server answers it: the kind and the dates.
@@ -140,14 +150,14 @@ final class LedgerModelTests: XCTestCase {
         let model = LedgerModel(data: store.data, core: .shared, now: { now })
         await model.load()
         guard case .loaded(let september) = model.state else { return XCTFail("\(model.state)") }
-        // 27 Aug's salary counts for September: listed on its day with its note, in the income and the net.
+        // 27 Aug's salary opens September: listed on its day, in the income and the net.
         let salary = september.days.flatMap(\.rows).first { $0.id == "b1" }
-        XCTAssertEqual(salary?.countsFor, "Counts for September")
+        XCTAssertEqual(salary?.amount, "+€2,500.00")
         XCTAssertEqual(september.pulse.income?.amount, "+€2,500.00")
         XCTAssertEqual(september.pulse, fixture.expected["en"]?["all"]?.pulse)
-        // August doesn't list it: it counts in September.
+        // August doesn't list it: August ends the day before.
         await model.setPeriod("m:2020-8")
-        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-07-25", to: "2020-08-31"))
+        XCTAssertEqual(store.queries.last, TxnQuery(kind: nil, from: "2020-07-28", to: "2020-08-26"))
         guard case .loaded(let august) = model.state else { return XCTFail("\(model.state)") }
         XCTAssertFalse(august.days.flatMap(\.rows).contains { $0.id == "b1" })
     }

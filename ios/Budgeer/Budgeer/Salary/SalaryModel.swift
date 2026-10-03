@@ -37,6 +37,8 @@ final class SalaryModel {
     private(set) var busy = false
 
     private var profile: JSONValue = [:]
+    /// The pay calendar (null: the salary setting is off): entries by pay month.
+    private var cal: JSONValue = .null
     private var categories: JSONValue = []
     private var income: JSONValue = []
     private var vouchers: JSONValue = .null
@@ -67,8 +69,10 @@ final class SalaryModel {
             let notes = try await data.insights.salaryHistory()
             // The vouchers only pick the country; the page doesn't wait on them.
             vouchers = (try? await data.profile.mealVouchers()) ?? .null
+            cal = await PeriodSource.calendar(profile: profile, data: data, core: core, now: instant)
             report = try SalaryFigures.report(profile: profile, categories: categories, income: income, notes: notes,
-                                              vouchers: vouchers, language: core.language, now: instant, core: core)
+                                              vouchers: vouchers, language: core.language, now: instant, cal: cal,
+                                              core: core)
             try refigure()
         } catch {
             if case .loaded = state { return }
@@ -180,7 +184,7 @@ final class SalaryModel {
 
     private func apply(_ notes: JSONValue) {
         report = try? SalaryFigures.report(profile: profile, categories: categories, income: income, notes: notes,
-                                           vouchers: vouchers, language: core.language, now: now(), core: core)
+                                           vouchers: vouchers, language: core.language, now: now(), cal: cal, core: core)
         try? refigure()
     }
 }

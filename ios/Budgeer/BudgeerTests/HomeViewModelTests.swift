@@ -1,5 +1,5 @@
 // HomeViewModel over the fake store: the reads in the web's order (the
-// profile first, then the period's rows from the shifted start), the rules
+// profile first, then the pay month's rows from its payday), the rules
 // and today's rates for the projection and the Recurring card, the figures
 // from the core, the period picker, a first load that fails, and a refresh
 // that fails while figures are on screen.
@@ -19,18 +19,18 @@ final class HomeViewModelTests: XCTestCase {
         return HomeViewModel(data: repository.data, core: .shared, now: { now })
     }
 
-    func testLoadReadsTheMonthFromTheShiftedStartAndComputesTheFigures() async throws {
+    func testLoadReadsThePayMonthFromItsPaydayAndComputesTheFigures() async throws {
         let fixture = try HomeFixture.load()
         let repository = FakeStore(home: fixture)
         repository.oldest = .success("2020-03-15")
         let model = model(repository, fixture)
         XCTAssertEqual(model.state, .loading)
         await model.load()
-        XCTAssertEqual(repository.queries.first, TxnQuery(from: "2020-08-25", to: "2020-09-30", spread: true))
+        XCTAssertEqual(repository.queries.first, TxnQuery(from: "2020-08-28", to: "2020-09-30", spread: true))
         XCTAssertEqual(model.state, .loaded(try XCTUnwrap(fixture.thisMonth())))
         XCTAssertNil(model.refreshError)
         XCTAssertFalse(model.refreshing)
-        // The picker: this month first (no salary counted in October yet), back to March, the years, all time.
+        // The picker: this month first, back to March, the years, all time.
         XCTAssertEqual(model.periods.first?.value, "m:2020-9")
         XCTAssertEqual(model.periods.last?.value, "all")
         XCTAssertEqual(model.currentValue, "m:2020-9")
@@ -47,21 +47,23 @@ final class HomeViewModelTests: XCTestCase {
         let model = model(repository, fixture)
         await model.load()
         await model.setPeriod("m:2020-8")
-        XCTAssertEqual(repository.queries.filter { $0.kind == nil }.last, TxnQuery(from: "2020-07-25", to: "2020-08-31", spread: true))
+        XCTAssertEqual(repository.queries.filter { $0.kind == nil }.last, TxnQuery(from: "2020-07-28", to: "2020-08-27", spread: true))
         XCTAssertEqual(model.state, .loaded(try XCTUnwrap(fixture.expected["en"]?["august"])))
         XCTAssertEqual(model.currentValue, "m:2020-8")
     }
 
-    func testNextMonthIsOfferedOnceItsSalaryIsIn() async throws {
+    func testAnEarlyPaydayKeepsItsOwnMonthAndNoMonthAheadIsOffered() async throws {
         let fixture = try HomeFixture.load()
         let repository = FakeStore(home: fixture)
         repository.oldest = .success("2020-03-15")
-        repository.newestIncomeRows = [["kind": "income", "category_id": "11111111-1111-4111-8111-111111111111",
-                                        "spent_at": "2020-09-28"]]
+        // A payment in the salary category on the 14th, before D (25): it opens September itself,
+        // which the 28 Aug payday already opened; October isn't offered ahead of time.
+        repository.payCalendarResult = ["days": ["2020-07-28", "2020-08-28", "2020-09-14"], "today": .null]
         let model = model(repository, fixture)
         await model.load()
-        XCTAssertEqual(model.periods.first?.value, "m:2020-10")
-        XCTAssertEqual(model.currentValue, "m:2020-9") // this month stays the default
+        XCTAssertEqual(model.currentValue, "m:2020-9")
+        XCTAssertEqual(model.thisMonthValue, "m:2020-9")
+        XCTAssertFalse(model.periods.contains { $0.value == "m:2020-10" }) // no month ahead is offered
     }
 
     func testTheCardsWithReadsOfTheirOwn() async throws {
@@ -78,7 +80,7 @@ final class HomeViewModelTests: XCTestCase {
         XCTAssertTrue(vouchers.nextAmount.hasPrefix("+€176.00 on 5 Oct"))
         XCTAssertEqual(vouchers.nextWhy, "September · 22 working days × €8.00")
         // Budgets: this month's caps and spend.
-        XCTAssertTrue(repository.queries.contains(TxnQuery(kind: "expense", from: "2020-09-01", to: "2020-09-30", spread: true)))
+        XCTAssertTrue(repository.queries.contains(TxnQuery(kind: "expense", from: "2020-08-28", to: "2020-09-30", spread: true)))
         guard case .loaded(let card) = model.budgets else { return XCTFail("\(model.budgets)") }
         XCTAssertEqual(card.subtitle, "This month")
         XCTAssertEqual(card.items.map(\.name), ["Groceries"])

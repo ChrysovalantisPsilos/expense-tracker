@@ -62,17 +62,18 @@ final class CategoryPageModel {
             let instant = now()
             profile = try await data.profile.profile()
             let categories = try await data.categories.allCategories()
-            let period = try CategoryPageFigures.period(periodValue, now: instant, core: core)
             let options = await PeriodSource.load(profile: profile, data: data, core: core, now: instant)
+            let cal = options.cal
+            let period = try CategoryPageFigures.period(periodValue, now: instant, cal: cal, core: core)
             periods = (try? core.call("periods", "withPeriod", [options.periods, period])) ?? options.periods
             let read = try await data.transactions.transactions(CategoryPageFigures.query(categoryId: categoryId, period: period))
             rows = try await FxRates.fillPending(read, base: baseCurrency, today: try core.isoDate(instant), fx: data.fx,
                                                  core: core)
-            let month = try CategoryPageFigures.budgetMonth(period: period, now: instant, core: core)
+            let month = try CategoryPageFigures.budgetMonth(period: period, now: instant, cal: cal, core: core)
             let budgets = try await data.budgets.budgets(period: month)
             let figures = try CategoryPageFigures.compute(profile: profile, categories: categories, rows: rows,
                                                           budgets: budgets, categoryId: categoryId,
-                                                          periodValue: periodValue, now: instant, core: core)
+                                                          periodValue: periodValue, now: instant, cal: cal, core: core)
             state = .loaded(figures)
             if !editing { budgetText = figures.budgetInput ?? "" }
         } catch {
@@ -114,7 +115,7 @@ final class CategoryPageModel {
     /// remove the budget); nothing changed says so, as the web's toast does.
     @discardableResult
     func saveBudget() async -> Bool {
-        guard let figures, figures.canEditBudget == true, let month = figures.period?.from else { return false }
+        guard let figures, figures.canEditBudget == true, let month = figures.budgetMonth else { return false }
         busy = true
         defer { busy = false }
         do {

@@ -20,6 +20,8 @@ final class SavingsModel {
     }
 
     private(set) var state: State = .loading
+    /// The pay calendar (null: the salary setting is off): the pot's line by pay month.
+    private var cal: JSONValue = .null
     /// The history's filter: 'all', 'in' or 'out' (savingsMath.HISTORY_FILTERS).
     private(set) var filter = "all"
     /// The months "Show older" asked for, nil for the first ones.
@@ -70,6 +72,7 @@ final class SavingsModel {
             goalRows = try await data.savings.goals()
             // The repeating savings are this page's extra; the rest doesn't wait on them.
             rules = (try? await data.recurring.rules()) ?? []
+            cal = await PeriodSource.calendar(profile: profile, data: data, core: core, now: instant)
             try refigure()
         } catch {
             if case .loaded = state { return } // a failed refresh keeps the page
@@ -80,7 +83,7 @@ final class SavingsModel {
     private func refigure() throws {
         state = .loaded(try SavingsFigures.compute(profile: profile, categories: categories, income: income,
                                                    fromSavings: fromSavings, accounts: accounts, rules: rules,
-                                                   goals: goalRows, filter: filter, now: now(), core: core))
+                                                   goals: goalRows, filter: filter, now: now(), cal: cal, core: core))
     }
 
     // MARK: The history

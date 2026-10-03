@@ -90,8 +90,9 @@ extension SupabaseStore: PlanRepository, InsightsRepository {
 
     // MARK: The statement
 
-    func statement(from: String, to: String, format: String) async throws -> Data {
-        let body: JSONValue = ["from": .string(from), "to": .string(to), "format": .string(format)]
+    func statement(from: String, to: String, month: String?, format: String) async throws -> Data {
+        var body: JSONValue = ["from": .string(from), "to": .string(to), "format": .string(format)]
+        if let month { body = body.with("month", .string(month)) }
         return try await refusal {
             try await client.functions.invoke("generate-report", options: FunctionInvokeOptions(body: body)) { data, _ in data }
         }

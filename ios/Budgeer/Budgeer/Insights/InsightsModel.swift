@@ -7,8 +7,10 @@
 // category, every income entry, the corrections, the vouchers' country:
 // SalaryFigures' card), Net worth (every income entry and expense paid from
 // savings for the pot, the accounts: NetWorthFigures) and the statement
-// (from the first to the last of this month, off before anything was ever
-// logged), made by the generate-report function and shared as its file.
+// (this month's window, a pay month's with the salary setting on, asked for
+// as that month while the dates are left as they are; off before anything
+// was ever logged), made by the generate-report function and shared as its
+// file.
 // Every read runs one after another.
 import Foundation
 import Observation
@@ -47,6 +49,10 @@ final class InsightsModel {
     private var savings: JSONValue = []
     private var rows: JSONValue = []
     private var moves: JSONValue = []
+    /// The pay calendar (null: the salary setting is off) and this month as
+    /// the statement first asks for it ('YYYY-MM' with its window's dates).
+    private var cal: JSONValue = .null
+    private var statementMonth: (key: String, from: String, to: String)?
     private let data: DataLayer
     private let core: BudgeerCore
     private let now: @Sendable () -> Date
@@ -63,7 +69,8 @@ final class InsightsModel {
             profile = try await data.profile.profile()
             let base = profile["base_currency"]?.stringValue ?? "EUR"
             let today = try core.isoDate(instant)
-            let months = (try InsightsFigures.months(now: instant, core: core)).arrayValue ?? []
+            cal = await PeriodSource.calendar(profile: profile, data: data, core: core, now: instant)
+            let months = (try InsightsFigures.months(now: instant, cal: cal, core: core)).arrayValue ?? []
             let query = TxnQuery(from: months.first?["from"]?.stringValue, to: months.last?["to"]?.stringValue, spread: true)
             // One read after another: the data layer's reads are not run side by side.
             let read = try await data.transactions.transactions(query)
@@ -103,13 +110,14 @@ final class InsightsModel {
         if let income, let categories, let notes {
             let report = try? SalaryFigures.report(profile: profile, categories: categories, income: income, notes: notes,
                                                    vouchers: vouchers ?? .null, language: core.language, now: instant,
-                                                   core: core)
+                                                   cal: cal, core: core)
             salary = report.flatMap { try? core.call("salaryText", "salaryCardParts", [$0.report, JSONValue.string(base)]) }
             salaryRead = report != nil
         }
-        if statementFrom.isEmpty, let month = try? core.json("dates", "monthRange", [JSDate(instant)]) {
+        if statementFrom.isEmpty, let month = try? core.json("periods", "thisMonthPeriod", [JSDate(instant), cal]) {
             statementFrom = month["from"]?.stringValue ?? ""
             statementTo = month["to"]?.stringValue ?? ""
+            if let key = month["key"]?.stringValue { statementMonth = (key, statementFrom, statementTo) }
         }
         // Nothing ever logged: the statement has nothing to put in it.
         if let oldest = await optional({ [self] in try await data.transactions.oldestDate().json }) {
@@ -130,7 +138,7 @@ final class InsightsModel {
 
     private func refigure() throws {
         state = .loaded(try InsightsFigures.compute(profile: profile, categories: savings, rows: rows, moves: moves, now: now(),
-                                                    picked: picked, core: core))
+                                                    picked: picked, cal: cal, core: core))
     }
 
     // MARK: Net worth
@@ -170,7 +178,9 @@ final class InsightsModel {
         statementError = nil
         defer { exporting = nil }
         do {
-            let bytes = try await data.insights.statement(from: statementFrom, to: statementTo, format: format)
+            // Left as this month's window, the statement is asked for as that month (its heading names it).
+            let month = statementMonth.flatMap { $0.from == statementFrom && $0.to == statementTo ? $0.key : nil }
+            let bytes = try await data.insights.statement(from: statementFrom, to: statementTo, month: month, format: format)
             let name: String = try core.call("reportFiles", "statementFilename", [statementFrom, statementTo, format])
             let file = FileManager.default.temporaryDirectory.appendingPathComponent(name)
             try bytes.write(to: file, options: .atomic)

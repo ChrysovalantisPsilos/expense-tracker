@@ -83,6 +83,9 @@ protocol ProfileRepository: Sendable {
     func saveDeviceToken(_ token: String, environment: String) async throws
     /// delete_apns_token: this install stops getting the account's pushes.
     func deleteDeviceToken(_ token: String) async throws
+    /// save_time_zone (0111): the device's IANA time zone, so the server's
+    /// "today" for the user (budget alerts, the month summary) is theirs.
+    func saveTimeZone(_ zone: String) async throws
 }
 
 protocol CategoriesRepository: Sendable {
@@ -137,8 +140,9 @@ protocol InsightsRepository: Sendable {
     func salaryHistory() async throws -> JSONValue
     /// save_salary_history.
     func saveSalaryHistory(_ notes: JSONValue) async throws
-    /// generate-report: the statement for from…to as a file ('pdf' or 'xlsx'), its bytes.
-    func statement(from: String, to: String, format: String) async throws -> Data
+    /// generate-report: the statement for from…to as a file ('pdf' or 'xlsx'), its bytes;
+    /// with `month` ('YYYY-MM') it is that month's statement, headed by its name and span.
+    func statement(from: String, to: String, month: String?, format: String) async throws -> Data
 }
 
 protocol PrivacyRepository: Sendable {
@@ -158,8 +162,9 @@ protocol TransactionsRepository: Sendable {
     func transactions(_ query: TxnQuery) async throws -> JSONValue
     /// The date of the first transaction; nil when there are none.
     func oldestDate() async throws -> String?
-    /// The newest income row in `categoryId` paid on or after `since` ([] or one row).
-    func newestIncome(categoryId: String, since: String) async throws -> JSONValue
+    /// my_pay_calendar (0111): { days: the paydays' dates, today: the user's
+    /// date on the server }; read only while the salary setting is on.
+    func payCalendar() async throws -> JSONValue
     /// save_transactions with one row (carrying its client_uuid).
     func insert(_ row: JSONValue) async throws
     /// update_transaction: only the keys in `fields` change.

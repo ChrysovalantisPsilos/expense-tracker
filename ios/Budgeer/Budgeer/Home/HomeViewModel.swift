@@ -58,6 +58,8 @@ final class HomeViewModel {
     /// The period picker's options and the one picked (this month by default).
     private(set) var periods: [HomePeriod] = []
     private(set) var periodValue: String?
+    /// The pay calendar the periods were cut by (null: the salary setting is off).
+    private(set) var cal: JSONValue = .null
     /// The Meal vouchers card, nil without a setup.
     private(set) var vouchers: VoucherCardFigures?
     private(set) var budgets: CardState<BudgetCardFigures> = .loading
@@ -104,9 +106,10 @@ final class HomeViewModel {
         await load()
     }
 
-    /// This month's value ('m:2026-9').
+    /// This month's value ('m:2026-9'): the pay month holding today with the
+    /// salary setting on.
     var thisMonthValue: String {
-        (try? core.json("periods", "thisMonthPeriod", [JSDate(now())]))?["value"]?.stringValue ?? ""
+        (try? core.json("periods", "thisMonthPeriod", [JSDate(now()), cal]))?["value"]?.stringValue ?? ""
     }
 
     /// The months the hero pages through, oldest first (buildPeriods'
@@ -135,6 +138,7 @@ final class HomeViewModel {
         let profile = try await data.profile.profile()
         let options = await PeriodSource.load(profile: profile, data: data, core: core, now: instant)
         periods = options.periods
+        cal = options.cal
         // A picked period that went away (next month's salary deleted) falls back to this month.
         if let picked = periodValue, !periods.contains(where: { $0.value == picked }) { periodValue = nil }
         var input = try await HomeViewModel.input(data: data, profile: profile, periodValue: periodValue, now: instant, core: core)
@@ -147,27 +151,30 @@ final class HomeViewModel {
     }
 
     /// The reads behind a period's figures (nil: this month), given the
-    /// profile: the rules and today's rates, the period's rows (from the
-    /// shifted start, pending rates filled), the savings categories and the
-    /// group money moves (my_group_flow, pending rates filled).
+    /// profile: the pay calendar (with the salary setting on), the rules and
+    /// today's rates, the period's rows (its window, pending rates filled),
+    /// the savings categories and the group money moves (my_group_flow,
+    /// pending rates filled).
     static func input(data: DataLayer, profile: JSONValue, periodValue: String?, now instant: Date,
                       core: BudgeerCore) async throws -> HomeInput {
-        let window = try HomeFigures.window(profile: profile, periodValue: periodValue, now: instant, core: core)
+        let cal = await PeriodSource.calendar(profile: profile, data: data, core: core, now: instant)
+        let lastPayDay = cal.isNull ? JSONValue.null : await PeriodSource.lastPayDay(data: data)
+        let window = try HomeFigures.window(periodValue: periodValue, now: instant, cal: cal, core: core)
         let base = profile["base_currency"]?.stringValue ?? "EUR"
         // The rules feed the projection and the Recurring card; the card's own
         // error is the web's, Home's figures don't wait on it.
         let rules = (try? await data.recurring.rules()) ?? []
         let rates = (try? await FxRates.latest(for: rules, base: base, fx: data.fx, core: core)) ?? [:]
         // One read after another, as every model here does.
-        let read = try await data.transactions.transactions(TxnQuery(from: window.fetchFrom, to: window.period.to, spread: true))
+        let read = try await data.transactions.transactions(TxnQuery(from: window.from, to: window.to, spread: true))
         let categories = try await data.categories.savingsCategories()
         let today = try core.isoDate(instant)
         let rows = try await FxRates.fillPending(read, base: base, today: today, fx: data.fx, core: core)
         // The money groups really moved in the period (the Net counts it), pending rates filled the same way.
-        let flow = try await data.groups.groupFlow(from: window.period.from, to: window.period.to)
+        let flow = try await data.groups.groupFlow(from: window.from, to: window.to)
         let moves = try await FxRates.fillPending(flow, base: base, today: today, fx: data.fx, core: core)
         return HomeInput(rows: rows, profile: profile, categories: categories, rules: rules, rates: rates,
-                         groupMoves: moves, now: instant, periodValue: periodValue)
+                         groupMoves: moves, now: instant, periodValue: periodValue, cal: cal, lastPayDay: lastPayDay)
     }
 
     // MARK: The cards with reads of their own
@@ -214,7 +221,8 @@ final class HomeViewModel {
     /// and its expenses. Home's card, and the widgets' (WidgetSync).
     static func budgetCard(data: DataLayer, profile: JSONValue, periodValue: String?, now instant: Date,
                            core: BudgeerCore) async throws -> BudgetCardFigures {
-        let span = try BudgetFigures.cardWindow(periodValue: periodValue, now: instant, core: core)
+        let cal = await PeriodSource.calendar(profile: profile, data: data, core: core, now: instant)
+        let span = try BudgetFigures.cardWindow(periodValue: periodValue, now: instant, cal: cal, core: core)
         let first = span["first"] ?? .null
         let last = span["last"] ?? .null
         let sets: JSONValue
@@ -231,7 +239,7 @@ final class HomeViewModel {
         let spend = try await data.transactions.transactions(TxnQuery(
             kind: "expense", from: span["from"]?.stringValue, to: span["to"]?.stringValue, spread: true))
         return try BudgetFigures.card(profile: profile, sets: sets, rows: spend, periodValue: periodValue, now: instant,
-                                      core: core)
+                                      cal: cal, core: core)
     }
 
     /// useMonthSummary: this month's summary while the helper is on; the
@@ -240,7 +248,7 @@ final class HomeViewModel {
         do {
             let on = try core.json("aiMath", "helpersOn", [profile])["monthSummary"]?.boolValue ?? false
             guard on else { words = nil; return }
-            let month: String = try core.call("aiMath", "monthStartOf", [try core.isoDate(now())])
+            let month: String = try core.call("aiMath", "monthStartOf", [try core.isoDate(now()), cal])
             let summary = try await data.ai.monthSummary(month: month)
             let auto: Bool = try core.call("aiMath", "shouldAutoWrite", [[
                 "data": summary, "attempted": .bool(summaryAttempted == month),
@@ -257,7 +265,7 @@ final class HomeViewModel {
 
     private func write(profile: JSONValue) async {
         do {
-            let month: String = try core.call("aiMath", "monthStartOf", [try core.isoDate(now())])
+            let month: String = try core.call("aiMath", "monthStartOf", [try core.isoDate(now()), cal])
             summaryAttempted = month
             summaryWriting = true
             summaryFailed = false
@@ -282,8 +290,8 @@ final class HomeViewModel {
             "data": summary, "error": .null, "writing": .bool(summaryWriting), "writeFailed": .bool(summaryFailed),
             "lang": .string(core.language),
         ] as JSONValue])
-        let period = try HomeFigures.period(periodValue, now: now(), core: core)
-        let thisMonth: Bool = try core.call("periods", "isThisMonth", [period, JSDate(now())])
+        let period = try HomeFigures.period(periodValue, now: now(), cal: cal, core: core)
+        let thisMonth: Bool = try core.call("periods", "isThisMonth", [period, JSDate(now()), cal])
         let shown = try core.json("aiMath", "overviewWords", [[
             "state": .string(state), "thisMonth": .bool(thisMonth), "tab": .null,
         ] as JSONValue])
