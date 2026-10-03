@@ -12,7 +12,7 @@ import {
   KeyRound, Smartphone, Wifi, ShieldCheck, Landmark, Percent, Tv, Droplet, Zap,
   SquareParking, Bus, CarTaxiFront, Bike, PlaneTakeoff, BedDouble, Wine, Gamepad2, Music,
   BookOpen, Volleyball, Palette,
-  Laptop, TrendingUp, Undo2, HandHeart, Banknote, ArrowRightLeft, BriefcaseBusiness, Headphones,
+  Laptop, TrendingUp, Undo2, HandHeart, Banknote, ArrowRightLeft, BriefcaseBusiness, Headphones, CreditCard,
 } from 'lucide-react'
 import { categoryIconKey } from './categoryStyle.js'
 
@@ -63,6 +63,7 @@ const CATEGORY_ICONS = {
   transfer: ArrowRightLeft,
   business: BriefcaseBusiness,
   electronics: Headphones,
+  'credit-card': CreditCard,
 }
 
 // Returns a Lucide component for a category row (or a plain name string).

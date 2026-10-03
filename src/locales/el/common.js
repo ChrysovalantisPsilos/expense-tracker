@@ -289,6 +289,7 @@ export default {
       transfer: 'Μεταφορά σε αποταμίευση',
       business: 'Επαγγελματικά έξοδα',
       electronics: 'Ηλεκτρονικά',
+      'credit-card': 'Πιστωτική κάρτα',
     },
     groups: {
       everyday: 'Καθημερινά',
