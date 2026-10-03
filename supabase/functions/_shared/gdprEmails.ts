@@ -11,6 +11,7 @@
 //   legalUpdateEmail           privacy-emails (legal sweep, hourly)
 //   consentChangeEmail         privacy-emails (queue, coalesced 15 min)
 //   dataExportEmail            privacy-emails (queue, ≤ 1 an hour)
+//   startFreshEmail            privacy-emails (queue, ≤ 1 an hour; start_fresh, 0114)
 //   accountDeletedEmail        delete-account, after the deletion succeeded
 //   inactivityWarningEmail     purge-inactive, 23 months without use
 //   inactiveAccountDeletedEmail purge-inactive, after the deletion succeeded
@@ -155,6 +156,26 @@ export function dataExportEmail(ctx: NoticeContext, o: { lastAt: Date; count: nu
     paragraphs: [
       first,
       'If that was you, there’s nothing to do. The file isn’t password-protected, so keep it somewhere safe.',
+      `If it wasn’t you, change your password now (Settings → Security) and tell us at ${ctx.privacyEmail}.`,
+    ],
+    cta: { label: 'Open security settings', url: `${ctx.origin}/settings/security` },
+    why: WHY_ACCOUNT,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// 4b. The account's data was cleared (Settings → Your data → Start fresh).
+// ---------------------------------------------------------------------------
+export function startFreshEmail(ctx: NoticeContext, o: { lastAt: Date; count: number }): Notice {
+  const when = formatDateTimeUTC(o.lastAt)
+  const first = o.count > 1
+    ? `Your Budgeer data was cleared ${o.count} times since our last email about it, most recently on ${when} (Settings → Your data → Start fresh).`
+    : `Your Budgeer data was cleared on ${when} (Settings → Your data → Start fresh).`
+  return notice(ctx, 'Your Budgeer data was cleared', {
+    paragraphs: [
+      first,
+      'Your own entries, recurring payments, budgets, plan, savings accounts and goals, salary corrections, meal vouchers, import rules and notifications were deleted, and your categories are back to the defaults. Your account, settings and groups stay.',
+      'If that was you, there’s nothing to do. If you saved a backup first, you can restore it from Settings → Your data.',
       `If it wasn’t you, change your password now (Settings → Security) and tell us at ${ctx.privacyEmail}.`,
     ],
     cta: { label: 'Open security settings', url: `${ctx.origin}/settings/security` },

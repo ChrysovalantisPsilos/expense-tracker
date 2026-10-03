@@ -149,4 +149,81 @@ final class BackupTests: XCTestCase {
         XCTAssertEqual(again.contents.first?.count, 1)
     }
     #endif
+
+    // MARK: Start fresh
+
+    private func freshModel(_ store: FakeStore, _ security: FakeSecurity) -> StartFreshModel {
+        let now = TestData.now
+        return StartFreshModel(data: store.data, security: security, signOut: {}, now: { now })
+    }
+
+    func testStartFreshWithAPasswordAsksForThePhraseAndThePasswordThenStartsOver() async {
+        let store = FakeStore()
+        let model = freshModel(store, FakeSecurity())
+        var done = 0
+        model.onDone = { done += 1 }
+        await model.load()
+        XCTAssertFalse(model.isDemo)
+        XCTAssertEqual(model.phraseHint, "START FRESH")
+        XCTAssertEqual(model.scope.wiped.count, 7)
+        XCTAssertEqual(model.scope.kept.count, 3)
+        XCTAssertEqual(model.check?.password, true)
+        model.phrase = "start fresh"
+        XCTAssertEqual(model.check?.canSubmit, false)
+        model.password = "my-password"
+        XCTAssertEqual(model.check?.canSubmit, true)
+        let ran = await model.startFresh()
+        XCTAssertTrue(ran)
+        XCTAssertEqual(store.writes("startFresh"), [["password": "my-password"]])
+        XCTAssertEqual(done, 1)
+        XCTAssertEqual(model.phrase, "")
+        XCTAssertEqual(model.password, "")
+    }
+
+    func testStartFreshWithoutAPasswordNeedsAFreshSignIn() async {
+        let store = FakeStore()
+        let fake = FakeSecurity()
+        fake.user = ["email": "sam@example.com", "app_metadata": ["providers": ["google"]], "user_metadata": [:]]
+        fake.claims = ["iat": .int(Int(TestData.now.timeIntervalSince1970) - 3600)]
+        let model = freshModel(store, fake)
+        await model.load()
+        model.phrase = "START FRESH"
+        XCTAssertEqual(model.check?.needsReauth, true)
+        let refused = await model.startFresh()
+        XCTAssertFalse(refused)
+        XCTAssertTrue(store.writes("startFresh").isEmpty)
+        fake.claims = ["iat": .int(Int(TestData.now.timeIntervalSince1970) - 30)]
+        let ran = await model.startFresh()
+        XCTAssertTrue(ran)
+        XCTAssertEqual(store.writes("startFresh"), [["password": .null]])
+    }
+
+    func testAWrongPasswordOrARefusalSaysWhyAndKeepsTheSheet() async {
+        let store = FakeStore()
+        store.startFreshError = CurrentPasswordInvalid()
+        let model = freshModel(store, FakeSecurity())
+        var done = 0
+        model.onDone = { done += 1 }
+        await model.load()
+        model.phrase = "START FRESH"
+        model.password = "nope"
+        let wrong = await model.startFresh()
+        XCTAssertFalse(wrong)
+        XCTAssertEqual(model.failed, "That password isn’t right.")
+        store.startFreshError = ServerError(code: "P0001", message: "Too many fresh starts — please try again tomorrow.")
+        model.password = "my-password"
+        XCTAssertNil(model.failed)
+        let limited = await model.startFresh()
+        XCTAssertFalse(limited)
+        XCTAssertEqual(model.failed, "Too many fresh starts — please try again tomorrow.")
+        XCTAssertEqual(done, 0)
+    }
+
+    func testStartFreshIsHiddenOnTheDemoLogin() async {
+        let store = FakeStore()
+        store.profileResult = .success(["base_currency": "EUR", "is_demo": true])
+        let model = freshModel(store, FakeSecurity())
+        await model.load()
+        XCTAssertTrue(model.isDemo)
+    }
 }

@@ -116,6 +116,8 @@ function isNetworkError(error) {
 export const SQL_USER_MESSAGES = new Map([
   // Signed out mid-session (every definer function checks auth.uid()).
   ['not authenticated', 'sessionExpired'],
+  // Start fresh (0114) without a sign-in in the last few minutes (_shared/reauth.ts' window).
+  ['For your security, please sign in again to start fresh.', 'reauth.startFresh'],
   // Permissions and membership
   ['not allowed', 'sql.notAllowed'],
   ['not a member', 'sql.notMember'],
@@ -170,6 +172,7 @@ export const SQL_USER_MESSAGES = new Map([
   ['Too many comments — please slow down.', 'sql.tooManyComments'],
   ['Too many expenses added — please slow down.', 'sql.tooManyExpenses'],
   ['Too many exports — please try again later.', 'sql.tooManyExports'],
+  ['Too many fresh starts — please try again tomorrow.', 'sql.tooManyFreshStarts'],
   ['Too many groups joined — please try again later.', 'sql.tooManyGroups'],
   ['Too many invites — please slow down.', 'sql.tooManyInvites'],
   ['Too many requests — please try again later.', 'sql.tooManyRequests'],

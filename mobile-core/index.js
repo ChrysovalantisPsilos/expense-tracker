@@ -63,6 +63,7 @@ import * as sheetRead from '../src/features/import/sheetRead.js'
 import * as statementRows from '../src/features/import/statementRows.js'
 import * as importText from '../src/features/import/importText.js'
 import * as backupMath from '../src/features/backup/backupMath.js'
+import * as startFreshMath from '../src/features/backup/startFreshMath.js'
 import * as recurringMath from '../src/features/recurring/recurringMath.js'
 import * as ruleForm from '../src/features/recurring/ruleForm.js'
 import * as planMath from '../src/features/plan/planMath.js'
@@ -163,6 +164,7 @@ export const modules = {
   statementRows,
   importText,
   backupMath,
+  startFreshMath,
   recurringMath,
   ruleForm,
   planMath,

@@ -82,6 +82,7 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     var consentRows: JSONValue = []
     var exported: JSONValue = ["profile": ["display_name": "Sam Morgan"]]
     var deleteAccountError: Error?
+    var startFreshError: Error?
 
     // Savings and meal vouchers (FakeStore+Savings.swift).
     var accountRows: JSONValue = []

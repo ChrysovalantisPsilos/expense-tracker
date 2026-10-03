@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   REST_CACHE, RPC_CACHE, REST_CACHE_LIMITS, RPC_CACHE_LIMITS, NETWORK_TIMEOUT_SECONDS,
-  clearUserDataCaches, isLegacyRpcKey,
+  clearUserDataCaches, clearCachedReads, isLegacyRpcKey,
 } from '../src/shared/lib/userDataCaches.js'
 import { offlineReadKey } from '../src/shared/lib/offlineReads.js'
 import { STORAGE_KEYS } from '../src/shared/lib/keys.js'
@@ -19,6 +19,22 @@ test('clearUserDataCaches deletes both read caches, the expiry timestamps and th
   assert.deepEqual(deleted.sort(), [REST_CACHE, RPC_CACHE].sort())
   assert.deepEqual(dbs, ['workbox-expiration'])
   assert.deepEqual(removed, [STORAGE_KEYS.legalAccepted])
+})
+
+test('clearCachedReads deletes the read caches and their timestamps, and keeps the legal acceptance', async () => {
+  const deleted = []
+  const dbs = []
+  const removed = []
+  await clearCachedReads({
+    caches: { delete: async (name) => { deleted.push(name); return true } },
+    indexedDB: { deleteDatabase: (name) => { dbs.push(name) } },
+    localStorage: { removeItem: (key) => { removed.push(key) } },
+  })
+  assert.deepEqual(deleted.sort(), [REST_CACHE, RPC_CACHE].sort())
+  assert.deepEqual(dbs, ['workbox-expiration'])
+  assert.deepEqual(removed, [])
+  await clearCachedReads({})
+  await clearCachedReads({ caches: { delete: async () => { throw new Error('SecurityError') } } })
 })
 
 test('clearUserDataCaches never throws (no Cache API, failing deletes, blocked IndexedDB)', async () => {

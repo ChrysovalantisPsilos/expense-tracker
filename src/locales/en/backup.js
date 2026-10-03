@@ -139,4 +139,41 @@ export default {
     ratesMissing: 'Couldn’t get the exchange rates needed to convert this backup to your main currency. Check your connection and try again.',
     incomplete: 'Couldn’t read all of your entries — please try again.',
   },
+  // Start fresh: wipe your own data, keep the account (startFreshMath.js).
+  startFresh: {
+    title: 'Start fresh',
+    lead: 'Clear your entries and everything you set up for yourself, then begin again with the default categories. Your account, settings and groups stay.',
+    open: 'Start fresh',
+    confirmTitle: 'Start fresh?',
+    warning: 'This deletes your own data for good. It can’t be undone.',
+    wipedList: 'Deleted',
+    keptList: 'Stays',
+    // What goes and what stays (startFreshScope).
+    scope: {
+      wiped: {
+        entries: 'Your expenses and income',
+        plans: 'Recurring payments, budgets and your Plan',
+        savings: 'Accounts and savings goals',
+        salary: 'Your salary corrections and meal vouchers',
+        rules: 'Import rules',
+        notifications: 'Your notifications and AI month summaries',
+        categories: 'Your categories, which go back to the defaults',
+      },
+      kept: {
+        account: 'Your account, sign-in methods, profile, picture and payment details',
+        settings: 'Your main currency, language and settings',
+        groups: 'Your groups with their expenses, settlements and comments, including your share of each group expense',
+      },
+    },
+    backupTitle: 'Back up first',
+    backupLead: 'If you might want any of this back, download a backup now. You can restore it later.',
+    backup: 'Download a backup',
+    phraseLabel: 'Type START FRESH to confirm',
+    passwordLabel: 'Enter your password',
+    passwordPlaceholder: 'Your password',
+    submit: 'Start fresh',
+    working: 'Starting fresh…',
+    wrongPassword: 'That password isn’t right.',
+    failed: 'Couldn’t start fresh',
+  },
 }

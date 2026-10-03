@@ -52,6 +52,7 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
 - Smart statement import (CSV/XLSX): auto-mapped columns, duplicate-proof re-imports, learned merchant→category rules
 - Branded PDF statements (personal + per-group) and an Excel export of your own statement
 - Backup & restore (Settings → Your data): one JSON file, optionally password-encrypted in the browser; restore merges and skips duplicates
+- Start fresh (Settings → Your data): wipes your own entries, recurring payments, budgets, Plan, accounts and goals, salary corrections, meal vouchers, import rules, AI summaries and notifications, resets the categories to the defaults; keeps the account, profile, settings, consents, push devices and groups (with your group shares); after a backup offer, START FRESH typed and a fresh sign-in (`start_fresh`, 0114)
 
 **Groups**
 - Groups with invites via link, email, or in-app; join/decline inbox
@@ -312,6 +313,30 @@ the app stays scrollable, and the file downloads within seconds.
     rate; budget caps, account balances and savings goals come back
     converted to whole yen (recurring entries keep their own currency). Offline, the
     restore stops with the exchange-rate message and nothing is added.
+33a. Start fresh (Settings → Your data, web and iOS) on an account with
+    entries, recurring payments, budgets, a Plan, accounts and goals, salary
+    corrections, meal vouchers, import rules, notifications, a custom
+    category, the salary category set, and a group with a shared expense:
+    the confirmation lists what goes and what stays, offers "Download a
+    backup" (it opens Export backup), and Start fresh stays off until START
+    FRESH is typed (any case) and, for a password account, the password; a
+    Google/Apple/passkey account signed in more than ten minutes ago sees
+    "please sign in again" instead. A wrong password says "That password
+    isn't right." and nothing changes. Then it lands on Home in its
+    first-run state: no entries, the default categories only, Settings ›
+    Monthly spending with no salary category; the profile, currency,
+    language, switches, sign-in methods and consent history are unchanged;
+    the group, its expense and balances are unchanged and your share of the
+    expense is still on Activity (in Food & Dining if it was there before).
+    Offline reads show nothing old (reload offline: no old entries); on iOS
+    the widgets show an empty month. A fourth run in a day is refused
+    ("Too many fresh starts"). Not shown on the demo login. The other account
+    in the group sees nothing change. Restoring the backup brings it back.
+    Within ten minutes the account's address gets "Your Budgeer data was
+    cleared" (the time in UTC, what to do if it wasn't you); three runs in
+    an hour are one email that counts them. On iOS, open Plan before
+    starting fresh: afterwards it shows an empty plan, and editing it does
+    not bring the old rows back.
 
 ### K. Navigation
 34. Phone width: the bottom bar is exactly Home · Transactions · Groups ·

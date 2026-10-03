@@ -334,6 +334,13 @@ export default {
           p2: 'Restoring merges the backup into your account and skips entries you already have. Your shares of group expenses come back as personal expenses.',
         },
       },
+      startFresh: {
+        q: 'Can I clear my data and start again?',
+        a: {
+          p1: 'Yes. In Settings → Your data, Start fresh permanently deletes your expenses and income, recurring payments, budgets, Plan, accounts and goals, salary corrections, meal vouchers, import rules and notifications, and puts your categories back to the defaults.',
+          p2: 'Your account, profile, settings and groups stay, including your share of each group expense. You’re offered a backup first, so you can restore it later.',
+        },
+      },
       passkeys: {
         q: 'What is a passkey?',
         a: {

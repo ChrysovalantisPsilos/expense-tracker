@@ -64,6 +64,11 @@ extension FakeStore {
         settingsWrites.append(("deleteAccount", ["password": password.json]))
     }
 
+    func startFresh(password: String?) async throws {
+        if let startFreshError { throw startFreshError }
+        settingsWrites.append(("startFresh", ["password": password.json]))
+    }
+
     /// The writes of one kind, in order.
     func writes(_ name: String) -> [JSONValue] {
         settingsWrites.filter { $0.name == name }.map(\.args)
