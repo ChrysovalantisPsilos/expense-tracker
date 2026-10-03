@@ -7384,11 +7384,94 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 120. 0110: my_group_flow, the group money behind Home's Net. The caller
+--      sees each group expense they paid (with their mirrored share, 0
+--      without one) or have a share of, and each settlement from or to them,
+--      in the group currency with their own rate; nothing of a group they're
+--      not in; the window filters by date; closed to anon.
+-- ---------------------------------------------------------------------------
+do $$
+declare u1 uuid; u2 uuid; u3 uuid; gid uuid; m1 uuid; m2 uuid; n int; r record;
+begin
+  begin
+    if has_function_privilege('anon', 'public.my_group_flow(date,date)', 'execute') then
+      raise exception 'my_group_flow is callable by anon';
+    end if;
+    if not has_function_privilege('authenticated', 'public.my_group_flow(date,date)', 'execute') then
+      raise exception 'my_group_flow is not callable by authenticated';
+    end if;
+
+    u1 := pg_temp.zz_user('flowa');
+    u2 := pg_temp.zz_user('flowb');
+    u3 := pg_temp.zz_user('flowc');
+    insert into public.groups (name, owner_id, currency) values ('ZZT flow', u1, 'EUR') returning id into gid;
+    insert into public.group_members (group_id, user_id, display_name, role)
+      values (gid, u1, 'Owner', 'owner') returning id into m1;
+    insert into public.group_members (group_id, user_id, display_name)
+      values (gid, u2, 'Member') returning id into m2;
+
+    -- Brunch 30.00 paid by u1, split two ways; 5.00 paid by u1 for u2 alone.
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.create_group_expense_v2(gid, 'ZZ brunch', 3000, 'EUR', m1, current_date, array[m1, m2], null, 'equal');
+    perform public.create_group_expense_v2(gid, 'ZZ gift', 500, 'EUR', m1, current_date, array[m2], null, 'equal');
+    execute 'reset role';
+    -- Sanex 7.49 paid by u2, 3.75 of it u1's; then u2 pays u1 back 15.00.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.create_group_expense_v2(gid, 'ZZ sanex', 749, 'EUR', m2, current_date, array[m1, m2],
+                                           array[375, 374]::bigint[], 'exact');
+    perform public.add_settlement(gid, m2, m1, 1500, 'EUR', null, null);
+    execute 'reset role';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select count(*) into n from public.my_group_flow(current_date, current_date);
+    if n <> 4 then raise exception 'expected 4 moves, got %', n; end if;
+    select * into r from public.my_group_flow() f where f.kind = 'expense' and f.amount_minor = 3000;
+    if r.share_minor <> 1500 or not r.paid_by_me or r.currency <> 'EUR' or r.exchange_rate <> 1 then
+      raise exception 'brunch wrong: %', row_to_json(r);
+    end if;
+    select * into r from public.my_group_flow() f where f.kind = 'expense' and f.amount_minor = 500;
+    if r.share_minor <> 0 or not r.paid_by_me then raise exception 'gift wrong: %', row_to_json(r); end if;
+    select * into r from public.my_group_flow() f where f.kind = 'expense' and f.amount_minor = 749;
+    if r.share_minor <> 375 or r.paid_by_me then raise exception 'sanex wrong: %', row_to_json(r); end if;
+    select * into r from public.my_group_flow() f where f.kind = 'settlement';
+    if r.amount_minor <> 1500 or r.paid_by_me or r.spent_at <> current_date then
+      raise exception 'settlement wrong: %', row_to_json(r);
+    end if;
+    select count(*) into n from public.my_group_flow(current_date + 1, null);
+    if n <> 0 then raise exception 'window ignored: % moves after today', n; end if;
+    execute 'reset role';
+
+    -- u2 sees its own side: the gift (a share, not paid), the settlement paid.
+    perform set_config('request.jwt.claims', json_build_object('sub', u2, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select * into r from public.my_group_flow() f where f.kind = 'expense' and f.amount_minor = 500;
+    if r.share_minor <> 500 or r.paid_by_me then raise exception 'u2 gift wrong: %', row_to_json(r); end if;
+    select * into r from public.my_group_flow() f where f.kind = 'settlement';
+    if not r.paid_by_me then raise exception 'u2 settlement not its own payment'; end if;
+    execute 'reset role';
+
+    -- An outsider sees nothing.
+    perform set_config('request.jwt.claims', json_build_object('sub', u3, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    select count(*) into n from public.my_group_flow();
+    execute 'reset role';
+    if n <> 0 then raise exception 'outsider sees % moves', n; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: my_group_flow returns only the caller''s group moves (paid, shares, settlements), windowed, closed to anon';
+    else update _t set fails = fails + 1; raise notice 'FAIL: my_group_flow — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 120; f int; p int;  -- tests 1–119 + B-0059
+declare expected_tests constant int := 121; f int; p int;  -- tests 1–120 + B-0059
 begin
   select fails, passes into f, p from _t;
   if f > 0 then raise exception '% test(s) FAILED', f; end if;
