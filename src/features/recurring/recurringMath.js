@@ -417,8 +417,10 @@ export function groupTotalParts(group, baseCurrency) {
 // One rule as the Recurring page lists it (RuleRow): its name and badge,
 // the muted line (how often, the next charge, a yearly expense's monthly
 // budget share unless kept separate), the reminder and paused tags, and
-// its amount in its own currency with the base-currency hint.
-export function ruleRowParts(rule, { baseCurrency, rates = {}, separateYearly = false }) {
+// its amount in its own currency with the base-currency hint. An active rule
+// whose next charge has passed (`today`, 'YYYY-MM-DD') reads "due 30 Sep ·
+// added tonight": the nightly run adds it, then moves the date on.
+export function ruleRowParts(rule, { baseCurrency, rates = {}, separateYearly = false, today = null }) {
   const kind = rule.kind === 'income' ? 'income' : 'expense'
   const share = separateYearly ? null : monthlyBudgetShare(rule)
   return {
@@ -428,7 +430,9 @@ export function ruleRowParts(rule, { baseCurrency, rates = {}, separateYearly = 
     active: !!rule.is_active,
     meta: [
       frequencyLabel(rule),
-      t('recurring:row.next', { date: shortDate(rule.next_run) }),
+      rule.is_active && today && rule.next_run < today
+        ? t('recurring:row.due', { date: shortDate(rule.next_run) })
+        : t('recurring:row.next', { date: shortDate(rule.next_run) }),
       share && `${share.exact ? '' : '≈ '}${t('recurring:row.budgetShare', { amount: formatMoney(share.perMonth, rule.currency) })}`,
     ].filter(Boolean),
     remind: rule.remind_days_before != null ? t('recurring:row.remindDays', { days: rule.remind_days_before }) : null,

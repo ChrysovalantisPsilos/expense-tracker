@@ -92,6 +92,7 @@ export default {
     pause: 'Παύση',
     resume: 'Συνέχιση',
     next: 'επόμενη {{date}}',
+    due: 'χρέωση {{date}} · προστίθεται απόψε',
     budgetShare: '{{amount}}/μήνα στους προϋπολογισμούς',
     remindDays: '{{days}} ημ.',
     paused: 'Σε παύση',

@@ -386,6 +386,16 @@ const ruleOf = (extra = {}) => ({
   categories: { name: 'Subscriptions', icon: null, color: null }, ...extra,
 })
 
+test('ruleRowParts: a passed next charge reads "due … · added tonight" (active rules only)', () => {
+  // next_run 3 Oct 2020 (ruleOf); the day after, the nightly run hasn't added it yet.
+  assert.deepEqual(ruleRowParts(ruleOf(), { baseCurrency: 'EUR', today: '2020-10-04' }).meta,
+    ['every month', 'due 3 Oct 2020 · added tonight'])
+  // On the day itself, or paused, it stays "next".
+  assert.deepEqual(ruleRowParts(ruleOf(), { baseCurrency: 'EUR', today: '2020-10-03' }).meta, ['every month', 'next 3 Oct 2020'])
+  assert.deepEqual(ruleRowParts(ruleOf({ is_active: false }), { baseCurrency: 'EUR', today: '2020-10-04' }).meta,
+    ['every month', 'next 3 Oct 2020'])
+})
+
 test('ruleRowParts: name, how often, next charge, tags, amount and hint', () => {
   assert.deepEqual(ruleRowParts(ruleOf(), { baseCurrency: 'EUR' }), {
     id: 'r1', title: 'Music', look: { key: 'streaming', tone: 'accent', tint: null }, active: true,

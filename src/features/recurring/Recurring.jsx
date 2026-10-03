@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { addEntryLink } from '../../shared/lib/addLinks.js'
+import { today } from '../../shared/lib/dates.js'
 import {
   Stack, Text, Button, List, ListItem, Switch, Tag, Box, Tabs, TabList, Tab, TabPanels, TabPanel,
   useToast, SimpleGrid,
@@ -83,7 +84,7 @@ export default function Recurring() {
     <List spacing={0}>
       {rows.map((r) => (
         <ListItem key={r.id}>
-          <RuleRow rule={r} parts={ruleRowParts(r, { baseCurrency, rates, separateYearly })} onToggle={() => toggle(r)} onEdit={() => openEdit(r)} onRemove={() => setRemoving(r)} />
+          <RuleRow rule={r} parts={ruleRowParts(r, { baseCurrency, rates, separateYearly, today: today() })} onToggle={() => toggle(r)} onEdit={() => openEdit(r)} onRemove={() => setRemoving(r)} />
         </ListItem>
       ))}
     </List>

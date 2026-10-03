@@ -52,11 +52,13 @@ struct RecurringFigures: Codable, Equatable, Sendable {
 
     /// - rules: my_recurring_rules; categories: the savings categories
     /// - rates: today's rate of each foreign currency among the rules ({ USD: 0.9 })
+    /// - today: 'YYYY-MM-DD' (an active rule whose next charge has passed reads "due … · added tonight")
     static func compute(profile: JSONValue, categories: JSONValue, rules: JSONValue, rates: JSONValue,
-                        core: BudgeerCore) throws -> RecurringFigures {
+                        today: String? = nil, core: BudgeerCore) throws -> RecurringFigures {
         let base = profile["base_currency"]?.stringValue ?? "EUR"
         let options: JSONValue = ["baseCurrency": .string(base), "rates": rates,
-                                  "separateYearly": .bool(profile["yearly_separate"]?.boolValue ?? false)]
+                                  "separateYearly": .bool(profile["yearly_separate"]?.boolValue ?? false),
+                                  "today": today.map { .string($0) } ?? .null]
         let savingsIds = try core.json("savings", "savingsIdsOf", [categories])
         let income = try core.json("recurringMath", "incomePerMonth", [rules, savingsIds, base, rates])
         let groups = try core.json("recurringMath", "subscriptionGroups", [rules, base, ["rates": rates] as JSONValue])

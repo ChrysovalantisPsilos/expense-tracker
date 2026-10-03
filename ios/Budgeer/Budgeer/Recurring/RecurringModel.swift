@@ -38,7 +38,7 @@ final class RecurringModel {
             let savings = try await data.categories.savingsCategories()
             let rates = try await FxRates.latest(for: rules, base: base, fx: data.fx, core: core)
             state = .loaded(try RecurringFigures.compute(profile: profile, categories: savings, rules: rules,
-                                                         rates: rates, core: core))
+                                                         rates: rates, today: try core.isoDate(Date()), core: core))
         } catch {
             if case .loaded = state { return }
             state = .failed(String(describing: error))
