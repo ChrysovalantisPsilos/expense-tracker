@@ -155,31 +155,30 @@ struct GroupCoverPicker: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(GroupCoverArt.choices.emoji, id: \.self) { symbol in
-                            Button {
-                                emoji = emoji == symbol ? nil : symbol
-                                photo = nil
-                            } label: {
-                                Text(verbatim: symbol)
-                                    .font(.system(size: 24))
-                                    .frame(width: 46, height: 46)
-                                    .background(emoji == symbol ? Theme.Colors.accentSubtle : Theme.Colors.subtle,
-                                                in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                    .overlay {
-                                        if emoji == symbol {
-                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                                .stroke(NativeStyle.tint, lineWidth: 2)
-                                        }
+                // Rows of five inside the card, as the website wraps them (a sideways strip ran
+                // past the card's edges).
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5), spacing: 8) {
+                    ForEach(GroupCoverArt.choices.emoji, id: \.self) { symbol in
+                        Button {
+                            emoji = emoji == symbol ? nil : symbol
+                            photo = nil
+                        } label: {
+                            Text(verbatim: symbol)
+                                .font(.system(size: 24))
+                                .frame(maxWidth: .infinity, minHeight: 46)
+                                .background(emoji == symbol ? Theme.Colors.accentSubtle : Theme.Colors.subtle,
+                                            in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .overlay {
+                                    if emoji == symbol {
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .stroke(NativeStyle.tint, lineWidth: 2)
                                     }
-                            }
-                            .buttonStyle(.plain)
+                                }
                         }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 4)
                 }
-                .scrollClipDisabled()
+                .padding(.horizontal, 4)
                 HStack(spacing: 12) {
                     ForEach(GroupCoverArt.choices.colours, id: \.key) { choice in
                         let picked = GroupCoverArt.colour(colour).key == choice.key
