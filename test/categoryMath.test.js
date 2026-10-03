@@ -139,7 +139,7 @@ test('categoryLook: the icon key, the tone by kind and the tint of a picked colo
 })
 
 // The icon and colour keys are CHECK constraints on the server (colours: 0060;
-// icons: the latest widening, 0071) and Lucide mappings in icons.jsx — all
+// icons: the latest widening, 0113) and Lucide mappings in icons.jsx — all
 // three lists must stay identical.
 const sqlList = (sql, column) => {
   const m = sql.match(new RegExp(`${column} is null or ${column} in \\(([^)]*)\\)`))
@@ -148,7 +148,7 @@ const sqlList = (sql, column) => {
 
 test('icon/colour keys match the CHECK constraints and the icon registry', () => {
   const sql = readFileSync(new URL('../supabase/migrations/0060_category_management.sql', import.meta.url), 'utf8')
-  const iconSql = readFileSync(new URL('../supabase/migrations/0071_more_category_icons.sql', import.meta.url), 'utf8')
+  const iconSql = readFileSync(new URL('../supabase/migrations/0113_credit_card_icon.sql', import.meta.url), 'utf8')
   assert.deepEqual(sqlList(iconSql, 'icon'), CATEGORY_ICON_KEYS)
   assert.deepEqual(sqlList(sql, 'color'), CATEGORY_COLOR_KEYS)
   const icons = readFileSync(new URL('../src/shared/lib/icons.jsx', import.meta.url), 'utf8')
