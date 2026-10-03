@@ -2,7 +2,6 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { dayGroups, dayTitle, monthPulse, rowParts } from '../src/features/transactions/rowParts.js'
 import { ledgerSummary } from '../src/features/transactions/listHeading.js'
-import { salaryShiftOf } from '../src/shared/lib/salaryShift.js'
 import { loadLanguage } from '../src/shared/lib/i18n/i18n.js'
 
 const cat = (id, name, kind = 'expense', extra = {}) => ({ id, name, kind, icon: null, color: null, ...extra })
@@ -23,7 +22,8 @@ test('rowParts: a plain expense is named by its category, amount unsigned', () =
   assert.equal(p.kind, 'expense')
   assert.equal(p.shared, false)
   assert.deepEqual(p.look, { key: 'groceries', tone: 'accent', tint: null })
-  for (const k of ['notes', 'group', 'repeats', 'spread', 'countsFor', 'approx', 'rate', 'estimated']) assert.equal(p[k], null, k)
+  for (const k of ['notes', 'group', 'repeats', 'spread', 'approx', 'rate', 'estimated']) assert.equal(p[k], null, k)
+  assert.equal('countsFor' in p, false) // pay months: every row is in its own month
 })
 
 test('rowParts: a description names it and moves the category into the line; notes; income with a plus', () => {
@@ -55,14 +55,10 @@ test('rowParts: a foreign amount, estimated; a group share; a rule; a yearly pay
   assert.equal(rowParts(row({ amount_minor: 1000, spread_months: 12 }), opts).spread, '≈ €0.84/month over 12 months')
 })
 
-test('rowParts: savings notes and a late salary counted next month', async () => {
+test('rowParts: savings notes', async () => {
   const saved = rowParts(row({ kind: 'income', category_id: 'sav', categories: cat('sav', 'Savings', 'income'), savings_from_income: true }),
     { ...opts, savingsIds: new Set(['sav']) })
   assert.deepEqual(saved.meta, ['14 Sep 2020', 'from income'])
-  const shift = salaryShiftOf({ salary_shift_from_day: 25, salary_category_id: 'pay' })
-  const late = rowParts(row({ kind: 'income', spent_at: '2020-09-28', category_id: 'pay', categories: cat('pay', 'Salary', 'income') }),
-    { ...opts, salaryShift: shift })
-  assert.equal(late.countsFor, 'Counts for October')
   await loadLanguage('el')
   try {
     assert.equal(rowParts(row(), opts).meta[0], '14 Σεπ 2020')
@@ -142,4 +138,12 @@ test('monthPulse: a kind shows its own figures; no month, no days; nothing spent
   assert.deepEqual(search.days, [])
   assert.equal(search.peak, null)
   assert.equal(monthPulse([], { kind: null, baseCurrency: 'EUR' }, feb, '2026-03-01').peak, null)
+})
+
+test('monthPulse: a pay month of 37 days, its days before the label\'s month named with their month', () => {
+  const pay = { key: '2026-10', from: '2026-09-25', to: '2026-10-31' }
+  const pulse = monthPulse([], { kind: 'expense', baseCurrency: 'EUR' }, pay, '2026-10-03')
+  assert.equal(pulse.days.length, 37)
+  assert.deepEqual(pulse.days.slice(0, 7).map((d) => d.label), ['25 Sep', '26 Sep', '27 Sep', '28 Sep', '29 Sep', '30 Sep', '1'])
+  assert.equal(pulse.days.at(-1).label, '31')
 })

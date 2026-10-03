@@ -253,6 +253,9 @@ struct AppFrame: View {
             case .active:
                 container.live.catchUp()
                 lock.cameBack()
+                // The server's "today" for this user follows the device (0111).
+                let data = container.data
+                Task { try? await data.profile.saveTimeZone(TimeZone.current.identifier) }
             case .background:
                 lock.wentAway()
             default:

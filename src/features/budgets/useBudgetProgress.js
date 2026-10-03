@@ -17,12 +17,15 @@ import { budgetWindow, capsInMonth, carriedFrom, periodBudgets } from './budgetM
 // subscriptions separate (countsMonthly ≡ the alerts' counts_in_month).
 // `carriedFrom` is the month a single month's caps rolled over from (null:
 // its own, or a longer period); `months` how many months had any cap.
-export function useBudgetProgress(period = thisMonthPeriod()) {
-  const { baseCurrency, separateYearly } = useProfile()
+// With pay months on (`cal`) every month is a pay month, its spend bucketed
+// by payMonthOf and its caps keyed by its label.
+export function useBudgetProgress(picked) {
+  const { baseCurrency, separateYearly, payCalendar: cal } = useProfile()
+  const period = picked ?? thisMonthPeriod(new Date(), cal)
   const todayISO = today()
   const { value, from: pFrom, to: pTo } = period
   const span = useMemo(
-    () => budgetWindow({ value, from: pFrom, to: pTo }, todayISO), [value, pFrom, pTo, todayISO])
+    () => budgetWindow({ value, from: pFrom, to: pTo }, todayISO, cal), [value, pFrom, pTo, todayISO, cal])
 
   const b = useBudgetSets(span.first, span.last)
   const t = useTransactions({
@@ -32,9 +35,9 @@ export function useBudgetProgress(period = thisMonthPeriod()) {
   const txns = t.rows
 
   const { items, months } = useMemo(() => periodBudgets({
-    sets, span, baseCurrency,
-    spend: spendRows(txns, baseCurrency, span.from, span.to, { separateYearly }),
-  }), [sets, txns, span, baseCurrency, separateYearly])
+    sets, span, baseCurrency, cal,
+    spend: spendRows(txns, baseCurrency, span.from, span.to, { separateYearly, cal }),
+  }), [sets, txns, span, baseCurrency, separateYearly, cal])
 
   const reload = () => Promise.all([b.reload(), t.reload()])
   return {

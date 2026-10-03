@@ -115,17 +115,31 @@ build. A separate `functions` job runs `deno lint` over `supabase/functions`.
    "Taken from my income" switch explains itself behind its ⓘ too.
 7. Period selector only offers months since your oldest transaction;
    "All time" appears once data spans months.
-7a. Next month (salary shift on in Settings → Monthly spending, from day 25,
-   Salary category): add a salary dated the 28th. The period picker gains
-   next month at the top ("October 2026") at once, without a reload; "This
-   month" stays selected. Pick October: Income shows the salary (the list
-   has it with its real date and "Counts for October"), Spent and the
-   projection hold only recurring charges due in October (not the rest of
-   September's), Budgets shows this month's caps carried over, Recurring
-   shows the upcoming view, and there's no Numbers | In words switch.
-   Delete the salary → October leaves the picker and Home returns to This
-   month. In December the next month is January (no extra year option).
-   The category page's period picker offers it too.
+7a. Pay months (Settings › Monthly spending: "Months run from payday to
+   payday", from day 25, Salary category; the day picker offers the 15th to
+   the 31st). On TEST, with paydays 28 Aug and 29 Sep and today in early
+   October:
+   - Home's "This month" is October, from 29 Sep ("from 29 Sep" on the
+     Transactions heading); the salary and every entry after it are in it,
+     the days before it in September (which ends 28 Sep). Its Net matches
+     the bank's for 29 Sep → today.
+   - The projection stops the day before the next salary is expected (the
+     salary rule's next charge, else last month's payday's day): a monthly
+     charge paid on 30 Sep isn't counted again for 30 Oct.
+   - Activity, Budgets (keyed October, "October 2026" as the eyebrow on
+     30 Sep), the category page (an expense on 30 Sep is October's; its
+     budget is October's), Insights (six pay months), Savings' line, Plan
+     (completed pay months only), Your salary (each pay in its pay month),
+     the month summary ("October in short" from 29 Sep) and the statement
+     ("October 2026 · 2026-09-29 – 2026-10-31" when the dates are left as
+     they are) all agree.
+   - A 40.00 refund in the Salary category opens no month.
+   - A budget alert for a 30 Sep expense is October's.
+   - Offline: reload Home with the network off: the same months (the
+     paydays are cached).
+   - Settings off: every screen is back to calendar months, exactly as
+     before; meal vouchers are always calendar months.
+   - The phone's time zone is saved (profiles.time_zone) on launch.
 8. Pie/table toggle persists across reloads. Group-mirrored expenses bucket
    under the group's name.
 

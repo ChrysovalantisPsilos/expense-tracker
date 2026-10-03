@@ -9,8 +9,9 @@ import { loadStatement } from '../../../supabase/functions/generate-report/state
 import { statementOffThread } from '../../shared/lib/statementOffThread.js'
 
 // The statement's bytes. `supabase` is the signed-in client; `onProgress`
-// hears the PDF page being made; `signal` stops the work.
-export async function statementOnDevice(supabase, { from, to, format, onProgress, signal }) {
-  const input = await loadStatement(supabase, { from, to })
+// hears the PDF page being made; `signal` stops the work; `month` asks for
+// that month's window (statementFile.loadStatement).
+export async function statementOnDevice(supabase, { from, to, month = null, format, onProgress, signal }) {
+  const input = await loadStatement(supabase, { from, to, month })
   return statementOffThread({ kind: 'personal', format, input }, { onProgress, signal })
 }

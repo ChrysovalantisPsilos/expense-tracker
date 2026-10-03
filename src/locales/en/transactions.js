@@ -18,6 +18,10 @@ export default {
     thisMonth: 'This month',
     thisYear: 'This year',
     allTime: 'All time',
+    // A pay month's window when it isn't the calendar month (the salary
+    // setting): "29 Sep – 27 Oct", or "from 29 Sep" while it's open.
+    payRange: '{{from}} – {{to}}',
+    payFrom: 'from {{from}}',
   },
   // listHeading.js: the header over a list of entries.
   heading: {

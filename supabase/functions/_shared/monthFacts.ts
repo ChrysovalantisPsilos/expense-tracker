@@ -8,9 +8,12 @@
 // them. The rules, and why (a summary on 2 October said the salary hadn't
 // arrived while Home showed it, and that a monthly card settlement equal to
 // last month's had "jumped above usual"):
-//   * Income is what Home counts for the month: the server's totals count a
-//     late salary in the month it counts for (the salary shift, 0109). The
+//   * The month is the one Home shows: with the salary setting on, a pay
+//     month (0111: from the day its salary arrived to the day before the
+//     next), and the server's totals count every row in its pay month. The
 //     salary is mentioned once it's in (`salary_in`), never as missing.
+//     Whether the month is still going, and the user's today, come from the
+//     server with the totals (the user's own time zone).
 //   * Like for like: what's in so far is set against whole months (the usual,
 //     the six months' average, and last month), and a category stands out
 //     only when it's already notably above BOTH. A monthly payment that's the
@@ -19,7 +22,8 @@
 //     the month is over (early in a month everything is below a whole month).
 //   * Budgets only when nearly used (BUDGET_NEAR) or over; never the rest.
 //   * What's still due this month (coming_up) from the caller's recurring
-//     rules, by category name (no descriptions leave the server).
+//     rules, by category name (no descriptions leave the server), up to the
+//     day before the next salary is expected (payCalendar.expectedEnd).
 //   * No day counts. A first month, with nothing to compare, names its
 //     biggest categories instead.
 // The answer is checked (normaliseSummary): every amount must be one of the
@@ -30,15 +34,19 @@
 import { formatMinor, formatRoundedMinor, minorFactor } from './money.ts'
 import { savingsIdsOf } from './savings.ts'
 import { isPlanRule, planKindOf } from './planRules.ts'
-import { countedDate, salaryShiftOf } from './salaryShift.ts'
+import { type Cal, type Window, expectedEnd, opensMonth, paydayHints, salaryShiftOf } from './payCalendar.ts'
 import { type Ask, type Category, type CategoryRow, DATA_ONLY, LABEL_MAX, cleanText, moneyInLine } from './aiHelper.ts'
 
-// The month's totals as my_month_summary (0103, 0109) returns them.
+// The month's totals as my_month_summary (0103, 0109, 0111) returns them.
 export interface MonthTotals {
   currency: string
   month: string // YYYY-MM
   salary_category_id?: string | null
   salary_shift_from_day?: number | null
+  window?: { from: string; to: string; open: boolean } // the month's window (a pay month with the setting on)
+  current_month?: string // YYYY-MM: the month the user's today is in
+  today?: string // the user's today, YYYY-MM-DD (their time zone)
+  last_pay_day?: string | null // the newest payday (pay months)
   categories: { id: string | null; name: string | null; kind: string; totals: number[]; budget: number | null }[]
 }
 
@@ -91,7 +99,7 @@ export function monthFacts(o: {
   const noName = o.lang === 'el' ? 'Χωρίς κατηγορία' : 'Uncategorized'
   const nameOf = (c: Row) => (c.id && labels.get(c.id)) || cleanText(c.name, LABEL_MAX) || noName
   const month = o.totals.month
-  const inProgress = month >= o.today.slice(0, 7)
+  const inProgress = month >= (o.totals.current_month ?? o.today.slice(0, 7))
 
   const rows = (o.totals.categories ?? []).map((c) => {
     const at = (i: number) => Number(c.totals?.[i]) || 0
@@ -172,29 +180,55 @@ export function monthFacts(o: {
     } : {}),
     ...(history ? { stand_out: standOut } : { biggest_categories: biggest }),
     budgets,
-    ...(inProgress ? { coming_up: comingUp(o, { from: o.today, to: lastDayOf(month), money, named }) } : {}),
+    ...(inProgress ? { coming_up: comingUp(o, { from: o.today, to: comingEnd(o), money, named }) } : {}),
   }
   const unnamed = new Set([...o.categories.map((c) => c.name), ...rows.map((r) => r.name)].filter((n) => n && !named.has(n)))
   return { facts, inProgress, check: { currency: cur, locale, figures: [...figures], named: [...named], unnamed: [...unnamed] } }
 }
 
+// The month's window (the server's; a calendar month for older totals).
+function windowOf(totals: MonthTotals, today: string): Window {
+  const w = totals.window
+  return w?.from && w?.to
+    ? { label: totals.month, from: w.from, to: w.to, open: !!w.open }
+    : { label: totals.month, from: `${totals.month}-01`, to: lastDayOf(totals.month), open: totals.month >= today.slice(0, 7) }
+}
+
+// The user's pay calendar as far as the forecast needs it (D and today), or
+// null with the salary setting off.
+function calOf(totals: MonthTotals, today: string): Cal | null {
+  const shift = salaryShiftOf(totals)
+  return shift ? { fromDay: shift.fromDay, today, first: null, starts: {} } : null
+}
+
+// Where "still due this month" ends: the day before the next salary is
+// expected (pay months), else the month's last day.
+function comingEnd(o: { totals: MonthTotals; today: string; rules?: any[] }): string {
+  const today = o.totals.today ?? o.today
+  return expectedEnd(windowOf(o.totals, today), calOf(o.totals, today),
+    paydayHints(o.rules, salaryShiftOf(o.totals), o.totals.last_pay_day ?? null))
+}
+
 // What's still due this month that moves the net (Plan's rule:
 // planRules.isPlanRule): each active rule's next charge from today to the
-// month's end, in the base currency, named by its category (rules without
-// one are left out). A salary due late in the month that counts in the next
-// (the salary shift) isn't this month's. The biggest few, by date.
+// month's end (comingEnd), in the base currency, named by its category
+// (rules without one are left out). The salary that opens the next month is
+// never this month's. The biggest few, by date.
 function comingUp(
-  o: { totals: MonthTotals; categories: Category[]; rules?: any[]; categoryRows?: CategoryRow[] },
+  o: { totals: MonthTotals; today: string; categories: Category[]; rules?: any[]; categoryRows?: CategoryRow[] },
   w: { from: string; to: string; money: (m: number) => string; named: Set<string> },
 ) {
   const savings = savingsIdsOf(o.categoryRows ?? [])
   const shift = salaryShiftOf(o.totals)
   const labels = new Map(o.categories.map((c) => [c.id, c.name]))
-  const from = w.from < `${o.totals.month}-01` ? `${o.totals.month}-01` : w.from
+  const start = windowOf(o.totals, o.totals.today ?? o.today).from
+  const from = w.from < start ? start : w.from
+  const opensNext = (r: any) => !!shift && r.kind === 'income' && r.category_id === shift.categoryId
+    && opensMonth(r.next_run, shift.fromDay).label > o.totals.month
   return (o.rules ?? [])
     .filter((r) => r && isPlanRule(r, savings) && r.currency === o.totals.currency
       && typeof r.next_run === 'string' && r.next_run >= from && r.next_run <= w.to
-      && countedDate({ ...r, spent_at: r.next_run }, shift) <= w.to
+      && !opensNext(r)
       && Number.isSafeInteger(Number(r.amount_minor)) && Number(r.amount_minor) > 0 && labels.has(r.category_id))
     .map((r) => ({ r, amount: Number(r.amount_minor) }))
     .sort((a, b) => b.amount - a.amount)

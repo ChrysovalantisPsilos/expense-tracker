@@ -312,10 +312,10 @@ struct PlanFigures: Sendable {
     let savingsIds: JSONValue
     let page: PlanPage
 
-    /// planReads: { income: { from, to }, charges: { from, to }, budgetMonths }.
-    static func reads(profile: JSONValue, now: Date, core: BudgeerCore) throws -> JSONValue {
-        let shift = try core.json("salaryShift", "salaryShiftOf", [profile])
-        return try core.json("planPage", "planReads", [JSONValue.string(try core.isoDate(now)), shift])
+    /// planReads: { income: { from, to }, charges: { from, to }, budgetMonths },
+    /// by pay month with the salary setting on (`cal`).
+    static func reads(now: Date, cal: JSONValue = .null, core: BudgeerCore) throws -> JSONValue {
+        try core.json("planPage", "planReads", [JSONValue.string(try core.isoDate(now)), cal])
     }
 
     /// The budget months' sets as useBudgetSets reads them: each month with
@@ -332,25 +332,26 @@ struct PlanFigures: Sendable {
     /// - view: 'month' or 'year'; undo: my_recurring_plan's `undo`
     static func compute(profile: JSONValue, rules: JSONValue, plan: JSONValue, undo: JSONValue, categories: JSONValue,
                         savingsCategories: JSONValue, income: JSONValue, charges: JSONValue, budgetSets: JSONValue,
-                        rates: JSONValue, view: String, now: Date, core: BudgeerCore) throws -> PlanFigures {
+                        rates: JSONValue, view: String, now: Date, cal: JSONValue = .null,
+                        core: BudgeerCore) throws -> PlanFigures {
         let base = JSONValue.string(profile["base_currency"]?.stringValue ?? "EUR")
         let today = JSONValue.string(try core.isoDate(now))
-        let shift = try core.json("salaryShift", "salaryShiftOf", [profile])
-        let reads = try core.json("planPage", "planReads", [today, shift])
+        let reads = try core.json("planPage", "planReads", [today, cal])
         let savingsIds = try core.json("savings", "savingsIdsOf", [savingsCategories])
         let salaryCategory = try core.json("planMath", "salaryCategoryId", [profile, categories])
         let salary = try core.json("planMath", "derivedSalary", [[
             "rules": rules, "savingsIds": savingsIds, "categoryId": salaryCategory, "entries": income, "todayISO": today,
-            "baseCurrency": base, "salaryShift": shift,
+            "baseCurrency": base, "cal": cal,
         ] as JSONValue])
         let savings = try core.json("planMath", "derivedSavings", [[
             "rules": rules, "savingsIds": savingsIds, "entries": income, "todayISO": today, "baseCurrency": base,
-            "salaryShift": shift,
+            "cal": cal,
         ] as JSONValue])
         let state = try core.json("planPage", "planState", [[
             "rules": rules, "plan": plan, "savingsIds": savingsIds, "baseCurrency": base, "rates": rates,
             "categories": categories, "salary": salary, "savings": savings, "charges": charges, "budgetSets": budgetSets,
             "budgetMonths": reads["budgetMonths"] ?? [], "separateYearly": .bool(profile["yearly_separate"]?.boolValue ?? false),
+            "cal": cal,
         ] as JSONValue])
         let page: PlanPage = try core.call("planPage", "planPageParts", [state, [
             "view": .string(view), "currency": base, "undo": undo, "categories": categories, "now": try JSONValue.from(JSDate(now)),

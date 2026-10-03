@@ -204,7 +204,7 @@
       },
       {
         "id": "a9",
-        "spent_at": "2020-08-27",
+        "spent_at": "2020-08-28",
         "kind": "income",
         "amount_minor": 250000,
         "currency": "EUR",
@@ -214,6 +214,30 @@
           "id": "11111111-1111-4111-8111-111111111111",
           "name": "Salary",
           "kind": "income",
+          "icon": null,
+          "color": null
+        },
+        "description": null,
+        "notes": null,
+        "group_expense_id": null,
+        "group_expenses": null,
+        "paid_from_savings": false,
+        "paid_with_vouchers": false,
+        "savings_from_income": null,
+        "spread_months": null
+      },
+      {
+        "id": "a0",
+        "spent_at": "2020-08-30",
+        "kind": "expense",
+        "amount_minor": 1500,
+        "currency": "EUR",
+        "exchange_rate": 1,
+        "category_id": "33333333-3333-4333-8333-333333333333",
+        "categories": {
+          "id": "33333333-3333-4333-8333-333333333333",
+          "name": "Groceries",
+          "kind": "expense",
           "icon": null,
           "color": null
         },
@@ -429,6 +453,10 @@
     "rates": {
       "USD": 0.9
     },
+    "payDays": [
+      "2020-07-28",
+      "2020-08-28"
+    ],
     "groupMoves": [
       {
         "kind": "expense",
@@ -466,6 +494,14 @@
       {
         "name": "august",
         "periodValue": "m:2020-8"
+      },
+      {
+        "name": "calendar",
+        "periodValue": null,
+        "profile": {
+          "base_currency": "EUR",
+          "yearly_separate": false
+        }
       }
     ]
   },
@@ -474,17 +510,20 @@
       "thisMonth": {
         "period": {
           "value": "m:2020-9",
-          "from": "2020-09-01",
+          "key": "2020-09",
+          "from": "2020-08-28",
           "to": "2020-09-30",
-          "label": "This month"
+          "label": "This month",
+          "range": "from 28 Aug",
+          "open": true
         },
-        "fetchFrom": "2020-08-25",
-        "spentTotal": 34128,
+        "projectionEnd": "2020-09-27",
+        "spentTotal": 35628,
         "earnedTotal": 255000,
-        "netTotal": 197472,
-        "spent": "€341.28",
+        "netTotal": 195972,
+        "spent": "€356.28",
         "income": "€2,550.00",
-        "net": "+€1,974.72",
+        "net": "+€1,959.72",
         "netTone": "positive",
         "saved": "+€300.00 in · −€120.00 out",
         "sum": {
@@ -494,6 +533,859 @@
               "key": "income",
               "label": "Income",
               "value": "+€2,550.00"
+            },
+            {
+              "key": "spent",
+              "label": "Spent",
+              "value": "−€356.28"
+            },
+            {
+              "key": "fromSavings",
+              "label": "Paid from savings (not from income)",
+              "value": "+€120.00"
+            },
+            {
+              "key": "toSavings",
+              "label": "Put into savings",
+              "value": "−€300.00"
+            },
+            {
+              "key": "groupsFronted",
+              "label": "Paid for others in groups",
+              "value": "−€44.00"
+            },
+            {
+              "key": "settledOut",
+              "label": "You paid back",
+              "value": "−€10.00"
+            }
+          ],
+          "total": {
+            "label": "Net",
+            "value": "+€1,959.72",
+            "tone": "positive"
+          }
+        },
+        "notes": [
+          "Spent includes €21.98 of recurring payments still to come."
+        ],
+        "bars": [
+          {
+            "name": "Uncategorized",
+            "label": "Uncategorized",
+            "value": 12000,
+            "share": 36,
+            "ratio": 1,
+            "amount": "€120.00",
+            "meta": "€120.00",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/none?period=m%3A2020-9",
+            "linkLabel": "Show Uncategorized expenses for this month"
+          },
+          {
+            "name": "Groceries",
+            "label": "Groceries",
+            "value": 7649,
+            "share": 23,
+            "ratio": 0.6374166666666666,
+            "amount": "€76.49",
+            "meta": "€76.49",
+            "group": false,
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/33333333-3333-4333-8333-333333333333?period=m%3A2020-9",
+            "linkLabel": "Show Groceries expenses for this month"
+          },
+          {
+            "name": "Eating out",
+            "label": "Eating out",
+            "value": 5881,
+            "share": 18,
+            "ratio": 0.4900833333333333,
+            "amount": "€58.81",
+            "meta": "€58.81 · +€22.00 in Lisbon trip = €80.81",
+            "group": false,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "to": "/categories/44444444-4444-4444-8444-444444444444?period=m%3A2020-9",
+            "linkLabel": "Show Eating out expenses for this month"
+          },
+          {
+            "name": "Transport",
+            "label": "Transport",
+            "value": 4900,
+            "share": 15,
+            "ratio": 0.4083333333333333,
+            "amount": "€49.00",
+            "meta": "€49.00",
+            "group": false,
+            "look": {
+              "key": "transport",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/55555555-5555-4555-8555-555555555555?period=m%3A2020-9",
+            "linkLabel": "Show Transport expenses for this month"
+          },
+          {
+            "name": "Lisbon trip",
+            "label": "Lisbon trip",
+            "value": 2200,
+            "share": 6,
+            "ratio": 0.18333333333333332,
+            "amount": "€22.00",
+            "meta": "€22.00",
+            "group": true,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "to": null,
+            "linkLabel": null
+          },
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 800,
+            "share": 2,
+            "ratio": 0.06666666666666667,
+            "amount": "€8.00",
+            "meta": "€8.00",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-9",
+            "linkLabel": "Show Subscriptions expenses for this month"
+          }
+        ],
+        "legend": [
+          {
+            "name": "Uncategorized",
+            "label": "Uncategorized",
+            "value": 12000,
+            "share": 36,
+            "ratio": 1,
+            "amount": "€120.00",
+            "meta": "€120.00",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/none?period=m%3A2020-9",
+            "linkLabel": "Show Uncategorized expenses for this month"
+          },
+          {
+            "name": "Groceries",
+            "label": "Groceries",
+            "value": 7649,
+            "share": 23,
+            "ratio": 0.6374166666666666,
+            "amount": "€76.49",
+            "meta": "€76.49",
+            "group": false,
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/33333333-3333-4333-8333-333333333333?period=m%3A2020-9",
+            "linkLabel": "Show Groceries expenses for this month"
+          },
+          {
+            "name": "Eating out",
+            "label": "Eating out",
+            "value": 5881,
+            "share": 17,
+            "ratio": 0.4900833333333333,
+            "amount": "€58.81",
+            "meta": "€58.81 · +€22.00 in Lisbon trip = €80.81",
+            "group": false,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "to": "/categories/44444444-4444-4444-8444-444444444444?period=m%3A2020-9",
+            "linkLabel": "Show Eating out expenses for this month"
+          },
+          {
+            "name": "Transport",
+            "label": "Transport",
+            "value": 4900,
+            "share": 15,
+            "ratio": 0.4083333333333333,
+            "amount": "€49.00",
+            "meta": "€49.00",
+            "group": false,
+            "look": {
+              "key": "transport",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/55555555-5555-4555-8555-555555555555?period=m%3A2020-9",
+            "linkLabel": "Show Transport expenses for this month"
+          },
+          {
+            "name": "Other",
+            "label": "Other",
+            "value": 3000,
+            "share": 9,
+            "ratio": 0.25,
+            "amount": "€30.00",
+            "meta": "€30.00",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": null,
+            "linkLabel": null
+          }
+        ],
+        "fold": {
+          "top": 5,
+          "hidden": 1,
+          "showAll": "Show all 6 categories",
+          "showTop": "Show top 5"
+        },
+        "cards": [
+          "overview",
+          "vouchers",
+          "categories",
+          "budgets",
+          "expenses",
+          "income",
+          "recurring"
+        ],
+        "expenseList": {
+          "title": "Expenses",
+          "subtitle": "This month · 8 entries",
+          "empty": "No expenses in this period.",
+          "rows": [
+            {
+              "id": "a1",
+              "title": "Groceries",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "groceries",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "14 Sep 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "€42.50",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a2",
+              "title": "Groceries",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "groceries",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "12 Sep 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "€18.99",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a3",
+              "title": "Eating out",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "utensils",
+                "tone": "accent",
+                "tint": {
+                  "fg": "#16939A",
+                  "bg": "#16939A29"
+                }
+              },
+              "meta": [
+                "10 Sep 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "€36.00",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a4",
+              "title": "Eating out",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "utensils",
+                "tone": "accent",
+                "tint": {
+                  "fg": "#16939A",
+                  "bg": "#16939A29"
+                }
+              },
+              "meta": [
+                "9 Sep 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "$25.00",
+              "tone": "default",
+              "approx": "≈ €22.81",
+              "rate": "0.9123",
+              "estimated": null
+            },
+            {
+              "id": "a5",
+              "title": "Transport",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "transport",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "5 Sep 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "€49.00",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a6",
+              "title": "Expense",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "other",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "3 Sep 2020",
+                "from savings"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "€120.00",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a0",
+              "title": "Groceries",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "groceries",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "30 Aug 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "€15.00",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "b1",
+              "title": "Eating out",
+              "shared": true,
+              "kind": "expense",
+              "look": {
+                "key": "utensils",
+                "tone": "accent",
+                "tint": {
+                  "fg": "#16939A",
+                  "bg": "#16939A29"
+                }
+              },
+              "meta": [
+                "8 Sep 2020"
+              ],
+              "notes": null,
+              "group": "Lisbon trip",
+              "repeats": null,
+              "spread": null,
+              "amount": "€22.00",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            }
+          ]
+        },
+        "incomeList": {
+          "title": "Income",
+          "subtitle": "This month · 2 entries",
+          "empty": "No income in this period.",
+          "rows": [
+            {
+              "id": "a8",
+              "title": "Refunds",
+              "shared": false,
+              "kind": "income",
+              "look": {
+                "key": "refunds",
+                "tone": "positive",
+                "tint": null
+              },
+              "meta": [
+                "1 Sep 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "+€50.00",
+              "tone": "positive",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a9",
+              "title": "Salary",
+              "shared": false,
+              "kind": "income",
+              "look": {
+                "key": "salary",
+                "tone": "positive",
+                "tint": null
+              },
+              "meta": [
+                "28 Aug 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "+€2,500.00",
+              "tone": "positive",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            }
+          ]
+        },
+        "recurring": {
+          "upcoming": true,
+          "subtitle": null,
+          "empty": "No recurring payments yet. Add an expense and switch on Repeat to log it on a schedule.",
+          "groups": [
+            {
+              "key": "monthly",
+              "label": "Monthly",
+              "headline": {
+                "label": "Monthly total",
+                "value": "€60.98/month",
+                "perMonth": null,
+                "converted": "Other currencies converted at today’s rate.",
+                "missing": null
+              },
+              "note": null,
+              "section": "Next charges",
+              "rows": [
+                {
+                  "id": "r1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "20 Sep 2020 · every month",
+                  "amount": "€12.99",
+                  "hint": null
+                },
+                {
+                  "id": "r2",
+                  "title": "Cloud",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "25 Sep 2020 · every month",
+                  "amount": "$9.99",
+                  "hint": "≈ €8.99"
+                },
+                {
+                  "id": "r3",
+                  "title": "Bus pass",
+                  "look": {
+                    "key": "transport",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "2 Oct 2020 · every month",
+                  "amount": "€39.00",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "r1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "20 Sep 2020 · every month",
+                  "amount": "€12.99",
+                  "hint": null
+                },
+                {
+                  "id": "r2",
+                  "title": "Cloud",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "25 Sep 2020 · every month",
+                  "amount": "$9.99",
+                  "hint": "≈ €8.99"
+                },
+                {
+                  "id": "r3",
+                  "title": "Bus pass",
+                  "look": {
+                    "key": "transport",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "2 Oct 2020 · every month",
+                  "amount": "€39.00",
+                  "hint": null
+                }
+              ],
+              "toggle": null
+            },
+            {
+              "key": "yearly",
+              "label": "Yearly",
+              "headline": {
+                "label": "Yearly total",
+                "value": "€96.00/year",
+                "perMonth": "≈ €8.00/month",
+                "converted": null,
+                "missing": null
+              },
+              "note": "Each counts in your monthly spending a twelfth at a time.",
+              "section": "Next charges",
+              "rows": [
+                {
+                  "id": "r4",
+                  "title": "Antivirus",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "15 Mar 2021 · every year",
+                  "amount": "€96.00",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "r4",
+                  "title": "Antivirus",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "15 Mar 2021 · every year",
+                  "amount": "€96.00",
+                  "hint": null
+                }
+              ],
+              "toggle": null
+            }
+          ]
+        }
+      },
+      "august": {
+        "period": {
+          "value": "m:2020-8",
+          "key": "2020-08",
+          "from": "2020-07-28",
+          "to": "2020-08-27",
+          "label": "August 2020",
+          "range": "28 Jul – 27 Aug",
+          "open": false
+        },
+        "projectionEnd": "2020-08-27",
+        "spentTotal": 2099,
+        "earnedTotal": 0,
+        "netTotal": -599,
+        "spent": "€20.99",
+        "income": "€0.00",
+        "net": "−€5.99",
+        "netTone": "negative",
+        "saved": null,
+        "sum": {
+          "title": "How Net adds up",
+          "steps": [
+            {
+              "key": "income",
+              "label": "Income",
+              "value": "€0.00"
+            },
+            {
+              "key": "spent",
+              "label": "Spent",
+              "value": "−€20.99"
+            },
+            {
+              "key": "settledIn",
+              "label": "Paid back to you",
+              "value": "+€15.00"
+            }
+          ],
+          "total": {
+            "label": "Net",
+            "value": "−€5.99",
+            "tone": "negative"
+          }
+        },
+        "notes": [],
+        "bars": [
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 2099,
+            "share": 100,
+            "ratio": 1,
+            "amount": "€20.99",
+            "meta": "€20.99",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
+            "linkLabel": "Show Subscriptions expenses for August 2020"
+          }
+        ],
+        "legend": [
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 2099,
+            "share": 100,
+            "ratio": 1,
+            "amount": "€20.99",
+            "meta": "€20.99",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
+            "linkLabel": "Show Subscriptions expenses for August 2020"
+          }
+        ],
+        "fold": {
+          "top": 1,
+          "hidden": 0,
+          "showAll": "Show all 1 categories",
+          "showTop": "Show top 1"
+        },
+        "cards": [
+          "overview",
+          "vouchers",
+          "categories",
+          "budgets",
+          "expenses",
+          "income",
+          "recurring"
+        ],
+        "expenseList": {
+          "title": "Expenses",
+          "subtitle": "August 2020 · 1 entry",
+          "empty": "No expenses in this period.",
+          "rows": [
+            {
+              "id": "c1",
+              "title": "Music",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "streaming",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "5 Aug 2020",
+                "Subscriptions"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": "Repeats every month",
+              "spread": null,
+              "amount": "€12.99",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            }
+          ]
+        },
+        "incomeList": {
+          "title": "Income",
+          "subtitle": "August 2020 · 0 entries",
+          "empty": "No income in this period.",
+          "rows": []
+        },
+        "recurring": {
+          "upcoming": false,
+          "subtitle": "Charged in August 2020",
+          "empty": "No recurring charges in August 2020.",
+          "groups": [
+            {
+              "key": "monthly",
+              "label": "Monthly",
+              "headline": {
+                "label": "Monthly charged",
+                "value": "€12.99"
+              },
+              "note": null,
+              "section": "1 charge",
+              "rows": [
+                {
+                  "id": "c1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "5 Aug 2020 · every month",
+                  "amount": "€12.99",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "c1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "5 Aug 2020 · every month",
+                  "amount": "€12.99",
+                  "hint": null
+                }
+              ],
+              "toggle": null
+            }
+          ]
+        }
+      },
+      "calendar": {
+        "period": {
+          "value": "m:2020-9",
+          "key": "2020-09",
+          "from": "2020-09-01",
+          "to": "2020-09-30",
+          "label": "This month",
+          "range": null,
+          "open": true
+        },
+        "projectionEnd": "2020-09-30",
+        "spentTotal": 34128,
+        "earnedTotal": 5000,
+        "netTotal": -52528,
+        "spent": "€341.28",
+        "income": "€50.00",
+        "net": "−€525.28",
+        "netTone": "negative",
+        "saved": "+€300.00 in · −€120.00 out",
+        "sum": {
+          "title": "How Net adds up",
+          "steps": [
+            {
+              "key": "income",
+              "label": "Income",
+              "value": "+€50.00"
             },
             {
               "key": "spent",
@@ -523,8 +1415,8 @@
           ],
           "total": {
             "label": "Net",
-            "value": "+€1,974.72",
-            "tone": "positive"
+            "value": "−€525.28",
+            "tone": "negative"
           }
         },
         "notes": [
@@ -767,7 +1659,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "€42.50",
               "tone": "default",
               "approx": null,
@@ -791,7 +1682,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "€18.99",
               "tone": "default",
               "approx": null,
@@ -818,7 +1708,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "€36.00",
               "tone": "default",
               "approx": null,
@@ -845,7 +1734,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "$25.00",
               "tone": "default",
               "approx": "≈ €22.81",
@@ -869,7 +1757,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "€49.00",
               "tone": "default",
               "approx": null,
@@ -894,7 +1781,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "€120.00",
               "tone": "default",
               "approx": null,
@@ -921,7 +1807,6 @@
               "group": "Lisbon trip",
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "€22.00",
               "tone": "default",
               "approx": null,
@@ -932,7 +1817,7 @@
         },
         "incomeList": {
           "title": "Income",
-          "subtitle": "This month · 2 entries",
+          "subtitle": "This month · 1 entry",
           "empty": "No income in this period.",
           "rows": [
             {
@@ -952,32 +1837,7 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "+€50.00",
-              "tone": "positive",
-              "approx": null,
-              "rate": null,
-              "estimated": null
-            },
-            {
-              "id": "a9",
-              "title": "Salary",
-              "shared": false,
-              "kind": "income",
-              "look": {
-                "key": "salary",
-                "tone": "positive",
-                "tint": null
-              },
-              "meta": [
-                "27 Aug 2020"
-              ],
-              "notes": null,
-              "group": null,
-              "repeats": null,
-              "spread": null,
-              "countsFor": "Counts for September",
-              "amount": "+€2,500.00",
               "tone": "positive",
               "approx": null,
               "rate": null,
@@ -1124,92 +1984,276 @@
             }
           ]
         }
-      },
-      "august": {
+      }
+    },
+    "el": {
+      "thisMonth": {
         "period": {
-          "value": "m:2020-8",
-          "from": "2020-08-01",
-          "to": "2020-08-31",
-          "label": "August 2020"
+          "value": "m:2020-9",
+          "key": "2020-09",
+          "from": "2020-08-28",
+          "to": "2020-09-30",
+          "label": "Αυτός ο μήνας",
+          "range": "από 28 Αυγ",
+          "open": true
         },
-        "fetchFrom": "2020-07-25",
-        "spentTotal": 2099,
-        "earnedTotal": 0,
-        "netTotal": -599,
-        "spent": "€20.99",
-        "income": "€0.00",
-        "net": "−€5.99",
-        "netTone": "negative",
-        "saved": null,
+        "projectionEnd": "2020-09-27",
+        "spentTotal": 35628,
+        "earnedTotal": 255000,
+        "netTotal": 195972,
+        "spent": "356,28 €",
+        "income": "2.550,00 €",
+        "net": "+1.959,72 €",
+        "netTone": "positive",
+        "saved": "+300,00 € μέσα · −120,00 € έξω",
         "sum": {
-          "title": "How Net adds up",
+          "title": "Πώς βγαίνει το Καθαρό",
           "steps": [
             {
               "key": "income",
-              "label": "Income",
-              "value": "€0.00"
+              "label": "Έσοδα",
+              "value": "+2.550,00 €"
             },
             {
               "key": "spent",
-              "label": "Spent",
-              "value": "−€20.99"
+              "label": "Έξοδα",
+              "value": "−356,28 €"
             },
             {
-              "key": "settledIn",
-              "label": "Paid back to you",
-              "value": "+€15.00"
+              "key": "fromSavings",
+              "label": "Από αποταμιεύσεις (όχι από έσοδα)",
+              "value": "+120,00 €"
+            },
+            {
+              "key": "toSavings",
+              "label": "Στις αποταμιεύσεις",
+              "value": "−300,00 €"
+            },
+            {
+              "key": "groupsFronted",
+              "label": "Πλήρωσες για άλλους σε ομάδες",
+              "value": "−44,00 €"
+            },
+            {
+              "key": "settledOut",
+              "label": "Επέστρεψες",
+              "value": "−10,00 €"
             }
           ],
           "total": {
-            "label": "Net",
-            "value": "−€5.99",
-            "tone": "negative"
+            "label": "Καθαρό",
+            "value": "+1.959,72 €",
+            "tone": "positive"
           }
         },
-        "notes": [],
+        "notes": [
+          "Τα έξοδα περιλαμβάνουν 21,98 € από επαναλαμβανόμενες πληρωμές που έρχονται."
+        ],
         "bars": [
+          {
+            "name": "Χωρίς κατηγορία",
+            "label": "Χωρίς κατηγορία",
+            "value": 12000,
+            "share": 36,
+            "ratio": 1,
+            "amount": "120,00 €",
+            "meta": "120,00 €",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/none?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Χωρίς κατηγορία» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Groceries",
+            "label": "Groceries",
+            "value": 7649,
+            "share": 23,
+            "ratio": 0.6374166666666666,
+            "amount": "76,49 €",
+            "meta": "76,49 €",
+            "group": false,
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/33333333-3333-4333-8333-333333333333?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Groceries» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Eating out",
+            "label": "Eating out",
+            "value": 5881,
+            "share": 18,
+            "ratio": 0.4900833333333333,
+            "amount": "58,81 €",
+            "meta": "58,81 € · +22,00 € στο Lisbon trip = 80,81 €",
+            "group": false,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "to": "/categories/44444444-4444-4444-8444-444444444444?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Eating out» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Transport",
+            "label": "Transport",
+            "value": 4900,
+            "share": 15,
+            "ratio": 0.4083333333333333,
+            "amount": "49,00 €",
+            "meta": "49,00 €",
+            "group": false,
+            "look": {
+              "key": "transport",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/55555555-5555-4555-8555-555555555555?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Transport» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Lisbon trip",
+            "label": "Lisbon trip",
+            "value": 2200,
+            "share": 6,
+            "ratio": 0.18333333333333332,
+            "amount": "22,00 €",
+            "meta": "22,00 €",
+            "group": true,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "to": null,
+            "linkLabel": null
+          },
           {
             "name": "Subscriptions",
             "label": "Subscriptions",
-            "value": 2099,
-            "share": 100,
-            "ratio": 1,
-            "amount": "€20.99",
-            "meta": "€20.99",
+            "value": 800,
+            "share": 2,
+            "ratio": 0.06666666666666667,
+            "amount": "8,00 €",
+            "meta": "8,00 €",
             "group": false,
             "look": {
               "key": "streaming",
               "tone": "accent",
               "tint": null
             },
-            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
-            "linkLabel": "Show Subscriptions expenses for August 2020"
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Subscriptions» · Αυτός ο μήνας"
           }
         ],
         "legend": [
           {
-            "name": "Subscriptions",
-            "label": "Subscriptions",
-            "value": 2099,
-            "share": 100,
+            "name": "Χωρίς κατηγορία",
+            "label": "Χωρίς κατηγορία",
+            "value": 12000,
+            "share": 36,
             "ratio": 1,
-            "amount": "€20.99",
-            "meta": "€20.99",
+            "amount": "120,00 €",
+            "meta": "120,00 €",
             "group": false,
             "look": {
-              "key": "streaming",
+              "key": "other",
               "tone": "accent",
               "tint": null
             },
-            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
-            "linkLabel": "Show Subscriptions expenses for August 2020"
+            "to": "/categories/none?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Χωρίς κατηγορία» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Groceries",
+            "label": "Groceries",
+            "value": 7649,
+            "share": 23,
+            "ratio": 0.6374166666666666,
+            "amount": "76,49 €",
+            "meta": "76,49 €",
+            "group": false,
+            "look": {
+              "key": "groceries",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/33333333-3333-4333-8333-333333333333?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Groceries» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Eating out",
+            "label": "Eating out",
+            "value": 5881,
+            "share": 17,
+            "ratio": 0.4900833333333333,
+            "amount": "58,81 €",
+            "meta": "58,81 € · +22,00 € στο Lisbon trip = 80,81 €",
+            "group": false,
+            "look": {
+              "key": "utensils",
+              "tone": "accent",
+              "tint": {
+                "fg": "#16939A",
+                "bg": "#16939A29"
+              }
+            },
+            "to": "/categories/44444444-4444-4444-8444-444444444444?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Eating out» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Transport",
+            "label": "Transport",
+            "value": 4900,
+            "share": 15,
+            "ratio": 0.4083333333333333,
+            "amount": "49,00 €",
+            "meta": "49,00 €",
+            "group": false,
+            "look": {
+              "key": "transport",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/55555555-5555-4555-8555-555555555555?period=m%3A2020-9",
+            "linkLabel": "Δες τα έξοδα «Transport» · Αυτός ο μήνας"
+          },
+          {
+            "name": "Other",
+            "label": "Άλλα",
+            "value": 3000,
+            "share": 9,
+            "ratio": 0.25,
+            "amount": "30,00 €",
+            "meta": "30,00 €",
+            "group": false,
+            "look": {
+              "key": "other",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": null,
+            "linkLabel": null
           }
         ],
         "fold": {
-          "top": 1,
-          "hidden": 0,
-          "showAll": "Show all 1 categories",
-          "showTop": "Show top 1"
+          "top": 5,
+          "hidden": 1,
+          "showAll": "Δείξε όλες τις 6 κατηγορίες",
+          "showTop": "Δείξε τις 5 πρώτες"
         },
         "cards": [
           "overview",
@@ -1221,9 +2265,501 @@
           "recurring"
         ],
         "expenseList": {
-          "title": "Expenses",
-          "subtitle": "August 2020 · 1 entry",
-          "empty": "No expenses in this period.",
+          "title": "Έξοδα",
+          "subtitle": "Αυτός ο μήνας · 8 καταχωρίσεις",
+          "empty": "Δεν υπάρχουν έξοδα σε αυτή την περίοδο.",
+          "rows": [
+            {
+              "id": "a1",
+              "title": "Groceries",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "groceries",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "14 Σεπ 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "42,50 €",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a2",
+              "title": "Groceries",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "groceries",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "12 Σεπ 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "18,99 €",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a3",
+              "title": "Eating out",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "utensils",
+                "tone": "accent",
+                "tint": {
+                  "fg": "#16939A",
+                  "bg": "#16939A29"
+                }
+              },
+              "meta": [
+                "10 Σεπ 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "36,00 €",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a4",
+              "title": "Eating out",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "utensils",
+                "tone": "accent",
+                "tint": {
+                  "fg": "#16939A",
+                  "bg": "#16939A29"
+                }
+              },
+              "meta": [
+                "9 Σεπ 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "25,00 $",
+              "tone": "default",
+              "approx": "≈ 22,81 €",
+              "rate": "0,9123",
+              "estimated": null
+            },
+            {
+              "id": "a5",
+              "title": "Transport",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "transport",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "5 Σεπ 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "49,00 €",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a6",
+              "title": "Έξοδο",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "other",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "3 Σεπ 2020",
+                "από αποταμιεύσεις"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "120,00 €",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a0",
+              "title": "Groceries",
+              "shared": false,
+              "kind": "expense",
+              "look": {
+                "key": "groceries",
+                "tone": "accent",
+                "tint": null
+              },
+              "meta": [
+                "30 Αυγ 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "15,00 €",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "b1",
+              "title": "Eating out",
+              "shared": true,
+              "kind": "expense",
+              "look": {
+                "key": "utensils",
+                "tone": "accent",
+                "tint": {
+                  "fg": "#16939A",
+                  "bg": "#16939A29"
+                }
+              },
+              "meta": [
+                "8 Σεπ 2020"
+              ],
+              "notes": null,
+              "group": "Lisbon trip",
+              "repeats": null,
+              "spread": null,
+              "amount": "22,00 €",
+              "tone": "default",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            }
+          ]
+        },
+        "incomeList": {
+          "title": "Έσοδα",
+          "subtitle": "Αυτός ο μήνας · 2 καταχωρίσεις",
+          "empty": "Δεν υπάρχουν έσοδα σε αυτή την περίοδο.",
+          "rows": [
+            {
+              "id": "a8",
+              "title": "Refunds",
+              "shared": false,
+              "kind": "income",
+              "look": {
+                "key": "refunds",
+                "tone": "positive",
+                "tint": null
+              },
+              "meta": [
+                "1 Σεπ 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "+50,00 €",
+              "tone": "positive",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            },
+            {
+              "id": "a9",
+              "title": "Salary",
+              "shared": false,
+              "kind": "income",
+              "look": {
+                "key": "salary",
+                "tone": "positive",
+                "tint": null
+              },
+              "meta": [
+                "28 Αυγ 2020"
+              ],
+              "notes": null,
+              "group": null,
+              "repeats": null,
+              "spread": null,
+              "amount": "+2.500,00 €",
+              "tone": "positive",
+              "approx": null,
+              "rate": null,
+              "estimated": null
+            }
+          ]
+        },
+        "recurring": {
+          "upcoming": true,
+          "subtitle": null,
+          "empty": "Δεν έχεις επαναλαμβανόμενες πληρωμές ακόμα. Πρόσθεσε ένα έξοδο και άνοιξε την «Επανάληψη» για να καταχωρείται με πρόγραμμα.",
+          "groups": [
+            {
+              "key": "monthly",
+              "label": "Μηνιαία",
+              "headline": {
+                "label": "Σύνολο μήνα",
+                "value": "60,98 €/μήνα",
+                "perMonth": null,
+                "converted": "Τα άλλα νομίσματα μετατράπηκαν με τη σημερινή ισοτιμία.",
+                "missing": null
+              },
+              "note": null,
+              "section": "Επόμενες χρεώσεις",
+              "rows": [
+                {
+                  "id": "r1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "20 Σεπ 2020 · κάθε μήνα",
+                  "amount": "12,99 €",
+                  "hint": null
+                },
+                {
+                  "id": "r2",
+                  "title": "Cloud",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "25 Σεπ 2020 · κάθε μήνα",
+                  "amount": "9,99 $",
+                  "hint": "≈ 8,99 €"
+                },
+                {
+                  "id": "r3",
+                  "title": "Bus pass",
+                  "look": {
+                    "key": "transport",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "2 Οκτ 2020 · κάθε μήνα",
+                  "amount": "39,00 €",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "r1",
+                  "title": "Music",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "20 Σεπ 2020 · κάθε μήνα",
+                  "amount": "12,99 €",
+                  "hint": null
+                },
+                {
+                  "id": "r2",
+                  "title": "Cloud",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "25 Σεπ 2020 · κάθε μήνα",
+                  "amount": "9,99 $",
+                  "hint": "≈ 8,99 €"
+                },
+                {
+                  "id": "r3",
+                  "title": "Bus pass",
+                  "look": {
+                    "key": "transport",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "2 Οκτ 2020 · κάθε μήνα",
+                  "amount": "39,00 €",
+                  "hint": null
+                }
+              ],
+              "toggle": null
+            },
+            {
+              "key": "yearly",
+              "label": "Ετήσια",
+              "headline": {
+                "label": "Σύνολο έτους",
+                "value": "96,00 €/χρόνο",
+                "perMonth": "≈ 8,00 €/μήνα",
+                "converted": null,
+                "missing": null
+              },
+              "note": "Η καθεμία μετράει στα μηνιαία έξοδά σου ένα δωδέκατο κάθε μήνα.",
+              "section": "Επόμενες χρεώσεις",
+              "rows": [
+                {
+                  "id": "r4",
+                  "title": "Antivirus",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "15 Μαρ 2021 · κάθε χρόνο",
+                  "amount": "96,00 €",
+                  "hint": null
+                }
+              ],
+              "all": [
+                {
+                  "id": "r4",
+                  "title": "Antivirus",
+                  "look": {
+                    "key": "streaming",
+                    "tone": "accent",
+                    "tint": null
+                  },
+                  "meta": "15 Μαρ 2021 · κάθε χρόνο",
+                  "amount": "96,00 €",
+                  "hint": null
+                }
+              ],
+              "toggle": null
+            }
+          ]
+        }
+      },
+      "august": {
+        "period": {
+          "value": "m:2020-8",
+          "key": "2020-08",
+          "from": "2020-07-28",
+          "to": "2020-08-27",
+          "label": "Αύγουστος 2020",
+          "range": "28 Ιουλ – 27 Αυγ",
+          "open": false
+        },
+        "projectionEnd": "2020-08-27",
+        "spentTotal": 2099,
+        "earnedTotal": 0,
+        "netTotal": -599,
+        "spent": "20,99 €",
+        "income": "0,00 €",
+        "net": "−5,99 €",
+        "netTone": "negative",
+        "saved": null,
+        "sum": {
+          "title": "Πώς βγαίνει το Καθαρό",
+          "steps": [
+            {
+              "key": "income",
+              "label": "Έσοδα",
+              "value": "0,00 €"
+            },
+            {
+              "key": "spent",
+              "label": "Έξοδα",
+              "value": "−20,99 €"
+            },
+            {
+              "key": "settledIn",
+              "label": "Σου επέστρεψαν",
+              "value": "+15,00 €"
+            }
+          ],
+          "total": {
+            "label": "Καθαρό",
+            "value": "−5,99 €",
+            "tone": "negative"
+          }
+        },
+        "notes": [],
+        "bars": [
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 2099,
+            "share": 100,
+            "ratio": 1,
+            "amount": "20,99 €",
+            "meta": "20,99 €",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
+            "linkLabel": "Δες τα έξοδα «Subscriptions» · Αύγουστος 2020"
+          }
+        ],
+        "legend": [
+          {
+            "name": "Subscriptions",
+            "label": "Subscriptions",
+            "value": 2099,
+            "share": 100,
+            "ratio": 1,
+            "amount": "20,99 €",
+            "meta": "20,99 €",
+            "group": false,
+            "look": {
+              "key": "streaming",
+              "tone": "accent",
+              "tint": null
+            },
+            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
+            "linkLabel": "Δες τα έξοδα «Subscriptions» · Αύγουστος 2020"
+          }
+        ],
+        "fold": {
+          "top": 1,
+          "hidden": 0,
+          "showAll": "Δείξε όλες τις 1 κατηγορίες",
+          "showTop": "Δείξε τις 1 πρώτες"
+        },
+        "cards": [
+          "overview",
+          "vouchers",
+          "categories",
+          "budgets",
+          "expenses",
+          "income",
+          "recurring"
+        ],
+        "expenseList": {
+          "title": "Έξοδα",
+          "subtitle": "Αύγουστος 2020 · 1 καταχώριση",
+          "empty": "Δεν υπάρχουν έξοδα σε αυτή την περίοδο.",
           "rows": [
             {
               "id": "c1",
@@ -1236,15 +2772,14 @@
                 "tint": null
               },
               "meta": [
-                "5 Aug 2020",
+                "5 Αυγ 2020",
                 "Subscriptions"
               ],
               "notes": null,
               "group": null,
-              "repeats": "Repeats every month",
+              "repeats": "Επαναλαμβάνεται κάθε μήνα",
               "spread": null,
-              "countsFor": null,
-              "amount": "€12.99",
+              "amount": "12,99 €",
               "tone": "default",
               "approx": null,
               "rate": null,
@@ -1253,25 +2788,25 @@
           ]
         },
         "incomeList": {
-          "title": "Income",
-          "subtitle": "August 2020 · 0 entries",
-          "empty": "No income in this period.",
+          "title": "Έσοδα",
+          "subtitle": "Αύγουστος 2020 · 0 καταχωρίσεις",
+          "empty": "Δεν υπάρχουν έσοδα σε αυτή την περίοδο.",
           "rows": []
         },
         "recurring": {
           "upcoming": false,
-          "subtitle": "Charged in August 2020",
-          "empty": "No recurring charges in August 2020.",
+          "subtitle": "Χρεώσεις: Αύγουστος 2020",
+          "empty": "Καμία επαναλαμβανόμενη χρέωση (Αύγουστος 2020).",
           "groups": [
             {
               "key": "monthly",
-              "label": "Monthly",
+              "label": "Μηνιαία",
               "headline": {
-                "label": "Monthly charged",
-                "value": "€12.99"
+                "label": "Μηνιαίες χρεώσεις",
+                "value": "12,99 €"
               },
               "note": null,
-              "section": "1 charge",
+              "section": "1 χρέωση",
               "rows": [
                 {
                   "id": "c1",
@@ -1281,8 +2816,8 @@
                     "tone": "accent",
                     "tint": null
                   },
-                  "meta": "5 Aug 2020 · every month",
-                  "amount": "€12.99",
+                  "meta": "5 Αυγ 2020 · κάθε μήνα",
+                  "amount": "12,99 €",
                   "hint": null
                 }
               ],
@@ -1295,8 +2830,8 @@
                     "tone": "accent",
                     "tint": null
                   },
-                  "meta": "5 Aug 2020 · every month",
-                  "amount": "€12.99",
+                  "meta": "5 Αυγ 2020 · κάθε μήνα",
+                  "amount": "12,99 €",
                   "hint": null
                 }
               ],
@@ -1304,24 +2839,25 @@
             }
           ]
         }
-      }
-    },
-    "el": {
-      "thisMonth": {
+      },
+      "calendar": {
         "period": {
           "value": "m:2020-9",
+          "key": "2020-09",
           "from": "2020-09-01",
           "to": "2020-09-30",
-          "label": "Αυτός ο μήνας"
+          "label": "Αυτός ο μήνας",
+          "range": null,
+          "open": true
         },
-        "fetchFrom": "2020-08-25",
+        "projectionEnd": "2020-09-30",
         "spentTotal": 34128,
-        "earnedTotal": 255000,
-        "netTotal": 197472,
+        "earnedTotal": 5000,
+        "netTotal": -52528,
         "spent": "341,28 €",
-        "income": "2.550,00 €",
-        "net": "+1.974,72 €",
-        "netTone": "positive",
+        "income": "50,00 €",
+        "net": "−525,28 €",
+        "netTone": "negative",
         "saved": "+300,00 € μέσα · −120,00 € έξω",
         "sum": {
           "title": "Πώς βγαίνει το Καθαρό",
@@ -1329,7 +2865,7 @@
             {
               "key": "income",
               "label": "Έσοδα",
-              "value": "+2.550,00 €"
+              "value": "+50,00 €"
             },
             {
               "key": "spent",
@@ -1359,8 +2895,8 @@
           ],
           "total": {
             "label": "Καθαρό",
-            "value": "+1.974,72 €",
-            "tone": "positive"
+            "value": "−525,28 €",
+            "tone": "negative"
           }
         },
         "notes": [
@@ -1603,7 +3139,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "42,50 €",
               "tone": "default",
               "approx": null,
@@ -1627,7 +3162,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "18,99 €",
               "tone": "default",
               "approx": null,
@@ -1654,7 +3188,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "36,00 €",
               "tone": "default",
               "approx": null,
@@ -1681,7 +3214,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "25,00 $",
               "tone": "default",
               "approx": "≈ 22,81 €",
@@ -1705,7 +3237,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "49,00 €",
               "tone": "default",
               "approx": null,
@@ -1730,7 +3261,6 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "120,00 €",
               "tone": "default",
               "approx": null,
@@ -1757,7 +3287,6 @@
               "group": "Lisbon trip",
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "22,00 €",
               "tone": "default",
               "approx": null,
@@ -1768,7 +3297,7 @@
         },
         "incomeList": {
           "title": "Έσοδα",
-          "subtitle": "Αυτός ο μήνας · 2 καταχωρίσεις",
+          "subtitle": "Αυτός ο μήνας · 1 καταχώριση",
           "empty": "Δεν υπάρχουν έσοδα σε αυτή την περίοδο.",
           "rows": [
             {
@@ -1788,32 +3317,7 @@
               "group": null,
               "repeats": null,
               "spread": null,
-              "countsFor": null,
               "amount": "+50,00 €",
-              "tone": "positive",
-              "approx": null,
-              "rate": null,
-              "estimated": null
-            },
-            {
-              "id": "a9",
-              "title": "Salary",
-              "shared": false,
-              "kind": "income",
-              "look": {
-                "key": "salary",
-                "tone": "positive",
-                "tint": null
-              },
-              "meta": [
-                "27 Αυγ 2020"
-              ],
-              "notes": null,
-              "group": null,
-              "repeats": null,
-              "spread": null,
-              "countsFor": "Στα έσοδα Σεπτεμβρίου",
-              "amount": "+2.500,00 €",
               "tone": "positive",
               "approx": null,
               "rate": null,
@@ -1953,186 +3457,6 @@
                   },
                   "meta": "15 Μαρ 2021 · κάθε χρόνο",
                   "amount": "96,00 €",
-                  "hint": null
-                }
-              ],
-              "toggle": null
-            }
-          ]
-        }
-      },
-      "august": {
-        "period": {
-          "value": "m:2020-8",
-          "from": "2020-08-01",
-          "to": "2020-08-31",
-          "label": "Αύγουστος 2020"
-        },
-        "fetchFrom": "2020-07-25",
-        "spentTotal": 2099,
-        "earnedTotal": 0,
-        "netTotal": -599,
-        "spent": "20,99 €",
-        "income": "0,00 €",
-        "net": "−5,99 €",
-        "netTone": "negative",
-        "saved": null,
-        "sum": {
-          "title": "Πώς βγαίνει το Καθαρό",
-          "steps": [
-            {
-              "key": "income",
-              "label": "Έσοδα",
-              "value": "0,00 €"
-            },
-            {
-              "key": "spent",
-              "label": "Έξοδα",
-              "value": "−20,99 €"
-            },
-            {
-              "key": "settledIn",
-              "label": "Σου επέστρεψαν",
-              "value": "+15,00 €"
-            }
-          ],
-          "total": {
-            "label": "Καθαρό",
-            "value": "−5,99 €",
-            "tone": "negative"
-          }
-        },
-        "notes": [],
-        "bars": [
-          {
-            "name": "Subscriptions",
-            "label": "Subscriptions",
-            "value": 2099,
-            "share": 100,
-            "ratio": 1,
-            "amount": "20,99 €",
-            "meta": "20,99 €",
-            "group": false,
-            "look": {
-              "key": "streaming",
-              "tone": "accent",
-              "tint": null
-            },
-            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
-            "linkLabel": "Δες τα έξοδα «Subscriptions» · Αύγουστος 2020"
-          }
-        ],
-        "legend": [
-          {
-            "name": "Subscriptions",
-            "label": "Subscriptions",
-            "value": 2099,
-            "share": 100,
-            "ratio": 1,
-            "amount": "20,99 €",
-            "meta": "20,99 €",
-            "group": false,
-            "look": {
-              "key": "streaming",
-              "tone": "accent",
-              "tint": null
-            },
-            "to": "/categories/66666666-6666-4666-8666-666666666666?period=m%3A2020-8",
-            "linkLabel": "Δες τα έξοδα «Subscriptions» · Αύγουστος 2020"
-          }
-        ],
-        "fold": {
-          "top": 1,
-          "hidden": 0,
-          "showAll": "Δείξε όλες τις 1 κατηγορίες",
-          "showTop": "Δείξε τις 1 πρώτες"
-        },
-        "cards": [
-          "overview",
-          "vouchers",
-          "categories",
-          "budgets",
-          "expenses",
-          "income",
-          "recurring"
-        ],
-        "expenseList": {
-          "title": "Έξοδα",
-          "subtitle": "Αύγουστος 2020 · 1 καταχώριση",
-          "empty": "Δεν υπάρχουν έξοδα σε αυτή την περίοδο.",
-          "rows": [
-            {
-              "id": "c1",
-              "title": "Music",
-              "shared": false,
-              "kind": "expense",
-              "look": {
-                "key": "streaming",
-                "tone": "accent",
-                "tint": null
-              },
-              "meta": [
-                "5 Αυγ 2020",
-                "Subscriptions"
-              ],
-              "notes": null,
-              "group": null,
-              "repeats": "Επαναλαμβάνεται κάθε μήνα",
-              "spread": null,
-              "countsFor": null,
-              "amount": "12,99 €",
-              "tone": "default",
-              "approx": null,
-              "rate": null,
-              "estimated": null
-            }
-          ]
-        },
-        "incomeList": {
-          "title": "Έσοδα",
-          "subtitle": "Αύγουστος 2020 · 0 καταχωρίσεις",
-          "empty": "Δεν υπάρχουν έσοδα σε αυτή την περίοδο.",
-          "rows": []
-        },
-        "recurring": {
-          "upcoming": false,
-          "subtitle": "Χρεώσεις: Αύγουστος 2020",
-          "empty": "Καμία επαναλαμβανόμενη χρέωση (Αύγουστος 2020).",
-          "groups": [
-            {
-              "key": "monthly",
-              "label": "Μηνιαία",
-              "headline": {
-                "label": "Μηνιαίες χρεώσεις",
-                "value": "12,99 €"
-              },
-              "note": null,
-              "section": "1 χρέωση",
-              "rows": [
-                {
-                  "id": "c1",
-                  "title": "Music",
-                  "look": {
-                    "key": "streaming",
-                    "tone": "accent",
-                    "tint": null
-                  },
-                  "meta": "5 Αυγ 2020 · κάθε μήνα",
-                  "amount": "12,99 €",
-                  "hint": null
-                }
-              ],
-              "all": [
-                {
-                  "id": "c1",
-                  "title": "Music",
-                  "look": {
-                    "key": "streaming",
-                    "tone": "accent",
-                    "tint": null
-                  },
-                  "meta": "5 Αυγ 2020 · κάθε μήνα",
-                  "amount": "12,99 €",
                   "hint": null
                 }
               ],

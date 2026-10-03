@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { payCalendar } from '../src/shared/lib/payCalendar.js'
 import { readFileSync } from 'node:fs'
 import {
   CATEGORY_NAME_MAX, categoryNameError, sortCategories, moveTargets, sameKindOthers,
@@ -317,11 +318,35 @@ test('categoryBudget: monthly only, the bar with a carried cap, set this month, 
 test('entryMonth: the month an entry was paid in, labelled as the pickers do', () => {
   const now = new Date(2026, 8, 18)
   assert.deepEqual(entryMonth({ spent_at: '2026-09-17' }, now),
-    { value: 'm:2026-9', label: 'This month', from: '2026-09-01', to: '2026-09-30' })
+    { value: 'm:2026-9', key: '2026-09', label: 'This month', from: '2026-09-01', to: '2026-09-30', open: true })
   assert.equal(entryMonth({ spent_at: '2026-08-03' }, now).value, 'm:2026-8')
   assert.equal(entryMonth({ spent_at: '2026-08-03' }, now).label, 'August 2026')
   // Without a readable day: this month.
   assert.equal(entryMonth({ spent_at: null }, now).value, 'm:2026-9')
+})
+
+test('entryMonth / entryCategoryBox: with pay months, an expense on 30 Sep after payday is October\'s', () => {
+  const cal = payCalendar({ fromDay: 25, categoryId: 'pay' }, ['2026-08-28', '2026-09-29'], '2026-10-03')
+  const now = new Date(2026, 9, 3)
+  const oct = entryMonth({ spent_at: '2026-09-30' }, now, cal)
+  assert.equal(oct.value, 'm:2026-10')
+  assert.equal(oct.label, 'This month')
+  assert.equal(oct.from, '2026-09-29')
+  assert.equal(entryMonth({ spent_at: '2026-09-28' }, now, cal).value, 'm:2026-9')
+  // The carried cap is compared with the month's label, not its first day.
+  const line = categoryBudget({
+    budget: { amount_minor: 10000, period_start: '2026-10-01' }, spent: 500, month: true, canEdit: true,
+    period: oct, baseCurrency: 'EUR',
+  })
+  assert.equal(line.carried, null)
+  // The box's list and total share the pay window.
+  const category = { id: 'c1', name: 'Groceries', kind: 'expense' }
+  const row = (id, spent_at) => ({ id, spent_at, kind: 'expense', amount_minor: 1000, currency: 'EUR', exchange_rate: 1,
+    category_id: 'c1', categories: category })
+  const box = entryCategoryBox({ entry: row('e', '2026-09-30'), category, cal, baseCurrency: 'EUR',
+    rows: [row('e', '2026-09-30'), row('o', '2026-10-02'), row('x', '2026-09-27')] }, now)
+  assert.deepEqual(box.others.map((o) => o.id), ['o'])
+  assert.equal(box.path, '/categories/c1?period=m%3A2026-10')
 })
 
 test('entryCategoryBox: the category this month, its budget and its other entries, newest first', () => {

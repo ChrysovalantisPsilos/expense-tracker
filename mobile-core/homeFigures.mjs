@@ -15,7 +15,7 @@ import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { periodFromValue, thisMonthPeriod } from '../src/shared/lib/periods.js'
-import { salaryShiftOf, shiftFetchFrom } from '../src/shared/lib/salaryShift.js'
+import { expectedEnd, payCalendar, paydayHints, payMonthWindow, salaryShiftOf } from '../src/shared/lib/payCalendar.js'
 import { savingsIdsOf } from '../src/shared/lib/savings.js'
 import { paidInWindow, spendRows } from '../src/shared/lib/spread.js'
 import { rulesInBase } from '../src/shared/lib/ruleFx.js'
@@ -85,38 +85,46 @@ export function recurringCard({ rules, rows, period, todayISO, baseCurrency, rat
 // One of Home's lists (the Expenses or Income card): its heading, what it
 // says when empty, and every row's words (rowParts.listParts); the card
 // shows them ten at a time.
-export function homeList(kind, items, { periodLabel, baseCurrency, salaryShift, savingsIds }) {
+export function homeList(kind, items, { periodLabel, baseCurrency, savingsIds }) {
   const head = listHeading({ kind, periodLabel, count: items.length })
   return {
     title: head.title,
     subtitle: head.subtitle,
     empty: t(kind === 'income' ? 'dashboard:noIncome' : 'dashboard:noExpenses'),
-    rows: listParts(items, { kind, baseCurrency, salaryShift, savingsIds }),
+    rows: listParts(items, { kind, baseCurrency, savingsIds }),
   }
 }
 
 // Home for a period from the picker (`periodValue`, this month by default)
-// from the rows my_transactions returned for [fetchFrom, to] with p_spread,
-// the recurring rules (the projection of what's still to come, and the
+// from the rows my_transactions returned for [from, to] with p_spread, the
+// recurring rules (the projection of what's still to come, and the
 // Recurring card) and today's rates for the foreign ones. `oldest` is the
 // first transaction's date (null: none at all), for the first-run cards.
 // `groupMoves` are my_group_flow's rows for the period (the money groups
-// really moved, which the Net counts).
+// really moved, which the Net counts). `payDays` are my_pay_calendar's
+// dates: with the salary setting on, the months are pay months
+// (payCalendar), and this month's projection ends the day before the next
+// salary is expected.
 export function homeFigures({
-  rows, profile, categories, rules = [], rates = {}, groupMoves = [], now, periodValue = null, oldest, lang = 'en',
+  rows, profile, categories, rules = [], rates = {}, groupMoves = [], payDays = [], now, periodValue = null, oldest,
+  lang = 'en',
 }) {
   setLanguage(lang)
   const date = new Date(now)
-  const period = (periodValue && periodFromValue(periodValue, date)) || thisMonthPeriod(date)
   const todayISO = isoDate(date)
+  const shift = salaryShiftOf(profile)
+  const cal = payCalendar(shift, payDays, todayISO)
+  const period = (periodValue && periodFromValue(periodValue, date, cal)) || thisMonthPeriod(date, cal)
   const baseCurrency = profile?.base_currency || 'EUR'
   const separateYearly = !!profile?.yearly_separate
-  const salaryShift = salaryShiftOf(profile)
   const savingsIds = savingsIdsOf(categories)
-  const spend = spendRows(rows, baseCurrency, period.from, period.to, { separateYearly, salaryShift })
+  const spend = spendRows(rows, baseCurrency, period.from, period.to, { separateYearly, cal })
   const totals = periodTotals(spend, baseCurrency, savingsIds)
-  const proj = periodProjection(rulesInBase(rules, baseCurrency, rates).rules, { from: period.from, to: period.to },
-    todayISO, separateYearly, salaryShift, savingsIds)
+  const end = cal && period.open
+    ? expectedEnd(payMonthWindow(period.key, cal), cal, paydayHints(rules, shift, payDays.at(-1) ?? null)) : period.to
+  const proj = periodProjection(rulesInBase(rules, baseCurrency, rates).rules, { from: period.from, to: end },
+    todayISO, separateYearly, savingsIds,
+    { cal })
   const figures = projectedTotals(totals, proj, groupFlow(groupMoves, baseCurrency, { from: period.from, to: period.to }))
   const labels = bucketLabels([...totals.bucketRow.values()])
   // Each bar's badge as Dashboard's BucketIcon draws it: a group's share
@@ -146,12 +154,15 @@ export function homeFigures({
     showAll: t('dashboard:categories.showAll', { n: bars.length }),
     showTop: t('dashboard:categories.showTop', { n: folded.rows.length }),
   }
-  const lists = homeLists(rows, { from: period.from, to: period.to, savingsIds, salaryShift })
-  const listOptions = { periodLabel: period.label, baseCurrency, salaryShift, savingsIds }
+  const lists = homeLists(rows, { from: period.from, to: period.to, savingsIds })
+  const listOptions = { periodLabel: period.label, baseCurrency, savingsIds }
   const firstRun = isFirstRun({ loading: false, failed: false, count: rows.length, oldest })
   return {
-    period: { value: period.value, from: period.from, to: period.to, label: period.label },
-    fetchFrom: shiftFetchFrom(period.from, salaryShift) ?? period.from,
+    period: {
+      value: period.value, key: period.key ?? null, from: period.from, to: period.to, label: period.label,
+      range: period.range ?? null, open: period.open ?? null,
+    },
+    projectionEnd: end,
     spentTotal: figures.spentTotal,
     earnedTotal: figures.earnedTotal,
     netTotal: figures.netTotal,
@@ -175,10 +186,12 @@ export function homeFigures({
   }
 }
 
-// The fixture's inputs: a September 2020 with a shifted salary from late
-// August, a savings entry taken from income, an expense paid from savings, a
-// mirrored group expense, a foreign-currency lunch and a yearly subscription
-// paid in March (spread over the year). Fake data.
+// The fixture's inputs: a September 2020 that is a pay month (the salary
+// setting on from the 25th: August's 28th payday opens September, and an
+// expense on 30 August is September's), a savings entry taken from income,
+// an expense paid from savings, a mirrored group expense, a foreign-currency
+// lunch and a yearly subscription paid in March (spread over the year), and
+// the same month with the setting off. Fake data.
 const SALARY = '11111111-1111-4111-8111-111111111111'
 const SAVINGS = '22222222-2222-4222-8222-222222222222'
 const cat = (id, name, kind = 'expense', extra = {}) => ({ id, name, kind, icon: null, color: null, ...extra })
@@ -212,7 +225,8 @@ export const FIXTURE_INPUT = {
     txn('a6', '2020-09-03', 'expense', 12000, null, { paid_from_savings: true }),
     txn('a7', '2020-09-02', 'income', 30000, cat(SAVINGS, 'Savings', 'income'), { savings_from_income: true }),
     txn('a8', '2020-09-01', 'income', 5000, cat('77777777-7777-4777-8777-777777777777', 'Refunds', 'income')),
-    txn('a9', '2020-08-27', 'income', 250000, cat(SALARY, 'Salary', 'income')),
+    txn('a9', '2020-08-28', 'income', 250000, cat(SALARY, 'Salary', 'income')),
+    txn('a0', '2020-08-30', 'expense', 1500, GROCERIES),
     txn('b1', '2020-09-08', 'expense', 2200, EATING, {
       group_expense_id: 'g1', group_expenses: { groups: { name: 'Lisbon trip' } },
     }),
@@ -231,6 +245,8 @@ export const FIXTURE_INPUT = {
     rule('r5', 1500, 'weekly', '2020-09-21', EATING, { description: 'Lunch club', is_active: false }),
   ],
   rates: { USD: 0.9 },
+  // my_pay_calendar's dates: July's and August's salaries.
+  payDays: ['2020-07-28', '2020-08-28'],
   // The group money behind the Net (my_group_flow): the Lisbon trip's €66
   // dinner I paid (€22 of it mine, b1), €10 I paid back on the 12th, and €15
   // paid back to me in August.
@@ -239,7 +255,11 @@ export const FIXTURE_INPUT = {
     { kind: 'settlement', spent_at: '2020-09-12', amount_minor: 1000, share_minor: null, currency: 'EUR', exchange_rate: 1, paid_by_me: true },
     { kind: 'settlement', spent_at: '2020-08-20', amount_minor: 1500, share_minor: null, currency: 'EUR', exchange_rate: 1, paid_by_me: false },
   ],
-  views: [{ name: 'thisMonth', periodValue: null }, { name: 'august', periodValue: 'm:2020-8' }],
+  views: [
+    { name: 'thisMonth', periodValue: null }, { name: 'august', periodValue: 'm:2020-8' },
+    // The salary setting off: calendar months, exactly as before pay months.
+    { name: 'calendar', periodValue: null, profile: { base_currency: 'EUR', yearly_separate: false } },
+  ],
 }
 
 // Every view in both languages: { en: { thisMonth, august }, el: … }.

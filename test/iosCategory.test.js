@@ -17,8 +17,10 @@ test('ios category fixture: the committed file is what the web\'s functions give
 
 test('ios category fixture: the page folds in the web\'s rules', () => {
   const { en } = committed.expected
-  // $25.00 at 0.9123 counts €22.81: €42.50 + €18.99 + €22.81.
-  assert.equal(en.groceries.total, '€84.30')
+  // $25.00 at 0.9123 counts €22.81: €42.50 + €18.99 + €22.81, and €15.00 paid
+  // on 30 Aug, after the payday that opened September.
+  assert.equal(en.groceries.total, '€99.30')
+  assert.equal(en.groceries.budgetMonth, '2020-09-01')
   assert.equal(en.groceries.budget.carried, 'Carried over from August')
   assert.equal(en.groceries.budgetInput, '100.00')
   assert.equal(en.pastMonth.canEditBudget, false)

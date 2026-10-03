@@ -22,7 +22,6 @@ struct EntryRow: Codable, Equatable, Identifiable, Sendable {
     let group: String?
     let repeats: String?
     let spread: String?
-    let countsFor: String?
     let amount: String
     /// 'positive' (income) or 'default'.
     let tone: String
@@ -126,18 +125,20 @@ struct LedgerFigures: Codable, Equatable, Sendable {
     /// - oldest: the first transaction's date (nil: none); `oldestKnown` false when it couldn't be read
     /// - filters: the Filters panel's (txnFilter.EMPTY_FILTERS' keys; all empty by default)
     /// - today: 'YYYY-MM-DD' (the days' headings)
-    /// - month: the picked month's { from, to } (the header's days; a search has none)
-    static func compute(rows: JSONValue, profile: JSONValue, categories: JSONValue, kind: String?, periodLabel: String,
+    /// - period: the picked month (its heading with its span, periodWithRange;
+    ///   the header's days over its window; nil: none)
+    static func compute(rows: JSONValue, profile: JSONValue, categories: JSONValue, kind: String?, period: HomePeriod?,
                         text: String, filters: JSONValue = noFilters, oldest: String?, oldestKnown: Bool = true,
-                        today: String, month: JSONValue = .null, core: BudgeerCore) throws -> LedgerFigures {
+                        today: String, core: BudgeerCore) throws -> LedgerFigures {
         let base = profile["base_currency"]?.stringValue ?? "EUR"
-        let salaryShift = try core.json("salaryShift", "salaryShiftOf", [profile])
         let savingsIds = try core.json("savings", "savingsIdsOf", [categories])
         let searching: Bool = try core.call("txnFilter", "isFiltering", [text, filters])
-        // A search's matches, else the month's rows by the month each counts in (a late salary in the next).
+        let periodLabel: String = try period.map { try core.call("periods", "periodWithRange", [$0]) } ?? ""
+        let month: JSONValue = period.map { ["key": $0.key.json, "from": $0.from.json, "to": $0.to.json] } ?? .null
+        // A search's matches, else the rows paid in the month's window.
         let shown = try core.json("txnFilter", "ledgerShown", [rows, [
-            "text": .string(text), "filters": filters, "searching": .bool(searching), "month": month,
-            "salaryShift": salaryShift,
+            "text": .string(text), "filters": filters, "searching": .bool(searching),
+            "month": searching ? .null : month,
         ] as JSONValue, .string(base)])
         let count = shown.arrayValue?.count ?? 0
         let net = try core.json("txnFilter", "netBaseMinor", [shown, base, savingsIds])
@@ -151,8 +152,7 @@ struct LedgerFigures: Codable, Equatable, Sendable {
         var run: JSONValue = ["loading": false, "failed": false, "count": .int(count), "searching": .bool(searching)]
         if oldestKnown { run = run.with("oldest", oldest.json) }
         let firstRun: Bool = try core.call("listHeading", "isFirstRun", [run])
-        let options: JSONValue = ["kind": kind.json, "baseCurrency": .string(base), "salaryShift": salaryShift,
-                                  "savingsIds": savingsIds]
+        let options: JSONValue = ["kind": kind.json, "baseCurrency": .string(base), "savingsIds": savingsIds]
         let days: [EntryDay] = try core.call("rowParts", "dayGroups", [shown, options, today])
         let pulse: MonthPulse = try core.call("rowParts", "monthPulse", [
             shown, ["kind": kind.json, "baseCurrency": .string(base), "savingsIds": savingsIds] as JSONValue,

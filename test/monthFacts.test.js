@@ -201,3 +201,18 @@ test('summary lines: plain, each at most 300 characters, an amount it wasn\'t gi
   // A sum of its own.
   assert.equal(normaliseSummary({ lines: ['Together that is €1,520.22.'] }, check), null)
 })
+
+test('pay months: in progress by the server\'s current month; coming up ends the day before the next payday', () => {
+  const payMonth = { ...october, window: { from: '2026-09-29', to: '2026-10-31', open: true }, current_month: '2026-10',
+    today: '2026-10-02', last_pay_day: '2026-09-29' }
+  const late = [...rules, rule({ id: id(12), category_id: GROCERIES, amount_minor: 2500, next_run: '2026-10-30' })]
+  const { facts: f, inProgress } = facts({ totals: payMonth, rules: late })
+  assert.equal(inProgress, true)
+  // The salary rule (29 Oct) opens November: never coming up; the 30 Oct
+  // charge falls after the expected payday, in November too.
+  assert.deepEqual(f.coming_up.map((d) => [d.name, d.day]), [['Insurance', 15]])
+  // On 30 Oct, after the 29 Oct payday, October is over though the date says October.
+  const after = facts({ totals: { ...payMonth, current_month: '2026-11', today: '2026-10-30' }, today: '2026-10-30' })
+  assert.equal(after.inProgress, false)
+  assert.equal('coming_up' in after.facts, false)
+})

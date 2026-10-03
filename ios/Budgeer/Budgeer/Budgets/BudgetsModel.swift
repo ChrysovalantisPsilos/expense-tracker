@@ -52,7 +52,8 @@ final class BudgetsModel {
         do {
             let instant = now()
             profile = try await data.profile.profile()
-            let span = try BudgetFigures.window(now: instant, core: core)
+            let cal = await PeriodSource.calendar(profile: profile, data: data, core: core, now: instant)
+            let span = try BudgetFigures.window(now: instant, cal: cal, core: core)
             let month = span["first"]?.stringValue ?? ""
             let from = span["from"]?.stringValue, to = span["to"]?.stringValue
             budgets = try await data.budgets.budgets(period: month)
@@ -66,7 +67,7 @@ final class BudgetsModel {
                 return (id, (try? core.call("categoryName", "categoryDisplayName", [category])) ?? "")
             }
             state = .loaded(try BudgetFigures.compute(profile: profile, budgets: budgets, previous: previous, rows: rows,
-                                                      now: instant, core: core))
+                                                      now: instant, cal: cal, core: core))
         } catch {
             if case .loaded = state { return } // a failed refresh keeps the page
             state = .failed(String(describing: error))

@@ -26,7 +26,8 @@ import { useTransactions, useOldestTransactionDate } from '../../shared/lib/tran
 import { linkBuckets } from '../../shared/lib/categoryLinks.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
 import { useGroupFlow } from '../groups/groups.js'
-import { lastMonths, monthHeading } from '../../shared/lib/dates.js'
+import { monthHeading } from '../../shared/lib/dates.js'
+import { lastPayMonths } from '../../shared/lib/periods.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { spendRows } from '../../shared/lib/spread.js'
 import { useAccounts, deleteAccount } from '../../shared/lib/accounts.js'
@@ -45,8 +46,10 @@ import MoreBackButton from '../../shared/ui/MoreBackButton.jsx'
 
 export default function Insights() {
   const t = useT('insights')
-  const { baseCurrency = 'EUR', separateYearly, salaryShift } = useProfile()
-  const months = useMemo(() => lastMonths(6), [])
+  const { baseCurrency = 'EUR', separateYearly, payCalendar: cal } = useProfile()
+  // The last six months (pay months with the salary setting on), read from
+  // the first one's first day.
+  const months = useMemo(() => lastPayMonths(6, new Date(), cal), [cal])
   const from = months[0].from
   const to = months[months.length - 1].to
   // `spread`: a yearly subscription counts its monthly share in every month it
@@ -61,8 +64,8 @@ export default function Insights() {
   const { data: moves, loading: movesLoading, error: movesError, reload: reloadMoves } = useGroupFlow({ from, to })
   const loading = rowsLoading || savingsLoading || movesLoading
   const spend = useMemo(
-    () => spendRows(rows, baseCurrency, from, to, { separateYearly, salaryShift }),
-    [rows, baseCurrency, from, to, separateYearly, salaryShift])
+    () => spendRows(rows, baseCurrency, from, to, { separateYearly, cal }),
+    [rows, baseCurrency, from, to, separateYearly, cal])
   const failed = error || movesError
     ? <QueryError error={error ?? movesError} onRetry={() => Promise.all([reload(), reloadMoves()])} what={t('what')} />
     : null
@@ -75,15 +78,16 @@ export default function Insights() {
   // Trend values are major units (chart axis); `money` converts back to minor.
   const money = (major) => trendMoney(major, baseCurrency)
   const trend = useMemo(
-    () => buildTrend(spend, months, baseCurrency, savingsIds, moves), [spend, months, baseCurrency, savingsIds, moves])
+    () => buildTrend(spend, months, baseCurrency, savingsIds, moves, cal),
+    [spend, months, baseCurrency, savingsIds, moves, cal])
   // Each legend entry drills down to the month's expenses in it (a group share
   // to its group); the folded "Other" merges several buckets, so it has no link.
   const shares = useMemo(() => linkBuckets(
-    spendingShares(spend, month.key, baseCurrency), spend, { ...month, label: monthLabel },
-  ), [spend, month, monthLabel, baseCurrency])
+    spendingShares(spend, month.key, baseCurrency, cal), spend, { ...month, label: monthLabel },
+  ), [spend, month, monthLabel, baseCurrency, cal])
   const monthLink = `/transactions?${withLedgerParams(new URLSearchParams(), { type: 'expense', from: month.from, to: month.to })}`
   // Spending abroad lists actual payments (each at its own rate), not shares.
-  const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency), [rows, thisMonth, baseCurrency])
+  const abroad = useMemo(() => foreignSpending(rows, thisMonth, baseCurrency, cal), [rows, thisMonth, baseCurrency, cal])
   // Nothing ever logged (null; undefined while unknown): the statement export
   // has nothing to put in it.
   const [oldest, recheckOldest] = useOldestTransactionDate()

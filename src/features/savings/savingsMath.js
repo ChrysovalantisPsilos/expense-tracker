@@ -1,7 +1,9 @@
 import {
   toBaseMinor, minorFactor, formatMoney, formatRoundedMoney, formatSigned, minorToInput, toMinor,
 } from '../../shared/lib/currency.js'
-import { isoDate, lastMonths, monthHeading, monthName, monthTitle, shortDate } from '../../shared/lib/dates.js'
+import { isoDate, monthHeading, monthName, monthTitle, shortDate } from '../../shared/lib/dates.js'
+import { lastPayMonths } from '../../shared/lib/periods.js'
+import { payMonthOf } from '../../shared/lib/payCalendar.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 import { rowEffect, potSign, isSavingsRow, savingsNoteLabel } from '../../shared/lib/savings.js'
 import { entryName } from '../../shared/lib/categoryName.js'
@@ -55,18 +57,21 @@ export function savingsFlow(rows, savingsIds, baseCurrency) {
 }
 
 const monthOf = (row) => String(row.spent_at).slice(0, 7)
+// The month a move counts in for the pot's line: its pay month with `cal`
+// (payCalendar.js). The history keeps calendar months (monthOf).
+const payKey = (row, cal) => payMonthOf(String(row.spent_at).slice(0, 10), cal)
 
-// Month by month over `months` (lastMonths' shape, oldest first):
+// Month by month over `months` (lastPayMonths' shape, oldest first):
 // [{ key, label, fromIncome, received, fromSavings, net, pot }], `pot` the
 // pot's total at the month's end — everything before the first month is
 // counted in, so the line starts where the pot really stood. Rows after the
 // last month are left out.
-export function potSeries(rows, savingsIds, baseCurrency, months) {
+export function potSeries(rows, savingsIds, baseCurrency, months, cal = null) {
   const first = months[0]?.key ?? ''
   const byMonth = new Map(months.map((m) => [m.key, []]))
   const before = []
   for (const r of rows) {
-    const key = monthOf(r)
+    const key = payKey(r, cal)
     if (byMonth.has(key)) byMonth.get(key).push(r)
     else if (key < first) before.push(r)
   }
@@ -80,12 +85,13 @@ export function potSeries(rows, savingsIds, baseCurrency, months) {
 
 // How many months the pot's chart covers: from the month of the oldest entry
 // in `moves` to this month, at least 2 (a line needs two points) and at most
-// `max`; 0 when there are none.
-export function seriesLength(moves, now = new Date(), max = 12) {
+// `max`; 0 when there are none. Pay months with `cal`.
+export function seriesLength(moves, now = new Date(), max = 12, cal = null) {
   if (!moves.length) return 0
-  const oldest = moves.reduce((k, r) => (monthOf(r) < k ? monthOf(r) : k), monthOf(moves[0]))
+  const oldest = moves.reduce((k, r) => (payKey(r, cal) < k ? payKey(r, cal) : k), payKey(moves[0], cal))
   const [y, m] = oldest.split('-').map(Number)
-  const n = (now.getFullYear() - y) * 12 + (now.getMonth() + 1 - m) + 1
+  const [ny, nm] = payMonthOf(isoDate(now), cal).split('-').map(Number)
+  const n = (ny - y) * 12 + (nm - m) + 1
   return Math.max(2, Math.min(max, n))
 }
 
@@ -238,9 +244,9 @@ export function savingsStacks({ sideways = false } = {}) {
 // The pot's month-end line, from the month of the oldest move (seriesLength)
 // to this month, moved onto the savings accounts' total when they are the
 // source (anchoredSeries), and this month's flow (zeros with no moves).
-export function potLine(moves, savingsIds, baseCurrency, total, now = new Date()) {
-  const n = seriesLength(moves, now)
-  const series = n ? potSeries(moves, savingsIds, baseCurrency, lastMonths(n, now)) : []
+export function potLine(moves, savingsIds, baseCurrency, total, now = new Date(), cal = null) {
+  const n = seriesLength(moves, now, 12, cal)
+  const series = n ? potSeries(moves, savingsIds, baseCurrency, lastPayMonths(n, now, cal), cal) : []
   return {
     line: anchoredSeries(series, total),
     month: series[series.length - 1] ?? { fromIncome: 0, received: 0, fromSavings: 0, net: 0 },
@@ -294,9 +300,10 @@ export function monthCardParts(month, rules, savingsIds, currency, now = new Dat
 }
 
 // The page as a whole: the first-run explainer before anything was ever
-// saved (no moves, no savings account), the pot's card and this month's.
-export function savingsPage({ moves, total, savingsIds, baseCurrency, rules, now = new Date() }) {
-  const { line, month } = potLine(moves, savingsIds, baseCurrency, total, now)
+// saved (no moves, no savings account), the pot's card and this month's
+// (pay months with `cal`, payCalendar.js).
+export function savingsPage({ moves, total, savingsIds, baseCurrency, rules, now = new Date(), cal = null }) {
+  const { line, month } = potLine(moves, savingsIds, baseCurrency, total, now, cal)
   return {
     first: moves.length === 0 && total.source === 'entries',
     pot: potCardParts(total, line, month, baseCurrency),

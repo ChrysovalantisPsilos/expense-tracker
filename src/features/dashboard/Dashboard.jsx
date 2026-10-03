@@ -8,13 +8,14 @@ import { ChartBarDecreasing, ChevronDown, ChevronUp, PiggyBank, Table as TableIc
 import TransactionList from '../transactions/TransactionList.jsx'
 import FirstEntry from '../transactions/FirstEntry.jsx'
 import { isFirstRun, listHeading } from '../transactions/listHeading.js'
-import { useTransactions, useOldestTransactionDate, useNewestCountedDate } from '../../shared/lib/transactions.js'
+import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
 import { buildPeriods, isThisMonth, thisMonthPeriod } from '../../shared/lib/periods.js'
 import { linkBuckets } from '../../shared/lib/categoryLinks.js'
 import { useSavingsIds } from '../../shared/lib/categories.js'
 import { usePrefetchMyGroups } from '../groups/myGroups.js'
 import { useGroupFlow } from '../groups/groups.js'
 import { monthName, today } from '../../shared/lib/dates.js'
+import { expectedEnd, paydayHints, payMonthWindow } from '../../shared/lib/payCalendar.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring, useRuleRates } from '../recurring/recurring.js'
 import { formatMoney } from '../../shared/lib/currency.js'
@@ -64,22 +65,19 @@ export default function Dashboard() {
   const navigate = useNavigate()
   // What a card that needs the transactions shows when they couldn't load.
   const unavailable = <Text color="text.muted" fontSize="sm">{t('unavailable')}</Text>
-  const { baseCurrency, separateYearly, salaryShift } = useProfile()
+  const { baseCurrency, separateYearly, salaryShift, payCalendar: cal, lastPayDay } = useProfile()
   const { rules, loading: rulesLoading, error: rulesError, reload: reloadRules } = useRecurring()
   // Foreign rules count at today's ECB rate (the projection, the Recurring card).
   const ruleFx = useRuleRates(rules, baseCurrency)
   // undefined until known (null: no transactions at all)
   const [oldest, recheckOldest] = useOldestTransactionDate()
-  // A salary already in that counts for next month (the salary setting)
-  // brings next month into the picker, at the top.
-  const newest = useNewestCountedDate()
-  const periods = useMemo(() => buildPeriods(oldest, new Date(), { newestISO: newest }), [oldest, newest])
-  // Default to this month; its token is stable and always present in the
-  // list (next month, when offered, sits above it but is never the default,
-  // and a picked next month that goes away — its salary deleted — falls back
-  // to this month).
-  const [periodValue, setPeriodValue] = useState(() => thisMonthPeriod().value)
-  const period = periods.find((p) => p.value === periodValue) ?? thisMonthPeriod()
+  // The months are pay months with the salary setting on (payCalendar).
+  const periods = useMemo(() => buildPeriods(oldest, new Date(), { cal }), [oldest, cal])
+  // Default to this month (null): the pay month holding today, which the
+  // calendar can move (29 Sep after payday is October).
+  const [picked, setPeriodValue] = useState(null)
+  const period = (picked && periods.find((p) => p.value === picked)) || thisMonthPeriod(new Date(), cal)
+  const periodValue = period.value
 
   // `spread`: yearly subscriptions paid before the period still count their
   // share of it (totals only — the list shows what was paid in the period).
@@ -111,15 +109,14 @@ export default function Dashboard() {
   // Spread yearly charges count as their monthly parts in every total — or,
   // when the user keeps them separate, not at all (the Recurring card lists them).
   const spend = useMemo(
-    () => spendRows(rows, baseCurrency, period.from, period.to, { separateYearly, salaryShift }),
-    [rows, baseCurrency, period.from, period.to, separateYearly, salaryShift])
+    () => spendRows(rows, baseCurrency, period.from, period.to, { separateYearly, cal }),
+    [rows, baseCurrency, period.from, period.to, separateYearly, cal])
   const totals = useMemo(() => periodTotals(spend, baseCurrency, savingsIds), [spend, baseCurrency, savingsIds])
   const { byCategory, bucketRow } = totals
-  // The expenses paid in the period; the income by the month it counts for
-  // (homeLists: a late-month salary shows under the next month).
+  // The expenses and the income paid in the period (homeLists).
   const { expenses, income } = useMemo(
-    () => homeLists(rows, { from: period.from, to: period.to, savingsIds, salaryShift }),
-    [rows, savingsIds, period.from, period.to, salaryShift])
+    () => homeLists(rows, { from: period.from, to: period.to, savingsIds }),
+    [rows, savingsIds, period.from, period.to])
   // Each bar drills down to its expenses for this period (a group share to its
   // group); the folded "Other" merges several buckets, so it has no link.
   // Every category, largest first (no fold: "Show all" reveals the tail).
@@ -134,14 +131,18 @@ export default function Dashboard() {
   const shownBars = visibleBars(bars, showAllBars)
 
   // Fold not-yet-charged recurring into the period's spend/income projection,
-  // but only for periods that are still ongoing or ahead (end today or later;
-  // next month counts only what falls in it). Past periods and "all time"
-  // stay purely actual.
+  // but only for periods that are still ongoing (end today or later). Past
+  // periods and "all time" stay purely actual. With pay months the
+  // projection ends the day before the next salary is expected
+  // (payCalendar.expectedEnd).
   const todayISO = useMemo(() => today(), [])
-  const proj = useMemo(
-    () => periodProjection(rulesInBase(rules, baseCurrency, ruleFx.rates).rules, { from: period.from, to: period.to },
-      todayISO, separateYearly, salaryShift, savingsIds),
-    [rules, baseCurrency, ruleFx.rates, period.from, period.to, todayISO, separateYearly, salaryShift, savingsIds])
+  const proj = useMemo(() => {
+    const end = cal && period.open
+      ? expectedEnd(payMonthWindow(period.key, cal), cal, paydayHints(rules, salaryShift, lastPayDay)) : period.to
+    return periodProjection(rulesInBase(rules, baseCurrency, ruleFx.rates).rules, { from: period.from, to: end },
+      todayISO, separateYearly, savingsIds,
+      { cal })
+  }, [rules, baseCurrency, ruleFx.rates, period, todayISO, separateYearly, savingsIds, cal, salaryShift, lastPayDay])
   const flow = useMemo(() => groupFlow(moves, baseCurrency, { from: period.from, to: period.to }),
     [moves, baseCurrency, period.from, period.to])
   const figures = projectedTotals(totals, proj, flow)
@@ -174,7 +175,7 @@ export default function Dashboard() {
     setTab(v)
     try { localStorage.setItem(TAB_KEY, v) } catch { /* private mode: kept until reload */ }
   }
-  const words = overviewWords({ state: summary.state, thisMonth: isThisMonth(period), tab })
+  const words = overviewWords({ state: summary.state, thisMonth: isThisMonth(period, new Date(), cal), tab })
 
   // Every card by id; homeCards / homeStacks decide which show, and where.
   const card = {
@@ -191,7 +192,7 @@ export default function Dashboard() {
             never shorter than Numbers (nothing below jumps) and grows only
             when the words need more room. */}
         {words.offered && (
-          <CardHeader title={words.words ? <SummaryTitle month={summary.month} /> : monthName()} action={
+          <CardHeader title={words.words ? <SummaryTitle month={summary.month} /> : monthName(new Date(`${period.key}-01T00:00`))} action={
             <SegmentedControl label={t('overview.showAs')} value={words.words ? 'words' : 'numbers'} onChange={chooseTab}
               options={[['numbers', t('overview.numbers')], ['words', t('overview.words')]]} />
           } />

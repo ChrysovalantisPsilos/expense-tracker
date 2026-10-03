@@ -7,12 +7,12 @@
 // out once for the website's components and the native app alike. The maths
 // is planMath.js, the wording planText.js; the components only lay out.
 import { formatMoney, formatSigned, minorToInput, toMinor } from '../../shared/lib/currency.js'
-import { isoDate, monthRange, shortDate, shortDateTime } from '../../shared/lib/dates.js'
+import { isoDate, shortDate, shortDateTime } from '../../shared/lib/dates.js'
+import { payMonthStart, payMonthWindow } from '../../shared/lib/payCalendar.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { categoryLook } from '../../shared/lib/categoryStyle.js'
 import { ruleInBase, rulesInBase } from '../../shared/lib/ruleFx.js'
-import { shiftFetchFrom } from '../../shared/lib/salaryShift.js'
 import { signTone } from '../../shared/ui/kit/kitMath.js'
 import { choiceToRule, frequencyLabel, ratesNotes, repeatChoiceOptions, ruleToChoice } from '../recurring/recurringMath.js'
 import {
@@ -31,17 +31,20 @@ const tp = (key, values) => t(`plan:${key}`, values)
 
 // What the page reads besides the rules, the plan and the categories, as of
 // `todayISO`: the income entries behind the derived Salary and Savings rows
-// (salaryWindow's months; with the salary shift on, from the day the first
-// month's salary counts), the charges the price rises look at (PRICE_MONTHS
-// up to this month's end, yearly ones spread) and the months whose budgets
-// the over-budget ideas check.
-export function planReads(todayISO, salaryShift = null) {
-  const win = salaryWindow(todayISO)
-  const months = recentMonths(todayISO, PRICE_MONTHS)
-  const [y, m] = todayISO.split('-').map(Number)
+// (salaryWindow's completed months), the charges the price rises look at
+// (PRICE_MONTHS up to this month's end, yearly ones spread) and the months
+// (labels, 'YYYY-MM-01') whose budgets the over-budget ideas check. With pay
+// months (`cal`, payCalendar.js) every month is a pay month's window.
+export function planReads(todayISO, cal = null) {
+  const win = salaryWindow(todayISO, cal)
+  const months = recentMonths(todayISO, PRICE_MONTHS, cal)
+  const label = (m) => m.slice(0, 7)
   return {
-    income: { from: shiftFetchFrom(win.from, salaryShift), to: win.to },
-    charges: { from: months[0], to: monthRange(new Date(y, m - 1, 1)).to },
+    income: { from: win.from, to: win.to },
+    charges: {
+      from: payMonthStart(label(months[0]), cal),
+      to: payMonthWindow(label(months[months.length - 1]), cal, todayISO).to,
+    },
     budgetMonths: months.slice(-OVER_BUDGET_MONTHS),
   }
 }
@@ -55,14 +58,14 @@ export function planReads(todayISO, salaryShift = null) {
 //   charges, budgetSets, budgetMonths   what the suggestions look at ([] without)
 export function planState({
   rules, plan, savingsIds, baseCurrency, rates = {}, categories = [], salary = null, savings = null,
-  charges = [], budgetSets = [], budgetMonths = [], separateYearly = false,
+  charges = [], budgetSets = [], budgetMonths = [], separateYearly = false, cal = null,
 }) {
   const categoriesById = new Map(categories.map((c) => [c.id, c]))
   const items = buildItems({ rules, plan, savingsIds, baseCurrency, rates, categoriesById, salary, savings })
   const live = planRules(rules, savingsIds)
   const signals = signalsFor(items, {
     rises: priceRises(charges, live),
-    overCats: overBudgetMonths({ sets: budgetSets, rows: charges, months: budgetMonths, baseCurrency, separateYearly }),
+    overCats: overBudgetMonths({ sets: budgetSets, rows: charges, months: budgetMonths, baseCurrency, separateYearly, cal }),
   })
   const fx = rulesInBase(live, baseCurrency, rates)
   return {

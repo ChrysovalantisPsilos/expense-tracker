@@ -88,7 +88,7 @@ final class SettingsModelTests: XCTestCase {
 
     // MARK: Switches
 
-    func testMonthlySpendingAndTheSalaryShift() async {
+    func testMonthlySpendingAndPayMonths() async {
         let store = store()
         let model = PreferencesModel(data: store.data)
         await model.load()
@@ -99,7 +99,9 @@ final class SettingsModelTests: XCTestCase {
 
         XCTAssertEqual(model.salary?.on, false)
         XCTAssertEqual(model.salary?.disabled, false)
-        XCTAssertEqual(model.salary?.days.count, 31)
+        // The from-day picker offers the 15th to the 31st.
+        XCTAssertEqual(model.salary?.days.first, 15)
+        XCTAssertEqual(model.salary?.days.count, 17)
         // On: day 25 and the category called Salary (salaryShiftPatch).
         await model.setSalaryShift(true)
         XCTAssertEqual(store.writes("updateProfile").last, ["salary_shift_from_day": 25, "salary_category_id": "c-pay"])
@@ -111,7 +113,7 @@ final class SettingsModelTests: XCTestCase {
         XCTAssertEqual(store.writes("updateProfile").last, ["salary_shift_from_day": .null])
     }
 
-    func testTheSalaryShiftNeedsAnIncomeCategory() async {
+    func testPayMonthsNeedAnIncomeCategory() async {
         let store = store()
         store.categoriesResult = .success([])
         let model = PreferencesModel(data: store.data)

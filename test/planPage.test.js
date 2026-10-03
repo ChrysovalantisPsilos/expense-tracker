@@ -13,6 +13,7 @@ import {
 } from '../src/features/plan/planPage.js'
 import { applyWhatIf, whatIfRows } from '../src/features/plan/whatIfMath.js'
 import { setLanguage } from '../mobile-core/index.js'
+import { payCalendar } from '../src/shared/lib/payCalendar.js'
 
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 const ENT = id(900)
@@ -284,12 +285,18 @@ test('type a what-if: the preview, its editor, why nothing landed, the ids made 
   assert.deepEqual(res.added.addIds, ['new-1'])
 })
 
-test('what the page reads: the salary months (shifted), six months of charges, three of budgets', () => {
+test('what the page reads: the salary months, six months of charges, three of budgets', () => {
   assert.deepEqual(planReads('2026-09-15'), {
     income: { from: '2026-06-01', to: '2026-08-31' }, charges: { from: '2026-04-01', to: '2026-09-30' },
     budgetMonths: ['2026-07-01', '2026-08-01', '2026-09-01'],
   })
-  assert.equal(planReads('2026-01-10', { fromDay: 25, categoryId: PAY }).income.from, '2025-09-25')
+  // Pay months: the completed ones' windows, this one's to its end.
+  const cal = payCalendar({ fromDay: 25, categoryId: PAY },
+    ['2026-03-27', '2026-04-28', '2026-05-28', '2026-06-26', '2026-07-28', '2026-08-28'], '2026-09-15')
+  assert.deepEqual(planReads('2026-09-15', cal), {
+    income: { from: '2026-05-28', to: '2026-08-27' }, charges: { from: '2026-03-27', to: '2026-09-30' },
+    budgetMonths: ['2026-07-01', '2026-08-01', '2026-09-01'],
+  })
 })
 
 test('the parts follow the app\'s language', () => {

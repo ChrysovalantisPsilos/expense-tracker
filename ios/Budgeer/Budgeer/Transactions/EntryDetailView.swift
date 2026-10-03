@@ -155,7 +155,6 @@ struct EntryDetailView: View {
         if let group = row.group { list.append((symbol: "person.2", text: group)) }
         if let repeats = row.repeats { list.append((symbol: "repeat", text: repeats)) }
         if let spread = row.spread { list.append((symbol: "calendar", text: spread)) }
-        if let counts = row.countsFor { list.append((symbol: "calendar.badge.clock", text: counts)) }
         if let rate = row.rate { list.append((symbol: "arrow.left.arrow.right", text: rate)) }
         return list
     }

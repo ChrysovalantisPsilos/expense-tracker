@@ -10,12 +10,13 @@ import { useAuth } from '../../shared/auth/AuthProvider.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useLanguage } from '../../shared/lib/i18n/I18nProvider.jsx'
 import { today } from '../../shared/lib/dates.js'
+import { payMonthOf } from '../../shared/lib/payCalendar.js'
 import { useTransactions } from '../../shared/lib/transactions.js'
 import { useAllCategories } from '../../shared/lib/categories.js'
 import { salaryCategoryId } from '../plan/planMath.js'
 import { useMealVouchers } from '../vouchers/vouchers.js'
 import {
-  bonusCategoryId, defaultCountry, monthOf, normaliseNotes, salaryEntryIds, salaryReport, withFix,
+  bonusCategoryId, defaultCountry, normaliseNotes, salaryEntryIds, salaryReport, withFix,
 } from './salaryMath.js'
 import { bonusChoices } from './salaryText.js'
 
@@ -50,21 +51,21 @@ function useSalaryNotes() {
 //   each resolves once saved and throws when it couldn't be (the caller
 //   shows the error), putting the old value back.
 export function useSalary() {
-  const { profile, baseCurrency = 'EUR', salaryShift } = useProfile()
+  const { profile, baseCurrency = 'EUR', payCalendar: cal } = useProfile()
   const { lang } = useLanguage()
   const { rows: categories, loading: catsLoading, error: catsError, reload: reloadCats } = useAllCategories()
   const income = useTransactions({ kind: 'income' })
   const notesQ = useSalaryNotes()
   const vouchers = useMealVouchers()
   const notes = useMemo(() => normaliseNotes(notesQ.data), [notesQ.data])
-  const nowKey = monthOf(today())
+  const nowKey = payMonthOf(today(), cal)
 
   const salaryId = salaryCategoryId(profile, categories)
   const bonusId = bonusCategoryId(categories, notes)
   const country = defaultCountry({ picked: notes.country, voucherCountry: vouchers.settings?.country, language: lang })
   const report = useMemo(() => salaryReport(income.rows, {
-    salaryId, bonusId, currency: baseCurrency, notes, shift: salaryShift, nowKey,
-  }), [income.rows, salaryId, bonusId, baseCurrency, notes, salaryShift, nowKey])
+    salaryId, bonusId, currency: baseCurrency, notes, cal, nowKey,
+  }), [income.rows, salaryId, bonusId, baseCurrency, notes, cal, nowKey])
   const entryIds = useMemo(() => salaryEntryIds(income.rows, salaryId, bonusId), [income.rows, salaryId, bonusId])
 
   async function save(next) {

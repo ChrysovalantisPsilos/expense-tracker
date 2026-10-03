@@ -218,10 +218,6 @@ export default {
     fromSavings: 'από αποταμιεύσεις',
     withVouchers: 'κουπόνια φαγητού',
   },
-  countsFor: {
-    month: 'Στα έσοδα {{month}}',
-    withYear: 'Στα έσοδα {{month}} {{year}}',
-  },
   tour: {
     label: 'Ξενάγηση',
     step: 'Βήμα {{n}} από {{total}}',

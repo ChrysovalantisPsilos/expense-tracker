@@ -3,6 +3,7 @@
 // inputs (Fixtures/*.json, written from the web's functions by mobile-core/).
 import Foundation
 import XCTest
+import BudgeerCore
 @testable import Budgeer
 
 final class FakeAuthService: AuthService, @unchecked Sendable {
@@ -133,6 +134,16 @@ struct FakeError: Error, CustomStringConvertible {
     let description: String
 }
 
+/// A fixture's pay calendar as PeriodSource.calendar builds it: the core's
+/// payCalendar over the profile's salary setting and the paydays, as of `now`
+/// (null with the setting off).
+func payCal(profile: JSONValue, payDays: JSONValue?, now: Date) -> JSONValue {
+    let core = BudgeerCore.shared
+    guard let shift = try? core.json("payCalendar", "salaryShiftOf", [profile]), !shift.isNull,
+          let today = try? core.isoDate(now) else { return .null }
+    return (try? core.json("payCalendar", "payCalendar", [shift, payDays ?? [], today])) ?? .null
+}
+
 /// A fixture file (Fixtures/<name>.json) from the test bundle.
 func fixtureData(_ name: String) throws -> Data {
     let url = try XCTUnwrap(Bundle(for: FakeStore.self).url(forResource: name, withExtension: "json"), "\(name).json")
@@ -148,6 +159,7 @@ extension FakeStore {
         rowsResult = .success(fixture.input.rows)
         rulesResult = .success(fixture.input.rules)
         groupMoves = fixture.input.groupMoves
+        payCalendarResult = ["days": fixture.input.payDays ?? [], "today": .null]
         for (currency, rate) in fixture.input.rates.objectValue ?? [:] {
             if let value = rate.doubleValue { rates["\(currency)>EUR"] = value }
         }
@@ -160,6 +172,8 @@ struct HomeFixture: Decodable {
     struct View: Decodable {
         let name: String
         let periodValue: String?
+        /// The view's own profile (the salary setting off), else the input's.
+        let profile: JSONValue?
     }
     struct Input: Decodable {
         let now: String
@@ -170,6 +184,8 @@ struct HomeFixture: Decodable {
         let rules: JSONValue
         let rates: JSONValue
         let groupMoves: JSONValue
+        /// my_pay_calendar's dates (pay months with the salary setting on).
+        let payDays: JSONValue?
         let views: [View]
     }
     let input: Input
@@ -186,10 +202,16 @@ struct HomeFixture: Decodable {
     /// This month's figures in `lang`.
     func thisMonth(_ lang: String = "en") -> HomeFigures? { expected[lang]?["thisMonth"] }
 
-    func homeInput(periodValue: String? = nil) -> HomeInput {
-        HomeInput(rows: input.rows, profile: input.profile, categories: input.categories, rules: input.rules,
-                  rates: input.rates, groupMoves: input.groupMoves, now: now, periodValue: periodValue,
-                  oldest: input.oldest)
+    /// Home's input for a period (nil: this month) and a profile (the
+    /// input's by default), its pay calendar from the fixture's paydays as
+    /// PeriodSource.calendar builds it.
+    func homeInput(periodValue: String? = nil, profile: JSONValue? = nil) -> HomeInput {
+        let profile = profile ?? input.profile
+        let cal = payCal(profile: profile, payDays: input.payDays, now: now)
+        return HomeInput(rows: input.rows, profile: profile, categories: input.categories, rules: input.rules,
+                         rates: input.rates, groupMoves: input.groupMoves, now: now, periodValue: periodValue,
+                         oldest: input.oldest, cal: cal,
+                         lastPayDay: cal.isNull ? .null : input.payDays?.arrayValue?.last ?? .null)
     }
 }
 

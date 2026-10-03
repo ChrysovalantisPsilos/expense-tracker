@@ -26,7 +26,7 @@ export const CORE_MODULES = {
   spread: 'src/shared/lib/spread.js',
   txnRollup: 'src/shared/lib/txnRollup.js',
   ruleFx: 'src/shared/lib/ruleFx.js',
-  salaryShift: 'src/shared/lib/salaryShift.js',
+  payCalendar: 'src/shared/lib/payCalendar.js',
   categoryName: 'src/shared/lib/categoryName.js',
   categoryStyle: 'src/shared/lib/categoryStyle.js',
   paginate: 'src/shared/lib/paginate.js',
@@ -55,7 +55,7 @@ export const CORE_MODULES = {
   // supabase/functions/_shared (the client ↔ edge-function parity modules).
   sharedMoney: 'supabase/functions/_shared/money.ts',
   sharedSavings: 'supabase/functions/_shared/savings.ts',
-  sharedSalaryShift: 'supabase/functions/_shared/salaryShift.ts',
+  sharedPayCalendar: 'supabase/functions/_shared/payCalendar.ts',
   sharedSpread: 'supabase/functions/_shared/spread.ts',
   sharedRuleFx: 'supabase/functions/_shared/ruleFx.ts',
   planRules: 'supabase/functions/_shared/planRules.ts',

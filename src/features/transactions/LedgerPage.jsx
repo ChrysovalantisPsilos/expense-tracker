@@ -26,7 +26,7 @@ import {
 import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { parseLedgerParams, withLedgerParams } from './ledgerLinks.js'
 import { addEntryLink } from '../../shared/lib/addLinks.js'
-import { monthRange } from '../../shared/lib/dates.js'
+import { periodWithRange, thisMonthPeriod } from '../../shared/lib/periods.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import QueryError from '../../shared/ui/QueryError.jsx'
 import { SkeletonRegion, SkeletonRows } from '../../shared/ui/Skeleton.jsx'
@@ -44,12 +44,12 @@ const TYPES = ['expense', 'income', 'all']
 // (`category`, `from`, `to`, `min`, `max`, `shared`; see ledgerLinks.js) — so it
 // survives reloads, back/forward and links. Opened with filters already in
 // the URL (a link), it shows a back button. With no search it shows this month's entries
-// (last month's late salary among them when it counts here, as on Home);
+// (the pay month's with the salary setting on, as on Home);
 // searching (text or the Filters panel) spans all history, or the chosen
 // dates. "Add" opens the transaction page (/transactions/new).
 export default function LedgerPage() {
   const t = useT('transactions')
-  const { baseCurrency = 'EUR', salaryShift } = useProfile()
+  const { baseCurrency = 'EUR', payCalendar: cal } = useProfile()
   const navigate = useNavigate()
   const location = useLocation()
   const [params, setParams] = useSearchParams()
@@ -79,16 +79,15 @@ export default function LedgerPage() {
   }, [location.key, location.state])
 
   const searching = isFiltering(text, filters)
-  const month = monthRange()
-  const { rows, loading, error, reload, mutate } = useTransactions(ledgerRead({ kind, filters, searching, month, salaryShift }))
+  const month = thisMonthPeriod(new Date(), cal)
+  const { rows, loading, error, reload, mutate } = useTransactions(ledgerRead({ kind, filters, searching, month }))
   const { categories, loading: categoriesLoading } = useCategories(kind)
   // Whether anything was ever logged (null: nothing; undefined: not known),
   // rechecked as the live rows change.
   const [oldest, recheckOldest] = useOldestTransactionDate()
   useEffect(recheckOldest, [rows, recheckOldest])
-  // This month's rows by the month each counts in: last month's late salary
-  // is listed here, as on Home (ledgerShown).
-  const shown = ledgerShown(rows, { text, filters, searching, month, salaryShift }, baseCurrency)
+  // This month's rows (ledgerShown).
+  const shown = ledgerShown(rows, { text, filters, searching, month }, baseCurrency)
   // A linked category that isn't in the picker (archived, or another kind's)
   // still shows as selected rather than a misleading "Any".
   const unlistedCategory = filters.categoryId && filters.categoryId !== NO_CATEGORY
@@ -104,7 +103,7 @@ export default function LedgerPage() {
   // A search's net leaves savings out (0084): they're not income.
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
   const net = netBaseMinor(shown, baseCurrency, savingsIds)
-  const head = listHeading({ kind, periodLabel: t('periods.thisMonth'), count: shown.length, loading, failed: !!error, searching })
+  const head = listHeading({ kind, periodLabel: periodWithRange(month), count: shown.length, loading, failed: !!error, searching })
   const firstRun = isFirstRun({ loading, failed: !!error, count: shown.length, oldest, searching })
   // A phone held sideways: the page's controls move up into the shell's header.
   const sideways = !!useShellHeader()

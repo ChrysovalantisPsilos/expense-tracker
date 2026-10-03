@@ -1,16 +1,19 @@
 import { supabase } from '../../shared/lib/supabase.js'
 import { useOwnedQuery } from '../../shared/lib/db.js'
-import { monthRange } from '../../shared/lib/dates.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
+import { periodMonth, thisMonthPeriod } from '../../shared/lib/periods.js'
 import { dbError } from '../../shared/lib/errors.js'
 import { monthSets, setPeriods } from './budgetMath.js'
 
 // A month's budget rows for the signed-in user (live via realtime; defaults to
-// this month). Caps are encrypted at rest, so reads go through the decrypting
+// this month: the pay month holding today with the salary setting on). Caps are encrypted at rest, so reads go through the decrypting
 // my_budgets RPC; realtime still subscribes to the base `budgets` table.
 // period_start (first day of the month) is the budget period key. Budgets roll
 // forward: a month without its own rows gets the latest earlier month's, whose
 // period_start then names that month (budgetMath.carriedFrom).
-export function useMonthBudgets(periodStart = monthRange().from) {
+export function useMonthBudgets(month) {
+  const { payCalendar: cal } = useProfile()
+  const periodStart = month ?? periodMonth(thisMonthPeriod(new Date(), cal))
   const q = useOwnedQuery('budgets', {
     cacheAs: 'budgets', fetch: () => listBudgets(periodStart), deps: [periodStart],
   })

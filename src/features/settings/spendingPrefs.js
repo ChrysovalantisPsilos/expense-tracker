@@ -1,12 +1,13 @@
 // Pure helpers behind Settings › Monthly spending (no React/supabase).
 
-// The salary shift's default start day (0081): salary paid from the 25th to
-// the month's end counts toward the next month.
+// The salary setting's default from-day (0081): a salary paid from the 25th
+// to the month's end starts the next month (pay months, payCalendar.ts).
 export const SALARY_SHIFT_DEFAULT_DAY = 25
 
-// The days the "from day" picker offers. 29–31 clamp to shorter months'
-// last day (salaryShift.ts), so each still means "to the month's end".
-export const SALARY_SHIFT_DAYS = Array.from({ length: 31 }, (_, i) => i + 1)
+// The days the "from day" picker offers: the 15th to the 31st (a salary
+// earlier in the month starts its own month). 29–31 clamp to shorter months'
+// last day (payCalendar.ts), so each still means "to the month's end".
+export const SALARY_SHIFT_DAYS = Array.from({ length: 17 }, (_, i) => i + 15)
 
 // The income category the switch picks when it's turned on: the user's
 // current choice while it's still one of their (unarchived) income
@@ -35,8 +36,9 @@ export function salaryShiftPatch(on, { fromDay, categoryId, categories }) {
 // can't be turned on without an income category to count), the hint under
 // it (a settings: key), whether the ⓘ has more, and the "shorter months"
 // note for a start day past the 28th, and the days the "from day" picker
-// offers. `incomeCount` is how many active income categories there are;
-// `loading` is true while they are read.
+// offers (with a day stored before the picker started at the 15th, which
+// keeps working). `incomeCount` is how many active income categories there
+// are; `loading` is true while they are read.
 export function salaryShiftView({ fromDay, incomeCount, loading = false }) {
   const on = fromDay != null
   const blocked = !loading && incomeCount === 0 && !on
@@ -46,6 +48,6 @@ export function salaryShiftView({ fromDay, incomeCount, loading = false }) {
     hint: blocked ? 'settings:spending.salary.needsIncome' : 'settings:spending.salary.hint',
     more: !blocked,
     shortMonths: on && fromDay > 28,
-    days: SALARY_SHIFT_DAYS,
+    days: on && !SALARY_SHIFT_DAYS.includes(fromDay) ? [fromDay, ...SALARY_SHIFT_DAYS] : SALARY_SHIFT_DAYS,
   }
 }

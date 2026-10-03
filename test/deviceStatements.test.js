@@ -127,11 +127,30 @@ for (const yearlySeparate of [false, true]) {
       assert.ok(server.calls.some((c) => c.rpc === 'consume_quota'))
       assert.deepEqual(device.calls, reads(server.calls))
       if (yearlySeparate) assert.ok(device.calls.some((c) => c.rpc === 'latest_fx_rates'))
+      // A date range is taken literally (pay months only cut a month asked for).
       assert.ok(device.calls.some((c) => c.rpc === 'my_transactions' && c.args.p_spread === true
-        && c.args.p_from === '2026-08-25'))
+        && c.args.p_from === FROM && c.args.p_to === TO))
+      assert.ok(device.calls.some((c) => c.rpc === 'my_pay_calendar'))
     })
   }
 }
+
+test('personal statement for a month: its pay window, the same on the device and the server', async () => {
+  const server = fakeSupabase()
+  const device = fakeSupabase()
+  const body = { from: '2026-09-28', to: '2026-10-31', month: '2026-10' }
+  const a = await viaServer(generateReport, server, { ...body, format: 'xlsx' })
+  const b = await statementOnDevice(device, { ...body, format: 'xlsx' })
+  same(a, b)
+  // October runs from the 28 September payday (paydays 27 Aug, 28 Sep).
+  assert.ok(device.calls.some((c) => c.rpc === 'my_transactions' && c.args.p_from === '2026-09-28'
+    && c.args.p_to === '2026-10-31'))
+  const bad = await generateReport(new Request('https://project.test/functions/v1/x', {
+    method: 'POST', headers: { Authorization: 'Bearer token' },
+    body: JSON.stringify({ from: FROM, to: TO, format: 'pdf', month: '2026-13' }),
+  }))
+  assert.equal(bad.status, 400)
+})
 
 test('group statement: the device makes the server\'s file', async () => {
   const server = fakeSupabase()

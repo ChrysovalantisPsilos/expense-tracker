@@ -158,7 +158,9 @@ export async function handle(req: Request, deps: Deps): Promise<Reply> {
   const categoryRows = await myCategoryRows(asUser)
   const { data: rules, error: rulesError } = await asUser.rpc('my_recurring_rules', {})
   const ask = summaryAsk({
-    totals: state.totals, lang: r.value.lang, categories: categoryChoices(categoryRows, body.labels), today: deps.today(),
+    totals: state.totals, lang: r.value.lang, categories: categoryChoices(categoryRows, body.labels),
+    // The user's today as the server keeps it (their time zone, 0111), not UTC.
+    today: state.totals?.today ?? deps.today(),
     rules: rulesError ? [] : rules ?? [], categoryRows,
   })
   const res = await deps.ask(ask)

@@ -34,7 +34,6 @@ export const STATEMENT_TEXT = {
     savingsReceived: 'Savings aren’t income and don’t change the net (see Saved).',
     fromSavings: 'Expenses paid from savings count as spending but not against your income.',
     withVouchers: 'Expenses paid with meal vouchers count as spending but not against your income.',
-    salary: (day: number): string => `Salary paid from day ${day} of a month counts toward the next month's totals.`,
 
     // A yearly payment's mark: "Yearly · 10.00 EUR/mo".
     yearly: 'Yearly',
@@ -45,6 +44,8 @@ export const STATEMENT_TEXT = {
 
     // The PDF.
     title: 'Financial statement',
+    // A month's statement with pay months on: "October 2026 · 29 Sep – 31 Oct".
+    payMonth: (month: string, from: string, to: string): string => `${month} · ${from} – ${to}`,
     income: 'Income',
     spent: 'Spent',
     net: 'Net',

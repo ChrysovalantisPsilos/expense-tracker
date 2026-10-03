@@ -1,7 +1,8 @@
 // The Insights page's spending and income cards as the web's Insights.jsx
 // works them out, every step a core call (in Node the same sequence writes
 // the parity fixture: mobile-core/screenFigures.mjs insightsFigures): the
-// last six months (lastMonths), the rows spread and shifted (spendRows),
+// last six months (lastPayMonths: pay months with the salary setting on),
+// the rows spread (spendRows),
 // the trend (buildTrend), "Where your money went" for the picked month
 // (spendingShares, pickedMonthLabel, each entry's link: linkBuckets), the six-month bars and headline
 // (spendingBars), and this month's income, spend, left over and change
@@ -82,31 +83,31 @@ struct InsightsFigures: Codable, Equatable, Sendable {
         let total: String
     }
 
-    /// lastMonths(6): the months and where to read their rows from and to.
-    static func months(now: Date, core: BudgeerCore) throws -> JSONValue {
-        try core.json("dates", "lastMonths", [6, JSDate(now)])
+    /// lastPayMonths(6): the months (pay months with `cal`) and where to read
+    /// their rows from and to.
+    static func months(now: Date, cal: JSONValue = .null, core: BudgeerCore) throws -> JSONValue {
+        try core.json("periods", "lastPayMonths", [6, JSDate(now), cal])
     }
 
     /// - rows: my_transactions over the six months with p_spread
     /// - picked: the month tapped (an index into the six), nil for this one
     /// - moves: my_group_flow over the six months (the trend's net counts them, as Home's Net does)
     static func compute(profile: JSONValue, categories: JSONValue, rows: JSONValue, moves: JSONValue = [], now: Date,
-                        picked: Int?, core: BudgeerCore) throws -> InsightsFigures {
+                        picked: Int?, cal: JSONValue = .null, core: BudgeerCore) throws -> InsightsFigures {
         let base = profile["base_currency"]?.stringValue ?? "EUR"
-        let months = try months(now: now, core: core)
+        let months = try months(now: now, cal: cal, core: core)
         let list = months.arrayValue ?? []
         let from = list.first?["from"] ?? .null
         let to = list.last?["to"] ?? .null
-        let options: JSONValue = ["separateYearly": .bool(profile["yearly_separate"]?.boolValue ?? false),
-                                  "salaryShift": try core.json("salaryShift", "salaryShiftOf", [profile])]
+        let options: JSONValue = ["separateYearly": .bool(profile["yearly_separate"]?.boolValue ?? false), "cal": cal]
         let spend = try core.json("spread", "spendRows", [rows, base, from, to, options])
         let savingsIds = try core.json("savings", "savingsIdsOf", [categories])
-        let trend = try core.json("insightsMath", "buildTrend", [spend, months, base, savingsIds, moves])
+        let trend = try core.json("insightsMath", "buildTrend", [spend, months, base, savingsIds, moves, cal])
         let index = picked ?? (list.count - 1)
         let key = list.indices.contains(index) ? (list[index]["key"] ?? .null) : .null
         let monthLabel: String = try core.call("insightsMath", "pickedMonthLabel", [months, index, JSDate(now)])
         let month = (list.indices.contains(index) ? list[index] : JSONValue.object([:])).with("label", .string(monthLabel))
-        let shares = try core.json("insightsMath", "spendingShares", [spend, key, base])
+        let shares = try core.json("insightsMath", "spendingShares", [spend, key, base, cal])
         return InsightsFigures(
             fetchFrom: from.stringValue ?? "",
             fetchTo: to.stringValue ?? "",
@@ -117,12 +118,13 @@ struct InsightsFigures: Codable, Equatable, Sendable {
             bars: try core.call("insightsMath", "spendingBars", [trend, index, base]),
             income: try core.call("insightsMath", "incomeFigures", [trend, base]),
             chart: try trend.decode([Month].self),
-            abroad: try abroad(rows: rows, month: list.last?["key"] ?? .null, base: base, core: core))
+            abroad: try abroad(rows: rows, month: list.last?["key"] ?? .null, base: base, cal: cal, core: core))
     }
 
     /// foreignSpending over this month's rows, worded by abroadCard (nil when none).
-    static func abroad(rows: JSONValue, month: JSONValue, base: String, core: BudgeerCore) throws -> Abroad? {
-        let spending = try core.json("insightsMath", "foreignSpending", [rows, month, base])
+    static func abroad(rows: JSONValue, month: JSONValue, base: String, cal: JSONValue = .null,
+                       core: BudgeerCore) throws -> Abroad? {
+        let spending = try core.json("insightsMath", "foreignSpending", [rows, month, base, cal])
         guard !(spending["items"]?.arrayValue ?? []).isEmpty else { return nil }
         return try core.call("insightsMath", "abroadCard", [spending, base])
     }

@@ -166,7 +166,7 @@ const INTERNAL_RAISES = [
   'not found', 'item not found', 'member not found', 'expense not found', 'group not found',
   'invite not found', 'category not found', 'category or account not found', 'category to move to not found',
   // Input the app never sends.
-  'bad type', 'unknown currency', 'cannot nudge yourself', 'rows must be an array', 'too many rows in one request',
+  'bad type', 'unknown currency', 'unknown time zone', 'cannot nudge yourself', 'rows must be an array', 'too many rows in one request',
   'invalid push keys', 'unsupported push endpoint', 'invalid device token', 'invalid push environment', 'no_account', 'unknown quota scope', 'bad plan', 'bad setup', 'bad salary notes',
   'bad month', 'bad summary', 'AI helper is off', // read by the ai-helper function, never shown as is
   // Server-only paths: cron, migrations, decryption.

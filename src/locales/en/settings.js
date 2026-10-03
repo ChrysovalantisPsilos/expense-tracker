@@ -105,9 +105,9 @@ export default {
       more: 'Off: it stays out of monthly totals and budgets. Home’s Recurring card still lists it.',
     },
     salary: {
-      label: 'Count salary paid late in the month toward the next month',
-      hint: 'It counts in the next month’s totals.',
-      more: 'For a salary paid near the month’s end for the month after. Lists keep the real payment date.',
+      label: 'Months run from payday to payday',
+      hint: 'A month starts the day its salary arrives.',
+      more: 'A salary paid from this day counts for the next month and starts it. One paid earlier starts its own month on the 1st. If a salary is missing, the month starts on this day of the month before.',
       needsIncome: 'Add an income category (like Salary) first.',
       fromDay: 'From day',
       toEnd: 'to the month’s end',

@@ -237,12 +237,6 @@ export default {
     fromSavings: 'from savings',
     withVouchers: 'meal vouchers',
   },
-  // A shifted salary's note in the lists (countsForLabel); {{month}} is the
-  // month's name on its own (dates.monthAlone; Greek: the genitive).
-  countsFor: {
-    month: 'Counts for {{month}}',
-    withYear: 'Counts for {{month}} {{year}}',
-  },
   // Spotlight: the guided tour's popover.
   tour: {
     label: 'App tour',

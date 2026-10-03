@@ -22,9 +22,10 @@ export function categoryPath(categoryId, periodValue) {
 // The route's `:id` and search params → { categoryId, period }: categoryId is
 // a UUID, NO_CATEGORY, or null for a malformed one (the page then says it
 // can't be found); an unknown or missing period falls back to this month.
-export function parseCategoryRoute(id, params, d = new Date()) {
+// `cal` (payCalendar.js, null when off) cuts the months.
+export function parseCategoryRoute(id, params, d = new Date(), cal = null) {
   const categoryId = id === NO_CATEGORY || UUID.test(id ?? '') ? id : null
-  const period = periodFromValue(params.get('period'), d) ?? thisMonthPeriod(d)
+  const period = periodFromValue(params.get('period'), d, cal) ?? thisMonthPeriod(d, cal)
   return { categoryId, period }
 }
 

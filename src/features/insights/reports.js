@@ -8,22 +8,24 @@ import { deviceFirst } from '../../shared/lib/deviceFirst.js'
 // device (deviceStatement.js, loaded on demand); for one release the
 // `generate-report` edge function remains the fallback (deviceFirst.js), also
 // when the device takes too long. `onProgress` hears the PDF page being made
-// (null once the server has taken over).
-export async function downloadStatement({ from, to, format, onProgress }) {
+// (null once the server has taken over). `month` ('YYYY-MM', optional) asks
+// for that month's statement: its window as the app cuts it (a pay month
+// with the salary setting on), headed by the month's name.
+export async function downloadStatement({ from, to, format, month = null, onProgress }) {
   const file = await deviceFirst('statement',
     async (signal) => (await import('./deviceStatement.js'))
-      .statementOnDevice(supabase, { from, to, format, onProgress, signal }),
+      .statementOnDevice(supabase, { from, to, month, format, onProgress, signal }),
     () => {
       onProgress?.(null)
-      return statementFromServer({ from, to, format })
+      return statementFromServer({ from, to, month, format })
     })
   saveBlob(toBlob(file, FILE_TYPES[format]), statementFilename(from, to, format))
 }
 
 // TODO(release after next): remove with the generate-report function.
-async function statementFromServer({ from, to, format }) {
+async function statementFromServer({ from, to, month, format }) {
   const { data, error } = await supabase.functions.invoke('generate-report', {
-    body: { from, to, format },
+    body: { from, to, format, ...(month ? { month } : {}) },
   })
   if (error) throw await edgeFunctionError(error)
   return data

@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { payCalendar } from '../src/shared/lib/payCalendar.js'
 import {
   yearMinor, monthOf, inView, emptyPlan, isEmptyPlan, normalisePlan, planRules, buildItems, planGroups,
   planSummary, effectOf, setChange, resetChange, cancelRules, upsertAdd, removeAdd, dismissIdea, reconcile,
@@ -578,11 +579,13 @@ test('derived salary: the average over the months that had entries (1, 2 or 3), 
   assert.deepEqual(derive([], { categoryId: null }), { state: 'none' })
 })
 
-test('derived salary: salary paid late counts in the next month while the salary shift is on', () => {
-  const shift = { fromDay: 25, categoryId: PAY }
+test('derived salary: pay months, completed ones only', () => {
   const rows = [entry('2026-05-28', 300000), entry('2026-06-28', 310000), entry('2026-08-28', 999999)]
-  // May 28 → June, June 28 → July, Aug 28 → September (this month: left out).
-  assert.equal(derive(rows, { salaryShift: shift }).amount_minor, 305000)
+  // Paydays: May 28 opens June, June 28 July, Aug 28 September (this month, still open: left out).
+  const cal = payCalendar({ fromDay: 25, categoryId: PAY }, ['2026-05-28', '2026-06-28', '2026-08-28'], '2026-09-15')
+  assert.equal(derive(rows, { cal }).amount_minor, 305000)
+  assert.deepEqual(salaryWindow('2026-09-15', cal),
+    { from: '2026-05-28', to: '2026-08-27', months: ['2026-06-01', '2026-07-01', '2026-08-01'] })
   assert.equal(derive(rows).amount_minor, Math.round((310000 + 999999) / 2))
 })
 

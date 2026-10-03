@@ -42,7 +42,9 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     var rowsResult: Result<JSONValue, Error> = .success([])
     var rowsFor: ((TxnQuery) -> JSONValue)?
     var oldest: Result<String?, Error> = .success(nil)
-    var newestIncomeRows: JSONValue = []
+    /// my_pay_calendar's answer (the salary setting's paydays).
+    var payCalendarResult: JSONValue = ["days": [], "today": .null]
+    var savedTimeZones: [String] = []
     var rulesResult: Result<JSONValue, Error> = .success([])
     /// my_budgets per month ('YYYY-MM-01'); [] for any other.
     var budgetsByPeriod: [String: JSONValue] = [:]
@@ -127,6 +129,10 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
         if let writeError { throw writeError }
         savedLanguages.append(language)
     }
+    func saveTimeZone(_ zone: String) async throws {
+        if let writeError { throw writeError }
+        savedTimeZones.append(zone)
+    }
     func mealVouchers() async throws -> JSONValue { try vouchersResult.get() }
     func notifications() async throws -> JSONValue { try notificationsResult.get() }
     func markNotificationsRead() async throws {
@@ -158,7 +164,7 @@ final class FakeStore: ProfileRepository, CategoriesRepository, TransactionsRepo
     }
 
     func oldestDate() async throws -> String? { try oldest.get() }
-    func newestIncome(categoryId: String, since: String) async throws -> JSONValue { newestIncomeRows }
+    func payCalendar() async throws -> JSONValue { payCalendarResult }
 
     func insert(_ row: JSONValue) async throws {
         if let writeError { throw writeError }

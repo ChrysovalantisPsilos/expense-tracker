@@ -73,6 +73,8 @@ final class PlanModel {
     private var plan: JSONValue?
     private var undo: JSONValue = .null
     private var profile: JSONValue = [:]
+    /// The pay calendar the months are cut by (null: the salary setting is off).
+    private var cal: JSONValue = .null
     private var rules: JSONValue = []
     private var categories: JSONValue = []
     private var savingsCategories: JSONValue = []
@@ -126,7 +128,8 @@ final class PlanModel {
             savingsCategories = try await data.categories.savingsCategories()
             categories = try await data.categories.allCategories()
             let today = try core.isoDate(instant)
-            let reads = try PlanFigures.reads(profile: profile, now: instant, core: core)
+            cal = await PeriodSource.calendar(profile: profile, data: data, core: core, now: instant)
+            let reads = try PlanFigures.reads(now: instant, cal: cal, core: core)
             let span = reads["income"]
             let incomeRead = try await data.transactions.transactions(TxnQuery(
                 kind: "income", from: span?["from"]?.stringValue, to: span?["to"]?.stringValue))
@@ -170,7 +173,8 @@ final class PlanModel {
         let instant = now()
         let figures = try PlanFigures.compute(profile: profile, rules: rules, plan: plan, undo: undo, categories: categories,
                                               savingsCategories: savingsCategories, income: income, charges: charges,
-                                              budgetSets: budgetSets, rates: rates, view: view, now: instant, core: core)
+                                              budgetSets: budgetSets, rates: rates, view: view, now: instant, cal: cal,
+                                              core: core)
         self.figures = figures
         state = .loaded(figures.page)
         try refigureEditor()

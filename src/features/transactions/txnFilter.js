@@ -1,7 +1,7 @@
 import { toBaseMinor, toMinor } from '../../shared/lib/currency.js'
 import { netSign, rowEffect } from '../../shared/lib/savings.js'
 import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
-import { countedInWindow, shiftFetchFrom } from '../../shared/lib/salaryShift.js'
+import { paidInWindow } from '../../shared/lib/spread.js'
 
 // Pure search/filter logic behind the Transactions page. The server does the
 // coarse, indexed filtering (kind, dates, category); free text and the amount
@@ -31,14 +31,10 @@ export const withSharedOnly = (filters, on) => ({ ...filters, shared: on ? SHARE
 // (`month`: { from, to }) of the kind, or, while searching, all history
 // (up to 1,000 rows) narrowed by the filters the server can apply — the
 // dates and a real category ("No category" can't be asked of the server;
-// filterTransactions refines it). With the salary setting on (`salaryShift`,
-// salaryShiftOf; 0081) a month that can hold income reaches back to the
-// previous month's late salary, which counts in it (shiftFetchFrom), as
-// Home's read does; ledgerShown then keeps the rows that count in the month.
-export function ledgerRead({ kind, filters = EMPTY_FILTERS, searching, month, salaryShift = null }) {
-  if (!searching) {
-    return { kind, from: kind === 'expense' ? month.from : shiftFetchFrom(month.from, salaryShift), to: month.to }
-  }
+// filterTransactions refines it). With pay months on, `month` is the pay
+// month's window (29 Sep → 31 Oct), the same for every kind.
+export function ledgerRead({ kind, filters = EMPTY_FILTERS, searching, month }) {
+  if (!searching) return { kind, from: month.from, to: month.to }
   return {
     kind,
     from: filters.from || undefined,
@@ -49,15 +45,11 @@ export function ledgerRead({ kind, filters = EMPTY_FILTERS, searching, month, sa
 }
 
 // The rows the page lists for its read (ledgerRead): a search's that match
-// (filterTransactions), else the month's by the month each counts in
-// (countedInWindow), as Home lists income: a salary paid late in September
-// that counts for October is listed in October, on its real date with its
-// "Counts for October" note, and not in September; October's own late
-// salary moves on to November. `month` null (no period): every row.
-export function ledgerShown(rows, { text = '', filters = EMPTY_FILTERS, searching, month = null, salaryShift = null },
-  baseCurrency) {
+// (filterTransactions), else the ones paid in the month's window. `month`
+// null (no period): every row.
+export function ledgerShown(rows, { text = '', filters = EMPTY_FILTERS, searching, month = null }, baseCurrency) {
   if (searching) return filterTransactions(rows, { ...filters, text }, baseCurrency)
-  return month ? countedInWindow(rows, month.from, month.to, salaryShift) : rows
+  return month ? paidInWindow(rows, month.from, month.to) : rows
 }
 
 // True when the text or any advanced filter narrows the list — the page then

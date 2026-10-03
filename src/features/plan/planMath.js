@@ -59,7 +59,8 @@ import { isPlanRule, planKindOf } from '../../../supabase/functions/_shared/plan
 import { spendRows } from '../../shared/lib/spread.js'
 import { entryName } from '../../shared/lib/categoryName.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
-import { countedDate } from '../../shared/lib/salaryShift.js'
+import { addMonths, payMonthOf, payMonthStart, payMonthWindow } from '../../shared/lib/payCalendar.js'
+import { periodFromValue } from '../../shared/lib/periods.js'
 import { ESSENTIAL_ICONS, ESSENTIAL_KEYS, SERVICE_TYPES, isEssential, serviceTypes } from './planCatalog.js'
 
 export const PLAN_VERSION = 1
@@ -250,16 +251,23 @@ export function salaryCategoryId(profile, categories = []) {
   return (own.find((c) => !c.is_archived) ?? own[0])?.id ?? null
 }
 
-const pad2 = (n) => String(n).padStart(2, '0')
 
-// The SALARY_MONTHS full calendar months before `todayISO`'s (this month is
-// never counted): { from, to, months: ['YYYY-MM-01', …] }, oldest first.
-export function salaryWindow(todayISO) {
-  const months = recentMonths(todayISO, SALARY_MONTHS + 1).slice(0, SALARY_MONTHS)
-  const [y, m] = todayISO.split('-').map(Number)
-  const last = new Date(Date.UTC(y, m - 1, 0))
-  return { from: months[0], to: `${last.getUTCFullYear()}-${pad2(last.getUTCMonth() + 1)}-${pad2(last.getUTCDate())}`, months }
+// The SALARY_MONTHS completed months before `todayISO`'s (this month, still
+// open, is never counted): { from, to, months: ['YYYY-MM-01', …] }, oldest
+// first. With pay months (`cal`, payCalendar.js) they are pay months, read
+// from the first one's first day to the day before this one began.
+export function salaryWindow(todayISO, cal = null) {
+  const months = recentMonths(todayISO, SALARY_MONTHS + 1, cal).slice(0, SALARY_MONTHS)
+  const label = (m) => m.slice(0, 7)
+  return {
+    from: payMonthStart(label(months[0]), cal),
+    to: payMonthWindow(label(months[months.length - 1]), cal, todayISO).to,
+    months,
+  }
 }
+
+// The month ('YYYY-MM') an entry counts in: its pay month with `cal`.
+const entryMonthKey = (r, cal) => payMonthOf(String(r.spent_at).slice(0, 10), cal)
 
 // Whether the plan gets a derived Salary row, and its amount:
 //   { state: 'none' }                 no salary category, or no entries
@@ -268,17 +276,17 @@ export function salaryWindow(todayISO) {
 //   { state: 'derived', categoryId, amount_minor, months }
 //        the average of the monthly totals (base currency, each entry at its
 //        captured rate) over the months of salaryWindow that had entries
-// `entries` are income transactions; a salary paid late in the month counts
-// in the next one while the salary shift is on (0081, `salaryShift`).
-export function derivedSalary({ rules, savingsIds, categoryId, entries = [], todayISO, baseCurrency, salaryShift = null }) {
+// `entries` are income transactions, each in the month it counts in (its pay
+// month with `cal`).
+export function derivedSalary({ rules, savingsIds, categoryId, entries = [], todayISO, baseCurrency, cal = null }) {
   if (!categoryId) return { state: 'none' }
   if (planRules(rules, savingsIds).some((r) => planKindOf(r, savingsIds) === 'income' && r.category_id === categoryId)) {
     return { state: 'rule', categoryId }
   }
-  const keys = new Set(salaryWindow(todayISO).months.map((m) => m.slice(0, 7)))
+  const keys = new Set(salaryWindow(todayISO, cal).months.map((m) => m.slice(0, 7)))
   const mine = entries.filter((r) => r.kind === 'income' && r.category_id === categoryId)
   const totals = sumToBaseByKey(mine, baseCurrency, (r) => {
-    const k = countedDate(r, salaryShift).slice(0, 7)
+    const k = entryMonthKey(r, cal)
     return keys.has(k) ? k : null
   })
   const amount = totals.size ? Math.round([...totals.values()].reduce((s, v) => s + v, 0) / totals.size) : 0
@@ -301,15 +309,15 @@ export function derivedSalary({ rules, savingsIds, categoryId, entries = [], tod
 //        that with none counts as nothing saved); `categoryId` is the
 //        savings category most of it went to (the row's badge)
 // `entries` are income transactions (any category); received savings (a
-// gift, interest) never count. The salary shift moves only salary entries,
-// so it never moves these (countedDate, kept for the same month keys).
-export function derivedSavings({ rules, savingsIds, entries = [], todayISO, baseCurrency, salaryShift = null }) {
+// gift, interest) never count. Each counts in its month (its pay month with
+// `cal`).
+export function derivedSavings({ rules, savingsIds, entries = [], todayISO, baseCurrency, cal = null }) {
   if (planRules(rules, savingsIds).some((r) => planKindOf(r, savingsIds) === 'savings')) return { state: 'rule' }
-  const months = salaryWindow(todayISO).months.map((m) => m.slice(0, 7))
+  const months = salaryWindow(todayISO, cal).months.map((m) => m.slice(0, 7))
   const keys = new Set(months)
   const mine = entries.filter((r) => planKindOf(r, savingsIds) === 'savings')
   const keyOf = (r) => {
-    const k = countedDate(r, salaryShift).slice(0, 7)
+    const k = entryMonthKey(r, cal)
     return keys.has(k) ? k : null
   }
   const totals = sumToBaseByKey(mine, baseCurrency, keyOf)
@@ -650,26 +658,26 @@ export function priceRises(charges, rules) {
   return out
 }
 
-// The 'YYYY-MM-01' keys of the `n` months up to and including `todayISO`'s.
-export function recentMonths(todayISO, n) {
-  const [y, m] = todayISO.split('-').map(Number)
+// The 'YYYY-MM-01' keys of the `n` months up to and including `todayISO`'s
+// (its pay month with `cal`).
+export function recentMonths(todayISO, n, cal = null) {
+  const now = payMonthOf(todayISO, cal)
   const out = []
-  for (let k = n - 1; k >= 0; k--) {
-    const d = new Date(Date.UTC(y, m - 1 - k, 1))
-    out.push(`${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`)
-  }
+  for (let k = n - 1; k >= 0; k--) out.push(`${addMonths(now, -k)}-01`)
   return out
 }
 
 // Which categories went over their budget in `months` ('YYYY-MM-01'), with the
 // Budgets page's own maths (budgetMath.periodBudgets over each month, spend
-// from spread.spendRows). Map categoryId → the months it was over, oldest first.
-export function overBudgetMonths({ sets, rows, months, baseCurrency, separateYearly = false }) {
+// from spread.spendRows). Map categoryId → the months it was over, oldest
+// first. With pay months (`cal`) each month is its pay window.
+export function overBudgetMonths({ sets, rows, months, baseCurrency, separateYearly = false, cal = null }) {
   const out = new Map()
   for (const month of months) {
-    const span = budgetWindow({ value: `m:${month}`, from: month }, month)
-    const spend = spendRows(rows, baseCurrency, span.from, span.to, { separateYearly })
-    for (const b of periodBudgets({ sets, span, spend, baseCurrency }).items) {
+    const [y, m] = month.split('-').map(Number)
+    const span = budgetWindow(periodFromValue(`m:${y}-${m}`, new Date(y, m - 1, 1), cal), month, cal)
+    const spend = spendRows(rows, baseCurrency, span.from, span.to, { separateYearly, cal })
+    for (const b of periodBudgets({ sets, span, spend, baseCurrency, cal }).items) {
       if (b.spent <= b.limit) continue
       if (!out.has(b.categoryId)) out.set(b.categoryId, [])
       out.get(b.categoryId).push(month)

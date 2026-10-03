@@ -2,7 +2,7 @@
 // client that answers the reads the statements make, and a month that has
 // every kind of row the personal statement treats specially — yearly
 // subscriptions (paid in and before the period), salary paid late in the
-// month, savings taken from income and received, an expense paid from
+// month (pay months on), savings taken from income and received, an expense paid from
 // savings, foreign amounts with a rate and one still pending, a group
 // expense share, formula-like text, and Greek names.
 
@@ -145,6 +145,8 @@ export function fakeSupabase({ yearlySeparate = false, txns = TXNS } = {}) {
   const rpcs = {
     consume_quota: () => true,
     my_transactions: () => txns,
+    // The salary setting is on: its paydays (dates only, 0111).
+    my_pay_calendar: () => ({ days: ['2026-08-27', '2026-09-28'], today: '2026-10-03' }),
     my_recurring_rules: () => RULES,
     latest_fx_rates: ({ p_currencies }) => FX.filter((r) => p_currencies.includes(r.currency)),
     group_ledger: ({ p_group }) => (p_group === GROUP.id ? LEDGER : null),

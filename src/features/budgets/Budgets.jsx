@@ -10,13 +10,12 @@ import EmptyState from '../../shared/ui/EmptyState.jsx'
 import { useCategories } from '../../shared/lib/categories.js'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { toMinor } from '../../shared/lib/currency.js'
-import { monthTitle } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { unsavedFormAttr } from '../../shared/lib/autoUpdate.js'
 import MoneyInput from '../../shared/ui/MoneyInput.jsx'
 import { editBudget, deleteBudget, copyPreviousBudgets, useMonthBudgets } from './budgets.js'
 import { useBudgetProgress } from './useBudgetProgress.js'
-import { canCopyBudgets, carriedLabel, previousPeriod } from './budgetMath.js'
+import { budgetHeading, canCopyBudgets, carriedLabel, previousPeriod } from './budgetMath.js'
 import BudgetRow from './BudgetRow.jsx'
 import { categoryPath } from '../../shared/lib/categoryLinks.js'
 import QueryError from '../../shared/ui/QueryError.jsx'
@@ -136,7 +135,7 @@ export default function Budgets() {
 
   return (
     <Stack spacing={5}>
-      <PageHeader eyebrow={monthTitle()} title={t('title')} />
+      <PageHeader eyebrow={budgetHeading(periodStart)} title={t('title')} />
 
       {empty ? (
         <>

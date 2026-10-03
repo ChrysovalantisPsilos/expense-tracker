@@ -14,10 +14,12 @@
 // section, with the active yearly rules' cost (my_recurring_rules; foreign
 // rules at the latest rate in the server's ECB cache, latest_fx_rates).
 //
-// Salary paid late in the month follows the user's setting too (profiles.
-// salary_shift_from_day/salary_category_id, 0081): from day D it counts toward
-// the next month's totals, so the fetch starts at day D of the month before
-// `from` (shiftFetchFrom) and the list still shows only the period's payments.
+// Pay months follow the user's salary setting too (profiles.
+// salary_shift_from_day/salary_category_id, 0081; my_pay_calendar, 0111):
+// asked for a `month` ('YYYY-MM'), the statement covers that month's pay
+// window (29 Sep → 31 Oct for October after a 29 Sep payday) and its heading
+// names the month and its span; a yearly payment's parts count by pay
+// month. A plain date range is taken literally.
 //
 // Savings (categories.is_savings, 0084): income in the user's savings
 // categories is totalled as "Saved" — its own section and summary lines — and
@@ -31,7 +33,7 @@
 
 import { money, type PdfLib, Statement } from '../_shared/pdf.ts'
 import { categoryBars } from '../_shared/breakdown.ts'
-import { salaryShiftOf, shiftFetchFrom } from '../_shared/salaryShift.ts'
+import { type Cal, payCalendar, payMonthWindow, salaryShiftOf } from '../_shared/payCalendar.ts'
 import { savingsIdsOf } from '../_shared/savings.ts'
 import { foreignCurrencies, type Rates } from '../_shared/ruleFx.ts'
 import { STATEMENT_TEXT, type StatementText } from '../_shared/statementText.ts'
@@ -46,6 +48,7 @@ import {
 interface StatementInput {
   from: string
   to: string
+  month?: string | null // 'YYYY-MM' when a month was asked for
   base: string
   name?: string
   stmt: StatementData
@@ -63,20 +66,26 @@ interface Xlsx {
 }
 
 // Read everything the statement needs with `supabase` (a client signed in as
-// the user) and work out its figures. Throws on any read error.
+// the user) and work out its figures. Throws on any read error. With a
+// `month` ('YYYY-MM') the period is that month's window (pay months, when the
+// salary setting is on), whatever `from`/`to` say.
 // deno-lint-ignore no-explicit-any
-export async function loadStatement(supabase: any, { from, to }: { from: string; to: string },
+export async function loadStatement(supabase: any,
+  { from: askedFrom, to: askedTo, month = null }: { from?: string | null; to?: string | null; month?: string | null },
   text: StatementText = STATEMENT_TEXT): Promise<StatementInput> {
   const { data: profile } = await supabase.from('profiles')
     .select('base_currency, display_name, yearly_separate, salary_shift_from_day, salary_category_id').single()
   const base = profile?.base_currency ?? 'USD'
   const separateYearly = profile?.yearly_separate === true
-  const salaryShift = salaryShiftOf(profile)
+  const cal = await readPayCalendar(supabase, salaryShiftOf(profile))
+  const window = month ? payMonthWindow(month, cal) : null
+  const from = window?.from ?? String(askedFrom)
+  const to = window?.to ?? String(askedTo)
 
   // p_spread: also the yearly charges paid before `from` that still cover
   // the period (only their monthly parts count; the list shows the period).
   const { data: txns, error } = await supabase
-    .rpc('my_transactions', { p_from: shiftFetchFrom(from, salaryShift), p_to: to, p_spread: true })
+    .rpc('my_transactions', { p_from: from, p_to: to, p_spread: true })
   if (error) throw error
   const { data: savingsCats, error: catsErr } = await supabase.from('categories')
     .select('id, kind, is_savings').eq('is_savings', true)
@@ -103,9 +112,31 @@ export async function loadStatement(supabase: any, { from, to }: { from: string;
   // Oldest first; foreign rows whose rate is still pending are listed but
   // kept out of every total (see statementMath.ts).
   const stmt = buildStatement(txns ?? [], base, {
-    from, to, separateYearly, rules, rates, salaryShift, savingsIds, text: text.personal,
+    from, to, separateYearly, rules, rates, cal, savingsIds, text: text.personal,
   })
-  return { from, to, base, name: profile?.display_name, stmt, notes: statementNotes(stmt, text.personal) }
+  return { from, to, month, base, name: profile?.display_name, stmt, notes: statementNotes(stmt, text.personal) }
+}
+
+// The user's pay months (null with the salary setting off): their paydays'
+// dates and their today, as the server keeps them (my_pay_calendar, 0111).
+// deno-lint-ignore no-explicit-any
+async function readPayCalendar(supabase: any, shift: ReturnType<typeof salaryShiftOf>): Promise<Cal | null> {
+  if (!shift) return null
+  const { data, error } = await supabase.rpc('my_pay_calendar')
+  if (error) throw error
+  return payCalendar(shift, data?.days ?? [], String(data?.today ?? new Date().toISOString().slice(0, 10)))
+}
+
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
+  'October', 'November', 'December']
+
+// The PDF's line under its title: the dates and the currency, or for a month
+// its name and span ("October 2026 · 2026-09-29 – 2026-10-31 · EUR").
+export function statementSpan({ from, to, month, base }: Pick<StatementInput, 'from' | 'to' | 'month' | 'base'>,
+  text: StatementText = STATEMENT_TEXT): string {
+  if (!month) return `${from}  →  ${to}   ·   ${base}`
+  const [y, m] = month.split('-').map(Number)
+  return `${text.personal.payMonth(`${MONTHS[m - 1]} ${y}`, from, to)}   ·   ${base}`
 }
 
 // The file's bytes in `format`. `libs` needs only the builder that format
@@ -125,7 +156,7 @@ function statementXlsx(XLSX: Xlsx, { stmt, base, notes }: StatementInput,
   return new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }))
 }
 
-async function statementPdf(lib: PdfLib, { from, to, base, stmt, notes, name }: StatementInput,
+async function statementPdf(lib: PdfLib, { from, to, month, base, stmt, notes, name }: StatementInput,
   text: StatementText = STATEMENT_TEXT): Promise<Uint8Array> {
   const t = text.personal
   const { rows, totalSpent, totalIncome, net, saved, byCategory, yearly } = stmt
@@ -133,7 +164,7 @@ async function statementPdf(lib: PdfLib, { from, to, base, stmt, notes, name }: 
   // A row whose rate is pending shows its own amount, starred (see the notes).
   const pendingCell = (r: StatementRow) => ({ text: `${money(r.amount, r.currency)} *`, tone: 'muted' as const })
 
-  doc.header(t.title, `${from}  →  ${to}   ·   ${base}`, name)
+  doc.header(t.title, statementSpan({ from, to, month, base }, text), name)
 
   doc.tiles([
     { label: t.income, value: money(totalIncome, base), tone: 'positive' },

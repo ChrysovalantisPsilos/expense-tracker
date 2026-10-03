@@ -32,6 +32,9 @@ struct CategoryPageFigures: Codable, Equatable, Sendable {
     let title: String?
     let text: String?
     let period: HomePeriod?
+    /// The month whose budgets the page reads and edits ('YYYY-MM-01': the
+    /// period's label, this month's for a longer period).
+    let budgetMonth: String?
     let kind: String?
     let name: String?
     let eyebrow: String?
@@ -58,9 +61,10 @@ struct CategoryPageFigures: Codable, Equatable, Sendable {
     /// The uncategorised bucket's id in a link (categoryName.NO_CATEGORY).
     static let uncategorised = "none"
 
-    /// The period a picker value names (this month for nil or an unknown one).
-    static func period(_ value: String?, now: Date, core: BudgeerCore) throws -> JSONValue {
-        try HomeFigures.period(value, now: now, core: core)
+    /// The period a picker value names (this month for nil or an unknown
+    /// one), cut by the pay calendar (`cal`).
+    static func period(_ value: String?, now: Date, cal: JSONValue = .null, core: BudgeerCore) throws -> JSONValue {
+        try HomeFigures.period(value, now: now, cal: cal, core: core)
     }
 
     /// What to read for the page: my_transactions for the category (the
@@ -71,38 +75,40 @@ struct CategoryPageFigures: Codable, Equatable, Sendable {
                         categoryId: none ? nil : categoryId, spread: true)
     }
 
-    /// The month whose budgets the page reads: the period's month, or this month for a longer period.
-    static func budgetMonth(period: JSONValue, now: Date, core: BudgeerCore) throws -> String {
+    /// The month whose budgets the page reads: the period's label
+    /// (periodMonth, never its window's first day), or this month's for a
+    /// longer period.
+    static func budgetMonth(period: JSONValue, now: Date, cal: JSONValue = .null, core: BudgeerCore) throws -> String {
         let month: Bool = try core.call("periods", "isMonthPeriod", [period])
-        if month, let from = period["from"]?.stringValue { return from }
-        return try core.json("dates", "monthRange", [JSDate(now)])["from"]?.stringValue ?? ""
+        let named = month ? period : try core.json("periods", "thisMonthPeriod", [JSDate(now), cal])
+        return try core.call("periods", "periodMonth", [named])
     }
 
     /// - categories: every category, archived ones included (useAllCategories)
     /// - rows: my_transactions(query) for the page
     /// - budgets: my_budgets for budgetMonth
     static func compute(profile: JSONValue, categories: JSONValue, rows: JSONValue, budgets: JSONValue, categoryId: String,
-                        periodValue: String?, now: Date, core: BudgeerCore) throws -> CategoryPageFigures {
-        let period = try period(periodValue, now: now, core: core)
+                        periodValue: String?, now: Date, cal: JSONValue = .null, core: BudgeerCore) throws -> CategoryPageFigures {
+        let period = try period(periodValue, now: now, cal: cal, core: core)
         let none = categoryId == uncategorised
         let category: JSONValue? = none ? nil : categories.arrayValue?.first(where: { $0["id"]?.stringValue == categoryId })
         if !none && category == nil {
             return CategoryPageFigures(found: false, title: core.text("categories:page.notFound"),
-                                       text: core.text("categories:page.notFoundText"), period: nil, kind: nil, name: nil,
+                                       text: core.text("categories:page.notFoundText"), period: nil, budgetMonth: nil,
+                                       kind: nil, name: nil,
                                        eyebrow: nil, look: nil, editable: nil, archived: nil, totalLabel: nil, total: nil,
                                        budget: nil, canEditBudget: nil, budgetMinor: nil, budgetInput: nil, budgetHelp: nil, listTitle: nil,
                                        listSubtitle: nil, rows: nil)
         }
         let base = profile["base_currency"]?.stringValue ?? "EUR"
         let separateYearly = profile["yearly_separate"]?.boolValue ?? false
-        let salaryShift: JSONValue = try core.call("salaryShift", "salaryShiftOf", [profile])
         let head = try core.json("categoryMath", "categoryPageHead", [category ?? .null, none])
         let kind = head["kind"]?.stringValue ?? "expense"
         let from = period["from"] ?? .null
         let to = period["to"] ?? .null
         let window = try core.json("categoryMath", "categoryPeriod", [rows, [
             "categoryId": .string(categoryId), "from": from, "to": to, "baseCurrency": .string(base),
-            "separateYearly": .bool(separateYearly), "salaryShift": salaryShift,
+            "separateYearly": .bool(separateYearly), "cal": cal,
         ] as JSONValue])
         let listed = window["listed"] ?? []
         let total = window["total"] ?? .int(0)
@@ -110,14 +116,17 @@ struct CategoryPageFigures: Codable, Equatable, Sendable {
             "kind": .string(kind), "savings": .bool(category?["is_savings"]?.boolValue ?? false),
             "periodLabel": period["label"] ?? .null, "count": .int(listed.arrayValue?.count ?? 0),
         ] as JSONValue])
-        // Budgets are monthly and expense-only; only this month's cap can change.
-        let thisMonth = try core.json("dates", "monthRange", [JSDate(now)])["from"]?.stringValue
+        // Budgets are monthly and expense-only, keyed by the month's label;
+        // only this month's cap can change.
+        let thisMonth: String = try core.call("periods", "periodMonth",
+                                              [try core.json("periods", "thisMonthPeriod", [JSDate(now), cal])])
+        let budgetMonth = try budgetMonth(period: period, now: now, cal: cal, core: core)
         let month: Bool = try core.call("periods", "isMonthPeriod", [period])
         let hasBudgets = !none && kind == "expense"
         let budget: JSONValue? = hasBudgets && month
             ? budgets.arrayValue?.first(where: { $0["category_id"]?.stringValue == categoryId })
             : nil
-        let canEdit = hasBudgets && from.stringValue == thisMonth
+        let canEdit = hasBudgets && month && budgetMonth == thisMonth
         let budgetMinor = budget?["amount_minor"]
         var line: CategoryBudgetLine?
         if hasBudgets {
@@ -127,11 +136,11 @@ struct CategoryPageFigures: Codable, Equatable, Sendable {
             ] as JSONValue]) as CategoryBudgetLine
         }
         let savingsIds: JSONValue = try core.call("savings", "savingsIdsOf", [categories])
-        let options: JSONValue = ["kind": .string(kind), "baseCurrency": .string(base), "salaryShift": salaryShift,
-                                  "savingsIds": savingsIds]
+        let options: JSONValue = ["kind": .string(kind), "baseCurrency": .string(base), "savingsIds": savingsIds]
         return CategoryPageFigures(
             found: true, title: nil, text: nil,
             period: try period.decode(HomePeriod.self),
+            budgetMonth: budgetMonth,
             kind: kind,
             name: head["name"]?.stringValue,
             eyebrow: head["eyebrow"]?.stringValue,

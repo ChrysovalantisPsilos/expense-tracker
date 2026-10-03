@@ -2800,8 +2800,12 @@ begin
     select count(*) into n from public.my_transactions('expense', m0, (m0 + interval '1 month - 1 day')::date,
                                                         null, null, true) t where t.spread_months = 12;
     if n <> 1 then raise exception 'p_spread did not return the earlier yearly row'; end if;
+    -- The reach-back is one month wider than the spread (0111: a part's pay
+    -- month can be one later than its calendar month; spendRows trims it).
     select count(*) into n from public.my_transactions('expense', (m0 + interval '10 months')::date, null, null, null, true);
-    if n <> 0 then raise exception 'p_spread returned a row past its 12 months'; end if;
+    if n <> 1 then raise exception 'p_spread missed the month after its 12 months'; end if;
+    select count(*) into n from public.my_transactions('expense', (m0 + interval '11 months')::date, null, null, null, true);
+    if n <> 0 then raise exception 'p_spread returned a row past its 13 months'; end if;
 
     -- The source row follows a frequency edit (it predates the rule).
     perform public.save_recurring_rule(rid, jsonb_build_object('frequency', 'monthly'));
@@ -7321,29 +7325,19 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 119. 0109: the month summary counts income as Home does. A salary paid
---      from day D (the salary shift) counts in the next month: last month's
---      late salary is this month's income, this month's late one isn't, an
---      early one stays in its own month. salary_counted_date is the SQL twin
---      of salaryShift.countedDate (D clamped to the month's length) and is
---      closed to clients; the totals carry the salary setting.
+-- 119. 0109, 0111: the month summary counts income by pay month. With the
+--      salary setting on, last month's salary paid from day D opens this
+--      month and is its income; a salary before D stays in its own month;
+--      with the setting off each salary is in its calendar month.
+--      salary_counted_date no longer exists; the totals carry the setting.
 -- ---------------------------------------------------------------------------
 do $$
 declare u1 uuid; sal uuid; food uuid; st jsonb; c jsonb;
-        m0 date := date_trunc('month', current_date)::date;
+        m0 date := date_trunc('month', (now() at time zone 'UTC')::date)::date;
 begin
   begin
-    if public.salary_counted_date('income', '00000000-0000-4000-8000-000000000001', '2026-02-28', 31, '00000000-0000-4000-8000-000000000001') <> '2026-03-01'
-       or public.salary_counted_date('income', '00000000-0000-4000-8000-000000000001', '2026-04-29', 31, '00000000-0000-4000-8000-000000000001') <> '2026-04-29'
-       or public.salary_counted_date('income', '00000000-0000-4000-8000-000000000001', '2026-12-30', 25, '00000000-0000-4000-8000-000000000001') <> '2027-01-01'
-       or public.salary_counted_date('expense', '00000000-0000-4000-8000-000000000001', '2026-09-28', 25, '00000000-0000-4000-8000-000000000001') <> '2026-09-28'
-       or public.salary_counted_date('income', '00000000-0000-4000-8000-000000000002', '2026-09-28', 25, '00000000-0000-4000-8000-000000000001') <> '2026-09-28'
-       or public.salary_counted_date('income', '00000000-0000-4000-8000-000000000001', '2026-09-28', null, '00000000-0000-4000-8000-000000000001') <> '2026-09-28' then
-      raise exception 'salary_counted_date disagrees with countedDate';
-    end if;
-    if has_function_privilege('authenticated', 'public.salary_counted_date(text,uuid,date,int,uuid)', 'execute')
-       or has_function_privilege('anon', 'public.salary_counted_date(text,uuid,date,int,uuid)', 'execute') then
-      raise exception 'salary_counted_date is callable by clients';
+    if to_regprocedure('public.salary_counted_date(text,uuid,date,int,uuid)') is not null then
+      raise exception 'salary_counted_date still exists';
     end if;
 
     u1 := pg_temp.zz_user('aishift');
@@ -7351,9 +7345,9 @@ begin
     insert into public.categories (user_id, name, kind) values (u1, 'ZZ Food', 'expense') returning id into food;
     update public.profiles set ai_month_summary = true, salary_shift_from_day = 25, salary_category_id = sal where id = u1;
     insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
-    values (u1, 'income', sal, 'EUR', 1, (m0 - interval '1 month')::date + 27, public.enc_minor(250000)),  -- last month's 28th: this month's
-           (u1, 'income', sal, 'EUR', 1, (m0 - interval '1 month')::date + 9, public.enc_minor(100000)),   -- last month's 10th: last month's
-           (u1, 'income', sal, 'EUR', 1, m0 + 27, public.enc_minor(260000)),                              -- this month's 28th: next month's
+    values (u1, 'income', sal, 'EUR', 1, (m0 - interval '2 months')::date + 27, public.enc_minor(250000)), -- opens last month
+           (u1, 'income', sal, 'EUR', 1, (m0 - interval '1 month')::date + 27, public.enc_minor(250000)),  -- last month's 28th: opens this month
+           (u1, 'income', sal, 'EUR', 1, (m0 - interval '1 month')::date + 9, public.enc_minor(150000)),   -- last month's 10th: last month's
            (u1, 'expense', food, 'EUR', 1, m0, public.enc_minor(1200));
 
     perform set_config('request.jwt.claims', json_build_object('sub', u1, 'role', 'authenticated')::text, true);
@@ -7361,26 +7355,30 @@ begin
     st := public.my_month_summary(m0);
     execute 'reset role';
     select e into c from jsonb_array_elements(st->'totals'->'categories') e where e->>'id' = sal::text;
-    if c->'totals' is distinct from '[250000, 100000, 0, 0, 0, 0, 0]'::jsonb then
-      raise exception 'salary not counted as Home counts it: %', c;
+    if c->'totals' is distinct from '[250000, 400000, 0, 0, 0, 0, 0]'::jsonb then
+      raise exception 'salary not counted by pay month: %', c;
     end if;
     if st->'totals'->>'salary_category_id' is distinct from sal::text
-       or (st->'totals'->>'salary_shift_from_day')::int is distinct from 25 then
-      raise exception 'totals miss the salary setting: %', st->'totals';
+       or (st->'totals'->>'salary_shift_from_day')::int is distinct from 25
+       or st->'totals'->'window'->>'from' is distinct from to_char((m0 - interval '1 month')::date + 27, 'YYYY-MM-DD') then
+      raise exception 'totals miss the salary setting or the window: %', st->'totals';
     end if;
-    -- Without the shift, each salary is in the month it was paid.
+    -- Without the setting, each salary is in the month it was paid.
     update public.profiles set salary_shift_from_day = null where id = u1;
     execute 'set local role authenticated';
     st := public.my_month_summary(m0);
     execute 'reset role';
     select e into c from jsonb_array_elements(st->'totals'->'categories') e where e->>'id' = sal::text;
-    if c->'totals' is distinct from '[260000, 350000, 0, 0, 0, 0, 0]'::jsonb then
-      raise exception 'unshifted salary wrong: %', c;
+    if c->'totals' is distinct from '[0, 400000, 250000, 0, 0, 0, 0]'::jsonb then
+      raise exception 'calendar salary wrong: %', c;
+    end if;
+    if st->'totals'->'window'->>'from' is distinct from to_char(m0, 'YYYY-MM-DD') then
+      raise exception 'calendar window wrong: %', st->'totals'->'window';
     end if;
     raise exception 'ROLLBACK_OK';
   exception when others then
-    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: month summary counts a late salary in the month it counts for (salary_counted_date, closed to clients)';
-    else update _t set fails = fails + 1, failed = failed || format('FAIL: month summary salary shift — %s', sqlerrm); raise notice 'FAIL: month summary salary shift — %', sqlerrm; end if;
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: month summary counts income by pay month (salary_counted_date gone)';
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: month summary pay months — %s', sqlerrm); raise notice 'FAIL: month summary pay months — %', sqlerrm; end if;
   end;
 end $$;
 
@@ -7468,7 +7466,7 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
--- 121. 0114: start_fresh() wipes the caller's own data and keeps the account.
+-- 127. 0114: start_fresh() wipes the caller's own data and keeps the account.
 --      Closed to anon (and signed_in_recently to every client); refused for
 --      a stale sign-in and for the demo login, with nothing touched; a fresh
 --      run empties the caller's entries, rules, budgets, import rules,
@@ -7684,11 +7682,407 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------------
+-- 121. 0111: pay_month_windows / pay_month_of, the SQL twin of
+--      payCalendar.ts: the same case table as test/payCalendar.test.js (keep
+--      the pair in lockstep). D = 25, paydays and today given explicitly:
+--      payday 29 Sep; November's on 28 Oct; an early one on 3 Nov; a missing
+--      one before and after D; the floor; Dec → Jan; D = 31 in Feb/Apr; the
+--      setting off gives calendar months.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; sal uuid; r record;
+begin
+  begin
+    u := pg_temp.zz_user('paywin');
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Salary', 'income') returning id into sal;
+    update public.profiles set salary_shift_from_day = 25, salary_category_id = sal where id = u;
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u, 'income', sal, 'EUR', 1, '2026-08-28', public.enc_minor(250000)),
+           (u, 'income', sal, 'EUR', 1, '2026-09-29', public.enc_minor(250000));
+
+    -- Payday 29 Sep, today 3 Oct: October 29 Sep → 31 Oct open; September ends 28 Sep.
+    select * into r from public.pay_month_windows(u, '2026-10-01', '2026-10-01', '2026-10-03');
+    if (r.from_date, r.to_date, r.open) is distinct from ('2026-09-29'::date, '2026-10-31'::date, true) then
+      raise exception 'October: %', row_to_json(r);
+    end if;
+    select * into r from public.pay_month_windows(u, '2026-09-01', '2026-09-01', '2026-10-03');
+    if (r.from_date, r.to_date, r.open) is distinct from ('2026-08-28'::date, '2026-09-28'::date, false) then
+      raise exception 'September: %', row_to_json(r);
+    end if;
+    if public.pay_month_of(u, '2026-09-28', '2026-10-03') <> '2026-09-01'
+       or public.pay_month_of(u, '2026-09-29', '2026-10-03') <> '2026-10-01'
+       or public.pay_month_of(u, '2026-09-30', '2026-10-03') <> '2026-10-01' then
+      raise exception 'pay_month_of around the payday';
+    end if;
+    -- The floor: July and August before the first payday are calendar months (August ends the day before it).
+    select * into r from public.pay_month_windows(u, '2026-08-01', '2026-08-01', '2026-10-03');
+    if (r.from_date, r.to_date) is distinct from ('2026-08-01'::date, '2026-08-27'::date) then
+      raise exception 'floor: %', row_to_json(r);
+    end if;
+    -- Missing November salary: provisional on 1 Nov until D, then the fallback re-cut.
+    select * into r from public.pay_month_windows(u, '2026-11-01', '2026-11-01', '2026-11-10');
+    if (r.from_date, r.to_date, r.open) is distinct from ('2026-11-01'::date, '2026-11-30'::date, true) then
+      raise exception 'provisional November: %', row_to_json(r);
+    end if;
+    select * into r from public.pay_month_windows(u, '2026-10-01', '2026-10-01', '2026-11-25');
+    if (r.from_date, r.to_date, r.open) is distinct from ('2026-09-29'::date, '2026-10-24'::date, false) then
+      raise exception 'fallback October: %', row_to_json(r);
+    end if;
+    select * into r from public.pay_month_windows(u, '2026-11-01', '2026-11-01', '2026-11-25');
+    if (r.from_date, r.to_date) is distinct from ('2026-10-25'::date, '2026-11-30'::date) then
+      raise exception 'fallback November: %', row_to_json(r);
+    end if;
+    -- November's salary on 28 Oct closes October on 27 Oct.
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u, 'income', sal, 'EUR', 1, '2026-10-28', public.enc_minor(250000));
+    select * into r from public.pay_month_windows(u, '2026-10-01', '2026-10-01', '2026-11-03');
+    if (r.from_date, r.to_date, r.open) is distinct from ('2026-09-29'::date, '2026-10-27'::date, false) then
+      raise exception 'October closed: %', row_to_json(r);
+    end if;
+    -- An early salary (3 Dec, before D) starts December on the 1st.
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u, 'income', sal, 'EUR', 1, '2026-12-03', public.enc_minor(250000)),
+           (u, 'income', sal, 'EUR', 1, '2026-12-30', public.enc_minor(250000));
+    select * into r from public.pay_month_windows(u, '2026-12-01', '2026-12-01', '2027-01-05');
+    if (r.from_date, r.to_date) is distinct from ('2026-12-01'::date, '2026-12-29'::date) then
+      raise exception 'early December: %', row_to_json(r);
+    end if;
+    -- Dec → Jan: the 30 Dec payday opens January 2027.
+    select * into r from public.pay_month_windows(u, '2027-01-01', '2027-01-01', '2027-01-05');
+    if (r.from_date, r.to_date, r.open) is distinct from ('2026-12-30'::date, '2027-01-31'::date, true)
+       or public.pay_month_of(u, '2026-12-30', '2027-01-05') <> '2027-01-01' then
+      raise exception 'Dec → Jan: %', row_to_json(r);
+    end if;
+    -- Windows are contiguous over the whole run.
+    if exists (select 1 from public.pay_month_windows(u, '2026-06-01', '2027-03-01', '2027-01-05') a
+                 join public.pay_month_windows(u, '2026-06-01', '2027-03-01', '2027-01-05') b
+                   on b.month = (a.month + interval '1 month')::date
+                where b.from_date <> a.to_date + 1 or a.from_date > a.to_date) then
+      raise exception 'windows not contiguous';
+    end if;
+
+    -- D = 31 in February and April.
+    delete from public.transactions where user_id = u;
+    update public.profiles set salary_shift_from_day = 31 where id = u;
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u, 'income', sal, 'EUR', 1, '2026-01-31', public.enc_minor(250000)),
+           (u, 'income', sal, 'EUR', 1, '2026-02-28', public.enc_minor(250000)),
+           (u, 'income', sal, 'EUR', 1, '2026-03-31', public.enc_minor(250000)),
+           (u, 'income', sal, 'EUR', 1, '2026-04-29', public.enc_minor(250000));
+    select * into r from public.pay_month_windows(u, '2026-03-01', '2026-03-01', '2026-05-10');
+    if (r.from_date, r.to_date) is distinct from ('2026-02-28'::date, '2026-03-30'::date) then
+      raise exception 'D=31 March: %', row_to_json(r);
+    end if;
+    select * into r from public.pay_month_windows(u, '2026-04-01', '2026-04-01', '2026-05-10');
+    if (r.from_date, r.to_date) is distinct from ('2026-03-31'::date, '2026-04-30'::date) then
+      raise exception 'D=31 April: %', row_to_json(r);
+    end if;
+    select * into r from public.pay_month_windows(u, '2026-05-01', '2026-05-01', '2026-05-10');
+    if (r.from_date, r.to_date, r.open) is distinct from ('2026-05-01'::date, '2026-05-31'::date, true) then
+      raise exception 'D=31 May: %', row_to_json(r);
+    end if;
+
+    -- The setting off: calendar months, open while they're today's.
+    update public.profiles set salary_shift_from_day = null where id = u;
+    select * into r from public.pay_month_windows(u, '2026-02-01', '2026-02-01', '2026-02-10');
+    if (r.from_date, r.to_date, r.open) is distinct from ('2026-02-01'::date, '2026-02-28'::date, true)
+       or public.pay_month_of(u, '2026-02-28', '2026-03-05') <> '2026-02-01' then
+      raise exception 'setting off: %', row_to_json(r);
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: pay_month_windows / pay_month_of match payCalendar''s case table';
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: pay_month_windows — %s', sqlerrm); raise notice 'FAIL: pay_month_windows — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 122. 0111: pay_days keeps only real paydays (at least half the median
+--      salary): a 40.00 refund in the salary category on 26 Sep doesn't open
+--      October, the 2,500.00 salary does. user_today follows the saved time
+--      zone; save_time_zone refuses a zone Postgres doesn't know, and
+--      clients can't write the column themselves.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; v uuid; sal uuid; d date[]; failed boolean;
+begin
+  begin
+    u := pg_temp.zz_user('paydays');
+    v := pg_temp.zz_user('paydays2');
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Salary', 'income') returning id into sal;
+    update public.profiles set salary_shift_from_day = 25, salary_category_id = sal where id = u;
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u, 'income', sal, 'EUR', 1, '2026-08-28', public.enc_minor(250000)),
+           (u, 'income', sal, 'EUR', 1, '2026-09-26', public.enc_minor(4000)),     -- a refund
+           (u, 'income', sal, 'EUR', 1, '2026-09-29', public.enc_minor(250000));
+    select array_agg(x order by x) into d from public.pay_days(u) x;
+    if d is distinct from array['2026-08-28', '2026-09-29']::date[] then
+      raise exception 'paydays: %', d;
+    end if;
+    if public.pay_month_of(u, '2026-09-27', '2026-10-03') <> '2026-09-01' then
+      raise exception 'the refund opened October';
+    end if;
+    -- The setting off: no paydays at all.
+    update public.profiles set salary_shift_from_day = null where id = u;
+    if exists (select 1 from public.pay_days(u)) then raise exception 'paydays with the setting off'; end if;
+
+    -- user_today: the user's own date. UTC+14 is always a day or two ahead of UTC−11.
+    update public.profiles set time_zone = 'Pacific/Kiritimati' where id = u;
+    update public.profiles set time_zone = 'Pacific/Pago_Pago' where id = v;
+    if public.user_today(u) <= public.user_today(v)
+       or public.user_today(u) <> (now() at time zone 'Pacific/Kiritimati')::date then
+      raise exception 'user_today ignores the time zone';
+    end if;
+    update public.profiles set time_zone = null where id = v;
+    if public.user_today(v) <> (now() at time zone 'UTC')::date then raise exception 'user_today without a zone is not UTC'; end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_time_zone('Europe/Brussels');
+    failed := false;
+    begin
+      perform public.save_time_zone('Mars/Olympus_Mons');
+    exception when others then failed := true;
+    end;
+    if not failed then raise exception 'save_time_zone took an unknown zone'; end if;
+    failed := false;
+    begin
+      update public.profiles set time_zone = 'UTC' where id = v;
+    exception when insufficient_privilege then failed := true;
+    end;
+    execute 'reset role';
+    if not failed then raise exception 'time_zone writable by the client'; end if;
+    if (select time_zone from public.profiles where id = v) is distinct from 'Europe/Brussels' then
+      raise exception 'save_time_zone did not save';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: pay_days keeps real paydays; user_today follows the saved time zone; save_time_zone validates';
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: pay_days / user_today — %s', sqlerrm); raise notice 'FAIL: pay_days / user_today — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 123. 0111: budget alerts by pay month. With the payday today (it opens
+--      next month), an expense paid today counts against next month's cap,
+--      at 80% and at 100%; a yearly payment's part lands in its pay month.
+--      Dates are relative to the server's today (UTC, no zone saved).
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; sal uuid; food uuid; subs uuid; n int; rid uuid;
+        td date := (now() at time zone 'UTC')::date;
+        nm date := (date_trunc('month', (now() at time zone 'UTC')::date) + interval '1 month')::date;
+begin
+  begin
+    u := pg_temp.zz_user('payalert');
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Salary', 'income') returning id into sal;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Food', 'expense') returning id into food;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Subs', 'expense') returning id into subs;
+    update public.profiles set salary_shift_from_day = least(extract(day from td)::int, 28), salary_category_id = sal
+     where id = u;
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u, 'income', sal, 'EUR', 1, (td - interval '1 month')::date, public.enc_minor(250000)),
+           (u, 'income', sal, 'EUR', 1, td, public.enc_minor(250000));
+    if public.current_pay_month(u) <> nm then raise exception 'current pay month %', public.current_pay_month(u); end if;
+    insert into public.budgets (user_id, category_id, amount_enc, currency, period_start)
+    values (u, food, public.enc_minor(10000), 'EUR', nm), (u, subs, public.enc_minor(5000), 'EUR', nm);
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'client_uuid', gen_random_uuid(), 'kind', 'expense', 'category_id', food, 'amount_minor', 8500,
+      'currency', 'EUR', 'spent_at', td)));
+    execute 'reset role';
+    select count(*) into n from public.notifications where user_id = u and title = 'Budget almost used';
+    if n <> 1 then raise exception '80%% alert: %', n; end if;
+    execute 'set local role authenticated';
+    perform public.save_transactions(jsonb_build_array(jsonb_build_object(
+      'client_uuid', gen_random_uuid(), 'kind', 'expense', 'category_id', food, 'amount_minor', 2000,
+      'currency', 'EUR', 'spent_at', td)));
+    execute 'reset role';
+    select count(*) into n from public.notifications where user_id = u and title = 'Budget exceeded';
+    if n <> 1 then raise exception '100%% alert: %', n; end if;
+
+    -- A yearly payment from last month's payday (a yearly rule's charge, so
+    -- spread over 12 months): its next part is next month's (€60 of a €50 cap).
+    execute 'set local role authenticated';
+    rid := public.save_recurring_rule(null, jsonb_build_object('kind', 'expense', 'category_id', subs,
+      'amount_minor', 72000, 'currency', 'EUR', 'frequency', 'yearly', 'next_run', (td + interval '11 months')::date));
+    execute 'reset role';
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc, recurring_rule_id)
+    values (u, 'expense', subs, 'EUR', 1, (td - interval '1 month')::date, public.enc_minor(72000), rid);
+    select count(*) into n from public.notifications
+     where user_id = u and title = 'Budget exceeded' and body like 'ZZ Subs%';
+    if n <> 1 then raise exception 'spread part alert: %', n; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: budget alerts count an expense in its pay month (80%%, 100%%, spread parts)';
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: budget alerts by pay month — %s', sqlerrm); raise notice 'FAIL: budget alerts by pay month — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 124. 0111: the month summary's totals by pay month: an expense paid after
+--      today's payday is next month's, not this month's; the window is
+--      returned, open; my_month_summary takes the current pay month and
+--      refuses the one after it.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; sal uuid; food uuid; tot jsonb; c jsonb; failed boolean;
+        td date := (now() at time zone 'UTC')::date;
+        nm date := (date_trunc('month', (now() at time zone 'UTC')::date) + interval '1 month')::date;
+begin
+  begin
+    u := pg_temp.zz_user('paysum');
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Salary', 'income') returning id into sal;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Food', 'expense') returning id into food;
+    update public.profiles set ai_month_summary = true, salary_shift_from_day = least(extract(day from td)::int, 28),
+                               salary_category_id = sal where id = u;
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u, 'income', sal, 'EUR', 1, (td - interval '1 month')::date, public.enc_minor(250000)),
+           (u, 'income', sal, 'EUR', 1, td, public.enc_minor(250000)),
+           (u, 'expense', food, 'EUR', 1, td, public.enc_minor(3000));
+    tot := public.ai_month_totals(u, nm);
+    select e into c from jsonb_array_elements(tot->'categories') e where e->>'id' = food::text;
+    if c->'totals'->>0 <> '3000' or c->'totals'->>1 <> '0' then raise exception 'expense month: %', c; end if;
+    if tot->'window'->>'from' <> to_char(td, 'YYYY-MM-DD') or (tot->'window'->>'open')::boolean is not true
+       or tot->>'current_month' <> to_char(nm, 'YYYY-MM') or tot->>'last_pay_day' <> to_char(td, 'YYYY-MM-DD') then
+      raise exception 'window: %', tot;
+    end if;
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    if public.my_month_summary(nm)->>'month' <> to_char(nm, 'YYYY-MM') then raise exception 'current pay month refused'; end if;
+    failed := false;
+    begin
+      perform public.my_month_summary((nm + interval '1 month')::date);
+    exception when others then failed := sqlerrm = 'bad month';
+    end;
+    execute 'reset role';
+    if not failed then raise exception 'the month after the current pay month was accepted'; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: month summary totals by pay month, with the window; the guard follows the current pay month';
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: month summary by pay month — %s', sqlerrm); raise notice 'FAIL: month summary by pay month — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 125. 0111 security: my_pay_calendar gives the caller only their own dates
+--      (none for another user, nothing with the setting off), not anon; the
+--      internal functions are closed to anon/authenticated; every new
+--      function pins its search_path.
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; v uuid; sal uuid; cal jsonb; f text;
+begin
+  begin
+    u := pg_temp.zz_user('paycal1');
+    v := pg_temp.zz_user('paycal2');
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Salary', 'income') returning id into sal;
+    update public.profiles set salary_shift_from_day = 25, salary_category_id = sal where id = u;
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u, 'income', sal, 'EUR', 1, '2026-09-29', public.enc_minor(250000));
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    cal := public.my_pay_calendar();
+    execute 'reset role';
+    if cal->'days' <> '["2026-09-29"]'::jsonb or cal->>'today' is null or cal ? 'amounts' then
+      raise exception 'own calendar: %', cal;
+    end if;
+    perform set_config('request.jwt.claims', json_build_object('sub', v, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    cal := public.my_pay_calendar();
+    execute 'reset role';
+    if cal->'days' <> '[]'::jsonb then raise exception 'another user sees: %', cal; end if;
+    update public.profiles set salary_shift_from_day = null where id = u;
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    cal := public.my_pay_calendar();
+    execute 'reset role';
+    if cal->'days' <> '[]'::jsonb then raise exception 'days with the setting off: %', cal; end if;
+
+    if has_function_privilege('anon', 'public.my_pay_calendar()', 'execute')
+       or has_function_privilege('anon', 'public.save_time_zone(text)', 'execute')
+       or not has_function_privilege('authenticated', 'public.my_pay_calendar()', 'execute')
+       or not has_function_privilege('authenticated', 'public.save_time_zone(text)', 'execute') then
+      raise exception 'client grants wrong';
+    end if;
+    foreach f in array array['public.pay_days(uuid)', 'public.pay_month_windows(uuid,date,date,date)',
+                             'public.pay_month_of(uuid,date,date)', 'public.current_pay_month(uuid)',
+                             'public.user_today(uuid)'] loop
+      if has_function_privilege('anon', f, 'execute') or has_function_privilege('authenticated', f, 'execute') then
+        raise exception '% is callable by clients', f;
+      end if;
+    end loop;
+    if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                where n.nspname = 'public'
+                  and p.proname in ('save_time_zone', 'user_today', 'pay_days', 'pay_month_windows', 'pay_month_of',
+                                    'current_pay_month', 'my_pay_calendar', 'ai_month_totals', 'notify_budget_threshold')
+                  and not (p.proconfig @> array['search_path=public, pg_temp'])) then
+      raise exception 'a pay-month function has no pinned search_path';
+    end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: my_pay_calendar is the caller''s own dates only; the pay-month internals are closed and pinned';
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: pay-month security — %s', sqlerrm); raise notice 'FAIL: pay-month security — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- 126. 0111: save_budget without a month writes the current pay month (next
+--      month after today's payday; the calendar month with the setting
+--      off); my_transactions brings a 12-month spread row paid 30 Sep 2026
+--      for a window starting 1 Sep 2027 (its last pay-month part).
+-- ---------------------------------------------------------------------------
+do $$
+declare u uuid; sal uuid; food uuid; n int; ps date;
+        td date := (now() at time zone 'UTC')::date;
+        nm date := (date_trunc('month', (now() at time zone 'UTC')::date) + interval '1 month')::date;
+begin
+  begin
+    u := pg_temp.zz_user('paybudget');
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Salary', 'income') returning id into sal;
+    insert into public.categories (user_id, name, kind) values (u, 'ZZ Food', 'expense') returning id into food;
+    update public.profiles set salary_shift_from_day = least(extract(day from td)::int, 28), salary_category_id = sal
+     where id = u;
+    insert into public.transactions (user_id, kind, category_id, currency, exchange_rate, spent_at, amount_enc)
+    values (u, 'income', sal, 'EUR', 1, (td - interval '1 month')::date, public.enc_minor(250000)),
+           (u, 'income', sal, 'EUR', 1, td, public.enc_minor(250000)),
+           (u, 'expense', food, 'EUR', 1, '2026-09-30', public.enc_minor(12000));
+    update public.transactions set spread_months = 12 where user_id = u and kind = 'expense';
+
+    perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated')::text, true);
+    execute 'set local role authenticated';
+    perform public.save_budget(food, 10000, 'EUR', null);
+    select count(*) into n from public.my_transactions('expense', '2027-09-01', '2027-09-30', null, null, true);
+    execute 'reset role';
+    select period_start into ps from public.budgets where user_id = u and category_id = food;
+    if ps <> nm then raise exception 'save_budget wrote % (expected %)', ps, nm; end if;
+    if n <> 1 then raise exception 'the spread row''s last part was not read (%)', n; end if;
+
+    -- The setting off: the calendar month, as before.
+    update public.profiles set salary_shift_from_day = null where id = u;
+    delete from public.budgets where user_id = u;
+    execute 'set local role authenticated';
+    perform public.save_budget(food, 10000, 'EUR', null);
+    execute 'reset role';
+    select period_start into ps from public.budgets where user_id = u and category_id = food;
+    if ps <> date_trunc('month', current_date)::date then raise exception 'calendar save_budget wrote %', ps; end if;
+    raise exception 'ROLLBACK_OK';
+  exception when others then
+    if sqlerrm = 'ROLLBACK_OK' then update _t set passes = passes + 1; raise notice 'PASS: budgets default to the current pay month; the spread reach-back covers the last pay-month part';
+    else update _t set fails = fails + 1, failed = failed || format('FAIL: pay-month budgets / reach-back — %s', sqlerrm); raise notice 'FAIL: pay-month budgets / reach-back — %', sqlerrm; end if;
+  end;
+end $$;
+
+-- ---------------------------------------------------------------------------
 -- Summary — raises if anything failed or any test didn't reach PASS (so a
 -- skipped test can never count as a pass; CI/psql exit non-zero).
 -- ---------------------------------------------------------------------------
 do $$
-declare expected_tests constant int := 122; f int; p int;  -- tests 1–121 + B-0059
+declare expected_tests constant int := 128; f int; p int;  -- tests 1–127 + B-0059
 begin
   select fails, passes into f, p from _t;
   -- The failures' own messages too: the SQL Editor shows only this error, not the notices.

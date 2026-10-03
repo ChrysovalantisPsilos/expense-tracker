@@ -5,15 +5,16 @@
 // Entries are income rows in the salary category (net pay, what reaches the
 // bank; planMath.salaryCategoryId) and the Bonus category. Money is in minor
 // units of the base currency (toBaseMinor at each entry's captured rate).
-// Months are 'YYYY-MM' keys; a salary paid late in the month counts for the
-// next one when the salary shift is on (shared/lib/salaryShift.js).
+// Months are 'YYYY-MM' keys; with pay months (`cal`, shared/lib/
+// payCalendar.js) every entry counts in its pay month: a salary paid 29 Sep
+// that opens October is October's.
 //
 // The user's corrections are one document per account (0102,
 // my_salary_history), kept as `notes`:
 //   { v: 1, fixes: { '<entry id>': 'regular' | 'holiday' | 'thirteenth' |
 //     'bonus' }, bonus_category_id?: id | null, country?: 'BE' | 'GR' }
 import { toBaseMinor } from '../../shared/lib/currency.js'
-import { countedDate } from '../../shared/lib/salaryShift.js'
+import { payMonthOf } from '../../shared/lib/payCalendar.js'
 import { COUNTRIES, addMonths } from '../vouchers/voucherMath.js'
 
 export { COUNTRIES }
@@ -72,7 +73,6 @@ const THIRTEENTH_MONTHS = [12]
 const INDEXATION_YEARS = 3
 const SINCE_CHOICES = 4
 
-export const monthOf = (iso) => iso.slice(0, 7)
 export const yearOf = (key) => Number(key.slice(0, 4))
 export const monthNum = (key) => Number(key.slice(5, 7))
 export const monthsBetween = (a, b) => (yearOf(b) - yearOf(a)) * 12 + monthNum(b) - monthNum(a)
@@ -138,13 +138,14 @@ export const salaryEntryIds = (entries, salaryId, bonusId) =>
 
 // ── Regular pay and extras ───────────────────────────────────────────────────
 // Each month's regular pay and the extras, from the entries. The month is the
-// one a payment counts for (the salary shift moves a late salary to the next).
+// one a payment counts in (its pay month with `cal`).
 //   - the regular payment is the salary payment closest to the pay so far
 //     (the largest in the first month);
 //   - one payment ≥ LUMP_MIN × the pay in May/June/December is split: the pay,
 //     and the rest as an extra "inside that month's pay";
 //   - another salary payment ≥ EXTRA_MIN × the pay is an extra, guessed from
-//     the month it was paid in (May/June holiday pay, December 13th month,
+//     the month it counts in (May/June holiday pay, December 13th month —
+//     a 13th month paid 28 Nov with December's salary is December's —
 //     else bonus); a smaller one is part of the regular pay;
 //   - every Bonus-category entry is a bonus (not a guess);
 //   - `fixes` (the user's corrections, by entry id) always win: 'regular'
@@ -154,12 +155,12 @@ export const salaryEntryIds = (entries, salaryId, bonusId) =>
 // last (a month with no pay has regular 0), extras: [{ id, date, key, kind,
 // minor, guess, fixed, inPay, description }] } — plus `regularFixed`, the
 // entries the user counted as pay, so they can change their mind.
-export function splitPay(entries, { salaryId, bonusId = null, currency, fixes = {}, shift = null }) {
+export function splitPay(entries, { salaryId, bonusId = null, currency, fixes = {}, cal = null }) {
   const byMonth = new Map()
   for (const r of entries) {
     if (r.kind !== 'income' || !r.category_id) continue
     if (r.category_id !== salaryId && r.category_id !== bonusId) continue
-    const key = monthOf(countedDate(r, shift))
+    const key = payMonthOf(r.spent_at, cal)
     const row = { ...r, minor: toBaseMinor(Number(r.amount_minor), r.exchange_rate ?? 1, r.currency, currency) }
     if (!byMonth.has(key)) byMonth.set(key, [])
     byMonth.get(key).push(row)
@@ -177,7 +178,7 @@ export function splitPay(entries, { salaryId, bonusId = null, currency, fixes = 
   const regularFixed = []
   let level = null
   const extra = (r, kind, minor, { guess = false, inPay = false } = {}) => extras.push({
-    id: r.id, date: r.spent_at, key: monthOf(countedDate(r, shift)), kind, minor, guess,
+    id: r.id, date: r.spent_at, key: payMonthOf(r.spent_at, cal), kind, minor, guess,
     fixed: !!fixes[r.id], inPay, description: r.description ?? null,
   })
   for (const key of keys) {
@@ -188,7 +189,7 @@ export function splitPay(entries, { salaryId, bonusId = null, currency, fixes = 
     let regular = 0
     for (const r of rows) {
       const fix = fixes[r.id]
-      const kind = guessKind(monthNum(r.spent_at))
+      const kind = guessKind(monthNum(key))
       const lump = r === main && level != null && kind !== 'bonus' && r.minor >= level * LUMP_MIN
       if (fix === 'regular') { regular += r.minor; regularFixed.push({ id: r.id, date: r.spent_at, key, minor: r.minor, description: r.description ?? null }); continue }
       if (lump) {
@@ -457,10 +458,10 @@ export function offMonths(rows, max = 3) {
 // { months, extras, regularFixed, steps, raises, level (the latest pay),
 //   lastRaise (the latest rise), since (months since it), average, years,
 //   ratios, paidMonths }
-export function salaryReport(entries, { salaryId, bonusId, currency, notes, shift, nowKey }) {
+export function salaryReport(entries, { salaryId, bonusId, currency, notes, cal = null, nowKey }) {
   if (!salaryId) return null
   const fixes = normaliseNotes(notes).fixes
-  const { months, extras, regularFixed } = splitPay(entries, { salaryId, bonusId, currency, fixes, shift })
+  const { months, extras, regularFixed } = splitPay(entries, { salaryId, bonusId, currency, fixes, cal })
   if (!months.length) return null
   const { steps, raises } = payLevels(months)
   if (!steps.length) return null

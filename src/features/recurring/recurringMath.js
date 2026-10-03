@@ -6,7 +6,6 @@ import { formatMoney, toBaseMinor } from '../../shared/lib/currency.js'
 import { shortDate } from '../../shared/lib/dates.js'
 import { isMonthPeriod, isPastPeriod } from '../../shared/lib/periods.js'
 import { missingRatesNote, ruleInBase, rulesInBase } from '../../shared/lib/ruleFx.js'
-import { countedDate } from '../../shared/lib/salaryShift.js'
 import { isSavingsRow } from '../../shared/lib/savings.js'
 import { entryName } from '../../shared/lib/categoryName.js'
 import { categoryLook } from '../../shared/lib/categoryStyle.js'
@@ -121,9 +120,9 @@ export function monthlyBudgetShare(rule) {
 // A yearly expense counts only its monthly parts that fall in the window, as
 // its charge will once it's made (shared/lib/spread.js) — or nothing at all
 // with `separateYearly` (the user keeps yearly subscriptions separate, 0068).
-// `salaryShift` (0081): an upcoming salary due from day D counts on the 1st of
-// the next month, so one due 30 Sep isn't in September's projection.
-export function expectedInWindow(rules, fromISO, toISO, separateYearly = false, salaryShift = null) {
+// `cal` (pay months, payCalendar.js) places a yearly charge's parts in pay
+// months, as spendRows will; every other charge counts on its own date.
+export function expectedInWindow(rules, fromISO, toISO, separateYearly = false, cal = null) {
   if (!fromISO || !toISO) return { expense: 0, income: 0 }
   let expense = 0
   let income = 0
@@ -135,10 +134,10 @@ export function expectedInWindow(rules, fromISO, toISO, separateYearly = false, 
     while (d <= toISO && (!r.end_date || d <= r.end_date) && guard < 500) {
       const n = ruleSpreadMonths(r)
       if (n) {
-        spreadDates(d, n).forEach((p, i) => {
+        spreadDates(d, n, cal).forEach((p, i) => {
           if (p >= fromISO && p <= toISO) expense += spreadPart(r.amount_minor, n, i)
         })
-      } else if (d >= fromISO && countedDate({ ...r, spent_at: d }, salaryShift) <= toISO) {
+      } else if (d >= fromISO) {
         if (r.kind === 'income') income += r.amount_minor
         else expense += r.amount_minor
       }

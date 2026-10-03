@@ -7,6 +7,13 @@
       "salary_shift_from_day": 25,
       "salary_category_id": "11111111-1111-4111-8111-111111111111"
     },
+    "payDays": [
+      "2020-04-28",
+      "2020-05-28",
+      "2020-06-26",
+      "2020-07-28",
+      "2020-08-27"
+    ],
     "categories": [
       {
         "id": "22222222-2222-4222-8222-222222222222",
@@ -278,11 +285,17 @@
         "kind": null,
         "period": {
           "value": "m:2020-9",
-          "from": "2020-09-01",
+          "key": "2020-09",
+          "from": "2020-08-27",
           "to": "2020-09-30",
+          "open": true,
           "labels": {
             "en": "September 2020",
             "el": "Σεπτέμβριος 2020"
+          },
+          "ranges": {
+            "en": "from 27 Aug",
+            "el": "από 27 Αυγ"
           }
         },
         "text": ""
@@ -292,11 +305,17 @@
         "kind": "expense",
         "period": {
           "value": "m:2020-9",
-          "from": "2020-09-01",
+          "key": "2020-09",
+          "from": "2020-08-27",
           "to": "2020-09-30",
+          "open": true,
           "labels": {
             "en": "September 2020",
             "el": "Σεπτέμβριος 2020"
+          },
+          "ranges": {
+            "en": "from 27 Aug",
+            "el": "από 27 Αυγ"
           }
         },
         "text": ""
@@ -306,11 +325,17 @@
         "kind": null,
         "period": {
           "value": "m:2020-9",
-          "from": "2020-09-01",
+          "key": "2020-09",
+          "from": "2020-08-27",
           "to": "2020-09-30",
+          "open": true,
           "labels": {
             "en": "September 2020",
             "el": "Σεπτέμβριος 2020"
+          },
+          "ranges": {
+            "en": "from 27 Aug",
+            "el": "από 27 Αυγ"
           }
         },
         "text": "music"
@@ -321,7 +346,7 @@
     "en": {
       "all": {
         "title": "All transactions",
-        "subtitle": "September 2020 · 10 entries",
+        "subtitle": "September 2020 · from 27 Aug · 10 entries",
         "firstRun": false,
         "days": [
           {
@@ -347,7 +372,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "€42.50",
                 "tone": "default",
                 "approx": null,
@@ -377,7 +401,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "€18.99",
                 "tone": "default",
                 "approx": null,
@@ -410,7 +433,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "€36.00",
                 "tone": "default",
                 "approx": null,
@@ -445,7 +467,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "$25.00",
                 "tone": "default",
                 "approx": "≈ €22.81",
@@ -478,7 +499,6 @@
                 "group": "Lisbon trip",
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "€22.00",
                 "tone": "default",
                 "approx": null,
@@ -510,7 +530,6 @@
                 "group": null,
                 "repeats": "Repeats every month",
                 "spread": null,
-                "countsFor": null,
                 "amount": "€12.99",
                 "tone": "default",
                 "approx": null,
@@ -542,7 +561,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "€120.00",
                 "tone": "default",
                 "approx": null,
@@ -574,7 +592,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "+€300.00",
                 "tone": "positive",
                 "approx": null,
@@ -606,7 +623,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": "€8.00/month over 12 months",
-                "countsFor": null,
                 "amount": "€96.00",
                 "tone": "default",
                 "approx": null,
@@ -639,7 +655,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": "Counts for September",
                 "amount": "+€2,500.00",
                 "tone": "positive",
                 "approx": null,
@@ -664,6 +679,46 @@
             "tone": "positive"
           },
           "days": [
+            {
+              "key": "2020-08-27",
+              "label": "27 Aug",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-28",
+              "label": "28 Aug",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-29",
+              "label": "29 Aug",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-30",
+              "label": "30 Aug",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-31",
+              "label": "31 Aug",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
             {
               "key": "2020-09-01",
               "label": "1",
@@ -910,7 +965,7 @@
       },
       "expenses": {
         "title": "Expenses",
-        "subtitle": "September 2020 · 8 entries",
+        "subtitle": "September 2020 · from 27 Aug · 8 entries",
         "firstRun": false,
         "days": [
           {
@@ -936,7 +991,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "€42.50",
                 "tone": "default",
                 "approx": null,
@@ -966,7 +1020,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "€18.99",
                 "tone": "default",
                 "approx": null,
@@ -999,7 +1052,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "€36.00",
                 "tone": "default",
                 "approx": null,
@@ -1034,7 +1086,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "$25.00",
                 "tone": "default",
                 "approx": "≈ €22.81",
@@ -1067,7 +1118,6 @@
                 "group": "Lisbon trip",
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "€22.00",
                 "tone": "default",
                 "approx": null,
@@ -1099,7 +1149,6 @@
                 "group": null,
                 "repeats": "Repeats every month",
                 "spread": null,
-                "countsFor": null,
                 "amount": "€12.99",
                 "tone": "default",
                 "approx": null,
@@ -1131,7 +1180,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "€120.00",
                 "tone": "default",
                 "approx": null,
@@ -1163,7 +1211,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": "€8.00/month over 12 months",
-                "countsFor": null,
                 "amount": "€96.00",
                 "tone": "default",
                 "approx": null,
@@ -1181,6 +1228,46 @@
           "income": null,
           "net": null,
           "days": [
+            {
+              "key": "2020-08-27",
+              "label": "27 Aug",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-28",
+              "label": "28 Aug",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-29",
+              "label": "29 Aug",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-30",
+              "label": "30 Aug",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-31",
+              "label": "31 Aug",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
             {
               "key": "2020-09-01",
               "label": "1",
@@ -1453,7 +1540,6 @@
                 "group": null,
                 "repeats": "Repeats every month",
                 "spread": null,
-                "countsFor": null,
                 "amount": "€12.99",
                 "tone": "default",
                 "approx": null,
@@ -1485,7 +1571,7 @@
     "el": {
       "all": {
         "title": "Όλες οι κινήσεις",
-        "subtitle": "Σεπτέμβριος 2020 · 10 καταχωρίσεις",
+        "subtitle": "Σεπτέμβριος 2020 · από 27 Αυγ · 10 καταχωρίσεις",
         "firstRun": false,
         "days": [
           {
@@ -1511,7 +1597,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "42,50 €",
                 "tone": "default",
                 "approx": null,
@@ -1541,7 +1626,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "18,99 €",
                 "tone": "default",
                 "approx": null,
@@ -1574,7 +1658,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "36,00 €",
                 "tone": "default",
                 "approx": null,
@@ -1609,7 +1692,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "25,00 $",
                 "tone": "default",
                 "approx": "≈ 22,81 €",
@@ -1642,7 +1724,6 @@
                 "group": "Lisbon trip",
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "22,00 €",
                 "tone": "default",
                 "approx": null,
@@ -1674,7 +1755,6 @@
                 "group": null,
                 "repeats": "Επαναλαμβάνεται κάθε μήνα",
                 "spread": null,
-                "countsFor": null,
                 "amount": "12,99 €",
                 "tone": "default",
                 "approx": null,
@@ -1706,7 +1786,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "120,00 €",
                 "tone": "default",
                 "approx": null,
@@ -1738,7 +1817,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "+300,00 €",
                 "tone": "positive",
                 "approx": null,
@@ -1770,7 +1848,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": "8,00 €/μήνα για 12 μήνες",
-                "countsFor": null,
                 "amount": "96,00 €",
                 "tone": "default",
                 "approx": null,
@@ -1803,7 +1880,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": "Στα έσοδα Σεπτεμβρίου",
                 "amount": "+2.500,00 €",
                 "tone": "positive",
                 "approx": null,
@@ -1828,6 +1904,46 @@
             "tone": "positive"
           },
           "days": [
+            {
+              "key": "2020-08-27",
+              "label": "27 Αυγ",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-28",
+              "label": "28 Αυγ",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-29",
+              "label": "29 Αυγ",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-30",
+              "label": "30 Αυγ",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-31",
+              "label": "31 Αυγ",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
             {
               "key": "2020-09-01",
               "label": "1",
@@ -2074,7 +2190,7 @@
       },
       "expenses": {
         "title": "Έξοδα",
-        "subtitle": "Σεπτέμβριος 2020 · 8 καταχωρίσεις",
+        "subtitle": "Σεπτέμβριος 2020 · από 27 Αυγ · 8 καταχωρίσεις",
         "firstRun": false,
         "days": [
           {
@@ -2100,7 +2216,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "42,50 €",
                 "tone": "default",
                 "approx": null,
@@ -2130,7 +2245,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "18,99 €",
                 "tone": "default",
                 "approx": null,
@@ -2163,7 +2277,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "36,00 €",
                 "tone": "default",
                 "approx": null,
@@ -2198,7 +2311,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "25,00 $",
                 "tone": "default",
                 "approx": "≈ 22,81 €",
@@ -2231,7 +2343,6 @@
                 "group": "Lisbon trip",
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "22,00 €",
                 "tone": "default",
                 "approx": null,
@@ -2263,7 +2374,6 @@
                 "group": null,
                 "repeats": "Επαναλαμβάνεται κάθε μήνα",
                 "spread": null,
-                "countsFor": null,
                 "amount": "12,99 €",
                 "tone": "default",
                 "approx": null,
@@ -2295,7 +2405,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": null,
-                "countsFor": null,
                 "amount": "120,00 €",
                 "tone": "default",
                 "approx": null,
@@ -2327,7 +2436,6 @@
                 "group": null,
                 "repeats": null,
                 "spread": "8,00 €/μήνα για 12 μήνες",
-                "countsFor": null,
                 "amount": "96,00 €",
                 "tone": "default",
                 "approx": null,
@@ -2345,6 +2453,46 @@
           "income": null,
           "net": null,
           "days": [
+            {
+              "key": "2020-08-27",
+              "label": "27 Αυγ",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-28",
+              "label": "28 Αυγ",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-29",
+              "label": "29 Αυγ",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-30",
+              "label": "30 Αυγ",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
+            {
+              "key": "2020-08-31",
+              "label": "31 Αυγ",
+              "bar": 0,
+              "today": false,
+              "future": false,
+              "spoken": null
+            },
             {
               "key": "2020-09-01",
               "label": "1",
@@ -2617,7 +2765,6 @@
                 "group": null,
                 "repeats": "Επαναλαμβάνεται κάθε μήνα",
                 "spread": null,
-                "countsFor": null,
                 "amount": "12,99 €",
                 "tone": "default",
                 "approx": null,

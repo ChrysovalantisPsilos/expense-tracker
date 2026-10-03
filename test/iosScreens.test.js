@@ -28,8 +28,11 @@ test('ios ledger fixture: the list folds in the web\'s rules', () => {
   assert.equal(all.a5.group, 'Lisbon trip')
   assert.equal(all.a6.repeats, 'Repeats every month')
   assert.equal(all.a9.spread, '€8.00/month over 12 months')
-  assert.equal(all.b1.countsFor, 'Counts for September')
+  // The pay month's payday is in it, on its real day.
   assert.equal(all.b1.amount, '+€2,500.00')
+  assert.equal(en.all.subtitle, 'September 2020 · from 27 Aug · 10 entries')
+  assert.equal(en.all.pulse.days.length, 35)
+  assert.equal(en.all.pulse.days[0].label, '27 Aug')
   // By day, newest first: what each day spent (nothing on a day of income only).
   assert.deepEqual(en.all.days.slice(0, 2).map((d) => [d.title, d.spent]), [['Yesterday', '€42.50 spent'], ['12 Sep', '€18.99 spent']])
   assert.equal(en.all.days.find((d) => d.title === '2 Sep').spent, null)
@@ -126,8 +129,9 @@ test('ios plan fixture: the committed file is what the web\'s functions give', (
 test('ios plan fixture: the reads, the header, the rows, the changes, the derived salary, the payments', () => {
   const { start, changes, derived, payments } = committed('plan').expected.en
   assert.deepEqual(start.reads, {
-    // The salary shift (from the 25th) reaches back for June's salary.
-    income: { from: '2020-05-25', to: '2020-08-31' }, charges: { from: '2020-04-01', to: '2020-09-30' },
+    // Pay months: the completed ones (June, before the first payday, a
+    // calendar month; July and August), to the day before September's payday.
+    income: { from: '2020-06-01', to: '2020-08-25' }, charges: { from: '2020-04-01', to: '2020-09-30' },
     budgetMonths: ['2020-07-01', '2020-08-01', '2020-09-01'],
   })
   assert.deepEqual(start.parts.ideas.cards.map((c) => c.kind), ['overlap', 'priceUp', 'biggest'])

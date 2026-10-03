@@ -20,13 +20,12 @@ import Figure from '../../shared/ui/kit/Figure.jsx'
 import ProgressRow from '../../shared/ui/kit/ProgressRow.jsx'
 import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { formatMoney, minorToInput } from '../../shared/lib/currency.js'
-import { monthRange } from '../../shared/lib/dates.js'
 import { useAsyncSubmit } from '../../shared/lib/useAsyncSubmit.js'
 import { useUnsavedForm } from '../../shared/lib/useUnsavedForm.js'
 import TransactionList from '../transactions/TransactionList.jsx'
 import { listHeading } from '../transactions/listHeading.js'
-import { useTransactions, useOldestTransactionDate, useNewestCountedDate } from '../../shared/lib/transactions.js'
-import { buildPeriods, isMonthPeriod, withPeriod } from '../../shared/lib/periods.js'
+import { useTransactions, useOldestTransactionDate } from '../../shared/lib/transactions.js'
+import { buildPeriods, isMonthPeriod, periodMonth, thisMonthPeriod, withPeriod } from '../../shared/lib/periods.js'
 import { NO_CATEGORY, categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { useMonthBudgets, editBudget, deleteBudget } from '../budgets/budgets.js'
 import { budgetChange } from '../budgets/budgetMath.js'
@@ -51,8 +50,8 @@ export default function CategoryPage() {
   const { id } = useParams()
   const [params, setParams] = useSearchParams()
   const location = useLocation()
-  const { baseCurrency = 'EUR', separateYearly, salaryShift } = useProfile()
-  const { categoryId, period } = parseCategoryRoute(id, params)
+  const { baseCurrency = 'EUR', separateYearly, payCalendar: cal } = useProfile()
+  const { categoryId, period } = parseCategoryRoute(id, params, new Date(), cal)
   const uncategorised = categoryId === NO_CATEGORY
 
   const cats = useAllCategories()
@@ -63,9 +62,8 @@ export default function CategoryPage() {
 
   const [oldest, recheckOldest] = useOldestTransactionDate()
   useEffect(recheckOldest, [recheckOldest])
-  const newest = useNewestCountedDate()
   const periods = useMemo(
-    () => withPeriod(buildPeriods(oldest, new Date(), { newestISO: newest }), period), [oldest, newest, period])
+    () => withPeriod(buildPeriods(oldest, new Date(), { cal }), period), [oldest, cal, period])
 
   // A real category is filtered server-side (and has one kind); the
   // uncategorised bucket is refined by categoryPeriod.
@@ -75,8 +73,8 @@ export default function CategoryPage() {
     from: period.from ?? undefined, to: period.to ?? undefined, spread: true,
   })
   const { listed, total } = useMemo(() => categoryPeriod(txns.rows, {
-    categoryId, from: period.from, to: period.to, baseCurrency, separateYearly, salaryShift,
-  }), [txns.rows, categoryId, period.from, period.to, baseCurrency, separateYearly, salaryShift])
+    categoryId, from: period.from, to: period.to, baseCurrency, separateYearly, cal,
+  }), [txns.rows, categoryId, period.from, period.to, baseCurrency, separateYearly, cal])
   const paged = usePaged(listed, 10, period.value)
   const listHead = listHeading({
     kind: kind ?? 'expense', savings: !!category?.is_savings,
@@ -86,12 +84,13 @@ export default function CategoryPage() {
   // Budgets are monthly and expense-only. Past months are shown as they
   // were; only this month's cap can be changed (edit_budget's carry-over
   // copies it forward, so editing an old month would rewrite later ones).
-  const thisMonth = monthRange().from
+  // Budgets are keyed by the month's label (periodMonth), never its window.
+  const thisMonth = periodMonth(thisMonthPeriod(new Date(), cal))
   const month = isMonthPeriod(period)
   const hasBudgets = !uncategorised && kind === 'expense'
-  const budgets = useMonthBudgets(month ? period.from : thisMonth)
+  const budgets = useMonthBudgets(month ? periodMonth(period) : thisMonth)
   const budget = hasBudgets && month ? budgets.rows.find((b) => b.category_id === categoryId) ?? null : null
-  const canEditBudget = hasBudgets && period.from === thisMonth
+  const canEditBudget = hasBudgets && periodMonth(period) === thisMonth
 
   const [editing, setEditing] = useState(() => !!location.state?.edit)
   const [focusBudget, setFocusBudget] = useState(false)
