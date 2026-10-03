@@ -262,9 +262,15 @@ test('whatsNewList: the releases with pages, newest first, dated and worded', ()
 
 test('the recent releases: their pages, and the actions and words that matter', () => {
   const release = (id) => inEnglish(RELEASES.find((x) => x.id === id))
-  // This release (2026-10-06): the iPad, and the entry's category box
-  // (opens Transactions).
-  const r6 = inEnglish(RELEASES[0])
+  // This release (2026-10-07): the iPhone app's fixes, Home's month and the
+  // group picture's emoji.
+  const r7 = inEnglish(RELEASES[0])
+  assert.equal(r7.id, '2026-10-07')
+  assert.deepEqual(r7.pages.map((p) => p.id), ['fixes'])
+  assert.match(r7.pages[0].body, /emoji now fit/)
+
+  // 2026-10-06: the iPad, and the entry's category box (opens Transactions).
+  const r6 = release('2026-10-06')
   assert.equal(r6.id, '2026-10-06')
   assert.deepEqual(r6.pages.map((p) => p.action?.to), [undefined, '/transactions'])
   assert.match(r6.pages[0].body, /iPad layout/)

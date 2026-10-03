@@ -8,6 +8,13 @@ export default {
     counter: 'New · {{page}} of {{pages}} · {{day}}',
   },
   releases: {
+    '2026-10-07': {
+      fixes: {
+        title: 'Fixes in the iPhone app',
+        body: 'Home always shows This month with what you spent, your income and your net, even with years of entries. When you pick a group’s picture, the emoji now fit inside the box.',
+        chips: { month: 'This month', emoji: 'Group picture' },
+      },
+    },
     '2026-10-06': {
       ipad: {
         title: 'Budgeer on iPad',
