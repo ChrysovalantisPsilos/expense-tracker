@@ -6,6 +6,7 @@ import { MERCHANTS_MAX } from '../../../supabase/functions/_shared/aiHelper.ts'
 import { minorToInput } from '../../shared/lib/currency.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { monthName } from '../../shared/lib/dates.js'
+import { payMonthOf } from '../../shared/lib/payCalendar.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 
 // The four helpers: the profile switch (0103, 0105) behind each.
@@ -28,8 +29,10 @@ export function helpersOn(profile) {
     .map(([id, column]) => [id, profile?.[column] === true]))
 }
 
-// The first of the month of a local date 'YYYY-MM-DD'.
-export const monthStartOf = (iso) => `${iso.slice(0, 7)}-01`
+// The month a local date 'YYYY-MM-DD' counts in, as its 1st: its pay month
+// with pay months on (`cal`, payCalendar.js: 29 Sep after payday asks for
+// October), else its calendar month.
+export const monthStartOf = (iso, cal = null) => `${payMonthOf(iso, cal)}-01`
 
 // A category id → the name the app shows for it (categoryDisplayName),
 // sent so a default category is named in the app's language; the server

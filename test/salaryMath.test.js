@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { payCalendar } from '../src/shared/lib/payCalendar.js'
 import { NET_SHARE, netRate,
   INFLATION, INFLATION_LATEST, inflationRate, defaultCountry, splitPay, payLevels, raiseKind, averageRaise,
   yearTotals, priceRise, sinceChoices, vsInflation, indexationRate, extraRatios, project, projections,
@@ -164,18 +165,20 @@ test('corrections win: "not an extra", another kind, a split payment keeps its s
   assert.equal(months.find((m) => m.key === '2025-12').regular, 200000)
 })
 
-test('the salary shift: pay from day D counts for the next month', () => {
-  const shift = { fromDay: 25, categoryId: SAL }
+test('pay months: every payment counts in its pay month, and the guess reads that month', () => {
   const rows = [pay('2025-12-28', 2000), pay('2026-01-27', 2000), pay('2026-02-26', 2100), pay('2026-03-27', 2100)]
-  const { months } = splitPay(rows, opts({ shift }))
+  const cal = payCalendar({ fromDay: 25, categoryId: SAL }, rows.map((r) => r.spent_at), '2026-04-10')
+  const { months } = splitPay(rows, opts({ cal }))
   assert.deepEqual(months.map((m) => m.key), ['2026-01', '2026-02', '2026-03', '2026-04'])
-  const r = salaryReport(rows, { ...opts(), shift, nowKey: '2026-04' })
+  const r = salaryReport(rows, { ...opts(), cal, nowKey: '2026-04' })
   assert.deepEqual(r.raises.map((x) => x.key), ['2026-03'])
   // Off: the same payments count where they were paid.
   assert.deepEqual(splitPay(rows, opts()).months.map((m) => m.key), ['2025-12', '2026-01', '2026-02', '2026-03'])
-  // The guess reads the month it was paid: a 13th month on 28 Dec shifted into January.
-  const dec = [...rows, pay('2025-12-29', 2000)]
-  assert.equal(splitPay(dec, opts({ shift })).extras[0].kind, 'thirteenth')
+  // A 13th month paid on 28 Nov with December's salary is December's.
+  const nov = [pay('2025-10-28', 2000), pay('2025-11-28', 2000), pay('2025-11-28', 2000, { id: 'thirteenth' })]
+  const decCal = payCalendar({ fromDay: 25, categoryId: SAL }, ['2025-10-28', '2025-11-28'], '2025-12-10')
+  assert.deepEqual(splitPay(nov, opts({ cal: decCal })).extras.map((e) => [e.key, e.kind]), [['2025-12', 'thirteenth']])
+  assert.deepEqual(splitPay(nov, opts()).extras.map((e) => [e.key, e.kind]), [['2025-11', 'bonus']])
 })
 
 test('entries in another currency count at their captured rate', () => {

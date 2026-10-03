@@ -10,7 +10,8 @@ import { t } from '../../shared/lib/i18n/i18n.js'
 import { NO_CATEGORY, byDisplayName, categoryDisplayName, entryName } from '../../shared/lib/categoryName.js'
 import { categoryPath } from '../../shared/lib/categoryLinks.js'
 import { shortDate } from '../../shared/lib/dates.js'
-import { periodFromValue, thisMonthPeriod } from '../../shared/lib/periods.js'
+import { periodFromValue, periodMonth, thisMonthPeriod } from '../../shared/lib/periods.js'
+import { payMonthOf } from '../../shared/lib/payCalendar.js'
 import { categoryIconKey } from '../../shared/lib/categoryStyle.js'
 import { formatMoney } from '../../shared/lib/currency.js'
 import { budgetPercent, budgetTone, carriedLabel } from '../budgets/budgetMath.js'
@@ -92,17 +93,17 @@ export function categoryPatch(category, { name, icon, color, savings = false }) 
 //            yearly subscription paid earlier isn't listed)
 //   total  — base-currency minor units counted in the period: a spread
 //            yearly subscription counts its monthly parts (or nothing when
-//            `separateYearly`), and a salary paid late in the month counts
-//            toward the next (`salaryShift`), exactly as the budget bars and
-//            Home count it
+//            `separateYearly`; by pay month with `cal`), exactly as the
+//            budget bars and Home count it — the list and the total share
+//            one window
 // `categoryId` NO_CATEGORY keeps personal rows with no category (group
 // shares bucket under their group instead); any other id keeps that
 // category's rows.
-export function categoryPeriod(rows, { categoryId, from, to, baseCurrency, separateYearly = false, salaryShift = null }) {
+export function categoryPeriod(rows, { categoryId, from, to, baseCurrency, separateYearly = false, cal = null }) {
   const mine = (rows ?? []).filter((r) => (categoryId === NO_CATEGORY
     ? !r.category_id && !r.group_expense_id
     : r.category_id === categoryId))
-  const total = spendRows(mine, baseCurrency, from, to, { separateYearly, salaryShift })
+  const total = spendRows(mine, baseCurrency, from, to, { separateYearly, cal })
     .reduce((sum, r) => sum + toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency), 0)
   return { listed: paidInWindow(mine, from, to), total }
 }
@@ -142,7 +143,7 @@ export function categoryBudget({ budget, spent, month, canEdit, period, baseCurr
       percent: budgetPercent(spent, cap),
       tone: budgetTone(spent, cap) ?? null,
       over: spent > cap,
-      carried: budget.period_start < period.from ? carriedLabel(budget.period_start, period.from) : null,
+      carried: budget.period_start < periodMonth(period) ? carriedLabel(budget.period_start, periodMonth(period)) : null,
     }
   }
   return canEdit
@@ -152,9 +153,12 @@ export function categoryBudget({ budget, spent, month, canEdit, period, baseCurr
 
 // The month an entry was paid in, as a period ({ value, label, from, to };
 // "This month" when it's now's): where its page's category box reads from.
-export function entryMonth(entry, now = new Date()) {
-  const [y, m] = String(entry?.spent_at ?? '').slice(0, 7).split('-').map(Number)
-  return (y && m ? periodFromValue(`m:${y}-${m}`, now) : null) ?? thisMonthPeriod(now)
+// With pay months (`cal`) it is the entry's pay month: an expense on 30 Sep
+// after a 29 Sep payday is October's.
+export function entryMonth(entry, now = new Date(), cal = null) {
+  const iso = String(entry?.spent_at ?? '').slice(0, 10)
+  const [y, m] = (/^\d{4}-\d{2}-\d{2}$/.test(iso) ? payMonthOf(iso, cal) : '').split('-').map(Number)
+  return (y && m ? periodFromValue(`m:${y}-${m}`, now, cal) : null) ?? thisMonthPeriod(now, cal)
 }
 
 // The box under an entry (the website's entry page, the iPad's entry
@@ -168,14 +172,14 @@ export function entryMonth(entry, now = new Date()) {
 //   rows   — my_transactions for the category in entryMonth (spread)
 //   budget — my_budgets' row for the category in that month, or null
 export function entryCategoryBox({
-  entry, category, rows, budget = null, baseCurrency, separateYearly = false, salaryShift = null,
+  entry, category, rows, budget = null, baseCurrency, separateYearly = false, cal = null,
   limit = 3,
 }, now = new Date()) {
   if (!entry?.category_id || entry.group_expense_id || !category || category.id !== entry.category_id) return null
-  const period = entryMonth(entry, now)
+  const period = entryMonth(entry, now, cal)
   const name = categoryDisplayName(category)
   const { listed, total } = categoryPeriod(rows, {
-    categoryId: category.id, from: period.from, to: period.to, baseCurrency, separateYearly, salaryShift,
+    categoryId: category.id, from: period.from, to: period.to, baseCurrency, separateYearly, cal,
   })
   const others = listed.filter((r) => r.id !== entry.id)
     .sort((a, b) => String(b.spent_at ?? '').localeCompare(String(a.spent_at ?? '')))

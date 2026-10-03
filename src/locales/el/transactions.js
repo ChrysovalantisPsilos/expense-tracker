@@ -13,6 +13,8 @@ export default {
     thisMonth: 'Αυτός ο μήνας',
     thisYear: 'Φέτος',
     allTime: 'Από την αρχή',
+    payRange: '{{from}} – {{to}}',
+    payFrom: 'από {{from}}',
   },
   heading: {
     expense: 'Έξοδα',

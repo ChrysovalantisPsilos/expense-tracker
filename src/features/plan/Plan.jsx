@@ -55,9 +55,9 @@ export default function Plan() {
   const state = useMemo(() => planState({
     rules: d.rules, plan, savingsIds: d.savingsIds, baseCurrency: currency, rates: d.rates, categories: d.categories,
     salary: d.salary, savings: d.savings, charges: d.charges, budgetSets: d.budgetSets, budgetMonths: d.budgetMonths,
-    separateYearly: d.separateYearly,
+    separateYearly: d.separateYearly, cal: d.cal,
   }), [d.rules, plan, d.savingsIds, currency, d.rates, d.categories, d.salary, d.savings, d.charges, d.budgetSets,
-    d.budgetMonths, d.separateYearly])
+    d.budgetMonths, d.separateYearly, d.cal])
   const { items, sum, signals, ideas } = state
   const parts = planPageParts(state, { view, currency, undo: d.undo, categories: d.categories })
 

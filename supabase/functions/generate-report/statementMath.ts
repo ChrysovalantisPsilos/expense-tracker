@@ -3,7 +3,7 @@
 // test/statementMath.test.js (Node strips the types).
 import { fmtMinor, minorFactor, toBaseMinor } from '../_shared/money.ts'
 import { isSpread, monthlyShare, paidInWindow, perYearMinor, spendRows, yearlyRules } from '../_shared/spread.ts'
-import { isShifted, type SalaryShift } from '../_shared/salaryShift.ts'
+import { type Cal } from '../_shared/payCalendar.ts'
 import { CONVERTED_NOTE, missingRatesNote, type Rates, rulesInBase } from '../_shared/ruleFx.ts'
 import { EFFECTS, type Effect, isSpending, netSign, rowEffect, savingsSource } from '../_shared/savings.ts'
 import { type PersonalText, STATEMENT_TEXT } from '../_shared/statementText.ts'
@@ -69,9 +69,6 @@ export interface Statement {
   // when the period has none.
   yearlyMode: 'spread' | 'separate' | null
   yearly: YearlySection | null // only when yearly subscriptions are kept separate
-  // The salary shift's day D when some salary paid or counted in the period
-  // counts in another month than it was paid in (0081), else null.
-  salaryShiftDay: number | null
 }
 
 export interface StatementOptions {
@@ -83,9 +80,9 @@ export interface StatementOptions {
   rules?: any[]
   // The latest ECB rate into `base` per foreign rule currency (latest_fx_rates).
   rates?: Rates
-  // profiles.salary_shift_from_day/salary_category_id (0081, salaryShiftOf):
-  // salary paid from day D counts toward the next month's totals.
-  salaryShift?: SalaryShift | null
+  // The user's pay months (payCalendar, 0111; null when the salary setting
+  // is off): a yearly payment's parts count by pay month.
+  cal?: Cal | null
   // The ids of the user's savings categories (savingsIdsOf, 0084).
   savingsIds?: Set<string>
   // The statement's words (category fallbacks).
@@ -102,9 +99,8 @@ export interface StatementOptions {
 // charge paid before it — at the exact integer split of the Overview and
 // budgets; with `separateYearly` yearly rows are left out and listed in their
 // own section. The transaction list always shows each real payment in the
-// period, marked as yearly. With the salary shift on, a salary paid from day
-// D counts in the next month's totals (the fetch reaches back for the one paid
-// late in the month before `from`); the list keeps its real date. Savings
+// period, marked as yearly. Every other row counts on its real date: with pay
+// months on, a month's statement is asked for its pay window. Savings
 // entries (income in a savings category) are totalled as "Saved", never as
 // income; the ones taken from income lower the net. Expenses paid from
 // savings are spending (total, by category) but leave the net alone
@@ -118,7 +114,7 @@ export interface StatementOptions {
 // payment whose parts would have counted).
 export function buildStatement(txns: any[], base: string, opts: StatementOptions = {}): Statement {
   const {
-    from = null, to = null, separateYearly = false, rules = [], rates = {}, salaryShift = null,
+    from = null, to = null, separateYearly = false, rules = [], rates = {}, cal = null,
     savingsIds = new Set<string>(), text = STATEMENT_TEXT.personal,
   } = opts
   const bf = minorFactor(base)
@@ -134,7 +130,7 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
   }))
   const listed = paidInWindow(all, from, to)
   const rated = all.filter((t) => t.exchange_rate != null)
-  const spend = spendRows(rated, base, from, to, { separateYearly, salaryShift })
+  const spend = spendRows(rated, base, from, to, { separateYearly, cal })
 
   const baseMinor = (t: any) => toBaseMinor(t.amount_minor, t.exchange_rate, t.currency, base)
   const rows: StatementRow[] = listed.map((t) => {
@@ -157,11 +153,11 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
 
   // Pending: every listed row without a rate, and an earlier payment without
   // one that would count in the period — a yearly payment covering it (when
-  // yearly rows count monthly) or a salary paid late in the month before.
+  // yearly rows count monthly).
   const unrated = all.filter((t) => t.exchange_rate == null)
   const isListed = new Set(listed)
   const earlierPending = unrated.filter((t) => !isListed.has(t)
-    && spendRows([t], base, from, to, { separateYearly, salaryShift }).length > 0)
+    && spendRows([t], base, from, to, { separateYearly, cal }).length > 0)
   const pendingRows = [...listed.filter((t) => t.exchange_rate == null), ...earlierPending]
 
   const sums = Object.fromEntries(EFFECTS.map((e) => [e, 0])) as Record<Effect, number>
@@ -177,11 +173,6 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
   const savedTotal = sums['saved-from-income'] + sums['saved-received']
   const byCategory: Record<string, number> = {}
   for (const [k, v] of Object.entries(byMinor)) byCategory[k] = v / bf
-
-  // A shifted salary touches this period when it was paid in it (and counts
-  // in the next) or counts in it (paid late in the month before).
-  const shiftTouches = all.some((t) => isShifted(t, salaryShift)
-    && (paidInWindow([t], from, to).length > 0 || spendRows([t], base, from, to, { salaryShift }).length > 0))
 
   let yearly: YearlySection | null = null
   if (separateYearly) {
@@ -227,7 +218,6 @@ export function buildStatement(txns: any[], base: string, opts: StatementOptions
       ? (yearly!.payments.length > 0 || yearly!.rules.length > 0 ? 'separate' : null)
       : ([...spend, ...pendingRows].some(isSpread) ? 'spread' : null),
     yearly,
-    salaryShiftDay: shiftTouches ? salaryShift!.fromDay : null,
   }
 }
 
@@ -270,16 +260,10 @@ export function withVouchersNote(
   return spentWithVouchers > 0 ? text.withVouchers : null
 }
 
-// How the totals treat salary paid late in the month — one short line, or
-// null when no such salary touches the period.
-export function salaryNote(fromDay: Statement['salaryShiftDay'], text = STATEMENT_TEXT.personal): string | null {
-  return fromDay == null ? null : text.salary(fromDay)
-}
-
 // Every note that applies to `stmt`, in the order the statement prints them.
 export function statementNotes(stmt: Statement, text = STATEMENT_TEXT.personal): string[] {
   return [
-    pendingNote(stmt.pending, text), yearlyNote(stmt.yearlyMode, text), salaryNote(stmt.salaryShiftDay, text),
+    pendingNote(stmt.pending, text), yearlyNote(stmt.yearlyMode, text),
     savingsNote(stmt.saved, text), fromSavingsNote(stmt.spentFromSavings, text),
     withVouchersNote(stmt.spentWithVouchers, text),
   ].filter((n): n is string => n != null)

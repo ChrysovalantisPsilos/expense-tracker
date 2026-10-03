@@ -158,15 +158,15 @@ test('meal vouchers: spending that leaves the net and the pot alone', () => {
   assert.deepEqual([t.spent, t.spentWithVouchers, t.net], [1680, 1180, -500])
 })
 
-test('Home: a late-month salary shift still leaves savings out', () => {
-  const shift = { fromDay: 25, categoryId: 'cat-salary' }
+test('Home: a pay month (from the 28 Aug payday) still leaves savings out of income', () => {
   const late = [
     row({ id: 'aug-sal', kind: 'income', category_id: 'cat-salary', amount_minor: 200000, spent_at: '2026-08-28' }),
     row({ id: 'aug-sav', kind: 'income', category_id: SAV, amount_minor: 5000, spent_at: '2026-08-28', savings_from_income: true }),
   ]
-  const t = periodTotals(spendRows(late, 'EUR', '2026-09-01', '2026-09-30', { salaryShift: shift }), 'EUR', IDS)
-  assert.equal(t.earned, 200000) // the salary counts in September
-  assert.equal(t.saved, 0) // the saving stays in August (only salary shifts)
+  // September's window starts on the payday: both entries are September's.
+  const t = periodTotals(spendRows(late, 'EUR', '2026-08-28', '2026-09-30'), 'EUR', IDS)
+  assert.equal(t.earned, 200000)
+  assert.equal(t.saved, 5000) // saved, never income
 })
 
 test('Home: upcoming recurring savings aren\'t income; those from income lower the projected net', () => {
@@ -177,7 +177,7 @@ test('Home: upcoming recurring savings aren\'t income; those from income lower t
     rule({ kind: 'income', category_id: SAV, amount_minor: 5000, savings_from_income: false }),
     rule({ kind: 'expense', category_id: 'cat-rent', amount_minor: 90000, next_run: '2026-09-29' }),
   ]
-  const proj = periodProjection(rules, { to: '2026-09-30' }, '2026-09-25', false, null, IDS)
+  const proj = periodProjection(rules, { to: '2026-09-30' }, '2026-09-25', false, IDS)
   assert.deepEqual(proj,
     { expense: 90000, income: 200000, expenseFromSavings: 0, savedFromIncome: 30000, net: 200000 - 90000 - 30000 })
   assert.equal(projectedTotals(periodTotals([], 'EUR', IDS), proj).netTotal, 200000 - 90000 - 30000)
@@ -338,7 +338,7 @@ test('Home: an upcoming expense paid from savings is projected spending, not aga
     rule({ kind: 'expense', category_id: 'cat-rent', amount_minor: 90000, next_run: '2026-09-29' }),
     rule({ kind: 'expense', category_id: 'cat-gym', amount_minor: 5000, paid_from_savings: true }),
   ]
-  const proj = periodProjection(rules, { to: '2026-09-30' }, '2026-09-25', false, null, IDS)
+  const proj = periodProjection(rules, { to: '2026-09-30' }, '2026-09-25', false, IDS)
   assert.deepEqual(proj,
     { expense: 95000, income: 200000, expenseFromSavings: 5000, savedFromIncome: 0, net: 200000 - 90000 })
   const t = periodTotals(spendRows(withLaptop, 'EUR', '2026-09-01', '2026-09-30'), 'EUR', IDS)

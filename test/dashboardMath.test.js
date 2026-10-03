@@ -2,8 +2,10 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   periodTotals, periodProjection, projectedTotals, visibleBars, TOP_CATEGORIES, homeCards, homeStacks, homeLists, barLines, netSum,
-  groupFlow, netSteps,
+  groupFlow, netSteps, paidRuleIds,
 } from '../src/features/dashboard/dashboardMath.js'
+import { expectedEnd, payCalendar, payMonthWindow } from '../src/shared/lib/payCalendar.js'
+import { spendRows } from '../src/shared/lib/spread.js'
 
 const rows = [
   { id: 1, kind: 'expense', amount_minor: 1000, currency: 'EUR', exchange_rate: 1, categories: { name: 'Food' } },
@@ -94,7 +96,7 @@ test('Home sideways: a strip, then two stacks that hold every card once, in the 
   assert.deepEqual(homeCards({ firstRun: true }).slice(0, 2), ['overview', 'firstEntry'])
 })
 
-test('homeLists: the period’s expenses as paid, its income by the month it counts for, no savings', () => {
+test('homeLists: the period’s expenses and income as paid in its window, no savings', () => {
   const r = (id, kind, spent_at, extra = {}) => ({ id, kind, spent_at, amount_minor: 100, currency: 'EUR', exchange_rate: 1,
     category_id: null, ...extra })
   const all = [
@@ -102,9 +104,13 @@ test('homeLists: the period’s expenses as paid, its income by the month it cou
     r('i1', 'income', '2026-09-02'), r('s1', 'income', '2026-09-03', { category_id: 'sav' }),
     r('pay', 'income', '2026-08-27', { category_id: 'salary' }),
   ]
-  const shift = { fromDay: 25, categoryId: 'salary' }
-  const { expenses, income } = homeLists(all, { from: '2026-09-01', to: '2026-09-30', savingsIds: new Set(['sav']), salaryShift: shift })
-  assert.deepEqual(expenses.map((x) => x.id), ['e1'])
+  // A calendar September: the 27 Aug salary and the 31 Aug expense are August's.
+  const sep = homeLists(all, { from: '2026-09-01', to: '2026-09-30', savingsIds: new Set(['sav']) })
+  assert.deepEqual(sep.expenses.map((x) => x.id), ['e1'])
+  assert.deepEqual(sep.income.map((x) => x.id), ['i1'])
+  // A pay month from the 27 Aug payday: both are September's.
+  const { expenses, income } = homeLists(all, { from: '2026-08-27', to: '2026-09-30', savingsIds: new Set(['sav']) })
+  assert.deepEqual(expenses.map((x) => x.id), ['e1', 'e0'])
   assert.deepEqual(income.map((x) => x.id).sort(), ['i1', 'pay'])
   // All time: everything but the savings entry.
   const always = homeLists(all, { savingsIds: new Set(['sav']) })
@@ -221,4 +227,55 @@ test('netSteps: the group steps show only when they happened and add up to the N
     ['Income', '€0.00'], ['Spent', '−€18.75'], ['Paid for others in groups', '−€15.00'], ['Paid for you in groups', '+€3.75'],
   ])
   assert.equal(sum.total.value, '−€30.00')
+})
+
+// Pay months: October runs from the 29 Sep payday.
+const PAY = { fromDay: 25, categoryId: 'salary' }
+const CAL = payCalendar(PAY, ['2026-08-28', '2026-09-29'], '2026-10-03')
+const OCT = payMonthWindow('2026-10', CAL)
+
+test('pay months: October counts what was paid from its payday, as a calendar month never could', () => {
+  const r = (id, kind, spent_at, amount_minor, extra = {}) => ({ id, kind, spent_at, amount_minor, currency: 'EUR',
+    exchange_rate: 1, category_id: null, ...extra })
+  const rows = [
+    r('sep-pay', 'income', '2026-09-29', 250000, { category_id: 'salary' }),
+    r('rent', 'expense', '2026-09-30', 95000),
+    r('food', 'expense', '2026-10-02', 7875),
+    r('aug-pay', 'income', '2026-08-28', 250000, { category_id: 'salary' }),
+    r('sep-food', 'expense', '2026-09-27', 4000),
+  ]
+  const t = periodTotals(spendRows(rows, 'EUR', OCT.from, OCT.to, { cal: CAL }), 'EUR')
+  assert.deepEqual([t.earned, t.spent, t.net], [250000, 102875, 147125])
+  // The setting off: October's calendar month holds only the 2 Oct expense.
+  const cal = periodTotals(spendRows(rows, 'EUR', '2026-10-01', '2026-10-31'), 'EUR')
+  assert.deepEqual([cal.earned, cal.spent], [0, 7875])
+})
+
+test('pay months: the projection ends the day before the next salary, and a charge paid this pay month is not due again', () => {
+  const rule = (id, next_run, amount_minor, extra = {}) => ({ id, kind: 'expense', frequency: 'monthly', interval_n: 1,
+    is_active: true, next_run, amount_minor, currency: 'EUR', ...extra })
+  const rules = [
+    rule('rent', '2026-10-30', 95000), // paid 30 Sep, in October already
+    rule('phone', '2026-10-12', 2000),
+    rule('gym', '2026-10-29', 3000), // due on payday: November's
+    rule('salary', '2026-10-29', 250000, { kind: 'income', category_id: 'salary' }),
+  ]
+  const end = expectedEnd(OCT, CAL, { ruleNextRun: '2026-10-29' })
+  assert.equal(end, '2026-10-28')
+  const paid = paidRuleIds([{ spent_at: '2026-09-30', recurring_rule_id: 'rent' }, { spent_at: '2026-09-20', recurring_rule_id: 'phone' }],
+    OCT)
+  assert.deepEqual([...paid], ['rent'])
+  const proj = periodProjection(rules, { from: OCT.from, to: end }, '2026-10-03', false, undefined, { cal: CAL, paidRules: paid })
+  assert.equal(proj.expense, 2000)
+  assert.equal(proj.income, 0)
+  // Without the paid rules (the setting off), the rent would count twice.
+  assert.equal(periodProjection(rules, { from: OCT.from, to: '2026-10-31' }, '2026-10-03').expense, 95000 + 2000 + 3000)
+})
+
+test('pay months: groupFlow over the pay window', () => {
+  const moves = [
+    { kind: 'settlement', spent_at: '2026-09-30', amount_minor: 1500, currency: 'EUR', exchange_rate: 1, paid_by_me: false },
+    { kind: 'settlement', spent_at: '2026-09-27', amount_minor: 900, currency: 'EUR', exchange_rate: 1, paid_by_me: false },
+  ]
+  assert.equal(groupFlow(moves, 'EUR', OCT).settledIn, 1500)
 })

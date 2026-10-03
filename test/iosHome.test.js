@@ -22,16 +22,24 @@ test('ios home fixture: the committed figures are what the web\'s functions give
 
 test('ios home fixture: the figures fold in the web\'s rules', () => {
   const f = fixture.expected.en.thisMonth
-  // A shifted salary (25th) is fetched from late August and counts in September.
-  assert.equal(f.fetchFrom, '2020-08-25')
+  // A pay month: September runs from the 28 Aug payday, open, its salary
+  // and the 30 Aug expense in it.
+  assert.deepEqual([f.period.from, f.period.to, f.period.open, f.period.range], ['2020-08-28', '2020-09-30', true, 'from 28 Aug'])
   assert.equal(f.earnedTotal, 255000)
-  // What's logged (€319.30) plus the rules still to come this month: €12.99
-  // on the 20th and $9.99 at today's 0.9 on the 25th.
-  assert.equal(f.spentTotal, 31930 + 1299 + 899)
+  assert.deepEqual(f.incomeList.rows.map((r) => r.id), ['a8', 'a9'])
+  // What's logged (€319.30 + €15.00 on 30 Aug) plus the rules still to come
+  // before the next payday (expected on the 28th, as last month): €12.99 on
+  // the 20th and $9.99 at today's 0.9 on the 25th.
+  assert.equal(f.projectionEnd, '2020-09-27')
+  assert.equal(f.spentTotal, 31930 + 1500 + 1299 + 899)
   // The savings entry is not income, and one taken from income lowers the net;
   // an expense paid from savings is spending that leaves the net alone. The
   // group dinner I paid takes the rest of it (€44) and what I paid back (€10).
-  assert.equal(f.netTotal, 255000 - (31930 + 1299 + 899) + 12000 - 30000 - 4400 - 1000)
+  assert.equal(f.netTotal, 255000 - (31930 + 1500 + 1299 + 899) + 12000 - 30000 - 4400 - 1000)
+  // The setting off: calendar September, without the August payday or expense.
+  const off = fixture.expected.en.calendar
+  assert.deepEqual([off.period.from, off.period.range, off.earnedTotal, off.spentTotal],
+    ['2020-09-01', null, 5000, 31930 + 1299 + 899])
   assert.deepEqual(f.sum.steps.slice(-2).map((s) => s.key), ['groupsFronted', 'settledOut'])
   // August's figures get only August's move: €15 paid back to me.
   assert.equal(fixture.expected.en.august.sum.steps.at(-1).key, 'settledIn')

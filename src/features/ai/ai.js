@@ -87,7 +87,11 @@ export function useMonthSummary() {
   const uid = user?.id ?? null
   const { monthSummary: on } = useAiHelpers()
   const { lang } = useLanguage()
-  const month = monthStartOf(today())
+  // The pay month holding today; asked for once the calendar is known
+  // (undefined while it loads), so the summary is never written for the
+  // wrong month.
+  const { payCalendar: cal } = useProfile()
+  const month = monthStartOf(today(), cal)
   const { data, error, reload } = useLiveQuery(() => readMonthSummary(month), {
     key: uid && on ? `ai-summary:${uid}` : null,
     specs: uid ? [
@@ -95,7 +99,7 @@ export function useMonthSummary() {
       { table: 'budgets', filter: `user_id=eq.${uid}` },
     ] : [],
     deps: [uid, on, month],
-    enabled: !!uid && on,
+    enabled: !!uid && on && cal !== undefined,
     initial: undefined,
   })
   const [writing, setWriting] = useState(false)

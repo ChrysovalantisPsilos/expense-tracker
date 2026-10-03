@@ -130,8 +130,7 @@ function useSavedPlan() {
 // (planMath.derivedSalary, derivedSavings): the income over the last full
 // months (the salary and savings taken from income are income entries), from
 // the same decrypting read as every list (my_transactions), live, over
-// planReads' `income` span (with the salary shift on it reaches back for the
-// salary that counts in the first month).
+// planReads' `income` span (pay months with the salary setting on).
 function useIncomeEntries({ from, to }) {
   const { baseCurrency } = useProfile()
   return useOwnedQuery('transactions', {
@@ -147,22 +146,22 @@ function useIncomeEntries({ from, to }) {
 // answers (null when the entries couldn't be read: the page works without
 // the derived rows).
 export function usePlanData() {
-  const { baseCurrency = 'EUR', separateYearly, profile, salaryShift } = useProfile()
+  const { baseCurrency = 'EUR', separateYearly, profile, payCalendar: cal } = useProfile()
   const saved = useSavedPlan()
   const { rules, loading: rulesLoading, error: rulesError, reload: reloadRules } = useRecurring()
   const { savingsIds, loading: savingsLoading } = useSavingsIds()
   const { rows: categories, loading: categoriesLoading } = useAllCategories()
 
   const todayISO = today()
-  const reads = useMemo(() => planReads(todayISO, salaryShift), [todayISO, salaryShift])
+  const reads = useMemo(() => planReads(todayISO, cal), [todayISO, cal])
   const salaryCat = salaryCategoryId(profile, categories)
   const entries = useIncomeEntries(reads.income)
   const salary = useMemo(() => (entries.error ? null : derivedSalary({
-    rules, savingsIds, categoryId: salaryCat, entries: entries.rows, todayISO, baseCurrency, salaryShift,
-  })), [entries.error, entries.rows, rules, savingsIds, salaryCat, todayISO, baseCurrency, salaryShift])
+    rules, savingsIds, categoryId: salaryCat, entries: entries.rows, todayISO, baseCurrency, cal,
+  })), [entries.error, entries.rows, rules, savingsIds, salaryCat, todayISO, baseCurrency, cal])
   const savings = useMemo(() => (entries.error ? null : derivedSavings({
-    rules, savingsIds, entries: entries.rows, todayISO, baseCurrency, salaryShift,
-  })), [entries.error, entries.rows, rules, savingsIds, todayISO, baseCurrency, salaryShift])
+    rules, savingsIds, entries: entries.rows, todayISO, baseCurrency, cal,
+  })), [entries.error, entries.rows, rules, savingsIds, todayISO, baseCurrency, cal])
   const charges = useTransactions({ kind: 'expense', from: reads.charges.from, to: reads.charges.to, spread: true })
   const { budgetMonths } = reads
   const budgets = useBudgetSets(budgetMonths[0], budgetMonths[budgetMonths.length - 1])
@@ -176,7 +175,7 @@ export function usePlanData() {
 
   return {
     ...saved,
-    baseCurrency, separateYearly, rules, savingsIds, categories, todayISO, salary, savings,
+    baseCurrency, separateYearly, cal, rules, savingsIds, categories, todayISO, salary, savings,
     rates: fx.rates,
     charges: charges.error ? [] : charges.rows,
     budgetSets: budgets.error ? [] : budgets.sets,

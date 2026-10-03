@@ -24,7 +24,7 @@ import * as receiptRead from '../src/shared/lib/receiptRead.js'
 import * as spread from '../src/shared/lib/spread.js'
 import * as txnRollup from '../src/shared/lib/txnRollup.js'
 import * as ruleFx from '../src/shared/lib/ruleFx.js'
-import * as salaryShift from '../src/shared/lib/salaryShift.js'
+import * as payCalendar from '../src/shared/lib/payCalendar.js'
 import * as categoryName from '../src/shared/lib/categoryName.js'
 import * as categoryStyle from '../src/shared/lib/categoryStyle.js'
 import * as paginate from '../src/shared/lib/paginate.js'
@@ -40,7 +40,7 @@ import * as avatarLook from '../src/shared/ui/avatarLook.js'
 import * as loaderTiming from '../src/shared/ui/loaderTiming.js'
 import * as sharedMoney from '../supabase/functions/_shared/money.ts'
 import * as sharedSavings from '../supabase/functions/_shared/savings.ts'
-import * as sharedSalaryShift from '../supabase/functions/_shared/salaryShift.ts'
+import * as sharedPayCalendar from '../supabase/functions/_shared/payCalendar.ts'
 import * as sharedSpread from '../supabase/functions/_shared/spread.ts'
 import * as sharedRuleFx from '../supabase/functions/_shared/ruleFx.ts'
 import * as planRules from '../supabase/functions/_shared/planRules.ts'
@@ -124,7 +124,7 @@ export const modules = {
   spread,
   txnRollup,
   ruleFx,
-  salaryShift,
+  payCalendar,
   categoryName,
   categoryStyle,
   paginate,
@@ -140,7 +140,7 @@ export const modules = {
   loaderTiming,
   sharedMoney,
   sharedSavings,
-  sharedSalaryShift,
+  sharedPayCalendar,
   sharedSpread,
   sharedRuleFx,
   planRules,

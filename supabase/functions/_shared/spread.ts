@@ -11,10 +11,16 @@
 // totals and the weekly digest. Lists keep the real payment on its real date.
 //
 // JS↔SQL LOCKSTEP PAIR: spreadPart ≡ public.spread_part, the month index ≡
-// public.month_share, spreadDates ≡ public.spread_part_date (0070),
-// ruleSpreadMonths ≡ public.recurring_spread_months. The server's budget
-// alerts and digest must agree with the app to the cent, so any change here
-// changes those SQL functions too (and vice versa).
+// public.month_share (fed the pay labels with pay months on, 0111: the
+// payment's pay month and the month summed), spreadDates without a calendar
+// ≡ public.spread_part_date (0070), ruleSpreadMonths ≡
+// public.recurring_spread_months. The server's budget alerts and digest must
+// agree with the app to the cent, so any change here changes those SQL
+// functions too (and vice versa).
+//
+// With pay months on (payCalendar.ts), part i belongs to the i-th pay month
+// after the payment's own (payMonthOf), dated by partDate: €120 paid 30 Sep
+// after a 29 Sep payday counts in October to the following September.
 //
 // "Keep yearly subscriptions separate" (profiles.yearly_separate, 0068): when
 // a user turns it on, spread rows are left out of monthly spend altogether
@@ -22,7 +28,7 @@
 // section instead). countsMonthly ≡ public.counts_in_month (0068).
 
 import { toBaseMinor } from './money.ts'
-import { countedRow, type SalaryShift } from './salaryShift.ts'
+import { partDate, type Cal } from './payCalendar.ts'
 
 // deno-lint-ignore no-explicit-any
 type Row = any
@@ -49,22 +55,15 @@ export function spreadPart(total: number, n: number, idx: number): number {
   return q + (idx < Math.abs(r) ? Math.sign(r) : 0)
 }
 
-const pad2 = (x: number) => String(x).padStart(2, '0')
-
 // The dates a spread row's parts fall on: the payment date, then the same day
 // of each following month (clamped to shorter months: 31 Jan → 28 Feb, 31 Mar
 // — every date is taken from the payment's day, not the previous clamp).
-// Month i is always payment month + i, as in SQL month_share; the date is
-// SQL's spent_at + i months (spread_part_date).
-export function spreadDates(spentAt: string, n: number): string[] {
-  const [y, m, d] = spentAt.split('-').map(Number)
-  return Array.from({ length: n }, (_, i) => {
-    const mi = m - 1 + i
-    const yy = y + Math.floor(mi / 12)
-    const mm = (mi % 12) + 1
-    const last = new Date(Date.UTC(yy, mm, 0)).getUTCDate()
-    return `${yy}-${pad2(mm)}-${pad2(Math.min(d, last))}`
-  })
+// Month i is always payment month + i, as in SQL month_share; without a
+// calendar the date is SQL's spent_at + i months (spread_part_date). With
+// pay months (`cal`) the months are pay months and each date is capped at its
+// month's last day (payCalendar.partDate).
+export function spreadDates(spentAt: string, n: number, cal: Cal | null = null): string[] {
+  return Array.from({ length: n }, (_, i) => partDate(spentAt, i, cal).date)
 }
 
 // A yearly-subscription row: an expense the server marked as spread.
@@ -97,24 +96,23 @@ export const paidInWindow = (rows: Row[], from: string | null, to: string | null
 // month's day, so the existing sums (toBaseMinor, bucketOf, month keys) need
 // no special case and add up to the cent with the server's month_share.
 // `separateYearly` (the user's 0068 setting) drops spread rows instead
-// (countsMonthly). `salaryShift` (0081, salaryShift.ts) re-dates a salary paid
-// late in a month to the 1st of the next one, and the window is tested on that
-// counted date: a salary paid 30 Sep counts in October, not September.
+// (countsMonthly). `cal` (pay months, payCalendar.ts) places the parts in pay
+// months; every other row is tested on its real date (the window itself is
+// the pay month's).
 export function spendRows(
   rows: Row[], baseCurrency: string, from: string | null = null, to: string | null = null,
-  { separateYearly = false, salaryShift = null }: { separateYearly?: boolean; salaryShift?: SalaryShift | null } = {},
+  { separateYearly = false, cal = null }: { separateYearly?: boolean; cal?: Cal | null } = {},
 ): Row[] {
   const out: Row[] = []
   for (const r of rows) {
     if (!countsMonthly(r, separateYearly)) continue
     if (!isSpread(r)) {
-      const c = countedRow(r, salaryShift)
-      if (inWindow(c.spent_at, from, to)) out.push(c)
+      if (inWindow(r.spent_at, from, to)) out.push(r)
       continue
     }
     const n = r.spread_months
     const total = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
-    spreadDates(r.spent_at, n).forEach((date, i) => {
+    spreadDates(r.spent_at, n, cal).forEach((date, i) => {
       if (!inWindow(date, from, to)) return
       out.push({
         ...r, amount_minor: spreadPart(total, n, i), currency: baseCurrency, exchange_rate: 1,

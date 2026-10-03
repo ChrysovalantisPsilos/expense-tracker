@@ -22,6 +22,7 @@ import { useShortLandscape } from '../../shared/ui/useShortLandscape.js'
 import { NARROW_STACKS } from '../../shared/ui/narrowStacks.js'
 import { formatMoney, minorFactor } from '../../shared/lib/currency.js'
 import { useCategories } from '../../shared/lib/categories.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { useRecurring } from '../recurring/recurring.js'
 import { useGoals, useSavingsBalance } from './savings.js'
 import { savingsCategoryOf, savingsPage, savingsStacks } from './savingsMath.js'
@@ -40,6 +41,7 @@ export default function Savings() {
   const t = useT('savings')
   const sideways = useShortLandscape()
   const { moves, total, savingsIds, baseCurrency, loading, error, reload } = useSavingsBalance()
+  const { payCalendar: cal } = useProfile()
   const goals = useGoals()
   const { rules } = useRecurring()
   const { categories } = useCategories('income')
@@ -52,7 +54,7 @@ export default function Savings() {
 
   // Every figure and word of the pot's card and this month's (savingsPage).
   const page = useMemo(
-    () => savingsPage({ moves, total, savingsIds, baseCurrency, rules }), [moves, total, savingsIds, baseCurrency, rules])
+    () => savingsPage({ moves, total, savingsIds, baseCurrency, rules, cal }), [moves, total, savingsIds, baseCurrency, rules, cal])
 
   let body
   if (error) body = <Panel><QueryError error={error} onRetry={reload} what={t('what')} /></Panel>

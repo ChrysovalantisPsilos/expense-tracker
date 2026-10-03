@@ -69,8 +69,9 @@ export default function SpendingSettings() {
   )
 }
 
-// "Count salary paid late in the month toward the next month": the switch,
-// then (while on) the day it starts and which income category is the salary.
+// "Months run from payday to payday": the switch, then (while on) the day
+// from which a salary starts the next month and which income category is the
+// salary.
 function SalaryShiftPref({ profile, save }) {
   const t = useT('settings')
   const { categories, loading } = useCategories('income')

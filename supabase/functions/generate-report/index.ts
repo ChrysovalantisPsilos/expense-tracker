@@ -8,7 +8,12 @@
 // the native iOS app makes its statement here (Insights › Export statement).
 //
 //   POST /functions/v1/generate-report
-//   body: { from: "2026-01-01", to: "2026-01-31", format: "xlsx" | "pdf" }
+//   body: { from: "2026-01-01", to: "2026-01-31", format: "xlsx" | "pdf",
+//           month?: "2026-01" }
+//
+// `month` (optional) asks for that month: the statement then covers its
+// window as the app cuts it (a pay month with the salary setting on, 0111),
+// worked out here, and its heading names the month and its span.
 //
 // Auth: verify_jwt = true. We read the caller's JWT, create a Supabase client
 // scoped to that user, and pull only their data through it (RLS, and the
@@ -33,14 +38,18 @@ interface Body {
   from: string
   to: string
   format: 'xlsx' | 'pdf'
+  month?: string | null
 }
 
 Deno.serve(withCors(async (req) => {
   try {
-    const { from, to, format = 'xlsx' } = (await req.json()) as Body
+    const { from, to, format = 'xlsx', month = null } = (await req.json()) as Body
     const DATE = /^\d{4}-\d{2}-\d{2}$/
     if (!DATE.test(from ?? '') || !DATE.test(to ?? '')) {
       return json({ error: 'from and to must be dates (YYYY-MM-DD)' }, 400)
+    }
+    if (month != null && !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+      return json({ error: 'month must be YYYY-MM' }, 400)
     }
     if (format !== 'xlsx' && format !== 'pdf') {
       return json({ error: 'format must be xlsx or pdf' }, 400)
@@ -55,7 +64,7 @@ Deno.serve(withCors(async (req) => {
     if (quotaErr) throw quotaErr
     if (allowed !== true) return json({ error: 'Too many report requests. Please try again later.' }, 429)
 
-    const input = await loadStatement(supabase, { from, to })
+    const input = await loadStatement(supabase, { from, to, month })
     const bytes = await statementBytes(format, input, { pdf: denoPdf, xlsx: XLSX })
     return fileResponse(bytes, format, statementFilename(from, to, format))
   } catch (e) {

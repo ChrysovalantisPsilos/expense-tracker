@@ -5,7 +5,6 @@ import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { bucketOf, groupLabel, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { EFFECTS, isSavingsRow, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
 import { paidInWindow } from '../../shared/lib/spread.js'
-import { countedInWindow } from '../../shared/lib/salaryShift.js'
 import { expectedInWindow } from '../recurring/recurringMath.js'
 import { isMonthPeriod } from '../../shared/lib/periods.js'
 import { isRelativeLabel } from '../budgets/budgetMath.js'
@@ -58,34 +57,31 @@ export function periodTotals(rows, baseCurrency, savingsIds = NO_SAVINGS) {
 const NOTHING_AHEAD = { expense: 0, income: 0, expenseFromSavings: 0, savedFromIncome: 0, net: 0 }
 
 // Recurring charges still to come in a period ({ from, to }, periods.js),
-// folded into its projection — only while the period is ongoing or ahead (it
-// ends today or later). Past periods and "all time" (no end) stay purely
-// actual. `separateYearly`: the user keeps yearly subscriptions out of monthly
-// spending (0068); `salaryShift`: salary due late in the month counts toward
-// the next (0081). Each rule counts by its effect (rowEffect), as its entries
+// folded into its projection — only while the period is ongoing (it ends
+// today or later). Past periods and "all time" (no end) stay purely actual.
+// For this month pass `to` as the projection's end (payCalendar.expectedEnd:
+// with pay months, the day before the next salary is expected).
+// `separateYearly`: the user keeps yearly subscriptions out of monthly
+// spending (0068). Each rule counts by its effect (rowEffect), as its entries
 // will: recurring savings (0084) are never upcoming income, and those taken
 // from income come back as `savedFromIncome`; recurring expenses paid from
 // savings (0085) are upcoming spending (`expense`, of which
 // `expenseFromSavings`). `net` is what they all do to the net (netSign).
 //
-// Next month (offered once its salary is in, buildPeriods) starts after
-// today: it gets only what counts in it — what's due from today counted up
-// to its end, less what's counted before it starts. So a charge still due
-// this month stays out, and a salary due on the 30th that counts from the
-// 1st comes in.
+// With pay months on, pass `cal` (a yearly charge's parts by pay month) and
+// `paidRules` (paidRuleIds): the rules with a charge
+// already paid in the period. A pay month can be longer than a calendar
+// month (29 Sep → 31 Oct), so a monthly charge paid on 30 Sep would
+// otherwise be counted again as due on 30 Oct: a rule charged at most once a
+// month that already has its charge in the period adds nothing more.
 export function periodProjection(rules, { from = null, to = null } = {}, todayISO, separateYearly = false,
-  salaryShift = null, savingsIds = NO_SAVINGS) {
+  savingsIds = NO_SAVINGS, { paidRules = NO_RULES, cal = null } = {}) {
   if (!to || to < todayISO) return NOTHING_AHEAD
-  const upTo = (list, end) => expectedInWindow(list, todayISO, end, separateYearly, salaryShift)
-  const ahead = (list) => {
-    const all = upTo(list, to)
-    if (!from || from <= todayISO) return all
-    const before = upTo(list, dayBefore(from))
-    return { income: all.income - before.income, expense: all.expense - before.expense }
-  }
+  const start = from && from > todayISO ? from : todayISO
+  const due = rules.filter((r) => !(paidRules.has(r.id) && ONCE_A_MONTH.has(r.frequency)))
   const by = Object.fromEntries(EFFECTS.map((effect) => {
-    const list = rules.filter((r) => rowEffect(r, savingsIds) === effect)
-    const sum = list.length ? ahead(list) : null
+    const list = due.filter((r) => rowEffect(r, savingsIds) === effect)
+    const sum = list.length ? expectedInWindow(list, start, to, separateYearly, cal) : null
     return [effect, sum ? sum.income + sum.expense : 0]
   }))
   return {
@@ -97,11 +93,13 @@ export function periodProjection(rules, { from = null, to = null } = {}, todayIS
   }
 }
 
-// The day before a 'YYYY-MM-DD' date.
-function dayBefore(iso) {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(Date.UTC(y, m - 1, d - 1)).toISOString().slice(0, 10)
-}
+const NO_RULES = new Set()
+const ONCE_A_MONTH = new Set(['monthly', 'yearly'])
+
+// The rules with a charge paid in [from, to] (rows: the period's
+// transactions), for periodProjection's `paidRules`.
+export const paidRuleIds = (rows, { from = null, to = null } = {}) =>
+  new Set(paidInWindow(rows, from, to).map((r) => r.recurring_rule_id).filter(Boolean))
 
 const NO_GROUP_FLOW = { groupsFronted: 0, groupsCovered: 0, settledIn: 0, settledOut: 0 }
 
@@ -246,14 +244,14 @@ export function barLines(bars, spend, baseCurrency) {
   return bars.map((c) => categoryLine(c.name, c.value, shares, baseCurrency))
 }
 
-// Home's two lists for a period: the expenses paid in it, and the income
-// by the month it counts for (a late-month salary, the salary setting,
-// shows under the next month with its real date). Savings aren't income,
-// so they're not listed (the Transactions page has them).
-export function homeLists(rows, { from = null, to = null, savingsIds = NO_SAVINGS, salaryShift = null } = {}) {
-  const expenses = paidInWindow(rows, from, to).filter((r) => r.kind !== 'income')
-  const income = countedInWindow(rows.filter((r) => r.kind === 'income' && !isSavingsRow(r, savingsIds)),
-    from, to, salaryShift)
+// Home's two lists for a period: the expenses and the income paid in it
+// (with pay months, the period's window starts on payday, so the salary
+// that opened it is listed in it). Savings aren't income, so they're not
+// listed (the Transactions page has them).
+export function homeLists(rows, { from = null, to = null, savingsIds = NO_SAVINGS } = {}) {
+  const paid = paidInWindow(rows, from, to)
+  const expenses = paid.filter((r) => r.kind !== 'income')
+  const income = paid.filter((r) => r.kind === 'income' && !isSavingsRow(r, savingsIds))
   return { expenses, income }
 }
 

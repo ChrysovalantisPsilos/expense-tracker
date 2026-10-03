@@ -6,8 +6,6 @@ import { supabase } from './supabase.js'
 import { useLiveQuery, useOwnedQuery } from './db.js'
 import { useProfile } from './ProfileProvider.jsx'
 import { fillPendingRates } from './fx.js'
-import { newestCountedDate, shiftFetchFrom } from './salaryShift.js'
-import { nextMonthStart } from './periods.js'
 import { dbError } from './errors.js'
 import { announceChange } from './realtime.js'
 
@@ -28,20 +26,18 @@ import { announceChange } from './realtime.js'
 // `spread: true` (monthly-spend views) also returns the yearly-subscription
 // rows paid before `from` that still count in the range (spread_months, 0067):
 // feed the rows to shared/lib/spread.js — spendRows for totals, paidInWindow
-// for what to list. With the salary shift on (0081) it also reaches back to
-// the previous month's salary that counts in the range (shiftFetchFrom);
-// spendRows counts it there, paidInWindow leaves it out of lists.
+// for what to list. With pay months on (payCalendar.js) `from`/`to` are the
+// pay month's window, and every row is read by its real date.
 export function useTransactions({
   kind, from, to, categoryId, limit, spread = false, paidFromSavings = false, paidWithVouchers = false,
 } = {}) {
-  const { baseCurrency, salaryShift } = useProfile()
-  const fetchFrom = spread && kind !== 'expense' ? shiftFetchFrom(from, salaryShift) : from
+  const { baseCurrency } = useProfile()
   return useOwnedQuery('transactions', {
     cacheAs: 'transactions',
     fetch: () => listTransactions({
-      kind, from: fetchFrom, to, categoryId, limit, spread, paidFromSavings, paidWithVouchers, baseCurrency,
+      kind, from, to, categoryId, limit, spread, paidFromSavings, paidWithVouchers, baseCurrency,
     }),
-    deps: [kind, fetchFrom, to, categoryId, limit, spread, paidFromSavings, paidWithVouchers, baseCurrency],
+    deps: [kind, from, to, categoryId, limit, spread, paidFromSavings, paidWithVouchers, baseCurrency],
   })
 }
 
@@ -110,38 +106,26 @@ export function useOldestTransactionDate() {
   return [oldest, recheck]
 }
 
-// The latest date the user's salary COUNTS on (salaryShift.countedDate) when
-// that's next month or later, else null: with the salary setting on (0081), a
-// salary paid from day D counts toward the next month, so the period pickers
-// offer next month once it's in (periods.buildPeriods' `newestISO`). Only the
-// newest income row in the salary category paid from day D of this month
-// (shiftFetchFrom of next month's 1st) is read — nothing else can count next
-// month — so it's a 1-row query, and none at all while the setting is off.
-// Live like every owned query: saving the salary brings next month in at once.
-export function useNewestCountedDate() {
-  const { salaryShift } = useProfile()
-  const since = salaryShift ? shiftFetchFrom(nextMonthStart(), salaryShift) : null
-  const categoryId = salaryShift?.categoryId ?? null
-  const { rows } = useOwnedQuery('transactions', {
-    fetch: () => (categoryId ? newestIncome(categoryId, since) : []),
-    deps: [categoryId, since],
+// The user's paydays (pay months, 0111): the dates of the income rows in
+// their salary category that the server counts as paydays (pay_days: at
+// least half the median salary, so amounts never leave the server) and the
+// user's today on the server, { days, today }. Read only while the salary
+// setting is on (`shift`, salaryShiftOf); live with the transactions, so a
+// salary saved opens its month at once. Cached for offline reads
+// (OFFLINE_READ_RPCS).
+export function usePayDays(shift) {
+  const on = !!shift
+  return useOwnedQuery('transactions', {
+    cacheAs: 'payCalendar',
+    fetch: () => (on ? payCalendarDays() : null),
+    deps: [on, shift?.fromDay, shift?.categoryId],
   })
-  return newestCountedDate(rows[0], salaryShift, nextMonthStart())
 }
 
-// The newest income row in `categoryId` paid on or after `since` ([] or one
-// row, with the columns countedDate reads).
-async function newestIncome(categoryId, since) {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('kind, category_id, spent_at')
-    .eq('kind', 'income')
-    .eq('category_id', categoryId)
-    .gte('spent_at', since)
-    .order('spent_at', { ascending: false })
-    .limit(1)
+async function payCalendarDays() {
+  const { data, error } = await supabase.rpc('my_pay_calendar')
   if (error) throw dbError(error)
-  return data ?? []
+  return { days: data?.days ?? [], today: data?.today ?? null }
 }
 
 // Direct writes to the transactions table. Login is required (and reads are

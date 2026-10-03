@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { categoryPath, parseCategoryRoute, categoryLink, linkBuckets } from '../src/shared/lib/categoryLinks.js'
+import { payCalendar } from '../src/shared/lib/payCalendar.js'
 import { NO_CATEGORY } from '../src/shared/lib/categoryName.js'
 import { categoryBars } from '../src/features/dashboard/categoryBars.js'
 
@@ -22,12 +23,21 @@ test('categoryPath: id and optional period token', () => {
 test('parseCategoryRoute: round-trips categoryPath; defaults to this month', () => {
   assert.deepEqual(route(categoryPath(CAT, 'm:2026-8')), {
     categoryId: CAT,
-    period: { value: 'm:2026-8', label: 'August 2026', from: '2026-08-01', to: '2026-08-31' },
+    period: { value: 'm:2026-8', key: '2026-08', label: 'August 2026', from: '2026-08-01', to: '2026-08-31', open: false },
   })
   assert.equal(route(categoryPath(NO_CATEGORY, 'all')).period.value, 'all')
   const plain = route(categoryPath(CAT))
   assert.equal(plain.period.value, 'm:2026-9')
   assert.equal(plain.period.label, 'This month')
+})
+
+test('parseCategoryRoute: with pay months, this month is the pay month and a month its pay window', () => {
+  const cal = payCalendar({ fromDay: 25, categoryId: 's' }, ['2026-08-28'], '2026-09-01')
+  const plain = parseCategoryRoute(CAT, new URLSearchParams(''), new Date(2026, 8, 1), cal)
+  assert.equal(plain.period.value, 'm:2026-9')
+  assert.equal(plain.period.from, '2026-08-28')
+  assert.equal(parseCategoryRoute(CAT, new URLSearchParams('period=m:2026-8'), new Date(2026, 8, 1), cal).period.to,
+    '2026-08-27')
 })
 
 test('parseCategoryRoute: malformed id is null; a junk period means this month', () => {

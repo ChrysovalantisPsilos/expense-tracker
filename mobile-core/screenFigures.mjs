@@ -10,7 +10,7 @@
 import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { salaryShiftOf } from '../src/shared/lib/salaryShift.js'
+import { payCalendar, payMonthOf, salaryShiftOf } from '../src/shared/lib/payCalendar.js'
 import { savingsIdsOf, savingsPotMinor, savingsTotal } from '../src/shared/lib/savings.js'
 import { goalParts, savingsHistory, savingsMoves, savingsPage } from '../src/features/savings/savingsMath.js'
 import { daysFor, nextTopUp, setupDraft, voucherHistory, voucherSummary } from '../src/features/vouchers/voucherMath.js'
@@ -20,12 +20,14 @@ import {
 import { EMPTY_FILTERS, isFiltering, ledgerShown, netBaseMinor } from '../src/features/transactions/txnFilter.js'
 import { isFirstRun, ledgerSummary, listHeading } from '../src/features/transactions/listHeading.js'
 import { dayGroups, monthPulse } from '../src/features/transactions/rowParts.js'
-import { isMonthPeriod, isPastPeriod, periodFromValue, thisMonthPeriod } from '../src/shared/lib/periods.js'
-import { isoDate, lastMonths, monthTitle } from '../src/shared/lib/dates.js'
+import {
+  isMonthPeriod, isPastPeriod, lastPayMonths, periodFromValue, periodWithRange, thisMonthPeriod,
+} from '../src/shared/lib/periods.js'
+import { isoDate } from '../src/shared/lib/dates.js'
 import { spendRows } from '../src/shared/lib/spread.js'
 import {
   budgetRowParts, budgetWindow, canCopyBudgets, capsInMonth, carriedFrom, carriedLabel, monthSets, periodBudgets,
-  previousPeriod, budgetSubtitle, budgetsEmpty, heldNote,
+  previousPeriod, budgetSubtitle, budgetsEmpty, heldNote, budgetHeading,
 } from '../src/features/budgets/budgetMath.js'
 import {
   groupTotalParts, incomePerMonth, incomeRules, incomeTotalParts, ruleRowParts, subscriptionGroups,
@@ -44,7 +46,7 @@ import {
 import { whatIfRows } from '../src/features/plan/whatIfMath.js'
 import { foreignCurrencies } from '../src/shared/lib/ruleFx.js'
 import {
-  bonusCategoryId, defaultCountry, monthOf, normaliseNotes, salaryReport,
+  bonusCategoryId, defaultCountry, normaliseNotes, salaryReport,
 } from '../src/features/salary/salaryMath.js'
 import {
   bonusChoices, extrasParts, inflationParts, payChartParts, payHeadline, projectionParts, raisesParts, salaryCardParts,
@@ -55,30 +57,35 @@ import { setLanguage } from './index.js'
 
 export const FIXTURES_DIR = 'ios/Budgeer/BudgeerTests/Fixtures'
 
+// The user's pay months (payCalendar) from the profile and my_pay_calendar's
+// dates, as of `date`: null with the salary setting off.
+const calOf = (profile, payDays, date) => payCalendar(salaryShiftOf(profile), payDays ?? [], isoDate(date))
+
 // Rows a page of the app's Transactions list (LedgerFigures.pageSize), with
 // the web's Paginator ("2 of 5") under it.
 // Activity (the web's LedgerPage + TransactionList) for `kind`
 // ('expense' | 'income' | null for all), a period from the picker, and the
 // search text: its heading, its line, whether it's the first run, and the
 // rows by day as the native app lists them (dayGroups, as of `now`), and the
-// month's header (monthPulse).
+// month's header (monthPulse). `period` is the picker's (a pay month's
+// window with the salary setting on, its heading with its span:
+// periodWithRange).
 export function ledgerFigures({ rows, profile, categories, kind = null, period, text = '', oldest = null, now, lang = 'en' }) {
   setLanguage(lang)
   const baseCurrency = profile?.base_currency || 'EUR'
-  const salaryShift = salaryShiftOf(profile)
   const savingsIds = savingsIdsOf(categories)
   const searching = isFiltering(text, EMPTY_FILTERS)
-  const month = searching ? null : { from: period.from, to: period.to }
-  const shown = ledgerShown(rows, { text, searching, month, salaryShift }, baseCurrency)
+  const month = searching ? null : { key: period.key ?? null, from: period.from, to: period.to }
+  const shown = ledgerShown(rows, { text, searching, month }, baseCurrency)
   const net = netBaseMinor(shown, baseCurrency, savingsIds)
-  const head = listHeading({ kind, periodLabel: period.label, count: shown.length, searching })
+  const head = listHeading({ kind, periodLabel: periodWithRange(period), count: shown.length, searching })
   return {
     title: head.title,
     subtitle: ledgerSummary(head.subtitle, { searching, count: shown.length, net, baseCurrency }),
     firstRun: isFirstRun({ loading: false, failed: false, count: shown.length, oldest, searching }),
-    days: dayGroups(shown, { kind, baseCurrency, salaryShift, savingsIds }, isoDate(new Date(now))),
+    days: dayGroups(shown, { kind, baseCurrency, savingsIds }, isoDate(new Date(now))),
     // The month's header: the picked month's days, none for a search.
-    pulse: monthPulse(shown, { kind, baseCurrency, savingsIds, salaryShift }, month, isoDate(new Date(now))),
+    pulse: monthPulse(shown, { kind, baseCurrency, savingsIds }, month, isoDate(new Date(now))),
   }
 }
 
@@ -87,21 +94,24 @@ export function ledgerFigures({ rows, profile, categories, kind = null, period, 
 // from, whether "Copy last month's" is offered, and each budget's row.
 //   budgets   my_budgets(this month)       previous  my_budgets(last month)
 //   rows      my_transactions(expense, the month, p_spread)
-export function budgetFigures({ profile, budgets, previous, rows, now, lang = 'en' }) {
+// With pay months (`payDays`, my_pay_calendar's dates) this month is the pay
+// month holding today, headed by its own name (October on 30 September).
+export function budgetFigures({ profile, budgets, previous, rows, payDays = [], now, lang = 'en' }) {
   setLanguage(lang)
   const date = new Date(now)
+  const cal = calOf(profile, payDays, date)
   const baseCurrency = profile?.base_currency || 'EUR'
-  const span = budgetWindow(thisMonthPeriod(date), isoDate(date))
+  const span = budgetWindow(thisMonthPeriod(date, cal), isoDate(date), cal)
   const sets = monthSets(budgets)
-  const spend = spendRows(rows, baseCurrency, span.from, span.to, { separateYearly: !!profile?.yearly_separate })
-  const { items } = periodBudgets({ sets, span, spend, baseCurrency })
+  const spend = spendRows(rows, baseCurrency, span.from, span.to, { separateYearly: !!profile?.yearly_separate, cal })
+  const { items } = periodBudgets({ sets, span, spend, baseCurrency, cal })
   const carried = carriedFrom(capsInMonth(sets, span.first), span.first)
   return {
     periodStart: span.last,
     previousPeriod: previousPeriod(span.last),
     fetchFrom: span.from,
     fetchTo: span.to,
-    heading: monthTitle(date),
+    heading: budgetHeading(span.last),
     subtitle: carried ? carriedLabel(carried, span.last) : null,
     canCopy: canCopyBudgets(carried, previous.length),
     items: items.map((item) => budgetRowParts(item, baseCurrency)),
@@ -115,15 +125,16 @@ export function budgetFigures({ profile, budgets, previous, rows, now, lang = 'e
 //   sets  useBudgetSets' answer: monthSets(my_budgets(month)) for a month,
 //         else { period, rows } for each month setPeriods names
 //   rows  my_transactions(expense, the window, p_spread)
-export function budgetCard({ profile, sets, rows, periodValue, now, lang = 'en' }) {
+export function budgetCard({ profile, sets, rows, periodValue, payDays = [], now, lang = 'en' }) {
   setLanguage(lang)
   const date = new Date(now)
   const todayISO = isoDate(date)
-  const period = (periodValue && periodFromValue(periodValue, date)) || thisMonthPeriod(date)
+  const cal = calOf(profile, payDays, date)
+  const period = (periodValue && periodFromValue(periodValue, date, cal)) || thisMonthPeriod(date, cal)
   const baseCurrency = profile?.base_currency || 'EUR'
-  const span = budgetWindow(period, todayISO)
-  const spend = spendRows(rows, baseCurrency, span.from, span.to, { separateYearly: !!profile?.yearly_separate })
-  const { items, months } = periodBudgets({ sets, span, spend, baseCurrency })
+  const span = budgetWindow(period, todayISO, cal)
+  const spend = spendRows(rows, baseCurrency, span.from, span.to, { separateYearly: !!profile?.yearly_separate, cal })
+  const { items, months } = periodBudgets({ sets, span, spend, baseCurrency, cal })
   const carried = isMonthPeriod(period) ? carriedFrom(capsInMonth(sets, span.first), span.first) : null
   const empty = budgetsEmpty(period, !isPastPeriod(period, todayISO))
   const parts = items.map((item) => budgetRowParts(item, baseCurrency))
@@ -156,20 +167,20 @@ export function recurringFigures({ profile, categories, rules, rates, lang = 'en
   }
 }
 
-// The Insights page (Insights.jsx): the last six months' rows (with yearly
-// payments spread and a late salary shifted), "Where your money went" for
-// the picked month (this one by default), the six-month bars and "Income
-// vs expenses" for this month.
-export function insightsFigures({ profile, categories, rows, now, picked = null, lang = 'en' }) {
+// The Insights page (Insights.jsx): the last six months' rows (pay months
+// with the salary setting on, yearly payments spread), "Where your money
+// went" for the picked month (this one by default), the six-month bars and
+// "Income vs expenses" for this month.
+export function insightsFigures({ profile, categories, rows, payDays = [], now, picked = null, lang = 'en' }) {
   setLanguage(lang)
   const date = new Date(now)
+  const cal = calOf(profile, payDays, date)
   const baseCurrency = profile?.base_currency || 'EUR'
-  const months = lastMonths(6, date)
+  const months = lastPayMonths(6, date, cal)
   const from = months[0].from
   const to = months[months.length - 1].to
-  const spend = spendRows(rows, baseCurrency, from, to,
-    { separateYearly: !!profile?.yearly_separate, salaryShift: salaryShiftOf(profile) })
-  const trend = buildTrend(spend, months, baseCurrency, savingsIdsOf(categories))
+  const spend = spendRows(rows, baseCurrency, from, to, { separateYearly: !!profile?.yearly_separate, cal })
+  const trend = buildTrend(spend, months, baseCurrency, savingsIdsOf(categories), [], cal)
   const index = picked ?? months.length - 1
   const monthLabel = pickedMonthLabel(months, index, date)
   return {
@@ -178,7 +189,7 @@ export function insightsFigures({ profile, categories, rows, now, picked = null,
     picked: index,
     monthLabel,
     // Each legend entry drills down to the month's expenses in it (linkBuckets), as Insights.jsx.
-    shares: linkBuckets(spendingShares(spend, months[index].key, baseCurrency), spend,
+    shares: linkBuckets(spendingShares(spend, months[index].key, baseCurrency, cal), spend,
       { ...months[index], label: monthLabel }),
     hasTrend: hasTrendData(trend),
     bars: spendingBars(trend, index, baseCurrency),
@@ -186,7 +197,7 @@ export function insightsFigures({ profile, categories, rows, now, picked = null,
     chart: trend.map((m) => ({ label: m.label, income: m.income, expense: m.expense })),
     // "Spending abroad": this month's foreign payments (the actual rows, not shares).
     abroad: ((a) => (a.items.length ? abroadCard(a, baseCurrency) : null))(
-      foreignSpending(rows, months[months.length - 1].key, baseCurrency)),
+      foreignSpending(rows, months[months.length - 1].key, baseCurrency, cal)),
   }
 }
 
@@ -194,15 +205,18 @@ export function insightsFigures({ profile, categories, rows, now, picked = null,
 // reads it: every income entry and every expense paid from savings, the
 // net-worth accounts (savings accounts are the total when there are any),
 // the recurring rules and the goals; the history for a filter.
-export function savingsFigures({ profile, categories, income, fromSavings, accounts, rules, goals, filter = 'all', now, lang = 'en' }) {
+export function savingsFigures({
+  profile, categories, income, fromSavings, accounts, rules, goals, filter = 'all', payDays = [], now, lang = 'en',
+}) {
   setLanguage(lang)
   const date = new Date(now)
+  const cal = calOf(profile, payDays, date)
   const baseCurrency = profile?.base_currency || 'EUR'
   const savingsIds = savingsIdsOf(categories)
   const moves = savingsMoves([...income, ...fromSavings], savingsIds)
   const total = savingsTotal(accounts, savingsPotMinor(moves, savingsIds, baseCurrency))
   return {
-    ...savingsPage({ moves, total, savingsIds, baseCurrency, rules, now: date }),
+    ...savingsPage({ moves, total, savingsIds, baseCurrency, rules, now: date, cal }),
     history: savingsHistory(moves, savingsIds, baseCurrency, filter, date),
     goals: goals.map((g) => goalParts(g, date)),
   }
@@ -234,21 +248,21 @@ export function voucherFigures({ settings, spends, profile, now, lang = 'en' }) 
 // `rates` today's rate of each foreign currency (fx.js useLatestRates), only
 // those the rules and the plan need.
 export function planFigures({
-  profile, rules, plan, undo = null, categories, savingsCategories, income, charges, budgets, rates, view = 'month', now,
-  lang = 'en',
+  profile, rules, plan, undo = null, categories, savingsCategories, income, charges, budgets, rates, view = 'month',
+  payDays = [], now, lang = 'en',
 }) {
   setLanguage(lang)
   const date = new Date(now)
   const base = profile?.base_currency || 'EUR'
   const todayISO = isoDate(date)
-  const shift = salaryShiftOf(profile)
-  const reads = planReads(todayISO, shift)
+  const cal = calOf(profile, payDays, date)
+  const reads = planReads(todayISO, cal)
   const savingsIds = savingsIdsOf(savingsCategories)
   const salary = derivedSalary({
     rules, savingsIds, categoryId: salaryCategoryId(profile, categories), entries: income, todayISO, baseCurrency: base,
-    salaryShift: shift,
+    cal,
   })
-  const savings = derivedSavings({ rules, savingsIds, entries: income, todayISO, baseCurrency: base, salaryShift: shift })
+  const savings = derivedSavings({ rules, savingsIds, entries: income, todayISO, baseCurrency: base, cal })
   const doc = normalisePlan(plan)
   const needed = foreignCurrencies(rateNeeds(rules, doc), base)
   const budgetSets = setPeriods(Object.keys(budgets).sort(), reads.budgetMonths[0], reads.budgetMonths.at(-1))
@@ -257,7 +271,7 @@ export function planFigures({
     rules, plan: doc, savingsIds, baseCurrency: base,
     rates: Object.fromEntries(needed.filter((c) => rates[c]).map((c) => [c, rates[c]])),
     categories, salary, savings, charges, budgetSets, budgetMonths: reads.budgetMonths,
-    separateYearly: !!profile?.yearly_separate,
+    separateYearly: !!profile?.yearly_separate, cal,
   })
   return {
     reads,
@@ -271,16 +285,17 @@ export function planFigures({
 // card: the categories it uses, the country prices are compared with, and
 // every card's parts (the projection five years ahead at 2% a year, prices
 // from the first year offered), or only the card's when there's no pay yet.
-export function salaryFigures({ profile, categories, income, notes, vouchers = null, now, lang = 'en' }) {
+export function salaryFigures({ profile, categories, income, notes, vouchers = null, payDays = [], now, lang = 'en' }) {
   setLanguage(lang)
   const date = new Date(now)
+  const cal = calOf(profile, payDays, date)
   const base = profile?.base_currency || 'EUR'
-  const nowKey = monthOf(isoDate(date))
+  const nowKey = payMonthOf(isoDate(date), cal)
   const kept = normaliseNotes(notes)
   const salaryId = salaryCategoryId(profile, categories)
   const bonusId = bonusCategoryId(categories, kept)
   const country = defaultCountry({ picked: kept.country, voucherCountry: vouchers?.country, language: lang })
-  const report = salaryReport(income, { salaryId, bonusId, currency: base, notes: kept, shift: salaryShiftOf(profile), nowKey })
+  const report = salaryReport(income, { salaryId, bonusId, currency: base, notes: kept, cal, nowKey })
   return {
     salaryId,
     bonusId,
@@ -332,11 +347,16 @@ const txn = (id, spent_at, kind, amount_minor, categories, extra = {}) => ({
 })
 
 const PROFILE = { base_currency: 'EUR', yearly_separate: false, salary_shift_from_day: 25, salary_category_id: SALARY }
+// my_pay_calendar's dates: a salary from the 25th each month, so September
+// 2020 runs from 27 August (pay months).
+const PAY_DAYS = ['2020-04-28', '2020-05-28', '2020-06-26', '2020-07-28', '2020-08-27']
 const SAVINGS_CATEGORIES = [{ id: SAVINGS, kind: 'income', is_savings: true }]
 // A period as the picker gives it; its label per language (the picker's own
-// words come from periods.js, checked by its own tests).
+// words come from periods.js, checked by its own tests): September as a pay
+// month, open, with its span.
 const SEPTEMBER = {
-  value: 'm:2020-9', from: '2020-09-01', to: '2020-09-30', labels: { en: 'September 2020', el: 'Σεπτέμβριος 2020' },
+  value: 'm:2020-9', key: '2020-09', from: '2020-08-27', to: '2020-09-30', open: true,
+  labels: { en: 'September 2020', el: 'Σεπτέμβριος 2020' }, ranges: { en: 'from 27 Aug', el: 'από 27 Αυγ' },
 }
 const LEDGER_ROWS = [
   txn('a1', '2020-09-14', 'expense', 4250, GROCERIES, { description: 'Market', notes: 'weekly shop' }),
@@ -354,6 +374,9 @@ const LEDGER_ROWS = [
 export const LEDGER_INPUT = {
   now: '2020-09-15T10:00:00.000Z',
   profile: PROFILE,
+  // my_pay_calendar's dates (the app's model tests read them; the views'
+  // period below is the one they cut).
+  payDays: PAY_DAYS,
   categories: SAVINGS_CATEGORIES,
   rows: LEDGER_ROWS,
   oldest: '2020-03-15',
@@ -371,7 +394,7 @@ export function ledgerFixture() {
   for (const lang of ['en', 'el']) {
     expected[lang] = {}
     for (const view of LEDGER_INPUT.views) {
-      const period = { ...view.period, label: view.period.labels[lang] }
+      const period = { ...view.period, label: view.period.labels[lang], range: view.period.ranges[lang] }
       // The server filters by kind (my_transactions' p_kind).
       const rows = view.kind ? LEDGER_INPUT.rows.filter((r) => r.kind === view.kind) : LEDGER_INPUT.rows
       expected[lang][view.name] = ledgerFigures({ ...LEDGER_INPUT, ...view, rows, period, lang })
@@ -393,6 +416,7 @@ const BUDGET_ROWS = [
 export const BUDGETS_INPUT = {
   now: '2020-09-15T10:00:00.000Z',
   profile: PROFILE,
+  payDays: PAY_DAYS,
   rows: BUDGET_ROWS,
   views: [
     {
@@ -464,6 +488,7 @@ const INSIGHT_ROWS = [
 export const INSIGHTS_INPUT = {
   now: '2020-09-15T10:00:00.000Z',
   profile: PROFILE,
+  payDays: PAY_DAYS,
   categories: SAVINGS_CATEGORIES,
   rows: INSIGHT_ROWS,
   views: [{ name: 'thisMonth', picked: null }, { name: 'august', picked: 4 }],
@@ -500,6 +525,7 @@ const income = (id, spent_at, amount_minor, extra = {}) =>
 export const SAVINGS_INPUT = {
   now: '2020-09-15T10:00:00.000Z',
   profile: PROFILE,
+  payDays: PAY_DAYS,
   categories: SAVINGS_CATEGORIES,
   // my_transactions(kind income): the savings ones and the salary (which never moves the pot).
   income: [
@@ -601,6 +627,8 @@ const CHANGED_PLAN = (() => {
 export const PLAN_INPUT = {
   now: '2020-09-15T10:00:00.000Z',
   profile: PROFILE,
+  // The derived view's salaries are the paydays: each opens the next month.
+  payDays: ['2020-06-26', '2020-07-27', '2020-08-26'],
   categories: PLAN_CATEGORIES,
   savingsCategories: SAVINGS_CATEGORIES,
   income: [],
@@ -673,6 +701,7 @@ const SALARY_INCOME = (() => {
     { description: 'Year-end bonus' }))
   return rows
 })()
+// The salary setting off here: calendar months.
 export const SALARY_INPUT = {
   now: '2020-09-15T10:00:00.000Z',
   profile: { base_currency: 'EUR', yearly_separate: false, salary_shift_from_day: null, salary_category_id: SALARY },

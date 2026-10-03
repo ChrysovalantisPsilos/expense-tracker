@@ -2,6 +2,7 @@ import {
   toBaseMinor, minorFactor, baseEquivalent, formatMoney, formatSigned, minorToInput, rateText, toMinor,
 } from '../../shared/lib/currency.js'
 import { monthHeading } from '../../shared/lib/dates.js'
+import { payMonthOf } from '../../shared/lib/payCalendar.js'
 import { signedAmount } from '../../shared/ui/kit/kitMath.js'
 import { bucketLabel, bucketLabels, bucketOf, sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { isSavingsAccount, isSpending, netSign, rowEffect } from '../../shared/lib/savings.js'
@@ -11,7 +12,7 @@ import { entryName } from '../../shared/lib/categoryName.js'
 import { t } from '../../shared/lib/i18n/i18n.js'
 
 // Income/expense trend in MAJOR base-currency units, one entry per month bucket
-// (keyed by YYYY-MM). `months` come from lastMonths(); rows outside those months
+// (keyed by YYYY-MM). `months` come from lastPayMonths(); rows outside those months
 // are ignored. Values are major units so the chart axis reads naturally. Pass
 // spendRows output (shared/lib/spread.js) so a yearly subscription counts its
 // monthly share in each month. Savings entries (in `savingsIds`, 0084) are
@@ -19,12 +20,14 @@ import { t } from '../../shared/lib/i18n/i18n.js'
 // savings taken from income) is the one figure they touch. An expense paid
 // from savings (0085) is spending, but leaves `net` alone. `moves` (my_group_flow's
 // rows, 0110) adjust each month's `net` by the money groups really moved in
-// it, as Home's Net does (dashboardMath.groupFlow).
-export function buildTrend(rows, months, baseCurrency, savingsIds = new Set(), moves = []) {
+// it, as Home's Net does (dashboardMath.groupFlow). With pay months (`cal`,
+// payCalendar.js; `months` from periods.lastPayMonths) every row and move
+// counts in its pay month.
+export function buildTrend(rows, months, baseCurrency, savingsIds = new Set(), moves = [], cal = null) {
   const factor = minorFactor(baseCurrency)
   const by = new Map(months.map((m) => [m.key, { label: m.label, income: 0, expense: 0, net: 0 }]))
   for (const r of rows) {
-    const key = String(r.spent_at).slice(0, 7)
+    const key = monthOf(r, cal)
     const bucket = by.get(key)
     if (!bucket) continue
     const base = toBaseMinor(r.amount_minor, r.exchange_rate, r.currency, baseCurrency) / factor
@@ -34,11 +37,14 @@ export function buildTrend(rows, months, baseCurrency, savingsIds = new Set(), m
     bucket.net += netSign(effect) * base
   }
   for (const [key, bucket] of by) {
-    const inMonth = (moves ?? []).filter((m) => String(m.spent_at).slice(0, 7) === key)
+    const inMonth = (moves ?? []).filter((m) => monthOf(m, cal) === key)
     bucket.net += groupFlowNet(groupFlow(inMonth, baseCurrency)) / factor
   }
   return [...by.values()]
 }
+
+// The month ('YYYY-MM') a row counts in: its pay month with `cal`.
+const monthOf = (r, cal) => payMonthOf(String(r.spent_at).slice(0, 10), cal)
 
 // Whether a trend has anything to draw: some income or spending in any of
 // its months. An all-zero trend shows a note instead of an empty chart.
@@ -148,9 +154,10 @@ export function accountToSave(draft, id = null) {
   }
 }
 
-// Expense rows (anything not income) dated in the `monthKey` (YYYY-MM) month.
-const monthExpenses = (rows, monthKey) =>
-  rows.filter((r) => r.kind !== 'income' && String(r.spent_at).slice(0, 7) === monthKey)
+// Expense rows (anything not income) that count in the `monthKey` (YYYY-MM)
+// month (its pay month with `cal`).
+const monthExpenses = (rows, monthKey, cal) =>
+  rows.filter((r) => r.kind !== 'income' && monthOf(r, cal) === monthKey)
 
 // "Where your money went": the month's spending by category as StackedBar /
 // ShareLegend items [{ name, label, share }] — top 5 + "Other", integer
@@ -158,8 +165,8 @@ const monthExpenses = (rows, monthKey) =>
 // buckets). `name` is the bucket (bucketOf), `label` what it's called on
 // screen (bucketLabel). Buckets and converts exactly like the dashboard breakdown
 // (bucketOf + sumToBaseByKey, then categoryBars). [] when nothing was spent.
-export function spendingShares(rows, monthKey, baseCurrency) {
-  const expenses = monthExpenses(rows, monthKey)
+export function spendingShares(rows, monthKey, baseCurrency, cal = null) {
+  const expenses = monthExpenses(rows, monthKey, cal)
   const totals = sumToBaseByKey(expenses, baseCurrency, bucketOf)
   const labels = bucketLabels(expenses)
   const categories = [...totals.entries()].map(([name, value]) => ({ name, value }))
@@ -174,9 +181,9 @@ export function spendingShares(rows, monthKey, baseCurrency) {
 // without a rate are left out, so { items: [], totalBaseMinor: 0 } means
 // there's nothing to show.
 //   items: [{ id, label, currency, minor, rate, baseMinor }]
-export function foreignSpending(rows, monthKey, baseCurrency) {
+export function foreignSpending(rows, monthKey, baseCurrency, cal = null) {
   const items = []
-  for (const r of monthExpenses(rows, monthKey)) {
+  for (const r of monthExpenses(rows, monthKey, cal)) {
     const conv = baseEquivalent(r.amount_minor, r.exchange_rate, r.currency, baseCurrency)
     if (!conv) continue
     items.push({

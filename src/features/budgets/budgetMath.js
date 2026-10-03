@@ -3,7 +3,8 @@ import { toMinor } from '../../shared/lib/currency.js'
 import { sumToBaseByKey } from '../../shared/lib/txnRollup.js'
 import { intlLocale, t } from '../../shared/lib/i18n/i18n.js'
 import { monthAlone, monthTitle } from '../../shared/lib/dates.js'
-import { isMonthPeriod, isPastPeriod } from '../../shared/lib/periods.js'
+import { isMonthPeriod, isPastPeriod, periodMonth } from '../../shared/lib/periods.js'
+import { payMonthOf, payMonthWindow } from '../../shared/lib/payCalendar.js'
 import { categoryDisplayName } from '../../shared/lib/categoryName.js'
 import { categoryLook } from '../../shared/lib/categoryStyle.js'
 import { formatMoney } from '../../shared/lib/currency.js'
@@ -79,9 +80,11 @@ export function carriedLabel(source, periodStart, locale = intlLocale()) {
 // rather than by its date: periods.js labels every other month with
 // monthTitle and every other year with its number. Works in any language.
 export function isRelativeLabel(period) {
-  if (!period?.from || period.value === 'all') return false
-  const [y, m] = period.from.split('-').map(Number)
-  const plain = isMonthPeriod(period) ? monthTitle(new Date(y, m - 1, 1)) : String(y)
+  const month = periodMonth(period)
+  const year = /^y:(\d{4})$/.exec(String(period?.value ?? ''))?.[1]
+  if (!month && !year) return false
+  const [y, m] = (month ?? `${year}-01`).split('-').map(Number)
+  const plain = month ? monthTitle(new Date(y, m - 1, 1)) : String(y)
   return period.label !== plain
 }
 
@@ -102,28 +105,27 @@ export function isRelativeLabel(period) {
 // budgets have no caps, so they drop out on their own.
 
 const pad2 = (n) => String(n).padStart(2, '0')
-const monthKey = (iso) => `${String(iso).slice(0, 7)}-01`
 
-// The last day of a 'YYYY-MM-01' month ('YYYY-MM-DD').
-const monthEnd = (month) => {
-  const [y, m] = month.split('-').map(Number)
-  return `${y}-${pad2(m)}-${pad2(new Date(Date.UTC(y, m, 0)).getUTCDate())}`
-}
+// The month (pay month with `cal`) a date counts in, as its budget key.
+const monthKey = (iso, cal) => `${payMonthOf(String(iso).slice(0, 10), cal)}-01`
 
 // The months a period's budgets cover, { first, last } as 'YYYY-MM-01'
-// (first null for all time: from the first month with budgets), and the
-// dates { from, to } its spend is read over (from null: from the start).
-// `period` is a periods.js option.
-export function budgetWindow(period, todayISO) {
+// labels (first null for all time: from the first month with budgets), and
+// the dates { from, to } its spend is read over (from null: from the start):
+// the months' windows, pay months with `cal` (payCalendar.js). `period` is a
+// periods.js option: a month is keyed by its label (periodMonth), a year by
+// its January to December.
+export function budgetWindow(period, todayISO, cal = null) {
   if (isMonthPeriod(period)) {
-    const first = monthKey(period.from)
-    return { first, last: first, from: first, to: monthEnd(first) }
+    const first = periodMonth(period)
+    return { first, last: first, from: period.from, to: period.to }
   }
-  const now = monthKey(todayISO)
-  const first = period.from ? monthKey(period.from) : null
-  const end = period.to ? monthKey(period.to) : now
+  const now = monthKey(todayISO, cal)
+  const year = /^y:(\d{4})$/.exec(String(period?.value ?? ''))?.[1]
+  const first = year ? `${year}-01-01` : null
+  const end = year ? `${year}-12-01` : now
   const last = end < now ? end : now
-  return { first, last, from: first, to: monthEnd(last) }
+  return { first, last, from: period.from ?? null, to: payMonthWindow(last.slice(0, 7), cal, todayISO).to }
 }
 
 // The months whose caps a longer span reads (useBudgetSets): of every month
@@ -160,16 +162,17 @@ export function capsInMonth(sets, month) {
 // A period's budgets as the card's progress rows, and how many of its months
 // had any cap:
 //   sets    the budget sets behind the span's months (capsInMonth)
-//   span    budgetWindow(period, today)
-//   spend   spendRows() over the span, in any currency (converted to base)
+//   span    budgetWindow(period, today, cal)
+//   spend   spendRows() over the span, in any currency (converted to base),
+//           each row in the month it counts in (its pay month with `cal`)
 // Each item: { id, categoryId, category, name, limit, spent, tone, months }:
 // `limit` and `spent` add up the category's capped months, its look comes
 // from its latest month. Most-used first (over-budget floats to the top).
-export function periodBudgets({ sets, span, spend, baseCurrency }) {
+export function periodBudgets({ sets, span, spend, baseCurrency, cal = null }) {
   const first = span.first ?? sets.map((s) => s.period).sort()[0]
   if (!first || first > span.last) return { items: [], months: 0 }
   const spentIn = sumToBaseByKey(spend, baseCurrency,
-    (r) => (r.category_id == null ? null : `${r.category_id}|${monthKey(r.spent_at)}`))
+    (r) => (r.category_id == null ? null : `${r.category_id}|${monthKey(r.spent_at, cal)}`))
   const byCat = new Map()
   let months = 0
   for (const month of monthsBetween(first, span.last)) {
@@ -195,6 +198,14 @@ export function periodBudgets({ sets, span, spend, baseCurrency }) {
     months: a.months,
   })).sort((a, b) => (b.spent / (b.limit || 1)) - (a.spent / (a.limit || 1)))
   return { items, months }
+}
+
+// The Budgets page's heading for the month its caps are set for
+// ('YYYY-MM-01', budgetWindow's `last`): "October 2026", also on 30 Sep
+// after the payday that opened October.
+export function budgetHeading(month) {
+  const [y, m] = String(month).split('-').map(Number)
+  return monthTitle(new Date(y, m - 1, 1))
 }
 
 // The card's subtitle: a month's name ("This month", "March 2025") with

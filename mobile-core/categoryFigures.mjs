@@ -11,9 +11,9 @@
 import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { isMonthPeriod, periodFromValue, thisMonthPeriod } from '../src/shared/lib/periods.js'
-import { monthRange } from '../src/shared/lib/dates.js'
-import { salaryShiftOf } from '../src/shared/lib/salaryShift.js'
+import { isMonthPeriod, periodFromValue, periodMonth, thisMonthPeriod } from '../src/shared/lib/periods.js'
+import { isoDate } from '../src/shared/lib/dates.js'
+import { payCalendar, salaryShiftOf } from '../src/shared/lib/payCalendar.js'
 import { savingsIdsOf } from '../src/shared/lib/savings.js'
 import { formatMoney, minorToInput } from '../src/shared/lib/currency.js'
 import { categoryLook } from '../src/shared/lib/categoryStyle.js'
@@ -29,11 +29,15 @@ export const FIXTURE_FILE = 'ios/Budgeer/BudgeerTests/Fixtures/category.json'
 // The page for `categoryId` (a category's id or NO_CATEGORY) and a picker
 // value (null: this month). `categories` are every category (archived
 // included, as useAllCategories reads them); `budgets` my_budgets' rows for
-// the month shown (this month for a longer period).
-export function categoryPageFigures({ profile, categories, rows, budgets, categoryId, periodValue = null, now, lang = 'en' }) {
+// the month shown (this month for a longer period). `payDays` are
+// my_pay_calendar's dates (pay months with the salary setting on).
+export function categoryPageFigures({
+  profile, categories, rows, budgets, categoryId, periodValue = null, payDays = [], now, lang = 'en',
+}) {
   setLanguage(lang)
   const date = new Date(now)
-  const period = (periodValue && periodFromValue(periodValue, date)) || thisMonthPeriod(date)
+  const cal = payCalendar(salaryShiftOf(profile), payDays, isoDate(date))
+  const period = (periodValue && periodFromValue(periodValue, date, cal)) || thisMonthPeriod(date, cal)
   const uncategorised = categoryId === NO_CATEGORY
   const category = uncategorised ? null : categories.find((c) => c.id === categoryId) ?? null
   if (!uncategorised && !category) {
@@ -41,24 +45,29 @@ export function categoryPageFigures({ profile, categories, rows, budgets, catego
   }
   const baseCurrency = profile?.base_currency || 'EUR'
   const separateYearly = !!profile?.yearly_separate
-  const salaryShift = salaryShiftOf(profile)
   const head = categoryPageHead(category, uncategorised)
   const { listed, total } = categoryPeriod(rows, {
-    categoryId, from: period.from, to: period.to, baseCurrency, separateYearly, salaryShift,
+    categoryId, from: period.from, to: period.to, baseCurrency, separateYearly, cal,
   })
   const list = listHeading({
     kind: head.kind ?? 'expense', savings: !!category?.is_savings, periodLabel: period.label, count: listed.length,
   })
-  // Budgets are monthly and expense-only; only this month's cap can change.
-  const thisMonth = monthRange(date).from
+  // Budgets are monthly and expense-only, keyed by the month's label
+  // (periodMonth); only this month's cap can change.
+  const thisMonth = periodMonth(thisMonthPeriod(date, cal))
   const month = isMonthPeriod(period)
   const hasBudgets = !uncategorised && head.kind === 'expense'
   const budget = hasBudgets && month ? budgets.find((b) => b.category_id === categoryId) ?? null : null
-  const canEditBudget = hasBudgets && period.from === thisMonth
+  const canEditBudget = hasBudgets && periodMonth(period) === thisMonth
   const budgetMinor = budget?.amount_minor ?? null
   return {
     found: true,
-    period: { value: period.value, from: period.from, to: period.to, label: period.label },
+    period: {
+      value: period.value, key: period.key ?? null, from: period.from, to: period.to, label: period.label,
+      range: period.range ?? null, open: period.open ?? null,
+    },
+    // The month whose budgets the page reads (this month for a longer period).
+    budgetMonth: month ? periodMonth(period) : thisMonth,
     kind: head.kind,
     name: head.name,
     eyebrow: head.eyebrow,
@@ -74,7 +83,7 @@ export function categoryPageFigures({ profile, categories, rows, budgets, catego
     budgetHelp: t(budgetMinor == null ? 'categories:page.budgetNew' : 'categories:page.budgetChange'),
     listTitle: list.title,
     listSubtitle: list.subtitle,
-    rows: listParts(listed, { kind: head.kind, baseCurrency, salaryShift, savingsIds: savingsIdsOf(categories) }),
+    rows: listParts(listed, { kind: head.kind, baseCurrency, savingsIds: savingsIdsOf(categories) }),
   }
 }
 
@@ -103,12 +112,15 @@ export const CATEGORY_INPUT = {
   now: '2020-09-15T10:00:00.000Z',
   profile: { base_currency: 'EUR', yearly_separate: false, salary_shift_from_day: 25, salary_category_id: PAY },
   categories: CATEGORIES,
+  // my_pay_calendar's dates: September runs from 28 August.
+  payDays: ['2020-07-28', '2020-08-28'],
   views: [
     {
       // This month, a cap carried over from August.
       name: 'groceries', categoryId: GROCERIES, periodValue: null,
       rows: [
         txn('g1', '2020-09-14', 'expense', 4250, GROCERIES, { description: 'Market', notes: 'weekly shop' }),
+        txn('g0', '2020-08-30', 'expense', 1500, GROCERIES, { description: 'After payday' }),
         txn('g2', '2020-09-10', 'expense', 1899, GROCERIES),
         txn('g3', '2020-09-02', 'expense', 2500, GROCERIES, { currency: 'USD', exchange_rate: 0.9123 }),
       ],

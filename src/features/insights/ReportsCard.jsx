@@ -4,7 +4,8 @@ import {
 } from '@chakra-ui/react'
 import { FileSpreadsheet, FileText } from 'lucide-react'
 import Panel from '../../shared/ui/kit/Panel.jsx'
-import { monthRange } from '../../shared/lib/dates.js'
+import { thisMonthPeriod } from '../../shared/lib/periods.js'
+import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { downloadStatement } from './reports.js'
 import { userMessage } from '../../shared/lib/errors.js'
 import { BusyNote, RingSpinner } from '../../shared/ui/RingLoader.jsx'
@@ -12,10 +13,17 @@ import { useT } from '../../shared/lib/i18n/I18nProvider.jsx'
 
 // Financial-statement export (PDF/Excel) for a date range, on the Insights page.
 // `noEntries`: nothing has been logged yet, so the buttons are off with a hint.
+// The range starts as this month's window (the pay month with the salary
+// setting on); left as it is, the statement is asked for as that month.
 export default function ReportsCard({ noEntries = false }) {
-  const { from: mFrom, to: mTo } = monthRange()
-  const [from, setFrom] = useState(mFrom)
-  const [to, setTo] = useState(mTo)
+  const { payCalendar: cal } = useProfile()
+  const month = thisMonthPeriod(new Date(), cal)
+  const [picked, setPicked] = useState({})
+  const from = picked.from ?? month.from
+  const to = picked.to ?? month.to
+  const setFrom = (v) => setPicked((p) => ({ ...p, from: v }))
+  const setTo = (v) => setPicked((p) => ({ ...p, to: v }))
+  const asMonth = from === month.from && to === month.to ? month.key : null
   const [busy, setBusy] = useState(null) // 'xlsx' | 'pdf' | null
   const [page, setPage] = useState(null) // the PDF page being made, once known
   const toast = useToast()
@@ -25,7 +33,7 @@ export default function ReportsCard({ noEntries = false }) {
     setBusy(format)
     setPage(null)
     try {
-      await downloadStatement({ from, to, format, onProgress: setPage })
+      await downloadStatement({ from, to, format, month: asMonth, onProgress: setPage })
     } catch (e) {
       console.error('[insights] report failed:', e)
       toast({ title: t('reports.failed'), description: userMessage(e), status: 'error' })

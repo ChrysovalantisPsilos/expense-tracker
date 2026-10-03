@@ -48,6 +48,14 @@ export async function baseCurrencyLocked() {
   return data === true
 }
 
+// Save the device's time zone (an IANA name), so the server's "today" for
+// this user is theirs (0111: budget alerts, the month summary). The server
+// refuses a name it doesn't know.
+export async function saveTimeZone(zone) {
+  const { error } = await supabase.rpc('save_time_zone', { p_tz: zone })
+  if (error) throw dbError(error)
+}
+
 // Update editable profile fields for the current user.
 export async function updateProfile(userId, fields) {
   const { data, error } = await supabase

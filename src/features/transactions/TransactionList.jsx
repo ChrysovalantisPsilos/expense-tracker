@@ -6,7 +6,6 @@ import CategoryBadge from '../../shared/ui/CategoryBadge.jsx'
 import ItemRow from '../../shared/ui/kit/ItemRow.jsx'
 import DeleteTransactionDialog from '../../shared/ui/DeleteTransactionDialog.jsx'
 import { useSavingsIds } from '../../shared/lib/categories.js'
-import { useProfile } from '../../shared/lib/ProfileProvider.jsx'
 import { deleteTransaction } from '../../shared/lib/transactions.js'
 import { saveErrorToast } from '../../shared/lib/saveError.js'
 import MetaLine from '../../shared/ui/MetaLine.jsx'
@@ -35,9 +34,8 @@ export default function TransactionList({ rows, kind, baseCurrency, mutate, relo
   const [removing, setRemoving] = useState(null)
   const [busy, setBusy] = useState(false)
   const { savingsIds } = useSavingsIds()
-  const { salaryShift } = useProfile()
   const parts = useMemo(
-    () => listParts(rows, { kind, baseCurrency, salaryShift, savingsIds }), [rows, kind, baseCurrency, salaryShift, savingsIds])
+    () => listParts(rows, { kind, baseCurrency, savingsIds }), [rows, kind, baseCurrency, savingsIds])
 
   // The page gets the row in router state, so it opens without a fetch.
   const open = (r) => navigate(`/transactions/${r.id}`, { state: { row: r } })
@@ -120,7 +118,6 @@ function RowMeta({ parts: p }) {
         </Text>
       )}
       {p.spread && <Text whiteSpace="nowrap">{p.spread}</Text>}
-      {p.countsFor && <Text whiteSpace="nowrap">{p.countsFor}</Text>}
     </MetaLine>
   )
 }
